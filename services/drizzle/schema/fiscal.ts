@@ -1,5 +1,5 @@
-import { relations } from "drizzle-orm";
-import { boolean, doublePrecision, index, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { boolean, doublePrecision, index, integer, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import {
 	fiscalClientTaxIndicatorEnum,
@@ -62,7 +62,9 @@ export const fiscalSeries = newTable(
 	},
 	(table) => ({
 		organizacaoIdIdx: index("idx_fiscal_series_organizacao_id").on(table.organizacaoId),
-		organizacaoSerieIdx: index("idx_fiscal_series_organizacao_serie").on(table.organizacaoId, table.tipoDocumento, table.ambiente, table.serie),
+		// Uma unica linha (e um unico contador) por serie SEFAZ: duas linhas para a mesma serie
+		// gerariam numeracao duplicada (rejeicoes 204/539).
+		organizacaoSerieUq: uniqueIndex("uq_fiscal_series_organizacao_serie").on(table.organizacaoId, table.tipoDocumento, table.ambiente, table.serie),
 	}),
 );
 
@@ -203,6 +205,11 @@ export const productFiscalProfiles = newTable(
 	(table) => ({
 		organizacaoIdIdx: index("idx_product_fiscal_profiles_organizacao_id").on(table.organizacaoId),
 		produtoIdIdx: index("idx_product_fiscal_profiles_produto_id").on(table.produtoId),
+		// Um unico perfil fiscal ATIVO por produto/variante (a exclusao e soft-delete via ativo=false;
+		// COALESCE trata variante nula como valor unico para efeito de unicidade).
+		produtoAtivoUq: uniqueIndex("uq_product_fiscal_profiles_produto_variante_ativo")
+			.on(table.organizacaoId, table.produtoId, sql`coalesce(${table.produtoVarianteId}, '')`)
+			.where(sql`${table.ativo} = true`),
 	}),
 );
 
@@ -350,7 +357,8 @@ export const fiscalInboundDocuments = newTable(
 	},
 	(table) => ({
 		organizacaoIdIdx: index("idx_fiscal_inbound_documents_organizacao_id").on(table.organizacaoId),
-		chaveAcessoIdx: index("idx_fiscal_inbound_documents_chave").on(table.organizacaoId, table.chaveAcesso),
+		// Dedupe de notas recebidas: uma chave de acesso por organizacao (o cron pode rodar em paralelo).
+		chaveAcessoUq: uniqueIndex("uq_fiscal_inbound_documents_organizacao_chave").on(table.organizacaoId, table.chaveAcesso),
 		nsuIdx: index("idx_fiscal_inbound_documents_nsu").on(table.organizacaoId, table.nsu),
 	}),
 );

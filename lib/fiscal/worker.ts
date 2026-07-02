@@ -1,38 +1,23 @@
 import { db } from "@/services/drizzle";
 import { fiscalOutboundDocuments } from "@/services/drizzle/schema";
-import { and, eq, isNull, lte, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import createHttpError from "http-errors";
 import { getErrorMessage } from "../errors";
 import { emitFiscalDocument, syncFiscalDocument } from "./documents";
 
 const MAX_ATTEMPTS = 6;
 // Backoff exponencial (minutos) por tentativa.
 const BACKOFF_MINUTES = [1, 5, 15, 60, 180, 360];
-// Apos esse tempo, um lock e considerado obsoleto (processo anterior morreu) e pode ser reclamado.
-const STALE_LOCK_MINUTES = 15;
 
 function nextAttemptDate(attempts: number): Date {
 	const index = Math.min(attempts, BACKOFF_MINUTES.length - 1);
 	return new Date(Date.now() + BACKOFF_MINUTES[index] * 60_000);
 }
 
-// Claim atomico do documento: marca bloqueadoEm somente se estiver livre ou com lock obsoleto.
-async function claimDocument(documentId: string): Promise<boolean> {
-	const staleThreshold = new Date(Date.now() - STALE_LOCK_MINUTES * 60_000);
-	const claimed = await db
-		.update(fiscalOutboundDocuments)
-		.set({ bloqueadoEm: new Date() })
-		.where(
-			and(
-				eq(fiscalOutboundDocuments.id, documentId),
-				or(isNull(fiscalOutboundDocuments.bloqueadoEm), lte(fiscalOutboundDocuments.bloqueadoEm, staleThreshold)),
-			),
-		)
-		.returning({ id: fiscalOutboundDocuments.id });
-	return claimed.length > 0;
-}
-
-async function releaseDocument(documentId: string, proximaTentativaEm: Date | null) {
-	await db.update(fiscalOutboundDocuments).set({ bloqueadoEm: null, proximaTentativaEm }).where(eq(fiscalOutboundDocuments.id, documentId));
+// Reagenda (ou encerra) a proxima tentativa do documento. O lock de envio (bloqueadoEm)
+// e adquirido e liberado dentro de emitFiscalDocument, dono unico do claim.
+async function scheduleNextAttempt(documentId: string, proximaTentativaEm: Date | null) {
+	await db.update(fiscalOutboundDocuments).set({ proximaTentativaEm }).where(eq(fiscalOutboundDocuments.id, documentId));
 }
 
 // Processa a fila de emissao fiscal (outbox). Executado por cron.
@@ -56,29 +41,33 @@ export async function processFiscalQueue({ limit = 25 }: { limit?: number } = {}
 	});
 
 	for (const doc of toSend) {
-		if (!(await claimDocument(doc.id))) continue;
-
 		if (doc.tipo !== "NFCE" && doc.tipo !== "NFE") {
-			await releaseDocument(doc.id, null);
+			await scheduleNextAttempt(doc.id, null);
 			continue;
 		}
 
 		try {
+			// Repassa o encadeamento de devolucao persistido no documento: sem ele a referencia
+			// seria recalculada sem o sufixo ":dev:" e a emissao cairia no documento da venda original.
 			await emitFiscalDocument({
 				vendaId: doc.vendaId as string,
 				tipo: doc.tipo,
 				organizacaoId: doc.organizacaoId,
 				lancamentoContabilId: doc.lancamentoContabilId,
 				origem: "AUTOMATICA",
+				documentoOrigemId: doc.documentoOrigemId,
+				chaveAcessoReferencia: doc.chaveAcessoReferencia,
 			});
 			// Sucesso, rejeicao ou processamento: nao reagenda automaticamente.
-			await releaseDocument(doc.id, null);
+			await scheduleNextAttempt(doc.id, null);
 			results.enviados++;
 		} catch (error) {
-			console.log("[FISCAL_WORKER] Error emitting fiscal document", error);
+			// 409: outro processo (emissao manual ou worker concorrente) detem o lock de envio.
+			// Nao conta como falha nem reagenda; o dono do lock conclui o envio.
+			if (createHttpError.isHttpError(error) && error.statusCode === 409) continue;
 			const attempts = (doc.tentativasEnvio ?? 0) + 1;
 			const proxima = attempts < MAX_ATTEMPTS ? nextAttemptDate(attempts) : null;
-			await releaseDocument(doc.id, proxima);
+			await scheduleNextAttempt(doc.id, proxima);
 			results.falhas++;
 			console.error(`[FISCAL_WORKER] Falha ao emitir documento ${doc.id}: ${getErrorMessage(error)}`);
 		}

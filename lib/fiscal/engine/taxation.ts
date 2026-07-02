@@ -1,6 +1,7 @@
-import type { TFiscalPisCofinsCstEnum } from "@/schemas/enums";
+import type { TFiscalPisCofinsCstEnum, TFiscalProductOriginEnum } from "@/schemas/enums";
 import { resolveCfop } from "./cfop";
-import { mapOrigemToCodigo } from "./data/uf";
+import { aliquotaInterestadual } from "./data/aliquotas-interestaduais";
+import { isOrigemImportada, mapOrigemToCodigo } from "./data/uf";
 import { resolveEffectiveTaxConfig, resolveRuleCfopOverride } from "./rules";
 import type {
 	TDocumentTaxTotals,
@@ -17,12 +18,50 @@ function round2(value: number): number {
 	return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-function computeContribuicao(cst: TFiscalPisCofinsCstEnum, aliquota: number, base: number) {
-	// No Simples Nacional o padrao e CST 49 com valor zero (recolhimento no DAS).
-	if (cst === "49" || cst === "99" || aliquota <= 0) {
+// CSTs de PIS/COFINS tributados ad valorem (aliquota sobre a base). CST 03 e por quantidade
+// (nao suportado); 04-09 sao nao tributados; 49/99 sao "outras operacoes" sem debito
+// (no Simples Nacional o padrao e CST 49 com valor zero, recolhimento no DAS).
+const CST_CONTRIBUICAO_AD_VALOREM = new Set<TFiscalPisCofinsCstEnum>(["01", "02"]);
+
+function computeContribuicao({
+	tributo,
+	cst,
+	aliquota,
+	base,
+	produtoId,
+	erros,
+}: {
+	tributo: "PIS" | "COFINS";
+	cst: TFiscalPisCofinsCstEnum;
+	aliquota: number;
+	base: number;
+	produtoId: string;
+	erros: TFiscalValidationError[];
+}) {
+	if (cst === "03") {
+		erros.push({
+			codigo: `${tributo}_CST_QUANTIDADE_NAO_SUPORTADO`,
+			severidade: "ERRO",
+			mensagem: `CST 03 de ${tributo} (tributacao por quantidade) nao e suportado pelo motor fiscal. Ajuste o CST no grupo tributario.`,
+			produtoId,
+		});
 		return { cst, vBC: 0, pAliq: 0, valor: 0 };
 	}
-	return { cst, vBC: round2(base), pAliq: aliquota, valor: round2((base * aliquota) / 100) };
+	if (CST_CONTRIBUICAO_AD_VALOREM.has(cst)) {
+		if (aliquota <= 0) return { cst, vBC: 0, pAliq: 0, valor: 0 };
+		return { cst, vBC: round2(base), pAliq: aliquota, valor: round2((base * aliquota) / 100) };
+	}
+	// CSTs sem debito: zera os valores para manter itens e totais coerentes (o item sai como
+	// nao tributado no XML; um valor apenas nos totais causaria rejeicao de somatorio).
+	if (aliquota > 0) {
+		erros.push({
+			codigo: `${tributo}_ALIQUOTA_IGNORADA`,
+			severidade: "AVISO",
+			mensagem: `Aliquota de ${tributo} (${aliquota}%) configurada com CST ${cst}, que nao gera debito; o valor sera zerado. Revise o grupo tributario.`,
+			produtoId,
+		});
+	}
+	return { cst, vBC: 0, pAliq: 0, valor: 0 };
 }
 
 function computeIcms({
@@ -30,6 +69,7 @@ function computeIcms({
 	scenario,
 	baseLiquida,
 	origemCodigo,
+	origemMercadoria,
 	produtoId,
 	cest,
 	erros,
@@ -38,6 +78,7 @@ function computeIcms({
 	scenario: TFiscalTaxScenario;
 	baseLiquida: number;
 	origemCodigo: number;
+	origemMercadoria: TFiscalProductOriginEnum;
 	produtoId: string;
 	cest: string | null;
 	erros: TFiscalValidationError[];
@@ -104,7 +145,15 @@ function computeIcms({
 			const reducaoSt = config.percentualReducaoBcSt ?? 0;
 			const vBCST = round2(baseLiquida * (1 + config.mvaSt / 100) * (1 - reducaoSt / 100));
 			const pICMSST = config.aliquotaIcmsSt ?? config.aliquotaInternaDestino;
-			const vICMSST = round2(Math.max((vBCST * pICMSST) / 100 - vICMS, 0));
+			// Deducao do ICMS da operacao propria (Convenio ICMS 142/18, clausula 13a). Quando o
+			// emitente do Simples nao destaca ICMS proprio (vICMS = 0), deduz-se o valor presumido:
+			// aliquota interestadual (operacao interestadual) ou interna sobre a operacao propria.
+			const aliquotaOperacaoPropria =
+				scenario.escopo === "INTERESTADUAL"
+					? aliquotaInterestadual({ ufOrigem: scenario.ufOrigem, ufDestino: scenario.ufDestino, importada: isOrigemImportada(origemMercadoria) })
+					: pICMSST;
+			const deducaoOperacaoPropria = vICMS > 0 ? vICMS : round2((baseLiquida * aliquotaOperacaoPropria) / 100);
+			const vICMSST = round2(Math.max((vBCST * pICMSST) / 100 - deducaoOperacaoPropria, 0));
 			const vFCPST = config.aliquotaFcpSt > 0 ? round2((vBCST * config.aliquotaFcpSt) / 100) : 0;
 			st = { vBCST, pMVAST: config.mvaSt, pICMSST, vICMSST, vFCPST };
 		} else {
@@ -156,9 +205,25 @@ export function computeItemTaxation({ scenario, item, group, vTotTrib }: TComput
 		});
 	}
 
-	const icms = computeIcms({ config, scenario, baseLiquida, origemCodigo, produtoId: item.produtoId, cest: item.cest ?? null, erros });
-	const pis = computeContribuicao(config.cstPis, config.aliquotaPis, baseLiquida);
-	const cofins = computeContribuicao(config.cstCofins, config.aliquotaCofins, baseLiquida);
+	const icms = computeIcms({
+		config,
+		scenario,
+		baseLiquida,
+		origemCodigo,
+		origemMercadoria: item.origemMercadoria,
+		produtoId: item.produtoId,
+		cest: item.cest ?? null,
+		erros,
+	});
+	const pis = computeContribuicao({ tributo: "PIS", cst: config.cstPis, aliquota: config.aliquotaPis, base: baseLiquida, produtoId: item.produtoId, erros });
+	const cofins = computeContribuicao({
+		tributo: "COFINS",
+		cst: config.cstCofins,
+		aliquota: config.aliquotaCofins,
+		base: baseLiquida,
+		produtoId: item.produtoId,
+		erros,
+	});
 
 	return {
 		produtoId: item.produtoId,
@@ -212,8 +277,8 @@ export function computeDocumentTotals(items: { result: TItemTaxResult; valorBrut
 	totals.vPIS = round2(totals.vPIS);
 	totals.vCOFINS = round2(totals.vCOFINS);
 	totals.vTotTrib = round2(totals.vTotTrib);
-	// vNF = produtos - desconto + ST (frete/seguro/outros fora de escopo nesta fase)
-	totals.vNF = round2(totals.vProd - totals.vDesc + totals.vST);
+	// vNF = produtos - desconto + ST + FCP-ST (regra W16 / NT 2016.002; frete/seguro/outros fora de escopo nesta fase)
+	totals.vNF = round2(totals.vProd - totals.vDesc + totals.vST + totals.vFCPST);
 
 	return totals;
 }

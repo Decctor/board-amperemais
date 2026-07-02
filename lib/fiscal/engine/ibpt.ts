@@ -15,8 +15,9 @@ function onlyDigits(value: string): string {
 	return value.replace(/\D/g, "");
 }
 
-// Seleciona a taxa IBPT por NCM + UF. Tenta correspondencia exata e, em seguida, por prefixo de NCM
-// mais longo (alguns NCMs sao informados por capitulo/posicao na tabela).
+// Seleciona a taxa IBPT por NCM + UF. Tenta correspondencia exata e, em seguida, o prefixo mais
+// longo em que o NCM da tabela e mais generico que o alvo (capitulo/posicao). Nao aceita o inverso
+// (taxa de NCM mais especifico que o alvo), que casaria com um item arbitrario do capitulo.
 export function selectIbptRate(rates: TIbptRate[], { ncm, uf }: { ncm: string; uf: string }): TIbptRate | null {
 	const targetNcm = onlyDigits(ncm);
 	const targetUf = uf.toUpperCase();
@@ -29,7 +30,7 @@ export function selectIbptRate(rates: TIbptRate[], { ncm, uf }: { ncm: string; u
 	const byPrefix = sameUf
 		.filter((rate) => {
 			const rateNcm = onlyDigits(rate.ncm);
-			return targetNcm.startsWith(rateNcm) || rateNcm.startsWith(targetNcm);
+			return rateNcm.length > 0 && rateNcm.length < targetNcm.length && targetNcm.startsWith(rateNcm);
 		})
 		.sort((a, b) => onlyDigits(b.ncm).length - onlyDigits(a.ncm).length);
 

@@ -1,6 +1,7 @@
 import z from "zod";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { appApiHandler } from "@/lib/app-api";
+import { isUniqueViolationError } from "@/lib/db-utils";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { ProductFiscalProfileSchema } from "@/schemas/fiscal";
 import { db } from "@/services/drizzle";
@@ -183,22 +184,28 @@ async function createProductFiscalProfile({ input, session }: { input: TCreatePr
 	const userOrgId = assertFiscalConfigurePermission(session);
 	await assertProductExists({ productId: input.productId, userOrgId });
 
-	const [createdProfile] = await db
-		.insert(productFiscalProfiles)
-		.values({
-			organizacaoId: userOrgId,
-			produtoId: input.productId,
-			produtoVarianteId: null,
-			grupoTributarioId: input.fiscalProfile.grupoTributarioId ?? null,
-			origemMercadoria: input.fiscalProfile.origemMercadoria,
-			ncm: input.fiscalProfile.ncm,
-			cest: input.fiscalProfile.cest,
-			cfopPadrao: input.fiscalProfile.cfopPadrao,
-			unidadeComercial: input.fiscalProfile.unidadeComercial,
-			codigoBeneficioFiscal: input.fiscalProfile.codigoBeneficioFiscal,
-			ativo: input.fiscalProfile.ativo,
-		})
-		.returning({ id: productFiscalProfiles.id });
+	let createdProfile: { id: string } | undefined;
+	try {
+		[createdProfile] = await db
+			.insert(productFiscalProfiles)
+			.values({
+				organizacaoId: userOrgId,
+				produtoId: input.productId,
+				produtoVarianteId: null,
+				grupoTributarioId: input.fiscalProfile.grupoTributarioId ?? null,
+				origemMercadoria: input.fiscalProfile.origemMercadoria,
+				ncm: input.fiscalProfile.ncm,
+				cest: input.fiscalProfile.cest,
+				cfopPadrao: input.fiscalProfile.cfopPadrao,
+				unidadeComercial: input.fiscalProfile.unidadeComercial,
+				codigoBeneficioFiscal: input.fiscalProfile.codigoBeneficioFiscal,
+				ativo: input.fiscalProfile.ativo,
+			})
+			.returning({ id: productFiscalProfiles.id });
+	} catch (error) {
+		if (isUniqueViolationError(error)) throw new createHttpError.Conflict("Este produto ja possui um perfil fiscal ativo.");
+		throw error;
+	}
 
 	if (!createdProfile?.id) throw new createHttpError.InternalServerError("Erro ao criar perfil fiscal do produto.");
 

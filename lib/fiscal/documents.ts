@@ -1,9 +1,10 @@
 import { db } from "@/services/drizzle";
 import { fiscalDocumentEvents, fiscalOutboundDocuments } from "@/services/drizzle/schema";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { getErrorMessage } from "../errors";
 import { buildFiscalReference } from "./constants";
+import { getFiscalRejectionInfo } from "./rejections";
 import { formatValidationMessages, hasBlockingErrors, type TFiscalTaxGroupWithRules } from "./engine";
 import { FiscalReadinessError } from "./errors";
 import { computeSaleTaxation } from "./taxation-context";
@@ -165,6 +166,31 @@ async function patchFiscalDocument(documentoId: string, patch: Partial<typeof fi
 	return updated;
 }
 
+// Apos esse tempo, um lock e considerado obsoleto (processo anterior morreu) e pode ser reclamado.
+const FISCAL_SEND_LOCK_STALE_MINUTES = 15;
+
+// Claim atomico do documento para envio ao provedor: marca bloqueadoEm somente se estiver livre
+// ou com lock obsoleto. Compartilhado pela emissao manual e pelo worker da fila para impedir
+// duas chamadas simultaneas ao provedor para o mesmo documento.
+export async function claimFiscalDocumentForSend(documentId: string): Promise<boolean> {
+	const staleThreshold = new Date(Date.now() - FISCAL_SEND_LOCK_STALE_MINUTES * 60_000);
+	const claimed = await db
+		.update(fiscalOutboundDocuments)
+		.set({ bloqueadoEm: new Date() })
+		.where(
+			and(
+				eq(fiscalOutboundDocuments.id, documentId),
+				or(isNull(fiscalOutboundDocuments.bloqueadoEm), lte(fiscalOutboundDocuments.bloqueadoEm, staleThreshold)),
+			),
+		)
+		.returning({ id: fiscalOutboundDocuments.id });
+	return claimed.length > 0;
+}
+
+async function releaseFiscalDocumentSendLock(documentId: string) {
+	await db.update(fiscalOutboundDocuments).set({ bloqueadoEm: null }).where(eq(fiscalOutboundDocuments.id, documentId));
+}
+
 async function addFiscalDocumentEvent({
 	documentoFiscalId,
 	tipo,
@@ -192,23 +218,25 @@ async function addFiscalDocumentEvent({
 }
 
 async function applyProviderDocumentDetails(documentoId: string, details: TProviderDocumentDetails) {
+	// Retornos parciais do provedor (ex.: cancelamento nao traz chave/numero/datas de emissao):
+	// campos ausentes ficam undefined e sao ignorados pelo update, preservando o valor persistido.
 	return patchFiscalDocument(documentoId, {
 		status: details.status,
 		statusInterno: details.statusInterno,
 		ambiente: details.ambiente,
 		provedorDocumentoId: details.id,
 		provedorStatus: details.status,
-		chaveAcesso: details.chaveAcesso ?? null,
-		numero: details.numero ?? null,
-		serie: details.serie ?? null,
-		protocolo: details.protocolo ?? null,
+		chaveAcesso: details.chaveAcesso ?? undefined,
+		numero: details.numero ?? undefined,
+		serie: details.serie ?? undefined,
+		protocolo: details.protocolo ?? undefined,
 		codigoRejeicao: details.statusInterno === "AUTORIZADO" ? null : (details.codigoStatus ?? null),
 		mensagens: (details.mensagens as string[] | undefined) ?? [],
-		provedorPayload: serializeJson(details.provedorPayload),
-		provedorRetorno: serializeJson(details.provedorRetorno),
-		dataEmissao: details.dataEmissao ?? null,
-		dataAutorizacao: details.dataAutorizacao ?? null,
-		dataCancelamento: details.dataCancelamento ?? null,
+		provedorPayload: serializeJson(details.provedorPayload) ?? undefined,
+		provedorRetorno: serializeJson(details.provedorRetorno) ?? undefined,
+		dataEmissao: details.dataEmissao ?? undefined,
+		dataAutorizacao: details.dataAutorizacao ?? undefined,
+		dataCancelamento: details.dataCancelamento ?? undefined,
 		dataUltimaSincronizacao: new Date(),
 	});
 }
@@ -238,9 +266,14 @@ async function createOrUpdateDraftDocument({
 			documentoOrigemId: input.documentoOrigemId ?? null,
 			chaveAcessoReferencia: input.chaveAcessoReferencia ?? null,
 		})
+		.onConflictDoNothing({ target: [fiscalOutboundDocuments.organizacaoId, fiscalOutboundDocuments.referencia] })
 		.returning();
+	if (inserted) return inserted;
 
-	return inserted;
+	// Outra requisicao inseriu a mesma referencia entre o find e o insert: usa o registro vencedor.
+	const winner = await findFiscalDocumentByReference({ organizacaoId: input.organizacaoId, referencia });
+	if (!winner) throw new createHttpError.InternalServerError("Erro ao criar o documento fiscal.");
+	return winner;
 }
 
 type LoadSaleForFiscalParams = {
@@ -315,7 +348,13 @@ async function loadIbptRatesForSale({ perfisProdutos, uf }: { perfisProdutos: { 
 	const ncms = [...new Set(perfisProdutos.map((perfil) => perfil.ncm).filter((ncm): ncm is string => !!ncm))];
 	if (ncms.length === 0) return [];
 	return db.query.fiscalIbptRates.findMany({
-		where: (fields, operators) => operators.and(operators.eq(fields.uf, uf.toUpperCase()), operators.inArray(fields.ncm, ncms)),
+		where: (fields, operators) =>
+			operators.and(
+				operators.eq(fields.uf, uf.toUpperCase()),
+				operators.inArray(fields.ncm, ncms),
+				// Ignora versoes da tabela IBPT com vigencia encerrada.
+				operators.or(operators.isNull(fields.vigenciaFim), operators.gte(fields.vigenciaFim, new Date())),
+			),
 		orderBy: (fields, operators) => operators.desc(fields.vigenciaInicio),
 	});
 }
@@ -349,14 +388,16 @@ function assertFiscalReadiness(context: TFiscalSaleContext) {
 	if (!fiscalConfig.cpfCnpj) throw new FiscalReadinessError("CPF/CNPJ fiscal da organizacao nao configurado.");
 	if (!fiscalConfig.nomeRazaoSocial) throw new FiscalReadinessError("Razao social fiscal da organizacao nao configurada.");
 
-	if (context.operacao.tipoDocumento === "NFCE") {
+	// CSC/ID CSC sao credenciais da emissao via provedor; no provedor MANUAL nao ha envio.
+	if (context.operacao.tipoDocumento === "NFCE" && context.organizacao.fiscalProvedor === "NUVEM_FISCAL") {
 		if (!fiscalConfig.nuvemFiscal?.nfce?.csc) throw new FiscalReadinessError("CSC da NFC-e nao configurado.");
 		if (!fiscalConfig.nuvemFiscal?.nfce?.idCsc) throw new FiscalReadinessError("ID CSC da NFC-e nao configurado.");
 	}
 	if (context.operacao.finalidade !== "DEVOLUCAO" && context.pagamentos.length > 0) {
 		const paymentTotal = context.pagamentos.reduce((total, payment) => total + payment.valor, 0);
-		if (Math.abs(paymentTotal - context.venda.valorTotal) > 0.01) {
-			throw new FiscalReadinessError("A soma dos pagamentos nao corresponde ao valor total da venda.");
+		// Pago a maior vira troco (vTroco) no payload; bloqueia apenas pagamento insuficiente.
+		if (paymentTotal + 0.01 < context.venda.valorTotal) {
+			throw new FiscalReadinessError("A soma dos pagamentos e menor que o valor total da venda.");
 		}
 	}
 
@@ -380,6 +421,9 @@ async function buildSaleFiscalContext(input: TEmitirDocumentoInput): Promise<TFi
 		},
 		operationProfileId: input.operationProfileId,
 		operacaoPadraoPorTipoId: organizacao.fiscalConfiguracao?.operacaoPadraoPorTipo?.[input.tipo] ?? null,
+		// Documento encadeado a um original e sempre devolucao: garante o perfil DEVOLUCAO
+		// mesmo quando o operationProfileId nao foi repassado (ex.: retentativa via worker).
+		finalidade: input.documentoOrigemId ? "DEVOLUCAO" : "NORMAL",
 	});
 
 	const serie = operacao.seriePadrao ?? (await findActiveFiscalSeries({ organizacaoId: input.organizacaoId, tipoDocumento: input.tipo, ambiente }));
@@ -445,9 +489,15 @@ async function prepareFiscalDocumentForSend({
 	const context = await buildSaleFiscalContext(input);
 	assertFiscalReadiness(context);
 	assertFiscalTaxationValid(context);
-	const reservedNumber = documento.numero ? Number(documento.numero) : await reserveFiscalSeriesNumber(context.serie.id);
+	// Rejeicoes nao-reenviaveis (ex.: 204/539, duplicidade) exigem numeracao nova: reutilizar
+	// o mesmo numero repetiria a mesma rejeicao indefinidamente.
+	const rejectionInfo = getFiscalRejectionInfo(documento.codigoRejeicao);
+	const mustAdvanceNumber = !!documento.numero && !!rejectionInfo && !rejectionInfo.reenviavel;
+	const reservedNumber =
+		documento.numero && !mustAdvanceNumber ? Number(documento.numero) : await reserveFiscalSeriesNumber(context.serie.id);
 
 	await patchFiscalDocument(documento.id, {
+		codigoRejeicao: null,
 		statusInterno: "PRONTO_PARA_ENVIO",
 		ambiente: context.organizacao.fiscalConfiguracao?.ambiente ?? "HOMOLOGACAO",
 		referencia,
@@ -480,7 +530,9 @@ export async function enqueueFiscalDocument(input: TEmitirDocumentoInput) {
 	const documento = await createOrUpdateDraftDocument({ input, referencia, statusInterno: "RASCUNHO" });
 	try {
 		await prepareFiscalDocumentForSend({ input, documento, referencia });
-		await patchFiscalDocument(documento.id, { proximaTentativaEm: new Date(), bloqueadoEm: null });
+		// Nao zera bloqueadoEm aqui: um lock ativo pertence a outro envio em andamento;
+		// locks de processos mortos sao reclamados pelo claim apos ficarem obsoletos.
+		await patchFiscalDocument(documento.id, { proximaTentativaEm: new Date() });
 		return { documentoId: documento.id, status: "PENDENTE" as const, statusInterno: "PRONTO_PARA_ENVIO" as const };
 	} catch (error) {
 		const message = getErrorMessage(error);
@@ -506,6 +558,11 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
 	}
 
 	const documento = await createOrUpdateDraftDocument({ input, referencia, statusInterno: "RASCUNHO" });
+	// Lock de envio compartilhado com a fila: se o worker (ou outra emissao manual) ja esta
+	// processando este documento, nao dispara uma segunda chamada ao provedor.
+	if (!(await claimFiscalDocumentForSend(documento.id))) {
+		throw new createHttpError.Conflict("Documento fiscal ja esta sendo processado por outro envio. Aguarde e sincronize o documento.");
+	}
 	try {
 		const context = await prepareFiscalDocumentForSend({ input, documento, referencia });
 
@@ -576,6 +633,8 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
 			autorId: input.autorId ?? null,
 		});
 		throw error;
+	} finally {
+		await releaseFiscalDocumentSendLock(documento.id);
 	}
 }
 

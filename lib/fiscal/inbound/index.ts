@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/lib/errors";
 import type { TFiscalInboundManifestEventEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { fiscalInboundCursors, fiscalInboundDocuments, suppliers } from "@/services/drizzle/schema";
@@ -44,21 +45,26 @@ async function upsertInboundDocument(organizacaoId: string, doc: TInboundDistrib
 		xmlStoragePath = await storeFiscalAsset({ documentoId: `inbound-${doc.chaveAcesso}`, tipo: "entrada", asset: "xml", buffer: doc.xml });
 	}
 
-	await db.insert(fiscalInboundDocuments).values({
-		organizacaoId,
-		fornecedorId,
-		chaveAcesso: doc.chaveAcesso,
-		nsu: doc.nsu,
-		completo: doc.completo,
-		emitenteCnpj: doc.emitenteCnpj ? doc.emitenteCnpj.replace(/\D/g, "") : null,
-		emitenteNome: doc.emitenteNome ?? null,
-		valorTotal: doc.valorTotal ?? null,
-		dataEmissao: doc.dataEmissao ?? null,
-		situacao: doc.situacao ?? null,
-		xmlStoragePath,
-		resumoPayload: doc.resumoPayload ? JSON.stringify(doc.resumoPayload) : null,
-	});
-	return true;
+	const [inserted] = await db
+		.insert(fiscalInboundDocuments)
+		.values({
+			organizacaoId,
+			fornecedorId,
+			chaveAcesso: doc.chaveAcesso,
+			nsu: doc.nsu,
+			completo: doc.completo,
+			emitenteCnpj: doc.emitenteCnpj ? doc.emitenteCnpj.replace(/\D/g, "") : null,
+			emitenteNome: doc.emitenteNome ?? null,
+			valorTotal: doc.valorTotal ?? null,
+			dataEmissao: doc.dataEmissao ?? null,
+			situacao: doc.situacao ?? null,
+			xmlStoragePath,
+			resumoPayload: doc.resumoPayload ? JSON.stringify(doc.resumoPayload) : null,
+		})
+		// Corrida entre execucoes do cron: a chave ja inserida por outro processo nao conta como nova.
+		.onConflictDoNothing({ target: [fiscalInboundDocuments.organizacaoId, fiscalInboundDocuments.chaveAcesso] })
+		.returning({ id: fiscalInboundDocuments.id });
+	return !!inserted;
 }
 
 async function autoManifestCiencia(organizacaoId: string, organizacao: TFiscalOrganization, provider: IFiscalInboundProvider) {
@@ -70,8 +76,10 @@ async function autoManifestCiencia(organizacaoId: string, organizacao: TFiscalOr
 		try {
 			await provider.manifestarDocumento({ chaveAcesso: doc.chaveAcesso, evento: "CIENCIA" }, organizacao);
 			await db.update(fiscalInboundDocuments).set({ manifestacaoAtual: "CIENCIA" }).where(eq(fiscalInboundDocuments.id, doc.id));
-		} catch {
-			// silencioso: tenta de novo na proxima rodada
+		} catch (error) {
+			// Tenta de novo na proxima rodada, mas registra o motivo (ex.: evento ja manifestado
+			// por outro sistema) para a falha nao ficar invisivel.
+			console.warn(`[FISCAL_INBOUND] Falha ao manifestar ciencia da nota ${doc.chaveAcesso} (org ${organizacaoId}): ${getErrorMessage(error)}`);
 		}
 	}
 }
@@ -116,8 +124,10 @@ export async function pollInboundForAllOrganizations({ limit = 50 }: { limit?: n
 		try {
 			const { novos } = await pollInboundDocuments({ organizationId: org.id });
 			totalNovos += novos;
-		} catch {
-			// proxima organizacao
+		} catch (error) {
+			// Segue para a proxima organizacao, mas registra: uma organizacao quebrada nao pode
+			// falhar silenciosamente para sempre.
+			console.error(`[FISCAL_INBOUND] Falha ao consultar distribuicao DF-e da organizacao ${org.id}: ${getErrorMessage(error)}`);
 		}
 	}
 	return { organizacoes: orgs.length, novos: totalNovos };
