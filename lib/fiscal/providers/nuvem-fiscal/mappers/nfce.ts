@@ -132,9 +132,7 @@ export function mapSaleContextToNfcePayload(context: TFiscalSaleContext, documen
 				},
 			},
 			transp: { modFrete: 9 },
-			pag: {
-				detPag: payments,
-			},
+			pag: payments,
 		},
 	};
 }

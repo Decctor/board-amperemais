@@ -15,6 +15,12 @@ const PAYMENT_METHOD_TO_NFE_CODE: Record<TPaymentMethodEnum, string> = {
 	OUTRO: "99",
 };
 
+function round2(value: number): number {
+	return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+// Monta o bloco "pag" completo. Quando a soma dos pagamentos excede o total do documento
+// (ex.: dinheiro com troco), destaca o vTroco — a regra YA01 exige soma(vPag) - vTroco = vNF.
 export function mapSalePaymentsToNfe({
 	payments,
 	saleTotal,
@@ -24,11 +30,15 @@ export function mapSalePaymentsToNfe({
 	saleTotal: number;
 	isReturn?: boolean;
 }) {
-	if (isReturn) return [{ tPag: "90", vPag: 0 }];
-	if (payments.length === 0) return [{ tPag: "99", vPag: saleTotal }];
+	if (isReturn) return { detPag: [{ tPag: "90", vPag: 0 }] };
+	if (payments.length === 0) return { detPag: [{ tPag: "99", vPag: saleTotal }] };
 
-	return payments.map((payment) => ({
+	const detPag = payments.map((payment) => ({
 		tPag: PAYMENT_METHOD_TO_NFE_CODE[payment.metodo],
 		vPag: payment.valor,
 	}));
+	const totalPago = round2(detPag.reduce((total, payment) => total + payment.vPag, 0));
+	const vTroco = round2(totalPago - saleTotal);
+
+	return { detPag, ...(vTroco > 0 ? { vTroco } : {}) };
 }

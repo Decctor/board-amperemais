@@ -52,7 +52,9 @@ function buildPisNode(pis: TItemTaxResult["pis"]) {
 	if (pis.cst === "01" || pis.cst === "02") {
 		return { PIS: { PISAliq: { CST: pis.cst, vBC: pis.vBC, pPIS: pis.pPIS, vPIS: pis.vPIS } } };
 	}
-	if (pis.cst === "49" || pis.cst === "99") {
+	// CST 03 (por quantidade) e bloqueado pelo motor com erro de validacao; se chegar aqui,
+	// sai como Outr zerado em vez de um PISNT invalido (PISNT so aceita CST 04-09).
+	if (pis.cst === "49" || pis.cst === "99" || pis.cst === "03") {
 		return { PIS: { PISOutr: { CST: pis.cst, vBC: pis.vBC, pPIS: pis.pPIS, vPIS: pis.vPIS } } };
 	}
 	// 04-09: nao tributado
@@ -63,7 +65,7 @@ function buildCofinsNode(cofins: TItemTaxResult["cofins"]) {
 	if (cofins.cst === "01" || cofins.cst === "02") {
 		return { COFINS: { COFINSAliq: { CST: cofins.cst, vBC: cofins.vBC, pCOFINS: cofins.pCOFINS, vCOFINS: cofins.vCOFINS } } };
 	}
-	if (cofins.cst === "49" || cofins.cst === "99") {
+	if (cofins.cst === "49" || cofins.cst === "99" || cofins.cst === "03") {
 		return { COFINS: { COFINSOutr: { CST: cofins.cst, vBC: cofins.vBC, pCOFINS: cofins.pCOFINS, vCOFINS: cofins.vCOFINS } } };
 	}
 	return { COFINS: { COFINSNT: { CST: cofins.cst } } };

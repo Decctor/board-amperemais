@@ -357,7 +357,8 @@ export const fiscalInboundDocuments = newTable(
 	},
 	(table) => ({
 		organizacaoIdIdx: index("idx_fiscal_inbound_documents_organizacao_id").on(table.organizacaoId),
-		chaveAcessoIdx: index("idx_fiscal_inbound_documents_chave").on(table.organizacaoId, table.chaveAcesso),
+		// Dedupe de notas recebidas: uma chave de acesso por organizacao (o cron pode rodar em paralelo).
+		chaveAcessoUq: uniqueIndex("uq_fiscal_inbound_documents_organizacao_chave").on(table.organizacaoId, table.chaveAcesso),
 		nsuIdx: index("idx_fiscal_inbound_documents_nsu").on(table.organizacaoId, table.nsu),
 	}),
 );

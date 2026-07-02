@@ -202,10 +202,13 @@ export async function inutilizeNuvemFiscalNumber(
 
 	const client = await getNuvemFiscalAuthenticatedClient(organizacao);
 	const path = documento.tipo === "NFCE" ? "/nfce/inutilizacoes" : "/nfe/inutilizacoes";
+	// O ano da inutilizacao e o da numeracao (reserva/emissao do documento), nao o ano corrente:
+	// inutilizar em janeiro um numero reservado em dezembro rejeitaria com o ano errado.
+	const anoNumeracao = (documento.dataEmissao ?? documento.dataInsercao).getFullYear() % 100;
 	const { data } = await client.post<{ numero_protocolo?: string; data_recebimento?: string; motivo_status?: string }>(path, {
 		ambiente: documento.ambiente === "PRODUCAO" ? "producao" : "homologacao",
 		cnpj: fiscalConfig.cpfCnpj.replace(/\D/g, ""),
-		ano: new Date().getFullYear() % 100,
+		ano: anoNumeracao,
 		serie: Number(documento.serie),
 		numero_inicial: numero,
 		numero_final: numero,

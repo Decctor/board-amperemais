@@ -4,6 +4,7 @@ import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { getErrorMessage } from "../errors";
 import { buildFiscalReference } from "./constants";
+import { getFiscalRejectionInfo } from "./rejections";
 import { formatValidationMessages, hasBlockingErrors, type TFiscalTaxGroupWithRules } from "./engine";
 import { FiscalReadinessError } from "./errors";
 import { computeSaleTaxation } from "./taxation-context";
@@ -347,7 +348,13 @@ async function loadIbptRatesForSale({ perfisProdutos, uf }: { perfisProdutos: { 
 	const ncms = [...new Set(perfisProdutos.map((perfil) => perfil.ncm).filter((ncm): ncm is string => !!ncm))];
 	if (ncms.length === 0) return [];
 	return db.query.fiscalIbptRates.findMany({
-		where: (fields, operators) => operators.and(operators.eq(fields.uf, uf.toUpperCase()), operators.inArray(fields.ncm, ncms)),
+		where: (fields, operators) =>
+			operators.and(
+				operators.eq(fields.uf, uf.toUpperCase()),
+				operators.inArray(fields.ncm, ncms),
+				// Ignora versoes da tabela IBPT com vigencia encerrada.
+				operators.or(operators.isNull(fields.vigenciaFim), operators.gte(fields.vigenciaFim, new Date())),
+			),
 		orderBy: (fields, operators) => operators.desc(fields.vigenciaInicio),
 	});
 }
@@ -381,14 +388,16 @@ function assertFiscalReadiness(context: TFiscalSaleContext) {
 	if (!fiscalConfig.cpfCnpj) throw new FiscalReadinessError("CPF/CNPJ fiscal da organizacao nao configurado.");
 	if (!fiscalConfig.nomeRazaoSocial) throw new FiscalReadinessError("Razao social fiscal da organizacao nao configurada.");
 
-	if (context.operacao.tipoDocumento === "NFCE") {
+	// CSC/ID CSC sao credenciais da emissao via provedor; no provedor MANUAL nao ha envio.
+	if (context.operacao.tipoDocumento === "NFCE" && context.organizacao.fiscalProvedor === "NUVEM_FISCAL") {
 		if (!fiscalConfig.nuvemFiscal?.nfce?.csc) throw new FiscalReadinessError("CSC da NFC-e nao configurado.");
 		if (!fiscalConfig.nuvemFiscal?.nfce?.idCsc) throw new FiscalReadinessError("ID CSC da NFC-e nao configurado.");
 	}
 	if (context.operacao.finalidade !== "DEVOLUCAO" && context.pagamentos.length > 0) {
 		const paymentTotal = context.pagamentos.reduce((total, payment) => total + payment.valor, 0);
-		if (Math.abs(paymentTotal - context.venda.valorTotal) > 0.01) {
-			throw new FiscalReadinessError("A soma dos pagamentos nao corresponde ao valor total da venda.");
+		// Pago a maior vira troco (vTroco) no payload; bloqueia apenas pagamento insuficiente.
+		if (paymentTotal + 0.01 < context.venda.valorTotal) {
+			throw new FiscalReadinessError("A soma dos pagamentos e menor que o valor total da venda.");
 		}
 	}
 
@@ -480,9 +489,15 @@ async function prepareFiscalDocumentForSend({
 	const context = await buildSaleFiscalContext(input);
 	assertFiscalReadiness(context);
 	assertFiscalTaxationValid(context);
-	const reservedNumber = documento.numero ? Number(documento.numero) : await reserveFiscalSeriesNumber(context.serie.id);
+	// Rejeicoes nao-reenviaveis (ex.: 204/539, duplicidade) exigem numeracao nova: reutilizar
+	// o mesmo numero repetiria a mesma rejeicao indefinidamente.
+	const rejectionInfo = getFiscalRejectionInfo(documento.codigoRejeicao);
+	const mustAdvanceNumber = !!documento.numero && !!rejectionInfo && !rejectionInfo.reenviavel;
+	const reservedNumber =
+		documento.numero && !mustAdvanceNumber ? Number(documento.numero) : await reserveFiscalSeriesNumber(context.serie.id);
 
 	await patchFiscalDocument(documento.id, {
+		codigoRejeicao: null,
 		statusInterno: "PRONTO_PARA_ENVIO",
 		ambiente: context.organizacao.fiscalConfiguracao?.ambiente ?? "HOMOLOGACAO",
 		referencia,

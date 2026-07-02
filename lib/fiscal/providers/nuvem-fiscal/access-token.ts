@@ -7,8 +7,12 @@ import createHttpError from "http-errors";
 
 const NUVEM_FISCAL_OAUTH_URL = "https://auth.nuvemfiscal.com.br/oauth/token";
 const DEFAULT_SCOPE = "empresa nfce nfe";
-/** Renova o token quando faltar menos que este intervalo até a expiração (recomendação Nuvem Fiscal). */
-const RENEW_BEFORE_EXPIRY_MS = 24 * 60 * 60 * 1000;
+/**
+ * Renova o token quando faltar menos que este intervalo até a expiração. A margem precisa ser
+ * bem menor que a vida útil do token (~24h na Nuvem Fiscal): uma margem maior ou igual à vida
+ * útil renovaria a cada requisição, estourando o rate limit do endpoint OAuth.
+ */
+const RENEW_BEFORE_EXPIRY_MS = 5 * 60 * 1000;
 
 type TNuvemFiscalOAuthResponse = {
 	access_token: string;

@@ -137,13 +137,11 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 				},
 			},
 			transp: { modFrete: 9 },
-			pag: {
-				detPag: mapSalePaymentsToNfe({
-					payments: context.pagamentos,
-					saleTotal: taxation.totais.vNF,
-					isReturn: context.operacao.finalidade === "DEVOLUCAO",
-				}),
-			},
+			pag: mapSalePaymentsToNfe({
+				payments: context.pagamentos,
+				saleTotal: taxation.totais.vNF,
+				isReturn: context.operacao.finalidade === "DEVOLUCAO",
+			}),
 		},
 	};
 }
