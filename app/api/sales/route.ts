@@ -294,10 +294,34 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 			},
 		});
 		if (!sale) throw new createHttpError.NotFound("Venda não encontrada.");
+		const resgatesCupom = await db.query.couponRedemptions.findMany({
+			where: (fields, { and, eq }) => and(eq(fields.vendaId, sale.id), eq(fields.organizacaoId, userOrgId)),
+			columns: {
+				id: true,
+				cupomId: true,
+				atribuicaoId: true,
+				clienteId: true,
+				status: true,
+				vendaId: true,
+				vendaValor: true,
+				valorDesconto: true,
+				cupomTitulo: true,
+				cupomCodigo: true,
+				beneficioSnapshot: true,
+				origemResgate: true,
+				metadados: true,
+				dataInsercao: true,
+				dataAtualizacao: true,
+			},
+			orderBy: (fields, { desc }) => desc(fields.dataInsercao),
+		});
 		return {
 			data: {
 				default: null,
-				byId: sale,
+				byId: {
+					...sale,
+					resgatesCupom,
+				},
 				byClientId: null,
 			},
 			message: "Venda encontrada com sucesso.",
