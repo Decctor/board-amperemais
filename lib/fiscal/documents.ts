@@ -1,6 +1,6 @@
 import { db } from "@/services/drizzle";
 import { fiscalDocumentEvents, fiscalOutboundDocuments } from "@/services/drizzle/schema";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { getErrorMessage } from "../errors";
 import { buildFiscalReference } from "./constants";
@@ -165,6 +165,31 @@ async function patchFiscalDocument(documentoId: string, patch: Partial<typeof fi
 	return updated;
 }
 
+// Apos esse tempo, um lock e considerado obsoleto (processo anterior morreu) e pode ser reclamado.
+const FISCAL_SEND_LOCK_STALE_MINUTES = 15;
+
+// Claim atomico do documento para envio ao provedor: marca bloqueadoEm somente se estiver livre
+// ou com lock obsoleto. Compartilhado pela emissao manual e pelo worker da fila para impedir
+// duas chamadas simultaneas ao provedor para o mesmo documento.
+export async function claimFiscalDocumentForSend(documentId: string): Promise<boolean> {
+	const staleThreshold = new Date(Date.now() - FISCAL_SEND_LOCK_STALE_MINUTES * 60_000);
+	const claimed = await db
+		.update(fiscalOutboundDocuments)
+		.set({ bloqueadoEm: new Date() })
+		.where(
+			and(
+				eq(fiscalOutboundDocuments.id, documentId),
+				or(isNull(fiscalOutboundDocuments.bloqueadoEm), lte(fiscalOutboundDocuments.bloqueadoEm, staleThreshold)),
+			),
+		)
+		.returning({ id: fiscalOutboundDocuments.id });
+	return claimed.length > 0;
+}
+
+async function releaseFiscalDocumentSendLock(documentId: string) {
+	await db.update(fiscalOutboundDocuments).set({ bloqueadoEm: null }).where(eq(fiscalOutboundDocuments.id, documentId));
+}
+
 async function addFiscalDocumentEvent({
 	documentoFiscalId,
 	tipo,
@@ -192,23 +217,25 @@ async function addFiscalDocumentEvent({
 }
 
 async function applyProviderDocumentDetails(documentoId: string, details: TProviderDocumentDetails) {
+	// Retornos parciais do provedor (ex.: cancelamento nao traz chave/numero/datas de emissao):
+	// campos ausentes ficam undefined e sao ignorados pelo update, preservando o valor persistido.
 	return patchFiscalDocument(documentoId, {
 		status: details.status,
 		statusInterno: details.statusInterno,
 		ambiente: details.ambiente,
 		provedorDocumentoId: details.id,
 		provedorStatus: details.status,
-		chaveAcesso: details.chaveAcesso ?? null,
-		numero: details.numero ?? null,
-		serie: details.serie ?? null,
-		protocolo: details.protocolo ?? null,
+		chaveAcesso: details.chaveAcesso ?? undefined,
+		numero: details.numero ?? undefined,
+		serie: details.serie ?? undefined,
+		protocolo: details.protocolo ?? undefined,
 		codigoRejeicao: details.statusInterno === "AUTORIZADO" ? null : (details.codigoStatus ?? null),
 		mensagens: (details.mensagens as string[] | undefined) ?? [],
-		provedorPayload: serializeJson(details.provedorPayload),
-		provedorRetorno: serializeJson(details.provedorRetorno),
-		dataEmissao: details.dataEmissao ?? null,
-		dataAutorizacao: details.dataAutorizacao ?? null,
-		dataCancelamento: details.dataCancelamento ?? null,
+		provedorPayload: serializeJson(details.provedorPayload) ?? undefined,
+		provedorRetorno: serializeJson(details.provedorRetorno) ?? undefined,
+		dataEmissao: details.dataEmissao ?? undefined,
+		dataAutorizacao: details.dataAutorizacao ?? undefined,
+		dataCancelamento: details.dataCancelamento ?? undefined,
 		dataUltimaSincronizacao: new Date(),
 	});
 }
@@ -238,9 +265,14 @@ async function createOrUpdateDraftDocument({
 			documentoOrigemId: input.documentoOrigemId ?? null,
 			chaveAcessoReferencia: input.chaveAcessoReferencia ?? null,
 		})
+		.onConflictDoNothing({ target: [fiscalOutboundDocuments.organizacaoId, fiscalOutboundDocuments.referencia] })
 		.returning();
+	if (inserted) return inserted;
 
-	return inserted;
+	// Outra requisicao inseriu a mesma referencia entre o find e o insert: usa o registro vencedor.
+	const winner = await findFiscalDocumentByReference({ organizacaoId: input.organizacaoId, referencia });
+	if (!winner) throw new createHttpError.InternalServerError("Erro ao criar o documento fiscal.");
+	return winner;
 }
 
 type LoadSaleForFiscalParams = {
@@ -483,7 +515,9 @@ export async function enqueueFiscalDocument(input: TEmitirDocumentoInput) {
 	const documento = await createOrUpdateDraftDocument({ input, referencia, statusInterno: "RASCUNHO" });
 	try {
 		await prepareFiscalDocumentForSend({ input, documento, referencia });
-		await patchFiscalDocument(documento.id, { proximaTentativaEm: new Date(), bloqueadoEm: null });
+		// Nao zera bloqueadoEm aqui: um lock ativo pertence a outro envio em andamento;
+		// locks de processos mortos sao reclamados pelo claim apos ficarem obsoletos.
+		await patchFiscalDocument(documento.id, { proximaTentativaEm: new Date() });
 		return { documentoId: documento.id, status: "PENDENTE" as const, statusInterno: "PRONTO_PARA_ENVIO" as const };
 	} catch (error) {
 		const message = getErrorMessage(error);
@@ -509,6 +543,11 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
 	}
 
 	const documento = await createOrUpdateDraftDocument({ input, referencia, statusInterno: "RASCUNHO" });
+	// Lock de envio compartilhado com a fila: se o worker (ou outra emissao manual) ja esta
+	// processando este documento, nao dispara uma segunda chamada ao provedor.
+	if (!(await claimFiscalDocumentForSend(documento.id))) {
+		throw new createHttpError.Conflict("Documento fiscal ja esta sendo processado por outro envio. Aguarde e sincronize o documento.");
+	}
 	try {
 		const context = await prepareFiscalDocumentForSend({ input, documento, referencia });
 
@@ -579,6 +618,8 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
 			autorId: input.autorId ?? null,
 		});
 		throw error;
+	} finally {
+		await releaseFiscalDocumentSendLock(documento.id);
 	}
 }
 

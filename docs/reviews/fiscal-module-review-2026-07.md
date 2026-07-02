@@ -3,8 +3,18 @@
 Data: 2026-07-01
 Escopo revisado: `lib/fiscal/**` (engine, taxation-context, documents, worker, settings, operation-profile, providers Nuvem Fiscal/Manual, inbound, storage, notifications, rejections), `app/api/fiscal/**`, `app/api/cron/fiscal-*`, `services/drizzle/schema/fiscal.ts` + `fiscal_outbound_documents` (financial.ts), `schemas/fiscal.ts`, integração com o fluxo de venda (`process-sale-automatic-fiscal-emission.ts`).
 
-> **Status (2026-07-02):** os quatro achados CRÍTICOS (C1–C4) foram corrigidos neste branch
-> (`fix: resolve critical fiscal emission bugs (C1-C4)`). Os demais itens permanecem em aberto.
+> **Status (2026-07-02):** os achados CRÍTICOS (C1–C4) e ALTOS (A1–A6) foram corrigidos neste branch.
+> Os itens MÉDIOS/BAIXOS permanecem em aberto.
+>
+> **Atenção — deploy do A1:** as unique constraints exigem `npm run db:push` e falharão se houver
+> duplicatas pré-existentes. Verificar antes com:
+> ```sql
+> select organizacao_id, referencia, count(*) from ampmais_fiscal_outbound_documents group by 1, 2 having count(*) > 1;
+> select organizacao_id, tipo_documento, ambiente, serie, count(*) from ampmais_fiscal_series group by 1, 2, 3, 4 having count(*) > 1;
+> select organizacao_id, produto_id, coalesce(produto_variante_id, ''), count(*) from ampmais_product_fiscal_profiles where ativo group by 1, 2, 3 having count(*) > 1;
+> ```
+> **Atenção — deploy do A6:** definir `CRON_SECRET` em produção passou a ser obrigatório
+> (as rotas de cron respondem 401 sem ele).
 
 Legenda de severidade:
 - **CRÍTICO** — pode emitir documento fiscal errado ou travar/duplicar emissão em produção.

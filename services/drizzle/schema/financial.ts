@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { type AnyPgColumn, boolean, doublePrecision, foreignKey, index, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, boolean, doublePrecision, foreignKey, index, integer, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import {
 	accountChartNatureEnum,
@@ -308,7 +308,8 @@ export const fiscalOutboundDocuments = newTable(
 		chaveAcessoIdx: index("idx_fiscal_outbound_documents_chave_acesso").on(table.chaveAcesso),
 		statusIdx: index("idx_fiscal_outbound_documents_status").on(table.status),
 		statusInternoIdx: index("idx_fiscal_outbound_documents_status_interno").on(table.statusInterno),
-		referenciaIdx: index("idx_fiscal_outbound_documents_referencia").on(table.referencia),
+		// Idempotencia da emissao: uma referencia (venda + tipo [+ devolucao]) por organizacao.
+		referenciaUq: uniqueIndex("uq_fiscal_outbound_documents_organizacao_referencia").on(table.organizacaoId, table.referencia),
 		provedorDocumentoIdIdx: index("idx_fiscal_outbound_documents_provedor_documento_id").on(table.provedorDocumentoId),
 		documentoOrigemIdIdx: index("idx_fiscal_outbound_documents_documento_origem_id").on(table.documentoOrigemId),
 	}),

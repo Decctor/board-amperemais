@@ -1,6 +1,11 @@
 import type { DBTransaction } from "@/services/drizzle";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
+// Violacao de unique constraint/index do Postgres (codigo 23505), propagada pelo driver postgres.js.
+export function isUniqueViolationError(error: unknown): boolean {
+	return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "23505";
+}
+
 type THandleSimpleChildRowsProcessing<T extends { id?: string | null; deletar?: boolean | null }> = {
 	trx: DBTransaction;
 	table: any;

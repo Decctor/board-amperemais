@@ -1,4 +1,4 @@
-import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
+import { handleSimpleChildRowsProcessing, isUniqueViolationError } from "@/lib/db-utils";
 import { OrganizationFiscalConfigSchema, type TOrganizationFiscalConfig } from "@/schemas/fiscal";
 import { db } from "@/services/drizzle";
 import { fiscalOperationProfiles, fiscalSeries, fiscalTaxGroupRules, fiscalTaxGroups, organizations } from "@/services/drizzle/schema";
@@ -167,16 +167,28 @@ export async function findFiscalSeriesById({ seriesId, organizationId }: FindFis
 }
 
 export async function upsertFiscalSeries(input: typeof fiscalSeries.$inferInsert) {
-	if (input.id) {
-		const [updated] = await db
-			.update(fiscalSeries)
-			.set(input)
-			.where(and(eq(fiscalSeries.id, input.id), eq(fiscalSeries.organizacaoId, input.organizacaoId)))
-			.returning();
-		return updated;
+	try {
+		if (input.id) {
+			const [updated] = await db
+				.update(fiscalSeries)
+				.set({
+					...input,
+					// O contador so avanca: regredir geraria numeracao duplicada (rejeicoes 204/539),
+					// e um valor obsoleto carregado na tela nao pode desfazer reservas concorrentes.
+					proximoNumero: input.proximoNumero != null ? sql`GREATEST(${fiscalSeries.proximoNumero}, ${input.proximoNumero})` : undefined,
+				})
+				.where(and(eq(fiscalSeries.id, input.id), eq(fiscalSeries.organizacaoId, input.organizacaoId)))
+				.returning();
+			return updated;
+		}
+		const [created] = await db.insert(fiscalSeries).values(input).returning();
+		return created;
+	} catch (error) {
+		if (isUniqueViolationError(error)) {
+			throw new createHttpError.Conflict("Ja existe uma serie fiscal com este numero para o mesmo tipo de documento e ambiente.");
+		}
+		throw error;
 	}
-	const [created] = await db.insert(fiscalSeries).values(input).returning();
-	return created;
 }
 
 export async function consumeFiscalSeriesNumber(seriesId: string) {
