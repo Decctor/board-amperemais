@@ -91,6 +91,10 @@ export function useCampaignState() {
 			cashbackGeracaoValor: null,
 			cashbackGeracaoExpiracaoMedida: null,
 			cashbackGeracaoExpiracaoValor: null,
+			cupomGeracaoAtivo: false,
+			cupomGeracaoCupomId: null,
+			cupomGeracaoExpiracaoMedida: null,
+			cupomGeracaoExpiracaoValor: null,
 		},
 		segmentations: RFMLabels.map((label) => ({
 			segmentacao: label.text,

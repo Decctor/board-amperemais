@@ -14,7 +14,7 @@ import { formatToMoney } from "@/lib/formatting";
 import type { TAttributionModelEnum } from "@/schemas/enums";
 import { cn } from "@/lib/utils";
 import { getRFMConfigByLabel } from "@/utils/rfm";
-import { ArrowRightLeft, Clock, Coins, Eye, Filter, Lock, Pencil, SendHorizonal, Settings2, TextIcon, Users, Zap } from "lucide-react";
+import { ArrowRightLeft, Clock, Coins, Eye, Filter, Lock, Pencil, SendHorizonal, Settings2, TextIcon, Ticket, Users, Zap } from "lucide-react";
 import { useState } from "react";
 
 type CampaignConfigViewProps = {
@@ -242,6 +242,26 @@ export default function CampaignConfigView({ campaign, sessionUser, sessionUserO
 								</>
 							) : (
 								<SectionWrapperDataRow icon={<Coins className="h-4 w-4 min-h-4 min-w-4" />} label="GERAÇÃO DE CASHBACK" value="Não gera cashback" />
+							)}
+							{campaign.cupomGeracaoAtivo ? (
+								<>
+									<SectionWrapperDataRow
+										icon={<Ticket className="h-4 w-4 min-h-4 min-w-4" />}
+										label="ATRIBUIÇÃO DE CUPOM"
+										value="Atribui cupom individual ao disparar"
+									/>
+									<SectionWrapperDataRow
+										icon={<Clock className="h-4 w-4 min-h-4 min-w-4" />}
+										label="EXPIRAÇÃO DA ATRIBUIÇÃO"
+										value={
+											campaign.cupomGeracaoExpiracaoValor
+												? formatInterval(campaign.cupomGeracaoExpiracaoValor, campaign.cupomGeracaoExpiracaoMedida)
+												: "Vigência do cupom"
+										}
+									/>
+								</>
+							) : (
+								<SectionWrapperDataRow icon={<Ticket className="h-4 w-4 min-h-4 min-w-4" />} label="ATRIBUIÇÃO DE CUPOM" value="Não atribui cupom" />
 							)}
 						</div>
 					</SectionWrapper>

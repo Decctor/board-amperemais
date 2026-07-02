@@ -6,6 +6,7 @@ import TextInput from "@/components/Inputs/TextInput";
 import TextareaInput from "@/components/Inputs/TextareaInput";
 import CampaignsActionBlock from "@/app/dashboard/commercial/campaigns/_module/shared/form/Blocks/Action";
 import CampaignsCashbackGenerationBlock from "@/app/dashboard/commercial/campaigns/_module/shared/form/Blocks/CashbackGeneration";
+import CampaignsCouponGenerationBlock from "@/app/dashboard/commercial/campaigns/_module/shared/form/Blocks/CouponGeneration";
 import CampaignsConfigBlock from "@/app/dashboard/commercial/campaigns/_module/shared/form/Blocks/Config";
 import CampaignsConversionBlock from "@/app/dashboard/commercial/campaigns/_module/shared/form/Blocks/Conversion";
 import CampaignsExecutionBlock from "@/app/dashboard/commercial/campaigns/_module/shared/form/Blocks/Execution";
@@ -48,7 +49,14 @@ type SharedSectionProps = {
  * and submits the whole entity (so untouched fields are preserved) through the
  * existing `updateCampaign` mutation.
  */
-export default function ControlCampaign({ sessionUser: _sessionUser, sessionUserOrg, campaignId, closeModal, callbacks, section }: ControlCampaignProps) {
+export default function ControlCampaign({
+	sessionUser: _sessionUser,
+	sessionUserOrg,
+	campaignId,
+	closeModal,
+	callbacks,
+	section,
+}: ControlCampaignProps) {
 	const queryClient = useQueryClient();
 	const { data: campaign, isLoading, isError, error, queryKey } = useCampaignById({ id: campaignId });
 	const controller = useCampaignState();
@@ -179,7 +187,12 @@ function AudienceSection({ controller }: SharedSectionProps) {
 }
 
 function EffectsSection({ controller }: SharedSectionProps) {
-	return <CampaignsCashbackGenerationBlock campaign={controller.state.campaign} updateCampaign={controller.updateCampaign} />;
+	return (
+		<>
+			<CampaignsCashbackGenerationBlock campaign={controller.state.campaign} updateCampaign={controller.updateCampaign} />
+			<CampaignsCouponGenerationBlock campaign={controller.state.campaign} updateCampaign={controller.updateCampaign} />
+		</>
+	);
 }
 
 function SettingsSection({ controller }: SharedSectionProps) {

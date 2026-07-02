@@ -1,5 +1,7 @@
 import { generateCashbackForCampaign } from "@/lib/cashback/generate-campaign-cashback";
+import { generateCouponGrantForCampaign } from "@/lib/coupons/generate-campaign-coupon";
 import type { TInteractionContextMetadados } from "@/lib/message-templates";
+import { formatDateAsLocale } from "@/lib/formatting";
 import type { TCashbackProgramAccumulationTypeEnum, TCashbackProgramTerminologyEnum, TTimeDurationUnitsEnum } from "@/schemas/enums";
 import type { DBTransaction } from "@/services/drizzle";
 
@@ -10,6 +12,11 @@ type TCampaignCashbackGenerationConfig = {
 	cashbackGeracaoValor: number | null;
 	cashbackGeracaoExpiracaoMedida: TTimeDurationUnitsEnum | null;
 	cashbackGeracaoExpiracaoValor: number | null;
+	// Geração de cupom (opcional para compatibilidade com chamadores que selecionam colunas específicas)
+	cupomGeracaoAtivo?: boolean | null;
+	cupomGeracaoCupomId?: string | null;
+	cupomGeracaoExpiracaoMedida?: TTimeDurationUnitsEnum | null;
+	cupomGeracaoExpiracaoValor?: number | null;
 };
 
 type TBuildBasePurchaseInteractionMetadataParams = {
@@ -99,9 +106,30 @@ export async function applyCampaignBonusToInteractionMetadata({
 	const runningAvailableBalance = baseMetadata.cashbackSaldoDisponivel ?? baseMetadata.compraCashbackNovoSaldo ?? 0;
 	const runningAccumulatedTotal = baseMetadata.cashbackTotalAcumuladoVida ?? 0;
 
+	// Geração de cupom (efeito colateral independente do bônus de cashback)
+	let couponMetadata: Pick<TInteractionContextMetadados, "cupomCodigo" | "cupomTitulo" | "cupomExpiracaoData"> = {};
+	if (enabled && campaign.cupomGeracaoAtivo && campaign.cupomGeracaoCupomId) {
+		const couponGrantResult = await generateCouponGrantForCampaign({
+			tx,
+			organizationId,
+			clientId,
+			campaignId: campaign.id,
+			couponId: campaign.cupomGeracaoCupomId,
+			expirationMeasure: campaign.cupomGeracaoExpiracaoMedida ?? null,
+			expirationValue: campaign.cupomGeracaoExpiracaoValor ?? null,
+		});
+		if (couponGrantResult) {
+			couponMetadata = {
+				cupomCodigo: couponGrantResult.couponCode,
+				cupomTitulo: couponGrantResult.couponTitle,
+				cupomExpiracaoData: (couponGrantResult.expirationDate ? formatDateAsLocale(couponGrantResult.expirationDate) : undefined) ?? undefined,
+			};
+		}
+	}
+
 	if (!enabled || !campaign.cashbackGeracaoAtivo || !campaign.cashbackGeracaoTipo || !campaign.cashbackGeracaoValor) {
 		return {
-			metadata: baseMetadata,
+			metadata: { ...baseMetadata, ...couponMetadata },
 			bonusAmount: null,
 			runningAvailableBalance,
 			runningAccumulatedTotal,
@@ -123,7 +151,7 @@ export async function applyCampaignBonusToInteractionMetadata({
 
 	if (!result) {
 		return {
-			metadata: baseMetadata,
+			metadata: { ...baseMetadata, ...couponMetadata },
 			bonusAmount: null,
 			runningAvailableBalance,
 			runningAccumulatedTotal,
@@ -133,6 +161,7 @@ export async function applyCampaignBonusToInteractionMetadata({
 	return {
 		metadata: {
 			...baseMetadata,
+			...couponMetadata,
 			cashbackSaldoDisponivel: result.clientNewAvailableBalance,
 			compraCashbackNovoSaldo: result.clientNewAvailableBalance,
 			cashbackTotalAcumuladoVida: result.clientNewAccumulatedTotal,

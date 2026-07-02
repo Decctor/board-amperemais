@@ -40,14 +40,8 @@ export function validateCampaignFrequencyInterval(campaign: z.infer<typeof Campa
 	if (campaign.gatilhoTipo === "USO-UNICO") return;
 	if (!campaign.permitirRecorrencia) return;
 
-	if (
-		!campaign.frequenciaIntervaloMedida ||
-		!campaign.frequenciaIntervaloValor ||
-		campaign.frequenciaIntervaloValor <= 0
-	) {
-		throw new createHttpError.BadRequest(
-			"A frequência de intervalo deve ser maior que zero quando a recorrência estiver ativa.",
-		);
+	if (!campaign.frequenciaIntervaloMedida || !campaign.frequenciaIntervaloValor || campaign.frequenciaIntervaloValor <= 0) {
+		throw new createHttpError.BadRequest("A frequência de intervalo deve ser maior que zero quando a recorrência estiver ativa.");
 	}
 }
 
@@ -161,9 +155,15 @@ export function validateCampaignCashbackGeneration(campaign: z.infer<typeof Camp
 	if (campaign.cashbackGeracaoTipo === "PERCENTUAL") {
 		const validTriggersForPercentual = ["NOVA-COMPRA", "PRIMEIRA-COMPRA"];
 		if (!validTriggersForPercentual.includes(campaign.gatilhoTipo)) {
-			throw new createHttpError.BadRequest(
-				"Cashback percentual só pode ser usado com gatilhos NOVA-COMPRA ou PRIMEIRA-COMPRA.",
-			);
+			throw new createHttpError.BadRequest("Cashback percentual só pode ser usado com gatilhos NOVA-COMPRA ou PRIMEIRA-COMPRA.");
 		}
+	}
+}
+
+export function validateCampaignCouponGeneration(campaign: z.infer<typeof CampaignSchema>) {
+	if (!campaign.cupomGeracaoAtivo) return;
+
+	if (!campaign.cupomGeracaoCupomId) {
+		throw new createHttpError.BadRequest("Selecione o cupom a ser atribuído pela campanha.");
 	}
 }

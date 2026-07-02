@@ -410,6 +410,29 @@ export const CampaignSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+
+	// Coupon generation configuration
+	cupomGeracaoAtivo: z
+		.boolean({
+			required_error: "Ativo da geração de cupom não informado.",
+			invalid_type_error: "Tipo não válido para o ativo da geração de cupom.",
+		})
+		.default(false),
+	cupomGeracaoCupomId: z
+		.string({
+			required_error: "ID do cupom da geração de cupom não informado.",
+			invalid_type_error: "Tipo não válido para o ID do cupom da geração de cupom.",
+		})
+		.optional()
+		.nullable(),
+	cupomGeracaoExpiracaoMedida: TimeDurationUnitsEnum.optional().nullable(),
+	cupomGeracaoExpiracaoValor: z
+		.number({
+			required_error: "Valor da expiração da geração de cupom não informado.",
+			invalid_type_error: "Tipo não válido para o valor da expiração da geração de cupom.",
+		})
+		.optional()
+		.nullable(),
 	filtros: CampaignFiltersSchema.optional().nullable(),
 
 	dataInsercao: z

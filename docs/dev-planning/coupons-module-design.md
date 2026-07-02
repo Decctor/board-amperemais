@@ -2,7 +2,7 @@
 
 Data: 2026-07-02
 Branch: `claude/coupon-module-design-yfzo8o` (design + implementação)
-Status: **Fase 1 implementada** (schema, motor, CRUD admin, resgate POS e ponto de interação, frontend admin — ver §6)
+Status: **Fases 1 e 2 implementadas** (schema, motor, CRUD admin, resgate POS e ponto de interação com UI, frontend admin, distribuição por campanha com variáveis de template — ver §6)
 
 ## O problema em uma frase
 
@@ -239,7 +239,7 @@ Limites são **derivados do ledger** (count de `UTILIZADO` por cupom/cliente), n
 ## 6. Fases sugeridas
 
 1. **Fase 1 — núcleo**: schema (5 tabelas + enums), CRUD admin, motor de elegibilidade (incluindo audiência por tag/RFM), resgate no POS (automático) e no ponto de interação (manual + venda-total automático). Restrições da fase: **1 cupom por venda** (trava no serviço) e **sem `beneficioTipo: BRINDE`** (o enum já nasce com o valor, mas a UI/motor não o oferecem).
-2. **Fase 2 — distribuição**: geração de grants por campanha (`cupomGeracao*`), variáveis de template WhatsApp (`{{coupon_code}}`, `{{coupon_expiration}}`), listagem de cupons no perfil do cliente.
+2. **Fase 2 — distribuição** *(implementada, exceto listagem no perfil do cliente)*: geração de grants por campanha (`cupomGeracao*`), variáveis de template WhatsApp (`{{coupon_code}}`, `{{coupon_title}}`, `{{coupon_expiration_date}}`), listagem de cupons no perfil do cliente (pendente).
 3. **Fase 3 — superfícies**: cupons na loja digital (`/api/shop`), estatísticas (resgates, desconto concedido, conversão por cupom), cancelamento em cascata com cancelamento de venda, empilhamento de cupons (remover a trava de 1 por venda + definir ordem de aplicação) e `beneficioTipo: BRINDE` no POS (injeção de `saleItem` com 100% de desconto, preservando baixa de estoque e relatórios).
 
 ## 7. Pontos decididos (antes em aberto)

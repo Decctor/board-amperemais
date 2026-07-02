@@ -1,20 +1,21 @@
 import type { TCampaignTriggerTypeEnum, TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 
-export type TMessageTemplateVariableContextGroup = "CLIENTE" | "COMPRA" | "CASHBACK" | "CASHBACK_EXPIRANDO";
+export type TMessageTemplateVariableContextGroup = "CLIENTE" | "COMPRA" | "CASHBACK" | "CASHBACK_EXPIRANDO" | "CUPOM";
 
+// CUPOM está disponível em todos os gatilhos: qualquer campanha pode atribuir um cupom ao disparar.
 export const MESSAGE_TEMPLATE_TRIGGER_CONTEXT_MAP: Record<TCampaignTriggerTypeEnum, TMessageTemplateVariableContextGroup[]> = {
-	"NOVA-COMPRA": ["CLIENTE", "COMPRA", "CASHBACK"],
-	"PRIMEIRA-COMPRA": ["CLIENTE", "COMPRA", "CASHBACK"],
-	"CASHBACK-ACUMULADO": ["CLIENTE", "COMPRA", "CASHBACK"],
-	"CASHBACK-EXPIRANDO": ["CLIENTE", "CASHBACK", "CASHBACK_EXPIRANDO"],
-	"PERMANÊNCIA-SEGMENTAÇÃO": ["CLIENTE", "CASHBACK"],
-	"ENTRADA-SEGMENTAÇÃO": ["CLIENTE", "CASHBACK"],
-	ANIVERSARIO_CLIENTE: ["CLIENTE", "CASHBACK"],
-	"QUANTIDADE-TOTAL-COMPRAS": ["CLIENTE", "COMPRA", "CASHBACK"],
-	"VALOR-TOTAL-COMPRAS": ["CLIENTE", "COMPRA", "CASHBACK"],
-	RECORRENTE: ["CLIENTE", "CASHBACK"],
-	"PIOR-DIA-VENDAS": ["CLIENTE", "CASHBACK"],
-	"USO-UNICO": ["CLIENTE", "CASHBACK"],
+	"NOVA-COMPRA": ["CLIENTE", "COMPRA", "CASHBACK", "CUPOM"],
+	"PRIMEIRA-COMPRA": ["CLIENTE", "COMPRA", "CASHBACK", "CUPOM"],
+	"CASHBACK-ACUMULADO": ["CLIENTE", "COMPRA", "CASHBACK", "CUPOM"],
+	"CASHBACK-EXPIRANDO": ["CLIENTE", "CASHBACK", "CASHBACK_EXPIRANDO", "CUPOM"],
+	"PERMANÊNCIA-SEGMENTAÇÃO": ["CLIENTE", "CASHBACK", "CUPOM"],
+	"ENTRADA-SEGMENTAÇÃO": ["CLIENTE", "CASHBACK", "CUPOM"],
+	ANIVERSARIO_CLIENTE: ["CLIENTE", "CASHBACK", "CUPOM"],
+	"QUANTIDADE-TOTAL-COMPRAS": ["CLIENTE", "COMPRA", "CASHBACK", "CUPOM"],
+	"VALOR-TOTAL-COMPRAS": ["CLIENTE", "COMPRA", "CASHBACK", "CUPOM"],
+	RECORRENTE: ["CLIENTE", "CASHBACK", "CUPOM"],
+	"PIOR-DIA-VENDAS": ["CLIENTE", "CASHBACK", "CUPOM"],
+	"USO-UNICO": ["CLIENTE", "CASHBACK", "CUPOM"],
 };
 
 export type TMessageTemplateVariables = {
@@ -35,6 +36,9 @@ export type TMessageTemplateVariables = {
 	cashbackExpiringAmount: string;
 	cashbackExpiringDate: string;
 	cashbackExpiringWindow: string;
+	couponCode: string;
+	couponTitle: string;
+	couponExpirationDate: string;
 };
 
 export type TMessageTemplateVariable = {
@@ -162,8 +166,29 @@ export const MessageTemplateVariables: TMessageTemplateVariable[] = [
 		id: "cashback_expiring_window",
 		label: "Janela de Cashback Expirando",
 		value: "cashbackExpiringWindow",
-		description: "Texto da janela em que o cashback está prestes a expirar, como \"nos próximos 7 dias\".",
+		description: 'Texto da janela em que o cashback está prestes a expirar, como "nos próximos 7 dias".',
 		contexto: "CASHBACK_EXPIRANDO",
+	},
+	{
+		id: "coupon_code",
+		label: "Código do Cupom",
+		value: "couponCode",
+		description: "Código do cupom atribuído ao cliente pela campanha.",
+		contexto: "CUPOM",
+	},
+	{
+		id: "coupon_title",
+		label: "Título do Cupom",
+		value: "couponTitle",
+		description: "Título do cupom atribuído ao cliente pela campanha.",
+		contexto: "CUPOM",
+	},
+	{
+		id: "coupon_expiration_date",
+		label: "Data de Expiração do Cupom",
+		value: "couponExpirationDate",
+		description: "Data em que a atribuição do cupom expira.",
+		contexto: "CUPOM",
 	},
 ];
 
@@ -182,6 +207,9 @@ export type TInteractionContextMetadados = {
 	cashbackExpirandoValor?: number;
 	cashbackExpirandoData?: string;
 	cashbackExpirandoJanela?: string;
+	cupomCodigo?: string;
+	cupomTitulo?: string;
+	cupomExpiracaoData?: string;
 };
 
 export const MESSAGE_TEMPLATE_VARIABLE_CONTEXT_GROUP_LABELS: Record<TMessageTemplateVariableContextGroup, string> = {
@@ -189,6 +217,7 @@ export const MESSAGE_TEMPLATE_VARIABLE_CONTEXT_GROUP_LABELS: Record<TMessageTemp
 	COMPRA: "Dados da Compra",
 	CASHBACK: "Dados de Cashback",
 	CASHBACK_EXPIRANDO: "Cashback Expirando",
+	CUPOM: "Dados de Cupom",
 };
 
 export function getVariablesForTrigger(triggerType: TCampaignTriggerTypeEnum): TMessageTemplateVariable[] {

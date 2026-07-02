@@ -89,6 +89,14 @@ export const campaigns = newTable("campaigns", {
 	cashbackGeracaoValor: doublePrecision("cashback_geracao_valor"),
 	cashbackGeracaoExpiracaoMedida: timeDurationUnitsEnum("cashback_geracao_expiracao_medida"),
 	cashbackGeracaoExpiracaoValor: integer("cashback_geracao_expiracao_valor"),
+
+	// Coupon generation configuration: atribui um cupom INDIVIDUAL ao cliente quando a campanha dispara.
+	// FK lógico para coupons.id (sem .references para evitar import circular campaigns <-> coupons;
+	// couponGrants.campanhaId já referencia campaigns pelo outro lado).
+	cupomGeracaoAtivo: boolean("cupom_geracao_ativo").notNull().default(false),
+	cupomGeracaoCupomId: varchar("cupom_geracao_cupom_id", { length: 255 }),
+	cupomGeracaoExpiracaoMedida: timeDurationUnitsEnum("cupom_geracao_expiracao_medida"),
+	cupomGeracaoExpiracaoValor: integer("cupom_geracao_expiracao_valor"),
 });
 export const campaignRelations = relations(campaigns, ({ many, one }) => ({
 	segmentacoes: many(campaignSegmentations),
