@@ -1,8 +1,8 @@
 # Módulo de Cupons — design e modelagem
 
 Data: 2026-07-02
-Branch: `claude/coupon-module-design-yfzo8o` (design)
-Status: **Proposta**
+Branch: `claude/coupon-module-design-yfzo8o` (design + implementação)
+Status: **Fase 1 implementada** (schema, motor, CRUD admin, resgate POS e ponto de interação, frontend admin — ver §6)
 
 ## O problema em uma frase
 
