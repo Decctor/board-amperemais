@@ -350,3 +350,30 @@ export const ClientTagIconEnum = z.enum([
 	"Users",
 ]);
 export type TClientTagIconEnum = z.infer<typeof ClientTagIconEnum>;
+
+export const CouponScopeEnum = z.enum(["GLOBAL", "INDIVIDUAL"]);
+export type TCouponScopeEnum = z.infer<typeof CouponScopeEnum>;
+
+export const CouponValidationModeEnum = z.enum(["AUTOMATICA", "MANUAL"]);
+export type TCouponValidationModeEnum = z.infer<typeof CouponValidationModeEnum>;
+
+export const CouponBenefitTypeEnum = z.enum(["DESCONTO_FIXO", "DESCONTO_PERCENTUAL", "PRECO_FIXO", "COMPRE_X_LEVE_Y", "BRINDE"]);
+export type TCouponBenefitTypeEnum = z.infer<typeof CouponBenefitTypeEnum>;
+
+export const CouponBenefitScopeEnum = z.enum(["VENDA_TOTAL", "ITENS_ELEGIVEIS"]);
+export type TCouponBenefitScopeEnum = z.infer<typeof CouponBenefitScopeEnum>;
+
+export const CouponTargetOperatorEnum = z.enum(["QUALQUER", "TODOS"]);
+export type TCouponTargetOperatorEnum = z.infer<typeof CouponTargetOperatorEnum>;
+
+export const CouponTargetRoleEnum = z.enum(["ELEGIVEL", "BENEFICIADO"]);
+export type TCouponTargetRoleEnum = z.infer<typeof CouponTargetRoleEnum>;
+
+export const CouponGrantOriginEnum = z.enum(["MANUAL", "CAMPANHA", "SISTEMA"]);
+export type TCouponGrantOriginEnum = z.infer<typeof CouponGrantOriginEnum>;
+
+export const CouponRedemptionStatusEnum = z.enum(["UTILIZADO", "CANCELADO"]);
+export type TCouponRedemptionStatusEnum = z.infer<typeof CouponRedemptionStatusEnum>;
+
+export const CouponRedemptionSourceEnum = z.enum(["POS", "PONTO_INTERACAO", "LOJA_DIGITAL"]);
+export type TCouponRedemptionSourceEnum = z.infer<typeof CouponRedemptionSourceEnum>;

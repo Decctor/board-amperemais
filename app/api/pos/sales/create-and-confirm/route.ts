@@ -3,6 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
 import { processSaleConfirmationInTransaction, processSaleConfirmationPostCommit } from "@/lib/sales/sale-processing";
+import { AppliedCouponSchema } from "@/schemas/coupons";
 import { db } from "@/services/drizzle";
 import { saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
 import createHttpError from "http-errors";
@@ -47,6 +48,7 @@ const CreateAndConfirmSaleInputSchema = z.object({
 	pagamentos: z.array(CheckoutPaymentSplitSchema.omit({ id: true })),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
 	cashbackProgramaId: z.string({ invalid_type_error: "Tipo não válido para ID do programa de cashback." }).optional().nullable(),
+	cupomResgate: AppliedCouponSchema.optional().nullable(),
 	itens: z.array(CartItemInputSchema).min(1, { message: "Pelo menos um item é obrigatório." }),
 });
 export type TCreateAndConfirmSaleInput = z.infer<typeof CreateAndConfirmSaleInputSchema>;
@@ -95,9 +97,14 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 	const valorBaseItens = input.itens.reduce((sum, item) => sum + item.valorTotalLiquido, 0);
 	const descontosGerais = input.descontosTotal ?? 0;
 	const cashbackResgate = input.cashbackResgate ?? 0;
+	const cupomDesconto = input.cupomResgate?.valorDesconto ?? 0;
 	const acrescimosGerais = input.acrescimosTotal ?? 0;
-	const descontosVenda = descontosGerais + cashbackResgate;
-	const valorAntesCashback = Math.max(0, valorBaseItens - descontosGerais + acrescimosGerais);
+	const descontosVenda = descontosGerais + cupomDesconto + cashbackResgate;
+	const valorAntesCupom = Math.max(0, valorBaseItens - descontosGerais + acrescimosGerais);
+	if (cupomDesconto > valorAntesCupom) {
+		throw new createHttpError.BadRequest("O desconto do cupom não pode superar o valor da venda.");
+	}
+	const valorAntesCashback = Math.max(0, valorAntesCupom - cupomDesconto);
 	if (cashbackResgate > valorAntesCashback) {
 		throw new createHttpError.BadRequest("O resgate de cashback não pode superar o valor da venda.");
 	}
@@ -143,7 +150,10 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 				entregaLocalizacaoId: input.entregaLocalizacaoId ?? null,
 				comandaNumero: input.comandaNumero ?? null,
 				observacoes: input.observacoes ?? null,
-				rascunhoMetadados: input.rascunhoMetadados ?? null,
+				rascunhoMetadados: {
+					...((input.rascunhoMetadados as Record<string, unknown> | null) ?? {}),
+					cupom: input.cupomResgate ?? null,
+				},
 				parceiro: "",
 				chave: "",
 				documento: "",
@@ -226,6 +236,8 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 				saleClientId: input.clienteId ?? null,
 				saleCashbackProgramId: input.cashbackProgramaId,
 				saleCashbackRedemptionValue: input.cashbackResgate,
+				saleCouponId: input.cupomResgate?.cupomId ?? null,
+				saleCouponDeclaredDiscountValue: input.cupomResgate?.valorDesconto ?? null,
 				accountingEntryDebitAccountId,
 				accountingEntryCreditAccountId,
 			},

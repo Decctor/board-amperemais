@@ -7,6 +7,7 @@ import { organizations, organizationMembers } from "./organizations";
 import { sales } from "./sales";
 import { sellers } from "./sellers";
 import { cashbackProgramTransactions } from "./cashback-programs";
+import { couponRedemptions } from "./coupons";
 
 export const poiTransactionRequests = newTable(
 	"poi_transaction_requests",
@@ -30,6 +31,7 @@ export const poiTransactionRequests = newTable(
 		vendaId: varchar("venda_id", { length: 255 }).references(() => sales.id, { onDelete: "set null" }),
 		transacaoAcumuloId: varchar("transacao_acumulo_id", { length: 255 }),
 		transacaoResgateId: varchar("transacao_resgate_id", { length: 255 }),
+		cupomResgateId: varchar("cupom_resgate_id", { length: 255 }),
 		dataAprovacao: timestamp("data_aprovacao"),
 		dataRejeicao: timestamp("data_rejeicao"),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
@@ -74,6 +76,10 @@ export const poiTransactionRequestsRelations = relations(poiTransactionRequests,
 		fields: [poiTransactionRequests.transacaoResgateId],
 		references: [cashbackProgramTransactions.id],
 		relationName: "transacaoResgate",
+	}),
+	cupomResgate: one(couponRedemptions, {
+		fields: [poiTransactionRequests.cupomResgateId],
+		references: [couponRedemptions.id],
 	}),
 }));
 

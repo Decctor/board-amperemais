@@ -8,6 +8,8 @@ import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } fro
 import { formatCashbackValue, formatPhoneAsBase } from "@/lib/formatting";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
+import { evaluateCouponAgainstSaleValue } from "@/lib/coupons/engine";
+import { processCouponRedemption } from "@/lib/coupons/redemption";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
 import {
 	getPoiSaleValueForConfirmation,
@@ -17,7 +19,7 @@ import {
 import type { TInteractionContextMetadados } from "@/lib/message-templates";
 import type { TCashbackProgramTerminologyEnum, TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
-import { cashbackProgramTransactions, cashbackPrograms, clients, interactions, partners, saleItems, sales } from "@/services/drizzle/schema";
+import { cashbackProgramTransactions, cashbackPrograms, clients, couponRedemptions, interactions, partners, saleItems, sales } from "@/services/drizzle/schema";
 import { waitUntil } from "@vercel/functions";
 import dayjs from "dayjs";
 import { and, eq } from "drizzle-orm";
@@ -138,6 +140,23 @@ export const CreatePointOfInteractionTransactionInputSchema = z.object({
 			})
 			.optional()
 			.nullable(),
+		coupon: z
+			.object({
+				cupomId: z.string({
+					required_error: "ID do cupom não informado.",
+					invalid_type_error: "Tipo não válido para ID do cupom.",
+				}),
+				// Valor do desconto informado/confirmado pelo operador (obrigatório em cupons de validação MANUAL;
+				// ignorado em cupons AUTOMATICA, cujo desconto é recomputado no servidor).
+				valorDesconto: z
+					.number({ invalid_type_error: "Tipo não válido para o valor de desconto do cupom." })
+					.positive("O valor de desconto do cupom deve ser maior que zero.")
+					.optional()
+					.nullable(),
+			})
+			.optional()
+			.nullable()
+			.describe("Cupom a ser resgatado na transação."),
 	}),
 	operatorIdentifier: z
 		.string({
@@ -164,6 +183,7 @@ export type TCreatePointOfInteractionTransactionOutput = {
 		saleId: string | null;
 		transactionAccumulationId?: string | null;
 		transactionRedemptionId?: string | null;
+		transactionCouponRedemptionId?: string | null;
 		clientAccumulatedCashbackValue: number;
 		clientNewOverallAvailableBalance: number | null;
 		visualClientAccumulatedCashbackValue: number;
@@ -478,7 +498,50 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 
 		const effectiveSaleValue = validatedPrize?.valorVenda ?? input.sale.valor;
 		const effectiveRedemptionValue = validatedPrize?.valor ?? (input.sale.cashback.aplicar ? input.sale.cashback.valor : 0);
-		const effectiveSaleFinalValue = Math.max(0, effectiveSaleValue - effectiveRedemptionValue);
+
+		// COUPON VALIDATION + REDEMPTION (if requested)
+		// Fase 1: 1 cupom por transação, não combinável com resgate de recompensa.
+		const requestedCoupon = input.sale.coupon;
+		let couponDiscountValue = 0;
+		let transactionCouponRedemptionId: string | null = null;
+		if (requestedCoupon) {
+			if (isPrizeRedemption) throw new createHttpError.BadRequest("Cupons não podem ser combinados com resgate de recompensa.");
+
+			const coupon = await tx.query.coupons.findFirst({
+				where: (fields, { and, eq }) => and(eq(fields.id, requestedCoupon.cupomId), eq(fields.organizacaoId, input.orgId)),
+				with: { alvos: true },
+			});
+			if (!coupon) throw new createHttpError.NotFound("Cupom não encontrado.");
+
+			if (coupon.validacaoModo === "AUTOMATICA") {
+				const evaluation = evaluateCouponAgainstSaleValue({ coupon, targets: coupon.alvos, saleValue: effectiveSaleValue });
+				if (!evaluation.elegivel) throw new createHttpError.BadRequest(`Cupom não elegível: ${evaluation.motivo}`);
+				couponDiscountValue = evaluation.valorDesconto;
+			} else {
+				// MANUAL: o operador valida as condições (condicoesTexto) e informa o valor do desconto.
+				couponDiscountValue = requestedCoupon.valorDesconto ?? 0;
+				if (couponDiscountValue <= 0) throw new createHttpError.BadRequest("Informe o valor do desconto do cupom de validação manual.");
+				if (couponDiscountValue > effectiveSaleValue) {
+					throw new createHttpError.BadRequest("O desconto do cupom não pode superar o valor da venda.");
+				}
+			}
+
+			const couponRedemptionOutcome = await processCouponRedemption({
+				trx: tx,
+				organizacaoId: input.orgId,
+				cupomId: coupon.id,
+				clienteId: clientId as string,
+				surface: "PONTO_INTERACAO",
+				valorDesconto: couponDiscountValue,
+				vendaId: null, // vinculado após a criação da venda, quando aplicável
+				vendaValor: effectiveSaleValue,
+				operadorId: operatorMembershipUser?.id ?? null,
+				operadorVendedorId: operator.id,
+			});
+			transactionCouponRedemptionId = couponRedemptionOutcome.redemptionId;
+		}
+
+		const effectiveSaleFinalValue = Math.max(0, effectiveSaleValue - effectiveRedemptionValue - couponDiscountValue);
 
 		// Visual-only tracking values for UX (no persistence writes).
 		// They simulate redemption/accumulation computation even when accumulation is handled by external integration.
@@ -636,7 +699,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 					clienteId: clientId,
 					idExterno: `POI-${Date.now()}-${Math.random().toString(36).substring(7)}`,
 					valorTotal: effectiveSaleFinalValue,
-					descontosTotal: transactionRequiresRedemptionProcessing ? Math.min(effectiveSaleValue, effectiveRedemptionValue) : 0,
+					descontosTotal: (transactionRequiresRedemptionProcessing ? Math.min(effectiveSaleValue, effectiveRedemptionValue) : 0) + couponDiscountValue,
 					custoTotal: 0,
 					vendedorNome: operator.nome,
 					vendedorId: operator.id,
@@ -706,6 +769,14 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 						vendaId: transactionSaleId,
 					})
 					.where(eq(cashbackProgramTransactions.id, transactionRedemptionId));
+			}
+			if (transactionCouponRedemptionId) {
+				await tx
+					.update(couponRedemptions)
+					.set({
+						vendaId: transactionSaleId,
+					})
+					.where(eq(couponRedemptions.id, transactionCouponRedemptionId));
 			}
 
 			// Insert saleItem if this is a prize redemption and the prize has a linked product
@@ -840,6 +911,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 			transactionSaleId,
 			transactionAccumulationId,
 			transactionRedemptionId,
+			transactionCouponRedemptionId,
 			clientAccumulatedCashbackValue: clientNewAccumulatedCashbackValue,
 			clientNewOverallAvailableBalance: clientCashbackAvailableBalance,
 			visualClientAccumulatedCashbackValue,
@@ -889,6 +961,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 			saleId: result.transactionSaleId,
 			transactionAccumulationId: result.transactionAccumulationId,
 			transactionRedemptionId: result.transactionRedemptionId,
+			transactionCouponRedemptionId: result.transactionCouponRedemptionId,
 			clientAccumulatedCashbackValue: result.clientAccumulatedCashbackValue,
 			clientNewOverallAvailableBalance: result.clientNewOverallAvailableBalance,
 			visualClientAccumulatedCashbackValue: result.visualClientAccumulatedCashbackValue,

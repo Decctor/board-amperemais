@@ -5,7 +5,7 @@ import {
 import { appApiHandler } from "@/lib/app-api";
 import { buildPoiTransactionRequestSummary } from "@/lib/point-of-interaction/transaction-requests";
 import { db } from "@/services/drizzle";
-import { cashbackProgramPrizes, poiTransactionRequests } from "@/services/drizzle/schema";
+import { cashbackProgramPrizes, coupons, poiTransactionRequests } from "@/services/drizzle/schema";
 import { desc, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { NextRequest, NextResponse } from "next/server";
@@ -28,7 +28,16 @@ async function createPoiTransactionRequest({ input }: { input: TCreatePoiTransac
 		prizeInfo = prize ?? null;
 	}
 
-	const resumoSolicitacao = buildPoiTransactionRequestSummary(input.payload, prizeInfo);
+	let couponInfo: { titulo?: string | null; codigo?: string | null; validacaoModo?: string | null; condicoesTexto?: string | null } | null = null;
+	if (input.payload.sale.coupon?.cupomId) {
+		const coupon = await db.query.coupons.findFirst({
+			where: eq(coupons.id, input.payload.sale.coupon.cupomId),
+			columns: { titulo: true, codigo: true, validacaoModo: true, condicoesTexto: true },
+		});
+		couponInfo = coupon ?? null;
+	}
+
+	const resumoSolicitacao = buildPoiTransactionRequestSummary(input.payload, prizeInfo, couponInfo);
 
 	const [request] = await db
 		.insert(poiTransactionRequests)

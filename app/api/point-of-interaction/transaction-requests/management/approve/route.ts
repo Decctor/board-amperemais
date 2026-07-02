@@ -101,6 +101,7 @@ async function approvePoiTransactionRequest({ session, input }: { session: TAuth
 				vendaId: result.data.saleId,
 				transacaoAcumuloId: result.data.transactionAccumulationId ?? null,
 				transacaoResgateId: result.data.transactionRedemptionId ?? null,
+				cupomResgateId: result.data.transactionCouponRedemptionId ?? null,
 				resumoSolicitacao: withPoiTransactionProcessingResult({
 					resumo: (poiRequest.resumoSolicitacao as never) ?? null,
 					resultado: result.data,

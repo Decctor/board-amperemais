@@ -3,6 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
 import { processSaleConfirmation } from "@/lib/sales/sale-processing";
+import { AppliedCouponSchema, type TAppliedCoupon } from "@/schemas/coupons";
 import { db } from "@/services/drizzle";
 import { sales } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
@@ -16,6 +17,7 @@ const ConfirmSaleInputSchema = z.object({
 	pagamentos: z.array(CheckoutPaymentSplitSchema.omit({ id: true })),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo nao valido para resgate de cashback." }).default(0),
 	cashbackProgramaId: z.string({ invalid_type_error: "Tipo nao valido para ID do programa de cashback." }).optional().nullable(),
+	cupomResgate: AppliedCouponSchema.optional().nullable(),
 	contaDebitoId: z.string({ invalid_type_error: "Tipo nao valido para conta de debito." }).optional().nullable(),
 	contaCreditoId: z.string({ invalid_type_error: "Tipo nao valido para conta de credito." }).optional().nullable(),
 });
@@ -50,9 +52,12 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 			cashbackResgateSolicitado?: number;
 			cashbackProgramaId?: string | null;
 		};
+		cupom?: TAppliedCoupon | null;
 	} | null;
 	const effectiveCashbackResgate = input.cashbackResgate > 0 ? input.cashbackResgate : (shopMetadata?.shop?.cashbackResgateSolicitado ?? 0);
 	const effectiveCashbackProgramaId = input.cashbackProgramaId ?? shopMetadata?.shop?.cashbackProgramaId ?? null;
+	// O cupom aplicado no rascunho ja esta refletido nos totais da venda; aqui apenas resolve qual registrar no ledger.
+	const effectiveAppliedCoupon = input.cupomResgate ?? shopMetadata?.cupom ?? null;
 
 	const result = await processSaleConfirmation({
 		organization,
@@ -77,6 +82,8 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		saleClientId: input.clienteId,
 		saleCashbackProgramId: effectiveCashbackProgramaId,
 		saleCashbackRedemptionValue: effectiveCashbackResgate,
+		saleCouponId: effectiveAppliedCoupon?.cupomId ?? null,
+		saleCouponDeclaredDiscountValue: effectiveAppliedCoupon?.valorDesconto ?? null,
 		accountingEntryDebitAccountId,
 		accountingEntryCreditAccountId,
 	});

@@ -1,8 +1,10 @@
 import { accumulateCashbackForClient } from "@/lib/cashback/accumulation";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
+import { type TCouponCartItem, evaluateCouponAgainstCart } from "@/lib/coupons/engine";
+import { processCouponRedemption } from "@/lib/coupons/redemption";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
 import { db, type DBTransaction } from "@/services/drizzle";
-import { cashbackProgramBalances, cashbackProgramTransactions, cashbackPrograms, sales } from "@/services/drizzle/schema";
+import { cashbackProgramBalances, cashbackProgramTransactions, cashbackPrograms, couponRedemptions, sales } from "@/services/drizzle/schema";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -21,6 +23,13 @@ export type TProcessSaleConfirmationInput = {
 
 	saleCashbackProgramId?: string | null;
 	saleCashbackRedemptionValue?: number;
+
+	// Cupom aplicado à venda (fase 1: no máximo 1 cupom por venda).
+	// O desconto já deve estar refletido nos totais da venda (como o cashbackResgate);
+	// aqui acontece o registro no ledger, com revalidação de disponibilidade e, para
+	// cupons AUTOMATICA, reavaliação do carrinho pelo motor.
+	saleCouponId?: string | null;
+	saleCouponDeclaredDiscountValue?: number | null;
 
 	accountingEntryDebitAccountId: string;
 	accountingEntryCreditAccountId: string;
@@ -192,6 +201,84 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 		})();
 	}
 
+	let couponRedemptionResult: { redemptionId: string; valorDesconto: number } | null = null;
+
+	if (input.saleCouponId) {
+		if (!clientId) throw new createHttpError.BadRequest("Cliente nao informado para resgate de cupom.");
+
+		couponRedemptionResult = await (async () => {
+			// Idempotencia: uma venda tem no maximo 1 cupom (fase 1); reconfirmacoes reaproveitam o resgate.
+			const existingRedemption = await tx.query.couponRedemptions.findFirst({
+				where: and(
+					eq(couponRedemptions.organizacaoId, input.organization.id),
+					eq(couponRedemptions.vendaId, input.saleId),
+					eq(couponRedemptions.status, "UTILIZADO"),
+				),
+				columns: { id: true, valorDesconto: true },
+			});
+			if (existingRedemption) return { redemptionId: existingRedemption.id, valorDesconto: existingRedemption.valorDesconto };
+
+			const coupon = await tx.query.coupons.findFirst({
+				where: (fields, { eq, and }) => and(eq(fields.id, input.saleCouponId as string), eq(fields.organizacaoId, input.organization.id)),
+				with: { alvos: true },
+			});
+			if (!coupon) throw new createHttpError.NotFound("Cupom nao encontrado.");
+
+			const declaredDiscountValue = input.saleCouponDeclaredDiscountValue ?? 0;
+			let discountValue = declaredDiscountValue;
+
+			if (coupon.validacaoModo === "AUTOMATICA") {
+				// Reavalia o carrinho no servidor: o valor do motor e o autoritativo.
+				const productIds = [...new Set(sale.itens.map((item) => item.produtoId))];
+				const productsResult =
+					productIds.length > 0
+						? await tx.query.products.findMany({
+								where: (fields, { inArray }) => inArray(fields.id, productIds),
+								columns: { id: true, grupo: true },
+							})
+						: [];
+				const productGroupById = new Map(productsResult.map((product) => [product.id, product.grupo]));
+				const cartItems: TCouponCartItem[] = sale.itens.map((item) => ({
+					chave: item.id,
+					produtoId: item.produtoId,
+					produtoVarianteId: item.produtoVarianteId,
+					grupo: productGroupById.get(item.produtoId) ?? null,
+					quantidade: item.quantidade,
+					valorVendaUnitario: item.valorVendaUnitario,
+				}));
+
+				const evaluation = evaluateCouponAgainstCart({ coupon, targets: coupon.alvos, cartItems });
+				if (!evaluation.elegivel) throw new createHttpError.BadRequest(`Cupom nao elegivel para essa venda: ${evaluation.motivo}`);
+				if (declaredDiscountValue > 0 && Math.abs(evaluation.valorDesconto - declaredDiscountValue) > 0.01) {
+					throw new createHttpError.BadRequest("O desconto do cupom esta desatualizado para o carrinho atual. Reaplique o cupom e tente novamente.");
+				}
+				discountValue = evaluation.valorDesconto;
+			} else {
+				// MANUAL: o operador valida as condicoes e informa/confirma o valor do desconto.
+				if (discountValue <= 0) throw new createHttpError.BadRequest("Informe o valor do desconto do cupom de validacao manual.");
+				const saleGrossItemsTotal = sale.itens.reduce((sum, item) => sum + item.valorVendaTotalBruto, 0);
+				if (discountValue > saleGrossItemsTotal) {
+					throw new createHttpError.BadRequest("O desconto do cupom nao pode superar o valor bruto da venda.");
+				}
+			}
+
+			const redemption = await processCouponRedemption({
+				trx: tx,
+				organizacaoId: input.organization.id,
+				cupomId: coupon.id,
+				clienteId: clientId,
+				surface: "POS",
+				valorDesconto: discountValue,
+				vendaId: input.saleId,
+				vendaValor: sale.valorTotal,
+				operadorId: input.saleAuthorId,
+				operadorVendedorId: sale.vendedorId,
+			});
+
+			return { redemptionId: redemption.redemptionId, valorDesconto: discountValue };
+		})();
+	}
+
 	let cashbackAccumulationResult: Awaited<ReturnType<typeof accumulateCashbackForClient>> | null = null;
 
 	if (clientId && input.accumulateCashback !== false) {
@@ -233,6 +320,7 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 		pagamentos: paymentResults,
 		cashbackResgate: cashbackRedemptionResult,
 		cashbackAcumulo: cashbackAccumulationResult,
+		cupomResgate: couponRedemptionResult,
 	};
 }
 export async function processSaleConfirmationPostCommit(input: TProcessSaleConfirmationPostCommitInput) {
