@@ -377,3 +377,14 @@ export type TCouponRedemptionStatusEnum = z.infer<typeof CouponRedemptionStatusE
 
 export const CouponRedemptionSourceEnum = z.enum(["POS", "PONTO_INTERACAO", "LOJA_DIGITAL"]);
 export type TCouponRedemptionSourceEnum = z.infer<typeof CouponRedemptionSourceEnum>;
+
+export const SalesSessionStatusEnum = z.enum(["ABERTA", "FECHADA", "CONFERIDA", "CANCELADA"]);
+export type TSalesSessionStatusEnum = z.infer<typeof SalesSessionStatusEnum>;
+
+// Escopo da sessão de venda: como resolver "qual sessão?". Nesta versão só OPERADOR (responsável).
+export const SalesSessionScopeEnum = z.enum(["OPERADOR"]);
+export type TSalesSessionScopeEnum = z.infer<typeof SalesSessionScopeEnum>;
+
+// Movimento manual de caixa dentro de uma sessão.
+export const SalesSessionMovementTypeEnum = z.enum(["SANGRIA", "SUPRIMENTO"]);
+export type TSalesSessionMovementTypeEnum = z.infer<typeof SalesSessionMovementTypeEnum>;

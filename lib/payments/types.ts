@@ -17,6 +17,8 @@ export type TProcessPaymentsInput = {
 	organizacaoId: string;
 	pagamentos: TPaymentSplit[];
 	autorId: string | null;
+	// Sessão de venda que recortou estes pagamentos (nullable). Carimbada em cada financialTransaction.
+	sessaoVendaId?: string | null;
 };
 
 export type TPaymentIntentResult = {

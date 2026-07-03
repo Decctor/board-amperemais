@@ -15,6 +15,7 @@ import {
 } from "./enums";
 import { organizations } from "./organizations";
 import { sales } from "./sales";
+import { salesSessions } from "./sales-sessions";
 import { users } from "./users";
 import { purchases } from "./purchases";
 
@@ -207,6 +208,8 @@ export const financialTransactions = newTable(
 			.references(() => accountingEntries.id, { onDelete: "cascade" })
 			.notNull(),
 		contaFinanceiraId: varchar("conta_financeira_id", { length: 255 }).references(() => financialAccounts.id),
+		// Sessão de venda que recortou este movimento (nullable). ANCHOR do cálculo de conciliação.
+		sessaoVendaId: varchar("sessao_venda_id", { length: 255 }).references(() => salesSessions.id, { onDelete: "set null" }),
 		titulo: text("titulo").notNull(),
 		tipo: financialTransactionTypeEnum("tipo").notNull(),
 		valor: doublePrecision("valor").notNull(),
@@ -226,6 +229,7 @@ export const financialTransactions = newTable(
 		lancamentoContabilIdIdx: index("idx_financial_transactions_lancamento_id").on(table.lancamentoContabilId),
 		contaFinanceiraEfetivacaoIdx: index("idx_financial_transactions_conta_efetivacao").on(table.contaFinanceiraId, table.dataEfetivacao),
 		dataPrevisaoIdx: index("idx_financial_transactions_data_previsao").on(table.dataPrevisao),
+		sessaoVendaIdx: index("idx_financial_transactions_sessao").on(table.sessaoVendaId),
 	}),
 );
 
@@ -241,6 +245,10 @@ export const financialTransactionsRelations = relations(financialTransactions, (
 	contaFinanceira: one(financialAccounts, {
 		fields: [financialTransactions.contaFinanceiraId],
 		references: [financialAccounts.id],
+	}),
+	sessao: one(salesSessions, {
+		fields: [financialTransactions.sessaoVendaId],
+		references: [salesSessions.id],
 	}),
 	autor: one(users, {
 		fields: [financialTransactions.autorId],

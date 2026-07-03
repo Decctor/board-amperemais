@@ -37,6 +37,8 @@ export type TProcessSaleConfirmationInput = {
 	initialAttendanceStatus?: ReturnType<typeof resolveInitialAttendanceStatus>;
 	accumulateCashback?: boolean;
 	emitFiscal?: boolean;
+	// Sessão de venda que recortou esta venda (nullable). Carimba a venda e seus movimentos financeiros.
+	sessaoVendaId?: string | null;
 };
 
 type TProcessSaleConfirmationPostCommitInput = Pick<TProcessSaleConfirmationInput, "organization" | "saleId" | "saleAuthorId" | "emitFiscal">;
@@ -75,6 +77,7 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 			statusAtendimento: initialAttendanceStatus,
 			natureza: "SN01",
 			dataVenda: new Date(),
+			sessaoVendaId: input.sessaoVendaId ?? null,
 		})
 		.where(eq(sales.id, input.saleId));
 
@@ -86,6 +89,7 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 		idContaDebito: input.accountingEntryDebitAccountId,
 		idContaCredito: input.accountingEntryCreditAccountId,
 		autorId: input.saleAuthorId,
+		sessaoVendaId: input.sessaoVendaId ?? null,
 	});
 
 	// A confirmacao NAO baixa estoque obrigatoriamente. A baixa fisica acontece na entrega.

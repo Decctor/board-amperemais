@@ -1,5 +1,5 @@
 import z from "zod";
-import { DefaultDataSourceEnum, OrganizationIntegrationTypeEnum } from "./enums";
+import { DefaultDataSourceEnum, OrganizationIntegrationTypeEnum, SalesSessionScopeEnum } from "./enums";
 import { OrganizationFiscalConfigSchema } from "./fiscal";
 import { PaymentEffectivenessTypeEnum } from "@/lib/payments/schemas";
 
@@ -204,6 +204,25 @@ export const OrganizationConfigurationSchema = z.object({
 			.array(z.string({ invalid_type_error: "Tipo não válido para o ID do destinatário de relatórios." }))
 			.optional()
 			.nullable(),
+		sessoesVenda: z
+			.object({
+				habilitado: z.boolean({ invalid_type_error: "Tipo não válido para a habilitação de sessões de venda." }),
+				obrigatorio: z.boolean({ invalid_type_error: "Tipo não válido para a obrigatoriedade de sessões de venda." }),
+				escopo: SalesSessionScopeEnum,
+				exigirFundoTroco: z.boolean({ invalid_type_error: "Tipo não válido para a exigência de fundo de troco." }),
+				conferenciaCega: z.boolean({ invalid_type_error: "Tipo não válido para a conferência cega." }),
+				bloquearFechamentoComPendenciaFiscal: z.boolean({
+					invalid_type_error: "Tipo não válido para o bloqueio de fechamento com pendência fiscal.",
+				}),
+			})
+			.default({
+				habilitado: false,
+				obrigatorio: false,
+				escopo: "OPERADOR",
+				exigirFundoTroco: false,
+				conferenciaCega: false,
+				bloquearFechamentoComPendenciaFiscal: false,
+			}),
 	}),
 	defaults: OrganizationDefaultsSchema,
 });

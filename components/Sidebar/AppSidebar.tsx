@@ -2,6 +2,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } fr
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import {
 	BadgePercent,
+	Banknote,
 	BookText,
 	Boxes,
 	CirclePlay,
@@ -81,6 +82,13 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				icon: <ShoppingCart className="w-4 h-4" />,
 				items: null,
 				checkAccess: () => true,
+			},
+			{
+				title: "Caixa",
+				url: "/dashboard/commercial/cash-sessions",
+				icon: <Banknote className="w-4 h-4" />,
+				items: null,
+				checkAccess: (org) => org.configuracao.preferencias.sessoesVenda?.habilitado ?? false,
 			},
 			{
 				title: "Matriz RFM",

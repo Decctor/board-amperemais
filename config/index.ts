@@ -176,6 +176,14 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES: TOrganizationConfigur
 export const DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES: TOrganizationConfiguration["preferencias"] = {
 	rastreamentoEstoque: DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES.erp.acesso === true,
 	limiteMensagensSemanaisViaCampanhas: null,
+	sessoesVenda: {
+		habilitado: false,
+		obrigatorio: false,
+		escopo: "OPERADOR",
+		exigirFundoTroco: false,
+		conferenciaCega: false,
+		bloquearFechamentoComPendenciaFiscal: false,
+	},
 };
 
 const DEFAULT_PAYMENT_METHOD_CONFIGURATION: TOrganizationConfiguration["defaults"]["pagamentos"]["metodos"]["DINHEIRO"] = {

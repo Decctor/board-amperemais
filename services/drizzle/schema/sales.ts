@@ -11,6 +11,7 @@ import { interactions } from "./interactions";
 import { organizations } from "./organizations";
 import { partners } from "./partners";
 import { productAddOnOptions, productStockTransactions, productVariants, products } from "./products";
+import { salesSessions } from "./sales-sessions";
 import { sellers } from "./sellers";
 
 export const sales = newTable(
@@ -69,6 +70,8 @@ export const sales = newTable(
 		statusVenda: saleStatusEnum("status_venda"),
 		// ERP: status operacional de atendimento/fulfillment da venda
 		statusAtendimento: saleAttendanceStatusEnum("status_atendimento").notNull().default("NAO_INICIADO"),
+		// Sessão de venda que recortou esta venda (nullable). Denormalização p/ relatório/atribuição.
+		sessaoVendaId: varchar("sessao_venda_id", { length: 255 }).references(() => salesSessions.id, { onDelete: "set null" }),
 	},
 	(table) => ({
 		clientIdIdx: index("idx_sales_client_id").on(table.clienteId),
@@ -77,6 +80,7 @@ export const sales = newTable(
 		vendedorIdx: index("idx_sales_vendedor").on(table.vendedorNome),
 		naturezaIdx: index("idx_sales_natureza").on(table.natureza),
 		valorTotalIdx: index("idx_sales_valor_total").on(table.valorTotal),
+		sessaoVendaIdx: index("idx_sales_sessao").on(table.sessaoVendaId),
 	}),
 );
 export type TSaleEntity = typeof sales.$inferSelect;
@@ -112,6 +116,10 @@ export const salesRelations = relations(sales, ({ one, many }) => ({
 	entregaLocalizacao: one(clientLocations, {
 		fields: [sales.entregaLocalizacaoId],
 		references: [clientLocations.id],
+	}),
+	sessao: one(salesSessions, {
+		fields: [sales.sessaoVendaId],
+		references: [salesSessions.id],
 	}),
 	// ERP back-relations
 	lancamentosContabeis: many(accountingEntries),

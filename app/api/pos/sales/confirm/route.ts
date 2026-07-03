@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
+import { resolveActiveSalesSession } from "@/lib/sales-sessions";
 import { processSaleConfirmation } from "@/lib/sales/sale-processing";
 import { AppliedCouponSchema, type TAppliedCoupon } from "@/schemas/coupons";
 import { db } from "@/services/drizzle";
@@ -20,6 +21,7 @@ const ConfirmSaleInputSchema = z.object({
 	cupomResgate: AppliedCouponSchema.optional().nullable(),
 	contaDebitoId: z.string({ invalid_type_error: "Tipo nao valido para conta de debito." }).optional().nullable(),
 	contaCreditoId: z.string({ invalid_type_error: "Tipo nao valido para conta de credito." }).optional().nullable(),
+	sessaoVendaId: z.string({ invalid_type_error: "Tipo nao valido para o ID da sessao de venda." }).optional().nullable(),
 });
 export type TConfirmSaleInput = z.infer<typeof ConfirmSaleInputSchema>;
 
@@ -38,6 +40,18 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 
 	if (!organization) throw new createHttpError.NotFound("Organizacao nao encontrada.");
 	if (!saleDraft) throw new createHttpError.NotFound("Venda nao encontrada.");
+
+	// Sessões de venda (caixa): enforcement opcional/obrigatório + validação da sessão informada pelo cliente.
+	const sessaoObrigatoria = organization.configuracao.preferencias.sessoesVenda?.obrigatorio ?? false;
+	if (sessaoObrigatoria && !input.sessaoVendaId) {
+		throw new createHttpError.BadRequest("Nenhum caixa aberto. Abra uma sessao de venda para continuar.");
+	}
+	let sessaoVendaId: string | null = null;
+	if (input.sessaoVendaId) {
+		const activeSession = await resolveActiveSalesSession({ orgId, sessaoVendaId: input.sessaoVendaId });
+		if (!activeSession) throw new createHttpError.BadRequest("Sessao de venda invalida ou nao esta aberta.");
+		sessaoVendaId = activeSession.id;
+	}
 
 	const organizationSaleDefaults = organization.configuracao.defaults.contabilidade.lancamentosPadrao.vendas;
 	const accountingEntryDebitAccountId = input.contaDebitoId ?? organizationSaleDefaults.debitoContaId;
@@ -89,6 +103,7 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		saleCouponRedemptionSurface: !input.cupomResgate && shopAppliedCoupon ? "LOJA_DIGITAL" : undefined,
 		accountingEntryDebitAccountId,
 		accountingEntryCreditAccountId,
+		sessaoVendaId,
 	});
 
 	return {
