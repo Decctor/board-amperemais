@@ -32,6 +32,8 @@ function getPublicOrderNumber(saleId: string) {
 	return saleId.slice(0, 8).toUpperCase();
 }
 
+const SHOP_ORDER_PUBLIC_TOKEN_CONFLICT_MESSAGE = "Este pedido foi alterado após uma tentativa anterior. Tente enviar novamente.";
+
 function getShopPaymentDescription(method: ReturnType<typeof CreateShopOrderInputSchema.parse>["pagamento"]["metodo"]) {
 	const labels = {
 		DINHEIRO: "Dinheiro",
@@ -345,6 +347,7 @@ async function createShopOrder(request: NextRequest) {
 	}
 
 	const payloadHash = hashShopOrderPayload(input);
+	const publicAccessTokenHash = hashPublicAccessToken(input.publicAccessToken);
 	const existingRequest = await db.query.shopOrderRequests.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, orgId), eq(fields.idempotencyKey, input.idempotencyKey)),
 	});
@@ -365,6 +368,13 @@ async function createShopOrder(request: NextRequest) {
 		} else {
 			throw new createHttpError.Conflict("Este pedido já está sendo processado. Aguarde e tente novamente.");
 		}
+	}
+
+	const existingPublicTokenRequest = await db.query.shopOrderRequests.findFirst({
+		where: (fields, { eq }) => eq(fields.publicAccessTokenHash, publicAccessTokenHash),
+	});
+	if (existingPublicTokenRequest) {
+		throw new createHttpError.Conflict(SHOP_ORDER_PUBLIC_TOKEN_CONFLICT_MESSAGE);
 	}
 
 	const catalogProducts = await getShopCatalogProducts({ orgId, configuracoes });
@@ -419,7 +429,7 @@ async function createShopOrder(request: NextRequest) {
 		.values({
 			organizacaoId: orgId,
 			idempotencyKey: input.idempotencyKey,
-			publicAccessTokenHash: hashPublicAccessToken(input.publicAccessToken),
+			publicAccessTokenHash,
 			payloadHash,
 			status: "PROCESSANDO",
 		})

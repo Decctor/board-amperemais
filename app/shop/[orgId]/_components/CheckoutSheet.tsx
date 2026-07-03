@@ -24,6 +24,8 @@ const STEP_TITLES: Record<string, string> = {
 	REVISAO: "REVISAR PEDIDO",
 };
 
+const SHOP_ORDER_PUBLIC_TOKEN_CONFLICT_MESSAGE = "Este pedido foi alterado após uma tentativa anterior. Tente enviar novamente.";
+
 export default function CheckoutSheet() {
 	const router = useRouter();
 	const { orgId, catalog, orderState, isCheckoutOpen, setIsCheckoutOpen, setIsCartOpen } = useShop();
@@ -39,7 +41,11 @@ export default function CheckoutSheet() {
 			router.replace("/shop/" + orgId + "/pedidos/" + data.data.publicAccessToken);
 		},
 		onError: (error) => {
-			toast.error(getErrorMessage(error));
+			const message = getErrorMessage(error);
+			if (message === SHOP_ORDER_PUBLIC_TOKEN_CONFLICT_MESSAGE) {
+				orderState.refreshOrderIdentity();
+			}
+			toast.error(message);
 		},
 	});
 

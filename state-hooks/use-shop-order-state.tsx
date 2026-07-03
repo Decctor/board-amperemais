@@ -53,6 +53,13 @@ function getStorageKey(orgId: string) {
 	return `shop-cart:${orgId}`;
 }
 
+function createOrderIdentity() {
+	return {
+		idempotencyKey: crypto.randomUUID(),
+		publicAccessToken: crypto.randomUUID(),
+	};
+}
+
 function getDefaultState(orgId: string, mode: "CARDAPIO" | "CATALOGO"): TShopOrderState {
 	return {
 		orgId,
@@ -63,8 +70,7 @@ function getDefaultState(orgId: string, mode: "CARDAPIO" | "CATALOGO"): TShopOrd
 		cashback: { resgateSolicitado: 0 },
 		coupon: { resgate: null },
 		payment: { metodo: "DINHEIRO", observacoes: "", precisaTroco: false, trocoPara: null },
-		idempotencyKey: crypto.randomUUID(),
-		publicAccessToken: crypto.randomUUID(),
+		...createOrderIdentity(),
 		checkoutStep: "CARRINHO",
 		lastOrder: null,
 	};
@@ -125,7 +131,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			...prev,
 			cart: { items: [...prev.cart.items, { ...item, tempId: item.tempId ?? crypto.randomUUID() }] },
 			coupon: { resgate: null },
-			idempotencyKey: crypto.randomUUID(),
+			...createOrderIdentity(),
 		}));
 	}, []);
 
@@ -136,7 +142,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 				items: prev.cart.items.map((item) => (item.tempId === tempId ? { ...item, quantidade: Math.max(1, quantidade) } : item)),
 			},
 			coupon: { resgate: null },
-			idempotencyKey: crypto.randomUUID(),
+			...createOrderIdentity(),
 		}));
 	}, []);
 
@@ -145,7 +151,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			...prev,
 			cart: { items: prev.cart.items.filter((item) => item.tempId !== tempId) },
 			coupon: { resgate: null },
-			idempotencyKey: crypto.randomUUID(),
+			...createOrderIdentity(),
 		}));
 	}, []);
 
@@ -155,8 +161,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			cart: { items: [] },
 			cashback: { resgateSolicitado: 0 },
 			coupon: { resgate: null },
-			idempotencyKey: crypto.randomUUID(),
-			publicAccessToken: crypto.randomUUID(),
+			...createOrderIdentity(),
 		}));
 		if (typeof window !== "undefined") window.localStorage.removeItem(getStorageKey(orgId));
 	}, [orgId]);
@@ -170,25 +175,25 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 				customer: nextCustomer,
 				cashback: shouldClearBenefits ? { resgateSolicitado: 0 } : prev.cashback,
 				coupon: shouldClearBenefits ? { resgate: null } : prev.coupon,
-				idempotencyKey: crypto.randomUUID(),
+				...createOrderIdentity(),
 			};
 		});
 	}, []);
 
 	const updateDelivery = useCallback((delivery: Partial<TShopDelivery>) => {
-		setState((prev) => ({ ...prev, delivery: { ...prev.delivery, ...delivery }, idempotencyKey: crypto.randomUUID() }));
+		setState((prev) => ({ ...prev, delivery: { ...prev.delivery, ...delivery }, ...createOrderIdentity() }));
 	}, []);
 
 	const updateCashback = useCallback((cashback: Partial<TShopOrderState["cashback"]>) => {
-		setState((prev) => ({ ...prev, cashback: { ...prev.cashback, ...cashback }, idempotencyKey: crypto.randomUUID() }));
+		setState((prev) => ({ ...prev, cashback: { ...prev.cashback, ...cashback }, ...createOrderIdentity() }));
 	}, []);
 
 	const updateCoupon = useCallback((coupon: TShopOrderState["coupon"]["resgate"]) => {
-		setState((prev) => ({ ...prev, coupon: { resgate: coupon }, idempotencyKey: crypto.randomUUID() }));
+		setState((prev) => ({ ...prev, coupon: { resgate: coupon }, ...createOrderIdentity() }));
 	}, []);
 
 	const updatePayment = useCallback((payment: Partial<TShopOrderState["payment"]>) => {
-		setState((prev) => ({ ...prev, payment: { ...prev.payment, ...payment }, idempotencyKey: crypto.randomUUID() }));
+		setState((prev) => ({ ...prev, payment: { ...prev.payment, ...payment }, ...createOrderIdentity() }));
 	}, []);
 
 	const setCheckoutStep = useCallback((checkoutStep: TShopOrderState["checkoutStep"]) => {
@@ -220,6 +225,10 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 
 	const setLastOrder = useCallback((lastOrder: TShopOrderState["lastOrder"]) => {
 		setState((prev) => ({ ...prev, lastOrder, checkoutStep: lastOrder ? "SUCESSO" : prev.checkoutStep }));
+	}, []);
+
+	const refreshOrderIdentity = useCallback(() => {
+		setState((prev) => ({ ...prev, ...createOrderIdentity() }));
 	}, []);
 
 	const orderInput = useMemo<TCreateShopOrderInput>(
@@ -274,6 +283,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 		resetState,
 		hydrateFromStorage,
 		setLastOrder,
+		refreshOrderIdentity,
 	};
 }
 
