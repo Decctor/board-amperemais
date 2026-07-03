@@ -72,6 +72,8 @@ export const coupons = newTable(
 		// Superfícies de resgate
 		resgatePermitirViaPos: boolean("resgate_permitir_via_pos").notNull().default(true),
 		resgatePermitirViaPontoInteracao: boolean("resgate_permitir_via_ponto_interacao").notNull().default(true),
+		// Loja digital é autoatendimento: cupons MANUAL aparecem nela apenas como aviso (resgate no balcão).
+		resgatePermitirViaLojaDigital: boolean("resgate_permitir_via_loja_digital").notNull().default(true),
 
 		autorId: varchar("autor_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),

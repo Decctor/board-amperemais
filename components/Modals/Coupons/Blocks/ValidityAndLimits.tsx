@@ -48,7 +48,7 @@ export default function CouponValidityAndLimitsBlock({ coupon, updateCoupon }: C
 				</div>
 			</div>
 			<div className="w-full flex items-center gap-2 flex-col lg:flex-row">
-				<div className="w-full flex items-center justify-center lg:w-1/2">
+				<div className="w-full flex items-center justify-center lg:w-1/3">
 					<CheckboxInput
 						checked={coupon.resgatePermitirViaPos}
 						labelTrue="RESGATÁVEL VIA PDV"
@@ -57,7 +57,7 @@ export default function CouponValidityAndLimitsBlock({ coupon, updateCoupon }: C
 						justify="justify-center"
 					/>
 				</div>
-				<div className="w-full flex items-center justify-center lg:w-1/2">
+				<div className="w-full flex items-center justify-center lg:w-1/3">
 					<CheckboxInput
 						checked={coupon.resgatePermitirViaPontoInteracao}
 						labelTrue="RESGATÁVEL VIA PONTO DE INTERAÇÃO"
@@ -66,7 +66,21 @@ export default function CouponValidityAndLimitsBlock({ coupon, updateCoupon }: C
 						justify="justify-center"
 					/>
 				</div>
+				<div className="w-full flex items-center justify-center lg:w-1/3">
+					<CheckboxInput
+						checked={coupon.resgatePermitirViaLojaDigital}
+						labelTrue="RESGATÁVEL VIA LOJA DIGITAL"
+						labelFalse="RESGATÁVEL VIA LOJA DIGITAL"
+						handleChange={(value) => updateCoupon({ resgatePermitirViaLojaDigital: value })}
+						justify="justify-center"
+					/>
+				</div>
 			</div>
+			{coupon.validacaoModo === "MANUAL" && coupon.resgatePermitirViaLojaDigital ? (
+				<p className="text-xs text-amber-600 text-center">
+					A loja digital é autoatendimento: cupons de validação manual aparecem nela apenas como aviso, com resgate no balcão.
+				</p>
+			) : null}
 		</ResponsiveMenuSection>
 	);
 }

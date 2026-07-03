@@ -57,6 +57,7 @@ export default function ControlCoupon({ couponId, closeModal, callbacks }: Contr
 					acumulavel: coupon.acumulavel,
 					resgatePermitirViaPos: coupon.resgatePermitirViaPos,
 					resgatePermitirViaPontoInteracao: coupon.resgatePermitirViaPontoInteracao,
+					resgatePermitirViaLojaDigital: coupon.resgatePermitirViaLojaDigital,
 				},
 				couponTargets: coupon.alvos.map((target) => ({
 					id: target.id,
