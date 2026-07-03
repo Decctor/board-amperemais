@@ -1,4 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
+import type { TAppliedCoupon } from "@/schemas/coupons";
 import { db } from "@/services/drizzle";
 import { shopOrderRequests } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
@@ -20,6 +21,7 @@ type TShopDraftMetadata = {
 		criadoEm?: string;
 		subtotalItens?: number;
 		cashbackResgateSolicitado?: number;
+		cupom?: TAppliedCoupon | null;
 		pagamento?: {
 			metodo?: string;
 			descricao?: string;
@@ -50,13 +52,15 @@ function maskCep(value: string | null) {
 	return digits.length >= 5 ? digits.slice(0, 3) + "**-***" : "***";
 }
 
-function maskDeliveryAddress(location: {
-	localizacaoCep: string | null;
-	localizacaoEstado: string | null;
-	localizacaoCidade: string | null;
-	localizacaoBairro: string | null;
-	localizacaoLogradouro: string | null;
-} | null) {
+function maskDeliveryAddress(
+	location: {
+		localizacaoCep: string | null;
+		localizacaoEstado: string | null;
+		localizacaoCidade: string | null;
+		localizacaoBairro: string | null;
+		localizacaoLogradouro: string | null;
+	} | null,
+) {
 	if (!location) return null;
 	return {
 		logradouro: location.localizacaoLogradouro,
@@ -190,6 +194,13 @@ async function getPublicShopOrder({ input }: { input: TGetPublicShopOrderInput }
 				}),
 				subtotal: shopMetadata?.subtotalItens ?? sale.itens.reduce((sum, item) => sum + item.valorVendaTotalBruto, 0),
 				discount: sale.descontosTotal ?? 0,
+				coupon: shopMetadata?.cupom
+					? {
+							code: shopMetadata.cupom.codigo ?? null,
+							title: shopMetadata.cupom.titulo ?? null,
+							discount: shopMetadata.cupom.valorDesconto,
+						}
+					: null,
 				additions: sale.acrescimosTotal ?? 0,
 				total: sale.valorTotal,
 				payment: {

@@ -48,9 +48,15 @@ export function MobileWaitingStep({ token, onApproved, onRejected, onErrored, on
 			<div className="rounded-3xl border border-brand/15 bg-card p-5 text-left shadow-sm space-y-3">
 				<div className="flex items-center gap-3 text-sm">
 					<TimerReset className="h-4 w-4 text-brand" />
-					<span>Status atual: <strong>{data.status}</strong></span>
+					<span>
+						Status atual: <strong>{data.status}</strong>
+					</span>
 				</div>
-				{data.cliente?.nome ? <p className="text-sm text-muted-foreground">Cliente: <strong>{data.cliente.nome}</strong></p> : null}
+				{data.cliente?.nome ? (
+					<p className="text-sm text-muted-foreground">
+						Cliente: <strong>{data.cliente.nome}</strong>
+					</p>
+				) : null}
 			</div>
 			<div className="flex flex-col gap-3">
 				<Button variant="outline" onClick={() => refetch()} className="h-12 rounded-2xl font-bold uppercase tracking-wider">

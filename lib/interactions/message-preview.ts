@@ -38,6 +38,9 @@ export function buildContextVariablesMap(
 		cashbackExpiringAmount: formatCashbackValue(ctx?.cashbackExpirandoValor ?? 0, terminology),
 		cashbackExpiringDate: ctx?.cashbackExpirandoData ?? "",
 		cashbackExpiringWindow: ctx?.cashbackExpirandoJanela ?? "",
+		couponCode: ctx?.cupomCodigo ?? "",
+		couponTitle: ctx?.cupomTitulo ?? "",
+		couponExpirationDate: ctx?.cupomExpiracaoData ?? "",
 	};
 }
 

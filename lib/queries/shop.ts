@@ -1,5 +1,6 @@
 import type { TGetShopCatalogOutput } from "@/app/api/shop/[orgId]/catalog/route";
 import type { TGetPublicShopOrderOutput } from "@/app/api/shop/[orgId]/orders/[token]/route";
+import type { TGetAvailableShopCouponsInput, TGetAvailableShopCouponsOutput } from "@/app/api/shop/[orgId]/coupons/available/route";
 import type { TShopClientLookupInput, TShopClientLookupOutput } from "@/app/api/shop/[orgId]/clients/lookup/route";
 import type { TGetShopOrdersInput, TGetShopOrdersOutput } from "@/app/api/shop/orders/route";
 import type { TGetShopSettingsOutput } from "@/app/api/shop/settings/route";
@@ -120,3 +121,34 @@ export function usePublicShopOrder({ orgId, token }: { orgId: string; token: str
 		queryKey,
 	};
 }
+
+async function fetchShopAvailableCoupons({ orgId, input }: { orgId: string; input: TGetAvailableShopCouponsInput }) {
+	const { data } = await axios.post<TGetAvailableShopCouponsOutput>(`/api/shop/${orgId}/coupons/available`, input);
+	return data.data.coupons;
+}
+
+export function useShopAvailableCoupons({
+	orgId,
+	clienteId,
+	itens,
+}: {
+	orgId: string;
+	clienteId: string | null;
+	itens: TGetAvailableShopCouponsInput["itens"];
+}) {
+	const debouncedInput = useDebounceMemo({ orgId, clienteId, itens }, 500);
+	const queryKey = ["shop-available-coupons", debouncedInput] as const;
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () =>
+				fetchShopAvailableCoupons({
+					orgId: debouncedInput.orgId,
+					input: { clienteId: debouncedInput.clienteId as string, itens: debouncedInput.itens },
+				}),
+			enabled: !!debouncedInput.orgId && !!debouncedInput.clienteId && debouncedInput.itens.length > 0,
+		}),
+		queryKey,
+	};
+}
+export type TShopAvailableCoupon = Awaited<ReturnType<typeof fetchShopAvailableCoupons>>[number];

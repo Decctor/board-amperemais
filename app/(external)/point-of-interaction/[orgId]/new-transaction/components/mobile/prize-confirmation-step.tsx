@@ -15,7 +15,13 @@ type MobilePrizeConfirmationStepProps = {
 	onSubmit: () => void;
 };
 
-export function MobilePrizeConfirmationStep({ clientName, selectedPrize, availableBalance, terminology, onSubmit }: MobilePrizeConfirmationStepProps) {
+export function MobilePrizeConfirmationStep({
+	clientName,
+	selectedPrize,
+	availableBalance,
+	terminology,
+	onSubmit,
+}: MobilePrizeConfirmationStepProps) {
 	const balanceAfter = selectedPrize ? availableBalance - selectedPrize.valor : availableBalance;
 	const commercialValue = selectedPrize?.valorVenda ?? 0;
 	const finalValue = Math.max(0, commercialValue - (selectedPrize?.valor ?? 0));

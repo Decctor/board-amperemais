@@ -147,6 +147,26 @@ function getEffectiveCampaignWeeklyLimit({
 	return effectiveLimit;
 }
 
+/**
+ * Valida a configuração de geração de cupom da campanha: o cupom deve existir na
+ * organização, estar ativo e ter escopo INDIVIDUAL (a campanha materializa atribuições).
+ */
+async function validateCampaignCouponGenerationSettings(
+	campaign: Pick<z.infer<typeof CampaignSchema>, "cupomGeracaoAtivo" | "cupomGeracaoCupomId">,
+	userOrgId: string,
+) {
+	if (!campaign.cupomGeracaoAtivo) return;
+	if (!campaign.cupomGeracaoCupomId) throw new createHttpError.BadRequest("Selecione o cupom a ser atribuído pela campanha.");
+
+	const coupon = await db.query.coupons.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.id, campaign.cupomGeracaoCupomId as string), eq(fields.organizacaoId, userOrgId)),
+		columns: { id: true, escopo: true, ativo: true },
+	});
+	if (!coupon) throw new createHttpError.BadRequest("Cupom selecionado não encontrado.");
+	if (coupon.escopo !== "INDIVIDUAL") throw new createHttpError.BadRequest("A campanha só pode atribuir cupons de escopo INDIVIDUAL.");
+	if (!coupon.ativo) throw new createHttpError.BadRequest("O cupom selecionado está inativo.");
+}
+
 const CreateCampaignInputSchema = z.object({
 	campaign: CampaignSchema.omit({ dataInsercao: true, autorId: true }),
 	segmentations: z.array(CampaignSegmentationSchema.omit({ campanhaId: true })),
@@ -197,6 +217,8 @@ async function createCampaign({ input, session }: { input: TCreateCampaignInput;
 			}
 		}
 	}
+
+	await validateCampaignCouponGenerationSettings(input.campaign, userOrgId);
 
 	const insertedCampaignResponse = await db
 		.insert(campaigns)
@@ -558,6 +580,8 @@ async function updateCampaign({ input, session }: { input: TUpdateCampaignInput;
 			}
 		}
 	}
+
+	await validateCampaignCouponGenerationSettings(input.campaign, userOrgId);
 
 	return await db.transaction(async (trx) => {
 		console.log("[INFO] [UPDATE-CAMPAIGN] Starting to update campaign...", {

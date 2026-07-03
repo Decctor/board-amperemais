@@ -1,4 +1,7 @@
-import type { TCreatePointOfInteractionTransactionOutput, TCreatePointOfInteractionTransactionRequestInput } from "@/app/api/point-of-interaction/new-transaction/route";
+import type {
+	TCreatePointOfInteractionTransactionOutput,
+	TCreatePointOfInteractionTransactionRequestInput,
+} from "@/app/api/point-of-interaction/new-transaction/route";
 import type { TPoiTransactionRequestStatusEnum } from "@/schemas/enums";
 
 export type TPoiTransactionRequestSummary = {
@@ -47,32 +50,34 @@ export function buildPoiTransactionRequestSummary(
 		venda: {
 			valorBruto: input.sale.prizeRedemption?.prizeSaleValue ?? input.sale.valor,
 			valorResgate: input.sale.prizeRedemption?.prizeValue ?? (input.sale.cashback.aplicar ? input.sale.cashback.valor : 0),
+			// Cupons MANUAL podem chegar sem valor definido (o operador informa na aprovação); nesse caso o valorFinal não o inclui.
 			valorFinal: Math.max(
 				0,
 				(input.sale.prizeRedemption?.prizeSaleValue ?? input.sale.valor) -
-					(input.sale.prizeRedemption?.prizeValue ?? (input.sale.cashback.aplicar ? input.sale.cashback.valor : 0)),
+					(input.sale.prizeRedemption?.prizeValue ?? (input.sale.cashback.aplicar ? input.sale.cashback.valor : 0)) -
+					(input.sale.coupon?.valorDesconto ?? 0),
 			),
 			modo: input.sale.prizeRedemption ? "RECOMPENSA" : "DESCONTO",
 			codigoParceiro: input.sale.partnerCode ?? null,
 		},
 		recompensa: input.sale.prizeRedemption
 			? {
-				prizeId: input.sale.prizeRedemption.prizeId,
-				prizeValue: input.sale.prizeRedemption.prizeValue,
-				prizeSaleValue: input.sale.prizeRedemption.prizeSaleValue,
-				prizeTitulo: prizeInfo?.titulo ?? null,
-				prizeImageUrl: prizeInfo?.imagemCapaUrl ?? null,
-			}
+					prizeId: input.sale.prizeRedemption.prizeId,
+					prizeValue: input.sale.prizeRedemption.prizeValue,
+					prizeSaleValue: input.sale.prizeRedemption.prizeSaleValue,
+					prizeTitulo: prizeInfo?.titulo ?? null,
+					prizeImageUrl: prizeInfo?.imagemCapaUrl ?? null,
+				}
 			: null,
 		cupom: input.sale.coupon
 			? {
-				cupomId: input.sale.coupon.cupomId,
-				valorDesconto: input.sale.coupon.valorDesconto ?? null,
-				titulo: couponInfo?.titulo ?? null,
-				codigo: couponInfo?.codigo ?? null,
-				validacaoModo: couponInfo?.validacaoModo ?? null,
-				condicoesTexto: couponInfo?.condicoesTexto ?? null,
-			}
+					cupomId: input.sale.coupon.cupomId,
+					valorDesconto: input.sale.coupon.valorDesconto ?? null,
+					titulo: couponInfo?.titulo ?? null,
+					codigo: couponInfo?.codigo ?? null,
+					validacaoModo: couponInfo?.validacaoModo ?? null,
+					condicoesTexto: couponInfo?.condicoesTexto ?? null,
+				}
 			: null,
 	};
 }

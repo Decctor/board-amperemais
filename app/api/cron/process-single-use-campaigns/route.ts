@@ -1,5 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { generateCashbackForCampaignBatch } from "@/lib/cashback/generate-campaign-cashback";
+import { generateCouponGrantsForCampaignBatch } from "@/lib/coupons/generate-campaign-coupon";
 import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
 import { INTERACTIONS_CRON_TIMEZONE, getCurrentTimeBlock, type TInteractionCronTimeBlock } from "@/lib/campaigns/time-blocks";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
@@ -168,6 +169,18 @@ async function enqueueCampaignChunk({
 				expirationValue: campaign.cashbackGeracaoExpiracaoValor,
 			});
 			cashbackGenerated = generatedCount;
+		}
+
+		if (campaign.cupomGeracaoAtivo && campaign.cupomGeracaoCupomId && inserted.length > 0) {
+			await generateCouponGrantsForCampaignBatch({
+				tx,
+				organizationId,
+				campaignId: campaign.id,
+				clientIds: inserted.map((row) => row.clienteId),
+				couponId: campaign.cupomGeracaoCupomId,
+				expirationMeasure: campaign.cupomGeracaoExpiracaoMedida,
+				expirationValue: campaign.cupomGeracaoExpiracaoValor,
+			});
 		}
 
 		return { inserted, cashbackGenerated };

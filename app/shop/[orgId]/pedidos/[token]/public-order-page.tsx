@@ -7,19 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { usePublicShopOrder } from "@/lib/queries/shop";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
-import {
-	AlertCircle,
-	Check,
-	Clock3,
-	CreditCard,
-	Package,
-	RefreshCw,
-	RotateCcw,
-	ShoppingBag,
-	Store,
-	Truck,
-	WalletCards,
-} from "lucide-react";
+import { AlertCircle, Check, Clock3, CreditCard, Package, RefreshCw, RotateCcw, ShoppingBag, Store, Ticket, Truck, WalletCards } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -100,9 +88,7 @@ function OrderError({ orgId, retry }: { orgId: string; retry: () => void }) {
 					<AlertCircle className="size-8" />
 				</div>
 				<h1 className="text-xl font-black">Pedido não encontrado</h1>
-				<p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-					O link pode estar incompleto ou o pedido ainda não está disponível.
-				</p>
+				<p className="mt-2 text-sm leading-relaxed text-muted-foreground">O link pode estar incompleto ou o pedido ainda não está disponível.</p>
 				<div className="mt-6 flex w-full flex-col gap-2">
 					<Button className="h-11 rounded-xl font-bold" onClick={retry}>
 						<RefreshCw className="size-4" />
@@ -197,7 +183,9 @@ function OrderStatus({ order, isRefetching, onRefresh }: { order: PublicOrder; i
 									>
 										{isComplete ? <Check className="size-4" strokeWidth={3} /> : index + 1}
 									</div>
-									<span className={"text-[0.625rem] leading-tight font-bold sm:text-xs " + (index <= currentIndex ? "text-foreground" : "text-muted-foreground")}>
+									<span
+										className={"text-[0.625rem] leading-tight font-bold sm:text-xs " + (index <= currentIndex ? "text-foreground" : "text-muted-foreground")}
+									>
 										{STATUS_LABELS[step]}
 									</span>
 								</div>
@@ -228,7 +216,9 @@ function OrderItems({ order }: { order: PublicOrder }) {
 					<ShoppingBag className="size-5 text-brand-secondary" />
 					<h2 className="font-black">Itens do pedido</h2>
 				</div>
-				<span className="text-xs font-bold text-muted-foreground">{order.items.length} {order.items.length === 1 ? "ITEM" : "ITENS"}</span>
+				<span className="text-xs font-bold text-muted-foreground">
+					{order.items.length} {order.items.length === 1 ? "ITEM" : "ITENS"}
+				</span>
 			</div>
 			<div className="divide-y">
 				{order.items.map((item) => (
@@ -256,7 +246,9 @@ function OrderItems({ order }: { order: PublicOrder }) {
 								<ul className="mt-2 flex flex-col gap-1">
 									{item.modifiers.map((modifier) => (
 										<li key={modifier.id} className="flex justify-between gap-3 text-xs text-muted-foreground">
-											<span>+ {modifier.quantity}× {modifier.name}</span>
+											<span>
+												+ {modifier.quantity}× {modifier.name}
+											</span>
 											<span className="tabular-nums">{formatToMoney(modifier.total)}</span>
 										</li>
 									))}
@@ -272,6 +264,10 @@ function OrderItems({ order }: { order: PublicOrder }) {
 }
 
 function PriceSummary({ order }: { order: PublicOrder }) {
+	const couponDiscount = order.coupon?.discount ?? 0;
+	const cashbackDiscount = order.cashback.redeemed;
+	const otherDiscount = Math.max(0, order.discount - couponDiscount - cashbackDiscount);
+
 	return (
 		<section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
 			<h2 className="font-black">Resumo do pedido</h2>
@@ -280,10 +276,25 @@ function PriceSummary({ order }: { order: PublicOrder }) {
 					<span>Subtotal</span>
 					<span className="tabular-nums">{formatToMoney(order.subtotal)}</span>
 				</div>
-				{order.discount > 0 ? (
+				{order.coupon ? (
+					<div className="flex justify-between gap-3 text-muted-foreground">
+						<span className="inline-flex min-w-0 items-center gap-1.5">
+							<Ticket className="size-3.5 shrink-0" />
+							<span className="truncate">Cupom {order.coupon.code ?? ""}</span>
+						</span>
+						<span className="tabular-nums">- {formatToMoney(couponDiscount)}</span>
+					</div>
+				) : null}
+				{cashbackDiscount > 0 ? (
+					<div className="flex justify-between gap-3 text-muted-foreground">
+						<span>Cashback usado</span>
+						<span className="tabular-nums">- {formatToMoney(cashbackDiscount)}</span>
+					</div>
+				) : null}
+				{otherDiscount > 0 ? (
 					<div className="flex justify-between gap-3 text-muted-foreground">
 						<span>Descontos</span>
-						<span className="tabular-nums">- {formatToMoney(order.discount)}</span>
+						<span className="tabular-nums">- {formatToMoney(otherDiscount)}</span>
 					</div>
 				) : null}
 				{order.additions > 0 ? (
@@ -321,7 +332,9 @@ function DeliveryAndPayment({ order }: { order: PublicOrder }) {
 					<h2 className="text-sm font-black">{order.deliveryMode === "ENTREGA" ? "Entrega" : "Retirada no local"}</h2>
 					{addressLines.length > 0 ? (
 						<div className="mt-1 flex flex-col text-xs leading-relaxed text-muted-foreground">
-							{addressLines.map((line) => <span key={line}>{line}</span>)}
+							{addressLines.map((line) => (
+								<span key={line}>{line}</span>
+							))}
 						</div>
 					) : (
 						<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -337,7 +350,7 @@ function DeliveryAndPayment({ order }: { order: PublicOrder }) {
 				<div>
 					<h2 className="text-sm font-black">Pagamento</h2>
 					<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-						{order.payment.method ? PAYMENT_LABELS[order.payment.method] ?? order.payment.method : "Forma de pagamento não informada"}
+						{order.payment.method ? (PAYMENT_LABELS[order.payment.method] ?? order.payment.method) : "Forma de pagamento não informada"}
 					</p>
 					{order.payment.description ? <p className="mt-0.5 text-xs text-muted-foreground">{order.payment.description}</p> : null}
 				</div>
@@ -372,7 +385,17 @@ function CashbackSummary({ order }: { order: PublicOrder }) {
 	);
 }
 
-function OrderContent({ data, orgId, isRefetching, onRefresh }: { data: PublicOrderData; orgId: string; isRefetching: boolean; onRefresh: () => void }) {
+function OrderContent({
+	data,
+	orgId,
+	isRefetching,
+	onRefresh,
+}: {
+	data: PublicOrderData;
+	orgId: string;
+	isRefetching: boolean;
+	onRefresh: () => void;
+}) {
 	const { order, organization } = data;
 	return (
 		<div className="min-h-screen bg-muted/30">

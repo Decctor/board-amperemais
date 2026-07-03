@@ -91,6 +91,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 					descontosTotal: saleState.state.descontoGeral,
 					acrescimosTotal: saleState.state.acrescimoGeral,
 					cashbackResgate: saleState.state.cashbackResgate,
+					cupomResgate: saleState.state.cupomResgate,
 					rascunhoMetadados: saleState.getDraftMetadata(),
 				});
 				saleState.setSuccess({
@@ -192,6 +193,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 			descontosTotal: saleState.state.descontoGeral,
 			acrescimosTotal: saleState.state.acrescimoGeral,
 			cashbackResgate: saleState.state.cashbackResgate,
+			cupomResgate: saleState.state.cupomResgate,
 			rascunhoMetadados: saleState.getDraftMetadata(),
 			itens: mapItemsToApi(saleState),
 		});
@@ -223,6 +225,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 				observacoes: payment.observacoes,
 			})),
 			cashbackResgate: saleState.state.cashbackResgate,
+			cupomResgate: saleState.state.cupomResgate,
 			itens: mapItemsToApi(saleState),
 		});
 	};

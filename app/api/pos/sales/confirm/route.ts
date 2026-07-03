@@ -51,13 +51,15 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		shop?: {
 			cashbackResgateSolicitado?: number;
 			cashbackProgramaId?: string | null;
+			cupom?: TAppliedCoupon | null;
 		};
 		cupom?: TAppliedCoupon | null;
 	} | null;
 	const effectiveCashbackResgate = input.cashbackResgate > 0 ? input.cashbackResgate : (shopMetadata?.shop?.cashbackResgateSolicitado ?? 0);
 	const effectiveCashbackProgramaId = input.cashbackProgramaId ?? shopMetadata?.shop?.cashbackProgramaId ?? null;
 	// O cupom aplicado no rascunho ja esta refletido nos totais da venda; aqui apenas resolve qual registrar no ledger.
-	const effectiveAppliedCoupon = input.cupomResgate ?? shopMetadata?.cupom ?? null;
+	const shopAppliedCoupon = shopMetadata?.shop?.cupom ?? null;
+	const effectiveAppliedCoupon = input.cupomResgate ?? shopAppliedCoupon ?? shopMetadata?.cupom ?? null;
 
 	const result = await processSaleConfirmation({
 		organization,
@@ -84,6 +86,7 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		saleCashbackRedemptionValue: effectiveCashbackResgate,
 		saleCouponId: effectiveAppliedCoupon?.cupomId ?? null,
 		saleCouponDeclaredDiscountValue: effectiveAppliedCoupon?.valorDesconto ?? null,
+		saleCouponRedemptionSurface: !input.cupomResgate && shopAppliedCoupon ? "LOJA_DIGITAL" : undefined,
 		accountingEntryDebitAccountId,
 		accountingEntryCreditAccountId,
 	});

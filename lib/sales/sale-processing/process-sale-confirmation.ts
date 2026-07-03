@@ -1,6 +1,6 @@
 import { accumulateCashbackForClient } from "@/lib/cashback/accumulation";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
-import { type TCouponCartItem, evaluateCouponAgainstCart } from "@/lib/coupons/engine";
+import { type TCouponCartItem, type TCouponRedemptionSurface, evaluateCouponAgainstCart } from "@/lib/coupons/engine";
 import { processCouponRedemption } from "@/lib/coupons/redemption";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
 import { db, type DBTransaction } from "@/services/drizzle";
@@ -30,6 +30,7 @@ export type TProcessSaleConfirmationInput = {
 	// cupons AUTOMATICA, reavaliação do carrinho pelo motor.
 	saleCouponId?: string | null;
 	saleCouponDeclaredDiscountValue?: number | null;
+	saleCouponRedemptionSurface?: TCouponRedemptionSurface;
 
 	accountingEntryDebitAccountId: string;
 	accountingEntryCreditAccountId: string;
@@ -267,7 +268,7 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 				organizacaoId: input.organization.id,
 				cupomId: coupon.id,
 				clienteId: clientId,
-				surface: "POS",
+				surface: input.saleCouponRedemptionSurface ?? "POS",
 				valorDesconto: discountValue,
 				vendaId: input.saleId,
 				vendaValor: sale.valorTotal,

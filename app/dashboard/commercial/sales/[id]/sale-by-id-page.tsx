@@ -26,7 +26,6 @@ import {
 	Clock,
 	Code,
 	Diamond,
-	FileText,
 	Grid3X3,
 	Mail,
 	MapPin,
@@ -36,11 +35,11 @@ import {
 	Receipt,
 	ShoppingCart,
 	Tag,
+	Ticket,
 	Trash,
 	TrendingDown,
 	TrendingUp,
 	Truck,
-	Users,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -66,6 +65,21 @@ function formatTimeToConversion(minutes: number): string {
 	if (minutes < 60) return `${minutes}min`;
 	if (minutes < 1440) return `${Math.round(minutes / 60)}h`;
 	return `${Math.round(minutes / 1440)}d`;
+}
+
+function formatCouponSource(source: TGetSalesOutputById["resgatesCupom"][number]["origemResgate"]) {
+	if (source === "POS") return "POS";
+	if (source === "LOJA_DIGITAL") return "Loja digital";
+	if (source === "PONTO_INTERACAO") return "Ponto de interação";
+	return source;
+}
+
+function formatCouponValidationMode(snapshot: TGetSalesOutputById["resgatesCupom"][number]["beneficioSnapshot"]) {
+	if (!snapshot || typeof snapshot !== "object" || !("validacaoModo" in snapshot)) return null;
+	const mode = snapshot.validacaoModo;
+	if (mode === "AUTOMATICA") return "Validação automática";
+	if (mode === "MANUAL") return "Validação manual";
+	return typeof mode === "string" ? mode : null;
 }
 
 export default function SaleByIdPage({ saleId, userCanDeleteSales }: SaleByIdPageProps) {
@@ -106,7 +120,7 @@ export default function SaleByIdPage({ saleId, userCanDeleteSales }: SaleByIdPag
 					<CampaignAttributionSection attribution={sale.atribuicaoCampanhaConversao} saleDate={sale.dataVenda} />
 				</div>
 				<div className="w-full lg:w-1/2 flex">
-					<CashbackTransactionsSection transactions={sale.transacoesCashback} />
+					<SaleBenefitsSection cashbackTransactions={sale.transacoesCashback} couponRedemptions={sale.resgatesCupom} />
 				</div>
 			</div>
 			{/* Sale Items Section */}
@@ -118,6 +132,8 @@ export default function SaleByIdPage({ saleId, userCanDeleteSales }: SaleByIdPag
 function SaleOverviewSection({ sale }: { sale: TGetSalesOutputById }) {
 	const sellerName = sale.vendedor?.nome ?? "Não atribuído";
 	const partnerName = sale.parceiro?.nome ?? "Não atribuído";
+	const activeCouponRedemptions = sale.resgatesCupom.filter((redemption) => redemption.status === "UTILIZADO");
+	const totalCouponDiscount = activeCouponRedemptions.reduce((sum, redemption) => sum + redemption.valorDesconto, 0);
 	return (
 		<SectionWrapper title="VISÃO GERAL DA VENDA" icon={<Receipt className="w-4 h-4 min-w-4 min-h-4" />}>
 			<div className="w-full flex flex-col gap-2">
@@ -133,6 +149,15 @@ function SaleOverviewSection({ sale }: { sale: TGetSalesOutputById }) {
 						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">VALOR</h3>
 						<h3 className="text-sm font-semibold tracking-tight">{formatToMoney(sale.valorTotal)}</h3>
 					</div>
+					{activeCouponRedemptions.length > 0 ? (
+						<div className="w-fit max-w-full flex items-center gap-1.5 rounded-full border border-brand/35 bg-brand/15 px-2.5 py-1 text-xs font-bold text-foreground">
+							<Ticket className="w-3.5 h-3.5 text-brand" />
+							<span className="truncate">
+								{activeCouponRedemptions.length === 1 ? `CUPOM ${activeCouponRedemptions[0].cupomCodigo}` : `${activeCouponRedemptions.length} CUPONS`}
+							</span>
+							<span className="tabular-nums">-{formatToMoney(totalCouponDiscount)}</span>
+						</div>
+					) : null}
 
 					<div className="w-full flex items-center gap-1.5">
 						<Calendar className="w-4 h-4" />
@@ -374,68 +399,146 @@ function CampaignAttributionSection({
 	);
 }
 
-function CashbackTransactionsSection({ transactions }: { transactions: TGetSalesOutputById["transacoesCashback"] }) {
-	if (transactions.length === 0)
-		return (
-			<SectionWrapper title="TRANSAÇÕES DE CASHBACK" icon={<BadgePercent className="w-4 h-4 min-w-4 min-h-4 text-emerald-600 dark:text-emerald-400" />}>
-				<div className="w-full flex flex-col items-center justify-center gap-3">
-					<span className="text-sm font-medium text-muted-foreground">NENHUMA TRANSAÇÃO DE CASHBACK ENCONTRADA</span>
-				</div>
-			</SectionWrapper>
-		);
+function SaleBenefitsSection({
+	cashbackTransactions,
+	couponRedemptions,
+}: {
+	cashbackTransactions: TGetSalesOutputById["transacoesCashback"];
+	couponRedemptions: TGetSalesOutputById["resgatesCupom"];
+}) {
+	const activeCouponRedemptions = couponRedemptions.filter((redemption) => redemption.status === "UTILIZADO");
+	const totalCouponDiscount = activeCouponRedemptions.reduce((sum, redemption) => sum + redemption.valorDesconto, 0);
+	const activeCouponCodes = activeCouponRedemptions.map((redemption) => redemption.cupomCodigo).join(", ");
+	const hasBenefits = couponRedemptions.length > 0 || cashbackTransactions.length > 0;
+
 	return (
-		<SectionWrapper title="TRANSAÇÕES DE CASHBACK" icon={<BadgePercent className="w-4 h-4 min-w-4 min-h-4 text-emerald-600 dark:text-emerald-400" />}>
-			<div className="w-full flex flex-col gap-3">
-				{transactions.map((transaction, index) => (
-					<div key={index.toString()} className="bg-secondary/30 rounded-lg p-3 space-y-2">
-						{/* Type and Value */}
-						<div className="flex items-center justify-between">
-							<div
-								className={cn(
-									"flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold uppercase",
-									transaction.tipo === "ACÚMULO"
-										? "bg-green-500/15 text-green-600 dark:text-green-400"
-										: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
-								)}
-							>
-								{transaction.tipo === "ACÚMULO" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-								{transaction.tipo}
+		<SectionWrapper title="BENEFÍCIOS DA VENDA" icon={<BadgePercent className="w-4 h-4 min-w-4 min-h-4 text-brand" />}>
+			{!hasBenefits ? (
+				<div className="w-full flex flex-col items-center justify-center gap-1 rounded-lg bg-secondary/30 px-3 py-6 text-center">
+					<span className="text-sm font-semibold text-muted-foreground">NENHUM BENEFÍCIO APLICADO NESTA VENDA</span>
+					<span className="text-xs text-muted-foreground">Cupons e movimentações de cashback aparecerão aqui quando existirem.</span>
+				</div>
+			) : (
+				<div className="w-full grid grid-cols-1 xl:grid-cols-2 gap-3">
+					<div className="flex min-w-0 flex-col gap-2 rounded-lg bg-secondary/30 p-3">
+						<div className="flex items-center justify-between gap-3">
+							<div className="flex items-center gap-1.5">
+								<Ticket className="w-4 h-4 text-brand" />
+								<span className="text-xs font-bold uppercase tracking-tight">Cupons</span>
 							</div>
-							<span
-								className={cn(
-									"text-sm font-bold",
-									transaction.tipo === "ACÚMULO" ? "text-green-600 dark:text-green-400" : "text-orange-600 dark:text-orange-400",
-								)}
-							>
-								{transaction.tipo === "ACÚMULO" ? "+" : "-"}
-								{formatToMoney(transaction.valor)}
-							</span>
+							{activeCouponRedemptions.length > 0 ? <span className="text-xs font-bold tabular-nums">-{formatToMoney(totalCouponDiscount)}</span> : null}
 						</div>
-
-						{/* Balance Flow */}
-						<div className="flex items-center gap-2 text-[0.65rem] text-muted-foreground">
-							<span>{formatToMoney(transaction.saldoValorAnterior)}</span>
-							<ArrowRight className="w-3 h-3" />
-							<span className="font-medium text-foreground">{formatToMoney(transaction.saldoValorPosterior)}</span>
-						</div>
-
-						{/* Date and Expiration */}
-						<div className="flex items-center justify-between text-[0.6rem] text-muted-foreground pt-1 border-t border-border/30">
-							<div className="flex items-center gap-1">
-								<Calendar className="w-3 h-3" />
-								{formatDateAsLocale(transaction.dataInsercao)}
+						{couponRedemptions.length === 0 ? (
+							<p className="text-xs text-muted-foreground">Nenhum cupom usado nesta venda.</p>
+						) : (
+							<div className="flex flex-col gap-2">
+								{couponRedemptions.map((redemption) => (
+									<CouponRedemptionBenefitCard key={redemption.id} redemption={redemption} />
+								))}
 							</div>
-							{transaction.expiracaoData && (
-								<div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-									<Clock className="w-3 h-3" />
-									Expira: {formatDateAsLocale(transaction.expiracaoData)}
-								</div>
-							)}
-						</div>
+						)}
 					</div>
-				))}
-			</div>
+					<div className="flex min-w-0 flex-col gap-2 rounded-lg bg-secondary/30 p-3">
+						<div className="flex items-center justify-between gap-3">
+							<div className="flex items-center gap-1.5">
+								<BadgePercent className="w-4 h-4 text-primary" />
+								<span className="text-xs font-bold uppercase tracking-tight">Cashback</span>
+							</div>
+							{cashbackTransactions.length > 0 ? (
+								<span className="text-xs font-semibold text-muted-foreground">
+									{cashbackTransactions.length === 1 ? "1 movimentação" : `${cashbackTransactions.length} movimentações`}
+								</span>
+							) : null}
+						</div>
+						{cashbackTransactions.length === 0 ? (
+							<p className="text-xs text-muted-foreground">Nenhuma movimentação de cashback encontrada.</p>
+						) : (
+							<div className="flex flex-col gap-2">
+								{cashbackTransactions.map((transaction, index) => (
+									<CashbackTransactionBenefitCard key={index.toString()} transaction={transaction} />
+								))}
+							</div>
+						)}
+					</div>
+				</div>
+			)}
 		</SectionWrapper>
+	);
+}
+
+function CouponRedemptionBenefitCard({ redemption }: { redemption: TGetSalesOutputById["resgatesCupom"][number] }) {
+	const validationMode = formatCouponValidationMode(redemption.beneficioSnapshot);
+	const isCanceled = redemption.status === "CANCELADO";
+
+	return (
+		<div className={cn("rounded-lg border border-border bg-card px-3 py-2", isCanceled && "opacity-70")}>
+			<div className="flex items-start justify-between gap-3">
+				<div className="min-w-0 flex flex-col gap-0.5">
+					<div className="flex min-w-0 items-center gap-1.5">
+						<span className="truncate text-xs font-bold uppercase">{redemption.cupomCodigo}</span>
+						<Badge
+							variant="outline"
+							className={cn("h-5 rounded-full px-2 text-[0.6rem]", isCanceled ? "text-muted-foreground" : "border-brand/35 bg-brand/15")}
+						>
+							{isCanceled ? "CANCELADO" : "UTILIZADO"}
+						</Badge>
+					</div>
+					<span className="line-clamp-1 text-xs text-muted-foreground">{redemption.cupomTitulo}</span>
+				</div>
+				<span className={cn("shrink-0 text-sm font-bold tabular-nums", isCanceled ? "text-muted-foreground line-through" : "text-foreground")}>
+					-{formatToMoney(redemption.valorDesconto)}
+				</span>
+			</div>
+			<div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/40 pt-2 text-[0.65rem] text-muted-foreground">
+				<span className="flex items-center gap-1">
+					<Calendar className="w-3 h-3" />
+					{formatDateAsLocale(redemption.dataInsercao)}
+				</span>
+				<span>{formatCouponSource(redemption.origemResgate)}</span>
+				{validationMode ? <span>{validationMode}</span> : null}
+			</div>
+		</div>
+	);
+}
+
+function CashbackTransactionBenefitCard({ transaction }: { transaction: TGetSalesOutputById["transacoesCashback"][number] }) {
+	const isAccumulation = transaction.tipo === "ACÚMULO";
+
+	return (
+		<div className="rounded-lg border border-border bg-card px-3 py-2">
+			<div className="flex items-center justify-between gap-3">
+				<div
+					className={cn(
+						"flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase",
+						isAccumulation ? "bg-primary/10 text-primary" : "bg-brand/15 text-foreground",
+					)}
+				>
+					{isAccumulation ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3 text-brand" />}
+					{transaction.tipo}
+				</div>
+				<span className={cn("text-sm font-bold tabular-nums", isAccumulation ? "text-primary" : "text-foreground")}>
+					{isAccumulation ? "+" : "-"}
+					{formatToMoney(Math.abs(transaction.valor))}
+				</span>
+			</div>
+			<div className="mt-2 flex items-center gap-2 text-[0.65rem] text-muted-foreground">
+				<span>{formatToMoney(transaction.saldoValorAnterior)}</span>
+				<ArrowRight className="w-3 h-3" />
+				<span className="font-medium text-foreground">{formatToMoney(transaction.saldoValorPosterior)}</span>
+			</div>
+			<div className="mt-2 flex items-center justify-between gap-3 border-t border-border/40 pt-2 text-[0.6rem] text-muted-foreground">
+				<div className="flex items-center gap-1">
+					<Calendar className="w-3 h-3" />
+					{formatDateAsLocale(transaction.dataInsercao)}
+				</div>
+				{transaction.expiracaoData ? (
+					<div className="flex items-center gap-1 text-foreground">
+						<Clock className="w-3 h-3 text-brand" />
+						Expira: {formatDateAsLocale(transaction.expiracaoData)}
+					</div>
+				) : null}
+			</div>
+		</div>
 	);
 }
 

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { formatCashbackValue, formatToMoney, formatToPhone } from "@/lib/formatting";
 import type { TShopPaymentMethod } from "@/schemas/shop";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Banknote, Clock3, CreditCard, Info, Package, QrCode, Send, Sparkles, Truck, User } from "lucide-react";
+import { Banknote, Clock3, CreditCard, Info, Package, QrCode, Send, Sparkles, Ticket, Truck, User } from "lucide-react";
 import Image from "next/image";
 import { useMemo, type ComponentType } from "react";
 import { useShop } from "../ShopProvider";
@@ -82,7 +82,7 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 	const reduced = prefersReducedMotion ?? false;
 
 	const { catalog, orderState } = useShop();
-	const { customer, delivery, cashback, cart, payment } = orderState.state;
+	const { customer, delivery, cashback, cart, payment, coupon } = orderState.state;
 	const config = catalog.shopSettings.configuracoes;
 
 	const cartItemsWithDetails = useMemo(() => {
@@ -126,8 +126,10 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 	}, [cart.items, catalog.products]);
 
 	const subtotal = cartItemsWithDetails.reduce((sum, item) => sum + (item?.valorTotal ?? 0), 0);
-	const discount = cashback.resgateSolicitado;
-	const total = subtotal - discount;
+	const couponDiscount = coupon.resgate?.valorDesconto ?? 0;
+	const cashbackDiscount = cashback.resgateSolicitado;
+	const discount = couponDiscount + cashbackDiscount;
+	const total = Math.max(0, subtotal - discount);
 	const itemCount = cartItemsWithDetails.reduce((sum, item) => sum + (item?.quantidade ?? 0), 0);
 
 	const addressParts = delivery.endereco
@@ -166,10 +168,7 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 
 	return (
 		<div className="flex flex-col gap-5 pb-1">
-			<motion.div
-				{...fadeUp(0, reduced)}
-				className="relative overflow-hidden rounded-2xl border border-brand/20 bg-brand/5 px-4 py-4"
-			>
+			<motion.div {...fadeUp(0, reduced)} className="relative overflow-hidden rounded-2xl border border-brand/20 bg-brand/5 px-4 py-4">
 				<div className="relative flex items-start gap-3">
 					<motion.span
 						initial={reduced ? false : { scale: 0, rotate: -20 }}
@@ -216,14 +215,7 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 					delay={0.15}
 					reduced={reduced}
 				/>
-				<SummaryTile
-					icon={PaymentIcon}
-					label="Pagamento"
-					value={getPaymentLabel(payment.metodo)}
-					detail={paymentDetail}
-					delay={0.2}
-					reduced={reduced}
-				/>
+				<SummaryTile icon={PaymentIcon} label="Pagamento" value={getPaymentLabel(payment.metodo)} detail={paymentDetail} delay={0.2} reduced={reduced} />
 			</div>
 
 			<AnimatePresence>
@@ -249,11 +241,7 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 					{cartItemsWithDetails.map((item, index) => {
 						if (!item) return null;
 						return (
-							<motion.div
-								key={item.tempId || index}
-								{...fadeUp(0.3 + index * 0.05, reduced)}
-								className="flex gap-3 rounded-2xl border bg-card p-3"
-							>
+							<motion.div key={item.tempId || index} {...fadeUp(0.3 + index * 0.05, reduced)} className="flex gap-3 rounded-2xl border bg-card p-3">
 								{item.imagemUrl ? (
 									<div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-muted">
 										<Image src={item.imagemUrl} alt={item.title} fill className="object-cover" sizes="56px" />
@@ -283,10 +271,7 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 				</div>
 			</motion.div>
 
-			<motion.div
-				{...fadeUp(0.38, reduced)}
-				className="rounded-2xl border border-primary/15 bg-primary/5 p-4"
-			>
+			<motion.div {...fadeUp(0.38, reduced)} className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
 				<div className="flex flex-col gap-2.5">
 					<div className="flex items-center justify-between gap-3">
 						<span className="text-sm text-muted-foreground">Subtotal</span>
@@ -294,18 +279,29 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 					</div>
 
 					{discount > 0 ? (
-						<div className="flex items-center justify-between gap-3 text-green-600">
-							<span className="text-sm">Desconto em cashback</span>
-							<span className="text-sm font-semibold tabular-nums">-{formatCashbackValue(discount)}</span>
+						<div className="flex flex-col gap-2">
+							{coupon.resgate ? (
+								<div className="flex items-center justify-between gap-3 text-primary">
+									<span className="inline-flex min-w-0 items-center gap-1.5 text-sm">
+										<Ticket className="size-3.5 shrink-0" />
+										<span className="truncate">Cupom {coupon.resgate.codigo ?? ""}</span>
+									</span>
+									<span className="text-sm font-semibold tabular-nums">-{formatToMoney(couponDiscount)}</span>
+								</div>
+							) : null}
+							{cashbackDiscount > 0 ? (
+								<div className="flex items-center justify-between gap-3 text-primary">
+									<span className="text-sm">Cashback</span>
+									<span className="text-sm font-semibold tabular-nums">-{formatCashbackValue(cashbackDiscount)}</span>
+								</div>
+							) : null}
 						</div>
 					) : null}
 
 					<div className="flex items-end justify-between gap-3 border-t border-primary/15 pt-3">
 						<div>
 							<p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Total a pagar</p>
-							<p className="text-pretty mt-0.5 text-[11px] text-muted-foreground">
-								{delivery.modalidade === "RETIRADA" ? "Na retirada" : "Na entrega"}
-							</p>
+							<p className="text-pretty mt-0.5 text-[11px] text-muted-foreground">{delivery.modalidade === "RETIRADA" ? "Na retirada" : "Na entrega"}</p>
 						</div>
 						<span className="text-2xl font-black tabular-nums text-primary">{formatToMoney(total)}</span>
 					</div>

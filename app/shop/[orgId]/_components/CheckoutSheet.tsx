@@ -19,10 +19,12 @@ import { useShop } from "./ShopProvider";
 const STEP_TITLES: Record<string, string> = {
 	CLIENTE: "SEUS DADOS",
 	ENTREGA: "FORMA DE ENTREGA",
-	CASHBACK: "USAR CASHBACK",
+	CASHBACK: "DESCONTOS",
 	PAGAMENTO: "FORMA DE PAGAMENTO",
 	REVISAO: "REVISAR PEDIDO",
 };
+
+const SHOP_ORDER_PUBLIC_TOKEN_CONFLICT_MESSAGE = "Este pedido foi alterado após uma tentativa anterior. Tente enviar novamente.";
 
 export default function CheckoutSheet() {
 	const router = useRouter();
@@ -39,7 +41,11 @@ export default function CheckoutSheet() {
 			router.replace("/shop/" + orgId + "/pedidos/" + data.data.publicAccessToken);
 		},
 		onError: (error) => {
-			toast.error(getErrorMessage(error));
+			const message = getErrorMessage(error);
+			if (message === SHOP_ORDER_PUBLIC_TOKEN_CONFLICT_MESSAGE) {
+				orderState.refreshOrderIdentity();
+			}
+			toast.error(message);
 		},
 	});
 
@@ -60,10 +66,10 @@ export default function CheckoutSheet() {
 		orderState.setCheckoutStep("CARRINHO");
 	};
 
-	const canSkipCashback = !catalog.cashbackProgram || !catalog.cashbackProgram.modalidadeDescontosPermitida || !orderState.state.customer.id;
+	const canSkipDiscounts = !orderState.state.customer.id;
 
 	const handleNextFromDelivery = () => {
-		if (canSkipCashback) {
+		if (canSkipDiscounts) {
 			orderState.setCheckoutStep("PAGAMENTO");
 		} else {
 			orderState.nextStep();
@@ -85,13 +91,13 @@ export default function CheckoutSheet() {
 			>
 				<div className="relative flex min-h-0 flex-1 flex-col">
 					<SheetHeader className="flex shrink-0 flex-row items-center gap-3 border-b p-4 text-left">
-					<Button variant="ghost" size="icon" className="-ml-2 h-8 w-8 shrink-0" onClick={handleBack}>
-						<ArrowLeft className="h-4 w-4" />
-					</Button>
-					<div className="min-w-0 flex-1">
-						<SheetTitle className="text-lg font-black">{STEP_TITLES[checkoutStep]}</SheetTitle>
-						<SheetDescription>FINALIZAR PEDIDO</SheetDescription>
-					</div>
+						<Button variant="ghost" size="icon" className="-ml-2 h-8 w-8 shrink-0" onClick={handleBack}>
+							<ArrowLeft className="h-4 w-4" />
+						</Button>
+						<div className="min-w-0 flex-1">
+							<SheetTitle className="text-lg font-black">{STEP_TITLES[checkoutStep]}</SheetTitle>
+							<SheetDescription>FINALIZAR PEDIDO</SheetDescription>
+						</div>
 					</SheetHeader>
 
 					<div
