@@ -153,6 +153,12 @@ export const CouponSchema = z.object({
 			invalid_type_error: "Tipo não válido para a permissão de resgate via ponto de interação.",
 		})
 		.default(true),
+	resgatePermitirViaLojaDigital: z
+		.boolean({
+			required_error: "Permissão de resgate via loja digital não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de resgate via loja digital.",
+		})
+		.default(true),
 	autorId: z
 		.string({
 			required_error: "ID do autor do cupom não informado.",

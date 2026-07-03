@@ -2,7 +2,7 @@
 
 Data: 2026-07-02
 Branch: `claude/coupon-module-design-yfzo8o` (design + implementação)
-Status: **Fases 1 e 2 implementadas** (schema, motor, CRUD admin, resgate POS e ponto de interação com UI, frontend admin, distribuição por campanha com variáveis de template — ver §6)
+Status: **Fases 1 e 2 implementadas + cupons na loja digital** (schema, motor, CRUD admin, resgate com UI no POS, ponto de interação e loja digital, frontend admin, distribuição por campanha com variáveis de template — ver §6)
 
 ## O problema em uma frase
 
@@ -240,7 +240,7 @@ Limites são **derivados do ledger** (count de `UTILIZADO` por cupom/cliente), n
 
 1. **Fase 1 — núcleo**: schema (5 tabelas + enums), CRUD admin, motor de elegibilidade (incluindo audiência por tag/RFM), resgate no POS (automático) e no ponto de interação (manual + venda-total automático). Restrições da fase: **1 cupom por venda** (trava no serviço) e **sem `beneficioTipo: BRINDE`** (o enum já nasce com o valor, mas a UI/motor não o oferecem).
 2. **Fase 2 — distribuição** *(implementada, exceto listagem no perfil do cliente)*: geração de grants por campanha (`cupomGeracao*`), variáveis de template WhatsApp (`{{coupon_code}}`, `{{coupon_title}}`, `{{coupon_expiration_date}}`), listagem de cupons no perfil do cliente (pendente).
-3. **Fase 3 — superfícies**: cupons na loja digital (`/api/shop`), estatísticas (resgates, desconto concedido, conversão por cupom), cancelamento em cascata com cancelamento de venda, empilhamento de cupons (remover a trava de 1 por venda + definir ordem de aplicação) e `beneficioTipo: BRINDE` no POS (injeção de `saleItem` com 100% de desconto, preservando baixa de estoque e relatórios).
+3. **Fase 3 — superfícies**: cupons na loja digital (`/api/shop`) *(implementado: flag `resgatePermitirViaLojaDigital`, desconto recomputado no servidor, seleção no checkout, cupons MANUAL exibidos apenas como aviso — resgate no balcão — e rejeitados no pedido, exibição no pedido público e detalhes de resgate na visão da venda)*; pendentes: estatísticas (resgates, desconto concedido, conversão por cupom), empilhamento de cupons (remover a trava de 1 por venda + definir ordem de aplicação) e `beneficioTipo: BRINDE` no POS (injeção de `saleItem` com 100% de desconto, preservando baixa de estoque e relatórios). Cancelamento em cascata com cancelamento de venda já implementado na fase 1.
 
 ## 7. Pontos decididos (antes em aberto)
 

@@ -55,6 +55,7 @@ export function useInternalCouponState({ initialState }: TUseInternalCouponState
 				acumulavel: initialState?.coupon?.acumulavel ?? false,
 				resgatePermitirViaPos: initialState?.coupon?.resgatePermitirViaPos ?? true,
 				resgatePermitirViaPontoInteracao: initialState?.coupon?.resgatePermitirViaPontoInteracao ?? true,
+				resgatePermitirViaLojaDigital: initialState?.coupon?.resgatePermitirViaLojaDigital ?? true,
 			},
 			couponTargets: initialState?.couponTargets ?? [],
 			couponAudiences: initialState?.couponAudiences ?? [],

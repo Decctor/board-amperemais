@@ -58,6 +58,7 @@ export function getCouponAvailabilityIssue({
 		| "limiteResgatesPorCliente"
 		| "resgatePermitirViaPos"
 		| "resgatePermitirViaPontoInteracao"
+		| "resgatePermitirViaLojaDigital"
 	>;
 	surface: TCouponRedemptionSurface;
 	now?: Date;
@@ -68,7 +69,7 @@ export function getCouponAvailabilityIssue({
 	if (!coupon.ativo) return "Cupom inativo.";
 	if (surface === "POS" && !coupon.resgatePermitirViaPos) return "Cupom não resgatável via PDV.";
 	if (surface === "PONTO_INTERACAO" && !coupon.resgatePermitirViaPontoInteracao) return "Cupom não resgatável via ponto de interação.";
-	if (surface === "LOJA_DIGITAL" && !coupon.resgatePermitirViaPontoInteracao) return "Cupom não resgatável via loja digital.";
+	if (surface === "LOJA_DIGITAL" && !coupon.resgatePermitirViaLojaDigital) return "Cupom não resgatável via loja digital.";
 	if (coupon.vigenciaInicio && now < coupon.vigenciaInicio) return "Cupom ainda não está vigente.";
 	if (coupon.vigenciaFim && now > coupon.vigenciaFim) return "Cupom expirado.";
 
