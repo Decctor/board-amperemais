@@ -17,6 +17,7 @@
 		"start": "next start",
 		"sync:org-sales-history": "tsx ./sync-org-sales-history.ts",
 		"import:ibpt": "tsx ./scripts/import-ibpt.ts",
+		"import:ibpt:api": "tsx ./scripts/import-ibpt-api.ts",
 		"lint": "oxlint --react-plugin --nextjs-plugin .",
 		"lint:fix": "oxlint --react-plugin --nextjs-plugin --fix .",
 		"format": "oxfmt --write .",

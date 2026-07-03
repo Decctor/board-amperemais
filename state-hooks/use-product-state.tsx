@@ -1085,6 +1085,7 @@ export function useProductFiscalProfileState({ initialState }: UseProductFiscalP
 			grupoTributarioId: initialState?.grupoTributarioId ?? null,
 			origemMercadoria: initialState?.origemMercadoria ?? "NACIONAL",
 			ncm: initialState?.ncm ?? "",
+			exTipi: initialState?.exTipi ?? null,
 			cest: initialState?.cest ?? null,
 			cfopPadrao: initialState?.cfopPadrao ?? null,
 			unidadeComercial: initialState?.unidadeComercial ?? "UN",

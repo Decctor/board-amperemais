@@ -104,6 +104,7 @@ export function mapSaleContextToNfePayload(context: TFiscalSaleContext, document
 						cEAN: "SEM GTIN",
 						xProd: resolveFiscalItemName(item.metadados, `ITEM ${index + 1}`),
 						NCM: formatNcmForNuvemFiscal(perfil?.ncm),
+						EXTIPI: perfil?.exTipi ?? undefined,
 						CEST: formatCestForNuvemFiscal(perfil?.cest),
 						CFOP: result.cfop ?? perfil?.cfopPadrao ?? context.operacao.cfopPadrao,
 						uCom: perfil?.unidadeComercial ?? "UN",

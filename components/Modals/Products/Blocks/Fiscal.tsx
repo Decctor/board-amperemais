@@ -22,6 +22,7 @@ function emptyProductFiscalProfile(): TUseProductState["state"]["productFiscalPr
 	return {
 		origemMercadoria: "NACIONAL",
 		ncm: "",
+		exTipi: null,
 		cest: null,
 		cfopPadrao: null,
 		unidadeComercial: "UN",
@@ -37,6 +38,7 @@ function mapStateFiscalProfileToCardData(profile: TUseProductState["state"]["pro
 	return {
 		origemMercadoria: profile.origemMercadoria,
 		ncm: profile.ncm,
+		exTipi: profile.exTipi != null ? profile.exTipi : null,
 		cest: profile.cest != null ? profile.cest : null,
 		cfopPadrao: profile.cfopPadrao != null ? profile.cfopPadrao : null,
 		unidadeComercial: profile.unidadeComercial,
@@ -183,6 +185,12 @@ function NewProductFiscalProfileMenu({ closeMenu, addProductFiscalProfile }: New
 			/>
 			<TextInput label="NCM" placeholder="Ex.: 12345678" value={profileHolder.ncm} handleChange={(value) => updateProfileHolder({ ncm: value })} />
 			<TextInput
+				label="EX TIPI"
+				placeholder="Opcional - ex.: 01"
+				value={profileHolder.exTipi ?? ""}
+				handleChange={(value) => updateProfileHolder({ exTipi: value.trim() === "" ? null : value })}
+			/>
+			<TextInput
 				label="CEST"
 				placeholder="Opcional"
 				value={profileHolder.cest ?? ""}
@@ -264,6 +272,12 @@ function EditProductFiscalProfileMenu({ initialProfile, closeMenu, updateProduct
 				onReset={() => updateProfileHolder({ origemMercadoria: "NACIONAL" })}
 			/>
 			<TextInput label="NCM" placeholder="Ex.: 12345678" value={profileHolder.ncm} handleChange={(value) => updateProfileHolder({ ncm: value })} />
+			<TextInput
+				label="EX TIPI"
+				placeholder="Opcional - ex.: 01"
+				value={profileHolder.exTipi ?? ""}
+				handleChange={(value) => updateProfileHolder({ exTipi: value.trim() === "" ? null : value })}
+			/>
 			<TextInput
 				label="CEST"
 				placeholder="Opcional"

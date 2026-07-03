@@ -28,6 +28,7 @@ function mapApiFiscalProfileToCardData(fiscalProfile: TGetProductsOutputById["pe
 	return {
 		origemMercadoria: fiscalProfile.origemMercadoria,
 		ncm: fiscalProfile.ncm,
+		exTipi: fiscalProfile.exTipi != null ? fiscalProfile.exTipi : null,
 		cest: fiscalProfile.cest != null ? fiscalProfile.cest : null,
 		cfopPadrao: fiscalProfile.cfopPadrao != null ? fiscalProfile.cfopPadrao : null,
 		unidadeComercial: fiscalProfile.unidadeComercial,

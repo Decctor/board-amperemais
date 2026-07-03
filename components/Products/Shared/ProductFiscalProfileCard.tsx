@@ -5,12 +5,13 @@ import { Chip } from "@/components/ui/chip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { ProductFiscalProfileOriginOptions } from "@/utils/select-options";
-import { Barcode, BookOpen, FileText, Hash, Pencil, Ruler, Trash2 } from "lucide-react";
+import { Barcode, BookOpen, Hash, Pencil, Ruler, Tags, Trash2 } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 
 export type TProductFiscalProfileCardData = {
 	origemMercadoria: string;
 	ncm: string;
+	exTipi: string | null;
 	cest: string | null;
 	cfopPadrao: string | null;
 	unidadeComercial: string;
@@ -54,8 +55,9 @@ export function ProductFiscalProfileCard({
 					/>
 				</div>
 			</div>
-			{fiscalProfile.cest || fiscalProfile.codigoBeneficioFiscal ? (
+			{fiscalProfile.exTipi || fiscalProfile.cest || fiscalProfile.codigoBeneficioFiscal ? (
 				<div className="flex w-full flex-wrap items-center gap-2">
+					{fiscalProfile.exTipi ? <FiscalProfileChip icon={<Tags />} label={`EX TIPI ${fiscalProfile.exTipi}`} tooltip="Exceção TIPI" /> : null}
 					{fiscalProfile.cest ? <FiscalProfileChip icon={<Barcode />} label={`CEST ${fiscalProfile.cest}`} tooltip="Código CEST" /> : null}
 					{fiscalProfile.codigoBeneficioFiscal ? (
 						<FiscalProfileChip icon={<Hash />} label={`CBF ${fiscalProfile.codigoBeneficioFiscal}`} tooltip="Código de benefício fiscal" />

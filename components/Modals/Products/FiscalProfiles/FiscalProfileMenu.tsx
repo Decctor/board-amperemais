@@ -61,6 +61,7 @@ function FiscalProfileMenuPersisted({
 				grupoTributarioId: fiscalProfile.grupoTributarioId ?? null,
 				origemMercadoria: fiscalProfile.origemMercadoria,
 				ncm: fiscalProfile.ncm,
+				exTipi: fiscalProfile.exTipi ?? null,
 				cest: fiscalProfile.cest ?? null,
 				cfopPadrao: fiscalProfile.cfopPadrao ?? null,
 				unidadeComercial: fiscalProfile.unidadeComercial,
@@ -187,6 +188,12 @@ function FiscalProfileMenuContent({
 				onReset={() => updateFiscalProfile({ grupoTributarioId: null })}
 			/>
 			<TextInput label="NCM" placeholder="Ex.: 12345678" value={state.ncm} handleChange={(value) => updateFiscalProfile({ ncm: value })} />
+			<TextInput
+				label="EX TIPI"
+				placeholder="Opcional - ex.: 01"
+				value={state.exTipi ?? ""}
+				handleChange={(value) => updateFiscalProfile({ exTipi: value.trim() === "" ? null : value })}
+			/>
 			<TextInput
 				label="CEST"
 				placeholder="Opcional"

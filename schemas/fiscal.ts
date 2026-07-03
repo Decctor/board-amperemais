@@ -206,6 +206,7 @@ export const ProductFiscalProfileSchema = z.object({
 		required_error: "NCM fiscal não informado.",
 		invalid_type_error: "Tipo não valido para o NCM fiscal.",
 	}),
+	exTipi: z.string({ invalid_type_error: "Tipo não valido para o EX TIPI fiscal." }).optional().nullable(),
 	cest: z.string({ invalid_type_error: "Tipo não valido para o CEST fiscal." }).optional().nullable(),
 	cfopPadrao: z.string({ invalid_type_error: "Tipo não valido para o CFOP padrao do produto." }).optional().nullable(),
 	unidadeComercial: z.string({ invalid_type_error: "Tipo não valido para a unidade comercial." }).default("UN"),

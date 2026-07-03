@@ -195,6 +195,7 @@ export const productFiscalProfiles = newTable(
 		grupoTributarioId: varchar("grupo_tributario_id", { length: 255 }).references(() => fiscalTaxGroups.id, { onDelete: "set null" }),
 		origemMercadoria: fiscalProductOriginEnum("origem_mercadoria").notNull().default("NACIONAL"),
 		ncm: varchar("ncm", { length: 20 }).notNull(),
+		exTipi: varchar("ex_tipi", { length: 10 }),
 		cest: varchar("cest", { length: 20 }),
 		cfopPadrao: varchar("cfop_padrao", { length: 10 }),
 		unidadeComercial: varchar("unidade_comercial", { length: 10 }).notNull().default("UN"),

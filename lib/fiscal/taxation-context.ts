@@ -117,7 +117,7 @@ export function computeSaleTaxation(context: TFiscalSaleContext): TSaleTaxation 
 		const origemMercadoria = perfil?.origemMercadoria ?? "NACIONAL";
 
 		// vTotTrib (Lei 12.741) a partir da tabela IBPT carregada no contexto (por NCM + UF de origem).
-		const ibptRate = selectIbptRate(context.ibptRates, { ncm: perfil?.ncm ?? "", uf: scenario.ufOrigem });
+		const ibptRate = selectIbptRate(context.ibptRates, { ncm: perfil?.ncm ?? "", uf: scenario.ufOrigem, exTipi: perfil?.exTipi ?? null });
 		const vTotTrib = computeVTotTrib({ rate: ibptRate, origem: origemMercadoria, baseValue: item.valorVendaTotalBruto - item.valorTotalDesconto });
 
 		const result = computeItemTaxation({

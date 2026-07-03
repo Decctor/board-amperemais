@@ -1002,6 +1002,7 @@ async function upsertScopedProductFiscalProfiles({
 		const profileValues = {
 			origemMercadoria: profile.origemMercadoria,
 			ncm: profile.ncm,
+			exTipi: profile.exTipi ?? null,
 			cest: profile.cest,
 			cfopPadrao: profile.cfopPadrao,
 			unidadeComercial: profile.unidadeComercial,
