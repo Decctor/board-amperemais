@@ -3,8 +3,8 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { computeSessionExpectedByMethod } from "@/lib/sales-sessions";
 import { db } from "@/services/drizzle";
-import { salesSessions } from "@/services/drizzle/schema";
-import { and, count, desc, eq } from "drizzle-orm";
+import { fiscalOutboundDocuments, sales, salesSessions } from "@/services/drizzle/schema";
+import { and, count, desc, eq, ne } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -37,15 +37,23 @@ async function getSalesSessions({ input, session }: { input: TGetSalesSessionsIn
 		});
 		if (!found) throw new createHttpError.NotFound("Sessao de venda nao encontrada.");
 
-		// Para sessões abertas, o esperado por método ainda não foi congelado: calcula ao vivo.
-		const resumoEsperado =
+		// Para sessões abertas, o esperado por método ainda não foi congelado: calcula ao vivo,
+		// e lista as pendências fiscais do turno para o operador conferir antes de fechar.
+		const [resumoEsperado, pendenciasFiscais] =
 			found.status === "ABERTA"
-				? await computeSessionExpectedByMethod({ orgId, sessaoVendaId: found.id, saldoInicial: found.saldoInicial })
-				: null;
+				? await Promise.all([
+						computeSessionExpectedByMethod({ orgId, sessaoVendaId: found.id, saldoInicial: found.saldoInicial }),
+						db
+							.select({ id: fiscalOutboundDocuments.id, referencia: fiscalOutboundDocuments.referencia, statusInterno: fiscalOutboundDocuments.statusInterno })
+							.from(fiscalOutboundDocuments)
+							.innerJoin(sales, eq(fiscalOutboundDocuments.vendaId, sales.id))
+							.where(and(eq(sales.sessaoVendaId, found.id), eq(fiscalOutboundDocuments.organizacaoId, orgId), ne(fiscalOutboundDocuments.statusInterno, "AUTORIZADO"))),
+					])
+				: [null, []];
 
 		return {
 			data: {
-				byId: { ...found, resumoEsperado },
+				byId: { ...found, resumoEsperado, pendenciasFiscais },
 				default: undefined,
 			},
 			message: "Sessao de venda encontrada com sucesso.",

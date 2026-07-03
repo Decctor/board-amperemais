@@ -3,6 +3,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import type { TUserSession } from "@/schemas/users";
 import {
 	BadgePercent,
+	Banknote,
 	BookText,
 	CirclePlay,
 	Goal,
@@ -80,6 +81,13 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				icon: <ShoppingCart className="w-4 h-4" />,
 				items: null,
 				checkAccess: () => true,
+			},
+			{
+				title: "Caixa",
+				url: "/dashboard/commercial/cash-sessions",
+				icon: <Banknote className="w-4 h-4" />,
+				items: null,
+				checkAccess: (org) => org.configuracao.preferencias.sessoesVenda?.habilitado ?? false,
 			},
 			{
 				title: "Matriz RFM",

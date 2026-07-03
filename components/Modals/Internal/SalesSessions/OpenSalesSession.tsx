@@ -7,12 +7,13 @@ import { openSalesSession } from "@/lib/mutations/sales-sessions";
 import { useFinancesAccounts } from "@/lib/queries/finances";
 import { useSellersSimplified } from "@/lib/queries/sellers";
 import { useInternalSalesSessionState } from "@/state-hooks/use-internal-sales-session-state";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 type OpenSalesSessionProps = {
 	closeModal: () => void;
 	exigirFundoTroco?: boolean;
+	initialResponsavelVendedorId?: string | null;
 	callbacks?: {
 		onMutate?: () => void;
 		onSuccess?: () => void;
@@ -21,8 +22,11 @@ type OpenSalesSessionProps = {
 	};
 };
 
-export default function OpenSalesSession({ closeModal, exigirFundoTroco, callbacks }: OpenSalesSessionProps) {
-	const { state, updateOpenInput } = useInternalSalesSessionState();
+export default function OpenSalesSession({ closeModal, exigirFundoTroco, initialResponsavelVendedorId, callbacks }: OpenSalesSessionProps) {
+	const queryClient = useQueryClient();
+	const { state, updateOpenInput } = useInternalSalesSessionState({
+		initialState: initialResponsavelVendedorId ? { responsavelVendedorId: initialResponsavelVendedorId } : undefined,
+	});
 
 	const { data: sellers } = useSellersSimplified();
 	const { data: accountsData } = useFinancesAccounts({ initialFilters: { stats: false } });
@@ -37,6 +41,8 @@ export default function OpenSalesSession({ closeModal, exigirFundoTroco, callbac
 		mutationFn: openSalesSession,
 		onMutate: () => callbacks?.onMutate?.(),
 		onSuccess: (data) => {
+			queryClient.invalidateQueries({ queryKey: ["sales-sessions"] });
+			queryClient.invalidateQueries({ queryKey: ["active-sales-session"] });
 			callbacks?.onSuccess?.();
 			toast.success(data.message);
 			closeModal();

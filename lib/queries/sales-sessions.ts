@@ -28,6 +28,31 @@ export function useSalesSessionById({ sessionId }: { sessionId: string }) {
 }
 
 // ============================================================================
+// Active (ABERTA) session for a given responsável — drives the sale-flow gate
+// ============================================================================
+
+async function fetchActiveSalesSession(vendedorId: string) {
+	const { data } = await axios.get<TGetSalesSessionsOutput>(`/api/pos/sales-sessions?status=ABERTA&responsavelVendedorId=${vendedorId}`);
+	const sessions = data.data.default?.sessions ?? [];
+	return sessions[0] ?? null;
+}
+
+/**
+ * Resolve a sessão ABERTA do vendedor responsável (escopo OPERADOR). Retorna null quando não há
+ * caixa aberto ou quando a feature está desabilitada. React Query deduplica pela queryKey, então
+ * a página e o widget podem consumir isto sem requisições duplicadas.
+ */
+export function useActiveSalesSession({ vendedorId, enabled = true }: { vendedorId: string | null | undefined; enabled?: boolean }) {
+	const queryKey = ["active-sales-session", vendedorId ?? null];
+	const query = useQuery({
+		queryKey,
+		queryFn: () => fetchActiveSalesSession(vendedorId as string),
+		enabled: enabled && !!vendedorId,
+	});
+	return { ...query, queryKey, session: query.data ?? null };
+}
+
+// ============================================================================
 // Sales sessions list (paginada)
 // ============================================================================
 

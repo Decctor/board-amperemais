@@ -1,5 +1,6 @@
 "use client";
 
+import CashSessionBar from "@/components/CashSessions/CashSessionBar";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { cancelSaleDraft, confirmSale, updateSaleDraft } from "@/lib/mutations/pos";
 import { useSaleDraft } from "@/lib/queries/pos";
+import { useActiveSalesSession } from "@/lib/queries/sales-sessions";
 import { useCheckoutState } from "@/state-hooks/use-checkout-state";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, X } from "lucide-react";
@@ -25,11 +27,16 @@ type CheckoutPageProps = {
 	saleId: string;
 };
 
-export default function CheckoutPage({ user: _user, membership: _membership, saleId }: CheckoutPageProps) {
+export default function CheckoutPage({ user: _user, membership, saleId }: CheckoutPageProps) {
 	const router = useRouter();
 
 	// Load draft sale from DB
 	const { data: sale, isLoading, isError, error } = useSaleDraft({ saleId });
+
+	// Sessões de venda (caixa): a venda se liga ao caixa aberto do vendedor da venda.
+	const sessoesConfig = membership.organizacao.configuracao.preferencias.sessoesVenda;
+	const cashEnabled = !!sessoesConfig?.habilitado;
+	const cashObrigatorio = !!sessoesConfig?.obrigatorio;
 	const saleItemsTotal = sale?.itens.reduce((sum, item) => sum + item.valorVendaTotalLiquido, 0) ?? 0;
 	const draftMetadata = sale?.rascunhoMetadados as { descontoGeral?: number; cashbackResgate?: number } | null | undefined;
 	const initialCashbackResgate = draftMetadata?.cashbackResgate ?? 0;
@@ -44,6 +51,12 @@ export default function CheckoutPage({ user: _user, membership: _membership, sal
 			vendedorNome: sale?.vendedorNome,
 		},
 	});
+
+	const { session: activeSession, isLoading: cashLoading } = useActiveSalesSession({
+		vendedorId: checkoutState.state.vendedorId,
+		enabled: cashEnabled,
+	});
+	const cashBlockingConfirm = cashEnabled && cashObrigatorio && !activeSession;
 
 	// Hydrate checkout state when sale loads
 	useEffect(() => {
@@ -131,6 +144,10 @@ export default function CheckoutPage({ user: _user, membership: _membership, sal
 
 	const handleConfirm = () => {
 		if (!sale) return;
+		if (cashBlockingConfirm) {
+			toast.error("Nenhum caixa aberto para o vendedor desta venda. Abra o caixa para confirmar.");
+			return;
+		}
 		confirm({
 			id: saleId,
 			clienteId: sale.cliente?.id ?? null,
@@ -144,6 +161,7 @@ export default function CheckoutPage({ user: _user, membership: _membership, sal
 			})),
 			cashbackResgate: checkoutState.state.cashbackResgate,
 			cashbackProgramaId: checkoutState.state.cashbackProgramaId,
+			sessaoVendaId: activeSession?.id ?? null,
 		});
 	};
 
@@ -177,6 +195,16 @@ export default function CheckoutPage({ user: _user, membership: _membership, sal
 				</Button>
 			</div>
 
+			{cashEnabled ? (
+				<CashSessionBar
+					session={activeSession}
+					isLoading={cashLoading}
+					vendedorId={checkoutState.state.vendedorId}
+					exigirFundoTroco={!!sessoesConfig?.exigirFundoTroco}
+					conferenciaCega={!!sessoesConfig?.conferenciaCega}
+				/>
+			) : null}
+
 			{/* Step Indicator */}
 			<CheckoutSteps currentStep={checkoutState.state.step} stepLabels={STEP_LABELS} />
 
@@ -207,11 +235,11 @@ export default function CheckoutPage({ user: _user, membership: _membership, sal
 					<Button
 						size="lg"
 						onClick={handleConfirm}
-						disabled={isConfirming || !checkoutState.pagamentoCompleto}
+						disabled={isConfirming || !checkoutState.pagamentoCompleto || cashBlockingConfirm}
 						className="gap-2 bg-green-600 hover:bg-green-700"
 					>
 						<Check className="w-4 h-4" />
-						{isConfirming ? "PROCESSANDO..." : "CONFIRMAR VENDA"}
+						{isConfirming ? "PROCESSANDO..." : cashBlockingConfirm ? "ABRA O CAIXA" : "CONFIRMAR VENDA"}
 					</Button>
 				)}
 			</div>

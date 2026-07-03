@@ -2,10 +2,13 @@
 
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
+import CashSessionBar from "@/components/CashSessions/CashSessionBar";
+import CashSessionGate from "@/components/CashSessions/CashSessionGate";
 import { getErrorMessage } from "@/lib/errors";
 import { useIsMobile } from "@/lib/hooks/use-mobile";
 import { createAndConfirmSale, createSaleDraft, updateSaleDraft } from "@/lib/mutations/pos";
 import { usePOSGroups, usePOSProducts } from "@/lib/queries/pos";
+import { useActiveSalesSession } from "@/lib/queries/sales-sessions";
 import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
@@ -54,6 +57,15 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 	const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
 	const [isContextSheetOpen, setIsContextSheetOpen] = useState(false);
 	const saleState = useSaleState({ organizationConfig: organizationConfiguration });
+
+	// Sessões de venda (caixa): resolve a sessão aberta do vendedor selecionado (escopo OPERADOR).
+	const sessoesConfig = organizationConfiguration.preferencias.sessoesVenda;
+	const cashEnabled = !!sessoesConfig?.habilitado;
+	const cashObrigatorio = !!sessoesConfig?.obrigatorio;
+	const { session: activeSession, isLoading: cashLoading } = useActiveSalesSession({
+		vendedorId: saleState.state.vendedorId,
+		enabled: cashEnabled,
+	});
 
 	const linkedClient = saleState.state.cliente;
 	const linkedClientId = linkedClient?.id ?? null;
@@ -214,6 +226,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 			descontosTotal: saleState.state.descontoGeral,
 			acrescimosTotal: saleState.state.acrescimoGeral,
 			rascunhoMetadados: saleState.getDraftMetadata(),
+			sessaoVendaId: activeSession?.id ?? null,
 			pagamentos: saleState.state.pagamentos.map((payment) => ({
 				metodo: payment.metodo,
 				valor: payment.valor,
@@ -249,9 +262,33 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 		);
 	}
 
+	// Modo obrigatório sem caixa aberto: bloqueia a entrada do fluxo de venda (gate cedo).
+	if (cashEnabled && cashObrigatorio && !cashLoading && !activeSession) {
+		return (
+			<div className="w-full h-[calc(100vh-8rem)] flex flex-col p-4">
+				<CashSessionGate
+					vendedorId={saleState.state.vendedorId}
+					onVendedorChange={saleState.setVendedor}
+					exigirFundoTroco={!!sessoesConfig?.exigirFundoTroco}
+				/>
+			</div>
+		);
+	}
+
 	return (
-		<div className="w-full h-[calc(100vh-8rem)] flex gap-4 p-4">
-			<div className="flex-1 min-w-0 flex flex-col gap-4">
+		<div className="w-full h-[calc(100vh-8rem)] flex flex-col gap-3 p-4">
+			{cashEnabled ? (
+				<CashSessionBar
+					session={activeSession}
+					isLoading={cashLoading}
+					vendedorId={saleState.state.vendedorId}
+					onVendedorChange={saleState.setVendedor}
+					exigirFundoTroco={!!sessoesConfig?.exigirFundoTroco}
+					conferenciaCega={!!sessoesConfig?.conferenciaCega}
+				/>
+			) : null}
+			<div className="flex flex-1 min-h-0 gap-4">
+				<div className="flex-1 min-w-0 flex flex-col gap-4">
 				<div className="shrink-0 flex flex-col gap-3">
 					<SearchBlock searchValue={searchValue} onSearchChange={handleSearchChange} isLoading={productsLoading} />
 					{groupsLoading ? null : (
@@ -350,7 +387,8 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 				/>
 			) : null}
 
-			{builderProduct ? <ProductBuilderModal product={builderProduct} onAddToCart={saleState.addItem} onClose={() => setBuilderProduct(null)} /> : null}
+				{builderProduct ? <ProductBuilderModal product={builderProduct} onAddToCart={saleState.addItem} onClose={() => setBuilderProduct(null)} /> : null}
+			</div>
 		</div>
 	);
 }
