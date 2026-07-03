@@ -757,7 +757,12 @@ export const AppRoutes = [
 		description: "Painel de acompanhamento e gestão das produções do seu negócio.",
 	},
 	{
-		path: "/dashboard/operational/stock-lots",
+		path: "/dashboard/operational/stocks",
+		title: "Estoque",
+		description: "Visão operacional do estoque: saldo, movimentação e lotes ativos dos seus produtos.",
+	},
+	{
+		path: "/dashboard/operational/stocks/lots",
 		title: "Lotes de Estoque",
 		description: "Painel de acompanhamento e gestão dos lotes de estoque do seu negócio.",
 	},

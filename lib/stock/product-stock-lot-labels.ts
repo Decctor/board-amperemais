@@ -86,7 +86,7 @@ export async function getProductStockLotLabels({
 
 			const productName = lot.produtoVariante?.nome ?? lot.produto.nome;
 			const productCode = lot.produtoVariante?.codigo ?? lot.produto.codigo;
-			const lotUrl = `${baseUrl}/dashboard/operational/stock-lots/${lot.id}`;
+			const lotUrl = `${baseUrl}/dashboard/operational/stocks/lots/${lot.id}`;
 			const qrCodeDataUrl = await QRCode.toDataURL(lotUrl, STOCK_LOT_LABEL_QR_CODE_OPTIONS);
 
 			return {

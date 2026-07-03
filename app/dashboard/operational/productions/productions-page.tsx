@@ -107,7 +107,7 @@ export default function ProductionsPage() {
 				actionLabel: "IMPRIMIR ETIQUETAS",
 				onAction: () =>
 					window.open(
-						`/dashboard/operational/stock-lots/labels/preview?ids=${createdStockLotIds.join(",")}`,
+						`/dashboard/operational/stocks/lots/labels/preview?ids=${createdStockLotIds.join(",")}`,
 						"_blank",
 						"noopener,noreferrer",
 					),

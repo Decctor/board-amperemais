@@ -48,14 +48,14 @@ export default async function StockLotDetailPage({ params }: StockLotDetailPageP
 	const statusConfig = STOCK_LOT_STATUS_CONFIG[statusEfetivo];
 	const productName = stockLot.produtoVariante?.nome ?? stockLot.produto.nome;
 	const productCode = stockLot.produtoVariante?.codigo ?? stockLot.produto.codigo;
-	const printHref = `/dashboard/operational/stock-lots/labels/preview?ids=${encodeURIComponent(stockLot.id)}`;
+	const printHref = `/dashboard/operational/stocks/lots/labels/preview?ids=${encodeURIComponent(stockLot.id)}`;
 
 	return (
 		<div className="flex w-full flex-col gap-4">
 			<div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 				<div className="flex min-w-0 gap-3">
 					<Button variant="outline" size="icon-sm" asChild>
-						<Link href="/dashboard/operational/stock-lots" aria-label="Voltar para lotes">
+						<Link href="/dashboard/operational/stocks/lots" aria-label="Voltar para lotes">
 							<ArrowLeft className="h-4 w-4" />
 						</Link>
 					</Button>

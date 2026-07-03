@@ -12,6 +12,7 @@ import {
 	productFiscalProfiles,
 	productOptionValues,
 	productOptions,
+	productStockLots,
 	productStockTransactions,
 	productVariantOptionValues,
 	productVariants,
@@ -19,7 +20,7 @@ import {
 	saleItems,
 	sales,
 } from "@/services/drizzle/schema";
-import { and, asc, count, desc, eq, gte, inArray, isNull, lte, max, min, notInArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNull, lt, lte, max, min, notInArray, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { z } from "zod";
 
@@ -122,6 +123,9 @@ const GetProductsDefaultInputSchema = z.object({
 		.transform((val) => (val ? Number(val) : null)),
 	orderByField: z.enum(["nome", "codigo", "grupo", "vendasValorTotal", "vendasQtdeTotal", "quantidade"]).optional().nullable(),
 	orderByDirection: z.enum(["asc", "desc"]).optional().nullable(),
+	// Controla qual "modo" de leitura o endpoint executa (ver getProducts). Ausente/"default" retorna produtos + stats
+	// comerciais; "stock" retorna a visão operacional de estoque (saldo, movimentação no período, lote ativo).
+	mode: z.enum(["default", "stock"], { invalid_type_error: "Tipo não válido para modo de leitura." }).optional().nullable(),
 	resultLimit: z
 		.string({
 			invalid_type_error: "Tipo não válido para limite de resultados.",
@@ -239,6 +243,247 @@ async function validateAndResolveAddOnOptionLink({
 	return normalizedOption;
 }
 
+// Tipos de movimentação que aumentam o saldo (entradas) e que diminuem o saldo (saídas).
+const STOCK_INBOUND_MOVEMENT_TYPES = ["ENTRADA_AQUISICAO", "ENTRADA_DEVOLUCAO", "ENTRADA_PRODUCAO"] as const;
+const STOCK_OUTBOUND_MOVEMENT_TYPES = ["SAIDA", "SAIDA_PRODUCAO", "DESCARTE"] as const;
+
+// Constrói as condições de filtro sobre a tabela de produtos, compartilhadas entre o modo "default" e "stock".
+function buildProductFilterConditions(input: TGetProductsDefaultInput, userOrgId: string) {
+	const conditions = [eq(products.organizacaoId, userOrgId)];
+
+	if (input.search) {
+		conditions.push(sql`(${products.nome} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`);
+	}
+	if (input.groups.length > 0) {
+		conditions.push(inArray(products.grupo, input.groups));
+	}
+	if (input.stockStatus && input.stockStatus.length > 0) {
+		const stockConditions = [];
+		for (const status of input.stockStatus) {
+			if (status === "out") stockConditions.push(sql`(${products.quantidade} IS NULL OR ${products.quantidade} = 0)`);
+			else if (status === "low") stockConditions.push(sql`(${products.quantidade} > 0 AND ${products.quantidade} <= 10)`);
+			else if (status === "healthy") stockConditions.push(sql`(${products.quantidade} > 10 AND ${products.quantidade} <= 50)`);
+			else if (status === "overstocked") stockConditions.push(sql`${products.quantidade} > 50`);
+		}
+		if (stockConditions.length > 0) conditions.push(sql`(${sql.join(stockConditions, sql` OR `)})`);
+	}
+	if (input.priceMin) conditions.push(gte(products.precoVenda, input.priceMin));
+	if (input.priceMax) conditions.push(lte(products.precoVenda, input.priceMax));
+
+	return conditions;
+}
+
+// Modo "stock": visão operacional de estoque. Retorna, por produto, o saldo atual, o preço unitário, a movimentação
+// (entradas/saídas) dentro do período filtrado e o lote ativo prioritário (FEFO — vence primeiro) com a contagem de lotes ativos.
+async function getProductsStockView({ input, userOrgId }: { input: TGetProductsDefaultInput; userOrgId: string }) {
+	const now = new Date();
+	const PAGE_SIZE = 25;
+	const skip = PAGE_SIZE * (input.page - 1);
+
+	const conditions = buildProductFilterConditions(input, userOrgId);
+
+	// Ordenação (subconjunto de campos que fazem sentido para estoque).
+	const direction = input.orderByDirection === "desc" ? desc : asc;
+	const orderByClause = (() => {
+		switch (input.orderByField) {
+			case "codigo":
+				return direction(products.codigo);
+			case "grupo":
+				return direction(products.grupo);
+			case "quantidade":
+				return direction(sql`COALESCE(${products.quantidade}, 0)`);
+			default:
+				return direction(products.nome);
+		}
+	})();
+
+	// 1. Página de produtos + total correspondente aos filtros.
+	const [productRows, matchedResult] = await Promise.all([
+		db
+			.select({
+				id: products.id,
+				codigo: products.codigo,
+				nome: products.nome,
+				unidade: products.unidade,
+				grupo: products.grupo,
+				imagemCapaUrl: products.imagemCapaUrl,
+				quantidade: products.quantidade,
+				precoVenda: products.precoVenda,
+				precoCusto: products.precoCusto,
+				rastreamentoEstoqueAtivo: products.rastreamentoEstoqueAtivo,
+			})
+			.from(products)
+			.where(and(...conditions))
+			.orderBy(orderByClause)
+			.offset(skip)
+			.limit(PAGE_SIZE),
+		db
+			.select({ count: count() })
+			.from(products)
+			.where(and(...conditions)),
+	]);
+
+	const productsMatched = matchedResult[0]?.count ?? 0;
+	const productIds = productRows.map((product) => product.id);
+
+	// 2. Movimentação (entradas/saídas) no período, agregada por produto. Delta por transação: sinal por tipo,
+	//    com AJUSTE derivado da variação de saldo.
+	const deltaExpression = sql`CASE
+		WHEN ${productStockTransactions.tipo} IN (${sql.join(
+			STOCK_INBOUND_MOVEMENT_TYPES.map((type) => sql`${type}`),
+			sql`, `,
+		)}) THEN ${productStockTransactions.quantidade}
+		WHEN ${productStockTransactions.tipo} IN (${sql.join(
+			STOCK_OUTBOUND_MOVEMENT_TYPES.map((type) => sql`${type}`),
+			sql`, `,
+		)}) THEN -${productStockTransactions.quantidade}
+		ELSE COALESCE(${productStockTransactions.saldoPosterior} - ${productStockTransactions.saldoAnterior}, 0)
+	END`;
+
+	const movementByProductId = new Map<string, { entradas: number; saidas: number }>();
+	if (productIds.length > 0) {
+		const movementConditions = [eq(productStockTransactions.organizacaoId, userOrgId), inArray(productStockTransactions.produtoId, productIds)];
+		if (input.statsPeriodAfter) movementConditions.push(gte(productStockTransactions.dataInsercao, input.statsPeriodAfter));
+		if (input.statsPeriodBefore) movementConditions.push(lte(productStockTransactions.dataInsercao, input.statsPeriodBefore));
+
+		const movementRows = await db
+			.select({
+				produtoId: productStockTransactions.produtoId,
+				entradas: sql<number>`COALESCE(SUM(CASE WHEN (${deltaExpression}) > 0 THEN (${deltaExpression}) ELSE 0 END), 0)`,
+				saidas: sql<number>`COALESCE(SUM(CASE WHEN (${deltaExpression}) < 0 THEN -(${deltaExpression}) ELSE 0 END), 0)`,
+			})
+			.from(productStockTransactions)
+			.where(and(...movementConditions))
+			.groupBy(productStockTransactions.produtoId);
+
+		for (const row of movementRows) {
+			movementByProductId.set(row.produtoId, { entradas: Number(row.entradas) || 0, saidas: Number(row.saidas) || 0 });
+		}
+	}
+
+	// 3. Lotes ativos (não vencidos, com saldo) por produto. Escolhe o prioritário via FEFO e conta os demais.
+	const lotsByProductId = new Map<
+		string,
+		{ id: string; codigoLote: string | null; quantidadeAtual: number; quantidadeInicial: number; dataValidade: Date | null; dataInsercao: Date }[]
+	>();
+	if (productIds.length > 0) {
+		const lotRows = await db
+			.select({
+				id: productStockLots.id,
+				produtoId: productStockLots.produtoId,
+				codigoLote: productStockLots.codigoLote,
+				quantidadeAtual: productStockLots.quantidadeAtual,
+				quantidadeInicial: productStockLots.quantidadeInicial,
+				dataValidade: productStockLots.dataValidade,
+				dataInsercao: productStockLots.dataInsercao,
+			})
+			.from(productStockLots)
+			.where(
+				and(
+					eq(productStockLots.organizacaoId, userOrgId),
+					inArray(productStockLots.produtoId, productIds),
+					eq(productStockLots.status, "ATIVO"),
+					gt(productStockLots.quantidadeAtual, 0),
+					or(isNull(productStockLots.dataValidade), gte(productStockLots.dataValidade, now)),
+				),
+			);
+
+		for (const lot of lotRows) {
+			const list = lotsByProductId.get(lot.produtoId) ?? [];
+			list.push(lot);
+			lotsByProductId.set(lot.produtoId, list);
+		}
+	}
+
+	// 4. Resumo agregado sobre TODO o conjunto filtrado (não apenas a página atual).
+	const in7Days = new Date(now);
+	in7Days.setDate(in7Days.getDate() + 7);
+	const [resumoRow, vencendoResult] = await Promise.all([
+		db
+			.select({
+				totalEmEstoque: sql<number>`COALESCE(SUM(COALESCE(${products.quantidade}, 0)), 0)`,
+				valorImobilizado: sql<number>`COALESCE(SUM(COALESCE(${products.quantidade}, 0) * COALESCE(${products.precoCusto}, 0)), 0)`,
+				produtosSemEstoque: sql<number>`COALESCE(SUM(CASE WHEN COALESCE(${products.quantidade}, 0) <= 0 THEN 1 ELSE 0 END), 0)`,
+				produtosComEstoque: sql<number>`COALESCE(SUM(CASE WHEN COALESCE(${products.quantidade}, 0) > 0 THEN 1 ELSE 0 END), 0)`,
+			})
+			.from(products)
+			.where(and(...conditions)),
+		db
+			.select({ count: count() })
+			.from(productStockLots)
+			.innerJoin(products, eq(productStockLots.produtoId, products.id))
+			.where(
+				and(
+					eq(productStockLots.status, "ATIVO"),
+					gt(productStockLots.quantidadeAtual, 0),
+					gte(productStockLots.dataValidade, now),
+					lt(productStockLots.dataValidade, in7Days),
+					...conditions,
+				),
+			),
+	]);
+
+	const products_ = productRows.map((product) => {
+		const movimentacao = movementByProductId.get(product.id) ?? { entradas: 0, saidas: 0 };
+		const activeLots = (lotsByProductId.get(product.id) ?? []).slice().sort((a, b) => {
+			// FEFO: vence primeiro. Sem validade vai para o fim. Desempate por data de inserção (mais antigo primeiro).
+			if (a.dataValidade && b.dataValidade) return a.dataValidade.getTime() - b.dataValidade.getTime();
+			if (a.dataValidade) return -1;
+			if (b.dataValidade) return 1;
+			return a.dataInsercao.getTime() - b.dataInsercao.getTime();
+		});
+		const primaryLot = activeLots[0] ?? null;
+		const loteAtivo = primaryLot
+			? {
+					id: primaryLot.id,
+					codigoLote: primaryLot.codigoLote,
+					quantidadeAtual: primaryLot.quantidadeAtual,
+					quantidadeInicial: primaryLot.quantidadeInicial,
+					dataValidade: primaryLot.dataValidade,
+					diasAteValidade: primaryLot.dataValidade
+						? Math.ceil((new Date(primaryLot.dataValidade).getTime() - now.getTime()) / 86_400_000)
+						: null,
+				}
+			: null;
+
+		return {
+			id: product.id,
+			codigo: product.codigo,
+			nome: product.nome,
+			unidade: product.unidade,
+			grupo: product.grupo,
+			imagemCapaUrl: product.imagemCapaUrl,
+			quantidade: product.quantidade,
+			precoVenda: product.precoVenda,
+			precoCusto: product.precoCusto,
+			rastreamentoEstoqueAtivo: product.rastreamentoEstoqueAtivo ?? false,
+			movimentacao,
+			loteAtivo,
+			lotesAtivosCount: activeLots.length,
+		};
+	});
+
+	return {
+		data: {
+			default: undefined,
+			byId: undefined,
+			stock: {
+				products: products_,
+				productsMatched,
+				totalPages: Math.ceil(productsMatched / PAGE_SIZE),
+				resumo: {
+					totalEmEstoque: Number(resumoRow[0]?.totalEmEstoque ?? 0),
+					valorImobilizado: Number(resumoRow[0]?.valorImobilizado ?? 0),
+					produtosSemEstoque: Number(resumoRow[0]?.produtosSemEstoque ?? 0),
+					produtosComEstoque: Number(resumoRow[0]?.produtosComEstoque ?? 0),
+					lotesVencendo7Dias: Number(vencendoResult[0]?.count ?? 0),
+				},
+			},
+		},
+		message: "Visão de estoque obtida com sucesso.",
+	};
+}
+
 async function getProducts({ input, session }: GetProductsParams) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
@@ -319,8 +564,14 @@ async function getProducts({ input, session }: GetProductsParams) {
 			data: {
 				byId: product,
 				default: undefined,
+				stock: undefined,
 			},
 		};
+	}
+
+	// Modo "stock": visão operacional de estoque (delega para o helper dedicado).
+	if (input.mode === "stock") {
+		return getProductsStockView({ input, userOrgId });
 	}
 
 	const productQueryConditions = [eq(products.organizacaoId, userOrgId)];
@@ -540,6 +791,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 				totalPages: Math.ceil(statsByProductMatchedCount / PAGE_SIZE),
 			},
 			byId: undefined,
+			stock: undefined,
 		},
 	};
 }
@@ -547,6 +799,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 export type TGetProductsOutput = Awaited<ReturnType<typeof getProducts>>;
 export type TGetProductsOutputDefault = Exclude<TGetProductsOutput["data"]["default"], undefined>;
 export type TGetProductsOutputById = Exclude<TGetProductsOutput["data"]["byId"], undefined>;
+export type TGetProductsOutputStock = Exclude<TGetProductsOutput["data"]["stock"], undefined>;
 
 const getProductsHandler: PagesRouteHandler<TGetProductsOutput> = async (req, res) => {
 	const sessionUser = await getCurrentSessionUncached();
@@ -571,6 +824,7 @@ const getProductsHandler: PagesRouteHandler<TGetProductsOutput> = async (req, re
 		priceMax: req.query.priceMax as string | undefined,
 		orderByField: req.query.orderByField as string | undefined,
 		orderByDirection: req.query.orderByDirection as string | undefined,
+		mode: req.query.mode as string | undefined,
 		resultLimit: req.query.resultLimit as string | undefined,
 	});
 	const data = await getProducts({ input, session: sessionUser });

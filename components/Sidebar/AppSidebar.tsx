@@ -3,6 +3,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import {
 	BadgePercent,
 	BookText,
+	Boxes,
 	CirclePlay,
 	Factory,
 	Goal,
@@ -183,8 +184,15 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
 			},
 			{
+				title: "Estoque",
+				url: "/dashboard/operational/stocks",
+				icon: <Boxes className="w-4 h-4" />,
+				items: null,
+				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
+			},
+			{
 				title: "Lotes",
-				url: "/dashboard/operational/stock-lots",
+				url: "/dashboard/operational/stocks/lots",
 				icon: <PackageSearch className="w-4 h-4" />,
 				items: null,
 				checkAccess: (org) => org.configuracao.recursos.erp.acesso,

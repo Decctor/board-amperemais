@@ -1,4 +1,4 @@
-import type { TGetProductsByIdInput, TGetProductsDefaultInput, TGetProductsOutput } from "@/app/api/products/route";
+import type { TGetProductsByIdInput, TGetProductsDefaultInput, TGetProductsOutput, TGetProductsOutputStock } from "@/app/api/products/route";
 import type { TGetProductVariantsOutput } from "@/app/api/products/variants/route";
 import type { TGetProductAddOnsOutput } from "@/app/api/products/add-ons/route";
 import type { TGetProductFiscalProfilesOutput } from "@/app/api/products/fiscal-profiles/route";
@@ -101,6 +101,70 @@ export function useProducts({ initialFilters }: UseProductsParams) {
 			queryFn: () => fetchProducts(debouncedFilters),
 		}),
 		queryKey: ["products", debouncedFilters],
+		filters,
+		updateFilters,
+	};
+}
+
+// Stock view (mode=stock): visão operacional de estoque por produto.
+async function fetchProductsStock(input: TGetProductsDefaultInput): Promise<TGetProductsOutputStock> {
+	try {
+		const searchParams = new URLSearchParams();
+		searchParams.set("mode", "stock");
+		if (input.page) searchParams.set("page", input.page.toString());
+		if (input.search) searchParams.set("search", input.search);
+		if (input.groups && input.groups.length > 0) searchParams.set("groups", input.groups.join(","));
+		if (input.statsPeriodAfter) searchParams.set("statsPeriodAfter", input.statsPeriodAfter.toISOString());
+		if (input.statsPeriodBefore) searchParams.set("statsPeriodBefore", input.statsPeriodBefore.toISOString());
+		if (input.stockStatus && input.stockStatus.length > 0) searchParams.set("stockStatus", input.stockStatus.join(","));
+		if (input.priceMin) searchParams.set("priceMin", input.priceMin.toString());
+		if (input.priceMax) searchParams.set("priceMax", input.priceMax.toString());
+		if (input.orderByField) searchParams.set("orderByField", input.orderByField);
+		if (input.orderByDirection) searchParams.set("orderByDirection", input.orderByDirection);
+		const { data } = await axios.get<TGetProductsOutput>(`/api/products?${searchParams.toString()}`);
+		const result = data.data.stock;
+		if (!result) throw new Error("Visão de estoque não encontrada.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchProductsStock", error);
+		throw error;
+	}
+}
+
+type UseProductsStockParams = {
+	initialFilters?: Partial<TGetProductsDefaultInput>;
+};
+export function useProductsStock({ initialFilters }: UseProductsStockParams = {}) {
+	const [filters, setFilters] = useState<TGetProductsDefaultInput>({
+		page: initialFilters?.page || 1,
+		search: initialFilters?.search || "",
+		groups: initialFilters?.groups || [],
+		statsSellerIds: [],
+		statsPeriodBefore: initialFilters?.statsPeriodBefore || null,
+		statsPeriodAfter: initialFilters?.statsPeriodAfter || null,
+		statsSaleNatures: [],
+		statsExcludedSalesIds: [],
+		statsTotalMin: null,
+		statsTotalMax: null,
+		stockStatus: initialFilters?.stockStatus || [],
+		priceMin: initialFilters?.priceMin || null,
+		priceMax: initialFilters?.priceMax || null,
+		abcClasses: [],
+		resultLimit: null,
+		orderByField: initialFilters?.orderByField || "nome",
+		orderByDirection: initialFilters?.orderByDirection || "asc",
+	});
+	function updateFilters(newParams: Partial<TGetProductsDefaultInput>) {
+		setFilters((prevFilters) => ({ ...prevFilters, ...newParams }));
+	}
+
+	const debouncedFilters = useDebounceMemo(filters, 500);
+	return {
+		...useQuery({
+			queryKey: ["products-stock", debouncedFilters],
+			queryFn: () => fetchProductsStock(debouncedFilters),
+		}),
+		queryKey: ["products-stock", debouncedFilters],
 		filters,
 		updateFilters,
 	};

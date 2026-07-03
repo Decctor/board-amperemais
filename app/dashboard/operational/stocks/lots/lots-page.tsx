@@ -109,7 +109,7 @@ export default function StockLotsPage() {
 						<StockLotCard
 							key={stockLot.id}
 							stockLot={stockLot}
-							onPrint={() => window.open(`/dashboard/operational/stock-lots/labels/preview?ids=${stockLot.id}`, "_blank", "noopener,noreferrer")}
+							onPrint={() => window.open(`/dashboard/operational/stocks/lots/labels/preview?ids=${stockLot.id}`, "_blank", "noopener,noreferrer")}
 							onDiscard={() => setDiscardingStockLot(stockLot)}
 						/>
 					))
