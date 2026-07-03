@@ -1,89 +1,90 @@
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { formatToMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import { Package, PackagePlus } from "lucide-react";
 import Image from "next/image";
 
+type Product = TGetPOSProductsOutput["data"]["products"][number];
+
 type ProductCardProps = {
-	product: TGetPOSProductsOutput["data"]["products"][number];
+	product: Product;
 	onClick: () => void;
 };
 
+// Preço a exibir: "A partir de" quando há variantes (menor preço), senão o preço base.
+function getDisplayPrice(product: Product) {
+	if (product.variantes.length > 0) {
+		return { type: "starting-from" as const, value: Math.min(...product.variantes.map((v) => v.precoVenda)) };
+	}
+	return { type: "fixed" as const, value: product.precoVenda ?? 0 };
+}
+
 export default function ProductCard({ product, onClick }: ProductCardProps) {
-	const hasVariants = product.variantes && product.variantes.length > 0;
-	const hasAddOns = product.addOnsReferencias && product.addOnsReferencias.length > 0;
+	const hasVariants = product.variantes.length > 0;
+	const hasAddOns = product.addOnsReferencias.length > 0;
 	const isComplex = hasVariants || hasAddOns;
-
-	// Get the price to display
-	const getDisplayPrice = () => {
-		if (hasVariants) {
-			// Show "A partir de" with the lowest variant price
-			const lowestPrice = Math.min(...product.variantes.map((v) => v.precoVenda));
-			return {
-				type: "starting-from" as const,
-				value: lowestPrice,
-			};
-		}
-
-		// Show product base price
-		return {
-			type: "fixed" as const,
-			value: product.precoVenda ?? 0,
-		};
-	};
-
-	const displayPrice = getDisplayPrice();
+	const displayPrice = getDisplayPrice(product);
+	const hasStock = product.quantidade !== null && product.quantidade !== undefined;
 
 	return (
 		<button
 			type="button"
-			className={cn("group relative bg-card border-border flex w-full flex-col gap-1 rounded-xl border p-2 shadow-2xs min-h-[200px] h-fit")}
 			onClick={onClick}
-		>
-			{/* Complex Product Badge */}
-			{isComplex && (
-				<Badge className="absolute top-3 right-3 gap-1 text-[0.65rem] font-bold bg-[#24549C] text-white z-10" variant="secondary">
-					<PackagePlus className="w-3 h-3" />
-					{hasVariants && hasAddOns ? "VAR + ADD" : hasVariants ? "VARIANTES" : "ADICIONAIS"}
-				</Badge>
+			className={cn(
+				"group relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-border bg-card text-left shadow-2xs",
+				"transition-[border-color,box-shadow] duration-200 hover:border-primary/40 hover:shadow-md",
+				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
 			)}
-
-			{/* Product Image */}
-			<div className="relative w-full aspect-square rounded-xl overflow-hidden bg-secondary/50 flex items-center justify-center">
+		>
+			{/* Imagem — proporção fixa mantém todos os cards alinhados */}
+			<div className="relative aspect-square w-full overflow-hidden bg-secondary/40">
 				{product.imagemCapaUrl ? (
-					<Image src={product.imagemCapaUrl} alt={product.nome} fill className="object-cover" />
+					<Image src={product.imagemCapaUrl} alt={product.nome} fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
 				) : (
-					<Package className="w-12 h-12 text-muted-foreground" />
-				)}
-			</div>
-			<div className="w-full flex flex-col gap-3 p-2">
-				{/* Product Info */}
-				<div className="flex-1 flex flex-col gap-1">
-					<h3 className="font-bold text-sm leading-tight line-clamp-2 group-hover:text-foreground transition-colors">{product.nome}</h3>
-					<p className="text-[0.65rem] text-muted-foreground font-medium">{product.codigo}</p>
-				</div>
-
-				{/* Price */}
-				<div className="flex flex-col gap-0.5">
-					{displayPrice.type === "starting-from" && <p className="text-[0.6rem] text-muted-foreground font-bold uppercase">A partir de</p>}
-					<p className="text-xl font-black text-foreground">{formatToMoney(displayPrice.value)}</p>
-				</div>
-
-				{/* Stock Indicator (if available) */}
-				{product.quantidade !== null && product.quantidade !== undefined && (
-					<div className="flex items-center gap-1.5">
-						<div
-							className={cn("w-2 h-2 rounded-full", {
-								"bg-red-500": product.quantidade === 0,
-								"bg-yellow-500": product.quantidade > 0 && product.quantidade <= 10,
-								"bg-green-500": product.quantidade > 10,
-							})}
-						/>
-						<span className="text-[0.65rem] text-muted-foreground font-medium">{product.quantidade > 0 ? `${product.quantidade} un.` : "SEM ESTOQUE"}</span>
+					<div className="flex h-full w-full items-center justify-center">
+						<Package className="h-10 w-10 text-muted-foreground/40" />
 					</div>
 				)}
+
+				{isComplex ? (
+					<Badge className="absolute right-2 top-2 z-10 gap-1 bg-brand-secondary text-[0.6rem] font-bold text-brand-secondary-foreground shadow-sm">
+						<PackagePlus className="h-3 w-3" />
+						{hasVariants && hasAddOns ? "VAR + ADD" : hasVariants ? "VARIANTES" : "ADICIONAIS"}
+					</Badge>
+				) : null}
+			</div>
+
+			{/* Corpo — nome reserva 2 linhas, preço fixado na base via mt-auto */}
+			<div className="flex flex-1 flex-col gap-2 p-3">
+				<div className="flex flex-col gap-0.5">
+					<h3 className="line-clamp-2 min-h-[2.25rem] text-sm font-bold leading-tight tracking-tight">{product.nome}</h3>
+					<p className="truncate text-[0.65rem] font-medium text-muted-foreground">{product.codigo}</p>
+				</div>
+
+				<div className="mt-auto flex flex-col gap-1.5">
+					<div className="flex flex-col gap-0.5">
+						{displayPrice.type === "starting-from" ? (
+							<span className="text-[0.6rem] font-bold uppercase tracking-wide text-muted-foreground">A partir de</span>
+						) : null}
+						<p className="text-lg font-black tabular-nums text-foreground">{formatToMoney(displayPrice.value)}</p>
+					</div>
+
+					{hasStock ? (
+						<div className="flex items-center gap-1.5">
+							<span
+								className={cn("h-2 w-2 rounded-full", {
+									"bg-red-500": product.quantidade === 0,
+									"bg-yellow-500": product.quantidade! > 0 && product.quantidade! <= 10,
+									"bg-green-500": product.quantidade! > 10,
+								})}
+							/>
+							<span className="text-[0.65rem] font-medium text-muted-foreground">
+								{product.quantidade! > 0 ? `${product.quantidade} un.` : "SEM ESTOQUE"}
+							</span>
+						</div>
+					) : null}
+				</div>
 			</div>
 		</button>
 	);

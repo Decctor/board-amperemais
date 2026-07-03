@@ -23,6 +23,7 @@ import CategoriesBar from "./components/composition/CategoriesBar";
 import PaginationBlock from "./components/composition/PaginationBlock";
 import ProductsGridBlock from "./components/composition/ProductsGridBlock";
 import SearchBlock from "./components/composition/SearchBlock";
+import ViewModeToggle, { type ProductViewMode } from "./components/composition/ViewModeToggle";
 import ClientContextPanel from "./components/context/ClientContextPanel";
 import ClientContextSheet from "./components/context/ClientContextSheet";
 
@@ -52,6 +53,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 	const isMobile = useIsMobile();
 	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 	const [searchValue, setSearchValue] = useState("");
+	const [viewMode, setViewMode] = useState<ProductViewMode>("grid");
 	const [builderProduct, setBuilderProduct] = useState<TGetPOSProductsOutput["data"]["products"][number] | null>(null);
 	const [isCheckoutDrawerOpen, setIsCheckoutDrawerOpen] = useState(false);
 	const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
@@ -293,7 +295,12 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 			<div className="flex flex-1 min-h-0 gap-3">
 				<div className="flex min-w-0 flex-1 flex-col gap-4 rounded-xl bg-background">
 					<div className="shrink-0 flex flex-col gap-3">
-						<SearchBlock searchValue={searchValue} onSearchChange={handleSearchChange} isLoading={productsLoading} />
+						<div className="flex items-center gap-2">
+							<div className="flex-1">
+								<SearchBlock searchValue={searchValue} onSearchChange={handleSearchChange} isLoading={productsLoading} />
+							</div>
+							<ViewModeToggle value={viewMode} onChange={setViewMode} />
+						</div>
 						{groupsLoading ? null : (
 							<CategoriesBar groups={groupsData?.groups ?? []} selectedGroup={selectedGroup} onGroupSelect={handleGroupSelect} isLoading={productsLoading} />
 						)}
@@ -305,6 +312,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 							isLoading={productsLoading}
 							isError={productsError}
 							error={productsErrorData}
+							viewMode={viewMode}
 							onProductClick={handleProductClick}
 						/>
 

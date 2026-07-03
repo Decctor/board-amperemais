@@ -182,7 +182,7 @@ export default function PaymentsSection({ saleState }: PaymentsSectionProps) {
 
 			{saleState.state.pagamentos.length === 0 ? (
 				<div className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground flex items-center gap-2">
-					<CalendarClock className="w-4 h-4" />
+					<CalendarClock className="w-4 h-4 min-w-4 min-h-4" />
 					Nenhum pagamento adicionado. Você pode registrar recebimento imediato ou previsto.
 				</div>
 			) : null}

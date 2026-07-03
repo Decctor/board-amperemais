@@ -3,20 +3,33 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { getErrorMessage } from "@/lib/errors";
 import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import ProductCard from "../ProductCard";
+import ProductListRow from "../ProductListRow";
+import type { ProductViewMode } from "./ViewModeToggle";
 
 type ProductsGridBlockProps = {
 	productsData: TGetPOSProductsOutput["data"] | undefined;
 	isLoading: boolean;
 	isError: boolean;
 	error: unknown;
+	viewMode: ProductViewMode;
 	onProductClick: (product: TGetPOSProductsOutput["data"]["products"][number]) => void;
 };
 
-export default function ProductsGridBlock({ productsData, isLoading, isError, error, onProductClick }: ProductsGridBlockProps) {
+export default function ProductsGridBlock({ productsData, isLoading, isError, error, viewMode, onProductClick }: ProductsGridBlockProps) {
 	if (isLoading) return <LoadingComponent />;
 	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
 
 	if (productsData && productsData.products.length > 0) {
+		if (viewMode === "list") {
+			return (
+				<div className="flex flex-col gap-2 pb-4">
+					{productsData.products.map((product) => (
+						<ProductListRow key={product.id} product={product} onClick={() => onProductClick(product)} />
+					))}
+				</div>
+			);
+		}
+
 		return (
 			<div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-4 pb-4">
 				{productsData.products.map((product) => (

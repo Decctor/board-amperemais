@@ -21,7 +21,8 @@
       "WebFetch(domain:workflow-sdk.dev)",
       "Bash(npx oxlint *)",
       "Bash(node .agents/skills/impeccable/scripts/context.mjs)",
-      "Bash(node \"C:/Users/Lucas/.claude/skills/impeccable/scripts/context.mjs\")"
+      "Bash(node \"C:/Users/Lucas/.claude/skills/impeccable/scripts/context.mjs\")",
+      "Bash(node scripts/load-context.mjs)"
     ]
   }
 }

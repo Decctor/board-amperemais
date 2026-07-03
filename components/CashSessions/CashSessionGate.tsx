@@ -30,9 +30,9 @@ export default function CashSessionGate({ vendedorId, onVendedorChange, exigirFu
 					<Wallet className="h-7 w-7" />
 				</span>
 				<div className="flex flex-col gap-1.5">
-					<h2 className="font-black text-xl">Abra o caixa para vender</h2>
+					<h2 className="font-black text-xl">ABRA O CAIXA PARA VENDER</h2>
 					<p className="text-sm text-muted-foreground">
-						Nesta organizacao as vendas so podem ser registradas com um caixa aberto. Selecione o responsável e abra a sessão para continuar.
+						Nesta organização as vendas só podem ser registradas com um caixa aberto. Selecione o responsável e abra a sessão para continuar.
 					</p>
 				</div>
 				<div className="w-full">
