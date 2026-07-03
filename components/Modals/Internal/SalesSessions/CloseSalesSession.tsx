@@ -64,7 +64,7 @@ export default function CloseSalesSession({ sessionId, closeModal, conferenciaCe
 	return (
 		<ResponsiveMenu
 			menuTitle="FECHAR CAIXA"
-			menuDescription="Confira os valores por metodo e informe a contagem fisica da gaveta."
+			menuDescription="Confira os valores por metodo e informe a contagem física da gaveta."
 			menuActionButtonText="FECHAR CAIXA"
 			menuCancelButtonText="CANCELAR"
 			actionFunction={handleSubmit}
@@ -75,26 +75,30 @@ export default function CloseSalesSession({ sessionId, closeModal, conferenciaCe
 			dialogVariant="md"
 		>
 			{!session ? (
-				<ErrorComponent msg="Sessao de venda nao encontrada." />
+				<ErrorComponent msg="Sessão de venda não encontrada." />
 			) : (
 				<div className="flex w-full flex-col gap-4">
 					{pendenciasFiscais.length > 0 ? (
 						<div className="flex items-start gap-2 rounded-lg border border-[#ffb900]/40 bg-[#ffb900]/10 p-3">
 							<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#e6a700]" />
 							<div className="flex flex-col gap-0.5">
-								<span className="font-bold text-xs tracking-wide">{pendenciasFiscais.length} documento(s) fiscal(is) pendente(s)</span>
+								<span className="font-bold text-xs tracking-wide">
+									{pendenciasFiscais.length > 1
+										? `${pendenciasFiscais.length} DOCUMENTOS FISCAIS PENDENTES`
+										: `${pendenciasFiscais.length} DOCUMENTO FISCAL PENDENTE`}
+								</span>
 								<span className="text-[11px] text-muted-foreground">
-									Notas nao autorizadas neste turno. Conforme a configuracao, o fechamento pode ser bloqueado ate a regularizacao.
+									Notas não autorizadas neste turno. Conforme a configuração, o fechamento pode ser bloqueado até a regularização.
 								</span>
 							</div>
 						</div>
 					) : null}
 
 					<div className="flex flex-col gap-2">
-						<span className="font-bold text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Conferencia por metodo</span>
+						<span className="font-bold text-[11px] uppercase tracking-[0.08em] text-muted-foreground">CONFERÊNCIA POR MÉTODO</span>
 
 						{gavetaLinhas.length === 0 && resumo.length === 0 ? (
-							<span className="text-xs text-muted-foreground">Nenhum movimento registrado nesta sessao.</span>
+							<span className="text-xs text-muted-foreground">Nenhum movimento registrado nesta sessão.</span>
 						) : null}
 
 						{/* Gaveta (dinheiro): contagem física */}
@@ -107,20 +111,22 @@ export default function CloseSalesSession({ sessionId, closeModal, conferenciaCe
 									<div className="flex items-center justify-between">
 										<span className="font-bold text-sm">{linha.metodo}</span>
 										{mostrarEsperado ? (
-											<span className="text-xs text-muted-foreground">Esperado {formatToMoney(linha.valorEsperado)}</span>
+											<span className="text-xs text-muted-foreground">ESPERADO {formatToMoney(linha.valorEsperado)}</span>
 										) : (
-											<span className="text-[11px] text-muted-foreground/70">Contagem cega</span>
+											<span className="text-[11px] text-muted-foreground/70">CONTAGEM CEGA</span>
 										)}
 									</div>
 									<NumberInput
-										label="Contagem fisica"
+										label="CONTAGEM FÍSICA"
 										value={contagem[linha.metodo] ?? null}
 										handleChange={(value) => setContagem((prev) => ({ ...prev, [linha.metodo]: value }))}
 										placeholder="0,00"
 									/>
 									{mostrarEsperado && informado !== undefined ? (
-										<span className={cn("text-xs font-semibold", diferenca === 0 ? "text-muted-foreground" : diferenca > 0 ? "text-green-600" : "text-destructive")}>
-											{diferenca === 0 ? "Sem diferenca" : diferenca > 0 ? `Sobra ${formatToMoney(diferenca)}` : `Falta ${formatToMoney(Math.abs(diferenca))}`}
+										<span
+											className={cn("text-xs font-semibold", diferenca === 0 ? "text-muted-foreground" : diferenca > 0 ? "text-green-600" : "text-destructive")}
+										>
+											{diferenca === 0 ? "Sem diferença" : diferenca > 0 ? `Sobra ${formatToMoney(diferenca)}` : `Falta ${formatToMoney(Math.abs(diferenca))}`}
 										</span>
 									) : null}
 								</div>
@@ -133,7 +139,7 @@ export default function CloseSalesSession({ sessionId, closeModal, conferenciaCe
 							.map((linha) => (
 								<div key={linha.metodo} className="flex items-center justify-between rounded-lg border border-dashed border-border px-3 py-2">
 									<span className="text-sm text-muted-foreground">{linha.metodo}</span>
-									<span className="text-xs text-muted-foreground">Recebivel {formatToMoney(linha.valorEsperado)}</span>
+									<span className="text-xs text-muted-foreground">RECEBÍVEL {formatToMoney(linha.valorEsperado)}</span>
 								</div>
 							))}
 					</div>
@@ -143,17 +149,17 @@ export default function CloseSalesSession({ sessionId, closeModal, conferenciaCe
 						<div className="flex flex-col gap-1 rounded-lg bg-muted/60 p-3">
 							{!conferenciaCega ? (
 								<div className="flex items-center justify-between text-xs">
-									<span className="text-muted-foreground">Esperado em gaveta</span>
+									<span className="text-muted-foreground">ESPERADO EM GAVETA</span>
 									<span className="font-semibold tabular-nums">{formatToMoney(totalEsperadoGaveta)}</span>
 								</div>
 							) : null}
 							<div className="flex items-center justify-between text-xs">
-								<span className="text-muted-foreground">Contado</span>
+								<span className="text-muted-foreground">CONTADO</span>
 								<span className="font-semibold tabular-nums">{formatToMoney(totalInformadoGaveta)}</span>
 							</div>
 							{!conferenciaCega ? (
 								<div className="flex items-center justify-between border-t border-border/60 pt-1 text-sm">
-									<span className="font-bold">Diferenca</span>
+									<span className="font-bold">DIFERENÇA</span>
 									<span
 										className={cn(
 											"font-black tabular-nums",
@@ -169,10 +175,10 @@ export default function CloseSalesSession({ sessionId, closeModal, conferenciaCe
 					) : null}
 
 					<TextareaInput
-						label="OBSERVACOES DO FECHAMENTO"
+						label="OBSERVAÇÕES DO FECHAMENTO"
 						value={observacoes}
 						handleChange={(value) => setObservacoes(value)}
-						placeholder="Observacoes do fechamento (opcional)..."
+						placeholder="Observações do fechamento (opcional)..."
 					/>
 				</div>
 			)}

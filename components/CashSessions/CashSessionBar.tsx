@@ -27,7 +27,15 @@ type CashSessionBarProps = {
 
 type ActiveModal = "open" | "movement" | "close" | null;
 
-export default function CashSessionBar({ session, isLoading, vendedorId, onVendedorChange, exigirFundoTroco, conferenciaCega, className }: CashSessionBarProps) {
+export default function CashSessionBar({
+	session,
+	isLoading,
+	vendedorId,
+	onVendedorChange,
+	exigirFundoTroco,
+	conferenciaCega,
+	className,
+}: CashSessionBarProps) {
 	const [modal, setModal] = useState<ActiveModal>(null);
 	const { data: sellers } = useSellersSimplified();
 	const sellerOptions = (sellers ?? []).map((seller) => ({ id: seller.id, value: seller.id, label: seller.nome }));
@@ -43,7 +51,12 @@ export default function CashSessionBar({ session, isLoading, vendedorId, onVende
 			)}
 		>
 			<div className="flex min-w-0 items-center gap-2.5">
-				<span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", isOpen ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground")}>
+				<span
+					className={cn(
+						"flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+						isOpen ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
+					)}
+				>
 					<Wallet className="h-4 w-4" />
 				</span>
 				{isLoading ? (
@@ -51,7 +64,7 @@ export default function CashSessionBar({ session, isLoading, vendedorId, onVende
 				) : isOpen ? (
 					<div className="flex min-w-0 flex-col leading-tight">
 						<span className="truncate font-bold text-sm">
-							Caixa aberto
+							CAIXA ABERTO
 							{session.responsavelVendedor?.nome ? <span className="font-medium text-muted-foreground"> • {session.responsavelVendedor.nome}</span> : null}
 						</span>
 						<span className="text-[11px] text-muted-foreground">
@@ -60,7 +73,7 @@ export default function CashSessionBar({ session, isLoading, vendedorId, onVende
 					</div>
 				) : (
 					<div className="flex flex-col leading-tight">
-						<span className="font-bold text-sm">Nenhum caixa aberto</span>
+						<span className="font-bold text-sm">NENHUM CAIXA ABERTO</span>
 						<span className="text-[11px] text-muted-foreground">Abra o caixa para registrar as vendas do turno.</span>
 					</div>
 				)}
@@ -70,7 +83,7 @@ export default function CashSessionBar({ session, isLoading, vendedorId, onVende
 				{!isOpen && onVendedorChange ? (
 					<div className="w-44">
 						<SelectInput
-							label="Responsavel"
+							label="RESPONSÁVEL"
 							showLabel={false}
 							value={vendedorId}
 							options={sellerOptions}
@@ -78,7 +91,7 @@ export default function CashSessionBar({ session, isLoading, vendedorId, onVende
 								const seller = sellers?.find((item) => item.id === value);
 								onVendedorChange(value, seller?.nome ?? null);
 							}}
-							resetOptionLabel="Selecione o responsavel"
+							resetOptionLabel="Selecione o responsável"
 							onReset={() => onVendedorChange(null, null)}
 						/>
 					</div>
@@ -86,19 +99,19 @@ export default function CashSessionBar({ session, isLoading, vendedorId, onVende
 
 				{isOpen ? (
 					<>
-						<Button variant="outline" size="sm" onClick={() => setModal("movement")} className="gap-1.5">
+						<Button variant="ghost" size="sm" onClick={() => setModal("movement")} className="gap-1.5">
 							<ArrowRightLeft className="h-4 w-4" />
-							Movimento
+							MOVIMENTO
 						</Button>
 						<Button variant="outline" size="sm" onClick={() => setModal("close")} className="gap-1.5">
 							<LockKeyhole className="h-4 w-4" />
-							Fechar caixa
+							FECHAR CAIXA
 						</Button>
 					</>
 				) : (
 					<Button size="sm" onClick={() => setModal("open")} disabled={!vendedorId} className="gap-1.5">
 						<Wallet className="h-4 w-4" />
-						Abrir caixa
+						ABRIR CAIXA
 					</Button>
 				)}
 			</div>
@@ -107,7 +120,9 @@ export default function CashSessionBar({ session, isLoading, vendedorId, onVende
 				<OpenSalesSession closeModal={() => setModal(null)} exigirFundoTroco={exigirFundoTroco} initialResponsavelVendedorId={vendedorId} />
 			) : null}
 			{modal === "movement" && session ? <RegisterMovement sessionId={session.id} closeModal={() => setModal(null)} /> : null}
-			{modal === "close" && session ? <CloseSalesSession sessionId={session.id} closeModal={() => setModal(null)} conferenciaCega={conferenciaCega} /> : null}
+			{modal === "close" && session ? (
+				<CloseSalesSession sessionId={session.id} closeModal={() => setModal(null)} conferenciaCega={conferenciaCega} />
+			) : null}
 		</div>
 	);
 }

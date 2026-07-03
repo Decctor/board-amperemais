@@ -270,7 +270,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 		return (
 			<div className="w-full h-[calc(100vh-8rem)] flex flex-col p-4">
 				<CashSessionGate
-					vendedorId={saleState.state.vendedorId}
+					vendedorId={saleState.state.vendedorId || null}
 					onVendedorChange={saleState.setVendedor}
 					exigirFundoTroco={!!sessoesConfig?.exigirFundoTroco}
 				/>
@@ -284,111 +284,113 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 				<CashSessionBar
 					session={activeSession}
 					isLoading={cashLoading}
-					vendedorId={saleState.state.vendedorId}
+					vendedorId={saleState.state.vendedorId || null}
 					onVendedorChange={saleState.setVendedor}
 					exigirFundoTroco={!!sessoesConfig?.exigirFundoTroco}
 					conferenciaCega={!!sessoesConfig?.conferenciaCega}
 				/>
 			) : null}
-			<div className="flex flex-1 min-h-0 gap-4">
-				<div className="flex-1 min-w-0 flex flex-col gap-4">
-				<div className="shrink-0 flex flex-col gap-3">
-					<SearchBlock searchValue={searchValue} onSearchChange={handleSearchChange} isLoading={productsLoading} />
-					{groupsLoading ? null : (
-						<CategoriesBar groups={groupsData?.groups ?? []} selectedGroup={selectedGroup} onGroupSelect={handleGroupSelect} isLoading={productsLoading} />
-					)}
-				</div>
+			<div className="flex flex-1 min-h-0 gap-3">
+				<div className="flex min-w-0 flex-1 flex-col gap-4 rounded-xl bg-background">
+					<div className="shrink-0 flex flex-col gap-3">
+						<SearchBlock searchValue={searchValue} onSearchChange={handleSearchChange} isLoading={productsLoading} />
+						{groupsLoading ? null : (
+							<CategoriesBar groups={groupsData?.groups ?? []} selectedGroup={selectedGroup} onGroupSelect={handleGroupSelect} isLoading={productsLoading} />
+						)}
+					</div>
 
-				<div className="flex-1 min-h-0 flex flex-col gap-4 overflow-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 pr-1 pb-20 lg:pb-0">
-					<ProductsGridBlock
-						productsData={productsData}
-						isLoading={productsLoading}
-						isError={productsError}
-						error={productsErrorData}
-						onProductClick={handleProductClick}
-					/>
-
-					{productsData ? (
-						<PaginationBlock
-							currentPage={productsData.currentPage}
-							totalPages={productsData.totalPages}
+					<div className="flex-1 min-h-0 flex flex-col gap-4 overflow-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 pr-1 pb-20 lg:pb-0">
+						<ProductsGridBlock
+							productsData={productsData}
 							isLoading={productsLoading}
-							onPrevious={() => updateFilters({ page: Math.max(1, filters.page - 1) })}
-							onNext={() => updateFilters({ page: Math.min(productsData.totalPages, filters.page + 1) })}
+							isError={productsError}
+							error={productsErrorData}
+							onProductClick={handleProductClick}
 						/>
-					) : null}
+
+						{productsData ? (
+							<PaginationBlock
+								currentPage={productsData.currentPage}
+								totalPages={productsData.totalPages}
+								isLoading={productsLoading}
+								onPrevious={() => updateFilters({ page: Math.max(1, filters.page - 1) })}
+								onNext={() => updateFilters({ page: Math.min(productsData.totalPages, filters.page + 1) })}
+							/>
+						) : null}
+					</div>
 				</div>
-			</div>
 
-			{linkedClient ? (
-				<ClientContextPanel
-					isOpen={isContextPanelOpen}
-					onClose={() => setIsContextPanelOpen(false)}
-					clientId={linkedClient.id}
-					fallbackName={linkedClient.nome}
-					fallbackPhone={linkedClient.telefone}
-					basketProductIds={basketProductIds}
-					organizationCashbackProgram={organizationCashbackProgram}
-					onSelectProduct={handleProductClick}
-				/>
-			) : null}
+				{linkedClient ? (
+					<ClientContextPanel
+						isOpen={isContextPanelOpen}
+						onClose={() => setIsContextPanelOpen(false)}
+						clientId={linkedClient.id}
+						fallbackName={linkedClient.nome}
+						fallbackPhone={linkedClient.telefone}
+						basketProductIds={basketProductIds}
+						organizationCashbackProgram={organizationCashbackProgram}
+						onSelectProduct={handleProductClick}
+					/>
+				) : null}
 
-			<div className="hidden lg:block w-[420px] shrink-0 overflow-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
-				<CheckoutPanel
-					organizationCashbackProgram={organizationCashbackProgram}
-					saleState={saleState}
-					onCreateDraft={handleCreateDraft}
-					onFinalizeSale={handleFinalizeSale}
-					isCreatingDraft={isCreatingDraft}
-					isFinalizingSale={isFinalizingSale}
-					onOpenContext={() => setIsContextPanelOpen(true)}
-				/>
-			</div>
-
-			{isMobile ? (
-				<div className="fixed bottom-4 right-4 z-50 lg:hidden">
-					<Drawer open={isCheckoutDrawerOpen} onOpenChange={setIsCheckoutDrawerOpen}>
-						<DrawerTrigger asChild>
-							<Button className="rounded-full shadow-lg px-4">
-								<ShoppingCart className="w-4 h-4 mr-2" /> CHECKOUT ({saleState.itemCount})
-							</Button>
-						</DrawerTrigger>
-						<DrawerContent className="h-[90vh]">
-							<DrawerHeader>
-								<DrawerTitle>Checkout</DrawerTitle>
-								<DrawerDescription>Finalize ou salve como orçamento.</DrawerDescription>
-							</DrawerHeader>
-							<div className="overflow-y-auto pb-4">
-								<CheckoutPanel
-									organizationCashbackProgram={organizationCashbackProgram}
-									saleState={saleState}
-									onCreateDraft={handleCreateDraft}
-									onFinalizeSale={handleFinalizeSale}
-									isCreatingDraft={isCreatingDraft}
-									isFinalizingSale={isFinalizingSale}
-									onOpenContext={() => {
-										setIsCheckoutDrawerOpen(false);
-										setIsContextSheetOpen(true);
-									}}
-								/>
-							</div>
-						</DrawerContent>
-					</Drawer>
+				<div className="hidden w-[420px] shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/45 lg:block">
+					<div className="h-full overflow-y-auto p-3 scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30">
+						<CheckoutPanel
+							organizationCashbackProgram={organizationCashbackProgram}
+							saleState={saleState}
+							onCreateDraft={handleCreateDraft}
+							onFinalizeSale={handleFinalizeSale}
+							isCreatingDraft={isCreatingDraft}
+							isFinalizingSale={isFinalizingSale}
+							onOpenContext={() => setIsContextPanelOpen(true)}
+						/>
+					</div>
 				</div>
-			) : null}
 
-			{isMobile && linkedClient ? (
-				<ClientContextSheet
-					open={isContextSheetOpen}
-					onOpenChange={setIsContextSheetOpen}
-					clientId={linkedClient.id}
-					fallbackName={linkedClient.nome}
-					fallbackPhone={linkedClient.telefone}
-					basketProductIds={basketProductIds}
-					organizationCashbackProgram={organizationCashbackProgram}
-					onSelectProduct={handleProductClick}
-				/>
-			) : null}
+				{isMobile ? (
+					<div className="fixed bottom-4 right-4 z-50 lg:hidden">
+						<Drawer open={isCheckoutDrawerOpen} onOpenChange={setIsCheckoutDrawerOpen}>
+							<DrawerTrigger asChild>
+								<Button className="rounded-full shadow-lg px-4">
+									<ShoppingCart className="w-4 h-4 mr-2" /> CHECKOUT ({saleState.itemCount})
+								</Button>
+							</DrawerTrigger>
+							<DrawerContent className="h-[90vh]">
+								<DrawerHeader>
+									<DrawerTitle>Checkout</DrawerTitle>
+									<DrawerDescription>Finalize ou salve como orçamento.</DrawerDescription>
+								</DrawerHeader>
+								<div className="overflow-y-auto pb-4">
+									<CheckoutPanel
+										organizationCashbackProgram={organizationCashbackProgram}
+										saleState={saleState}
+										onCreateDraft={handleCreateDraft}
+										onFinalizeSale={handleFinalizeSale}
+										isCreatingDraft={isCreatingDraft}
+										isFinalizingSale={isFinalizingSale}
+										onOpenContext={() => {
+											setIsCheckoutDrawerOpen(false);
+											setIsContextSheetOpen(true);
+										}}
+									/>
+								</div>
+							</DrawerContent>
+						</Drawer>
+					</div>
+				) : null}
+
+				{isMobile && linkedClient ? (
+					<ClientContextSheet
+						open={isContextSheetOpen}
+						onOpenChange={setIsContextSheetOpen}
+						clientId={linkedClient.id}
+						fallbackName={linkedClient.nome}
+						fallbackPhone={linkedClient.telefone}
+						basketProductIds={basketProductIds}
+						organizationCashbackProgram={organizationCashbackProgram}
+						onSelectProduct={handleProductClick}
+					/>
+				) : null}
 
 				{builderProduct ? <ProductBuilderModal product={builderProduct} onAddToCart={saleState.addItem} onClose={() => setBuilderProduct(null)} /> : null}
 			</div>

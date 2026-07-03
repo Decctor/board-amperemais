@@ -366,6 +366,18 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 		});
 	}
 
+	function updateSessoesVenda(partial: Partial<NonNullable<typeof state.organization.configuracao.preferencias.sessoesVenda>>) {
+		const current = state.organization.configuracao.preferencias.sessoesVenda ?? {
+			habilitado: false,
+			obrigatorio: false,
+			escopo: "OPERADOR" as const,
+			exigirFundoTroco: false,
+			conferenciaCega: false,
+			bloquearFechamentoComPendenciaFiscal: false,
+		};
+		updatePreferencias({ sessoesVenda: { ...current, ...partial } });
+	}
+
 	function updatePaymentMethod(key: string, data: TOrganizationPaymentMethodDefaults) {
 		updateOrgState({
 			configuracao: {
@@ -410,6 +422,14 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 	}
 
 	const lancamentosPadrao = state.organization.configuracao.defaults.contabilidade.lancamentosPadrao;
+	const sessoesVendaConfig = state.organization.configuracao.preferencias.sessoesVenda ?? {
+		habilitado: false,
+		obrigatorio: false,
+		escopo: "OPERADOR" as const,
+		exigirFundoTroco: false,
+		conferenciaCega: false,
+		bloquearFechamentoComPendenciaFiscal: false,
+	};
 
 	return (
 		<div className="flex w-full flex-col gap-6">
@@ -607,17 +627,86 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 
 					{/* rastreamentoEstoque — ERP only */}
 					{hasErpAccess && (
-						<div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3">
-							<div className="flex flex-col gap-0.5">
-								<span className="text-sm font-medium tracking-tight">RASTREAMENTO DE ESTOQUE</span>
-								<span className="text-xs text-muted-foreground">Habilita o controle e rastreamento de estoque para os produtos da organização.</span>
+						<>
+							<div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3">
+								<div className="flex flex-col gap-0.5">
+									<span className="text-sm font-medium tracking-tight">RASTREAMENTO DE ESTOQUE</span>
+									<span className="text-xs text-muted-foreground">Habilita o controle e rastreamento de estoque para os produtos da organização.</span>
+								</div>
+								<Switch
+									checked={state.organization.configuracao.preferencias.rastreamentoEstoque}
+									onCheckedChange={(checked) => userHasEditPermissions && updatePreferencias({ rastreamentoEstoque: checked })}
+									disabled={!userHasEditPermissions}
+								/>
 							</div>
-							<Switch
-								checked={state.organization.configuracao.preferencias.rastreamentoEstoque}
-								onCheckedChange={(checked) => userHasEditPermissions && updatePreferencias({ rastreamentoEstoque: checked })}
-								disabled={!userHasEditPermissions}
-							/>
-						</div>
+							<div className="flex flex-col gap-3">
+								<div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3">
+									<div className="flex flex-col gap-0.5">
+										<span className="text-sm font-medium tracking-tight">SESSÕES DE VENDA</span>
+										<span className="text-xs text-muted-foreground">Habilita abertura, movimentação e fechamento de caixa no balcão.</span>
+									</div>
+									<Switch
+										checked={sessoesVendaConfig.habilitado}
+										onCheckedChange={(checked) => userHasEditPermissions && updateSessoesVenda({ habilitado: checked })}
+										disabled={!userHasEditPermissions}
+									/>
+								</div>
+
+								{sessoesVendaConfig.habilitado ? (
+									<div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/10 p-4">
+										<p className="text-xs text-muted-foreground">Ajustes de operação do caixa. O escopo atual é por vendedor responsável.</p>
+
+										<div className="flex items-center justify-between rounded-lg border border-border/70 bg-background px-4 py-3">
+											<div className="flex flex-col gap-0.5">
+												<span className="text-sm font-medium tracking-tight">CAIXA OBRIGATÓRIO</span>
+												<span className="text-xs text-muted-foreground">Bloqueia novas vendas até que o vendedor abra uma sessão de caixa.</span>
+											</div>
+											<Switch
+												checked={sessoesVendaConfig.obrigatorio}
+												onCheckedChange={(checked) => userHasEditPermissions && updateSessoesVenda({ obrigatorio: checked })}
+												disabled={!userHasEditPermissions}
+											/>
+										</div>
+
+										<div className="flex items-center justify-between rounded-lg border border-border/70 bg-background px-4 py-3">
+											<div className="flex flex-col gap-0.5">
+												<span className="text-sm font-medium tracking-tight">EXIGIR FUNDO DE TROCO</span>
+												<span className="text-xs text-muted-foreground">Solicita saldo inicial ao abrir o caixa.</span>
+											</div>
+											<Switch
+												checked={sessoesVendaConfig.exigirFundoTroco}
+												onCheckedChange={(checked) => userHasEditPermissions && updateSessoesVenda({ exigirFundoTroco: checked })}
+												disabled={!userHasEditPermissions}
+											/>
+										</div>
+
+										<div className="flex items-center justify-between rounded-lg border border-border/70 bg-background px-4 py-3">
+											<div className="flex flex-col gap-0.5">
+												<span className="text-sm font-medium tracking-tight">CONFERÊNCIA CEGA</span>
+												<span className="text-xs text-muted-foreground">Oculta os valores esperados até o operador informar a contagem do caixa.</span>
+											</div>
+											<Switch
+												checked={sessoesVendaConfig.conferenciaCega}
+												onCheckedChange={(checked) => userHasEditPermissions && updateSessoesVenda({ conferenciaCega: checked })}
+												disabled={!userHasEditPermissions}
+											/>
+										</div>
+
+										<div className="flex items-center justify-between rounded-lg border border-border/70 bg-background px-4 py-3">
+											<div className="flex flex-col gap-0.5">
+												<span className="text-sm font-medium tracking-tight">BLOQUEAR FECHAMENTO COM PENDÊNCIA FISCAL</span>
+												<span className="text-xs text-muted-foreground">Impede fechar o caixa enquanto houver notas fiscais pendentes no turno.</span>
+											</div>
+											<Switch
+												checked={sessoesVendaConfig.bloquearFechamentoComPendenciaFiscal}
+												onCheckedChange={(checked) => userHasEditPermissions && updateSessoesVenda({ bloquearFechamentoComPendenciaFiscal: checked })}
+												disabled={!userHasEditPermissions}
+											/>
+										</div>
+									</div>
+								) : null}
+							</div>
+						</>
 					)}
 				</div>
 			</SectionWrapper>

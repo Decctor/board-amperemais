@@ -89,7 +89,6 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 		idContaDebito: input.accountingEntryDebitAccountId,
 		idContaCredito: input.accountingEntryCreditAccountId,
 		autorId: input.saleAuthorId,
-		sessaoVendaId: input.sessaoVendaId ?? null,
 	});
 
 	// A confirmacao NAO baixa estoque obrigatoriamente. A baixa fisica acontece na entrega.
@@ -111,6 +110,7 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 			organizacaoId: input.organization.id,
 			pagamentos: input.salePayments,
 			autorId: input.saleAuthorId,
+			sessaoVendaId: input.sessaoVendaId ?? null,
 		},
 		tx,
 	);

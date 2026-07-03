@@ -25,8 +25,18 @@ export default function SalesSessionDetail({ sessionId, closeModal }: SalesSessi
 
 	const isOpen = session?.status === "ABERTA";
 	const linhas = isOpen
-		? (session?.resumoEsperado ?? []).map((linha) => ({ metodo: linha.metodo, valorEsperado: linha.valorEsperado, valorInformado: null as number | null, diferenca: null as number | null }))
-		: (session?.conferencias ?? []).map((linha) => ({ metodo: linha.metodo, valorEsperado: linha.valorEsperado, valorInformado: linha.valorInformado, diferenca: linha.diferenca }));
+		? (session?.resumoEsperado ?? []).map((linha) => ({
+				metodo: linha.metodo,
+				valorEsperado: linha.valorEsperado,
+				valorInformado: null as number | null,
+				diferenca: null as number | null,
+			}))
+		: (session?.conferencias ?? []).map((linha) => ({
+				metodo: linha.metodo,
+				valorEsperado: linha.valorEsperado,
+				valorInformado: linha.valorInformado,
+				diferenca: linha.diferenca,
+			}));
 
 	return (
 		<ResponsiveMenu
@@ -42,18 +52,18 @@ export default function SalesSessionDetail({ sessionId, closeModal }: SalesSessi
 			dialogVariant="md"
 		>
 			{!session ? (
-				<ErrorComponent msg="Sessao de venda nao encontrada." />
+				<ErrorComponent msg="Sessão de venda não encontrada." />
 			) : (
 				<div className="flex w-full flex-col gap-4">
 					<div className="flex flex-col gap-1 rounded-lg bg-muted/50 p-3">
-						<MetaRow label="Responsavel" value={session.responsavelVendedor?.nome ?? "—"} />
-						<MetaRow label="Abertura" value={dayjs(session.dataAbertura).format("DD/MM/YYYY HH:mm")} />
-						<MetaRow label="Fechamento" value={session.dataFechamento ? dayjs(session.dataFechamento).format("DD/MM/YYYY HH:mm") : "—"} />
-						<MetaRow label="Fundo de troco" value={formatToMoney(session.saldoInicial)} />
+						<MetaRow label="RESPONSÁVEL" value={session.responsavelVendedor?.nome ?? "—"} />
+						<MetaRow label="ABERTURA" value={dayjs(session.dataAbertura).format("DD/MM/YYYY HH:mm")} />
+						<MetaRow label="FECHAMENTO" value={session.dataFechamento ? dayjs(session.dataFechamento).format("DD/MM/YYYY HH:mm") : "—"} />
+						<MetaRow label="FUNDO DE TROCO" value={formatToMoney(session.saldoInicial)} />
 					</div>
 
 					<div className="flex flex-col gap-2">
-						<span className="font-bold text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Conferencia por metodo</span>
+						<span className="font-bold text-[11px] uppercase tracking-[0.08em] text-muted-foreground">CONFERENCIA POR METODO</span>
 						{linhas.length === 0 ? <span className="text-xs text-muted-foreground">Nenhum movimento neste turno.</span> : null}
 						{linhas.map((linha) => (
 							<div key={linha.metodo} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
@@ -62,7 +72,9 @@ export default function SalesSessionDetail({ sessionId, closeModal }: SalesSessi
 									<span className="text-muted-foreground">Esperado {formatToMoney(linha.valorEsperado)}</span>
 									{linha.valorInformado !== null ? <span>Contado {formatToMoney(linha.valorInformado)}</span> : null}
 									{linha.diferenca !== null && linha.diferenca !== undefined ? (
-										<span className={cn("font-bold", linha.diferenca === 0 ? "text-muted-foreground" : linha.diferenca > 0 ? "text-green-600" : "text-destructive")}>
+										<span
+											className={cn("font-bold", linha.diferenca === 0 ? "text-muted-foreground" : linha.diferenca > 0 ? "text-green-600" : "text-destructive")}
+										>
 											{linha.diferenca > 0 ? "+" : ""}
 											{formatToMoney(linha.diferenca)}
 										</span>
@@ -75,7 +87,12 @@ export default function SalesSessionDetail({ sessionId, closeModal }: SalesSessi
 					{!isOpen && session.diferencaTotal !== null && session.diferencaTotal !== undefined ? (
 						<div className="flex items-center justify-between rounded-lg bg-muted/60 p-3 text-sm">
 							<span className="font-bold">Diferenca total</span>
-							<span className={cn("font-black tabular-nums", session.diferencaTotal === 0 ? "text-foreground" : session.diferencaTotal > 0 ? "text-green-600" : "text-destructive")}>
+							<span
+								className={cn(
+									"font-black tabular-nums",
+									session.diferencaTotal === 0 ? "text-foreground" : session.diferencaTotal > 0 ? "text-green-600" : "text-destructive",
+								)}
+							>
 								{session.diferencaTotal > 0 ? "+" : ""}
 								{formatToMoney(session.diferencaTotal)}
 							</span>

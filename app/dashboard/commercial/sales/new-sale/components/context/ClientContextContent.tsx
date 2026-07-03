@@ -69,7 +69,7 @@ export default function ClientContextContent({
 	return (
 		<div className="flex h-full w-full flex-col">
 			{/* Identity header */}
-			<div className="flex flex-col gap-3 border-b border-border px-4 pb-4 pt-4">
+			<div className="flex flex-col gap-3 border-b border-brand/15 px-4 pb-4 pt-4">
 				<div className="flex items-start gap-3">
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center gap-2">
@@ -102,7 +102,7 @@ export default function ClientContextContent({
 			</div>
 
 			{/* Summary stats */}
-			<div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,0.75fr)] gap-2 border-b border-border px-4 py-3">
+			<div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,0.75fr)] gap-2 border-b border-brand/10 px-4 py-3">
 				{isContextLoading ? (
 					<>
 						<Skeleton className="h-9 w-full" />

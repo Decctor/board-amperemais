@@ -84,10 +84,10 @@ export default function RegisterMovement({ sessionId, closeModal, callbacks }: R
 				</div>
 				<NumberInput label="VALOR" value={valor} handleChange={(value) => setValor(value)} placeholder="0,00" />
 				<TextareaInput
-					label="OBSERVACOES"
+					label="OBSERVAÇÕES DO MOVIMENTO"
 					value={observacoes}
 					handleChange={(value) => setObservacoes(value)}
-					placeholder="Motivo do movimento (opcional)..."
+					placeholder="Observações do movimento (opcional)..."
 				/>
 			</div>
 		</ResponsiveMenu>

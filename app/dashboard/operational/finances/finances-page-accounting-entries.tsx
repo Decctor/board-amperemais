@@ -51,7 +51,7 @@ export default function FinancesAccountingEntriesView() {
 				/>
 				<Button type="button" className="gap-1.5" onClick={() => setNewEntryMenuIsOpen(true)}>
 					<Plus className="h-4 w-4" />
-					Novo lançamento
+					NOVO LANÇAMENTO
 				</Button>
 			</div>
 			<div className="flex flex-col gap-3 lg:flex-row lg:items-end justify-end">

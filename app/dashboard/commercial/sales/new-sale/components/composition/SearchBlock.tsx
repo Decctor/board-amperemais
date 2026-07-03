@@ -15,7 +15,7 @@ export default function SearchBlock({ searchValue, onSearchChange, isLoading }: 
 				value={searchValue}
 				onChange={(event) => onSearchChange(event.target.value)}
 				placeholder="Buscar produto..."
-				className="pl-10 h-12 rounded-xl"
+				className="pl-10 py-3 rounded-xl"
 				disabled={isLoading}
 			/>
 		</div>

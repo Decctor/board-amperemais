@@ -75,11 +75,11 @@ export default function OpenSalesSession({ closeModal, exigirFundoTroco, initial
 		>
 			<div className="flex w-full flex-col gap-3">
 				<SelectInput
-					label="RESPONSAVEL"
+					label="RESPONSÁVEL"
 					value={state.openInput.responsavelVendedorId || null}
 					options={sellerOptions}
 					handleChange={(value) => updateOpenInput({ responsavelVendedorId: value })}
-					resetOptionLabel="Selecione o responsavel"
+					resetOptionLabel="Selecione o responsável"
 					onReset={() => updateOpenInput({ responsavelVendedorId: "" })}
 					required
 				/>
@@ -98,10 +98,10 @@ export default function OpenSalesSession({ closeModal, exigirFundoTroco, initial
 					placeholder="0,00"
 				/>
 				<TextareaInput
-					label="OBSERVACOES"
+					label="OBSERVAÇÕES DA ABERTURA"
 					value={state.openInput.observacoesAbertura ?? ""}
 					handleChange={(value) => updateOpenInput({ observacoesAbertura: value || null })}
-					placeholder="Observacoes da abertura (opcional)..."
+					placeholder="Observações da abertura (opcional)..."
 				/>
 			</div>
 		</ResponsiveMenu>

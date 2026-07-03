@@ -31,25 +31,27 @@ export default function CashSessionGate({ vendedorId, onVendedorChange, exigirFu
 				</span>
 				<div className="flex flex-col gap-1.5">
 					<h2 className="font-black text-xl">Abra o caixa para vender</h2>
-					<p className="text-sm text-muted-foreground">Nesta organizacao as vendas so podem ser registradas com um caixa aberto. Selecione o responsavel e abra a sessao para continuar.</p>
+					<p className="text-sm text-muted-foreground">
+						Nesta organizacao as vendas so podem ser registradas com um caixa aberto. Selecione o responsável e abra a sessão para continuar.
+					</p>
 				</div>
 				<div className="w-full">
 					<SelectInput
-						label="Responsavel pelo caixa"
+						label="RESPONSÁVEL PELO CAIXA"
 						value={vendedorId}
 						options={sellerOptions}
 						handleChange={(value) => {
 							const seller = sellers?.find((item) => item.id === value);
 							onVendedorChange(value, seller?.nome ?? null);
 						}}
-						resetOptionLabel="Selecione o responsavel"
+						resetOptionLabel="Selecione o responsável"
 						onReset={() => onVendedorChange(null, null)}
 						required
 					/>
 				</div>
 				<Button className="w-full gap-1.5" disabled={!vendedorId} onClick={() => setIsOpening(true)}>
 					<Wallet className="h-4 w-4" />
-					Abrir caixa
+					ABRIR CAIXA
 				</Button>
 			</div>
 

@@ -65,7 +65,7 @@ export default function CashSessionsPage({ sessoesConfig }: CashSessionsPageProp
 				</div>
 				<Button onClick={() => setModal({ type: "open" })} className="gap-1.5">
 					<Wallet className="h-4 w-4" />
-					Abrir caixa
+					ABRIR CAIXA
 				</Button>
 			</div>
 
@@ -91,13 +91,13 @@ export default function CashSessionsPage({ sessoesConfig }: CashSessionsPageProp
 									<span>Fundo de troco {formatToMoney(session.saldoInicial)}</span>
 								</div>
 								<div className="flex items-center gap-2">
-									<Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => setModal({ type: "movement", sessionId: session.id })}>
+									<Button variant="ghost" size="sm" className="flex-1 gap-1.5" onClick={() => setModal({ type: "movement", sessionId: session.id })}>
 										<ArrowRightLeft className="h-4 w-4" />
-										Movimento
+										MOVIMENTO
 									</Button>
 									<Button size="sm" className="flex-1 gap-1.5" onClick={() => setModal({ type: "close", sessionId: session.id })}>
 										<LockKeyhole className="h-4 w-4" />
-										Fechar
+										FECHAR CAIXA
 									</Button>
 								</div>
 							</div>
