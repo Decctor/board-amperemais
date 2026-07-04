@@ -17,6 +17,7 @@ import dayjs from "dayjs";
 import {
 	AlertTriangle,
 	ArrowDownRight,
+	ArrowLeftRight,
 	ArrowUpRight,
 	BadgeDollarSign,
 	Boxes,
@@ -117,6 +118,12 @@ export default function StocksPage() {
 					<Link href="/dashboard/operational/stocks/lots">
 						<Layers className="h-4 w-4 min-h-4 min-w-4" />
 						LOTES
+					</Link>
+				</Button>
+				<Button variant="outline" size="sm" className="shrink-0" asChild>
+					<Link href="/dashboard/operational/stocks/transactions">
+						<ArrowLeftRight className="h-4 w-4 min-h-4 min-w-4" />
+						TRANSAÇÕES
 					</Link>
 				</Button>
 			</div>
