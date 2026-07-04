@@ -9,8 +9,8 @@ async function fetchProductStockLots(input: TGetProductStockLotsDefaultInput) {
 	if (input.page) searchParams.set("page", input.page.toString());
 	if (input.search) searchParams.set("search", input.search);
 	if (input.status.length > 0) searchParams.set("status", input.status.join(","));
-	if (input.produtoId) searchParams.set("produtoId", input.produtoId);
-	if (input.produtoVarianteId) searchParams.set("produtoVarianteId", input.produtoVarianteId);
+	if (input.productId) searchParams.set("productId", input.productId);
+	if (input.productVariantId) searchParams.set("productVariantId", input.productVariantId);
 	if (input.dueInDays !== null && input.dueInDays !== undefined) searchParams.set("dueInDays", input.dueInDays.toString());
 
 	const { data } = await axios.get<TGetProductStockLotsOutput>(`/api/products/stock-lots?${searchParams.toString()}`);
@@ -27,8 +27,8 @@ export function useProductStockLots({ initialFilters }: UseProductStockLotsParam
 		page: initialFilters?.page ?? 1,
 		search: initialFilters?.search ?? "",
 		status: initialFilters?.status ?? [],
-		produtoId: initialFilters?.produtoId ?? null,
-		produtoVarianteId: initialFilters?.produtoVarianteId ?? null,
+		productId: initialFilters?.productId ?? null,
+		productVariantId: initialFilters?.productVariantId ?? null,
 		dueInDays: initialFilters?.dueInDays ?? null,
 	});
 

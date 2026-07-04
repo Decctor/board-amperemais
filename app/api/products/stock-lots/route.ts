@@ -25,8 +25,8 @@ const GetProductStockLotsInputSchema = z.object({
 		.nullable()
 		.transform((value) => (value ? value.split(",") : []))
 		.pipe(z.array(StockLotStatusEnum)),
-	produtoId: z.string({ invalid_type_error: "Tipo inválido para ID do produto." }).optional().nullable(),
-	produtoVarianteId: z.string({ invalid_type_error: "Tipo inválido para ID da variante." }).optional().nullable(),
+	productId: z.string({ invalid_type_error: "Tipo inválido para ID do produto." }).optional().nullable(),
+	productVariantId: z.string({ invalid_type_error: "Tipo inválido para ID da variante." }).optional().nullable(),
 	dueInDays: z
 		.string({ invalid_type_error: "Tipo inválido para dias até vencimento." })
 		.optional()
@@ -71,8 +71,8 @@ async function getProductStockLots({ input, session }: { input: TGetProductStock
 	const now = new Date();
 	const conditions = [eq(productStockLots.organizacaoId, organizationId)];
 	if (input.search) conditions.push(sql`${productStockLots.codigoLote} ILIKE '%' || ${input.search} || '%'`);
-	if (input.produtoId) conditions.push(eq(productStockLots.produtoId, input.produtoId));
-	if (input.produtoVarianteId) conditions.push(eq(productStockLots.produtoVarianteId, input.produtoVarianteId));
+	if (input.productId) conditions.push(eq(productStockLots.produtoId, input.productId));
+	if (input.productVariantId) conditions.push(eq(productStockLots.produtoVarianteId, input.productVariantId));
 	if (input.dueInDays != null) {
 		const dueLimit = new Date(now);
 		dueLimit.setDate(dueLimit.getDate() + input.dueInDays);
@@ -154,8 +154,8 @@ async function getProductStockLotsRoute(request: NextRequest) {
 		page: searchParams.get("page"),
 		search: searchParams.get("search"),
 		status: searchParams.get("status"),
-		produtoId: searchParams.get("produtoId"),
-		produtoVarianteId: searchParams.get("produtoVarianteId"),
+		productId: searchParams.get("productId"),
+		productVariantId: searchParams.get("productVariantId"),
 		dueInDays: searchParams.get("dueInDays"),
 	});
 	const result = await getProductStockLots({ input, session });

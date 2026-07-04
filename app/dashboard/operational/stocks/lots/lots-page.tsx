@@ -60,7 +60,7 @@ export default function StockLotsPage() {
 	const queryClient = useQueryClient();
 	const [discardingStockLot, setDiscardingStockLot] = useState<TGetProductStockLotsOutputDefault["stockLots"][number] | null>(null);
 	const query = useProductStockLots({
-		initialFilters: { page: 1, search: "", status: [], produtoId: null, produtoVarianteId: null, dueInDays: null },
+		initialFilters: { page: 1, search: "", status: [], productId: null, productVariantId: null, dueInDays: null },
 	});
 
 	const handleStockLotsOnMutate = async () => await queryClient.cancelQueries({ queryKey: query.queryKey });
