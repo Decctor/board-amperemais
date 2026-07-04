@@ -66,10 +66,7 @@ export const PurchaseSchema = z.object({
 });
 export type TPurchase = z.infer<typeof PurchaseSchema>;
 
-export function refinePurchaseStatusAndDeliveryDate(
-	data: { status?: unknown; entregaDataRecebimentoEfetivacao?: unknown },
-	ctx: z.RefinementCtx,
-) {
+export function refinePurchaseStatusAndDeliveryDate(data: { status?: unknown; entregaDataRecebimentoEfetivacao?: unknown }, ctx: z.RefinementCtx) {
 	const isReceived = data.status === "RECEBIDA";
 	const hasReceiptDate = !!data.entregaDataRecebimentoEfetivacao;
 	if (isReceived && !hasReceiptDate) {
@@ -131,6 +128,12 @@ export const PurchaseItemSchema = z.object({
 	externoUnidade: z.string({ invalid_type_error: "Tipo não válido para a unidade externa." }).optional().nullable(),
 	externoFatorConversao: z.number({ invalid_type_error: "Tipo não válido para o fator de conversão externo." }).optional().nullable(),
 	anotacoes: z.string({ invalid_type_error: "Tipo não válido para as anotações do item da compra." }).optional().nullable(),
+	dataValidade: z
+		.string({ invalid_type_error: "Tipo não válido para a data de validade do item da compra." })
+		.datetime({ message: "Tipo não válido para a data de validade do item da compra." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
 	dataInsercao: z
 		.string({ invalid_type_error: "Tipo não válido para a data de inserção." })
 		.datetime({ message: "Tipo não válido para a data de inserção." })

@@ -1,5 +1,6 @@
 import { DBTransaction } from "@/services/drizzle";
-import { productStockTransactions, productVariants, products, purchaseItems } from "@/services/drizzle/schema";
+import { productStockLots, productStockTransactions, productVariants, products, purchaseItems } from "@/services/drizzle/schema";
+import { isStockTrackingActive } from "@/lib/stock/apply-stock-movement";
 import { and, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 
@@ -24,6 +25,7 @@ export type TPurchaseItemInput = {
 	externoUnidade?: string | null;
 	externoFatorConversao?: number | null;
 	anotacoes?: string | null;
+	dataValidade?: Date | null;
 };
 
 type HandlePurchaseItemStockProcessingParams = {
@@ -103,6 +105,9 @@ export async function handlePurchaseItemStockProcessing({
 			unitCost: resolveUnitCost(previousItem),
 			reason: reasonOverride?.exit ?? DEFAULT_REASONS.unreceiving,
 		});
+		// Reverse the lot spawned by this item's receipt. The route only allows un-receiving while lots
+		// are pristine, so zeroing here keeps the FEFO sub-ledger in sync with products.quantidade.
+		await discardPurchaseItemLot({ trx, organizationId, purchaseItemId: previousItem.id });
 
 		if (shouldDelete) {
 			await deletePurchaseItemRow({ trx, organizationId, itemId: item.id! });
@@ -168,6 +173,74 @@ function resolveUnitCost(item: { valorUnitarioLiquido?: number | null; valorUnit
 	return item.valorUnitarioLiquido != null ? item.valorUnitarioLiquido : item.valorUnitarioBruto;
 }
 
+type CreatePurchaseItemLotParams = {
+	trx: DBTransaction;
+	organizationId: string;
+	purchaseId: string;
+	purchaseItemId: string;
+	produtoId: string;
+	produtoVarianteId?: string | null;
+	quantidade: number;
+	dataValidade?: Date | null;
+};
+
+async function createPurchaseItemLotIfNeeded({
+	trx,
+	organizationId,
+	purchaseId,
+	purchaseItemId,
+	produtoId,
+	produtoVarianteId,
+	quantidade,
+	dataValidade,
+}: CreatePurchaseItemLotParams): Promise<string | null> {
+	// v1 trigger: a lot is spawned only when the user provided an expiry date. Gated by the same
+	// stock-tracking flag that guards the movement, so no lot is created when the movement is skipped.
+	if (dataValidade == null) return null;
+	const trackingActive = await isStockTrackingActive({ trx, organizationId, produtoId, produtoVarianteId });
+	if (!trackingActive) return null;
+
+	const inserted = await trx
+		.insert(productStockLots)
+		.values({
+			organizacaoId: organizationId,
+			produtoId,
+			produtoVarianteId: produtoVarianteId ?? null,
+			codigoLote: buildPurchaseLotCode({ purchaseId, purchaseItemId }),
+			dataValidade,
+			quantidadeInicial: quantidade,
+			quantidadeAtual: quantidade,
+			status: "ATIVO",
+			compraId: purchaseId,
+			compraItemId: purchaseItemId,
+		})
+		.returning({ id: productStockLots.id });
+
+	const loteId = inserted[0]?.id;
+	if (!loteId) throw new createHttpError.InternalServerError("Erro ao criar lote da compra.");
+	return loteId;
+}
+
+async function discardPurchaseItemLot({
+	trx,
+	organizationId,
+	purchaseItemId,
+}: {
+	trx: DBTransaction;
+	organizationId: string;
+	purchaseItemId: string;
+}) {
+	await trx
+		.update(productStockLots)
+		.set({ quantidadeAtual: 0, status: "DESCARTADO" })
+		.where(and(eq(productStockLots.compraItemId, purchaseItemId), eq(productStockLots.organizacaoId, organizationId)));
+}
+
+function buildPurchaseLotCode({ purchaseId, purchaseItemId }: { purchaseId: string; purchaseItemId: string }) {
+	const datePart = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+	return `COMPRA-${datePart}-${purchaseId.slice(0, 8).toUpperCase()}-${purchaseItemId.slice(0, 4).toUpperCase()}`;
+}
+
 type PersistPurchaseItemRowParams = {
 	trx: DBTransaction;
 	organizationId: string;
@@ -196,6 +269,7 @@ async function persistPurchaseItemRow({ trx, organizationId, purchaseId, item }:
 				externoUnidade: item.externoUnidade ?? null,
 				externoFatorConversao: item.externoFatorConversao ?? null,
 				anotacoes: item.anotacoes ?? null,
+				dataValidade: item.dataValidade ?? null,
 			})
 			.where(and(eq(purchaseItems.id, item.id), eq(purchaseItems.organizacaoId, organizationId)));
 		return item.id;
@@ -222,6 +296,7 @@ async function persistPurchaseItemRow({ trx, organizationId, purchaseId, item }:
 			externoUnidade: item.externoUnidade ?? null,
 			externoFatorConversao: item.externoFatorConversao ?? null,
 			anotacoes: item.anotacoes ?? null,
+			dataValidade: item.dataValidade ?? null,
 		})
 		.returning({ id: purchaseItems.id });
 
@@ -248,12 +323,27 @@ type ApplyStockEntryParams = {
 	userId: string;
 	purchaseId: string;
 	purchaseItemId: string;
-	item: { produtoId: string; produtoVarianteId?: string | null; quantidade: number };
+	item: { produtoId: string; produtoVarianteId?: string | null; quantidade: number; dataValidade?: Date | null };
 	unitCost: number;
 	reason: string;
 };
 
 async function applyStockEntry({ trx, organizationId, userId, purchaseId, purchaseItemId, item, unitCost, reason }: ApplyStockEntryParams) {
+	// Perishable control: when the item carries an expiry date, receiving it spawns a traceable lot
+	// linked to this purchase item. The lot is created alongside the entry movement so its id is
+	// stamped on the ledger row (mirrors the production flow). No double-count: products.quantidade
+	// stays the master balance, the lot is a FEFO sub-ledger.
+	const loteId = await createPurchaseItemLotIfNeeded({
+		trx,
+		organizationId,
+		purchaseId,
+		purchaseItemId,
+		produtoId: item.produtoId,
+		produtoVarianteId: item.produtoVarianteId,
+		quantidade: item.quantidade,
+		dataValidade: item.dataValidade,
+	});
+
 	if (item.produtoVarianteId) {
 		await applyVariantStockMovement({
 			trx,
@@ -266,6 +356,7 @@ async function applyStockEntry({ trx, organizationId, userId, purchaseId, purcha
 			signedQuantity: item.quantidade,
 			unitCost,
 			reason,
+			loteId,
 		});
 		return;
 	}
@@ -279,6 +370,7 @@ async function applyStockEntry({ trx, organizationId, userId, purchaseId, purcha
 		signedQuantity: item.quantidade,
 		unitCost,
 		reason,
+		loteId,
 	});
 }
 
@@ -345,6 +437,7 @@ type ApplyProductStockMovementParams = {
 	signedQuantity: number;
 	unitCost: number;
 	reason: string;
+	loteId?: string | null;
 };
 
 async function applyProductStockMovement({
@@ -357,6 +450,7 @@ async function applyProductStockMovement({
 	signedQuantity,
 	unitCost,
 	reason,
+	loteId = null,
 }: ApplyProductStockMovementParams) {
 	const product = await trx.query.products.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, produtoId), eq(fields.organizacaoId, organizationId)),
@@ -379,6 +473,7 @@ async function applyProductStockMovement({
 		produtoVarianteId: null,
 		compraId: purchaseId,
 		compraItemId: purchaseItemId,
+		loteId,
 		tipo: movementType,
 		quantidade: recordedQuantity,
 		saldoAnterior: previousQuantity,
@@ -410,6 +505,7 @@ type ApplyVariantStockMovementParams = {
 	signedQuantity: number;
 	unitCost: number;
 	reason: string;
+	loteId?: string | null;
 };
 
 async function applyVariantStockMovement({
@@ -423,6 +519,7 @@ async function applyVariantStockMovement({
 	signedQuantity,
 	unitCost,
 	reason,
+	loteId = null,
 }: ApplyVariantStockMovementParams) {
 	const variant = await trx.query.productVariants.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, variantId), eq(fields.organizacaoId, organizationId)),
@@ -445,6 +542,7 @@ async function applyVariantStockMovement({
 		produtoVarianteId: variantId,
 		compraId: purchaseId,
 		compraItemId: purchaseItemId,
+		loteId,
 		tipo: movementType,
 		quantidade: recordedQuantity,
 		saldoAnterior: previousQuantity,

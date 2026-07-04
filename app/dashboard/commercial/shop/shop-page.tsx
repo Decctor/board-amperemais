@@ -34,17 +34,17 @@ export default function ShopPage({ organizationId }: { organizationId: string })
 					) : null}
 				</div>
 				<div className="flex flex-wrap gap-2">
-					<Button variant="outline" size="sm" className="gap-2" onClick={() => copyToClipboard(`${window.location.origin}${shopUrl}`)}>
+					<Button variant="ghost" size="sm" className="gap-2" onClick={() => copyToClipboard(`${window.location.origin}${shopUrl}`)}>
 						<Copy className="size-4" />
-						Copiar link
+						COPIAR LINK
 					</Button>
 					<Button variant="outline" size="sm" className="gap-2" onClick={() => window.open(shopUrl, "_blank")} disabled={!settings.ativo}>
 						<ExternalLink className="size-4" />
-						Ver loja
+						VER LOJA
 					</Button>
-					<Button variant="secondary" size="sm" className="gap-2" onClick={() => copyToClipboard(`${window.location.origin}${shopUrl}`)}>
+					<Button size="sm" className="gap-2" onClick={() => copyToClipboard(`${window.location.origin}${shopUrl}`)}>
 						<QrCode className="size-4" />
-						Compartilhar
+						COMPARTILHAR
 					</Button>
 				</div>
 			</div>

@@ -7,7 +7,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { usePublicShopOrder } from "@/lib/queries/shop";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
-import { AlertCircle, Check, Clock3, CreditCard, Package, RefreshCw, RotateCcw, ShoppingBag, Store, Ticket, Truck, WalletCards } from "lucide-react";
+import {
+	AlertCircle,
+	Check,
+	Clock3,
+	CreditCard,
+	Package,
+	Receipt,
+	RefreshCw,
+	RotateCcw,
+	ShoppingBag,
+	StickyNote,
+	Store,
+	Ticket,
+	Truck,
+	WalletCards,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -105,22 +120,27 @@ function OrderError({ orgId, retry }: { orgId: string; retry: () => void }) {
 
 function StoreHeader({ organization, orgId }: { organization: PublicOrderData["organization"]; orgId: string }) {
 	return (
-		<header className="border-b border-border/70 bg-card">
+		<header className="border-b border-brand-foreground/20 bg-brand text-brand-foreground rounded-bl-2xl rounded-br-2xl">
 			<div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-3 sm:py-4">
 				{organization.logoUrl ? (
-					<div className="relative size-11 shrink-0 overflow-hidden rounded-full border bg-background sm:size-12">
+					<div className="relative size-11 shrink-0 overflow-hidden rounded-full bg-background ring-2 ring-brand-foreground ring-offset-2 ring-offset-brand sm:size-12">
 						<Image src={organization.logoUrl} alt={organization.nome} fill className="object-cover" sizes="48px" priority />
 					</div>
 				) : (
-					<div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand text-lg font-black text-brand-foreground sm:size-12">
+					<div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-foreground text-lg font-black text-brand ring-2 ring-brand-foreground ring-offset-2 ring-offset-brand sm:size-12">
 						{organization.nome.charAt(0).toUpperCase()}
 					</div>
 				)}
 				<div className="min-w-0 flex-1">
-					<p className="truncate text-sm font-black sm:text-base">{organization.nome}</p>
-					<p className="text-xs text-muted-foreground">Acompanhamento do pedido</p>
+					<p className="truncate text-sm font-black text-brand-foreground sm:text-base">{organization.nome}</p>
+					<p className="truncate text-xs text-brand-foreground/70">Acompanhamento do pedido</p>
 				</div>
-				<Button asChild variant="ghost" size="sm" className="rounded-xl">
+				<Button
+					asChild
+					variant="none"
+					size="sm"
+					className="shrink-0 rounded-xl bg-brand-foreground/10 font-bold text-brand-foreground transition-colors hover:bg-brand-foreground/20"
+				>
 					<Link href={"/shop/" + orgId}>
 						<Store className="size-4" />
 						<span className="hidden sm:inline">VER LOJA</span>
@@ -159,38 +179,46 @@ function OrderStatus({ order, isRefetching, onRefresh }: { order: PublicOrder; i
 						<span>Entre em contato com a loja se precisar de mais informações.</span>
 					</div>
 				) : (
-					<div className={"grid gap-0 pt-2 " + (steps.length === 5 ? "grid-cols-5" : "grid-cols-4")}>
-						{steps.map((step, index) => {
-							const isComplete = index < currentIndex || order.statusAtendimento === "ENTREGUE";
-							const isCurrent = index === currentIndex && order.statusAtendimento !== "ENTREGUE";
-							return (
-								<div key={step} className="relative flex min-w-0 flex-col items-center gap-2 text-center">
-									{index > 0 ? (
+					<div className="flex flex-col gap-3">
+						<div className={"grid gap-0 pt-2 " + (steps.length === 5 ? "grid-cols-5" : "grid-cols-4")}>
+							{steps.map((step, index) => {
+								const isComplete = index < currentIndex || order.statusAtendimento === "ENTREGUE";
+								const isCurrent = index === currentIndex && order.statusAtendimento !== "ENTREGUE";
+								return (
+									<div key={step} className="relative flex min-w-0 flex-col items-center gap-2 text-center">
+										{index > 0 ? (
+											<div
+												className={"absolute top-[0.9375rem] right-1/2 h-0.5 w-full " + (index <= currentIndex ? "bg-brand" : "bg-border")}
+												aria-hidden="true"
+											/>
+										) : null}
 										<div
-											className={"absolute top-[0.9375rem] right-1/2 h-0.5 w-full " + (index <= currentIndex ? "bg-brand" : "bg-border")}
-											aria-hidden="true"
-										/>
-									) : null}
-									<div
-										className={
-											"relative z-10 flex size-8 items-center justify-center rounded-full border-2 text-xs font-black " +
-											(isComplete
-												? "border-brand bg-brand text-brand-foreground"
-												: isCurrent
-													? "border-brand bg-card text-foreground ring-4 ring-brand/15"
-													: "border-border bg-muted text-muted-foreground")
-										}
-									>
-										{isComplete ? <Check className="size-4" strokeWidth={3} /> : index + 1}
+											className={
+												"relative z-10 flex size-8 items-center justify-center rounded-full border-2 text-xs font-black " +
+												(isComplete
+													? "border-brand bg-brand text-brand-foreground"
+													: isCurrent
+														? "border-brand bg-card text-foreground ring-4 ring-brand/15"
+														: "border-border bg-muted text-muted-foreground")
+											}
+										>
+											{isComplete ? <Check className="size-4" strokeWidth={3} /> : index + 1}
+										</div>
+										<span
+											className={
+												"hidden text-[0.625rem] leading-tight font-bold sm:block sm:text-xs " +
+												(index <= currentIndex ? "text-foreground" : "text-muted-foreground")
+											}
+										>
+											{STATUS_LABELS[step]}
+										</span>
 									</div>
-									<span
-										className={"text-[0.625rem] leading-tight font-bold sm:text-xs " + (index <= currentIndex ? "text-foreground" : "text-muted-foreground")}
-									>
-										{STATUS_LABELS[step]}
-									</span>
-								</div>
-							);
-						})}
+								);
+							})}
+						</div>
+						<p className="text-center text-xs font-bold text-muted-foreground sm:hidden">
+							Etapa {currentIndex + 1} de {steps.length}
+						</p>
 					</div>
 				)}
 			</div>
@@ -214,7 +242,7 @@ function OrderItems({ order }: { order: PublicOrder }) {
 			<div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
 				<div className="flex items-center gap-2">
 					<ShoppingBag className="size-5 text-brand-secondary" />
-					<h2 className="font-black">Itens do pedido</h2>
+					<h2 className="font-black">ITENS DO PEDIDO</h2>
 				</div>
 				<span className="text-xs font-bold text-muted-foreground">
 					{order.items.length} {order.items.length === 1 ? "ITEM" : "ITENS"}
@@ -270,7 +298,10 @@ function PriceSummary({ order }: { order: PublicOrder }) {
 
 	return (
 		<section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
-			<h2 className="font-black">Resumo do pedido</h2>
+			<div className="flex items-center gap-2">
+				<Receipt className="size-5 text-brand-secondary" />
+				<h2 className="font-black">RESUMO DO PEDIDO</h2>
+			</div>
 			<div className="mt-4 flex flex-col gap-2.5 text-sm">
 				<div className="flex justify-between gap-3 text-muted-foreground">
 					<span>Subtotal</span>
@@ -364,7 +395,7 @@ function CashbackSummary({ order }: { order: PublicOrder }) {
 	return (
 		<section className="rounded-2xl border border-brand/30 bg-brand/10 p-5 sm:p-6">
 			<div className="flex items-center gap-2">
-				<WalletCards className="size-5" />
+				<WalletCards className="size-5 text-brand-secondary" />
 				<h2 className="font-black">Cashback</h2>
 			</div>
 			<div className="mt-3 flex flex-col gap-2 text-sm">
@@ -410,7 +441,10 @@ function OrderContent({
 						<CashbackSummary order={order} />
 						{order.notes ? (
 							<section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
-								<h2 className="font-black">Observações</h2>
+								<div className="flex items-center gap-2">
+									<StickyNote className="size-5 text-brand-secondary" />
+									<h2 className="font-black">Observações</h2>
+								</div>
 								<p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{order.notes}</p>
 							</section>
 						) : null}

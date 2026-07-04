@@ -357,6 +357,7 @@ export const productStockLots = newTable(
 		status: stockLotStatusEnum("status").default("ATIVO").notNull(),
 		producaoId: varchar("producao_id", { length: 255 }).references(() => productions.id, { onDelete: "set null" }),
 		compraId: varchar("compra_id", { length: 255 }).references(() => purchases.id, { onDelete: "set null" }),
+		compraItemId: varchar("compra_item_id", { length: 255 }).references(() => purchaseItems.id, { onDelete: "set null" }),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	},
 	(table) => ({
@@ -366,6 +367,7 @@ export const productStockLots = newTable(
 		statusIdx: index("idx_product_stock_lots_status").on(table.status),
 		validadeIdx: index("idx_product_stock_lots_validade").on(table.dataValidade),
 		producaoIdx: index("idx_product_stock_lots_producao").on(table.producaoId),
+		compraItemIdx: index("idx_product_stock_lots_compra_item").on(table.compraItemId),
 	}),
 );
 
@@ -389,6 +391,10 @@ export const productStockLotsRelations = relations(productStockLots, ({ one }) =
 	compra: one(purchases, {
 		fields: [productStockLots.compraId],
 		references: [purchases.id],
+	}),
+	compraItem: one(purchaseItems, {
+		fields: [productStockLots.compraItemId],
+		references: [purchaseItems.id],
 	}),
 }));
 

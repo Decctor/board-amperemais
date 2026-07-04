@@ -81,6 +81,7 @@ export default function ControlPurchase({ purchaseId, user, closeModal, callback
 				addPurchaseItem={addPurchaseItem}
 				updatePurchaseItem={updatePurchaseItem}
 				removePurchaseItem={removePurchaseItem}
+				locked={purchase?.status === "RECEBIDA"}
 			/>
 			<PurchaseOrderBlock purchase={state.purchase} updatePurchase={updatePurchase} />
 			<PurchaseTransportBlock purchase={state.purchase} updatePurchase={updatePurchase} />

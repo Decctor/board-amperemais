@@ -5,8 +5,8 @@ import { handlePurchaseItemStockProcessing, type TPurchaseItemStockOperation } f
 import { createSimplifiedSearchCondition } from "@/lib/search";
 import { PurchaseStatusEnum, TPurchaseStatusEnum } from "@/schemas/enums";
 import { PurchaseItemSchema, PurchaseSchema, refinePurchaseStatusAndDeliveryDate } from "@/schemas/purchases";
-import { db } from "@/services/drizzle";
-import { purchaseItems, purchases } from "@/services/drizzle/schema";
+import { db, type DBTransaction } from "@/services/drizzle";
+import { productStockLots, purchases } from "@/services/drizzle/schema";
 import { and, count, eq, inArray, or } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { NextResponse, type NextRequest } from "next/server";
@@ -81,6 +81,16 @@ async function getPurchases({ input, session }: { input: TGetPurchasesInput; ses
 								codigo: true,
 								imagemCapaUrl: true,
 								unidade: true,
+							},
+						},
+						lotes: {
+							columns: {
+								id: true,
+								codigoLote: true,
+								quantidadeInicial: true,
+								quantidadeAtual: true,
+								dataValidade: true,
+								status: true,
 							},
 						},
 					},
@@ -300,12 +310,55 @@ function resolvePurchaseTransition(
 	return "UPDATING_UNRECEIVED";
 }
 
+type PreviousPurchaseItem = { id: string; produtoId: string; produtoVarianteId: string | null; quantidade: number; valorUnitarioBruto: number };
+type PayloadPurchaseItem = TUpdatePurchaseInput["purchaseItems"][number];
+
+// A received purchase freezes its items: once lots were spawned we don't allow silent add/remove/edit,
+// which would desync the lot sub-ledger. Corrections go through cancellation or the stock-lot flows.
+function assertReceivedPurchaseItemsUnchanged({
+	previousItems,
+	payloadItems,
+}: {
+	previousItems: PreviousPurchaseItem[];
+	payloadItems: PayloadPurchaseItem[];
+}) {
+	const previousById = new Map(previousItems.map((item) => [item.id, item]));
+	for (const item of payloadItems) {
+		if (!item.id) throw new createHttpError.BadRequest("Não é possível adicionar itens a uma compra já recebida.");
+		if (item.deletar) throw new createHttpError.BadRequest("Não é possível remover itens de uma compra já recebida.");
+		const previous = previousById.get(item.id);
+		if (!previous) throw new createHttpError.BadRequest("Item informado não pertence a esta compra.");
+		const changed =
+			previous.produtoId !== item.produtoId ||
+			(previous.produtoVarianteId ?? null) !== (item.produtoVarianteId ?? null) ||
+			previous.quantidade !== item.quantidade;
+		if (changed) throw new createHttpError.BadRequest("Não é possível alterar itens de uma compra já recebida. Cancele a compra para corrigir.");
+	}
+	const activePayloadCount = payloadItems.filter((item) => !item.deletar).length;
+	if (activePayloadCount !== previousItems.length)
+		throw new createHttpError.BadRequest("Não é possível alterar a composição de itens de uma compra já recebida.");
+}
+
+// Stock effects of a received purchase are only reversible while every lot it spawned is still pristine
+// (untouched quantity and ATIVO). Once a lot is consumed/discarded/expired, un-receiving or cancelling
+// would break the FEFO sub-ledger, so we block it and point the user to the stock-lot flows.
+async function assertPurchaseLotsArePristine({ tx, organizationId, purchaseId }: { tx: DBTransaction; organizationId: string; purchaseId: string }) {
+	const lots = await tx.query.productStockLots.findMany({
+		where: and(eq(productStockLots.compraId, purchaseId), eq(productStockLots.organizacaoId, organizationId)),
+		columns: { quantidadeInicial: true, quantidadeAtual: true, status: true },
+	});
+	const anyTouched = lots.some((lot) => lot.status !== "ATIVO" || lot.quantidadeAtual < lot.quantidadeInicial);
+	if (anyTouched)
+		throw new createHttpError.Conflict(
+			"Há lotes desta compra já consumidos ou descartados. Ajuste o estoque pelos lotes antes de reabrir ou cancelar a compra.",
+		);
+}
+
 async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput; session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	if (!session.membership?.permissoes.compras.editar)
-		throw new createHttpError.Unauthorized("Você não possui permissão para editar essa compra.");
+	if (!session.membership?.permissoes.compras.editar) throw new createHttpError.Unauthorized("Você não possui permissão para editar essa compra.");
 
 	const { purchaseId, purchase: payloadPurchase, purchaseItems: payloadPurchaseItems } = input;
 
@@ -333,6 +386,7 @@ async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput;
 		if (isCancelTransition) {
 			const wasReceived = isPurchaseConsideredReceived(previousPurchase);
 			if (wasReceived) {
+				await assertPurchaseLotsArePristine({ tx, organizationId: userOrgId, purchaseId });
 				for (const previousItem of previousPurchase.itens) {
 					await handlePurchaseItemStockProcessing({
 						trx: tx,
@@ -381,6 +435,26 @@ async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput;
 		}
 
 		const operation = resolvePurchaseTransition(previousPurchase, payloadPurchase);
+
+		// Received purchase staying received: items are frozen. Reprocessing them here would roll back and
+		// re-apply stock on every save (and desync spawned lots), so we only update the header.
+		if (operation === "UPDATING_RECEIVED") {
+			assertReceivedPurchaseItemsUnchanged({ previousItems: previousPurchase.itens, payloadItems: payloadPurchaseItems });
+			await tx
+				.update(purchases)
+				.set({ ...payloadPurchase, dataUltimaAtualizacao: new Date() })
+				.where(and(eq(purchases.id, purchaseId), eq(purchases.organizacaoId, userOrgId)));
+			return {
+				data: { updatedPurchaseId: purchaseId },
+				message: "Compra atualizada com sucesso.",
+			};
+		}
+
+		// Un-receiving (RECEBIDA → anterior) rolls back stock and zeroes the spawned lots; only allowed
+		// while those lots are pristine.
+		if (operation === "UNRECEIVING") {
+			await assertPurchaseLotsArePristine({ tx, organizationId: userOrgId, purchaseId });
+		}
 
 		await tx
 			.update(purchases)

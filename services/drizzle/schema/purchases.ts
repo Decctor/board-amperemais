@@ -4,7 +4,7 @@ import { organizations } from "./organizations";
 import { accountingEntries, fiscalOutboundDocuments } from "./financial";
 import { users } from "./users";
 import { relations } from "drizzle-orm";
-import { products, productStockTransactions, productVariants } from "./products";
+import { products, productStockLots, productStockTransactions, productVariants } from "./products";
 import { purchaseStatusEnum } from "./enums";
 
 export const purchases = newTable("purchases", {
@@ -97,6 +97,9 @@ export const purchaseItems = newTable("purchase_items", {
 
 	anotacoes: text("anotacoes"),
 
+	// Perishable control: when informed, receiving this item generates a traceable stock lot.
+	dataValidade: timestamp("data_validade"),
+
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 });
 
@@ -118,6 +121,7 @@ export const purchaseItemsRelations = relations(purchaseItems, ({ one, many }) =
 		references: [productVariants.id],
 	}),
 	transacoes: many(productStockTransactions),
+	lotes: many(productStockLots),
 }));
 
 export type TPurchaseItemEntity = typeof purchaseItems.$inferSelect;

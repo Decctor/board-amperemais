@@ -28,6 +28,20 @@ export const PurchaseStateSchema = z.object({
 				codigo: true,
 				imagemCapaUrl: true,
 			}).optional(),
+			// Derived lots spawned by receiving this item (read-only, for the edit UI). Stripped by the
+			// server schema on submit; never sent back as input.
+			lotes: z
+				.array(
+					z.object({
+						id: z.string(),
+						codigoLote: z.string().nullable(),
+						quantidadeInicial: z.number(),
+						quantidadeAtual: z.number(),
+						dataValidade: z.date().nullable(),
+						status: z.string(),
+					}),
+				)
+				.optional(),
 			id: z
 				.string({
 					invalid_type_error: "Tipo não válido para ID do item da compra.",

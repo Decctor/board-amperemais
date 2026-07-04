@@ -1,10 +1,12 @@
+import DateInput from "@/components/Inputs/DateInput";
 import SelectProductWithVariants, { type TSelectProductWithVariantsValue } from "@/components/Inputs/SelectProductWithVariants";
 import DeleteRowButton from "@/components/Spreadsheet/DeleteRowButton";
 import EditableNumberCell from "@/components/Spreadsheet/EditableNumberCell";
 import MobileEditableField from "@/components/Spreadsheet/MobileEditableField";
 import SpreadsheetCellWrapper from "@/components/Spreadsheet/SpreadsheetCellWrapper";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
-import { formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { formatDateForInputValue, formatDateOnInputChange, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
 import {
 	consumeProgrammaticSpreadsheetFocus,
 	handleSpreadsheetNavigationKeyDown,
@@ -13,9 +15,9 @@ import {
 } from "@/lib/spreadsheet-navigation";
 import { cn } from "@/lib/utils";
 import { TUsePurchaseState } from "@/state-hooks/use-purchase-state";
-import { BadgeDollarSign, BoxIcon, Plus, ShoppingCart } from "lucide-react";
+import { BadgeDollarSign, BoxIcon, CalendarClock, CalendarOff, Lock, Plus, ShoppingCart } from "lucide-react";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 const PURCHASE_ITEM_GRID_COL = {
 	PRODUCT: 0,
@@ -32,11 +34,20 @@ type PurchaseItemsBlockProps = {
 	addPurchaseItem: TUsePurchaseState["addPurchaseItem"];
 	updatePurchaseItem: TUsePurchaseState["updatePurchaseItem"];
 	removePurchaseItem: TUsePurchaseState["removePurchaseItem"];
+	/** When the purchase is already received, items are frozen to preserve the lots they spawned. */
+	locked?: boolean;
 };
 
 type TPurchaseItemState = TUsePurchaseState["state"]["purchaseItems"][number];
+type TPurchaseItemLot = NonNullable<TPurchaseItemState["lotes"]>[number];
 
-export default function PurchaseItemsBlock({ purchaseItems, addPurchaseItem, updatePurchaseItem, removePurchaseItem }: PurchaseItemsBlockProps) {
+export default function PurchaseItemsBlock({
+	purchaseItems,
+	addPurchaseItem,
+	updatePurchaseItem,
+	removePurchaseItem,
+	locked = false,
+}: PurchaseItemsBlockProps) {
 	const visibleItems = useMemo(() => purchaseItems.map((item, index) => ({ item, index })).filter(({ item }) => !item.deletar), [purchaseItems]);
 	const purchaseTotal = visibleItems.reduce((acc, { item }) => acc + getItemTotal(item), 0);
 	const gridBounds: SpreadsheetGridBounds = useMemo(
@@ -49,6 +60,15 @@ export default function PurchaseItemsBlock({ purchaseItems, addPurchaseItem, upd
 
 	return (
 		<ResponsiveMenuSection title="ITENS" icon={<ShoppingCart className="h-4 min-h-4 w-4 min-w-4" />}>
+			{locked ? (
+				<div className="flex w-full items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+					<Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+					<p className="leading-relaxed">
+						Compra recebida — os itens estão travados para preservar os lotes gerados. Para corrigir, cancele a compra (se os lotes ainda não foram usados)
+						ou ajuste diretamente pelo estoque.
+					</p>
+				</div>
+			) : null}
 			<div {...{ [SPREADSHEET_TABLE_ATTR]: "true" }} className="flex w-full flex-col overflow-hidden rounded-md border border-border bg-background">
 				<div className="hidden min-h-9 w-full items-center border-b border-border bg-muted/60 px-2 py-1.5 text-[0.68rem] font-medium uppercase text-muted-foreground lg:flex">
 					<p className="w-[30%] px-2 text-start">Produto</p>
@@ -66,13 +86,14 @@ export default function PurchaseItemsBlock({ purchaseItems, addPurchaseItem, upd
 						<PurchaseCompositionTableItem
 							key={item.id ?? `${item.produtoId}-${item.produtoVarianteId ?? "produto"}-${index}`}
 							item={item}
+							locked={locked}
 							gridRow={rowIndex}
 							gridBounds={gridBounds}
 							handleUpdate={(updatedItem) => updatePurchaseItem({ index, item: normalizeItemValues({ ...item, ...updatedItem }) })}
 							handleRemove={() => removePurchaseItem({ index })}
 						/>
 					))}
-					<DraftPurchaseCompositionItem addPurchaseItem={addPurchaseItem} gridRow={visibleItems.length} gridBounds={gridBounds} />
+					{locked ? null : <DraftPurchaseCompositionItem addPurchaseItem={addPurchaseItem} gridRow={visibleItems.length} gridBounds={gridBounds} />}
 					{visibleItems.length > 0 ? (
 						<div className="flex w-full items-center justify-center border-t border-border px-2 py-2">
 							<div className="flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground/80 tabular-nums">
@@ -95,118 +116,164 @@ export default function PurchaseItemsBlock({ purchaseItems, addPurchaseItem, upd
 
 type PurchaseCompositionTableItemProps = {
 	item: TPurchaseItemState;
+	locked: boolean;
 	gridRow: number;
 	gridBounds: SpreadsheetGridBounds;
 	handleUpdate: (item: Partial<TPurchaseItemState>) => void;
 	handleRemove: () => void;
 };
 
-function PurchaseCompositionTableItem({ item, gridRow, gridBounds, handleUpdate, handleRemove }: PurchaseCompositionTableItemProps) {
+function PurchaseCompositionTableItem({ item, locked, gridRow, gridBounds, handleUpdate, handleRemove }: PurchaseCompositionTableItemProps) {
 	const rowTotal = getItemTotal(item);
+	const lots = item.lotes ?? [];
 
 	return (
 		<div className="border-t border-border first:border-t-0">
 			<div className="hidden min-h-11 w-full items-center px-2 py-1 text-xs transition-colors hover:bg-muted/40 lg:flex">
-				<div className="w-[30%] px-1">
-					<ProductCell item={item} gridRow={gridRow} gridCol={PURCHASE_ITEM_GRID_COL.PRODUCT} gridBounds={gridBounds} onChange={handleUpdate} />
+				<div className="flex w-[30%] items-center gap-1.5 px-1">
+					<div className="min-w-0 flex-1">
+						{locked ? (
+							<StaticProductLabel item={item} />
+						) : (
+							<ProductCell item={item} gridRow={gridRow} gridCol={PURCHASE_ITEM_GRID_COL.PRODUCT} gridBounds={gridBounds} onChange={handleUpdate} />
+						)}
+					</div>
+					<PurchaseItemExpiryControl item={item} locked={locked} lots={lots} handleUpdate={handleUpdate} />
 				</div>
 				<p className="w-[9%] truncate px-2 text-center text-muted-foreground">{item.produto.unidade || "UN"}</p>
 				<div className="w-[9%] px-1">
-					<EditableNumberCell
-						value={item.quantidade}
-						ariaLabel="Editar quantidade"
-						min={0.000001}
-						gridRow={gridRow}
-						gridCol={PURCHASE_ITEM_GRID_COL.QUANTITY}
-						gridBounds={gridBounds}
-						onCommit={(quantidade) => handleUpdate({ quantidade })}
-					/>
+					{locked ? (
+						<StaticNumberCell value={item.quantidade} />
+					) : (
+						<EditableNumberCell
+							value={item.quantidade}
+							ariaLabel="Editar quantidade"
+							min={0.000001}
+							gridRow={gridRow}
+							gridCol={PURCHASE_ITEM_GRID_COL.QUANTITY}
+							gridBounds={gridBounds}
+							onCommit={(quantidade) => handleUpdate({ quantidade })}
+						/>
+					)}
 				</div>
 				<div className="w-[13%] px-1">
-					<EditableNumberCell
-						value={item.valorUnitarioBruto}
-						ariaLabel="Editar valor unitário"
-						min={0}
-						gridRow={gridRow}
-						gridCol={PURCHASE_ITEM_GRID_COL.UNIT_PRICE}
-						gridBounds={gridBounds}
-						format={(value) => (value > 0 ? formatToMoney(value) : "-")}
-						onCommit={(valorUnitarioBruto) => handleUpdate({ valorUnitarioBruto })}
-					/>
+					{locked ? (
+						<StaticNumberCell value={item.valorUnitarioBruto} format={(value) => (value > 0 ? formatToMoney(value) : "-")} />
+					) : (
+						<EditableNumberCell
+							value={item.valorUnitarioBruto}
+							ariaLabel="Editar valor unitário"
+							min={0}
+							gridRow={gridRow}
+							gridCol={PURCHASE_ITEM_GRID_COL.UNIT_PRICE}
+							gridBounds={gridBounds}
+							format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+							onCommit={(valorUnitarioBruto) => handleUpdate({ valorUnitarioBruto })}
+						/>
+					)}
 				</div>
 				<div className="w-[11%] px-1">
-					<EditableNumberCell
-						value={item.descontosTotal ?? 0}
-						ariaLabel="Editar descontos"
-						min={0}
-						gridRow={gridRow}
-						gridCol={PURCHASE_ITEM_GRID_COL.DISCOUNT}
-						gridBounds={gridBounds}
-						format={(value) => (value > 0 ? formatToMoney(value) : "-")}
-						onCommit={(descontosTotal) => handleUpdate({ descontosTotal })}
-					/>
+					{locked ? (
+						<StaticNumberCell value={item.descontosTotal ?? 0} format={(value) => (value > 0 ? formatToMoney(value) : "-")} />
+					) : (
+						<EditableNumberCell
+							value={item.descontosTotal ?? 0}
+							ariaLabel="Editar descontos"
+							min={0}
+							gridRow={gridRow}
+							gridCol={PURCHASE_ITEM_GRID_COL.DISCOUNT}
+							gridBounds={gridBounds}
+							format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+							onCommit={(descontosTotal) => handleUpdate({ descontosTotal })}
+						/>
+					)}
 				</div>
 				<div className="w-[11%] px-1">
-					<EditableNumberCell
-						value={item.acrescimosTotal ?? 0}
-						ariaLabel="Editar acréscimos"
-						min={0}
-						gridRow={gridRow}
-						gridCol={PURCHASE_ITEM_GRID_COL.SURCHARGE}
-						gridBounds={gridBounds}
-						format={(value) => (value > 0 ? formatToMoney(value) : "-")}
-						onCommit={(acrescimosTotal) => handleUpdate({ acrescimosTotal })}
-					/>
+					{locked ? (
+						<StaticNumberCell value={item.acrescimosTotal ?? 0} format={(value) => (value > 0 ? formatToMoney(value) : "-")} />
+					) : (
+						<EditableNumberCell
+							value={item.acrescimosTotal ?? 0}
+							ariaLabel="Editar acréscimos"
+							min={0}
+							gridRow={gridRow}
+							gridCol={PURCHASE_ITEM_GRID_COL.SURCHARGE}
+							gridBounds={gridBounds}
+							format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+							onCommit={(acrescimosTotal) => handleUpdate({ acrescimosTotal })}
+						/>
+					)}
 				</div>
 				<p className="w-[12%] px-2 text-center font-mono text-xs tabular-nums text-foreground/80">{rowTotal > 0 ? formatToMoney(rowTotal) : "-"}</p>
 				<div className="flex w-[5%] justify-center px-1">
-					<DeleteRowButton onRemove={handleRemove} ariaLabel="Remover item da compra" />
+					{locked ? (
+						<Lock className="h-3.5 w-3.5 text-muted-foreground" />
+					) : (
+						<DeleteRowButton onRemove={handleRemove} ariaLabel="Remover item da compra" />
+					)}
 				</div>
 			</div>
 
 			<div className="flex w-full flex-col gap-2 p-2 lg:hidden">
 				<div className="flex w-full items-start justify-between gap-2">
-					<div className="min-w-0 flex-1">
-						<ProductCell item={item} onChange={handleUpdate} />
+					<div className="min-w-0 flex-1">{locked ? <StaticProductLabel item={item} /> : <ProductCell item={item} onChange={handleUpdate} />}</div>
+					<div className="flex shrink-0 items-center gap-1.5">
+						<PurchaseItemExpiryControl item={item} locked={locked} lots={lots} handleUpdate={handleUpdate} />
+						{locked ? (
+							<Lock className="mt-1 h-3.5 w-3.5 text-muted-foreground" />
+						) : (
+							<DeleteRowButton onRemove={handleRemove} ariaLabel="Remover item da compra" />
+						)}
 					</div>
-					<DeleteRowButton onRemove={handleRemove} ariaLabel="Remover item da compra" />
 				</div>
 				<div className="grid w-full grid-cols-2 gap-2">
 					<MobileEditableField label="Qtde">
-						<EditableNumberCell
-							value={item.quantidade}
-							ariaLabel="Editar quantidade"
-							min={0.000001}
-							onCommit={(quantidade) => handleUpdate({ quantidade })}
-						/>
+						{locked ? (
+							<StaticNumberCell value={item.quantidade} />
+						) : (
+							<EditableNumberCell
+								value={item.quantidade}
+								ariaLabel="Editar quantidade"
+								min={0.000001}
+								onCommit={(quantidade) => handleUpdate({ quantidade })}
+							/>
+						)}
 					</MobileEditableField>
 					<MobileEditableField label="Valor unit.">
-						<EditableNumberCell
-							value={item.valorUnitarioBruto}
-							ariaLabel="Editar valor unitário"
-							min={0}
-							format={(value) => (value > 0 ? formatToMoney(value) : "-")}
-							onCommit={(valorUnitarioBruto) => handleUpdate({ valorUnitarioBruto })}
-						/>
+						{locked ? (
+							<StaticNumberCell value={item.valorUnitarioBruto} format={(value) => (value > 0 ? formatToMoney(value) : "-")} />
+						) : (
+							<EditableNumberCell
+								value={item.valorUnitarioBruto}
+								ariaLabel="Editar valor unitário"
+								min={0}
+								format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+								onCommit={(valorUnitarioBruto) => handleUpdate({ valorUnitarioBruto })}
+							/>
+						)}
 					</MobileEditableField>
-					<MobileEditableField label="Desc.">
-						<EditableNumberCell
-							value={item.descontosTotal ?? 0}
-							ariaLabel="Editar descontos"
-							min={0}
-							format={(value) => (value > 0 ? formatToMoney(value) : "-")}
-							onCommit={(descontosTotal) => handleUpdate({ descontosTotal })}
-						/>
-					</MobileEditableField>
-					<MobileEditableField label="Acrésc.">
-						<EditableNumberCell
-							value={item.acrescimosTotal ?? 0}
-							ariaLabel="Editar acréscimos"
-							min={0}
-							format={(value) => (value > 0 ? formatToMoney(value) : "-")}
-							onCommit={(acrescimosTotal) => handleUpdate({ acrescimosTotal })}
-						/>
-					</MobileEditableField>
+					{locked ? null : (
+						<MobileEditableField label="Desc.">
+							<EditableNumberCell
+								value={item.descontosTotal ?? 0}
+								ariaLabel="Editar descontos"
+								min={0}
+								format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+								onCommit={(descontosTotal) => handleUpdate({ descontosTotal })}
+							/>
+						</MobileEditableField>
+					)}
+					{locked ? null : (
+						<MobileEditableField label="Acrésc.">
+							<EditableNumberCell
+								value={item.acrescimosTotal ?? 0}
+								ariaLabel="Editar acréscimos"
+								min={0}
+								format={(value) => (value > 0 ? formatToMoney(value) : "-")}
+								onCommit={(acrescimosTotal) => handleUpdate({ acrescimosTotal })}
+							/>
+						</MobileEditableField>
+					)}
 				</div>
 				<div className="flex w-full items-center justify-between gap-2 rounded-md bg-muted/50 px-2 py-1.5">
 					<span className="text-[0.65rem] font-medium uppercase text-muted-foreground">Total</span>
@@ -215,6 +282,164 @@ function PurchaseCompositionTableItem({ item, gridRow, gridBounds, handleUpdate,
 			</div>
 		</div>
 	);
+}
+
+function PurchaseItemExpiryControl({
+	item,
+	locked,
+	lots,
+	handleUpdate,
+}: {
+	item: TPurchaseItemState;
+	locked: boolean;
+	lots: TPurchaseItemLot[];
+	handleUpdate: (item: Partial<TPurchaseItemState>) => void;
+}) {
+	const [open, setOpen] = useState(false);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const dialogContainer = (triggerRef.current?.closest("[data-dialog-container]") as HTMLElement) || null;
+
+	const validade = item.dataValidade ?? null;
+	const summary = validade ? computeExpirySummary(validade) : null;
+
+	// Non-perishable frozen item (no expiry, no lots): nothing to surface.
+	if (locked && !validade && lots.length === 0) return null;
+
+	return (
+		<Popover modal={false} open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<button
+					ref={triggerRef}
+					type="button"
+					title={validade ? "Validade e lote do item" : "Definir validade (item perecível)"}
+					aria-label={validade ? "Editar validade e lote do item" : "Definir validade do item perecível"}
+					className={cn(
+						"flex h-7 shrink-0 items-center gap-1 rounded-md border px-1.5 text-[0.7rem] font-medium tabular-nums transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40",
+						summary ? EXPIRY_TONE_CLASS[summary.tone] : "border-dashed border-border text-muted-foreground hover:border-amber-400/60 hover:text-amber-500",
+					)}
+				>
+					<CalendarClock className="h-3.5 w-3.5 shrink-0" />
+					{summary ? <span className="whitespace-nowrap">{summary.label}</span> : null}
+				</button>
+			</PopoverTrigger>
+			<PopoverContent container={dialogContainer} align="end" className="w-72 space-y-2.5">
+				<div className="flex items-center gap-1.5 text-[0.68rem] font-medium tracking-tight text-muted-foreground">
+					<CalendarClock className="h-3.5 w-3.5" />
+					VALIDADE E LOTE
+				</div>
+				{locked ? null : (
+					<div className="flex flex-col gap-0.5">
+						<p className="text-[0.68rem] leading-relaxed text-muted-foreground">Com validade preenchida, o recebimento gera um lote rastreável.</p>
+						{validade ? (
+							<button
+								type="button"
+								onClick={() => handleUpdate({ dataValidade: null })}
+								className="w-fit inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[0.68rem] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+							>
+								<CalendarOff className="h-3 w-3" />
+								REMOVER VALIDADE
+							</button>
+						) : null}
+					</div>
+				)}
+				<DateInput
+					label="DATA DE VALIDADE"
+					labelClassName="text-[0.7rem]"
+					editable={!locked}
+					value={formatDateForInputValue(validade)}
+					handleChange={(value) => handleUpdate({ dataValidade: formatDateOnInputChange(value, "date") })}
+				/>
+
+				{lots.length > 0 ? (
+					<div className="flex flex-col gap-1.5 border-t border-border pt-2">
+						<span className="text-[0.62rem] font-medium uppercase tracking-tight text-muted-foreground">Lotes gerados</span>
+						<div className="flex flex-wrap gap-1.5">
+							{lots.map((lot) => (
+								<LotBadge key={lot.id} lot={lot} />
+							))}
+						</div>
+					</div>
+				) : locked && validade ? (
+					<p className="border-t border-border pt-2 text-[0.68rem] text-muted-foreground">
+						Nenhum lote gerado (o rastreamento de estoque do produto pode estar desativado).
+					</p>
+				) : null}
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+function computeExpirySummary(validade: Date): { label: string; tone: "expired" | "soon" | "ok" } {
+	const now = new Date();
+	const expiresAt = new Date(validade);
+	const days = Math.ceil((expiresAt.getTime() - now.getTime()) / 86_400_000);
+	const label = expiresAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+	if (days < 0) return { label: "Vencido", tone: "expired" };
+	if (days <= 7) return { label, tone: "soon" };
+	return { label, tone: "ok" };
+}
+
+const EXPIRY_TONE_CLASS = {
+	expired: "border-destructive/30 bg-destructive/10 text-destructive",
+	soon: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+	ok: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+} as const;
+
+function StaticProductLabel({ item }: { item: TPurchaseItemState }) {
+	const name = getItemDisplayName(item);
+	const code = item.snapshotProdutoCodigo || item.produto.codigo;
+	const imageUrl = item.produtoVariante?.imagemCapaUrl || item.produto.imagemCapaUrl;
+	return (
+		<span className="flex min-w-0 items-center gap-2 px-2 py-1">
+			<ProductThumb imageUrl={imageUrl} label={name} />
+			<span className="flex min-w-0 flex-col">
+				<span className="truncate text-xs font-medium">{name}</span>
+				{code ? <span className="truncate text-[0.65rem] text-muted-foreground">{code}</span> : null}
+			</span>
+		</span>
+	);
+}
+
+function StaticNumberCell({ value, format }: { value: number | null | undefined; format?: (value: number) => string }) {
+	const numeric = Number(value) || 0;
+	const display = format ? format(numeric) : numeric.toLocaleString("pt-BR");
+	return <p className="px-2 text-center font-mono text-xs tabular-nums text-foreground/80">{display}</p>;
+}
+
+function computeLotEffectiveStatus(lot: TPurchaseItemLot): { label: string; tone: "active" | "expired" | "depleted" | "discarded" } {
+	const now = new Date();
+	const validity = lot.dataValidade ? new Date(lot.dataValidade) : null;
+	if (lot.status === "DESCARTADO") return { label: "Descartado", tone: "discarded" };
+	if (lot.status === "VENCIDO" || (lot.status === "ATIVO" && validity && validity < now)) return { label: "Vencido", tone: "expired" };
+	if (lot.status === "ESGOTADO" || (lot.status === "ATIVO" && lot.quantidadeAtual <= 0)) return { label: "Esgotado", tone: "depleted" };
+	return { label: "Ativo", tone: "active" };
+}
+
+const LOT_TONE_CLASS = {
+	active: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+	expired: "border-destructive/30 bg-destructive/10 text-destructive",
+	depleted: "border-border bg-muted text-muted-foreground",
+	discarded: "border-border bg-muted text-muted-foreground",
+} as const;
+
+function LotBadge({ lot }: { lot: TPurchaseItemLot }) {
+	const { label, tone } = computeLotEffectiveStatus(lot);
+	return (
+		<div className={cn("flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-md border px-2 py-1 text-[0.7rem] tabular-nums", LOT_TONE_CLASS[tone])}>
+			<span className="opacity-80">
+				{lot.quantidadeAtual.toLocaleString("pt-BR")}/{lot.quantidadeInicial.toLocaleString("pt-BR")} un
+			</span>
+			{lot.dataValidade ? <span className="opacity-80">vence {formatShortDate(lot.dataValidade)}</span> : null}
+			<span className="rounded-full bg-current/15 px-1.5 py-px text-[0.62rem] font-semibold uppercase">{label}</span>
+		</div>
+	);
+}
+
+function formatShortDate(date: Date | string | null | undefined) {
+	if (!date) return "—";
+	const parsed = date instanceof Date ? date : new Date(date);
+	if (Number.isNaN(parsed.getTime())) return "—";
+	return parsed.toLocaleDateString("pt-BR");
 }
 
 function DraftPurchaseCompositionItem({
@@ -518,5 +743,6 @@ function createEmptyPurchaseItem(): TPurchaseItemState {
 		valorTotalLiquido: 0,
 		descontosTotal: 0,
 		acrescimosTotal: 0,
+		dataValidade: null,
 	};
 }
