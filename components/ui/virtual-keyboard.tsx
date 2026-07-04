@@ -459,7 +459,7 @@ function getDisplayValue(props: VirtualKeyboardProps): string {
 		return format(props.value);
 	}
 	if (props.type === "numeric" && props.secret) {
-		return "•".repeat(props.value.length);
+		return "*".repeat(props.value.length);
 	}
 	if (props.type === "numeric" && props.formatValue) {
 		return props.formatValue(props.value);
@@ -473,7 +473,7 @@ function getPreviewValue(props: VirtualKeyboardProps): string {
 		return format(props.value);
 	}
 	if (props.value.length === 0) return props.placeholder ?? "";
-	if (props.type === "numeric" && props.secret) return "•".repeat(props.value.length);
+	if (props.type === "numeric" && props.secret) return "*".repeat(props.value.length);
 	if (props.type === "numeric" && props.formatValue) return props.formatValue(props.value);
 	return props.value;
 }

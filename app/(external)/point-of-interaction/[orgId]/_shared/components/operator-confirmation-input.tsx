@@ -29,13 +29,16 @@ export function OperatorConfirmationInput({ value, onChange, useVirtualKeyboard 
 					value={value}
 					onChange={(next) => onChange(formatToNumericPassword(next))}
 					maxLength={5}
+					secret
 					confirmLabel="Confirmar senha"
 					placeholder="*****"
 					triggerClassName="h-16 short:h-11 text-2xl short:text-xl rounded-2xl short:rounded-lg border-4 short:border border-brand/20 hover:border-green-500 font-bold"
 				/>
 			) : (
 				<Input
-					type="number"
+					type="password"
+					inputMode="numeric"
+					autoComplete="off"
 					placeholder="*****"
 					value={value}
 					onChange={(e) => onChange(formatToNumericPassword(e.target.value))}
