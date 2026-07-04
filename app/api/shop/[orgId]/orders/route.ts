@@ -488,6 +488,7 @@ async function createShopOrder(request: NextRequest) {
 					canal: "SHOP",
 					processamentoOrigem: "INTERNO",
 					statusVenda: "ORCAMENTO",
+					// emissaoFiscalAutomatica omitido (null) => herda a preferência da organização, resolvido na entrega.
 				})
 				.returning({ id: sales.id, idExterno: sales.idExterno });
 
@@ -573,7 +574,6 @@ async function createShopOrder(request: NextRequest) {
 			accountingEntryCreditAccountId: organizationSaleDefaults.creditoContaId,
 			initialAttendanceStatus: "NAO_INICIADO",
 			accumulateCashback: false,
-			emitFiscal: false,
 		});
 
 		await db.update(shopOrderRequests).set({ status: "CONCLUIDO", erro: null }).where(eq(shopOrderRequests.id, requestRecord.id));

@@ -730,7 +730,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 										VOLTAR
 									</Button>
 								)}
-								{!(isPrizeMode && currentStep === 1) && !(isPrizeMode && currentStep === 2 && !isPrizeSaleOnlyFlow) && (
+								{!(isPrizeMode && currentStep === 1) && (
 									<Button
 										onClick={currentStep === confirmationStep ? (isMobileMode ? handleNextStep : () => submitTransaction()) : handleNextStep}
 										size="lg"

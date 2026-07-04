@@ -48,8 +48,17 @@ function mapItemsToApi(saleState: TUseSaleState) {
 type NewSalePageProps = {
 	organizationCashbackProgram: TCashbackProgramEntity | null;
 	organizationConfiguration: TOrganizationConfiguration;
+	organizationFiscalEmissaoAutomatica: boolean;
+	organizationAutoFiscalCapable: boolean;
+	canEmitirFiscal: boolean;
 };
-export default function NewSalePage({ organizationCashbackProgram, organizationConfiguration }: NewSalePageProps) {
+export default function NewSalePage({
+	organizationCashbackProgram,
+	organizationConfiguration,
+	organizationFiscalEmissaoAutomatica,
+	organizationAutoFiscalCapable,
+	canEmitirFiscal,
+}: NewSalePageProps) {
 	const isMobile = useIsMobile();
 	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 	const [searchValue, setSearchValue] = useState("");
@@ -107,6 +116,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 					cashbackResgate: saleState.state.cashbackResgate,
 					cupomResgate: saleState.state.cupomResgate,
 					rascunhoMetadados: saleState.getDraftMetadata(),
+					emissaoFiscalAutomatica: saleState.state.emissaoFiscalAutomatica,
 				});
 				saleState.setSuccess({
 					mode: "ORCAMENTO",
@@ -214,6 +224,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 			cashbackResgate: saleState.state.cashbackResgate,
 			cupomResgate: saleState.state.cupomResgate,
 			rascunhoMetadados: saleState.getDraftMetadata(),
+			emissaoFiscalAutomatica: saleState.state.emissaoFiscalAutomatica,
 			itens: mapItemsToApi(saleState),
 		});
 	};
@@ -246,6 +257,7 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 			})),
 			cashbackResgate: saleState.state.cashbackResgate,
 			cupomResgate: saleState.state.cupomResgate,
+			emissaoFiscalAutomatica: saleState.state.emissaoFiscalAutomatica,
 			itens: mapItemsToApi(saleState),
 		});
 	};
@@ -351,6 +363,9 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 						<CheckoutPanel
 							organizationCashbackProgram={organizationCashbackProgram}
 							saleState={saleState}
+							organizationFiscalEmissaoAutomatica={organizationFiscalEmissaoAutomatica}
+							organizationAutoFiscalCapable={organizationAutoFiscalCapable}
+							canEmitirFiscal={canEmitirFiscal}
 							onCreateDraft={handleCreateDraft}
 							onFinalizeSale={handleFinalizeSale}
 							isCreatingDraft={isCreatingDraft}
@@ -377,6 +392,9 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 									<CheckoutPanel
 										organizationCashbackProgram={organizationCashbackProgram}
 										saleState={saleState}
+										organizationFiscalEmissaoAutomatica={organizationFiscalEmissaoAutomatica}
+										organizationAutoFiscalCapable={organizationAutoFiscalCapable}
+										canEmitirFiscal={canEmitirFiscal}
 										onCreateDraft={handleCreateDraft}
 										onFinalizeSale={handleFinalizeSale}
 										isCreatingDraft={isCreatingDraft}

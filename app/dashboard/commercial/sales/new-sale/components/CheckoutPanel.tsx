@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import ActionsSection from "./checkout/ActionsSection";
 import ClientSection from "./checkout/ClientSection";
 import DeliverySection from "./checkout/DeliverySection";
+import FiscalEmissionSection from "./checkout/FiscalEmissionSection";
 import ItemsSection from "./checkout/ItemsSection";
 import PaymentsSection from "./checkout/PaymentsSection";
 import SummarySection from "./checkout/SummarySection";
@@ -17,6 +18,9 @@ import SummarySection from "./checkout/SummarySection";
 type CheckoutPanelProps = {
 	organizationCashbackProgram: TCashbackProgramEntity | null;
 	saleState: TUseSaleState;
+	organizationFiscalEmissaoAutomatica: boolean;
+	organizationAutoFiscalCapable: boolean;
+	canEmitirFiscal: boolean;
 	onCreateDraft: () => void;
 	onFinalizeSale: () => void;
 	isCreatingDraft?: boolean;
@@ -27,6 +31,9 @@ type CheckoutPanelProps = {
 export default function CheckoutPanel({
 	organizationCashbackProgram,
 	saleState,
+	organizationFiscalEmissaoAutomatica,
+	organizationAutoFiscalCapable,
+	canEmitirFiscal,
 	onCreateDraft,
 	onFinalizeSale,
 	isCreatingDraft,
@@ -96,6 +103,12 @@ export default function CheckoutPanel({
 				<DeliverySection saleState={saleState} locationOptions={locationOptions} onOpenNewLocation={() => setIsNewLocationOpen(true)} />
 				<PaymentsSection saleState={saleState} />
 				<SummarySection saleState={saleState} organizationCashbackProgram={organizationCashbackProgram} />
+				<FiscalEmissionSection
+					saleState={saleState}
+					organizationFiscalEmissaoAutomatica={organizationFiscalEmissaoAutomatica}
+					organizationAutoFiscalCapable={organizationAutoFiscalCapable}
+					canEmitirFiscal={canEmitirFiscal}
+				/>
 				<ActionsSection
 					saleState={saleState}
 					onCreateDraft={onCreateDraft}

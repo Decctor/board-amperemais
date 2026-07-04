@@ -7,7 +7,6 @@ import { encodeBase32LowerCaseNoPadding, encodeHexLowerCase } from "@oslojs/enco
 import dayjs from "dayjs";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
-import { cache } from "react";
 import type { TAuthUserSession } from "./types";
 
 export async function generateSessionToken(): Promise<string> {
@@ -101,6 +100,7 @@ export async function validateSession(token: string) {
 					poiQrCodeMobileDataUrl: membership.organizacao.poiQrCodeMobileDataUrl,
 					poiConfirmacaoValorObrigatoria: membership.organizacao.poiConfirmacaoValorObrigatoria,
 					configuracao: membership.organizacao.configuracao,
+					fiscalEmissaoAutomatica: membership.organizacao.fiscalEmissaoAutomatica,
 					integracaoTipo: membership.organizacao.integracaoTipo,
 					integracaoConfiguracao: membership.organizacao.integracaoConfiguracao,
 					integracaoDataUltimaSincronizacao: membership.organizacao.integracaoDataUltimaSincronizacao,
@@ -143,6 +143,7 @@ export async function validateSession(token: string) {
 					poiQrCodeMobileDataUrl: mostRecentMembership.organizacao.poiQrCodeMobileDataUrl,
 					poiConfirmacaoValorObrigatoria: mostRecentMembership.organizacao.poiConfirmacaoValorObrigatoria,
 					configuracao: mostRecentMembership.organizacao.configuracao,
+					fiscalEmissaoAutomatica: mostRecentMembership.organizacao.fiscalEmissaoAutomatica,
 					integracaoTipo: mostRecentMembership.organizacao.integracaoTipo,
 					integracaoConfiguracao: mostRecentMembership.organizacao.integracaoConfiguracao,
 					integracaoDataUltimaSincronizacao: mostRecentMembership.organizacao.integracaoDataUltimaSincronizacao,

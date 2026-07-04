@@ -36,12 +36,11 @@ export type TProcessSaleConfirmationInput = {
 	accountingEntryCreditAccountId: string;
 	initialAttendanceStatus?: ReturnType<typeof resolveInitialAttendanceStatus>;
 	accumulateCashback?: boolean;
-	emitFiscal?: boolean;
 	// Sessão de venda que recortou esta venda (nullable). Carimba a venda e seus movimentos financeiros.
 	sessaoVendaId?: string | null;
 };
 
-type TProcessSaleConfirmationPostCommitInput = Pick<TProcessSaleConfirmationInput, "organization" | "saleId" | "saleAuthorId" | "emitFiscal">;
+type TProcessSaleConfirmationPostCommitInput = Pick<TProcessSaleConfirmationInput, "organization" | "saleId" | "saleAuthorId">;
 
 /**
  * Confirms a sale using the caller-owned transaction.
@@ -329,10 +328,8 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 	};
 }
 export async function processSaleConfirmationPostCommit(input: TProcessSaleConfirmationPostCommitInput) {
-	if (input.emitFiscal === false) {
-		return { status: "NAO_SOLICITADO" as const, reason: "DESATIVADO_PELO_FLUXO" as const };
-	}
-
+	// A decisão de emitir (org default vs. override por venda) vive na coluna sales.emissaoFiscalAutomatica,
+	// resolvida dentro de processSaleAutomaticFiscalEmissionIfEligible — fonte única para confirm e entrega.
 	return processSaleAutomaticFiscalEmissionIfEligible({
 		organization: input.organization,
 		saleId: input.saleId,

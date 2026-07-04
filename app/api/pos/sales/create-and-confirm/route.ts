@@ -3,6 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
 import { resolveActiveSalesSession } from "@/lib/sales-sessions";
+import { resolveSaleFiscalEmissionOverride } from "@/lib/sales/sale-fiscal-emission-override";
 import { processSaleConfirmationInTransaction, processSaleConfirmationPostCommit } from "@/lib/sales/sale-processing";
 import { AppliedCouponSchema } from "@/schemas/coupons";
 import { db } from "@/services/drizzle";
@@ -51,6 +52,8 @@ const CreateAndConfirmSaleInputSchema = z.object({
 	cashbackProgramaId: z.string({ invalid_type_error: "Tipo não válido para ID do programa de cashback." }).optional().nullable(),
 	cupomResgate: AppliedCouponSchema.optional().nullable(),
 	sessaoVendaId: z.string({ invalid_type_error: "Tipo não válido para o ID da sessão de venda." }).optional().nullable(),
+	// Override tri-state da emissão fiscal automática. null/ausente = herda a preferência da organização.
+	emissaoFiscalAutomatica: z.boolean({ invalid_type_error: "Tipo não válido para emissão fiscal automática." }).optional().nullable(),
 	itens: z.array(CartItemInputSchema).min(1, { message: "Pelo menos um item é obrigatório." }),
 });
 export type TCreateAndConfirmSaleInput = z.infer<typeof CreateAndConfirmSaleInputSchema>;
@@ -84,6 +87,13 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 	]);
 
 	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
+
+	// Override fiscal por venda: valida permissão simétrica e resolve o valor a persistir (null = herda org).
+	const emissaoFiscalAutomatica = resolveSaleFiscalEmissionOverride({
+		requested: input.emissaoFiscalAutomatica,
+		organizationDefault: organization.fiscalEmissaoAutomatica,
+		session,
+	});
 
 	// Sessões de venda (caixa): enforcement opcional/obrigatório + validação da sessão informada pelo cliente.
 	const sessaoObrigatoria = organization.configuracao.preferencias.sessoesVenda?.obrigatorio ?? false;
@@ -180,6 +190,7 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 				canal: "POS",
 				processamentoOrigem: "INTERNO",
 				statusVenda: "ORCAMENTO",
+				emissaoFiscalAutomatica,
 			})
 			.returning({ id: sales.id });
 

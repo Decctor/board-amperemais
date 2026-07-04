@@ -118,6 +118,8 @@ export const SaleStateSchema = z.object({
 	pagamentos: z.array(CheckoutPaymentSplitSchema),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
 	cupomResgate: SaleAppliedCouponSchema.optional().nullable(),
+	// Override tri-state da emissão fiscal automática. null = herda a preferência da organização.
+	emissaoFiscalAutomatica: z.boolean({ invalid_type_error: "Tipo não válido para emissão fiscal automática." }).nullable().default(null),
 	success: SaleSuccessSchema,
 });
 
@@ -147,6 +149,7 @@ export function getDefaultSaleState(initialState?: Partial<TSaleState>): TSaleSt
 		pagamentos: initialState?.pagamentos ?? [],
 		cashbackResgate: initialState?.cashbackResgate ?? 0,
 		cupomResgate: initialState?.cupomResgate ?? null,
+		emissaoFiscalAutomatica: initialState?.emissaoFiscalAutomatica ?? null,
 		success: initialState?.success ?? null,
 	};
 }
@@ -302,6 +305,10 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		setState((prev) => ({ ...prev, cupomResgate }));
 	}, []);
 
+	const setEmissaoFiscalAutomatica = useCallback((emissaoFiscalAutomatica: boolean | null) => {
+		setState((prev) => ({ ...prev, emissaoFiscalAutomatica }));
+	}, []);
+
 	const setCashbackResgate = useCallback((cashbackResgate: number) => {
 		setState((prev) => {
 			const nextValue = Math.max(0, cashbackResgate || 0);
@@ -419,6 +426,7 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		updatePagamento,
 		setCashbackResgate,
 		setCupomResgate,
+		setEmissaoFiscalAutomatica,
 		setSuccess,
 		clearSuccess,
 		subtotal,

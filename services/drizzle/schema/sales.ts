@@ -70,6 +70,9 @@ export const sales = newTable(
 		statusVenda: saleStatusEnum("status_venda"),
 		// ERP: status operacional de atendimento/fulfillment da venda
 		statusAtendimento: saleAttendanceStatusEnum("status_atendimento").notNull().default("NAO_INICIADO"),
+		// ERP: override por venda da emissão fiscal automática. null = herda organizacao.fiscalEmissaoAutomatica;
+		// true/false = decisão explícita da venda (respeitada tanto no confirm quanto na entrega).
+		emissaoFiscalAutomatica: boolean("emissao_fiscal_automatica"),
 		// Sessão de venda que recortou esta venda (nullable). Denormalização p/ relatório/atribuição.
 		sessaoVendaId: varchar("sessao_venda_id", { length: 255 }).references(() => salesSessions.id, { onDelete: "set null" }),
 	},

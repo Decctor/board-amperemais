@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { resolveSaleFiscalEmissionOverride } from "@/lib/sales/sale-fiscal-emission-override";
 import { AppliedCouponSchema } from "@/schemas/coupons";
 import { db } from "@/services/drizzle";
 import { saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
@@ -50,6 +51,8 @@ const CreateSaleDraftInputSchema = z.object({
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
 	cupomResgate: AppliedCouponSchema.optional().nullable(),
 	rascunhoMetadados: z.unknown().optional().nullable(),
+	// Override tri-state da emissão fiscal automática. null/ausente = herda a preferência da organização.
+	emissaoFiscalAutomatica: z.boolean({ invalid_type_error: "Tipo não válido para emissão fiscal automática." }).optional().nullable(),
 	itens: z.array(CartItemInputSchema).min(1, { message: "Pelo menos um item é obrigatório." }),
 });
 export type TCreateSaleDraftInput = z.infer<typeof CreateSaleDraftInputSchema>;
@@ -71,6 +74,8 @@ const UpdateSaleDraftInputSchema = z.object({
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
 	cupomResgate: AppliedCouponSchema.optional().nullable(),
 	rascunhoMetadados: z.unknown().optional().nullable(),
+	// Override tri-state da emissão fiscal automática. Ausente = não altera; null = herda a organização.
+	emissaoFiscalAutomatica: z.boolean({ invalid_type_error: "Tipo não válido para emissão fiscal automática." }).optional().nullable(),
 });
 export type TUpdateSaleDraftInput = z.infer<typeof UpdateSaleDraftInputSchema>;
 
@@ -90,6 +95,13 @@ function getSessionWithOrg(session: TAuthUserSession | null) {
 
 async function createSaleDraft({ input, session }: { input: TCreateSaleDraftInput; session: TAuthUserSession }) {
 	const orgId = session.membership!.organizacao.id;
+
+	// Override fiscal por venda: valida permissão simétrica e resolve o valor a persistir (null = herda org).
+	const emissaoFiscalAutomatica = resolveSaleFiscalEmissionOverride({
+		requested: input.emissaoFiscalAutomatica,
+		organizationDefault: session.membership!.organizacao.fiscalEmissaoAutomatica,
+		session,
+	});
 
 	// Fetch product cost prices for all items
 	const productIds = [...new Set(input.itens.map((i) => i.produtoId))];
@@ -170,6 +182,7 @@ async function createSaleDraft({ input, session }: { input: TCreateSaleDraftInpu
 				canal: "POS",
 				processamentoOrigem: "INTERNO",
 				statusVenda: "ORCAMENTO",
+				emissaoFiscalAutomatica,
 			})
 			.returning({ id: sales.id });
 
@@ -299,6 +312,16 @@ async function updateSaleDraft({ input, session }: { input: TUpdateSaleDraftInpu
 		throw new createHttpError.BadRequest("Somente rascunhos (orçamentos) podem ser editados.");
 	}
 
+	// Campo ausente => não altera; presente (boolean|null) => resolve override com gate de permissão.
+	const emissaoFiscalAutomatica =
+		input.emissaoFiscalAutomatica !== undefined
+			? resolveSaleFiscalEmissionOverride({
+					requested: input.emissaoFiscalAutomatica,
+					organizationDefault: session.membership!.organizacao.fiscalEmissaoAutomatica,
+					session,
+				})
+			: undefined;
+
 	const valorBaseItens = existing.itens.reduce((sum, item) => sum + item.valorVendaTotalLiquido, 0);
 	const descontosGerais = input.descontosTotal ?? 0;
 	const cupomDesconto = input.cupomResgate?.valorDesconto ?? 0;
@@ -329,6 +352,7 @@ async function updateSaleDraft({ input, session }: { input: TUpdateSaleDraftInpu
 				...((input.rascunhoMetadados as Record<string, unknown> | null) ?? {}),
 				cupom: input.cupomResgate ?? null,
 			},
+			emissaoFiscalAutomatica,
 		})
 		.where(eq(sales.id, input.id));
 

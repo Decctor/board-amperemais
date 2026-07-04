@@ -31,7 +31,7 @@ export default function NewCashbackProgramsPage({ user, userOrg }: NewCashbackPr
 				<CardContent className="flex flex-col items-center justify-center pb-8 pt-4">
 					<Button size={"lg"} className="flex items-center gap-2 font-semibold" onClick={() => setNewCashbackProgramModalIsOpen(true)}>
 						<Settings className="w-4 h-4" />
-						Configurar Programa
+						CONFIGURAR PROGRAMA
 					</Button>
 				</CardContent>
 			</Card>

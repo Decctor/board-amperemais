@@ -16,8 +16,6 @@ export async function processSaleAutomaticFiscalEmissionIfEligible({
 	saleId: string;
 	authorId?: string | null;
 }) {
-	if (!organization.fiscalEmissaoAutomatica) return { status: "NAO_SOLICITADO" as const, reason: "EMISSAO_AUTOMATICA_DESATIVADA" as const };
-
 	const [sale, financialState] = await Promise.all([
 		db.query.sales.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.id, saleId), eq(fields.organizacaoId, organization.id)),
@@ -31,6 +29,11 @@ export async function processSaleAutomaticFiscalEmissionIfEligible({
 	]);
 
 	if (!sale) throw new createHttpError.NotFound("Venda não encontrada.");
+
+	// Override por venda (tri-state): null herda a preferência da organização; true/false é decisão explícita.
+	const emissaoAutomaticaEfetiva = sale.emissaoFiscalAutomatica ?? organization.fiscalEmissaoAutomatica;
+	if (!emissaoAutomaticaEfetiva) return { status: "NAO_SOLICITADO" as const, reason: "EMISSAO_AUTOMATICA_DESATIVADA" as const };
+
 	if (sale.statusVenda !== "CONFIRMADA" || sale.statusAtendimento !== "ENTREGUE" || !financialState.isFullyPaid) {
 		return { status: "NAO_SOLICITADO" as const, reason: "VENDA_NAO_ELEGIVEL" as const };
 	}
