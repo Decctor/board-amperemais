@@ -43,9 +43,12 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 
 	const conditions = [eq(products.organizacaoId, userOrgId), eq(products.ativo, true)];
 
-	// Search filter
+	// Search filter — insensível a acentos: unaccent() em ambos os lados normaliza os diacríticos
+	// (ex.: "acai" encontra "Açaí"). Requer a extensão `unaccent` (migration 0033_unaccent_extension).
 	if (input.search && input.search.length > 0) {
-		conditions.push(sql`(${products.nome} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`);
+		conditions.push(
+			sql`(unaccent(${products.nome}) ILIKE unaccent('%' || ${input.search} || '%') OR unaccent(${products.codigo}) ILIKE unaccent('%' || ${input.search} || '%'))`,
+		);
 	}
 
 	// Group filter

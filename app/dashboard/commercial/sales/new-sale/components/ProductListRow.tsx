@@ -4,12 +4,13 @@ import { cn } from "@/lib/utils";
 import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import { Code, Diamond, Package, PackagePlus, Plus } from "lucide-react";
 import Image from "next/image";
+import { memo } from "react";
 
 type Product = TGetPOSProductsOutput["data"]["products"][number];
 
 type ProductListRowProps = {
 	product: Product;
-	onClick: () => void;
+	onSelect: (product: Product) => void;
 };
 
 // Preço a exibir: "A partir de" quando há variantes (menor preço), senão o preço base.
@@ -27,7 +28,7 @@ function getSaldoTone(quantidade: number) {
 	return "bg-green-500 text-white dark:bg-green-600";
 }
 
-export default function ProductListRow({ product, onClick }: ProductListRowProps) {
+function ProductListRow({ product, onSelect }: ProductListRowProps) {
 	const hasVariants = product.variantes.length > 0;
 	const hasAddOns = product.addOnsReferencias.length > 0;
 	const isComplex = hasVariants || hasAddOns;
@@ -37,7 +38,7 @@ export default function ProductListRow({ product, onClick }: ProductListRowProps
 	return (
 		<button
 			type="button"
-			onClick={onClick}
+			onClick={() => onSelect(product)}
 			className={cn(
 				"group flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left shadow-2xs",
 				"transition-[border-color,box-shadow] duration-200 hover:border-primary/40 hover:shadow-md",
@@ -106,3 +107,5 @@ export default function ProductListRow({ product, onClick }: ProductListRowProps
 		</button>
 	);
 }
+
+export default memo(ProductListRow);

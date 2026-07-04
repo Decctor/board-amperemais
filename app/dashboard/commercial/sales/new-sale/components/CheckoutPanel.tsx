@@ -6,7 +6,7 @@ import { useSellersSimplified } from "@/lib/queries/sellers";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import type { TUseSaleState } from "@/state-hooks/use-sale-state";
 import { ShoppingCart } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ActionsSection from "./checkout/ActionsSection";
 import ClientSection from "./checkout/ClientSection";
 import DeliverySection from "./checkout/DeliverySection";
@@ -38,18 +38,25 @@ export default function CheckoutPanel({
 	const { data: sellers } = useSellersSimplified();
 	const { data: clientLocations = [], refetch: refetchClientLocations } = useClientLocations({ clienteId: saleState.state.cliente?.id ?? null });
 
-	const sellerOptions =
-		sellers?.map((seller) => ({
-			id: seller.id,
-			value: seller.id,
-			label: seller.nome,
-		})) ?? [];
+	const sellerOptions = useMemo(
+		() =>
+			sellers?.map((seller) => ({
+				id: seller.id,
+				value: seller.id,
+				label: seller.nome,
+			})) ?? [],
+		[sellers],
+	);
 
-	const locationOptions = clientLocations.map((location) => ({
-		id: location.id,
-		value: location.id,
-		label: `${location.titulo} - ${[location.localizacaoCidade, location.localizacaoEstado].filter(Boolean).join("/") || "Sem cidade/UF"}`,
-	}));
+	const locationOptions = useMemo(
+		() =>
+			clientLocations.map((location) => ({
+				id: location.id,
+				value: location.id,
+				label: `${location.titulo} - ${[location.localizacaoCidade, location.localizacaoEstado].filter(Boolean).join("/") || "Sem cidade/UF"}`,
+			})),
+		[clientLocations],
+	);
 
 	useEffect(() => {
 		if (saleState.state.entregaModalidade !== "ENTREGA") return;

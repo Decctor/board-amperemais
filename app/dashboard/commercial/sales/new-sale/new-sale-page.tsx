@@ -15,7 +15,7 @@ import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import { type TUseSaleState, getDefaultSaleState, useSaleState } from "@/state-hooks/use-sale-state";
 import { useMutation } from "@tanstack/react-query";
 import { Check, ShoppingCart } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import CheckoutPanel from "./components/CheckoutPanel";
 import ProductBuilderModal from "./components/ProductBuilderModal";
@@ -162,33 +162,38 @@ export default function NewSalePage({ organizationCashbackProgram, organizationC
 		updateFilters({ search: value, page: 1 });
 	};
 
-	const handleProductClick = (product: TGetPOSProductsOutput["data"]["products"][number]) => {
-		const hasVariants = product.variantes.length > 0;
-		const hasAddOns = product.addOnsReferencias.length > 0;
-		const isComplex = hasVariants || hasAddOns;
-		if (isComplex) {
-			setBuilderProduct(product);
-			return;
-		}
+	// Estável (só depende de addItem, que é estável) para não invalidar o memo da grade de produtos a cada edição do carrinho.
+	const addItem = saleState.addItem;
+	const handleProductClick = useCallback(
+		(product: TGetPOSProductsOutput["data"]["products"][number]) => {
+			const hasVariants = product.variantes.length > 0;
+			const hasAddOns = product.addOnsReferencias.length > 0;
+			const isComplex = hasVariants || hasAddOns;
+			if (isComplex) {
+				setBuilderProduct(product);
+				return;
+			}
 
-		saleState.addItem({
-			tempId: crypto.randomUUID(),
-			produtoId: product.id,
-			produtoVarianteId: null,
-			nome: product.nome,
-			codigo: product.codigo,
-			imagemUrl: product.imagemCapaUrl,
-			quantidade: 1,
-			valorUnitarioBase: product.precoVenda ?? 0,
-			valorModificadores: 0,
-			valorUnitarioFinal: product.precoVenda ?? 0,
-			valorTotalBruto: product.precoVenda ?? 0,
-			valorDesconto: 0,
-			valorTotalLiquido: product.precoVenda ?? 0,
-			modificadores: [],
-		});
-		toast.success(`${product.nome} adicionado ao carrinho.`);
-	};
+			addItem({
+				tempId: crypto.randomUUID(),
+				produtoId: product.id,
+				produtoVarianteId: null,
+				nome: product.nome,
+				codigo: product.codigo,
+				imagemUrl: product.imagemCapaUrl,
+				quantidade: 1,
+				valorUnitarioBase: product.precoVenda ?? 0,
+				valorModificadores: 0,
+				valorUnitarioFinal: product.precoVenda ?? 0,
+				valorTotalBruto: product.precoVenda ?? 0,
+				valorDesconto: 0,
+				valorTotalLiquido: product.precoVenda ?? 0,
+				modificadores: [],
+			});
+			toast.success(`${product.nome} adicionado ao carrinho.`);
+		},
+		[addItem],
+	);
 
 	const handleCreateDraft = () => {
 		if (!saleState.isReadyForDraft) {

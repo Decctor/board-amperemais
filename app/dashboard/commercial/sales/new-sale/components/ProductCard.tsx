@@ -4,12 +4,13 @@ import { cn } from "@/lib/utils";
 import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import { Package, PackagePlus } from "lucide-react";
 import Image from "next/image";
+import { memo } from "react";
 
 type Product = TGetPOSProductsOutput["data"]["products"][number];
 
 type ProductCardProps = {
 	product: Product;
-	onClick: () => void;
+	onSelect: (product: Product) => void;
 };
 
 // Preço a exibir: "A partir de" quando há variantes (menor preço), senão o preço base.
@@ -20,7 +21,7 @@ function getDisplayPrice(product: Product) {
 	return { type: "fixed" as const, value: product.precoVenda ?? 0 };
 }
 
-export default function ProductCard({ product, onClick }: ProductCardProps) {
+function ProductCard({ product, onSelect }: ProductCardProps) {
 	const hasVariants = product.variantes.length > 0;
 	const hasAddOns = product.addOnsReferencias.length > 0;
 	const isComplex = hasVariants || hasAddOns;
@@ -30,7 +31,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
 	return (
 		<button
 			type="button"
-			onClick={onClick}
+			onClick={() => onSelect(product)}
 			className={cn(
 				"group relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-border bg-card text-left shadow-2xs",
 				"transition-[border-color,box-shadow] duration-200 hover:border-primary/40 hover:shadow-md",
@@ -89,3 +90,5 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
 		</button>
 	);
 }
+
+export default memo(ProductCard);

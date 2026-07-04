@@ -3,6 +3,7 @@ import type { TGetPOSGroupsOutput } from "@/app/api/pos/groups/route";
 import type { TGetPOSProductsInput, TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import type { TGetCrossSellOutput } from "@/app/api/pos/cross-sell/route";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
 import axios from "axios";
 import { useMemo, useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
@@ -34,9 +35,9 @@ export function usePOSProducts({ initialFilters }: UsePOSProductsParams = {}) {
 		group: initialFilters?.group || null,
 	});
 
-	function updateFilters(newParams: Partial<TGetPOSProductsInput>) {
+	const updateFilters = useCallback((newParams: Partial<TGetPOSProductsInput>) => {
 		setFilters((prevFilters) => ({ ...prevFilters, ...newParams, page: newParams.page ?? 1 }));
-	}
+	}, []);
 
 	const debouncedFilters = useDebounceMemo(filters, 300);
 
@@ -44,6 +45,8 @@ export function usePOSProducts({ initialFilters }: UsePOSProductsParams = {}) {
 		...useQuery({
 			queryKey: ["pos-products", debouncedFilters],
 			queryFn: () => fetchPOSProducts(debouncedFilters),
+			// Mantém a grade anterior visível durante busca/paginação (evita desmontar para o loader a cada tecla).
+			placeholderData: keepPreviousData,
 		}),
 		queryKey: ["pos-products", debouncedFilters],
 		filters,

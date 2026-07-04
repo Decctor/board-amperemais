@@ -31,7 +31,10 @@ async function getProductsBySearch({ input, userOrgId }: { input: TGetProductsBy
 	const conditions = [eq(products.organizacaoId, userOrgId)];
 
 	if (input.search.length > 0) {
-		conditions.push(sql`(${products.nome} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`);
+		// Insensível a acentos via unaccent() em ambos os lados (requer extensão `unaccent`, migration 0033).
+		conditions.push(
+			sql`(unaccent(${products.nome}) ILIKE unaccent('%' || ${input.search} || '%') OR unaccent(${products.codigo}) ILIKE unaccent('%' || ${input.search} || '%'))`,
+		);
 	}
 	const productsMatched = await db
 		.select({ count: count(products.id) })

@@ -252,7 +252,10 @@ function buildProductFilterConditions(input: TGetProductsDefaultInput, userOrgId
 	const conditions = [eq(products.organizacaoId, userOrgId)];
 
 	if (input.search) {
-		conditions.push(sql`(${products.nome} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`);
+		// Insensível a acentos via unaccent() em ambos os lados (requer extensão `unaccent`, migration 0033).
+		conditions.push(
+			sql`(unaccent(${products.nome}) ILIKE unaccent('%' || ${input.search} || '%') OR unaccent(${products.codigo}) ILIKE unaccent('%' || ${input.search} || '%'))`,
+		);
 	}
 	if (input.groups.length > 0) {
 		conditions.push(inArray(products.grupo, input.groups));
@@ -577,8 +580,9 @@ async function getProducts({ input, session }: GetProductsParams) {
 	const productQueryConditions = [eq(products.organizacaoId, userOrgId)];
 
 	if (input.search) {
+		// Insensível a acentos via unaccent() em ambos os lados (requer extensão `unaccent`, migration 0033).
 		productQueryConditions.push(
-			sql`(${products.nome} ILIKE '%' || ${input.search} || '%' OR ${products.codigo} ILIKE '%' || ${input.search} || '%')`,
+			sql`(unaccent(${products.nome}) ILIKE unaccent('%' || ${input.search} || '%') OR unaccent(${products.codigo}) ILIKE unaccent('%' || ${input.search} || '%'))`,
 		);
 	}
 	if (input.groups.length > 0) {
