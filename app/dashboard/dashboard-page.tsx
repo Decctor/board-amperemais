@@ -1,7 +1,7 @@
 "use client";
 import { CampaignStatsSection } from "@/components/Stats/CampaignStatsSection";
 import { CommercialStatsSection } from "@/components/Stats/CommercialStatsSection";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger, tabsPageToolbarActionsClassName, tabsPageToolbarClassName } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { BadgeDollarSign, Megaphone } from "lucide-react";
 import WhatsappConnectionsPills from "@/components/WhatsappConnections/ConnectionsPills";
@@ -14,20 +14,22 @@ type DashboardPageProps = {
 export function DashboardPage({ user, userOrg, membership }: DashboardPageProps) {
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
-			<div className="flex w-full min-w-0 items-center justify-end">
-				<WhatsappConnectionsPills />
-			</div>
-			<Tabs defaultValue="campanhas">
-				<TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
-					<TabsTrigger value="campanhas" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
-						<Megaphone className="w-4 h-4 min-w-4 min-h-4" />
-						Campanhas
-					</TabsTrigger>
-					<TabsTrigger value="comercial" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
-						<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />
-						Comercial
-					</TabsTrigger>
-				</TabsList>
+			<Tabs defaultValue="campanhas" className="flex w-full flex-col">
+				<div className={tabsPageToolbarClassName}>
+					<TabsList variant="page">
+						<TabsTrigger value="campanhas">
+							<Megaphone className="w-4 h-4 min-w-4 min-h-4" />
+							Campanhas
+						</TabsTrigger>
+						<TabsTrigger value="comercial">
+							<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />
+							Comercial
+						</TabsTrigger>
+					</TabsList>
+					<div className={tabsPageToolbarActionsClassName}>
+						<WhatsappConnectionsPills />
+					</div>
+				</div>
 
 				<TabsContent value="comercial" className="flex flex-col gap-3 mt-3">
 					<CommercialStatsSection user={user} userOrg={userOrg} membership={membership} />

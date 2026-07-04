@@ -42,9 +42,15 @@ export default function PurchasesPage({ user, membership }: PurchasesPageProps) 
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 	return (
 		<Tabs defaultValue="compras" className="w-full flex flex-col gap-3">
-			<TabsList>
-				<TabsTrigger value="compras">COMPRAS</TabsTrigger>
-				<TabsTrigger value="notas-recebidas">NOTAS RECEBIDAS</TabsTrigger>
+			<TabsList variant="page">
+				<TabsTrigger value="compras">
+					<ShoppingCart className="h-4 w-4 min-h-4 min-w-4" />
+					COMPRAS
+				</TabsTrigger>
+				<TabsTrigger value="notas-recebidas">
+					<Truck className="h-4 w-4 min-h-4 min-w-4" />
+					NOTAS RECEBIDAS
+				</TabsTrigger>
 			</TabsList>
 			<TabsContent value="compras" className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-center gap-2 flex-col-reverse lg:flex-row">

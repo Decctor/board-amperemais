@@ -70,12 +70,12 @@ export default function ProductsPage({ user, userOrg, userMembership }: Products
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<Tabs value={viewMode ?? "stats"} onValueChange={(v: string) => setViewMode(v as "stats" | "database")}>
-				<TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
-					<TabsTrigger value="stats" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+				<TabsList variant="page">
+					<TabsTrigger value="stats">
 						<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />
 						Estatísticas
 					</TabsTrigger>
-					<TabsTrigger value="database" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+					<TabsTrigger value="database">
 						<Users className="w-4 h-4 min-w-4 min-h-4" />
 						Banco de Dados
 					</TabsTrigger>

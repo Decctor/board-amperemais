@@ -119,12 +119,12 @@ export default function FiscalPage({
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<Tabs value={viewMode ?? "documents"} onValueChange={(v) => setViewMode(v as typeof viewMode)}>
-				<TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
-					<TabsTrigger value="documents" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+				<TabsList variant="page">
+					<TabsTrigger value="documents">
 						<BookText className="w-4 h-4 min-w-4 min-h-4" />
 						Documentos
 					</TabsTrigger>
-					<TabsTrigger value="configuration" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+					<TabsTrigger value="configuration">
 						<Settings className="w-4 h-4 min-w-4 min-h-4" />
 						Configuração
 					</TabsTrigger>

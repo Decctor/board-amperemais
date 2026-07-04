@@ -2,7 +2,7 @@
 
 import { ActionToolbar } from "@/components/ui/action-toolbar";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger, tabsPageToolbarActionsClassName, tabsPageToolbarClassName } from "@/components/ui/tabs";
 import { Database, MessageCircle, MessageCircleIcon, Plus, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
@@ -39,26 +39,26 @@ export default function CampaignsPage({ membership }: CampaignsPageProps) {
 				onValueChange={(v: string) => setViewMode(v as "stats" | "database" | "interactions" | "templates")}
 				className="flex h-full w-full flex-col"
 			>
-				<div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-					<TabsList className="h-fit w-fit max-w-full justify-self-start">
-						<TabsTrigger value="stats" className="flex items-center gap-1.5 rounded-lg px-2 py-2">
+				<div className={tabsPageToolbarClassName}>
+					<TabsList variant="page">
+						<TabsTrigger value="stats">
 							<TrendingUp className="h-4 w-4 min-h-4 min-w-4" />
 							Estatísticas
 						</TabsTrigger>
-						<TabsTrigger value="database" className="flex items-center gap-1.5 rounded-lg px-2 py-2">
+						<TabsTrigger value="database">
 							<Database className="h-4 w-4 min-h-4 min-w-4" />
 							Minhas Campanhas
 						</TabsTrigger>
-						<TabsTrigger value="interactions" className="flex items-center gap-1.5 rounded-lg px-2 py-2">
+						<TabsTrigger value="interactions">
 							<MessageCircle className="h-4 w-4 min-h-4 min-w-4" />
 							Interações
 						</TabsTrigger>
-						<TabsTrigger value="templates" className="flex items-center gap-1.5 rounded-lg px-2 py-2">
+						<TabsTrigger value="templates">
 							<MessageCircleIcon className="h-4 w-4 min-h-4 min-w-4" />
 							Modelos de Mensagens
 						</TabsTrigger>
 					</TabsList>
-					<div className="justify-self-end">
+					<div className={tabsPageToolbarActionsClassName}>
 						<CampaignModuleActions />
 					</div>
 				</div>

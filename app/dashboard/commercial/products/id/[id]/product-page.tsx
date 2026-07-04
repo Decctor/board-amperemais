@@ -35,12 +35,12 @@ export default function ProductPage({ user, userMembership, id }: ProductPagePro
 		<div className="flex w-full max-w-full grow flex-col gap-6 overflow-x-hidden bg-background py-3">
 			<ProductDetailHeader product={product} />
 			<Tabs value={tab ?? "estatisticas"} onValueChange={(value) => setTab(value as "cadastro" | "estatisticas")}>
-				<TabsList>
-					<TabsTrigger value="cadastro" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+				<TabsList variant="page">
+					<TabsTrigger value="cadastro">
 						<PencilIcon className="w-4 h-4 min-w-4 min-h-4" />
 						CADASTRO
 					</TabsTrigger>
-					<TabsTrigger value="estatisticas" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+					<TabsTrigger value="estatisticas">
 						<ChartBarIcon className="w-4 h-4 min-w-4 min-h-4" />
 						ESTATÍSTICAS
 					</TabsTrigger>

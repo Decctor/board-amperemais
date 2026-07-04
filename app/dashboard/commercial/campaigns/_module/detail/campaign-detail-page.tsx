@@ -90,12 +90,12 @@ export default function CampaignResultPage({ campaignId, sessionUser, sessionUse
 			</div>
 
 			<Tabs value={viewMode ?? "stats"} onValueChange={(value) => setViewMode(value as "stats" | "config")}>
-				<TabsList className="flex h-fit w-fit items-center gap-1.5 self-start rounded-lg px-2 py-1">
-					<TabsTrigger value="stats" className="flex items-center gap-1.5 rounded-lg px-2 py-2">
+				<TabsList variant="page">
+					<TabsTrigger value="stats">
 						<TrendingUp className="h-4 w-4 min-h-4 min-w-4" />
 						Estatísticas
 					</TabsTrigger>
-					<TabsTrigger value="config" className="flex items-center gap-1.5 rounded-lg px-2 py-2">
+					<TabsTrigger value="config">
 						<Database className="h-4 w-4 min-h-4 min-w-4" />
 						Minha campanha
 					</TabsTrigger>

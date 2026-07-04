@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger, tabsPageToolbarActionsClassName, tabsPageToolbarClassName } from "@/components/ui/tabs";
 import FulfillmentBoard from "./_components/fulfillment/fulfillment-board";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
@@ -63,18 +63,18 @@ export default function SalesPage({ user: _user, organization }: SalesPageProps)
 	return (
 		<div className="flex h-full w-full flex-col gap-3">
 			<Tabs defaultValue="historico" className="flex h-full w-full flex-col">
-				<div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-					<TabsList className="h-fit w-fit max-w-full justify-self-start">
-						<TabsTrigger value="historico" className="flex items-center gap-1.5 rounded-lg px-2 py-2">
+				<div className={tabsPageToolbarClassName}>
+					<TabsList variant="page">
+						<TabsTrigger value="historico">
 							<ReceiptText className="h-4 w-4 min-h-4 min-w-4" />
 							Histórico
 						</TabsTrigger>
-						<TabsTrigger value="atendimento" className="flex items-center gap-1.5 rounded-lg px-2 py-2">
+						<TabsTrigger value="atendimento">
 							<LayoutGrid className="h-4 w-4 min-h-4 min-w-4" />
 							Atendimento
 						</TabsTrigger>
 					</TabsList>
-					<div className="justify-self-end">
+					<div className={tabsPageToolbarActionsClassName}>
 						<SalesModuleActions orgHasERPAccess />
 					</div>
 				</div>

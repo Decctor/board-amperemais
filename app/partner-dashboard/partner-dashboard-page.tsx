@@ -124,9 +124,15 @@ export default function PartnerDashboardPage() {
 
 			{/* Tabelas */}
 			<Tabs defaultValue="organizations" className="w-full">
-				<TabsList className="bg-[#f5f5f5]">
-					<TabsTrigger value="organizations">Lojas</TabsTrigger>
-					<TabsTrigger value="payouts">Pagamentos</TabsTrigger>
+				<TabsList variant="page">
+					<TabsTrigger value="organizations">
+						<Building2 className="h-4 w-4 min-h-4 min-w-4" />
+						Lojas
+					</TabsTrigger>
+					<TabsTrigger value="payouts">
+						<Wallet className="h-4 w-4 min-h-4 min-w-4" />
+						Pagamentos
+					</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="organizations" className="mt-4">

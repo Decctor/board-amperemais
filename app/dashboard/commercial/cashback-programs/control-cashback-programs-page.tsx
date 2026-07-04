@@ -99,12 +99,12 @@ export default function CashbackProgramsPage({ user, userOrg, cashbackProgram, o
 				</div>
 			</div>
 			<Tabs value={viewMode ?? "stats"} onValueChange={(v: string) => setViewMode(v as "stats" | "control-cashback-program")}>
-				<TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
-					<TabsTrigger value="stats" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+				<TabsList variant="page">
+					<TabsTrigger value="stats">
 						<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />
 						Estatísticas
 					</TabsTrigger>
-					<TabsTrigger value="control-cashback-program" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+					<TabsTrigger value="control-cashback-program">
 						<Database className="w-4 h-4 min-w-4 min-h-4" />
 						Meu Programa
 					</TabsTrigger>

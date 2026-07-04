@@ -9,7 +9,7 @@ import ControlGoal from "@/components/Modals/Goals/ControlGoal";
 import NewGoal from "@/components/Modals/Goals/NewGoal";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger, tabsPageToolbarActionsClassName, tabsPageToolbarClassName } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { useGoals } from "@/lib/queries/goals";
@@ -37,21 +37,23 @@ export default function GoalsPage({ user }: GoalsPageProps) {
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<Tabs value={activeView} onValueChange={(v) => setViewMode(v as "dashboard" | "metas")}>
-				<div className="w-full flex items-center justify-between gap-2 flex-wrap">
-					<TabsList className="flex items-center gap-1.5 w-fit h-fit self-start rounded-lg px-2 py-1">
-						<TabsTrigger value="dashboard" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+				<div className={tabsPageToolbarClassName}>
+					<TabsList variant="page">
+						<TabsTrigger value="dashboard">
 							<LayoutDashboard className="w-4 h-4 min-w-4 min-h-4" />
 							Dashboard
 						</TabsTrigger>
-						<TabsTrigger value="metas" className="flex items-center gap-1.5 px-2 py-2 rounded-lg">
+						<TabsTrigger value="metas">
 							<Target className="w-4 h-4 min-w-4 min-h-4" />
 							Metas
 						</TabsTrigger>
 					</TabsList>
-					<Button className="flex items-center gap-2" size="sm" onClick={() => setNewGoalModalIsOpen(true)}>
-						<Plus className="w-4 h-4 min-w-4 min-h-4" />
-						NOVA META
-					</Button>
+					<div className={tabsPageToolbarActionsClassName}>
+						<Button className="flex items-center gap-2" size="sm" onClick={() => setNewGoalModalIsOpen(true)}>
+							<Plus className="w-4 h-4 min-w-4 min-h-4" />
+							NOVA META
+						</Button>
+					</div>
 				</div>
 
 				<TabsContent value="dashboard">

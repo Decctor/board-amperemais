@@ -119,12 +119,12 @@ export default function ProductionsPage() {
 
 	return (
 		<Tabs defaultValue="producoes" className="flex w-full flex-col gap-3">
-			<TabsList className="flex h-fit w-fit items-center gap-1.5 self-start rounded-lg px-2 py-1">
-				<TabsTrigger value="producoes" className="flex items-center gap-1.5 rounded-lg px-2 py-2">
+			<TabsList variant="page">
+				<TabsTrigger value="producoes">
 					<Factory className="h-4 w-4 min-h-4 min-w-4" />
 					PRODUÇÕES
 				</TabsTrigger>
-				<TabsTrigger value="receitas" className="flex items-center gap-1.5 rounded-lg px-2 py-2">
+				<TabsTrigger value="receitas">
 					<ClipboardList className="h-4 w-4 min-h-4 min-w-4" />
 					RECEITAS
 				</TabsTrigger>

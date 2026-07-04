@@ -104,11 +104,23 @@ export default function PlatformPartnershipsAdminPage() {
 			</div>
 
 			<Tabs defaultValue="partners">
-				<TabsList>
-					<TabsTrigger value="partners">Parceiros</TabsTrigger>
-					<TabsTrigger value="referrals">Organizações</TabsTrigger>
-					<TabsTrigger value="commissions">Comissões</TabsTrigger>
-					<TabsTrigger value="payouts">Payouts</TabsTrigger>
+				<TabsList variant="page">
+					<TabsTrigger value="partners">
+						<Users className="h-4 w-4 min-h-4 min-w-4" />
+						Parceiros
+					</TabsTrigger>
+					<TabsTrigger value="referrals">
+						<Building2 className="h-4 w-4 min-h-4 min-w-4" />
+						Organizações
+					</TabsTrigger>
+					<TabsTrigger value="commissions">
+						<ReceiptText className="h-4 w-4 min-h-4 min-w-4" />
+						Comissões
+					</TabsTrigger>
+					<TabsTrigger value="payouts">
+						<Banknote className="h-4 w-4 min-h-4 min-w-4" />
+						Payouts
+					</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="partners" className="mt-4 flex flex-col gap-3">
