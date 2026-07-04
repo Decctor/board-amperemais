@@ -2,6 +2,7 @@
 
 import TextInput from "@/components/Inputs/TextInput";
 import { Button } from "@/components/ui/button";
+import { VirtualKeyboard } from "@/components/ui/virtual-keyboard";
 import { formatCashbackValue, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import { useAutoScrollOnFocus } from "@/lib/hooks/use-auto-scroll-on-focus";
 import { Loader2, Phone, UserPlus, ChevronDown, ChevronUp } from "lucide-react";
@@ -194,13 +195,19 @@ export function ClientStep({
 						<h3 className="text-xs font-bold">{formatToPhone(phone)}</h3>
 					</div>
 					<div className="w-full flex flex-col gap-1.5 short:gap-0.5">
-						<TextInput
-							label="NOME COMPLETO"
-							placeholder="Digite o nome do cliente"
-							value={newClientData.nome}
-							handleChange={(value) => onNewClientChange({ nome: value })}
-							onFocus={handleScrollOnFocus}
-						/>
+						<div className="flex flex-col gap-1.5">
+							<span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">NOME COMPLETO</span>
+							<VirtualKeyboard
+								type="text"
+								label="Nome completo"
+								description="Digite o nome do cliente para criar o cadastro."
+								placeholder="Digite o nome do cliente"
+								value={newClientData.nome}
+								onChange={(value) => onNewClientChange({ nome: value })}
+								confirmLabel="Confirmar nome"
+								triggerClassName="h-11 justify-start text-left px-3 rounded-lg border-input bg-background text-sm font-medium"
+							/>
+						</div>
 						<div className="w-full flex items-center justify-center">
 							<Button
 								variant="ghost"
@@ -216,18 +223,21 @@ export function ClientStep({
 							</Button>
 						</div>
 						{showOptionalFields ? (
-							<TextInput
-								label="CPF/CNPJ"
-								inputType="tel"
-								placeholder="Digite o CPF/CNPJ do cliente"
-								value={newClientData.cpfCnpj ?? ""}
-								handleChange={(value) => onNewClientChange({ cpfCnpj: formatToCPForCNPJ(value) })}
-								onFocus={(e) => {
-									setTimeout(() => {
-										e.target.scrollIntoView({ behavior: "smooth", block: "center" });
-									}, 300);
-								}}
-							/>
+							<div className="flex flex-col gap-1.5">
+								<span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">CPF/CNPJ</span>
+								<VirtualKeyboard
+									type="numeric"
+									label="CPF/CNPJ"
+									description="Digite apenas os números do documento do cliente."
+									placeholder="Digite o CPF/CNPJ do cliente"
+									value={(newClientData.cpfCnpj ?? "").replace(/\D/g, "")}
+									onChange={(value) => onNewClientChange({ cpfCnpj: formatToCPForCNPJ(value) })}
+									maxLength={14}
+									formatValue={formatToCPForCNPJ}
+									confirmLabel="Confirmar documento"
+									triggerClassName="h-11 justify-start text-left px-3 rounded-lg border-input bg-background text-sm font-medium"
+								/>
+							</div>
 						) : null}
 					</div>
 					{newClientAction ? (

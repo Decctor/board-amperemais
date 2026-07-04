@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { VirtualKeyboard } from "@/components/ui/virtual-keyboard";
 import { cn } from "@/lib/utils";
 import { formatDecimalPlaces } from "@/lib/formatting";
 import { useAutoScrollOnFocus } from "@/lib/hooks/use-auto-scroll-on-focus";
@@ -11,11 +12,13 @@ type SaleValueConfirmationInputProps = {
 	value: number | null;
 	onChange: (value: number | null) => void;
 	compact?: boolean;
+	/** No fluxo de kiosk (tablet), abre o teclado virtual em vez do teclado do sistema. */
+	useVirtualKeyboard?: boolean;
 };
 
 const SECURITY_HINT_ID = "poi-operator-confirmed-sale-value-hint";
 
-export function SaleValueConfirmationInput({ value, onChange, compact = false }: SaleValueConfirmationInputProps) {
+export function SaleValueConfirmationInput({ value, onChange, compact = false, useVirtualKeyboard = false }: SaleValueConfirmationInputProps) {
 	const handleScrollOnFocus = useAutoScrollOnFocus(300);
 	const displayValue = value == null ? "" : `R$ ${formatDecimalPlaces(value, 2, 2)}`;
 
@@ -44,25 +47,39 @@ export function SaleValueConfirmationInput({ value, onChange, compact = false }:
 						Por segurança, digite novamente o valor final apresentado para aprovação.
 					</p>
 
-					<Input
-						id="poi-operator-confirmed-sale-value"
-						type="text"
-						inputMode="numeric"
-						autoComplete="off"
-						aria-describedby={SECURITY_HINT_ID}
-						value={displayValue}
-						onChange={(event) => {
-							const digits = event.target.value.replace(/\D/g, "").slice(0, 12);
-							onChange(digits ? Number(digits) / 100 : null);
-						}}
-						placeholder="R$ 0,00"
-						className={
-							compact
-								? "h-11 text-lg text-center rounded-lg border border-brand/20 focus:border-green-500 transition-all font-bold"
-								: "h-16 short:h-11 text-2xl short:text-xl text-center rounded-2xl short:rounded-lg border-4 short:border border-brand/20 focus:border-green-500 transition-all font-bold"
-						}
-						onFocus={handleScrollOnFocus}
-					/>
+					{useVirtualKeyboard ? (
+						<VirtualKeyboard
+							type="currency"
+							label="Confirme o valor final da venda"
+							description="Por segurança, digite novamente o valor final apresentado para aprovação."
+							value={value ?? 0}
+							onChange={(next) => onChange(next === 0 ? null : next)}
+							formatValue={(v) => `R$ ${formatDecimalPlaces(v, 2, 2)}`}
+							confirmLabel="Confirmar valor"
+							placeholder="R$ 0,00"
+							triggerClassName="h-16 short:h-11 text-2xl short:text-xl rounded-2xl short:rounded-lg border-4 short:border border-brand/20 hover:border-green-500 font-bold"
+						/>
+					) : (
+						<Input
+							id="poi-operator-confirmed-sale-value"
+							type="text"
+							inputMode="numeric"
+							autoComplete="off"
+							aria-describedby={SECURITY_HINT_ID}
+							value={displayValue}
+							onChange={(event) => {
+								const digits = event.target.value.replace(/\D/g, "").slice(0, 12);
+								onChange(digits ? Number(digits) / 100 : null);
+							}}
+							placeholder="R$ 0,00"
+							className={
+								compact
+									? "h-11 text-lg text-center rounded-lg border border-brand/20 focus:border-green-500 transition-all font-bold"
+									: "h-16 short:h-11 text-2xl short:text-xl text-center rounded-2xl short:rounded-lg border-4 short:border border-brand/20 focus:border-green-500 transition-all font-bold"
+							}
+							onFocus={handleScrollOnFocus}
+						/>
+					)}
 				</div>
 			</div>
 		</div>

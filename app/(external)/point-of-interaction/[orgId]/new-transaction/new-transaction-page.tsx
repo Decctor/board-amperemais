@@ -461,7 +461,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						{/* Discount mode steps */}
 						{/* Step 1: Sale Value */}
 						{!showModeSelection && !isPrizeMode && currentStep === 1 && (
-							<SaleValueStep value={state.sale.valor} onChange={(v) => updateSale({ valor: v })} onSubmit={handleNextStep} />
+							<SaleValueStep value={state.sale.valor} onChange={(v) => updateSale({ valor: v })} onSubmit={handleNextStep} mode={mode} />
 						)}
 						{/* Step 2: Cashback (+ cupons disponíveis) */}
 						{!showModeSelection && !isPrizeMode && currentStep === 2 && (
@@ -490,6 +490,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 									}
 									onAmountChange={(v) => updateCashback({ valor: v })}
 									onSubmit={handleNextStep}
+									mode={mode}
 								/>
 							</div>
 						)}
@@ -536,7 +537,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						)}
 						{/* Prize sale-only: Step 2 = Sale Value */}
 						{!showModeSelection && isPrizeSaleOnlyFlow && currentStep === 2 && (
-							<SaleValueStep value={state.sale.valor} onChange={(v) => updateSale({ valor: v })} onSubmit={handleNextStep} />
+							<SaleValueStep value={state.sale.valor} onChange={(v) => updateSale({ valor: v })} onSubmit={handleNextStep} mode={mode} />
 						)}
 						{/* Prize redeem: Step 2 = Confirmation (totem apenas) */}
 						{!showModeSelection && isPrizeMode && currentStep === 2 && !isPrizeSaleOnlyFlow && !isMobileMode && (

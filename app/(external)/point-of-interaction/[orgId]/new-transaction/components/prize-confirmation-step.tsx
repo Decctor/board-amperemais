@@ -93,9 +93,9 @@ export function PrizeConfirmationStep({
 			</div>
 
 			{requiresSaleValueConfirmation ? (
-				<SaleValueConfirmationInput value={operatorConfirmedSaleValue} onChange={onOperatorConfirmedSaleValueChange} />
+				<SaleValueConfirmationInput value={operatorConfirmedSaleValue} onChange={onOperatorConfirmedSaleValueChange} useVirtualKeyboard />
 			) : null}
-			<OperatorConfirmationInput value={operatorIdentifier} onChange={onOperatorIdentifierChange} />
+			<OperatorConfirmationInput value={operatorIdentifier} onChange={onOperatorIdentifierChange} useVirtualKeyboard />
 		</form>
 	);
 }
