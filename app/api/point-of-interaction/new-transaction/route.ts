@@ -3,6 +3,7 @@ import { accumulateCashbackForClient, calculateAccumulatedCashbackValue, ensureC
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { campaignAudienceHasClient, resolveCampaignAudiencesByCampaignId } from "@/lib/campaigns/filters";
 import { applyCampaignBonusToInteractionMetadata, buildBasePurchaseInteractionMetadata } from "@/lib/campaigns/interaction-metadata";
+import { resolveExclusivePurchaseTriggerCampaigns } from "@/lib/campaigns/purchase-trigger-priority";
 import { processConversionAttribution } from "@/lib/conversions/attribution";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatCashbackValue, formatPhoneAsBase } from "@/lib/formatting";
@@ -829,12 +830,32 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				clientId,
 			});
 
+			const exclusivePurchaseCampaigns = resolveExclusivePurchaseTriggerCampaigns({
+				campaigns: [
+					...campaignsForFirstPurchase,
+					...(transactionRequiresSaleProcessing ? campaignsForTotalPurchaseCount : []),
+					...campaignsForNewPurchase,
+				],
+				audiencesByCampaignId,
+				clientId,
+				isFirstPurchase: clientIsNew,
+				saleValue: effectiveSaleValue,
+				totalPurchaseCount: transactionRequiresSaleProcessing ? clientCurrentPurchaseCount : null,
+				allowNewPurchaseOnFirstPurchase: true,
+			});
+			const exclusivePurchaseTrigger = exclusivePurchaseCampaigns[0]?.gatilhoTipo ?? null;
+
+			console.log(`[POI ${input.orgId}] [CAMPAIGNS] Gatilho exclusivo de compra selecionado`, {
+				exclusivePurchaseTrigger,
+				exclusiveCampaignsCount: exclusivePurchaseCampaigns.length,
+			});
+
 			// Processing PRIMEIRA-COMPRA campaign for new clients
-			if (clientIsNew)
+			if (exclusivePurchaseTrigger === "PRIMEIRA-COMPRA")
 				await handleCampaignProcessingForFirstPurchase({
 					tx,
 					orgId: input.orgId,
-					campaignsForFirstPurchase: campaignsForFirstPurchase,
+					campaignsForFirstPurchase: exclusivePurchaseCampaigns,
 					audiencesByCampaignId,
 					addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 					saleId: transactionSaleId,
@@ -849,16 +870,16 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				});
 
 			const wouldCauseDoubleInteraction = clientIsNew && campaignsForFirstPurchase.length > 0 && campaignsForNewPurchase.length > 0;
-			if (wouldCauseDoubleInteraction) {
+			if (wouldCauseDoubleInteraction && exclusivePurchaseTrigger === "PRIMEIRA-COMPRA") {
 				console.log(`[POI ${input.orgId}] [NOVA-COMPRA] Pulando campanhas de nova compra para evitar interação duplicada com primeira compra`);
 			}
 
 			// Processing NOVA-COMPRA campaign for existing clients or new clients (if no double interaction would occur)
-			if (!wouldCauseDoubleInteraction)
+			if (exclusivePurchaseTrigger === "NOVA-COMPRA")
 				await handleCampaignProcessingForNewPurchase({
 					tx,
 					orgId: input.orgId,
-					campaignsForNewPurchase: campaignsForNewPurchase,
+					campaignsForNewPurchase: exclusivePurchaseCampaigns,
 					audiencesByCampaignId,
 					addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
 					saleId: transactionSaleId,
@@ -875,23 +896,26 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 
 			// QUANTIDADE/VALOR dependem de metadata de compra atualizada — só quando a venda é criada internamente
 			if (transactionRequiresSaleProcessing) {
-				await handleCampaignProcessingForTotalPurchaseCount({
-					tx,
-					orgId: input.orgId,
-					campaignsForTotalPurchaseCount: campaignsForTotalPurchaseCount,
-					audiencesByCampaignId,
-					addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
-					saleId: transactionSaleId,
-					saleValue: effectiveSaleValue,
-					clientId: clientId,
-					clientNewTotalPurchaseCount: clientCurrentPurchaseCount,
-					sellerName: operator.nome,
-					transactionAccumulatedCashback: clientNewAccumulatedCashbackValue,
-					clientCashbackAvailableBalance: clientCashbackAvailableBalance ?? 0,
-					clientCashbackAccumulatedBalance: clientCashbackAccumulatedBalance ?? 0,
-					clientCashbackRedeemedBalanceTotal: clientCashbackRedeemedBalanceTotal ?? 0,
-					organizationCashbackTerminology: program.terminologia,
-				});
+				if (exclusivePurchaseTrigger === "QUANTIDADE-TOTAL-COMPRAS") {
+					await handleCampaignProcessingForTotalPurchaseCount({
+						tx,
+						orgId: input.orgId,
+						campaignsForTotalPurchaseCount: exclusivePurchaseCampaigns,
+						audiencesByCampaignId,
+						addToImmediateProcessingDataList: (data: ImmediateProcessingData) => immediateProcessingDataList.push(data),
+						saleId: transactionSaleId,
+						saleValue: effectiveSaleValue,
+						clientId: clientId,
+						clientNewTotalPurchaseCount: clientCurrentPurchaseCount,
+						sellerName: operator.nome,
+						transactionAccumulatedCashback: clientNewAccumulatedCashbackValue,
+						clientCashbackAvailableBalance: clientCashbackAvailableBalance ?? 0,
+						clientCashbackAccumulatedBalance: clientCashbackAccumulatedBalance ?? 0,
+						clientCashbackRedeemedBalanceTotal: clientCashbackRedeemedBalanceTotal ?? 0,
+						organizationCashbackTerminology: program.terminologia,
+					});
+				}
+
 				await handleCampaignProcessingForTotalPurchaseValue({
 					tx,
 					orgId: input.orgId,

@@ -1,6 +1,7 @@
 import { accumulateCashbackForClient } from "@/lib/cashback/accumulation";
 import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
 import { applyCampaignBonusToInteractionMetadata, buildBasePurchaseInteractionMetadata } from "@/lib/campaigns/interaction-metadata";
+import { resolveExclusivePurchaseTriggerCampaigns } from "@/lib/campaigns/purchase-trigger-priority";
 import { processConversionAttribution } from "@/lib/conversions/attribution";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import type { ImmediateProcessingData } from "@/lib/interactions";
@@ -80,24 +81,26 @@ function getCampaignsForSale({
 	const { sale, clientId, isNewSale, isFirstPurchase, newTotalPurchaseCount, newTotalPurchaseValue } = persistedSale;
 	if (!isNewSale || !sale.isValidSale || !clientId) return [];
 
-	return campaigns.filter((campaign) => {
+	const exclusivePurchaseCampaigns = resolveExclusivePurchaseTriggerCampaigns({
+		campaigns,
+		audiencesByCampaignId,
+		clientId,
+		isFirstPurchase,
+		saleValue: sale.totalValue,
+		totalPurchaseCount: newTotalPurchaseCount,
+	});
+
+	const totalPurchaseValueCampaigns = campaigns.filter((campaign) => {
 		if (!campaignAudienceHasClient(audiencesByCampaignId, campaign.id, clientId)) return false;
 
-		if (campaign.gatilhoTipo === "PRIMEIRA-COMPRA") return isFirstPurchase;
-		if (campaign.gatilhoTipo === "NOVA-COMPRA") {
-			const meetsValue = campaign.gatilhoNovaCompraValorMinimo == null || sale.totalValue >= campaign.gatilhoNovaCompraValorMinimo;
-			return !isFirstPurchase && meetsValue;
-		}
-		if (campaign.gatilhoTipo === "QUANTIDADE-TOTAL-COMPRAS") {
-			return campaign.gatilhoQuantidadeTotalCompras != null && newTotalPurchaseCount === campaign.gatilhoQuantidadeTotalCompras;
-		}
 		if (campaign.gatilhoTipo === "VALOR-TOTAL-COMPRAS") {
 			return campaign.gatilhoValorTotalCompras != null && newTotalPurchaseValue === campaign.gatilhoValorTotalCompras;
 		}
-		if (campaign.gatilhoTipo === "CASHBACK-ACUMULADO") return false;
 
 		return false;
 	});
+
+	return [...exclusivePurchaseCampaigns, ...totalPurchaseValueCampaigns];
 }
 
 function buildInteractionDescription(campaign: TCampaignWithAudienceRelations, persistedSale: TPersistedSaleForEffects) {
