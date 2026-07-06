@@ -6,6 +6,12 @@
       "sourceType": "github",
       "computedHash": "81af098a4ce6f0e323c1bd02b8e79df3bbaed57cbf1c4060f58ddc95de5545a1"
     },
+    "ai-seo": {
+      "source": "coreyhaines31/marketingskills",
+      "sourceType": "github",
+      "skillPath": "skills/ai-seo/SKILL.md",
+      "computedHash": "b1bf328a14f39f574b77e1ca111a81026fef9068694d7a0ceceb8b4e126a971a"
+    },
     "content-strategy": {
       "source": "coreyhaines31/marketingskills",
       "sourceType": "github",

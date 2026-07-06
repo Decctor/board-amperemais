@@ -51,10 +51,34 @@ export const viewport: Viewport = {
 	interactiveWidget: "resizes-content",
 };
 
+const organizationJsonLd = {
+	"@context": "https://schema.org",
+	"@type": "Organization",
+	name: "RecompraCRM",
+	url: "https://recompracrm.com.br",
+	logo: "https://recompracrm.com.br/logo.png",
+	description: siteMetaDescription,
+};
+
+const websiteJsonLd = {
+	"@context": "https://schema.org",
+	"@type": "WebSite",
+	name: "RecompraCRM",
+	url: "https://recompracrm.com.br",
+	inLanguage: "pt-BR",
+	publisher: {
+		"@type": "Organization",
+		name: "RecompraCRM",
+		url: "https://recompracrm.com.br",
+	},
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="pt-BR" suppressHydrationWarning>
 			<body className={cn(`min-h-screen min-w-screen bg-background text-foreground overflow-x-hidden antialiased font-raleway ${raleway.variable}`)}>
+				{/* JSON-LD — Organization + WebSite (reconhecimento de entidade por IA) */}
+				<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify([organizationJsonLd, websiteJsonLd]) }} />
 				<ProvidersWrapper>
 					{children}
 					<Toaster position="bottom-right" visibleToasts={4} gap={12} />

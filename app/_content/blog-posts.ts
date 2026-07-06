@@ -5,6 +5,9 @@ export type ContentSection =
 	| { type: "quote"; text: string; author?: string }
 	| { type: "image"; src: string; alt: string; caption?: string };
 
+// Pergunta/resposta usada para renderizar a seção de FAQ e o schema FAQPage (JSON-LD).
+export type FAQItem = { question: string; answer: string };
+
 export type BlogPost = {
 	slug: string;
 	title: string;
@@ -18,9 +21,12 @@ export type BlogPost = {
 		alt: string;
 		caption?: string;
 	};
+	author?: string; // autor exibido e usado no JSON-LD (default: "Equipe RecompraCRM")
 	publishedAt: string; // ISO date
+	updatedAt?: string; // ISO date — usado em dateModified do JSON-LD
 	readingTime: string;
 	sections: ContentSection[];
+	faqs?: FAQItem[];
 	cta: {
 		headline: string;
 		sub: string;

@@ -1,0 +1,31 @@
+# RecompraCRM
+
+> RecompraCRM é um sistema de fidelização com cashback automático para lojas físicas (varejo). Ele faz clientes voltarem a comprar combinando cashback, campanhas automáticas no WhatsApp, um Ponto de Interação (PDI) no balcão e análise de clientes por RFM (Recência, Frequência, Valor).
+
+Feito para o varejo físico brasileiro: sorveterias, petshops, lojas de roupas, farmácias, padarias, ferragens e qualquer negócio com venda direta ao consumidor que queira aumentar a frequência de compra e a previsibilidade de vendas.
+
+Como funciona, em resumo:
+- **Cashback:** cada compra gera um crédito com validade, criando um motivo concreto para o cliente voltar antes de o crédito expirar. O cliente não baixa app nem carrega cartão — usa CPF ou telefone no balcão.
+- **Campanhas no WhatsApp:** mensagens automáticas disparadas por gatilhos de comportamento (aniversário, cliente sumido, cashback expirando, primeira compra), com segmentação por RFM e medição de ROI.
+- **Ponto de Interação (PDI):** um tablet ou totem no balcão onde o atendente registra a venda e o cliente vê e resgata o saldo de cashback em tempo real. Roda em qualquer tablet ou celular no navegador.
+- **Business Intelligence:** relatórios em tempo real de ticket médio, frequência, receita, ROI do cashback e clientes em risco de abandono.
+
+Planos: dois caminhos com a mesma plataforma completa. **Plataforma** (self-service) por R$399,90/mês e **Plataforma + Gestor de Crescimento** (done-for-you, a equipe opera por você) por R$899,90/mês. Ambos com 15 dias grátis, sem cartão de crédito e sem taxa de setup.
+
+## Páginas principais
+
+- [Página inicial](https://recompracrm.com.br): visão geral do produto, como funciona, planos e resultados.
+- [Preços (machine-readable)](https://recompracrm.com.br/pricing.md): detalhamento dos planos, valores e inclusos.
+- [Blog](https://recompracrm.com.br/blog): artigos sobre fidelização, cashback e retenção no varejo.
+
+## Funcionalidades
+
+- [Programa de Cashback](https://recompracrm.com.br/features/programa-de-cashback): como criar e configurar cashback para a sua loja.
+- [Campanhas no WhatsApp](https://recompracrm.com.br/features/campanhas-whatsapp): campanhas automáticas com gatilhos e segmentação RFM.
+- [Ponto de Interação (PDI)](https://recompracrm.com.br/features/ponto-de-interacao): o tablet de balcão que registra vendas e resgata cashback.
+- [Business Intelligence](https://recompracrm.com.br/features/business-intelligence): relatórios e análise de dados de venda.
+
+## Contato
+
+- WhatsApp: https://wa.me/553499480791
+- Site: https://recompracrm.com.br

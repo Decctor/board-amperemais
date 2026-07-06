@@ -1,4 +1,4 @@
-import type { ContentSection } from "./blog-posts";
+import type { ContentSection, FAQItem } from "./blog-posts";
 
 export type FeaturePage = {
 	slug: string;
@@ -7,6 +7,7 @@ export type FeaturePage = {
 	description: string;
 	coverEmoji: string;
 	sections: ContentSection[];
+	faqs?: FAQItem[];
 	cta: {
 		headline: string;
 		sub: string;
@@ -89,6 +90,28 @@ export const FEATURE_PAGES: FeaturePage[] = [
 				body: "O programa de cashback do RecompraCRM já foi implementado com sucesso em sorveterias, petshops, lojas de moda, farmácias, padarias, lojas de ferragens e muito mais. Qualquer negócio com venda direta ao consumidor e interesse em aumentar a frequência de compra pode se beneficiar.\n\nO setup é feito em menos de um dia. Nossa equipe configura o sistema junto com você, treina os atendentes e você já começa a acumular dados desde a primeira venda.",
 			},
 		],
+		faqs: [
+			{
+				question: "Como funciona o programa de cashback do RecompraCRM?",
+				answer:
+					"O cliente compra na sua loja física e recebe de volta uma porcentagem do valor como crédito, que só pode ser usado em uma próxima compra. Você define o percentual, o prazo de validade e o valor mínimo de resgate. Todo o cálculo, acúmulo e resgate é automático, integrado ao caixa e às notificações por WhatsApp.",
+			},
+			{
+				question: "Qual percentual de cashback devo oferecer na minha loja?",
+				answer:
+					"No RecompraCRM você configura de 1% a 20%, conforme a sua margem. Para a maioria do varejo, entre 3% e 8% cria um incentivo real de retorno sem comprometer o lucro. É possível aumentar o percentual em datas especiais para turbinar o movimento e testar qual valor gera mais recompra.",
+			},
+			{
+				question: "O cliente precisa baixar algum aplicativo para usar o cashback?",
+				answer:
+					"Não. O cliente não instala aplicativo nem carrega cartão. Para acumular ou resgatar, basta informar o CPF ou o telefone no Ponto de Interação. O saldo aparece na tela em tempo real e o resgate é descontado na hora, direto no caixa, sem atrito.",
+			},
+			{
+				question: "O cashback expira?",
+				answer:
+					"Sim, e isso é intencional. Você define a validade (30, 60 ou 90 dias) para criar urgência de retorno. Quando o crédito está perto de vencer, o sistema envia um lembrete automático por WhatsApp, trazendo o cliente de volta antes que ele esqueça.",
+			},
+		],
 		cta: {
 			headline: "Implante o cashback na sua loja esta semana",
 			sub: "Agende uma demonstração gratuita. Veja o programa funcionando ao vivo e tire todas as suas dúvidas com um especialista.",
@@ -162,6 +185,28 @@ export const FEATURE_PAGES: FeaturePage[] = [
 				type: "text",
 				heading: "Campanhas que escalam sem escalar a equipe",
 				body: "O grande diferencial das campanhas automáticas é que elas funcionam 24/7, atendem milhares de clientes simultaneamente e não dependem de um funcionário para operar. Você configura a campanha uma vez e ela roda indefinidamente.\n\nPara lojas com múltiplas unidades, as campanhas são centralizadas e os resultados são consolidados no painel — facilitando a gestão e a tomada de decisão.\n\nNão importa se sua loja tem 100 ou 10.000 clientes cadastrados: a automação garante que cada um receba a mensagem certa, no momento certo.",
+			},
+		],
+		faqs: [
+			{
+				question: "Como funcionam as campanhas automáticas no WhatsApp?",
+				answer:
+					"O RecompraCRM dispara mensagens no WhatsApp com base no comportamento do cliente, sem trabalho manual. Você ativa gatilhos como aniversário, cliente sumido, cashback expirando ou primeira compra, e cada pessoa recebe a mensagem certa no momento certo. As campanhas rodam sozinhas e você acompanha o retorno de cada uma pelo painel.",
+			},
+			{
+				question: "As mensagens são enviadas manualmente ou é tudo automático?",
+				answer:
+					"É automático. Você configura os gatilhos e os modelos de mensagem uma vez, e o sistema envia sozinho conforme cada cliente atinge a condição definida. Também é possível disparar campanhas pontuais para um segmento específico, como clientes em risco de abandono, com poucos cliques.",
+			},
+			{
+				question: "O que é segmentação por RFM e por que ela importa?",
+				answer:
+					"RFM classifica cada cliente por Recência, Frequência e Valor gasto. Com isso, você fala de forma diferente com quem comprou ontem e com quem sumiu há três meses. A segmentação evita mensagens genéricas, aumenta a taxa de resposta e concentra o esforço nos clientes com maior potencial de voltar a comprar.",
+			},
+			{
+				question: "Consigo medir o retorno de cada campanha?",
+				answer:
+					"Sim. O RecompraCRM mostra quantos clientes receberam, retornaram e compraram após cada campanha, além da receita gerada e do ROI. Você para de investir no achismo e sabe exatamente quais gatilhos e mensagens trazem mais vendas de volta.",
 			},
 		],
 		cta: {
@@ -239,6 +284,28 @@ export const FEATURE_PAGES: FeaturePage[] = [
 				body: "O PDI é uma aplicação web que roda no navegador — não precisa instalar nada. Funciona em tablets Android, iPads, notebooks ou qualquer computador. Basta acessar o link da sua loja e fazer login.\n\nPara lojas com múltiplas unidades, cada unidade tem seu próprio PDI com configurações específicas, mas todos os dados são consolidados no painel central. O gestor acompanha vendas de todas as unidades em tempo real.\n\nA configuração leva menos de um dia. Nossa equipe faz o setup remoto, treina os atendentes por vídeo e você já começa a operar imediatamente.",
 			},
 		],
+		faqs: [
+			{
+				question: "O que é o Ponto de Interação (PDI)?",
+				answer:
+					"O PDI é um tablet ou totem instalado no balcão da loja. Nele, o atendente registra a venda e o cliente informa CPF ou telefone para acumular e resgatar cashback, vendo o saldo na tela em tempo real. É o ponto de contato que transforma cada compra em um motivo para o cliente voltar.",
+			},
+			{
+				question: "Preciso de algum equipamento especial para usar o PDI?",
+				answer:
+					"Não. O PDI roda em qualquer tablet ou celular com navegador de internet. Não é preciso comprar hardware específico nem instalar programas. Basta abrir o endereço no modo quiosque e o balcão já está pronto para registrar vendas e gerenciar cashback.",
+			},
+			{
+				question: "O PDI atrapalha a fila ou deixa o atendimento mais lento?",
+				answer:
+					"Não. O fluxo é feito em quatro passos rápidos e o cliente resgata o cashback com um toque, sem app e sem cartão. O registro leva segundos e roda em modo quiosque de tela cheia, então o atendimento fica mais ágil, não mais lento.",
+			},
+			{
+				question: "Como o ranking de vendedores funciona no PDI?",
+				answer:
+					"Cada venda registrada no PDI é atribuída ao vendedor que atendeu. O sistema gera um ranking automático por desempenho, criando gamificação que engaja a equipe e dá ao gestor uma visão clara de quem mais vende e fideliza.",
+			},
+		],
 		cta: {
 			headline: "Coloque um PDI no balcão da sua loja",
 			sub: "Agende uma demonstração gratuita e veja o Ponto de Interação funcionando ao vivo. Sem compromisso.",
@@ -312,6 +379,28 @@ export const FEATURE_PAGES: FeaturePage[] = [
 				type: "text",
 				heading: "De achismo a decisão baseada em dados",
 				body: "O Business Intelligence do RecompraCRM foi desenhado para lojistas, não para analistas de dados. Cada dashboard é visual, intuitivo e mostra as informações que realmente importam para quem precisa decidir rápido.\n\nNão importa se você tem uma loja ou dez. Os dados de todas as unidades são consolidados automaticamente, permitindo comparações de desempenho entre filiais, identificação de melhores práticas e alocação inteligente de recursos.\n\nO resultado: menos decisões no escuro, mais ações direcionadas e um retorno sobre investimento visível em cada painel.",
+			},
+		],
+		faqs: [
+			{
+				question: "Que tipo de relatório o Business Intelligence do RecompraCRM oferece?",
+				answer:
+					"O painel mostra ticket médio, frequência de compra, receita por período, desempenho de cada campanha e ROI do cashback. Também identifica clientes em risco de abandono pela análise RFM. Tudo em tempo real, sem exportar planilhas nem depender de TI, para você ver onde investir para vender mais.",
+			},
+			{
+				question: "Preciso saber de análise de dados para usar?",
+				answer:
+					"Não. Os relatórios são visuais e prontos para decisão: você vê quais clientes estão sumindo, quais campanhas trazem retorno e como o ticket médio evolui. A leitura é direta, pensada para o dono da loja e o gestor, não para analistas.",
+			},
+			{
+				question: "O que é a análise RFM e como ela ajuda minha loja?",
+				answer:
+					"RFM avalia cada cliente por Recência, Frequência e Valor gasto, agrupando-os em perfis como fiéis, em risco e inativos. Com isso você sabe exatamente quem merece atenção agora e direciona campanhas para reativar quem está prestes a parar de comprar.",
+			},
+			{
+				question: "Os dados ficam atualizados em tempo real?",
+				answer:
+					"Sim. Cada venda registrada no PDI alimenta o painel instantaneamente. Você acompanha o movimento do dia, o efeito de uma campanha recém-disparada e a evolução dos indicadores sem esperar fechamento de mês nem consolidação manual.",
 			},
 		],
 		cta: {

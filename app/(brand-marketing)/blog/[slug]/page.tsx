@@ -1,5 +1,6 @@
 import { BLOG_POSTS, getBlogPost } from "@/app/_content/blog-posts";
 import { ArticleCTA } from "@/components/Content/ArticleCTA";
+import { ArticleFAQ, buildFAQPageJsonLd } from "@/components/Content/ArticleFAQ";
 import { ArticleHero } from "@/components/Content/ArticleHero";
 import { ArticleSection } from "@/components/Content/ArticleSection";
 import { RelatedPosts } from "@/components/Content/RelatedPosts";
@@ -50,25 +51,45 @@ export default async function BlogPostPage({ params }: Props) {
 
 	const relatedPosts = BLOG_POSTS.filter((p) => post.relatedSlugs.includes(p.slug));
 
+	const canonicalUrl = `https://recompracrm.com.br/blog/${post.slug}`;
+	const authorName = post.author ?? "Equipe RecompraCRM";
+
 	const jsonLd = {
 		"@context": "https://schema.org",
 		"@type": "Article",
 		headline: post.title,
 		description: post.description,
 		datePublished: post.publishedAt,
+		dateModified: post.updatedAt ?? post.publishedAt,
+		author: {
+			"@type": "Organization",
+			name: authorName,
+			url: "https://recompracrm.com.br",
+		},
 		publisher: {
 			"@type": "Organization",
 			name: "RecompraCRM",
 			url: "https://recompracrm.com.br",
+			logo: {
+				"@type": "ImageObject",
+				url: "https://recompracrm.com.br/logo.png",
+			},
+		},
+		mainEntityOfPage: {
+			"@type": "WebPage",
+			"@id": canonicalUrl,
 		},
 		image: post.coverImage?.src,
 		keywords: post.seo.keywords.join(", "),
 	};
 
+	const faqJsonLd = post.faqs && post.faqs.length > 0 ? buildFAQPageJsonLd(post.faqs) : null;
+
 	return (
 		<>
 			{/* JSON-LD */}
 			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+			{faqJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />}
 
 			<ArticleHero
 				emoji={post.coverEmoji}
@@ -93,6 +114,9 @@ export default async function BlogPostPage({ params }: Props) {
 
 					{/* CTA */}
 					<ArticleCTA headline={post.cta.headline} sub={post.cta.sub} buttonText={post.cta.buttonText} whatsappMessage={post.cta.whatsappMessage} />
+
+					{/* FAQ */}
+					{post.faqs && post.faqs.length > 0 && <ArticleFAQ faqs={post.faqs} />}
 
 					{/* Related posts */}
 					<RelatedPosts posts={relatedPosts} />

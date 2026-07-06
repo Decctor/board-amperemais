@@ -1,6 +1,7 @@
 import { BLOG_POSTS } from "@/app/_content/blog-posts";
 import { FEATURE_PAGES, getFeaturePage } from "@/app/_content/feature-pages";
 import { ArticleCTA } from "@/components/Content/ArticleCTA";
+import { ArticleFAQ, buildFAQPageJsonLd } from "@/components/Content/ArticleFAQ";
 import { ArticleSection } from "@/components/Content/ArticleSection";
 import { BlogPostCard } from "@/components/Content/BlogPostCard";
 import { Calendar } from "lucide-react";
@@ -70,10 +71,13 @@ export default async function FuncionalidadePage({ params }: Props) {
 		keywords: page.seo.keywords.join(", "),
 	};
 
+	const faqJsonLd = page.faqs && page.faqs.length > 0 ? buildFAQPageJsonLd(page.faqs) : null;
+
 	return (
 		<>
 			{/* JSON-LD */}
 			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+			{faqJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />}
 
 			{/* Hero */}
 			<section className="bg-gradient-to-b from-slate-50 to-white pt-28 pb-12 px-6">
@@ -122,6 +126,9 @@ export default async function FuncionalidadePage({ params }: Props) {
 
 					{/* CTA */}
 					<ArticleCTA headline={page.cta.headline} sub={page.cta.sub} buttonText={page.cta.buttonText} whatsappMessage={page.cta.whatsappMessage} />
+
+					{/* FAQ */}
+					{page.faqs && page.faqs.length > 0 && <ArticleFAQ faqs={page.faqs} />}
 
 					{/* Related blog posts */}
 					{relatedBlogPosts.length > 0 && (
