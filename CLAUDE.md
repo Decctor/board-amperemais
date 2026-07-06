@@ -2,21 +2,86 @@
 
 This file documents the architectural patterns, conventions, and "tastes" of this codebase. Follow these patterns when writing new code.
 
+Related docs, read as needed (not duplicated here):
+
+- **`AGENTS.md`** — step-by-step checklist for building a new admin feature end-to-end, common-mistakes list, key utility/component reference tables.
+- **`PRODUCT.md`** — what the product does (modules, marketing automation, cashback/loyalty, POS).
+- **`DESIGN.md`** — visual design system (color, typography, elevation, component styling rules).
+- **`docs/`** — point-in-time design docs and migration plans for specific modules (fiscal engine, coupons, productions, sales sessions, WhatsApp templates, AI SDK v6 migration, etc.). Check here first when working inside one of those modules.
+
+---
+
+## Overview
+
+**RecompraCRM** (package name `ampere-mais`) is a multi-tenant SaaS CRM/loyalty/marketing-automation platform for local retail businesses, combining BI dashboards, RFM-based customer segmentation, automated WhatsApp campaigns, a cashback loyalty program, a tablet point-of-interaction (POS) UI, fiscal document emission, purchasing/production/stock management, and an AI agent layer. See `PRODUCT.md` for the full feature breakdown.
+
+Every organization (`organizacaoId`) is a tenant. Almost everything reads/writes are scoped to a tenant; see "Multi-Tenancy, Auth & Permissions" below before writing any query.
+
+---
+
 ## Tech Stack
 
-- **Framework**: Next.js 16 (App Router)
-- **Database**: PostgreSQL via Supabase, Drizzle ORM
-- **Auth**: Lucia (session-based), `admin: boolean` flag on users for platform admin access
-- **UI**: Tailwind CSS v4, Radix UI, shadcn/ui components
+- **Framework**: Next.js 16 (App Router), React 19, React Compiler enabled (`reactCompiler: true` in `next.config.mjs`)
+- **Database**: PostgreSQL via Supabase, Drizzle ORM (`postgres-js` driver)
+- **Auth**: Lucia-style session cookies (`lib/authentication/session.ts`), Google OAuth + magic link + email/password, `admin: boolean` flag on users for platform admin access, org-scoped `organizationMembers` with granular `permissoes` (see below)
+- **UI**: Tailwind CSS v4, Radix UI, shadcn/ui (`components.json`, style `radix-maia`)
 - **State**: Custom `useState` + `useCallback` hooks (no react-hook-form)
 - **Data fetching**: React Query (`@tanstack/react-query`) + Axios
 - **Validation**: Zod
+- **AI**: Vercel AI SDK (`ai` v6) — `ToolLoopAgent`, AI Gateway (`gateway("openai/...")`), structured `Output.object` — used for the marketing agent, AI hints, and the WhatsApp customer-service agent (see "AI & Automation Modules")
 - **Video**: Mux (`@mux/mux-node` server, `@mux/mux-player-react` client)
 - **File storage**: Supabase Storage
 - **Payments**: Stripe
 - **Rich text**: Tiptap v3
 - **Toasts**: Sonner
 - **Icons**: lucide-react
+- **Lint/format**: `oxlint` + `oxfmt` (not ESLint/Prettier, despite `eslint`/`eslint-config-next` still being present as dependencies) — tabs, double quotes, 150 char width (`.oxfmtrc.json`)
+- **Dead-code detection**: `knip`
+
+---
+
+## Codebase Structure
+
+```
+app/
+  (admin)/admin-dashboard/   Platform-admin-only area (see "Admin Page Conventions")
+  (external)/                Public, unauthenticated pages (community, POI display, sales-campaign landing, presentation)
+  (brand-marketing)/         Marketing site (blog, features, partnerships)
+  (legal)/                   Legal/compliance pages (data-deletion, terms)
+  dashboard/                 Main authenticated org app (commercial, operational, team, settings, ai-hints, communication)
+  partner-dashboard/         Partner-facing authenticated area
+  onboarding/                Org onboarding flow
+  shop/[orgId]/              Public digital storefront for an organization
+  auth/                      signin, signup, google, magic-link, invites, logout, switch-organization
+  api/                       All API routes (see "API Route Conventions")
+services/drizzle/schema/     Drizzle table definitions, one file per domain, barrel-exported via index.ts
+schemas/                     Zod schemas, one file per domain, enums centralized in enums.ts
+lib/queries/                 React Query hooks (client-side reads)
+lib/mutations/                Axios mutation wrappers (client-side writes)
+lib/authentication/          Session, OAuth, magic link, pages-session (legacy) helpers
+lib/db-utils/                Transaction-scoped batch helpers (child row processing, unique-violation checks)
+lib/ai/                      AI agent, AI hints, marketing agent, AI media processing (see below)
+lib/<domain>/                Business logic per domain (campaigns, cashback, fiscal, purchase-processing, stock, sales, whatsapp, integrations, data-connectors, ...)
+state-hooks/                 Client-side form state hooks, one per entity
+components/Modals/Internal/  Create/edit modals, one folder per domain
+components/<Domain>/         Feature components (Sales, Clients, PointOfInteraction, RFMAnalysis, Chats, ...)
+scripts/                     One-off / operational tsx scripts (backfills, syncs, test harnesses) run via `tsx`
+config/                      App-wide constants and defaults (default permissions, RFM thresholds, onboarding presets)
+docs/                        Design docs and migration plans (see above)
+```
+
+Key architectural split: `app/(admin)/admin-dashboard` is for **platform** admins (the SaaS operator), while `app/dashboard` is the **org-scoped** app that regular tenant users/sellers use day to day. Don't confuse the two "admin" concepts — a user can be `admin: true` (platform admin) independently of their org `permissoes`.
+
+---
+
+## Multi-Tenancy, Auth & Permissions
+
+- Auth session (`getCurrentSession` / `getCurrentSessionUncached` from `lib/authentication/session.ts`) returns `{ session, user, membership }`. `membership` is `null` until the user has joined/created an org; `membership.organizacao.id` is the **tenant id** (`organizacaoId`) and `membership.permissoes` is the per-module permission grid (see `DEFAULT_ORGANIZATION_OWNER_PERMISSIONS` in `config/index.ts` for the shape — modules like `vendas`, `compras`, `fiscal`, `resultados`, `atendimentos`, `usuarios`, `empresa`, each with boolean actions).
+- **Every service function that touches org data must scope its query by `organizacaoId`** — pull it from `session.membership.organizacao.id`, never trust a client-supplied org id. Throw `createHttpError.Unauthorized`/`Forbidden` if `session` or `session.membership` is missing.
+- Row ownership checks combine `eq(table.id, id)` **and** `eq(table.organizacaoId, organizationId)` in the same `where` — never check `id` alone, so tenants can't reach each other's rows via guessed ids.
+- Child-row batch writes go through `handleSimpleChildRowsProcessing()` (org-scoped) or `handleAdminSimpleChildRowsProcessing()` (platform-admin, no org scoping) from `lib/db-utils/index.ts` — pick the one matching the caller's context.
+- Platform-admin-only routes gate on `session.user.admin`, not on `membership`/`permissoes`.
+- `app/dashboard/layout.tsx` is the canonical example of the org-app guard: redirect to `/auth/signin` if no session, `/onboarding` if no `membership` or the org hasn't finished onboarding (`dataOnboardingConclusao`).
 
 ---
 
@@ -32,6 +97,7 @@ This file documents the architectural patterns, conventions, and "tastes" of thi
 - Foreign keys use `onDelete: "cascade"` where appropriate
 - Export `relations`, inferred types (`$inferSelect`, `$inferInsert`), and barrel-export from `schema/index.ts`
 - **Enums (Drizzle `pgEnum`)** go in `schema/enums.ts`, not co-located with the table file
+- Tenant-owned tables include an `organizacaoId` column referencing `organizations` — required for anything reachable from org-scoped API routes
 
 ---
 
@@ -56,7 +122,7 @@ This file documents the architectural patterns, conventions, and "tastes" of thi
 - New and migrated API routes must live under `/app/api/**/route.ts`; do not add new `pages/api` routes.
 - Route files follow four parts in order: input schema, service function, route handler, method export.
 - Input/output type names use the operation verb and resource: `TGetSalesInput`, `TCreateSaleOutput`, `TUpdateProductInput`, `TDeleteGoalOutput`.
-- Service functions receive typed `input` and `session` when authenticated, do all business/database work, and never read `NextRequest`, cookies, or return `NextResponse`.
+- Service functions receive typed `input` and `session` when authenticated, do all business/database work (org-scoped per "Multi-Tenancy" above), and never read `NextRequest`, cookies, or return `NextResponse`.
 - Route handlers read the session with `getCurrentSessionUncached` from `@/lib/authentication/session`, parse query/body input, delegate to the service, and return `NextResponse.json`.
 - Export handlers through `appApiHandler`; do not use `apiHandler`, `NextApiRequest`, `NextApiResponse`, or `@/lib/authentication/pages-session` in App Router routes.
 - Client query/mutation types must import from `@/app/api/**/route`, never from `@/pages/api/**`.
@@ -100,8 +166,10 @@ const GetFoosInputSchema = z.object({ ... });
 export type TGetFoosInput = z.infer<typeof GetFoosInputSchema>;
 
 // 2. Business logic function (pure, no request/auth handling)
-async function getFoos({ input }: { input: TGetFoosInput }) {
-  // DB queries here
+async function getFoos({ input, session }: { input: TGetFoosInput; session: TAuthUserSession }) {
+  const organizationId = session.membership?.organizacao.id;
+  if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
+  // DB queries here, always scoped by organizacaoId
   return { data: { ... }, message: "..." };
 }
 export type TGetFoosOutput = Awaited<ReturnType<typeof getFoos>>;
@@ -110,14 +178,19 @@ export type TGetFoosOutput = Awaited<ReturnType<typeof getFoos>>;
 async function getFoosRoute(request: NextRequest) {
   const session = await getCurrentSessionUncached();
   if (!session) throw new createHttpError.Unauthorized("...");
-  if (!session.user.admin) throw new createHttpError.Forbidden("...");
   const input = GetFoosInputSchema.parse({ ... });
-  const result = await getFoos({ input });
+  const result = await getFoos({ input, session });
   return NextResponse.json(result);
 }
 
 // 4. Export via appApiHandler
 export const GET = appApiHandler({ GET: getFoosRoute });
+```
+
+Platform-admin-only routes check `session.user.admin` instead of (or in addition to) `membership`:
+
+```typescript
+if (!session.user.admin) throw new createHttpError.Forbidden("Acesso restrito a administradores.");
 ```
 
 ### Multi-mode GET endpoints
@@ -290,6 +363,19 @@ export function NewFoo({ closeModal, callbacks }: NewFooProps) {
 - Pages render lists/cards with action buttons that open `New*` or `Control*` modals
 - No inline editing — all edits happen through modals
 
+This is the **platform-admin** area (`session.user.admin`) — distinct from the org-scoped app below.
+
+---
+
+## Org Dashboard Page Conventions
+
+**Location**: `/app/dashboard/` (main authenticated app used by tenant users/sellers)
+
+- `app/dashboard/layout.tsx` is a server component: requires a session, redirects to `/auth/signin` if missing, `/onboarding` if the user has no org membership or onboarding isn't complete, then renders `AppSidebar` + `AppHeader` around the page.
+- Feature areas are grouped under `commercial/`, `operational/`, `team/`, `settings/`, `communication/`, `ai-hints/`.
+- Same server-page + client-page split as admin pages; same modal-based CRUD pattern.
+- Gate feature visibility/actions by `session.membership.permissoes.<module>.<action>`, not just by session presence.
+
 ---
 
 ## Public Page Conventions
@@ -300,6 +386,26 @@ export function NewFoo({ closeModal, callbacks }: NewFooProps) {
 - Use `layout.tsx` for shared header/footer
 - Server components can read params via `params: Promise<{ id: string }>`
 - Access-level enforcement happens at the API layer, not the page layer
+
+---
+
+## AI & Automation Modules
+
+**Location**: `/lib/ai/`
+
+- **`ai-agent/`** — WhatsApp customer-service agent (tool-calling over client purchase history, product catalog, service tickets, human handoff). Wired through `app/api/integrations/ai/generate-response/route.ts` and `app/api/chats/**`. The `ai-agent/README.md` in this folder is historical/partially stale (references an older Convex-based flow) — trust the actual route/tool code over that doc.
+- **`ai-agent/marketing/`** — the marketing agent: uses AI SDK `ToolLoopAgent` (analyst + executor agents) via `gateway("openai/...")` models with `Output.object` structured output and `stepCountIs(n)` step limits. Entry point exercised by `scripts/run-marketing-agent.ts` / `scripts/test-marketing-agent.ts` and `/api/cron/*` campaign processing.
+- **`ai-hints/`** — generates and gates AI-driven business insights (`generate-hints.ts`, `approval.ts`), run weekly via `/api/cron/run-ai-hints`.
+- **`ai-media-processing/`** — media (image/audio) processing for AI/WhatsApp flows.
+- When adding a new agent/tool, follow the existing `tools.ts` + `prompts.ts` + `schemas.ts` split within the relevant subfolder rather than inlining prompts into route handlers.
+
+---
+
+## Background Jobs, Cron & Scripts
+
+- **Vercel Cron** (`vercel.json`) drives recurring jobs against `/api/cron/*` routes: fiscal queue/inbound processing, data collecting, RFM analysis, weekly/biweekly/monthly reports, AI hints, cashback expiry/notifications, birthday notifications, recurrent/single-use campaign processing, client enrichment, product-client references. Look here before assuming a job runs "live" in the request path — most async/marketing side effects are cron-driven.
+- **`scripts/`** — one-off or operational scripts run via `tsx` (see `package.json` scripts, e.g. `npm run backfill:shop-settings`, `npm run sync:bling-collecting`, `npm run import:ibpt`). These are not part of the request path; use them for backfills, manual reprocessing, or local debugging against real integrations.
+- There is no unit/integration test framework in this repo (no jest/vitest); the `test:*` npm scripts are `tsx` harnesses that exercise real integrations/flows manually. Use the `/verify` skill or manual end-to-end checks to validate behavior instead of expecting `npm test` to exist.
 
 ---
 
@@ -323,6 +429,18 @@ export function NewFoo({ closeModal, callbacks }: NewFooProps) {
 - **Types**: Prefix with `T` (e.g., `TCommunityCourseEntity`)
 - **Enums**: Suffix with `Enum` (e.g., `CommunityCourseStatusEnum`)
 - **State hooks**: Prefix with `useInternal` (e.g., `useInternalCommunityCourseState`)
+
+---
+
+## Development Workflow
+
+- `npm run dev` / `npm run build` / `npm run start` — standard Next.js dev/build/start
+- `npm run lint` / `npm run lint:fix` — `oxlint --react-plugin --nextjs-plugin`
+- `npm run format` / `npm run format:check` — `oxfmt` (tabs, double quotes, 150 char width, trailing commas — see `.oxfmtrc.json`)
+- `npm run knip` — finds unused files/exports/dependencies
+- `npm run db:push` / `db:generate` / `db:migrate` / `db:studio` — Drizzle Kit against `SUPABASE_DB_URL`
+- No `.env.example` is checked in — required env vars are discovered from usage (`SUPABASE_DB_URL`, Stripe, Mux, Resend, WhatsApp/integration credentials, AI Gateway keys, etc.); ask before assuming a var name.
+- TypeScript build errors are currently suppressed at build time (`ignoreBuildErrors: true` in `next.config.mjs`) — don't rely on `npm run build` to catch type errors; run `tsc` or check errors in-editor.
 
 ---
 
