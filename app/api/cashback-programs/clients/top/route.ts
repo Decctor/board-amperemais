@@ -9,7 +9,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
 const TopCashbackClientsInputSchema = z.object({
-	sortBy: z.enum(["cumulative", "rescued"]).default("cumulative"),
+	sortBy: z.enum(["available", "cumulative", "rescued"]).default("available"),
 	limit: z.number().int().positive().default(10),
 });
 export type TTopCashbackClientsInput = z.infer<typeof TopCashbackClientsInputSchema>;
@@ -42,7 +42,11 @@ async function getTopCashbackClients({
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	const orderByColumn =
-		input.sortBy === "cumulative" ? cashbackProgramBalances.saldoValorAcumuladoTotal : cashbackProgramBalances.saldoValorResgatadoTotal;
+		input.sortBy === "cumulative"
+			? cashbackProgramBalances.saldoValorAcumuladoTotal
+			: input.sortBy === "rescued"
+				? cashbackProgramBalances.saldoValorResgatadoTotal
+				: cashbackProgramBalances.saldoValorDisponivel;
 
 	const balances = await db.query.cashbackProgramBalances.findMany({
 		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),

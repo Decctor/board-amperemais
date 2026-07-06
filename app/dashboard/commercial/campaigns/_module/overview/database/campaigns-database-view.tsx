@@ -236,29 +236,31 @@ export function CampaignsDatabaseView() {
 	});
 	return (
 		<div className="w-full flex flex-col gap-3">
-			<div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">
+			<div className="flex w-full min-w-0 flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
 				<Input
 					value={filters.search ?? ""}
 					placeholder="Pesquisar campanha..."
 					onChange={(e) => updateFilters({ search: e.target.value })}
-					className="w-full grow rounded-xl lg:min-w-0"
+					className="min-w-0 flex-1 rounded-xl"
 				/>
 
-				<DateIntervalInput
-					label="Período dos cards"
-					labelClassName="hidden"
-					className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
-					value={{
-						after: filters.statsPeriodAfter ? new Date(filters.statsPeriodAfter) : undefined,
-						before: filters.statsPeriodBefore ? new Date(filters.statsPeriodBefore) : undefined,
-					}}
-					handleChange={(value) =>
-						updateFilters({
-							statsPeriodAfter: value.after ? new Date(value.after) : null,
-							statsPeriodBefore: value.before ? new Date(value.before) : null,
-						})
-					}
-				/>
+				<div className="w-fit shrink-0">
+					<DateIntervalInput
+						label="Período dos cards"
+						labelClassName="hidden"
+						className="w-fit hover:bg-accent hover:text-accent-foreground border-none shadow-none"
+						value={{
+							after: filters.statsPeriodAfter ? new Date(filters.statsPeriodAfter) : undefined,
+							before: filters.statsPeriodBefore ? new Date(filters.statsPeriodBefore) : undefined,
+						}}
+						handleChange={(value) =>
+							updateFilters({
+								statsPeriodAfter: value.after ? new Date(value.after) : null,
+								statsPeriodBefore: value.before ? new Date(value.before) : null,
+							})
+						}
+					/>
+				</div>
 			</div>
 			<CampaignsDatabaseInlineFilters filters={filters} updateFilters={updateFilters} />
 			{isLoading ? <p className="w-full flex items-center justify-center animate-pulse">Carregando campanhas...</p> : null}

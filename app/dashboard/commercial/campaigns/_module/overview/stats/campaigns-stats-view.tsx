@@ -84,10 +84,10 @@ export function CampaignsStatsView() {
 			{/* Primary KPIs */}
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
 				<StatUnitCard
-					title="TOTAL DE CAMPANHAS"
+					title="CAMPANHAS ATIVAS"
 					icon={<Grid3x3 className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{
-						value: totals?.campanhas || 0,
+						value: totals?.campanhasAtivas || 0,
 						format: (n) => formatDecimalPlaces(n),
 					}}
 				/>

@@ -24,13 +24,13 @@ type StockTransaction = TGetProductStockTransactionsOutputDefault["transactions"
 // Cada tipo carrega um rótulo humano, um ícone e o tom de superfície do chip.
 // A direção (entrada/saída) vem do campo `direcao` derivado no backend a partir do saldo.
 const MOVEMENT_TYPE_CONFIG: Record<TStockMovementTypeEnum, { label: string; icon: typeof ShoppingCart; chip: string }> = {
-	ENTRADA_AQUISICAO: { label: "Aquisição", icon: ShoppingCart, chip: "bg-primary/10 text-primary" },
-	ENTRADA_DEVOLUCAO: { label: "Devolução", icon: RotateCcw, chip: "bg-primary/10 text-primary" },
-	ENTRADA_PRODUCAO: { label: "Produção", icon: PackagePlus, chip: "bg-primary/10 text-primary" },
-	SAIDA: { label: "Venda / saída", icon: ShoppingBag, chip: "bg-muted text-foreground/70" },
-	SAIDA_PRODUCAO: { label: "Consumo em produção", icon: Factory, chip: "bg-muted text-foreground/70" },
-	AJUSTE: { label: "Ajuste manual", icon: SlidersHorizontal, chip: "bg-[#ffb900]/15 text-[#8a6400] dark:text-[#ffb900]" },
-	DESCARTE: { label: "Descarte", icon: Trash2, chip: "bg-destructive/10 text-destructive" },
+	ENTRADA_AQUISICAO: { label: "AQUISIÇÃO", icon: ShoppingCart, chip: "bg-primary/10 text-primary" },
+	ENTRADA_DEVOLUCAO: { label: "DEVOLUÇÃO", icon: RotateCcw, chip: "bg-primary/10 text-primary" },
+	ENTRADA_PRODUCAO: { label: "PRODUÇÃO", icon: PackagePlus, chip: "bg-primary/10 text-primary" },
+	SAIDA: { label: "VENDA / SAÍDA", icon: ShoppingBag, chip: "bg-muted text-foreground/70" },
+	SAIDA_PRODUCAO: { label: "CONSUMO EM PRODUÇÃO", icon: Factory, chip: "bg-muted text-foreground/70" },
+	AJUSTE: { label: "AJUSTE MANUAL", icon: SlidersHorizontal, chip: "bg-[#ffb900]/15 text-[#8a6400] dark:text-[#ffb900]" },
+	DESCARTE: { label: "DESCARTE", icon: Trash2, chip: "bg-destructive/10 text-destructive" },
 };
 
 function getDirectionTone(direcao: StockTransaction["direcao"]) {

@@ -7,11 +7,22 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import { formatCashbackValue, formatNameAsInitials } from "@/lib/formatting";
 import { useTopCashbackClients } from "@/lib/queries/cashback-programs";
-import { BadgeDollarSign, CirclePlus } from "lucide-react";
+import { BadgeDollarSign, CirclePlus, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
 
+type TopClientsSortBy = "available" | "cumulative" | "rescued";
+
+function getClientSortValue(
+	client: { saldoValorDisponivel: number; saldoValorAcumuladoTotal: number; saldoValorResgatadoTotal: number },
+	sortBy: TopClientsSortBy,
+) {
+	if (sortBy === "cumulative") return client.saldoValorAcumuladoTotal;
+	if (sortBy === "rescued") return client.saldoValorResgatadoTotal;
+	return client.saldoValorDisponivel;
+}
+
 export default function TopClientsBlock({ terminology }: { terminology: TCashbackProgramTerminologyEnum }) {
-	const [sortBy, setSortBy] = useState<"cumulative" | "rescued">("cumulative");
+	const [sortBy, setSortBy] = useState<TopClientsSortBy>("available");
 
 	const { data: clients, isLoading } = useTopCashbackClients({
 		sortBy,
@@ -20,7 +31,7 @@ export default function TopClientsBlock({ terminology }: { terminology: TCashbac
 
 	const maxValue = useMemo(() => {
 		if (!clients || clients.length === 0) return 0;
-		return Math.max(...clients.map((client) => (sortBy === "cumulative" ? client.saldoValorAcumuladoTotal : client.saldoValorResgatadoTotal)));
+		return Math.max(...clients.map((client) => getClientSortValue(client, sortBy)));
 	}, [clients, sortBy]);
 
 	return (
@@ -29,6 +40,16 @@ export default function TopClientsBlock({ terminology }: { terminology: TCashbac
 				<h1 className="text-xs font-medium tracking-tight uppercase">RANKING DE CLIENTES</h1>
 				<div className="flex items-center gap-2">
 					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant={sortBy === "available" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setSortBy("available")}>
+									<Wallet className="h-4 min-h-4 w-4 min-w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Saldo Disponível</p>
+							</TooltipContent>
+						</Tooltip>
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button variant={sortBy === "cumulative" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setSortBy("cumulative")}>
@@ -60,7 +81,7 @@ export default function TopClientsBlock({ terminology }: { terminology: TCashbac
 					<div className="text-sm text-muted-foreground text-center py-8">Nenhum cliente encontrado</div>
 				) : (
 					clients.map((client, index) => {
-						const value = sortBy === "cumulative" ? client.saldoValorAcumuladoTotal : client.saldoValorResgatadoTotal;
+						const value = getClientSortValue(client, sortBy);
 						const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
 
 						return (

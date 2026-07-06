@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import type { TRFMConfig } from "@/utils/rfm";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Check, CheckCircle2, HeartPulse, Info, Settings2, ShieldAlert } from "lucide-react";
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -62,7 +62,10 @@ const CLASSIFICATION_STYLES: Record<TRFMHealthData["healthScore"]["classificatio
 	},
 };
 
-const ALERT_STYLES: Record<THealthAlert["severity"], { container: string; icon: string; iconComponent: React.ComponentType<{ className?: string }> }> = {
+const ALERT_STYLES: Record<
+	THealthAlert["severity"],
+	{ container: string; icon: string; iconComponent: React.ComponentType<{ className?: string }> }
+> = {
 	critical: {
 		container: "border-rose-500/40 bg-rose-500/10",
 		icon: "text-rose-600 dark:text-rose-400",
@@ -111,7 +114,9 @@ function RFMHealthContent({ data }: { data: TRFMHealthData }) {
 			<div className="w-full py-12 flex flex-col items-center justify-center gap-2 text-center">
 				<HeartPulse className="w-6 h-6 text-muted-foreground" />
 				<p className="text-sm font-medium">Sem clientes para analisar.</p>
-				<p className="text-xs text-muted-foreground">Não foram encontradas vendas com cliente identificado no período. Sincronize as vendas e tente novamente.</p>
+				<p className="text-xs text-muted-foreground">
+					Não foram encontradas vendas com cliente identificado no período. Sincronize as vendas e tente novamente.
+				</p>
 			</div>
 		);
 	}
@@ -153,7 +158,12 @@ function HealthScoreCard({ data }: { data: TRFMHealthData }) {
 	const infoCount = data.alerts.filter((alert) => alert.severity === "info").length;
 
 	return (
-		<div className={cn("relative w-full rounded-xl border bg-gradient-to-br p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between", style.container)}>
+		<div
+			className={cn(
+				"relative w-full rounded-xl border bg-gradient-to-br p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between",
+				style.container,
+			)}
+		>
 			<div className="flex items-start gap-3 min-w-0">
 				<div className={cn("rounded-lg p-2 shrink-0", style.icon)}>
 					<HeartPulse className="w-5 h-5" />
@@ -442,8 +452,25 @@ function HistogramTooltip({
 	);
 }
 
+type TRFMDimension = keyof Pick<TRFMConfig, "recencia" | "frequencia" | "monetario">;
+type TApplyingDimension = TRFMDimension | "all";
+
+function mergePartialSuggestion(current: TRFMConfig, suggested: TRFMConfig, dimension: TRFMDimension): TRFMConfig {
+	return {
+		...current,
+		[dimension]: suggested[dimension],
+	};
+}
+
+function dimensionHasChanges(current: TRFMConfig["recencia"], suggested: TRFMConfig["recencia"]): boolean {
+	const scores = [1, 2, 3, 4, 5] as const;
+	return scores.some((score) => current[score].min !== suggested[score].min || current[score].max !== suggested[score].max);
+}
+
 function ConfigComparisonBlock({ rfmConfig, suggestedConfig }: { rfmConfig: TRFMConfig; suggestedConfig: TRFMConfig }) {
 	const queryClient = useQueryClient();
+	const [applyingDimension, setApplyingDimension] = useState<TApplyingDimension | null>(null);
+
 	const { mutate: applySuggestedConfig, isPending } = useMutation({
 		mutationKey: ["apply-rfm-suggested-config"],
 		mutationFn: updateRFMConfig,
@@ -455,30 +482,69 @@ function ConfigComparisonBlock({ rfmConfig, suggestedConfig }: { rfmConfig: TRFM
 		onError: (error) => {
 			toast.error(getErrorMessage(error));
 		},
+		onSettled: () => {
+			setApplyingDimension(null);
+		},
 	});
+
+	const applyConfig = (dimension: TApplyingDimension) => {
+		const mergedConfig = dimension === "all" ? suggestedConfig : mergePartialSuggestion(rfmConfig, suggestedConfig, dimension);
+		setApplyingDimension(dimension);
+		applySuggestedConfig({ rfmConfig: mergedConfig });
+	};
+
+	const hasAnyChanges =
+		dimensionHasChanges(rfmConfig.recencia, suggestedConfig.recencia) ||
+		dimensionHasChanges(rfmConfig.frequencia, suggestedConfig.frequencia) ||
+		dimensionHasChanges(rfmConfig.monetario, suggestedConfig.monetario);
 
 	return (
 		<section className="flex w-full flex-col gap-3 border-t border-border pt-5">
 			<SectionHeader
 				title="Configuração atual vs sugestão por percentis"
-				description="A sugestão divide a base em quintis com base no comportamento real. Clique em Aplicar para usá-la como nova configuração."
+				description="A sugestão divide a base em quintis com base no comportamento real. Aplique tudo de uma vez ou somente Recência, Frequência ou Monetário."
 				action={
 					<LoadingButton
 						variant="outline"
 						size="sm"
 						className="flex items-center gap-2"
-						loading={isPending}
-						onClick={() => applySuggestedConfig({ rfmConfig: suggestedConfig })}
+						loading={isPending && applyingDimension === "all"}
+						disabled={!hasAnyChanges || (isPending && applyingDimension !== "all")}
+						onClick={() => applyConfig("all")}
 					>
 						<Check className="w-3.5 h-3.5" />
-						APLICAR
+						APLICAR TUDO
 					</LoadingButton>
 				}
 			/>
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
-				<ConfigTable title="Recência (dias)" current={rfmConfig.recencia} suggested={suggestedConfig.recencia} formatter={(value) => formatDecimalPlaces(value, 0)} />
-				<ConfigTable title="Frequência" current={rfmConfig.frequencia} suggested={suggestedConfig.frequencia} formatter={(value) => formatDecimalPlaces(value, 0)} />
-				<ConfigTable title="Monetário" current={rfmConfig.monetario} suggested={suggestedConfig.monetario} formatter={formatToMoney} />
+				<ConfigTable
+					title="Recência (dias)"
+					current={rfmConfig.recencia}
+					suggested={suggestedConfig.recencia}
+					formatter={(value) => formatDecimalPlaces(value, 0)}
+					onApply={() => applyConfig("recencia")}
+					isApplying={isPending && applyingDimension === "recencia"}
+					isDisabled={!dimensionHasChanges(rfmConfig.recencia, suggestedConfig.recencia) || (isPending && applyingDimension !== "recencia")}
+				/>
+				<ConfigTable
+					title="Frequência"
+					current={rfmConfig.frequencia}
+					suggested={suggestedConfig.frequencia}
+					formatter={(value) => formatDecimalPlaces(value, 0)}
+					onApply={() => applyConfig("frequencia")}
+					isApplying={isPending && applyingDimension === "frequencia"}
+					isDisabled={!dimensionHasChanges(rfmConfig.frequencia, suggestedConfig.frequencia) || (isPending && applyingDimension !== "frequencia")}
+				/>
+				<ConfigTable
+					title="Monetário"
+					current={rfmConfig.monetario}
+					suggested={suggestedConfig.monetario}
+					formatter={formatToMoney}
+					onApply={() => applyConfig("monetario")}
+					isApplying={isPending && applyingDimension === "monetario"}
+					isDisabled={!dimensionHasChanges(rfmConfig.monetario, suggestedConfig.monetario) || (isPending && applyingDimension !== "monetario")}
+				/>
 			</div>
 		</section>
 	);
@@ -489,17 +555,36 @@ function ConfigTable({
 	current,
 	suggested,
 	formatter,
+	onApply,
+	isApplying,
+	isDisabled,
 }: {
 	title: string;
 	current: TRFMConfig["recencia"];
 	suggested: TRFMConfig["recencia"];
 	formatter: (value: number) => string;
+	onApply: () => void;
+	isApplying: boolean;
+	isDisabled: boolean;
 }) {
 	const scores = [5, 4, 3, 2, 1] as const;
 	return (
 		<div className="w-full flex flex-col gap-1.5 min-w-0">
-			<h4 className="text-[0.7rem] font-semibold tracking-tight">{title}</h4>
-			<div className="grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1fr)] text-[0.6rem] font-bold uppercase tracking-[0.06em] text-muted-foreground pb-1.5 border-b border-border">
+			<div className="flex items-center justify-between gap-2">
+				<h4 className="text-[0.7rem] font-semibold tracking-tight">{title}</h4>
+				<LoadingButton
+					variant="ghost"
+					size="sm"
+					className="h-7 px-2 text-[0.65rem] font-bold uppercase tracking-wide"
+					loading={isApplying}
+					disabled={isDisabled}
+					onClick={onApply}
+				>
+					<Check className="w-3 h-3" />
+					Aplicar
+				</LoadingButton>
+			</div>
+			<div className="grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1fr)] gap-x-2 text-[0.6rem] font-bold uppercase tracking-[0.06em] text-muted-foreground pb-1.5 border-b border-border">
 				<span>Nota</span>
 				<span>Atual</span>
 				<span>Sugestão</span>

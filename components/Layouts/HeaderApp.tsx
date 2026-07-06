@@ -34,7 +34,7 @@ export default function AppHeader({ showSidebarTrigger = true }: AppHeaderProps)
 					<h1 className="text-xl font-black leading-none tracking-tight md:text-2xl text-foreground">{title}</h1>
 				</div>
 				<div className="flex items-center gap-2">
-					<AIHintsBadge />
+					{/* <AIHintsBadge /> */}
 					<SubscriptionStatusBanner />
 				</div>
 			</div>

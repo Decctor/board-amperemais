@@ -53,18 +53,15 @@ export default function ProductStockTab({ product, enabled = true }: ProductStoc
 	return (
 		<div className="flex w-full flex-col gap-4">
 			{/* Saldo atual — produto e, quando houver, cada variante rastreada */}
-			<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs">
-				<div className="flex flex-wrap items-end justify-between gap-3">
-					<div className="flex flex-col gap-1">
-						<span className="text-muted-foreground text-[0.6rem] font-semibold uppercase tracking-wide">Saldo atual</span>
-						<span
-							className={cn("inline-flex w-fit items-center gap-1.5 rounded-lg px-2.5 py-1 text-lg font-bold tabular-nums", getSaldoTone(saldo))}
-						>
-							<Boxes className="h-4 w-4 min-h-4 min-w-4" />
-							{formatDecimalPlaces(saldo)} {product.unidade}
-						</span>
-					</div>
+			<div className="flex items-center justify-start gap-3">
+				<div className="flex items-center gap-1.5">
+					<Boxes className="h-4 w-4 min-h-4 min-w-4" />
+					<span className="text-xs font-bold uppercase tracking-wide">SALDO ATUAL</span>
 				</div>
+				<span className={cn("inline-flex w-fit items-center gap-1.5 rounded-lg px-2.5 py-1 text-lg font-bold tabular-nums", getSaldoTone(saldo))}>
+					<Boxes className="h-4 w-4 min-h-4 min-w-4" />
+					{formatDecimalPlaces(saldo)} {product.unidade}
+				</span>
 
 				{variantesRastreadas.length > 0 ? (
 					<div className="border-border grid grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -75,7 +72,9 @@ export default function ProductStockTab({ product, enabled = true }: ProductStoc
 									<span className="truncate text-xs font-bold tracking-tight" title={variante.nome}>
 										{variante.nome}
 									</span>
-									<span className={cn("inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-bold tabular-nums", getSaldoTone(varianteSaldo))}>
+									<span
+										className={cn("inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-bold tabular-nums", getSaldoTone(varianteSaldo))}
+									>
 										{formatDecimalPlaces(varianteSaldo)} {product.unidade}
 									</span>
 								</div>
@@ -105,7 +104,7 @@ function SectionHeader({ icon: Icon, title, children }: { icon: typeof Layers; t
 
 function ProductLotsSection({ productId }: { productId: string }) {
 	const { data, isLoading, isError, isSuccess, error } = useProductStockLots({
-		initialFilters: { produtoId: productId, status: ["ATIVO"] },
+		initialFilters: { productId, status: ["ATIVO"] },
 	});
 	const lots = data?.stockLots ?? [];
 
@@ -221,7 +220,9 @@ function ProductTransactionsSection({ productId, enabled }: { productId: string;
 							<ArrowLeftRight />
 						</EmptyMedia>
 						<EmptyTitle>Nenhuma movimentação registrada</EmptyTitle>
-						<EmptyDescription>Compras, vendas, produções e ajustes deste produto aparecerão aqui com o saldo antes e depois de cada movimento.</EmptyDescription>
+						<EmptyDescription>
+							Compras, vendas, produções e ajustes deste produto aparecerão aqui com o saldo antes e depois de cada movimento.
+						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : null}
