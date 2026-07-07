@@ -28,6 +28,9 @@ Estas decisões já estão tomadas e o resto do documento as assume:
    `Purchase` ao Conversions API com PII hasheada do cliente. É o maior diferencial do RecompraCRM:
    dado de compra first-party já mora no banco. O SDK de navegador (`/api/track`) fica documentado
    como fase futura opcional, **não** entra nesta entrega.
+   **Sem tabela dedicada de eventos.** O status do envio (dedup/observabilidade/retry) vive numa
+   **coluna JSONB tipada `capiMetadados` no cabeçalho da venda** (`sales`), não numa tabela nova
+   (ver §4.3).
 5. **Audiences reusam o motor de filtros existente.** `resolveCampaignAudienceClientIds` +
    `TCampaignFilters` + RFM já resolvem "segmento → lista de clientes". A entrega apenas pluga um
    **destino Meta** (Custom Audience) sobre isso. O conceito `audiences` nasce agnóstico de
@@ -47,7 +50,7 @@ Estas decisões já estão tomadas e o resto do documento as assume:
 | **Config da integration** | Bag tipada com os campos específicos daquele `tipo` (tokens, adAccountId, pixelId…). | `integrations.configuracao` jsonb `$type<TIntegrationConfig>` |
 | **Audience (público)** | Definição de segmento agnóstica de plataforma, reusando o filtro de campanhas + RFM. | `audiences` — **novo** |
 | **Audience destination** | Ligação de um público a uma integração de destino + id externo (ex.: Meta Custom Audience id) + estatísticas de sync. | `audience_destinations` — **novo** |
-| **Conversion event** | Registro de um evento enviado ao CAPI (dedup + observabilidade + retry). | `meta_conversion_events` — **novo** |
+| **Status CAPI da venda** | Estado do envio de conversão ao Meta (dedup + observabilidade + retry). | `sales.capiMetadados` (JSONB tipada) — **nova coluna**, sem tabela |
 | **Segmento/filtro** | Árvore recursiva AND/OR/NOT que resolve para clientes. | `TCampaignFilters` + `resolveCampaignAudienceClientIds` — **já existe** |
 
 Princípio: `integrations` guarda **como** falar com a plataforma; `audiences` guarda **quem**;
@@ -76,11 +79,13 @@ Princípio: `integrations` guarda **como** falar com a plataforma; `audiences` g
 | `dataInsercao` | `data_insercao` | `timestamp` | `defaultNow().notNull()` |
 | `dataAtualizacao` | `data_atualizacao` | `timestamp` | `.$onUpdate(() => new Date())` |
 
+Coluna extra p/ unicidade e busca (decisão fechada — Q5):
+| `refExterno` | `ref_externo` | `varchar(255)` | id externo canônico da conexão (p/ META_ADS = `adAccountId`; futuro CAPI = dataset/pixel). Preenchido no connect. |
+
 Índices:
 - `index("idx_integrations_org_tipo").on(organizacaoId, tipo)`
-- `uniqueIndex` parcial p/ `META_ADS` em `(organizacaoId, (configuracao->>'adAccountId'))` — evita conta
-  duplicada. (Se o índice funcional em jsonb complicar, alternativa: coluna dedicada `refExterno`
-  varchar preenchida com o `adAccountId`/dataset e unique em `(organizacaoId, tipo, refExterno)`.)
+- `uniqueIndex("idx_integrations_org_tipo_ref").on(organizacaoId, tipo, refExterno)` — evita conexão
+  duplicada (ex.: mesma conta Meta duas vezes). Coluna dedicada em vez de índice funcional em jsonb.
 
 Enums em `schema/enums.ts`:
 ```ts
@@ -157,8 +162,10 @@ export const GET = appApiHandler({ GET: getIntegrationsRoute });
 - `PATCH /api/integrations` → toggle `ativo` / atualizar `apelido` / preencher campos CAPI
   (`pixelId`, `capiTestEventCode`, `eventosCapi`).
 - `DELETE /api/integrations?id=` → desconectar (remove linha; ver LGPD §7 p/ limpeza de destinos).
-- Autorização: exigir membership da org; ações de escrita restritas a admin da org / permissão de
-  marketing (`session.membership.permissoes`).
+- Autorização: exigir membership da org; ações de escrita (conectar/desconectar/toggle/config)
+  exigem a **nova chave de permissão `integracoes`** em `organization_members.permissoes`
+  (`TOrganizationMemberPermissions` em `schemas/organizations.ts`) — decisão fechada (Q4). Adicionar
+  a chave ao schema de permissões, aos defaults de papel e à UI de gestão de membros.
 - `maskConfig(config)` portado: substitui `accessToken` por `********` na resposta.
 
 Client-side: `lib/queries/integrations.ts` (hooks `useIntegrations`, `useIntegrationById`) e
@@ -181,7 +188,9 @@ Espelhar o fluxo nuvemshop/bling: cookie de `state` + `consumeOAuthRedirect`, `f
 
 - `GET /app/api/integrations/meta/ads/auth/route.ts` — gera `state`, seta cookie
   `meta_ads_oauth_state` (httpOnly, 10min), redireciona para o dialog da Meta.
-  Scopes Fase 1: `ads_read`, `business_management`.
+  Scopes: **`ads_read`, `ads_management`, `business_management` já na conexão inicial** (decisão
+  fechada Q1 — o recurso entra em beta, então pedir `ads_management` de cara não é problema e
+  destrava CAPI-write + Custom Audiences sem reconsent).
 - `GET /app/api/integrations/meta/ads/auth/callback/route.ts`:
   1. `session = getCurrentSessionUncached()`; `organizacaoId = session.membership.organizacao.id`.
   2. Valida `state` vs cookie; troca `code` → short token → **long-lived token** (`fb_exchange_token`).
@@ -257,36 +266,51 @@ venda com sucesso:
    - `event_time`: timestamp da venda,
    - `action_source`: `"physical_store"` (PDV) ou `"website"` (loja online `shop`) — derivar da
      origem da venda,
-   - `custom_data`: `{ value: <valorVenda>, currency: <moeda da org>, order_id: <saleId> }`,
+   - `custom_data`: `{ value: <valorVenda>, currency: "BRL", order_id: <saleId> }` — moeda fixa
+     `BRL` (produto atende público brasileiro, decisão fechada Q3),
    - `user_data`: `em`/`ph` hasheados (+ `fn`/`ln`/`ct`/`st`/`country`/`db` opcionais a partir de
      `nome`/cidade/estado/`dataNascimento` do cliente — melhora o match rate).
 4. `sendCapiEvents(...)` em background (não bloquear a resposta da venda; usar `waitUntil` se
    disponível na rota, ou fila).
-5. Persistir resultado em `meta_conversion_events` (§4.3).
+5. Persistir o resultado em `sales.capiMetadados` (§4.3), sem tabela dedicada.
 
 > `action_source: "physical_store"` exige `event_time` e dados de `user_data` fortes; para vendas de
 > PDV sem web, o match é feito por email/telefone (advanced matching), que é justamente o que temos.
 
-### 4.3 Schema — `meta_conversion_events` (observabilidade + retry + dedup)
+### 4.3 Persistência — coluna `sales.capiMetadados` (sem tabela; decisão fechada Q2)
 
-| Coluna | Tipo | Notas |
-|---|---|---|
-| `id` | varchar PK | |
-| `organizacaoId` | → organizations (cascade) | |
-| `integrationId` | → integrations (set null) | qual META_ADS enviou |
-| `vendaId` | → sales (cascade) | origem |
-| `clienteId` | → clients (set null) | |
-| `eventName` | text | `Purchase`, … |
-| `eventId` | varchar(128) | = vendaId; unique `(organizacaoId, eventId, eventName)` p/ idempotência |
-| `status` | enum `PENDENTE\|ENVIADO\|FALHA` | |
-| `tentativas` | integer default 0 | |
-| `eventsReceived` | integer | retorno da Meta |
-| `erro` | text | última falha |
-| `payloadResumo` | jsonb | value/currency/action_source (sem PII crua) |
-| `dataEnvio` / `dataInsercao` | timestamp | |
+Em vez de uma tabela `meta_conversion_events`, adicionamos **uma coluna JSONB tipada no cabeçalho da
+venda** — alinhado ao padrão da casa de colunas dedicadas por preocupação (bloco `atribuicao*`,
+`emissaoFiscalAutomatica`). A dedup é natural: **1 venda = 1 evento `Purchase`**, então o estado cabe
+na própria linha da venda.
 
-- Retry: cron (`/api/cron`) reprocessa `FALHA`/`PENDENTE` com backoff, respeitando o unique de dedup.
-- **Nunca** persistir PII crua aqui; só o hash já vai no payload da Meta, e no banco guardamos resumo.
+Schema (`services/drizzle/schema/sales.ts`, no cabeçalho `sales`):
+```ts
+capiMetadados: jsonb("capi_metadados").$type<TSaleCapiMetadata>(),
+```
+Tipo Zod (`schemas/sales.ts`):
+```ts
+export const SaleCapiMetadataSchema = z.object({
+  status: z.enum(["PENDENTE", "ENVIADO", "FALHA"]),
+  eventId: z.string(),            // = saleId (idempotência/dedup com pixel, se houver)
+  eventName: z.string(),          // "Purchase"
+  integrationId: z.string().optional(),
+  actionSource: z.string().optional(),
+  eventsReceived: z.number().optional(),
+  tentativas: z.number().default(0),
+  ultimoErro: z.string().optional(),
+  dataEnvio: z.string().datetime().optional(),
+});
+export type TSaleCapiMetadata = z.infer<typeof SaleCapiMetadataSchema>;
+```
+
+- **Retry**: o cron (`/api/cron`) varre `sales` com `capiMetadados->>'status' IN ('PENDENTE','FALHA')`
+  numa janela recente e reprocessa com backoff, incrementando `tentativas`. Índice parcial de apoio:
+  `CREATE INDEX ... ON sales ((capi_metadados->>'status')) WHERE capi_metadados IS NOT NULL`.
+- **Nunca** guardar PII crua aqui — o hash só vai no payload enviado à Meta; na coluna fica só o
+  resumo de status. `value`/`currency` já existem na própria venda (`valorTotal`), não precisam
+  duplicar.
+- Vendas sem cliente identificado ou sem integração ativa: `capiMetadados` fica `null` (no-op).
 
 ### 4.4 Atribuição (opcional, incremental)
 
@@ -361,9 +385,8 @@ apontando a Custom Audience seed.
 
 ### 5.4 Escopos e pré-requisitos Meta
 
-- Custom Audiences (e CAPI de escrita) exigem **`ads_management`** — não só `ads_read`. Portanto o
-  OAuth ganha um segundo perfil de escopo para Fases 2/3, ou pedimos `ads_management` já na conexão
-  (decisão de produto: mais permissão no onboarding vs. reconsent depois).
+- Custom Audiences (e CAPI de escrita) exigem **`ads_management`** — já pedido na conexão inicial
+  (§3.1, decisão Q1), então não há reconsent entre fases.
 - Usuário precisa ter aceitado os **Custom Audience Terms** na conta de anúncios (a API retorna erro
   claro se não; tratar com mensagem de reconexão/aceite).
 
@@ -410,23 +433,27 @@ apontando a Custom Audience seed.
 |---|---|---|
 | **0 — Fundação** | tabela `integrations` + enums + migração; `schemas/integrations.ts`; `GET/PATCH/DELETE /api/integrations` com `maskConfig`; hooks/mutations; hub UI | Conectar/desconectar/toggle uma integração fictícia; token nunca aparece cru na resposta |
 | **1 — Meta Ads leitura** | OAuth Meta (auth+callback); camada `meta/ads/*` portada; rotas insights/library/spend/ad; UI overview + biblioteca | Conectar conta real, ver métricas e biblioteca com criativos e métricas por anúncio |
-| **2 — CAPI server-side** | camada `meta/capi/*`; gatilho no create-sale → `Purchase`; `meta_conversion_events`; retry cron; settings CAPI + evento de teste | Evento aparece no Events Manager (test code) e como recebido; dedup por `saleId`; falhas reprocessam |
+| **2 — CAPI server-side** | camada `meta/capi/*`; gatilho no create-sale → `Purchase`; coluna `sales.capiMetadados` + índice parcial; retry cron; settings CAPI + evento de teste | Evento aparece no Events Manager (test code) e como recebido; dedup por `saleId`; falhas reprocessam |
 | **3 — Audiences** | `audiences` + `audience_destinations`; sync Custom Audience (hash reuse); refresh cron; lookalike; UI com preview de contagem; propagação de deleção LGPD | Criar público por filtro, subir p/ Meta, ver match rate; exclusão de cliente remove da audiência |
 
 Cada fase é independentemente entregável e não quebra o que já existe.
 
 ---
 
-## 9. Questões em aberto
+## 9. Decisões resolvidas (antes abertas)
 
-1. **Escopo OAuth**: pedir `ads_management` já na conexão inicial (destrava CAPI-write + Audiences
-   sem reconsent) ou começar em `ads_read` e elevar quando o usuário ativar Fase 2/3? (Recomendo
-   elevar sob demanda para reduzir fricção no primeiro connect.)
-2. **`action_source` de PDV**: confirmar mapeamento das origens de venda do RecompraCRM (PDV físico,
-   loja online `shop`, importação ERP) para `physical_store` / `website` / `system_generated`.
-3. **Moeda/timezone**: usar `currency`/`timezoneName` da conta Meta ou da organização para o
-   `custom_data.currency` e janelas de data? (Provável: moeda da venda/org; timezone da conta p/
-   insights.)
-4. **Permissões**: qual permissão de `organization_members.permissoes` governa conectar integrações
-   e gerenciar audiences? Criar uma chave de permissão de "marketing/integrações"?
-5. **Índice unique em jsonb** (`adAccountId`) vs. coluna `refExterno` dedicada — decidir na Fase 0.
+1. **Escopo OAuth** — pedir **`ads_management`** já na conexão inicial (recurso entra em beta; sem
+   reconsent entre fases). Ver §3.1.
+2. **Persistência CAPI** — **sem tabela**; status em `sales.capiMetadados` (JSONB tipada). Ver §4.3.
+3. **Moeda/locale** — fixar **pt-BR / BRL** (`custom_data.currency = "BRL"`). Ver §4.2.
+4. **Permissão** — nova chave **`integracoes`** em `organization_members.permissoes` governa
+   conectar integrações e gerenciar audiences. Ver §2.3.
+5. **Unicidade da integração** — coluna dedicada **`refExterno`** + unique `(organizacaoId, tipo,
+   refExterno)`, em vez de índice funcional em jsonb. Ver §2.1.
+
+### Questões que ainda valem confirmar
+
+- **`action_source` por origem de venda**: mapear PDV físico → `physical_store`, loja online `shop`
+  → `website`, importação ERP → `system_generated` (ou omitir do CAPI). Confirmar quais origens
+  devem de fato gerar evento (ex.: importação histórica de ERP provavelmente **não** deve disparar
+  `Purchase` retroativo).
