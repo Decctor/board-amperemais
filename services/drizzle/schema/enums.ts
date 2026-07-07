@@ -83,6 +83,11 @@ export const organizationIntegrationTypeEnum = pgEnum("organization_integration_
 	"BLING",
 ]);
 
+// Fundação de integrations (marketing/parceiros — Meta Ads, CAPI, etc.). Separada do
+// enum de fonte de dados/ERP acima (organizationIntegrationTypeEnum), que é inline em organizations.
+export const integrationTypeEnum = pgEnum("integration_type", ["META_ADS", "META_CAPI", "TRACKING"]);
+export const integrationStatusEnum = pgEnum("integration_status", ["CONECTADO", "EXPIRADO", "ERRO"]);
+
 export const chatStatusEnum = pgEnum("chat_status", ["ABERTA", "FECHADA"]);
 
 export const chatMessageContentTypeEnum = pgEnum("chat_message_content_type", ["TEXTO", "IMAGEM", "VIDEO", "AUDIO", "DOCUMENTO"]);

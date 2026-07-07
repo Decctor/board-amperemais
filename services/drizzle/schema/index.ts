@@ -30,3 +30,4 @@ export * from "./coupons";
 export * from "./shop";
 export * from "./platform-partnerships";
 export * from "./productions";
+export * from "./integrations";

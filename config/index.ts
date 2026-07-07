@@ -51,6 +51,10 @@ export const DEFAULT_ORGANIZATION_OWNER_PERMISSIONS: TUserPermissions = {
 		emitir: true,
 		cancelar: true,
 	},
+	integracoes: {
+		visualizar: true,
+		gerenciar: true,
+	},
 };
 
 export const DEFAULT_ORGANIZATION_RFM_CONFIG = {
