@@ -2,6 +2,7 @@
 
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatToMoney } from "@/lib/formatting";
@@ -10,10 +11,12 @@ import { useMetaAdsInsights, useMetaAdsLibrary, useMetaAdsSpendSeries } from "@/
 import type { TMetaAdsLibraryAd } from "@/lib/integrations/meta/ads/types";
 import { cn } from "@/lib/utils";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { DollarSign, Eye, MousePointerClick, ShoppingBag, Target, TrendingUp, UserPlus } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { DollarSign, Eye, MousePointerClick, Settings2, ShoppingBag, Target, TrendingUp, UserPlus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Area, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
 import { MetaAdDetailModal } from "./_components/MetaAdDetailModal";
+import { MetaCapiSettingsModal } from "./_components/MetaCapiSettingsModal";
 
 const PERIOD_OPTIONS = [
 	{ value: "7", label: "Últimos 7 dias" },
@@ -40,14 +43,18 @@ type MarketingPageProps = {
 };
 
 export default function MarketingPage({ user: _user }: MarketingPageProps) {
-	const { data: integrations, isLoading, isError, error } = useIntegrations({ tipo: "META_ADS" });
+	const queryClient = useQueryClient();
+	const { data: integrations, isLoading, isError, error, queryKey } = useIntegrations({ tipo: "META_ADS" });
 
 	const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | null>(null);
 	const [periodDays, setPeriodDays] = useState<string>("30");
 	const [libraryStatus, setLibraryStatus] = useState<"all" | "active" | "paused">("all");
 	const [selectedAd, setSelectedAd] = useState<TMetaAdsLibraryAd | null>(null);
+	const [capiModalOpen, setCapiModalOpen] = useState<boolean>(false);
 
 	const metaAccounts = integrations ?? [];
+	const selectedAccount = metaAccounts.find((account) => account.id === selectedIntegrationId) ?? null;
+	const selectedCapiConfig = selectedAccount?.configuracao?.tipo === "META_ADS" ? selectedAccount.configuracao : null;
 
 	useEffect(() => {
 		if (!selectedIntegrationId && metaAccounts.length > 0) setSelectedIntegrationId(metaAccounts[0].id);
@@ -84,18 +91,23 @@ export default function MarketingPage({ user: _user }: MarketingPageProps) {
 								))}
 							</SelectContent>
 						</Select>
-						<Select value={periodDays} onValueChange={setPeriodDays}>
-							<SelectTrigger className="w-full sm:w-[200px]">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{PERIOD_OPTIONS.map((option) => (
-									<SelectItem key={option.value} value={option.value}>
-										{option.label}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+						<div className="flex w-full items-center gap-2 sm:w-auto">
+							<Select value={periodDays} onValueChange={setPeriodDays}>
+								<SelectTrigger className="w-full sm:w-[200px]">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{PERIOD_OPTIONS.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<Button variant="outline" size="icon" title="Conversions API" onClick={() => setCapiModalOpen(true)} disabled={!selectedIntegrationId}>
+								<Settings2 className="h-4 w-4" />
+							</Button>
+						</div>
 					</div>
 
 					{selectedIntegrationId ? (
@@ -113,6 +125,17 @@ export default function MarketingPage({ user: _user }: MarketingPageProps) {
 
 			{selectedAd && selectedIntegrationId ? (
 				<MetaAdDetailModal ad={selectedAd} integrationId={selectedIntegrationId} since={since} until={until} closeModal={() => setSelectedAd(null)} />
+			) : null}
+
+			{capiModalOpen && selectedIntegrationId ? (
+				<MetaCapiSettingsModal
+					integrationId={selectedIntegrationId}
+					initialPixelId={selectedCapiConfig?.pixelId}
+					initialTestEventCode={selectedCapiConfig?.capiTestEventCode}
+					initialPurchaseEnabled={(selectedCapiConfig?.eventosCapi ?? []).map((event) => event.toLowerCase()).includes("purchase")}
+					closeModal={() => setCapiModalOpen(false)}
+					onSaved={() => queryClient.invalidateQueries({ queryKey })}
+				/>
 			) : null}
 		</div>
 	);

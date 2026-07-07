@@ -1,5 +1,6 @@
+import type { TSaleCapiMetadata } from "@/schemas/sales";
 import { relations } from "drizzle-orm";
-import { boolean, doublePrecision, index, json, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, index, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { campaignConversions } from "./campaign-conversions";
 import { campaigns } from "./campaigns";
 import { cashbackProgramTransactions } from "./cashback-programs";
@@ -75,6 +76,9 @@ export const sales = newTable(
 		emissaoFiscalAutomatica: boolean("emissao_fiscal_automatica"),
 		// Sessão de venda que recortou esta venda (nullable). Denormalização p/ relatório/atribuição.
 		sessaoVendaId: varchar("sessao_venda_id", { length: 255 }).references(() => salesSessions.id, { onDelete: "set null" }),
+		// Estado do envio de conversão (Purchase) ao Conversions API da Meta (dedup/observabilidade/
+		// retry). null = ainda não processada pelo cron de CAPI. Sem PII crua — só resumo do envio.
+		capiMetadados: jsonb("capi_metadados").$type<TSaleCapiMetadata>(),
 	},
 	(table) => ({
 		clientIdIdx: index("idx_sales_client_id").on(table.clienteId),
