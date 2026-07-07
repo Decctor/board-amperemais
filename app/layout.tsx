@@ -58,6 +58,7 @@ const organizationJsonLd = {
 	url: "https://recompracrm.com.br",
 	logo: "https://recompracrm.com.br/logo.png",
 	description: siteMetaDescription,
+	sameAs: ["https://www.instagram.com/recompracrm/", "https://www.linkedin.com/company/recompracrm/"],
 };
 
 const websiteJsonLd = {

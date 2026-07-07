@@ -133,6 +133,24 @@ function createNichePost(config: NichePostConfig): BlogPost {
 				body: `${config.result}\n\nA diferença está em sair do desconto avulso para uma rotina de retenção mensurável: benefício financeiro, mensagem automática, segmentação por comportamento e acompanhamento de conversão.\n\nCom o RecompraCRM, ${config.headlineNiche} conseguem vender mais para a própria base, recuperar clientes antes que desapareçam e criar previsibilidade sem aumentar a equipe de marketing.`,
 			},
 		],
+		faqs: [
+			{
+				question: `Como o RecompraCRM ajuda ${config.titleNiche} a fidelizar clientes?`,
+				answer: `O RecompraCRM organiza a retenção de ${config.headlineNiche} em quatro frentes integradas: cashback que dá ao cliente um motivo concreto para voltar, campanhas automáticas no WhatsApp disparadas por comportamento, um Ponto de Interação (PDI) no balcão e análise RFM. Assim, cada venda vira uma próxima visita, sem depender de promoção genérica.`,
+			},
+			{
+				question: `Qual é a melhor configuração de cashback para ${config.niche}?`,
+				answer: `Para esse segmento, uma configuração inicial segura costuma partir de ${config.cashbackPercent} de cashback, validade de ${config.expirationDays} dias e limite de resgate em torno de ${config.rescueLimit} da compra — alinhada à margem e ao ciclo de ${config.purchaseCycle}. Você ajusta as regras depois, mas já começa com um ponto de partida rentável.`,
+			},
+			{
+				question: "O cliente precisa baixar aplicativo para participar do programa?",
+				answer: "Não. No Ponto de Interação, o atendente identifica o cliente pelo telefone, registra a venda e permite o resgate com uma confirmação rápida. O cliente não instala aplicativo nem carrega cartão de fidelidade — acumula e usa o cashback direto no balcão, em segundos.",
+			},
+			{
+				question: `Quanto tempo leva para começar a usar o RecompraCRM em ${config.niche}?`,
+				answer: "O setup é feito em menos de um dia. A equipe do RecompraCRM configura o cashback, integra seus dados de venda e treina os atendentes. A partir da primeira venda registrada no PDI, você já começa a acumular dados de retenção e a acionar campanhas automáticas.",
+			},
+		],
 		cta: {
 			headline: `Pronto para aplicar o RecompraCRM em ${config.niche}?`,
 			sub: "Agende uma demonstração gratuita e veja como cashback, campanhas no WhatsApp, PDI e BI funcionam juntos na sua operação.",
@@ -642,6 +660,28 @@ export const BLOG_POSTS: BlogPost[] = [
 				text: "Promoção não é o que você faz quando as vendas caem. É o que você faz para evitar que elas caiam.",
 			},
 		],
+		faqs: [
+			{
+				question: "Como criar uma campanha de Festa Junina para a minha loja?",
+				answer:
+					"Em vez de uma ação única, monte um calendário para o mês inteiro com um tema central — o Arraiá da sua loja. Divida em quatro semanas: abertura, Dia dos Namorados, transformação do dia mais fraco e encerramento no São João. Comunique com consistência no WhatsApp, stories, vitrine e status, e feche com uma mensagem individual para quem comprou.",
+			},
+			{
+				question: "Preciso dar desconto para a campanha de junho funcionar?",
+				answer:
+					"Não. Desconto reduz a margem e sempre haverá quem cobre menos. Promoção é criar um motivo para o cliente visitar a loja — uma experiência, um lançamento, um mimo ou a sensação de participar de algo especial. Em junho, esse motivo pode ser um Arraiá temático, com ações semanais em vez de preço baixo.",
+			},
+			{
+				question: "Como aproveitar o Dia dos Namorados dentro da campanha junina?",
+				answer:
+					"Em 2026 o Dia dos Namorados cai na sexta, 12 de junho. Conecte a data ao tema caipira com um combo para casais e um nome com personalidade, como Casal Caipira ou Arraiá dos Apaixonados. Publique bastidores e sugestões de presente nos dias anteriores e faça uma live curta no dia.",
+			},
+			{
+				question: "Como o RecompraCRM ajuda na campanha de Festa Junina?",
+				answer:
+					"O RecompraCRM organiza sua base para você segmentar quem recebe cada oferta primeiro, disparar campanhas no WhatsApp por comportamento e acompanhar o resultado de cada ação. Assim a campanha junina deixa de ser um esforço solto e vira recompra mensurável, com clientes voltando ao longo do mês.",
+			},
+		],
 		cta: {
 			headline: "Quer transformar campanhas em clientes voltando para comprar?",
 			sub: "Conheça o RecompraCRM e veja como organizar sua base, segmentar clientes e acompanhar os resultados das suas campanhas.",
@@ -730,6 +770,28 @@ export const BLOG_POSTS: BlogPost[] = [
 					"O RecompraCRM foi criado para dar método a essa rotina. Com histórico de compras, campanhas no WhatsApp, segmentação por comportamento, cashback e dashboards de vendas, a loja consegue sair do achismo e transformar a base de clientes em uma agenda comercial.\n\nNa prática, o gestor enxerga quem comprou, quem sumiu, quais campanhas performaram, quais clientes têm maior potencial de recompra e quais ações fazem sentido para a próxima semana.\n\nO fechamento deixa de ser apenas contábil. Ele vira uma ferramenta de crescimento.",
 			},
 		],
+		faqs: [
+			{
+				question: "O que é o fechamento semanal no varejo?",
+				answer:
+					"É um ritual de cerca de 30 minutos na sexta-feira em que a equipe não apenas confere o caixa, mas prepara a próxima semana. Você revisa o que vendeu bem, o que ficou parado, quais campanhas performaram e quais bons clientes não compraram — saindo da sexta com a semana seguinte já encaminhada.",
+			},
+			{
+				question: "Quais perguntas fazer no fechamento de sexta-feira?",
+				answer:
+					"Responda seis perguntas com a equipe: o que vendeu melhor? O que não girou? Qual campanha trouxe mais resultado? Quem foi o vendedor destaque? Quais clientes bons não compraram? E o que vamos vender na próxima semana? Esse roteiro transforma o fechamento em decisão comercial.",
+			},
+			{
+				question: "Quanto tempo leva o ritual de fechamento semanal?",
+				answer:
+					"Cerca de 30 minutos são suficientes. O objetivo não é uma reunião longa, e sim definir um produto ou categoria foco, uma meta simples e a lista de clientes a acionar — para que a equipe comece a segunda-feira com método, e não no improviso.",
+			},
+			{
+				question: "Como o RecompraCRM ajuda no planejamento semanal da loja?",
+				answer:
+					"Com histórico de compras, campanhas no WhatsApp, segmentação por comportamento, cashback e dashboards de vendas, o RecompraCRM mostra quem comprou, quem sumiu, quais campanhas performaram e quais clientes têm maior potencial de recompra. O fechamento deixa de ser contábil e vira uma agenda comercial para a próxima semana.",
+			},
+		],
 		cta: {
 			headline: "Quer fechar a semana com mais clareza comercial?",
 			sub: "Agende uma demonstração gratuita e veja como o RecompraCRM ajuda sua loja a planejar campanhas, acionar clientes e gerar mais recompra.",
@@ -814,6 +876,28 @@ export const BLOG_POSTS: BlogPost[] = [
 				heading: "Resultado: mais recompras, menos dependência do verão",
 				body:
 					"Sorveterias que usam o RecompraCRM conseguem nivelar melhor o faturamento ao longo do ano, reduzindo a dependência da sazonalidade. Campanhas de inverno com ofertas criativas, combinadas com cashback acumulado, criam um fluxo constante de clientes mesmo nos meses mais frios.\n\nE o melhor: tudo isso acontece de forma automatizada. Você e sua equipe continuam focados no que fazem de melhor — fazer sorvetes incríveis.",
+			},
+		],
+		faqs: [
+			{
+				question: "Como fidelizar clientes de uma sorveteria?",
+				answer:
+					"A maioria dos clientes de sorveteria já quer voltar — falta um motivo para lembrar da sua loja. O RecompraCRM combina cashback que dá crédito para a próxima visita, campanhas automáticas no WhatsApp para reativar quem sumiu e o PDI no balcão, transformando clientes ocasionais em frequentadores assíduos.",
+			},
+			{
+				question: "Qual percentual de cashback usar em uma sorveteria?",
+				answer:
+					"Uma configuração inicial comum parte de 5% de cashback, com prazo de validade definido para criar urgência de retorno. Você ajusta o percentual, a validade e o limite de resgate conforme a sua margem — começando com uma regra alinhada ao ciclo de visitas frequentes da sorveteria.",
+			},
+			{
+				question: "Como aumentar as vendas da sorveteria no inverno?",
+				answer:
+					"Use campanhas segmentadas no WhatsApp para reativar clientes inativos, divulgar sabores novos e promover combos de inverno, como chocolate quente com sorvete. Quem não visita há 30 dias recebe um incentivo automático; quem tem cashback prestes a expirar recebe um lembrete — mantendo movimento mesmo nos meses frios.",
+			},
+			{
+				question: "O cliente da sorveteria precisa de aplicativo ou cartão de fidelidade?",
+				answer:
+					"Não. No PDI (Ponto de Interação) instalado no balcão, o atendente registra a venda e o cliente vê e resgata o saldo de cashback com um toque. Sem aplicativo para baixar e sem cartõezinhos de papel — a experiência é rápida e sem fricção no caixa.",
 			},
 		],
 		cta: {
@@ -902,6 +986,28 @@ export const BLOG_POSTS: BlogPost[] = [
 					"Pet shops que usam o RecompraCRM conseguem competir com marketplaces e grandes redes não pelo preço, mas pelo relacionamento. O tutor sente que é reconhecido, que a loja lembra dele e do pet, e que tem um motivo financeiro concreto para voltar.\n\nO ciclo natural de recompra do pet shop — ração mensal, banho quinzenal, consulta semestral — vira uma máquina de fidelização quando combinado com cashback inteligente e comunicação automática pelo WhatsApp.\n\nE o melhor: tudo roda no piloto automático. Você continua focado no atendimento e no cuidado com os pets — o RecompraCRM cuida da retenção.",
 			},
 		],
+		faqs: [
+			{
+				question: "Como fidelizar clientes (tutores) em um pet shop?",
+				answer:
+					"O pet shop tem recompra naturalmente frequente: ração acaba, antipulgas vence, banho tem agenda fixa. O RecompraCRM aproveita essa previsibilidade com cashback que dá motivo para voltar, campanhas automáticas de reposição no WhatsApp e análise RFM — fazendo o tutor lembrar da sua loja em vez do marketplace.",
+			},
+			{
+				question: "Qual percentual de cashback é ideal para pet shop?",
+				answer:
+					"Configure o percentual conforme a sua margem — normalmente entre 3% e 8%. Como o tutor compra ração todo mês, o crédito acumula rápido: em um saco de R$180 a 5%, são R$9 por compra, o suficiente para petiscos ou um banho em poucos meses. A validade cria urgência para retornar.",
+			},
+			{
+				question: "Como usar o WhatsApp para lembrar o tutor de repor ração?",
+				answer:
+					"As necessidades do pet são previsíveis, então o RecompraCRM dispara mensagens automáticas na hora certa: cerca de 30 dias após a compra da ração, quando o cashback está expirando ou no aniversário do pet. Tudo personalizado com o nome do tutor e do animal, sem digitar mensagem manualmente.",
+			},
+			{
+				question: "Como um pet shop pode competir com marketplaces e grandes redes?",
+				answer:
+					"Não pelo preço, mas pelo relacionamento. Com cashback, campanhas de reposição no WhatsApp e reconhecimento do tutor e do pet, a loja cria um vínculo e um motivo financeiro concreto para voltar. O ciclo natural de ração, banho e consulta vira uma máquina de fidelização automática.",
+			},
+		],
 		cta: {
 			headline: "Pronto para fidelizar os tutores do seu pet shop?",
 			sub: "Agende uma demonstração gratuita e veja como o RecompraCRM funciona para pet shops. Setup em menos de 1 dia.",
@@ -986,6 +1092,28 @@ export const BLOG_POSTS: BlogPost[] = [
 				heading: "Resultado: mais clientes voltando entre coleções, menos dependência de liquidação",
 				body:
 					"Lojas de roupas que usam o RecompraCRM reduzem a dependência de promoções agressivas para gerar movimento. O cashback cria um motivo financeiro para o cliente voltar, as campanhas de WhatsApp mantêm a marca presente, e a análise RFM garante que cada ação de marketing é direcionada ao público certo.\n\nO ciclo de moda — que antes significava picos de venda seguidos de vale — se torna mais suave e previsível. E o melhor: todo esse mecanismo roda automaticamente enquanto você e sua equipe focam no que mais importam: curadoria, atendimento e experiência na loja.",
+			},
+		],
+		faqs: [
+			{
+				question: "Como fidelizar clientes em uma loja de roupas?",
+				answer:
+					"Moda é sazonal e o cliente compra em picos separados por meses. O RecompraCRM cria um motivo financeiro para voltar entre coleções com cashback, mantém a marca presente com campanhas automáticas no WhatsApp e usa a análise RFM para direcionar cada ação ao público certo — suavizando os vales de venda.",
+			},
+			{
+				question: "Como vender mais entre coleções sem depender de liquidação?",
+				answer:
+					"O cashback dá ao cliente um crédito com validade para usar em uma próxima compra, criando retorno sem precisar baixar preço. Combinado com campanhas de WhatsApp que avisam sobre novidades e cashback expirando, ele reduz a dependência de promoções agressivas para gerar movimento.",
+			},
+			{
+				question: "Como usar cashback em uma loja de moda com vendas sazonais?",
+				answer:
+					"Ajuste a validade do cashback ao ciclo de troca de coleções, para que o crédito incentive o cliente a voltar no intervalo certo. Você define percentual, prazo e limite de resgate conforme a margem, transformando o pico de uma coleção em recompra na próxima.",
+			},
+			{
+				question: "O cliente da loja de roupas precisa baixar aplicativo?",
+				answer:
+					"Não. No PDI instalado no balcão, o cliente é identificado pelo telefone, acumula e resgata cashback com uma confirmação rápida — sem aplicativo e sem cartão de fidelidade. A experiência é fluida e cada venda alimenta os dados de retenção automaticamente.",
 			},
 		],
 		cta: {
