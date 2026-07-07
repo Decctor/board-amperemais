@@ -1,4 +1,5 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
+import { SessionMetaRow } from "@/components/Modals/Internal/SalesSessions/Blocks/SessionMetaRow";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
 import { formatToMoney } from "@/lib/formatting";
@@ -10,15 +11,6 @@ type SalesSessionDetailProps = {
 	sessionId: string;
 	closeModal: () => void;
 };
-
-function MetaRow({ label, value }: { label: string; value: string }) {
-	return (
-		<div className="flex items-center justify-between text-xs">
-			<span className="text-muted-foreground">{label}</span>
-			<span className="font-semibold tabular-nums">{value}</span>
-		</div>
-	);
-}
 
 export default function SalesSessionDetail({ sessionId, closeModal }: SalesSessionDetailProps) {
 	const { data: session, isLoading, isError, error } = useSalesSessionById({ sessionId });
@@ -56,10 +48,10 @@ export default function SalesSessionDetail({ sessionId, closeModal }: SalesSessi
 			) : (
 				<div className="flex w-full flex-col gap-4">
 					<div className="flex flex-col gap-1 rounded-lg bg-muted/50 p-3">
-						<MetaRow label="RESPONSÁVEL" value={session.responsavelVendedor?.nome ?? "—"} />
-						<MetaRow label="ABERTURA" value={dayjs(session.dataAbertura).format("DD/MM/YYYY HH:mm")} />
-						<MetaRow label="FECHAMENTO" value={session.dataFechamento ? dayjs(session.dataFechamento).format("DD/MM/YYYY HH:mm") : "—"} />
-						<MetaRow label="FUNDO DE TROCO" value={formatToMoney(session.saldoInicial)} />
+						<SessionMetaRow label="RESPONSÁVEL" value={session.responsavelVendedor?.nome ?? "—"} />
+						<SessionMetaRow label="ABERTURA" value={dayjs(session.dataAbertura).format("DD/MM/YYYY HH:mm")} />
+						<SessionMetaRow label="FECHAMENTO" value={session.dataFechamento ? dayjs(session.dataFechamento).format("DD/MM/YYYY HH:mm") : "—"} />
+						<SessionMetaRow label="FUNDO DE TROCO" value={formatToMoney(session.saldoInicial)} />
 					</div>
 
 					<div className="flex flex-col gap-2">

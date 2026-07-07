@@ -48,9 +48,6 @@ export const salesSessions = newTable(
 		organizacaoIdIdx: index("idx_sales_sessions_organizacao_id").on(table.organizacaoId),
 		statusIdx: index("idx_sales_sessions_status").on(table.organizacaoId, table.status),
 		responsavelIdx: index("idx_sales_sessions_responsavel").on(table.responsavelVendedorId),
-		// Garante no máximo uma sessão ABERTA por escopo. O filtro parcial (WHERE status = 'ABERTA')
-		// é aplicado manualmente na migration — drizzle-kit não modela índice parcial.
-		abertaUnicaIdx: uniqueIndex("uq_sales_sessions_aberta").on(table.organizacaoId, table.escopoChave),
 	}),
 );
 

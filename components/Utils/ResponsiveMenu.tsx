@@ -176,7 +176,7 @@ function ResponsiveMenu({
 							{menuSecondaryActionButtonText}
 						</LoadingButton>
 					)}
-					<LoadingButton loading={actionIsLoading || stateIsLoading} onClick={() => actionFunction()}>
+					<LoadingButton loading={actionIsLoading || stateIsLoading} onClick={() => actionFunction()} className={menuActionButtonClassName}>
 						{menuActionButtonText}
 					</LoadingButton>
 				</DrawerFooter>

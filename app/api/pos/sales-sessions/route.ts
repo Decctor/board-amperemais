@@ -33,9 +33,10 @@ async function getSalesSessions({ input, session }: { input: TGetSalesSessionsIn
 			with: {
 				responsavelVendedor: { columns: { id: true, nome: true } },
 				conferencias: true,
+				vendas: { columns: { id: true, valorTotal: true, dataVenda: true }, with: { cliente: { columns: { id: true, nome: true } } } },
 			},
 		});
-		if (!found) throw new createHttpError.NotFound("Sessao de venda nao encontrada.");
+		if (!found) throw new createHttpError.NotFound("Sessão de venda não encontrada.");
 
 		// Para sessões abertas, o esperado por método ainda não foi congelado: calcula ao vivo,
 		// e lista as pendências fiscais do turno para o operador conferir antes de fechar.
@@ -44,10 +45,20 @@ async function getSalesSessions({ input, session }: { input: TGetSalesSessionsIn
 				? await Promise.all([
 						computeSessionExpectedByMethod({ orgId, sessaoVendaId: found.id, saldoInicial: found.saldoInicial }),
 						db
-							.select({ id: fiscalOutboundDocuments.id, referencia: fiscalOutboundDocuments.referencia, statusInterno: fiscalOutboundDocuments.statusInterno })
+							.select({
+								id: fiscalOutboundDocuments.id,
+								referencia: fiscalOutboundDocuments.referencia,
+								statusInterno: fiscalOutboundDocuments.statusInterno,
+							})
 							.from(fiscalOutboundDocuments)
 							.innerJoin(sales, eq(fiscalOutboundDocuments.vendaId, sales.id))
-							.where(and(eq(sales.sessaoVendaId, found.id), eq(fiscalOutboundDocuments.organizacaoId, orgId), ne(fiscalOutboundDocuments.statusInterno, "AUTORIZADO"))),
+							.where(
+								and(
+									eq(sales.sessaoVendaId, found.id),
+									eq(fiscalOutboundDocuments.organizacaoId, orgId),
+									ne(fiscalOutboundDocuments.statusInterno, "AUTORIZADO"),
+								),
+							),
 					])
 				: [null, []];
 
@@ -75,7 +86,10 @@ async function getSalesSessions({ input, session }: { input: TGetSalesSessionsIn
 			offset: skip,
 			limit: PAGE_SIZE,
 		}),
-		db.select({ count: count() }).from(salesSessions).where(and(...conditions)),
+		db
+			.select({ count: count() })
+			.from(salesSessions)
+			.where(and(...conditions)),
 	]);
 
 	const matched = totalResult[0]?.count ?? 0;
