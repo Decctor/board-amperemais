@@ -67,6 +67,9 @@ export default function NavbarV2() {
 							{link.label}
 						</a>
 					))}
+					<Link href="/integrations" className="text-sm font-medium text-slate-600 hover:text-[#24549C] transition-colors">
+						Integrações
+					</Link>
 					<Link href="/blog" className="text-sm font-medium text-slate-600 hover:text-[#24549C] transition-colors">
 						Blog
 					</Link>
@@ -113,6 +116,9 @@ export default function NavbarV2() {
 								{link.label}
 							</a>
 						))}
+						<Link href="/integrations" onClick={() => setMobileOpen(false)} className="text-sm font-medium text-slate-700 py-2">
+							Integrações
+						</Link>
 						<Link href="/blog" onClick={() => setMobileOpen(false)} className="text-sm font-medium text-slate-700 py-2">
 							Blog
 						</Link>

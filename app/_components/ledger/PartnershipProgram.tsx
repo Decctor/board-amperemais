@@ -44,7 +44,7 @@ export function LedgerPartnershipProgram() {
 						<div>
 							<div className="mb-6 flex items-center gap-3">
 								<span className="ledger-fade inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#24549c] text-[11px] font-extrabold text-white ledger-tabular">
-									06
+									07
 								</span>
 								<span
 									className="ledger-fade text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#24549c]"

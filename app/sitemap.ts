@@ -1,5 +1,6 @@
 import { BLOG_POSTS } from "@/app/_content/blog-posts";
 import { FEATURE_PAGES } from "@/app/_content/feature-pages";
+import { INTEGRATION_PAGES } from "@/app/_content/integration-pages";
 import { db } from "@/services/drizzle";
 import type { MetadataRoute } from "next";
 
@@ -37,6 +38,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 		priority: 0.85,
 	}));
 
+	const integrationRoutes: MetadataRoute.Sitemap = [
+		{ url: `${BASE_URL}/integrations`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.85 },
+		...INTEGRATION_PAGES.map((page) => ({
+			url: `${BASE_URL}/integrations/${page.slug}`,
+			lastModified: new Date(page.updatedAt),
+			changeFrequency: "monthly" as const,
+			priority: 0.8,
+		})),
+	];
+
 	const staticRoutes: MetadataRoute.Sitemap = [
 		{ url: `${BASE_URL}/presentation`, lastModified: new Date(), changeFrequency: "monthly", priority: 1 },
 		{ url: `${BASE_URL}/community`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
@@ -67,5 +78,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 		priority: 0.6,
 	}));
 
-	return [...blogRoutes, ...featureRoutes, ...staticRoutes, ...courseRoutes, ...ebookRoutes, ...documentRoutes];
+	return [...blogRoutes, ...featureRoutes, ...integrationRoutes, ...staticRoutes, ...courseRoutes, ...ebookRoutes, ...documentRoutes];
 }

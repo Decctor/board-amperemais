@@ -102,7 +102,7 @@ export default function FooterV2() {
 			{/* Footer */}
 			<footer className="bg-slate-50 border-t border-slate-200">
 				<div className="container mx-auto max-w-7xl px-6 lg:px-8 py-12">
-					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8 mb-10">
+					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-8 mb-10">
 						{/* Brand */}
 						<div className="md:col-span-1">
 							<h3 className="font-black text-lg text-slate-900 mb-3">RecompraCRM</h3>
@@ -158,6 +158,33 @@ export default function FooterV2() {
 								<li>
 									<Link href="/features/business-intelligence" className="hover:text-[#24549C] transition-colors">
 										Business Intelligence
+									</Link>
+								</li>
+							</ul>
+						</div>
+
+						{/* Integrações */}
+						<div>
+							<h4 className="font-bold text-slate-900 mb-3 text-sm">Integrações</h4>
+							<ul className="space-y-2 text-sm text-slate-500">
+								<li>
+									<Link href="/integrations" className="hover:text-[#24549C] transition-colors">
+										Todas as Integrações
+									</Link>
+								</li>
+								<li>
+									<Link href="/integrations/bling" className="hover:text-[#24549C] transition-colors">
+										Bling
+									</Link>
+								</li>
+								<li>
+									<Link href="/integrations/ifood" className="hover:text-[#24549C] transition-colors">
+										iFood
+									</Link>
+								</li>
+								<li>
+									<Link href="/integrations/nuvem-shop" className="hover:text-[#24549C] transition-colors">
+										Nuvem Shop
 									</Link>
 								</li>
 							</ul>
