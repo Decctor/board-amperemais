@@ -749,6 +749,11 @@ export const AppRoutes = [
 		description: "Painel de acompanhamento e gestão da sua loja digital.",
 	},
 	{
+		path: "/dashboard/commercial/audiences",
+		title: "Públicos",
+		description: "Painel de acompanhamento e gestão de públicos.",
+	},
+	{
 		path: "/dashboard/team/sellers",
 		title: "Vendedores",
 		description: "Painel detalhadado dos seus vendedores.",

@@ -13,11 +13,12 @@ import { connectAudienceDestination, deleteAudience, disconnectAudienceDestinati
 import { useAudiences } from "@/lib/queries/audiences";
 import { useIntegrations } from "@/lib/queries/integrations";
 import { cn } from "@/lib/utils";
+import { NewAudience } from "@/components/Modals/Internal/Audiences/NewAudience";
+import { ControlAudience } from "@/components/Modals/Internal/Audiences/ControlAudience";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link2, Pencil, Plus, RefreshCw, Trash2, Unlink, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { AudienceFormModal } from "./_components/AudienceFormModal";
 
 type AudiencesPageProps = { user: TAuthUserSession["user"] };
 type TAudience = TGetAudiencesOutputDefault[number];
@@ -27,8 +28,8 @@ export default function AudiencesPage({ user: _user }: AudiencesPageProps) {
 	const { data: audiences, isLoading, isError, error, queryKey } = useAudiences();
 	const { data: metaAccounts } = useIntegrations({ tipo: "META_ADS" });
 
-	const [modalOpen, setModalOpen] = useState<boolean>(false);
-	const [editing, setEditing] = useState<TAudience | null>(null);
+	const [newModalOpen, setNewModalOpen] = useState<boolean>(false);
+	const [editingId, setEditingId] = useState<string | null>(null);
 
 	const invalidate = () => queryClient.invalidateQueries({ queryKey });
 
@@ -40,20 +41,9 @@ export default function AudiencesPage({ user: _user }: AudiencesPageProps) {
 
 	return (
 		<div className="flex w-full flex-col gap-4 p-2 lg:p-4">
-			<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-				<div className="flex flex-col gap-1">
-					<h1 className="flex items-center gap-2 text-xl font-black tracking-tight text-foreground">
-						<Users className="h-5 w-5 text-primary" /> Públicos
-					</h1>
-					<p className="text-sm text-muted-foreground">Transforme suas segmentações em públicos (Custom Audiences) na Meta.</p>
-				</div>
-				<Button
-					onClick={() => {
-						setEditing(null);
-						setModalOpen(true);
-					}}
-				>
-					<Plus className="h-4 w-4" /> Novo público
+			<div className="flex w-full items-center justify-end">
+				<Button onClick={() => setNewModalOpen(true)}>
+					<Plus className="h-4 w-4" /> NOVO PÚBLICO
 				</Button>
 			</div>
 
@@ -69,17 +59,17 @@ export default function AudiencesPage({ user: _user }: AudiencesPageProps) {
 							key={audience.id}
 							audience={audience}
 							accounts={accounts}
-							onEdit={() => {
-								setEditing(audience);
-								setModalOpen(true);
-							}}
+							onEdit={() => setEditingId(audience.id)}
 							onChanged={invalidate}
 						/>
 					))}
 				</div>
 			)}
 
-			{modalOpen ? <AudienceFormModal audience={editing ?? undefined} closeModal={() => setModalOpen(false)} onSaved={invalidate} /> : null}
+			{newModalOpen ? <NewAudience closeModal={() => setNewModalOpen(false)} callbacks={{ onSuccess: invalidate }} /> : null}
+			{editingId ? (
+				<ControlAudience audienceId={editingId} closeModal={() => setEditingId(null)} callbacks={{ onSuccess: invalidate }} />
+			) : null}
 		</div>
 	);
 }

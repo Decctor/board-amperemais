@@ -16,6 +16,21 @@ export function useAudiences() {
 	};
 }
 
+async function fetchAudienceById(id: string) {
+	const { data } = await axios.get<TGetAudiencesOutput>(`/api/audiences?id=${id}`);
+	const result = data.data.byId;
+	if (!result) throw new Error("Público não encontrado.");
+	return result;
+}
+
+export function useAudienceById({ audienceId }: { audienceId: string }) {
+	const queryKey = ["audience-by-id", audienceId];
+	return {
+		...useQuery({ queryKey, queryFn: () => fetchAudienceById(audienceId), enabled: !!audienceId }),
+		queryKey,
+	};
+}
+
 /** Prévia (contagem) de um público a partir de filtros ainda não salvos. */
 export async function previewAudience(input: TPreviewAudienceInput) {
 	const { data } = await axios.post<TPreviewAudienceOutput>("/api/audiences/preview", input);

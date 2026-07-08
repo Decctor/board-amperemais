@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CampaignFiltersSchema } from "./campaigns";
+import { CampaignFiltersSchema, type TCampaignFiltersTree } from "./campaigns";
 
 /**
  * Audiences (públicos) — definição de segmento agnóstica de plataforma. Reusa o mesmo schema de
@@ -24,3 +24,19 @@ export const UpdateAudienceInputSchema = AudienceSchema.extend({
 	id: z.string({ required_error: "ID do público não informado.", invalid_type_error: "Tipo não válido para o ID do público." }),
 });
 export type TUpdateAudienceInput = z.infer<typeof UpdateAudienceInputSchema>;
+
+/**
+ * Editable state shape for the audience create/control modals. `filtros` and `segmentacoes`
+ * are split out of the base entity so the modal blocks can own them independently; the filter
+ * tree reuses the same AND/OR/NOT structure as the campaigns.
+ */
+export const AudienceStateSchema = z.object({
+	audience: AudienceSchema.omit({ filtros: true, segmentacoes: true }),
+	segmentacoes: z.array(z.string({ invalid_type_error: "Tipo não válido para a segmentação." })).default([]),
+	filtros: CampaignFiltersSchema.optional().nullable(),
+});
+export type TAudienceState = Omit<z.infer<typeof AudienceStateSchema>, "filtros"> & {
+	// Override with the explicit recursive tree type so state helpers stay type-safe.
+	// The Zod schema still validates the runtime shape identically.
+	filtros: TCampaignFiltersTree;
+};
