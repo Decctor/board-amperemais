@@ -66,3 +66,24 @@ export const SalesSimplifiedSearchQueryParams = z.object({
 export type TSalesSimplifiedSearchQueryParams = z.infer<typeof SalesSimplifiedSearchQueryParams>;
 
 export type TSale = z.infer<typeof SaleSchema>;
+
+/**
+ * Estado do envio de conversão (Purchase) ao Conversions API da Meta, gravado na própria venda
+ * (`sales.capiMetadados`) — sem tabela dedicada, pois é 1 venda = 1 evento Purchase.
+ * Nunca guarda PII crua: só o resumo do envio (o hash só vai no payload enviado à Meta).
+ */
+export const SaleCapiMetadataSchema = z.object({
+	status: z.enum(["PENDENTE", "ENVIADO", "FALHA"], {
+		required_error: "Status do CAPI não informado.",
+		invalid_type_error: "Tipo não válido para o status do CAPI.",
+	}),
+	eventId: z.string({ required_error: "eventId do CAPI não informado.", invalid_type_error: "Tipo não válido para o eventId do CAPI." }),
+	eventName: z.string({ required_error: "eventName do CAPI não informado.", invalid_type_error: "Tipo não válido para o eventName do CAPI." }),
+	integrationId: z.string({ invalid_type_error: "Tipo não válido para o ID da integração." }).optional(),
+	actionSource: z.string({ invalid_type_error: "Tipo não válido para o action_source." }).optional(),
+	eventsReceived: z.number({ invalid_type_error: "Tipo não válido para eventos recebidos." }).optional(),
+	tentativas: z.number({ invalid_type_error: "Tipo não válido para tentativas." }).default(0),
+	ultimoErro: z.string({ invalid_type_error: "Tipo não válido para o último erro." }).optional().nullable(),
+	dataEnvio: z.string({ invalid_type_error: "Tipo não válido para a data de envio." }).datetime().optional(),
+});
+export type TSaleCapiMetadata = z.infer<typeof SaleCapiMetadataSchema>;

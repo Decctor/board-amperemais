@@ -1,6 +1,14 @@
 {
 	"crons": [
 		{
+			"path": "/api/cron/meta-capi-purchases",
+			"schedule": "*/10 * * * *"
+		},
+		{
+			"path": "/api/cron/meta-audiences-sync",
+			"schedule": "0 */6 * * *"
+		},
+		{
 			"path": "/api/cron/fiscal-queue",
 			"schedule": "*/2 * * * *"
 		},

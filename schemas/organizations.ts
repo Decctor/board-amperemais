@@ -517,6 +517,22 @@ export const OrganizationMemberPermissionsSchema = z.object({
 			.optional()
 			.nullable(),
 	}),
+	// Integrações de marketing/parceiros (Meta Ads, CAPI, audiences…). Opcional para não quebrar a
+	// validação de membros já existentes cujo JSONB de permissões ainda não tem a chave; a ausência
+	// é tratada como "sem permissão" na aplicação (com fallback para empresa.editar — ver rota).
+	integracoes: z
+		.object({
+			visualizar: z.boolean({
+				required_error: "Permissão de visualização de integrações não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de visualização de integrações.",
+			}),
+			gerenciar: z.boolean({
+				required_error: "Permissão de gerenciamento de integrações não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de gerenciamento de integrações.",
+			}),
+		})
+		.optional()
+		.nullable(),
 });
 export type TOrganizationMemberPermissions = z.infer<typeof OrganizationMemberPermissionsSchema>;
 

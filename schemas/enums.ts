@@ -388,3 +388,10 @@ export type TSalesSessionScopeEnum = z.infer<typeof SalesSessionScopeEnum>;
 // Movimento manual de caixa dentro de uma sessão.
 export const SalesSessionMovementTypeEnum = z.enum(["SANGRIA", "SUPRIMENTO"]);
 export type TSalesSessionMovementTypeEnum = z.infer<typeof SalesSessionMovementTypeEnum>;
+
+// Fundação de integrations (marketing/parceiros). Espelha os enums Drizzle integrationTypeEnum/integrationStatusEnum.
+export const IntegrationTipoEnum = z.enum(["META_ADS", "META_CAPI", "TRACKING"]);
+export type TIntegrationTipoEnum = z.infer<typeof IntegrationTipoEnum>;
+
+export const IntegrationStatusEnum = z.enum(["CONECTADO", "EXPIRADO", "ERRO"]);
+export type TIntegrationStatusEnum = z.infer<typeof IntegrationStatusEnum>;

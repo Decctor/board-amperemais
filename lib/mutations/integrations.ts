@@ -1,0 +1,12 @@
+import type { TDeleteIntegrationOutput, TUpdateIntegrationInput, TUpdateIntegrationOutput } from "@/app/api/integrations/route";
+import axios from "axios";
+
+export async function updateIntegration(input: TUpdateIntegrationInput) {
+	const { data } = await axios.patch<TUpdateIntegrationOutput>("/api/integrations", input);
+	return data;
+}
+
+export async function deleteIntegration(input: { id: string }) {
+	const { data } = await axios.delete<TDeleteIntegrationOutput>(`/api/integrations?id=${input.id}`);
+	return data;
+}
