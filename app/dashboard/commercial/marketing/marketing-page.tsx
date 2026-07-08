@@ -3,6 +3,7 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatToMoney } from "@/lib/formatting";
@@ -12,7 +13,7 @@ import type { TMetaAdsLibraryAd } from "@/lib/integrations/meta/ads/types";
 import { cn } from "@/lib/utils";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { useQueryClient } from "@tanstack/react-query";
-import { DollarSign, Eye, MousePointerClick, Settings2, ShoppingBag, Target, TrendingUp, UserPlus } from "lucide-react";
+import { Settings2, Target } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Area, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
 import { MetaAdDetailModal } from "./_components/MetaAdDetailModal";
@@ -30,7 +31,7 @@ const LIBRARY_STATUS_OPTIONS = [
 	{ value: "paused", label: "Pausados" },
 ] as const;
 
-const SPEND_CHART_CONFIG = { spend: { label: "Investimento", color: "hsl(217 91% 60%)" } } as const;
+const SPEND_CHART_CONFIG = { spend: { label: "Investimento", color: "#ffb900" } } as const;
 
 const CONNECT_URL = "/api/integrations/meta/ads/auth?redirectTo=/dashboard/commercial/marketing";
 
@@ -68,8 +69,8 @@ export default function MarketingPage({ user: _user }: MarketingPageProps) {
 	return (
 		<div className="flex w-full flex-col gap-4 p-2 lg:p-4">
 			<div className="flex w-full flex-col gap-1">
-				<h1 className="flex items-center gap-2 text-xl font-black text-primary">
-					<Target className="h-5 w-5" /> META ADS
+				<h1 className="flex items-center gap-2 text-xl font-black tracking-tight text-foreground">
+					<Target className="h-5 w-5 text-primary" /> Meta Ads
 				</h1>
 				<p className="text-sm text-muted-foreground">Performance dos seus anúncios e biblioteca de criativos.</p>
 			</div>
@@ -174,21 +175,17 @@ function MetaAdsDashboard({ integrationId, since, until, libraryStatus, onLibrar
 	return (
 		<div className="flex w-full flex-col gap-4">
 			<div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-				<MetricCard icon={<DollarSign className="h-4 w-4" />} label="Investimento" value={formatToMoney(account?.spend ?? 0)} />
-				<MetricCard
-					icon={<TrendingUp className="h-4 w-4" />}
-					label="ROAS"
-					value={account?.purchaseRoas != null ? `${account.purchaseRoas.toFixed(2)}x` : "—"}
-				/>
-				<MetricCard icon={<ShoppingBag className="h-4 w-4" />} label="Compras" value={formatInt(account?.purchases ?? 0)} />
-				<MetricCard icon={<DollarSign className="h-4 w-4" />} label="Receita" value={formatToMoney(account?.purchaseValue ?? 0)} />
-				<MetricCard icon={<UserPlus className="h-4 w-4" />} label="Leads" value={formatInt(account?.leads ?? 0)} />
-				<MetricCard icon={<Eye className="h-4 w-4" />} label="Impressões" value={formatInt(account?.impressions ?? 0)} />
-				<MetricCard icon={<MousePointerClick className="h-4 w-4" />} label="Cliques" value={formatInt(account?.clicks ?? 0)} />
-				<MetricCard icon={<TrendingUp className="h-4 w-4" />} label="CTR" value={account?.ctr != null ? `${account.ctr.toFixed(2)}%` : "—"} />
+				<MetricCard label="Investimento" value={formatToMoney(account?.spend ?? 0)} highlight />
+				<MetricCard label="ROAS" value={account?.purchaseRoas != null ? `${account.purchaseRoas.toFixed(2)}x` : "—"} highlight />
+				<MetricCard label="Compras" value={formatInt(account?.purchases ?? 0)} />
+				<MetricCard label="Receita" value={formatToMoney(account?.purchaseValue ?? 0)} />
+				<MetricCard label="Leads" value={formatInt(account?.leads ?? 0)} />
+				<MetricCard label="Impressões" value={formatInt(account?.impressions ?? 0)} />
+				<MetricCard label="Cliques" value={formatInt(account?.clicks ?? 0)} />
+				<MetricCard label="CTR" value={account?.ctr != null ? `${account.ctr.toFixed(2)}%` : "—"} />
 			</div>
 
-			<div className="flex w-full flex-col gap-2 rounded-xl border border-primary/10 p-3">
+			<div className="flex w-full flex-col gap-2 rounded-xl border border-border p-3">
 				<h2 className="text-sm font-bold text-primary">Investimento no período</h2>
 				{spendQuery.isLoading ? (
 					<div className="flex h-[240px] items-center justify-center">
@@ -252,14 +249,11 @@ function MetaAdsDashboard({ integrationId, since, until, libraryStatus, onLibrar
 	);
 }
 
-function MetricCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function MetricCard({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
 	return (
-		<div className="flex flex-col gap-1 rounded-xl border border-primary/10 bg-muted/30 p-3">
-			<div className="flex items-center gap-1 text-muted-foreground">
-				{icon}
-				<span className="text-[0.65rem] font-medium uppercase tracking-wide">{label}</span>
-			</div>
-			<span className="text-lg font-black text-primary">{value}</span>
+		<div className={cn("flex flex-col gap-1 rounded-xl border border-border p-3", highlight ? "bg-brand/10" : "bg-muted/30")}>
+			<span className="text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+			<span className="text-lg font-black tabular-nums text-foreground">{value}</span>
 		</div>
 	);
 }
@@ -278,7 +272,7 @@ function AdLibraryCard({
 		<button
 			type="button"
 			onClick={onClick}
-			className="flex w-full flex-col gap-2 rounded-xl border border-primary/10 bg-card p-3 text-left transition-colors hover:border-primary/30"
+			className="flex w-full flex-col gap-2 rounded-xl border border-border bg-card p-3 text-left transition-colors hover:border-primary/40"
 		>
 			<div className="flex items-start gap-2">
 				{ad.thumbnailUrl || ad.imageUrl ? (
@@ -289,21 +283,18 @@ function AdLibraryCard({
 						<Target className="h-5 w-5" />
 					</div>
 				)}
-				<div className="flex min-w-0 flex-col">
-					<span className="truncate text-sm font-bold text-primary">{ad.name}</span>
+				<div className="flex min-w-0 flex-col items-start gap-1">
+					<span className="truncate text-sm font-bold text-foreground">{ad.name}</span>
 					{ad.campaignName ? <span className="truncate text-xs text-muted-foreground">{ad.campaignName}</span> : null}
-					<span
-						className={cn(
-							"mt-1 w-fit rounded-full px-2 py-0.5 text-[0.6rem] font-bold uppercase",
-							isActive ? "bg-green-500/15 text-green-600" : "bg-gray-400/15 text-gray-500",
-						)}
-					>
-						{ad.effectiveStatus}
-					</span>
+					<Chip.Root variant={isActive ? "success" : "muted"} size="xs" shape="pill">
+						<Chip.Label caps weight="bold">
+							{ad.effectiveStatus}
+						</Chip.Label>
+					</Chip.Root>
 				</div>
 			</div>
 			{metrics ? (
-				<div className="grid grid-cols-3 gap-1 border-t border-primary/5 pt-2">
+				<div className="grid grid-cols-3 gap-1 border-t border-border pt-2">
 					<AdMetric label="Investido" value={formatToMoney(metrics.spend)} />
 					<AdMetric label="Compras" value={formatInt(metrics.purchases)} />
 					<AdMetric label="ROAS" value={metrics.purchaseRoas != null ? `${metrics.purchaseRoas.toFixed(2)}x` : "—"} />
@@ -316,30 +307,27 @@ function AdLibraryCard({
 function AdMetric({ label, value }: { label: string; value: string }) {
 	return (
 		<div className="flex flex-col">
-			<span className="text-[0.55rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
-			<span className="text-xs font-bold text-primary">{value}</span>
+			<span className="text-[0.55rem] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+			<span className="text-xs font-bold tabular-nums text-foreground">{value}</span>
 		</div>
 	);
 }
 
 function ConnectEmptyState() {
 	return (
-		<div className="flex w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-primary/20 p-10 text-center">
+		<div className="flex w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border p-10 text-center">
 			<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
 				<Target className="h-6 w-6" />
 			</div>
 			<div className="flex flex-col gap-1">
-				<h2 className="text-base font-bold text-primary">Conecte sua conta do Meta Ads</h2>
+				<h2 className="text-base font-bold text-foreground">Conecte sua conta do Meta Ads</h2>
 				<p className="max-w-md text-sm text-muted-foreground">
 					Visualize a performance dos seus anúncios, a biblioteca de criativos e prepare o terreno para conversões e públicos.
 				</p>
 			</div>
-			<a
-				href={CONNECT_URL}
-				className="mt-2 inline-flex items-center gap-2 rounded-lg bg-[#0866ff] px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90"
-			>
-				CONECTAR COM O META
-			</a>
+			<Button asChild className="mt-2">
+				<a href={CONNECT_URL}>Conectar com o Meta</a>
+			</Button>
 		</div>
 	);
 }

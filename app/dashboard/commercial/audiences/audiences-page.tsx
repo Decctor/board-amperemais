@@ -4,6 +4,7 @@ import type { TGetAudiencesOutputDefault } from "@/app/api/audiences/route";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
@@ -41,8 +42,8 @@ export default function AudiencesPage({ user: _user }: AudiencesPageProps) {
 		<div className="flex w-full flex-col gap-4 p-2 lg:p-4">
 			<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div className="flex flex-col gap-1">
-					<h1 className="flex items-center gap-2 text-xl font-black text-primary">
-						<Users className="h-5 w-5" /> PÚBLICOS
+					<h1 className="flex items-center gap-2 text-xl font-black tracking-tight text-foreground">
+						<Users className="h-5 w-5 text-primary" /> Públicos
 					</h1>
 					<p className="text-sm text-muted-foreground">Transforme suas segmentações em públicos (Custom Audiences) na Meta.</p>
 				</div>
@@ -57,7 +58,7 @@ export default function AudiencesPage({ user: _user }: AudiencesPageProps) {
 			</div>
 
 			{list.length === 0 ? (
-				<div className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-primary/20 p-10 text-center">
+				<div className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border p-10 text-center">
 					<Users className="h-8 w-8 text-muted-foreground" />
 					<p className="text-sm text-muted-foreground">Nenhum público ainda. Crie o primeiro a partir das suas segmentações RFM.</p>
 				</div>
@@ -83,10 +84,10 @@ export default function AudiencesPage({ user: _user }: AudiencesPageProps) {
 	);
 }
 
-const STATUS_STYLES: Record<string, string> = {
-	SINCRONIZADO: "bg-green-500/15 text-green-600",
-	PENDENTE: "bg-amber-500/15 text-amber-600",
-	ERRO: "bg-red-500/15 text-red-600",
+const STATUS_CHIP_VARIANT: Record<string, "success" | "muted" | "destructive"> = {
+	SINCRONIZADO: "success",
+	PENDENTE: "muted",
+	ERRO: "destructive",
 };
 
 function AudienceCard({
@@ -122,10 +123,10 @@ function AudienceCard({
 	const busy = connectMutation.isPending || syncMutation.isPending || disconnectMutation.isPending || deleteMutation.isPending;
 
 	return (
-		<div className="flex w-full flex-col gap-3 rounded-xl border border-primary/10 bg-card p-4">
+		<div className="flex w-full flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
 			<div className="flex items-start justify-between gap-2">
 				<div className="flex min-w-0 flex-col">
-					<h2 className="truncate text-base font-bold text-primary">{audience.nome}</h2>
+					<h2 className="truncate text-base font-bold text-foreground">{audience.nome}</h2>
 					{audience.descricao ? <p className="truncate text-xs text-muted-foreground">{audience.descricao}</p> : null}
 				</div>
 				<div className="flex shrink-0 items-center gap-1">
@@ -141,7 +142,7 @@ function AudienceCard({
 						disabled={busy}
 						title="Remover"
 					>
-						<Trash2 className="h-4 w-4 text-red-500" />
+						<Trash2 className="h-4 w-4 text-destructive" />
 					</Button>
 				</div>
 			</div>
@@ -149,26 +150,28 @@ function AudienceCard({
 			{audience.segmentacoes.length > 0 ? (
 				<div className="flex flex-wrap gap-1">
 					{audience.segmentacoes.map((segment) => (
-						<span key={segment} className="rounded-full bg-muted px-2 py-0.5 text-[0.6rem] font-bold uppercase text-foreground/70">
-							{segment}
-						</span>
+						<Chip.Root key={segment} variant="muted" size="xs" shape="pill">
+							<Chip.Label caps weight="bold">
+								{segment}
+							</Chip.Label>
+						</Chip.Root>
 					))}
 				</div>
 			) : null}
 
-			<div className="flex flex-col gap-2 border-t border-primary/5 pt-2">
+			<div className="flex flex-col border-t border-border">
 				{audience.destinos.map((destino) => (
-					<div key={destino.id} className="flex flex-col gap-1 rounded-lg bg-muted/30 p-2">
+					<div key={destino.id} className="flex flex-col gap-1 border-b border-border py-2.5 last:border-b-0">
 						<div className="flex items-center justify-between gap-2">
-							<span className="truncate text-xs font-bold text-foreground/80">{accountName(destino.integracaoId)}</span>
-							<span
-								className={cn("rounded-full px-2 py-0.5 text-[0.55rem] font-bold uppercase", STATUS_STYLES[destino.status] ?? "bg-muted text-foreground/60")}
-							>
-								{destino.status}
-							</span>
+							<span className="truncate text-xs font-bold text-foreground">{accountName(destino.integracaoId)}</span>
+							<Chip.Root variant={STATUS_CHIP_VARIANT[destino.status] ?? "muted"} size="xs" shape="pill">
+								<Chip.Label caps weight="bold">
+									{destino.status}
+								</Chip.Label>
+							</Chip.Root>
 						</div>
 						<div className="flex items-center justify-between gap-2">
-							<span className="text-[0.65rem] text-muted-foreground">
+							<span className="text-[0.65rem] tabular-nums text-muted-foreground">
 								{new Intl.NumberFormat("pt-BR").format(destino.qtdeEnviada)} enviados
 								{destino.ultimaSincronizacao ? ` · ${formatDateAsLocale(destino.ultimaSincronizacao)}` : ""}
 							</span>
@@ -181,12 +184,12 @@ function AudienceCard({
 								</Button>
 							</div>
 						</div>
-						{destino.ultimoErro ? <span className="text-[0.6rem] italic text-red-500">{destino.ultimoErro}</span> : null}
+						{destino.ultimoErro ? <span className="text-[0.6rem] italic text-destructive">{destino.ultimoErro}</span> : null}
 					</div>
 				))}
 
 				{availableAccounts.length > 0 ? (
-					<div className="flex items-center gap-2">
+					<div className="flex items-center gap-2 pt-2.5">
 						<Select value={selectedAccountId ?? undefined} onValueChange={setSelectedAccountId}>
 							<SelectTrigger className="h-8 flex-1 text-xs">
 								<SelectValue placeholder="Conectar ao Meta Ads..." />
@@ -211,7 +214,7 @@ function AudienceCard({
 						</Button>
 					</div>
 				) : accounts.length === 0 ? (
-					<span className="text-[0.65rem] italic text-muted-foreground">Conecte uma conta do Meta Ads para publicar este público.</span>
+					<span className="pt-2.5 text-[0.65rem] italic text-muted-foreground">Conecte uma conta do Meta Ads para publicar este público.</span>
 				) : null}
 			</div>
 		</div>

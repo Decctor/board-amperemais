@@ -10,7 +10,7 @@ import { useMetaAdsAdDetail } from "@/lib/queries/meta-ads";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Area, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
 
-const SPEND_CHART_CONFIG = { spend: { label: "Investimento", color: "hsl(217 91% 60%)" } } as const;
+const SPEND_CHART_CONFIG = { spend: { label: "Investimento", color: "#ffb900" } } as const;
 
 function formatInt(value: number) {
 	return new Intl.NumberFormat("pt-BR").format(Math.round(value));
@@ -84,9 +84,9 @@ export function MetaAdDetailModal({ ad, integrationId, since, until, closeModal 
 
 function Metric({ label, value }: { label: string; value: string }) {
 	return (
-		<div className="flex flex-col rounded-lg border border-primary/10 bg-muted/40 p-2">
-			<span className="text-[0.6rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
-			<span className="text-sm font-bold text-primary">{value}</span>
+		<div className="flex flex-col rounded-lg border border-border bg-muted/40 p-2">
+			<span className="text-[0.6rem] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+			<span className="text-sm font-bold tabular-nums text-foreground">{value}</span>
 		</div>
 	);
 }

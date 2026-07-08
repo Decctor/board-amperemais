@@ -75,7 +75,7 @@ export function MetaCapiSettingsModal({
 						placeholder="Opcional — TEST12345 (só para validação)"
 						handleChange={setTestEventCode}
 					/>
-					<div className="flex items-center justify-between rounded-lg border border-primary/10 p-3">
+					<div className="flex items-center justify-between rounded-lg border border-border p-3">
 						<div className="flex flex-col">
 							<span className="text-sm font-medium text-foreground/80">Enviar conversões de vendas</span>
 							<span className="text-xs text-muted-foreground">Dispara o evento Purchase para cada venda (PDV, loja e ERP).</span>

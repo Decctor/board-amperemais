@@ -88,10 +88,10 @@ export function AudienceFormModal({ audience, closeModal, onSaved }: AudienceFor
 										type="button"
 										onClick={() => toggleSegment(segment)}
 										className={cn(
-											"rounded-full border px-3 py-1 text-xs font-bold transition-colors",
+											"rounded-full border px-3 py-1 text-[0.7rem] font-bold uppercase tracking-tight transition-colors",
 											active
 												? "border-primary bg-primary text-primary-foreground"
-												: "border-primary/20 bg-transparent text-foreground/70 hover:border-primary/40",
+												: "border-border bg-transparent text-muted-foreground hover:border-primary/40",
 										)}
 									>
 										{segment}
@@ -104,14 +104,14 @@ export function AudienceFormModal({ audience, closeModal, onSaved }: AudienceFor
 						) : null}
 					</div>
 
-					<div className="flex items-center gap-2 rounded-lg border border-primary/10 bg-muted/30 p-3">
-						<Users className="h-4 w-4 text-muted-foreground" />
-						<span className="text-sm text-foreground/80">
+					<div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
+						<Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+						<span className="text-sm text-muted-foreground">
 							{previewQuery.isFetching ? (
 								"Calculando prévia..."
 							) : previewQuery.data ? (
 								<>
-									<b className="text-primary">{new Intl.NumberFormat("pt-BR").format(previewQuery.data.totalClients)}</b> clientes no público
+									<b className="tabular-nums text-foreground">{new Intl.NumberFormat("pt-BR").format(previewQuery.data.totalClients)}</b> clientes no público
 								</>
 							) : (
 								"Selecione segmentações para ver a prévia"
