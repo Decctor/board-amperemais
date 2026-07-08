@@ -167,6 +167,13 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				items: null,
 				checkAccess: () => true,
 			},
+			{
+				title: "Públicos",
+				url: "/dashboard/commercial/audiences",
+				icon: <UsersRound className="w-4 h-4" />,
+				items: null,
+				checkAccess: () => true,
+			},
 		],
 	},
 

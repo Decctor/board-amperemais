@@ -5,6 +5,7 @@ import { canManageIntegrations, canViewIntegrations } from "@/lib/integrations/m
 import { CreateAudienceInputSchema, UpdateAudienceInputSchema } from "@/schemas/audiences";
 import { db } from "@/services/drizzle";
 import { audienceDestinations, audiences } from "@/services/drizzle/schema";
+import type { TAudienceDestinationEntity, TAudienceEntity } from "@/services/drizzle/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -23,8 +24,10 @@ const GetAudiencesInputSchema = z.object({
 });
 export type TGetAudiencesInput = z.infer<typeof GetAudiencesInputSchema>;
 
-async function attachDestinations<T extends { id: string }>(rows: T[]) {
-	if (rows.length === 0) return rows.map((row) => ({ ...row, destinos: [] as (typeof audienceDestinations.$inferSelect)[] }));
+type TAudienceWithDestinations = TAudienceEntity & { destinos: TAudienceDestinationEntity[] };
+
+async function attachDestinations(rows: TAudienceEntity[]): Promise<TAudienceWithDestinations[]> {
+	if (rows.length === 0) return [];
 	const destinos = await db
 		.select()
 		.from(audienceDestinations)
@@ -34,7 +37,7 @@ async function attachDestinations<T extends { id: string }>(rows: T[]) {
 				rows.map((row) => row.id),
 			),
 		);
-	const byAudience = new Map<string, (typeof audienceDestinations.$inferSelect)[]>();
+	const byAudience = new Map<string, TAudienceDestinationEntity[]>();
 	for (const destino of destinos) {
 		const list = byAudience.get(destino.audienciaId) ?? [];
 		list.push(destino);
@@ -48,12 +51,12 @@ async function getAudiences({ input, organizacaoId }: { input: TGetAudiencesInpu
 		const found = await db.query.audiences.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.id, input.id as string), eq(fields.organizacaoId, organizacaoId)),
 		});
-		const byId = found ? (await attachDestinations([found]))[0] : null;
-		return { data: { byId, default: null as Awaited<ReturnType<typeof attachDestinations>> | null }, message: "Público buscado com sucesso." };
+		const byId = found ? ((await attachDestinations([found]))[0] as TAudienceWithDestinations) : null;
+		return { data: { byId, default: null as TAudienceWithDestinations[] | null }, message: "Público buscado com sucesso." };
 	}
 	const rows = await db.select().from(audiences).where(eq(audiences.organizacaoId, organizacaoId)).orderBy(desc(audiences.dataInsercao));
 	const withDestinations = await attachDestinations(rows);
-	return { data: { byId: null as (typeof withDestinations)[number] | null, default: withDestinations }, message: "Públicos buscados com sucesso." };
+	return { data: { byId: null as TAudienceWithDestinations | null, default: withDestinations }, message: "Públicos buscados com sucesso." };
 }
 export type TGetAudiencesOutput = Awaited<ReturnType<typeof getAudiences>>;
 export type TGetAudiencesOutputById = Exclude<TGetAudiencesOutput["data"]["byId"], null>;
