@@ -68,6 +68,17 @@ export async function metaGraphPost<T>(path: string, params: Record<string, stri
 	return parseMetaResponse<T>(response, `${path} (mutation)`);
 }
 
+export async function metaGraphDelete<T>(path: string, params: Record<string, string>, accessToken: string): Promise<T> {
+	const url = getMetaGraphUrl(path);
+	const body = new URLSearchParams(params);
+	const response = await fetch(url, {
+		method: "DELETE",
+		headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/x-www-form-urlencoded" },
+		body,
+	});
+	return parseMetaResponse<T>(response, `${path} (delete)`);
+}
+
 /** Segue `paging.next` da Graph API (a URL já inclui credenciais quando fornecida pela Meta). */
 export async function metaGraphGetByFullUrl<T>(nextUrl: string): Promise<T> {
 	const response = await fetch(nextUrl);
