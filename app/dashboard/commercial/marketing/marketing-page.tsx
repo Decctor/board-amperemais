@@ -2,22 +2,24 @@
 
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import { useOrgColors } from "@/components/Providers/OrgColorsProvider";
+import { StatEmptyState } from "@/components/SalesStats/StatEmptyState";
 import { Button } from "@/components/ui/button";
-import { Chip } from "@/components/ui/chip";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatToMoney } from "@/lib/formatting";
+import type { TMetaAdsLibraryAd } from "@/lib/integrations/meta/ads/types";
 import { useIntegrations } from "@/lib/queries/integrations";
 import { useMetaAdsInsights, useMetaAdsLibrary, useMetaAdsSpendSeries } from "@/lib/queries/meta-ads";
-import type { TMetaAdsLibraryAd } from "@/lib/integrations/meta/ads/types";
 import { cn } from "@/lib/utils";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { useQueryClient } from "@tanstack/react-query";
 import { Settings2, Target } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Area, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
 import { MetaAdDetailModal } from "./_components/MetaAdDetailModal";
 import { MetaCapiSettingsModal } from "./_components/MetaCapiSettingsModal";
+import { getMetaAdEffectiveStatusConfig } from "./_components/meta-ad-status";
 
 const PERIOD_OPTIONS = [
 	{ value: "7", label: "Últimos 7 dias" },
@@ -68,13 +70,6 @@ export default function MarketingPage({ user: _user }: MarketingPageProps) {
 
 	return (
 		<div className="flex w-full flex-col gap-4 p-2 lg:p-4">
-			<div className="flex w-full flex-col gap-1">
-				<h1 className="flex items-center gap-2 text-xl font-black tracking-tight text-foreground">
-					<Target className="h-5 w-5 text-primary" /> Meta Ads
-				</h1>
-				<p className="text-sm text-muted-foreground">Performance dos seus anúncios e biblioteca de criativos.</p>
-			</div>
-
 			{metaAccounts.length === 0 ? (
 				<ConnectEmptyState />
 			) : (
@@ -173,7 +168,7 @@ function MetaAdsDashboard({ integrationId, since, until, libraryStatus, onLibrar
 		return <ErrorComponent msg={accountQuery.error instanceof Error ? accountQuery.error.message : "Erro ao carregar métricas."} />;
 
 	return (
-		<div className="flex w-full flex-col gap-4">
+		<div className="flex w-full flex-col gap-2 py-2">
 			<div className="grid grid-cols-2 gap-2 md:grid-cols-4">
 				<MetricCard label="Investimento" value={formatToMoney(account?.spend ?? 0)} highlight />
 				<MetricCard label="ROAS" value={account?.purchaseRoas != null ? `${account.purchaseRoas.toFixed(2)}x` : "—"} highlight />
@@ -185,16 +180,18 @@ function MetaAdsDashboard({ integrationId, since, until, libraryStatus, onLibrar
 				<MetricCard label="CTR" value={account?.ctr != null ? `${account.ctr.toFixed(2)}%` : "—"} />
 			</div>
 
-			<div className="flex w-full flex-col gap-2 rounded-xl border border-border p-3">
-				<h2 className="text-sm font-bold text-primary">Investimento no período</h2>
+			<div className="bg-card border-border flex w-full flex-col gap-3 overflow-hidden rounded-xl border px-3 py-4 shadow-2xs">
+				<div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
+					<h1 className="text-xs font-medium tracking-tight uppercase">Investimento no período</h1>
+				</div>
 				{spendQuery.isLoading ? (
-					<div className="flex h-[240px] items-center justify-center">
+					<div className="flex h-[240px] w-full items-center justify-center sm:h-[280px] lg:h-full">
 						<LoadingComponent />
 					</div>
 				) : spendSeries.length > 0 ? (
-					<div className="flex h-[240px] w-full items-center justify-center">
-						<ChartContainer config={SPEND_CHART_CONFIG} className="aspect-auto h-[240px] w-full">
-							<ComposedChart data={spendSeries} margin={{ top: 8, right: 12, left: 12, bottom: 0 }}>
+					<div className="flex h-[240px] w-full min-w-0 items-center justify-center sm:h-[280px] lg:h-full lg:min-h-[280px]">
+						<ChartContainer config={SPEND_CHART_CONFIG} className="aspect-auto h-full w-full min-h-0 min-w-0">
+							<ComposedChart data={spendSeries} margin={{ top: 15, right: 15, left: 0, bottom: 0 }}>
 								<defs>
 									<linearGradient id="accountSpendGradient" x1="0" y1="0" x2="0" y2="1">
 										<stop offset="10%" stopColor="var(--color-spend)" stopOpacity={0.9} />
@@ -202,21 +199,38 @@ function MetaAdsDashboard({ integrationId, since, until, libraryStatus, onLibrar
 									</linearGradient>
 								</defs>
 								<CartesianGrid vertical={false} />
-								<XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} minTickGap={24} />
-								<YAxis orientation="left" tickFormatter={(value) => formatToMoney(Number(value))} stroke="var(--color-spend)" width={70} />
+								<XAxis
+									dataKey="date"
+									tickLine={false}
+									axisLine={false}
+									tickMargin={10}
+									minTickGap={24}
+									tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+								/>
+								<YAxis
+									orientation="left"
+									tickLine={false}
+									axisLine={false}
+									tickFormatter={(value) => formatToMoney(Number(value))}
+									stroke="var(--color-spend)"
+									width={70}
+									tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+								/>
 								<ChartTooltip cursor={false} content={<ChartTooltipContent />} />
 								<Area dataKey="spend" type="monotone" fill="url(#accountSpendGradient)" stroke="var(--color-spend)" />
 							</ComposedChart>
 						</ChartContainer>
 					</div>
 				) : (
-					<p className="py-8 text-center text-sm italic text-muted-foreground">Sem investimento no período.</p>
+					<div className="flex h-[240px] w-full items-center justify-center sm:h-[280px] lg:h-full">
+						<p className="text-sm text-muted-foreground">Nenhum investimento disponível para o período selecionado.</p>
+					</div>
 				)}
 			</div>
 
-			<div className="flex w-full flex-col gap-2">
-				<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-					<h2 className="text-sm font-bold text-primary">Biblioteca de anúncios</h2>
+			<div className="flex w-full flex-col gap-3">
+				<div className="flex w-full items-center justify-between gap-2 flex-wrap">
+					<h1 className="text-xs font-medium tracking-tight uppercase">Biblioteca de anúncios</h1>
 					<Select value={libraryStatus} onValueChange={(value) => onLibraryStatusChange(value as "all" | "active" | "paused")}>
 						<SelectTrigger className="w-full sm:w-[160px]">
 							<SelectValue />
@@ -232,13 +246,20 @@ function MetaAdsDashboard({ integrationId, since, until, libraryStatus, onLibrar
 				</div>
 
 				{libraryQuery.isLoading ? (
-					<LoadingComponent />
+					<div className="flex w-full items-center justify-center py-8">
+						<LoadingComponent />
+					</div>
 				) : libraryQuery.isError ? (
 					<ErrorComponent msg={libraryQuery.error instanceof Error ? libraryQuery.error.message : "Erro ao carregar a biblioteca."} />
 				) : (libraryQuery.data ?? []).length === 0 ? (
-					<p className="py-8 text-center text-sm italic text-muted-foreground">Nenhum anúncio encontrado.</p>
+					<StatEmptyState
+						className="min-h-[220px]"
+						icon={Target}
+						title="Nenhum anúncio encontrado"
+						description="Não há anúncios para o filtro selecionado. Ajuste o status ou conecte outra conta do Meta Ads."
+					/>
 				) : (
-					<div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
 						{(libraryQuery.data ?? []).map((ad) => (
 							<AdLibraryCard key={ad.id} ad={ad} metrics={adMetricsById.get(ad.id)} onClick={() => onSelectAd(ad)} />
 						))}
@@ -250,10 +271,18 @@ function MetaAdsDashboard({ integrationId, since, until, libraryStatus, onLibrar
 }
 
 function MetricCard({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+	const { colors } = useOrgColors();
 	return (
-		<div className={cn("flex flex-col gap-1 rounded-xl border border-border p-3", highlight ? "bg-brand/10" : "bg-muted/30")}>
-			<span className="text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
-			<span className="text-lg font-black tabular-nums text-foreground">{value}</span>
+		<div
+			className={cn(
+				"bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs",
+				highlight ? "ring-1 ring-brand/30" : null,
+			)}
+		>
+			<h1 className="text-xs font-medium tracking-tight uppercase">{label}</h1>
+			<span className="text-2xl font-bold tracking-tight tabular-nums" style={{ color: colors.secondary }}>
+				{value}
+			</span>
 		</div>
 	);
 }
@@ -267,48 +296,51 @@ function AdLibraryCard({
 	metrics?: { spend: number; purchases: number; purchaseValue: number; purchaseRoas: number | null };
 	onClick: () => void;
 }) {
-	const isActive = ad.effectiveStatus === "ACTIVE";
+	const status = getMetaAdEffectiveStatusConfig(ad.effectiveStatus);
+	const contextLine = [ad.campaignName, ad.adsetName].filter(Boolean).join(" · ");
+
 	return (
 		<button
 			type="button"
 			onClick={onClick}
-			className="flex w-full flex-col gap-2 rounded-xl border border-border bg-card p-3 text-left transition-colors hover:border-primary/40"
+			className={cn(
+				"group flex w-full flex-col gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-2xs",
+				"transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-sm",
+				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
+			)}
 		>
-			<div className="flex items-start gap-2">
+			<div className="flex items-start gap-3">
 				{ad.thumbnailUrl || ad.imageUrl ? (
 					// eslint-disable-next-line @next/next/no-img-element
-					<img src={ad.thumbnailUrl ?? ad.imageUrl} alt={ad.name} className="h-14 w-14 shrink-0 rounded-md object-cover" />
+					<img src={ad.thumbnailUrl ?? ad.imageUrl} alt={ad.name} className="h-16 w-16 shrink-0 rounded-xl object-cover ring-1 ring-border" />
 				) : (
-					<div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+					<div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground ring-1 ring-border">
 						<Target className="h-5 w-5" />
 					</div>
 				)}
-				<div className="flex min-w-0 flex-col items-start gap-1">
-					<span className="truncate text-sm font-bold text-foreground">{ad.name}</span>
-					{ad.campaignName ? <span className="truncate text-xs text-muted-foreground">{ad.campaignName}</span> : null}
-					<Chip.Root variant={isActive ? "success" : "muted"} size="xs" shape="pill">
-						<Chip.Label caps weight="bold">
-							{ad.effectiveStatus}
-						</Chip.Label>
-					</Chip.Root>
+				<div className="flex min-w-0 flex-1 flex-col gap-1.5">
+					<div className="flex items-start justify-between gap-2">
+						<span className="line-clamp-2 text-sm font-bold leading-snug tracking-tight text-foreground">{ad.name}</span>
+						<span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold", status.className)}>{status.label}</span>
+					</div>
+					{contextLine ? <span className="truncate text-xs text-muted-foreground">{contextLine}</span> : null}
 				</div>
 			</div>
-			{metrics ? (
-				<div className="grid grid-cols-3 gap-1 border-t border-border pt-2">
-					<AdMetric label="Investido" value={formatToMoney(metrics.spend)} />
-					<AdMetric label="Compras" value={formatInt(metrics.purchases)} />
-					<AdMetric label="ROAS" value={metrics.purchaseRoas != null ? `${metrics.purchaseRoas.toFixed(2)}x` : "—"} />
-				</div>
-			) : null}
+
+			<div className="grid grid-cols-3 gap-2 border-t border-border pt-3">
+				<AdMetric label="Investido" value={formatToMoney(metrics?.spend ?? 0)} />
+				<AdMetric label="Compras" value={formatInt(metrics?.purchases ?? 0)} />
+				<AdMetric label="ROAS" value={metrics?.purchaseRoas != null ? `${metrics.purchaseRoas.toFixed(2)}x` : "—"} />
+			</div>
 		</button>
 	);
 }
 
 function AdMetric({ label, value }: { label: string; value: string }) {
 	return (
-		<div className="flex flex-col">
-			<span className="text-[0.55rem] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
-			<span className="text-xs font-bold tabular-nums text-foreground">{value}</span>
+		<div className="flex flex-col gap-0.5">
+			<span className="text-[0.65rem] font-bold tracking-tight uppercase text-muted-foreground">{label}</span>
+			<span className="text-sm font-bold tabular-nums tracking-tight text-foreground">{value}</span>
 		</div>
 	);
 }
@@ -326,7 +358,7 @@ function ConnectEmptyState() {
 				</p>
 			</div>
 			<Button asChild className="mt-2">
-				<a href={CONNECT_URL}>Conectar com o Meta</a>
+				<a href={CONNECT_URL}>CONECTAR COM O META</a>
 			</Button>
 		</div>
 	);

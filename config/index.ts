@@ -689,9 +689,7 @@ export const AppSubscriptionPlans: {
 // possível — plano ESCALA + consultoria (Gestor de Crescimento) — para que upgrade,
 // downgrade ou adição da consultoria nunca exijam reautorização do débito no banco.
 // PIX Automático só se aplica ao ciclo mensal (payment_schedule "monthly").
-export const PIX_MANDATE_MAX_AMOUNT_CENTS = Math.round(
-	(AppSubscriptionPlans.ESCALA.pricing.monthly.price + CONSULTORIA_ADDON.monthlyPrice) * 100,
-);
+export const PIX_MANDATE_MAX_AMOUNT_CENTS = Math.round((AppSubscriptionPlans.ESCALA.pricing.monthly.price + CONSULTORIA_ADDON.monthlyPrice) * 100);
 
 export function getOrganizationAccessToRoute({ organizationPlan, path }: { organizationPlan: keyof typeof AppSubscriptionPlans; path: string }) {
 	const plan = AppSubscriptionPlans[organizationPlan];
@@ -760,6 +758,11 @@ export const AppRoutes = [
 		path: "/dashboard/commercial/audiences",
 		title: "Públicos",
 		description: "Painel de acompanhamento e gestão de públicos.",
+	},
+	{
+		path: "/dashboard/commercial/marketing",
+		title: "Marketing",
+		description: "Painel de acompanhamento e gestão de marketing.",
 	},
 	{
 		path: "/dashboard/team/sellers",

@@ -61,23 +61,23 @@ export function MetaCapiSettingsModal({
 		<Dialog open onOpenChange={(open) => !open && closeModal()}>
 			<DialogContent className="max-w-lg">
 				<DialogHeader>
-					<DialogTitle className="text-left text-base">Conversions API (CAPI)</DialogTitle>
+					<DialogTitle className="text-left text-base">API DE CONVERSÕES (CAPI)</DialogTitle>
 					<DialogDescription className="text-left">
-						Envie as compras do RecompraCRM direto para a Meta (server-side), melhorando a otimização com dados first-party.
+						Envie as compras do RecompraCRM direto para a Meta, melhorando a otimização com dados first-party.
 					</DialogDescription>
 				</DialogHeader>
 
 				<div className="flex w-full flex-col gap-3">
 					<TextInput label="ID do Pixel / Dataset" value={pixelId} placeholder="Ex.: 1234567890" handleChange={setPixelId} />
 					<TextInput
-						label="Código de teste (Events Manager)"
+						label="CÓDIGO DE TESTE (Events Manager)"
 						value={testEventCode}
 						placeholder="Opcional — TEST12345 (só para validação)"
 						handleChange={setTestEventCode}
 					/>
 					<div className="flex items-center justify-between rounded-lg border border-border p-3">
 						<div className="flex flex-col">
-							<span className="text-sm font-medium text-foreground/80">Enviar conversões de vendas</span>
+							<span className="text-sm font-medium text-foreground/80">ENVIAR CONVERSÕES DE VENDAS</span>
 							<span className="text-xs text-muted-foreground">Dispara o evento Purchase para cada venda (PDV, loja e ERP).</span>
 						</div>
 						<Switch checked={purchaseEnabled} onCheckedChange={setPurchaseEnabled} />
@@ -86,10 +86,10 @@ export function MetaCapiSettingsModal({
 
 				<DialogFooter>
 					<Button variant="ghost" onClick={closeModal} disabled={isPending}>
-						Cancelar
+						CANCELAR
 					</Button>
 					<Button onClick={handleSave} disabled={isPending}>
-						{isPending ? "Salvando..." : "Salvar"}
+						{isPending ? "SALVANDO..." : "SALVAR"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

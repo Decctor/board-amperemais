@@ -1,14 +1,16 @@
 "use client";
 
-import type { TMetaAdsLibraryAd } from "@/lib/integrations/meta/ads/types";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/errors";
 import { formatToMoney } from "@/lib/formatting";
+import type { TMetaAdsLibraryAd } from "@/lib/integrations/meta/ads/types";
 import { useMetaAdsAdDetail } from "@/lib/queries/meta-ads";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { cn } from "@/lib/utils";
 import { Area, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
+import { getMetaAdEffectiveStatusConfig } from "./meta-ad-status";
 
 const SPEND_CHART_CONFIG = { spend: { label: "Investimento", color: "#ffb900" } } as const;
 
@@ -26,6 +28,7 @@ type MetaAdDetailModalProps = {
 
 export function MetaAdDetailModal({ ad, integrationId, since, until, closeModal }: MetaAdDetailModalProps) {
 	const { data: detail, isLoading, isError, error } = useMetaAdsAdDetail({ adId: ad.id, integrationId, since, until });
+	const status = getMetaAdEffectiveStatusConfig(ad.effectiveStatus);
 
 	const daily = (detail?.daily ?? []).map((point) => ({ date: point.date.slice(5), spend: point.spend }));
 
@@ -34,9 +37,9 @@ export function MetaAdDetailModal({ ad, integrationId, since, until, closeModal 
 			<DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle className="text-left text-base">{ad.name}</DialogTitle>
-					<DialogDescription className="text-left">
-						{ad.campaignName ? `${ad.campaignName} · ` : ""}
-						{ad.effectiveStatus}
+					<DialogDescription className="flex flex-wrap items-center gap-2 text-left">
+						{ad.campaignName ? <span>{ad.campaignName}</span> : null}
+						<span className={cn("rounded-full px-2 py-0.5 text-[0.65rem] font-semibold", status.className)}>{status.label}</span>
 					</DialogDescription>
 				</DialogHeader>
 
