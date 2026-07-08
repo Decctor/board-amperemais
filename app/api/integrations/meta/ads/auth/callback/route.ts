@@ -84,16 +84,19 @@ function getSelectedMetaAdsAccounts(accounts: MetaAdAccount[], selectedTargetIds
 }
 
 function redirectWithError(redirectPath: string, message: string) {
+	console.error("[ERROR] [META_ADS_OAUTH] redirecionando com erro", { redirectPath, message });
 	const url = new URL(redirectPath, process.env.NEXT_PUBLIC_APP_URL);
 	url.searchParams.set("error", message);
 	return NextResponse.redirect(url);
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+	console.log("[META_ADS_OAUTH] callback iniciado", { url: request.nextUrl.pathname, hasCode: !!request.nextUrl.searchParams.get("code") });
 	const session = await getCurrentSessionUncached();
 	if (!session) return NextResponse.json({ error: "Você não está autenticado." }, { status: 401 });
 	const organizacaoId = session.membership?.organizacao.id;
 	if (!organizacaoId) return NextResponse.json({ error: "Você precisa estar vinculado a uma organização." }, { status: 400 });
+	console.log("[META_ADS_OAUTH] sessão ok", { organizacaoId, userId: session.user.id });
 
 	const cookieStore = await cookies();
 	const code = request.nextUrl.searchParams.get("code");
@@ -103,6 +106,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 	const redirectPath = consumeOAuthRedirect(cookieStore, META_ADS_OAUTH_REDIRECT_COOKIE_NAME, FALLBACK_REDIRECT);
 
 	if (!code || !state || !storedState || state !== storedState) {
+		console.error("[ERROR] [META_ADS_OAUTH] validação de state falhou", { hasCode: !!code, hasState: !!state, hasStoredState: !!storedState, stateMatches: state === storedState });
 		return redirectWithError(redirectPath, "Estado OAuth inválido. Tente conectar novamente.");
 	}
 
@@ -119,7 +123,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 	shortTokenUrl.searchParams.set("client_secret", clientSecret);
 	shortTokenUrl.searchParams.set("code", code);
 	const shortToken = await fetchMetaJson<MetaTokenResponse>(shortTokenUrl);
-	if ("error" in shortToken || !shortToken.access_token) return redirectWithError(redirectPath, "Falha ao autenticar com a Meta.");
+	if ("error" in shortToken || !shortToken.access_token) {
+		console.error("[ERROR] [META_ADS_OAUTH] troca code->short token falhou", { redirectUri });
+		return redirectWithError(redirectPath, "Falha ao autenticar com a Meta.");
+	}
 
 	// 2. short -> long-lived token.
 	const longTokenUrl = buildGraphUrl("/oauth/access_token");
@@ -137,15 +144,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 	debugUrl.searchParams.set("access_token", `${clientId}|${clientSecret}`);
 	const debugData = await fetchMetaJson<MetaDebugTokenResponse>(debugUrl);
 	if ("error" in debugData || !debugData.data?.is_valid || !debugData.data.user_id) {
+		console.error("[ERROR] [META_ADS_OAUTH] debug_token inválido", { isValid: "error" in debugData ? undefined : debugData.data?.is_valid, hasUserId: "error" in debugData ? undefined : !!debugData.data?.user_id });
 		return redirectWithError(redirectPath, "Token da Meta inválido.");
 	}
 	const tokenData = debugData.data;
 	const metaUserId = tokenData.user_id as string;
 	const scopes = tokenData.scopes ?? [];
+	console.log("[META_ADS_OAUTH] token válido", { metaUserId, scopes, granularScopes: tokenData.granular_scopes });
 	const missingScopes = META_ADS_SCOPES.filter((scope) => !scopes.includes(scope));
 	if (missingScopes.length > 0) return redirectWithError(redirectPath, `Permissões Meta ausentes: ${missingScopes.join(", ")}.`);
 
 	const selectedTargetIds = getSelectedMetaAdsTargetIds(tokenData);
+	console.log("[META_ADS_OAUTH] target ids selecionados", { count: selectedTargetIds.size, targetIds: [...selectedTargetIds] });
 	if (selectedTargetIds.size === 0) return redirectWithError(redirectPath, "Nenhuma conta de anúncios selecionada na autorização.");
 
 	// 4. Contas acessíveis e cruzamento com as selecionadas.
@@ -154,7 +164,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 	accountsUrl.searchParams.set("limit", "100");
 	const accountsResult = await fetchMetaJson<MetaAdAccountsResponse>(accountsUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
 	if ("error" in accountsResult) return redirectWithError(redirectPath, "Falha ao listar contas de anúncios da Meta.");
+	console.log("[META_ADS_OAUTH] contas retornadas pela Meta", {
+		total: accountsResult.data?.length ?? 0,
+		accounts: (accountsResult.data ?? []).map((a) => ({ id: a.id, account_id: a.account_id, name: a.name, businessId: a.business?.id })),
+	});
 	const accounts = getSelectedMetaAdsAccounts(accountsResult.data ?? [], selectedTargetIds);
+	console.log("[META_ADS_OAUTH] contas após cruzamento com seleção", { count: accounts.length, ids: accounts.map((a) => a.id) });
 	if (accounts.length === 0) return redirectWithError(redirectPath, "Nenhuma conta selecionada está acessível para este usuário Meta.");
 
 	// 5. Uma linha `integrations` por conta selecionada (dedup por refExterno já existente).
@@ -162,11 +177,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, organizacaoId), eq(fields.tipo, "META_ADS")),
 	});
 	const existingRefs = new Set(existing.map((integration) => integration.refExterno).filter(Boolean));
+	console.log("[META_ADS_OAUTH] integrações META_ADS já existentes", { count: existing.length, refs: [...existingRefs] });
 
 	const newIntegrations: TNewIntegrationEntity[] = accounts.flatMap((account) => {
 		const adAccountId = normalizeAdAccountId(account);
 		const adAccountNumericId = account.account_id ?? adAccountId?.replace(/^act_/, "");
-		if (!adAccountId || !adAccountNumericId || !account.name || existingRefs.has(adAccountId)) return [];
+		if (!adAccountId || !adAccountNumericId || !account.name || existingRefs.has(adAccountId)) {
+			console.log("[META_ADS_OAUTH] conta ignorada", {
+				id: account.id,
+				name: account.name,
+				adAccountId,
+				motivo: !adAccountId ? "sem adAccountId" : !adAccountNumericId ? "sem numericId" : !account.name ? "sem nome" : "já existe (dedup)",
+			});
+			return [];
+		}
 		return [
 			{
 				organizacaoId,
@@ -194,7 +218,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 		];
 	});
 
+	console.log("[META_ADS_OAUTH] integrações a inserir", { count: newIntegrations.length, refs: newIntegrations.map((i) => i.refExterno) });
 	if (newIntegrations.length > 0) await db.insert(integrations).values(newIntegrations);
+	else console.warn("[META_ADS_OAUTH] nenhuma integração nova para inserir — redirecionando como sucesso mesmo assim");
 
 	const successUrl = new URL(redirectPath, process.env.NEXT_PUBLIC_APP_URL);
 	successUrl.searchParams.set("connected", "meta-ads");

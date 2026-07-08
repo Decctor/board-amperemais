@@ -3,7 +3,7 @@ import type { TMetaAdsIntegrationConfig } from "@/schemas/integrations";
 export const META_GRAPH_API_VERSION = "v25.0";
 // ads_read: ler insights/biblioteca. ads_management + business_management: CAPI-write e Custom
 // Audiences (Fases 2/3) — pedidos já na conexão inicial para não exigir reconsent.
-export const META_ADS_SCOPES = ["ads_read", "ads_management", "business_management"] as const;
+export const META_ADS_SCOPES = ["public_profile", "ads_read", "ads_management", "business_management"] as const;
 
 export type TMetaAdsActionStat = {
 	action_type?: string;
