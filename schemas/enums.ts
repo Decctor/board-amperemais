@@ -290,7 +290,7 @@ export type TDeliveryModeEnum = z.infer<typeof DeliveryModeEnum>;
 export const PurchaseStatusEnum = z.enum(["RASCUNHO", "CONFIRMADA", "RECEBIMENTO_PARCIAL", "RECEBIDA", "CANCELADA"]);
 export type TPurchaseStatusEnum = z.infer<typeof PurchaseStatusEnum>;
 
-export const FiscalProviderEnum = z.enum(["MANUAL", "NUVEM_FISCAL"]);
+export const FiscalProviderEnum = z.enum(["MANUAL", "SPEDY"]);
 export type TFiscalProviderEnum = z.infer<typeof FiscalProviderEnum>;
 
 export const PaymentProviderEnum = z.enum(["LOCAL", "MERCADO_PAGO", "STRIPE_CONNECT", "PAGARME"]);

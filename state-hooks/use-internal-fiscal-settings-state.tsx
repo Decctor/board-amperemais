@@ -5,33 +5,71 @@ import { z } from "zod";
 import { useCallback, useState } from "react";
 
 const InternalFiscalSettingsStateSchema = z.object({
-	fiscalProvedor: z.enum(["MANUAL", "NUVEM_FISCAL"]).default("MANUAL"),
+	fiscalProvedor: z.enum(["MANUAL", "SPEDY"]).default("SPEDY"),
 	fiscalEmissaoAutomatica: z.boolean().default(false),
 	fiscalConfiguracao: OrganizationFiscalConfigSchema,
 });
 
 type TInternalFiscalSettingsState = z.infer<typeof InternalFiscalSettingsStateSchema>;
 
+const DEFAULT_FISCAL_CONFIG = OrganizationFiscalConfigSchema.parse({
+	nomeRazaoSocial: "",
+	cpfCnpj: "",
+	endereco: {
+		logradouro: "",
+		numero: "",
+		bairro: "",
+		codigoMunicipio: "",
+		cidade: "",
+		uf: "",
+		cep: "",
+	},
+	regimeTributario: 1,
+});
+
+function normalizeFiscalConfig(config?: Partial<TInternalFiscalSettingsState["fiscalConfiguracao"]> | null) {
+	const existingConfig = config ?? {};
+	const existingSpedy = (existingConfig.spedy ?? {}) as Partial<TInternalFiscalSettingsState["fiscalConfiguracao"]["spedy"]>;
+
+	return OrganizationFiscalConfigSchema.parse({
+		...DEFAULT_FISCAL_CONFIG,
+		...existingConfig,
+		endereco: {
+			...DEFAULT_FISCAL_CONFIG.endereco,
+			...existingConfig.endereco,
+		},
+		spedy: {
+			...DEFAULT_FISCAL_CONFIG.spedy,
+			...existingSpedy,
+			api: {
+				...DEFAULT_FISCAL_CONFIG.spedy.api,
+				...existingSpedy.api,
+			},
+			certificado: {
+				...DEFAULT_FISCAL_CONFIG.spedy.certificado,
+				...existingSpedy.certificado,
+			},
+			nfce: {
+				...DEFAULT_FISCAL_CONFIG.spedy.nfce,
+				...existingSpedy.nfce,
+			},
+			nfe: {
+				...DEFAULT_FISCAL_CONFIG.spedy.nfe,
+				...existingSpedy.nfe,
+			},
+		},
+		operacaoPadraoPorTipo: {
+			...DEFAULT_FISCAL_CONFIG.operacaoPadraoPorTipo,
+			...existingConfig.operacaoPadraoPorTipo,
+		},
+	});
+}
+
 export function useInternalFiscalSettingsState({ initialState }: { initialState: Partial<TInternalFiscalSettingsState> }) {
 	const [state, setState] = useState<TInternalFiscalSettingsState>({
-		fiscalProvedor: initialState.fiscalProvedor ?? "MANUAL",
+		fiscalProvedor: initialState.fiscalProvedor ?? "SPEDY",
 		fiscalEmissaoAutomatica: initialState.fiscalEmissaoAutomatica ?? false,
-		fiscalConfiguracao:
-			initialState.fiscalConfiguracao ??
-			OrganizationFiscalConfigSchema.parse({
-				nomeRazaoSocial: "",
-				cpfCnpj: "",
-				endereco: {
-					logradouro: "",
-					numero: "",
-					bairro: "",
-					codigoMunicipio: "",
-					cidade: "",
-					uf: "",
-					cep: "",
-				},
-				regimeTributario: 1,
-			}),
+		fiscalConfiguracao: normalizeFiscalConfig(initialState.fiscalConfiguracao),
 	});
 
 	const updateSettings = useCallback((patch: Partial<TInternalFiscalSettingsState>) => {
@@ -41,37 +79,27 @@ export function useInternalFiscalSettingsState({ initialState }: { initialState:
 	const updateFiscalConfig = useCallback((patch: Partial<TInternalFiscalSettingsState["fiscalConfiguracao"]>) => {
 		setState((prev) => ({
 			...prev,
-			fiscalConfiguracao: {
+			fiscalConfiguracao: normalizeFiscalConfig({
 				...prev.fiscalConfiguracao,
 				...patch,
-			},
+			}),
 		}));
 	}, []);
 
 	const redefineState = useCallback((nextState: Partial<TInternalFiscalSettingsState>) => {
-		setState((prev) => ({ ...prev, ...nextState }));
+		setState((prev) => ({
+			...prev,
+			...nextState,
+			fiscalConfiguracao:
+				nextState.fiscalConfiguracao !== undefined ? normalizeFiscalConfig(nextState.fiscalConfiguracao) : prev.fiscalConfiguracao,
+		}));
 	}, []);
 
 	const resetState = useCallback(() => {
 		setState({
-			fiscalProvedor: initialState.fiscalProvedor ?? "MANUAL",
+			fiscalProvedor: initialState.fiscalProvedor ?? "SPEDY",
 			fiscalEmissaoAutomatica: initialState.fiscalEmissaoAutomatica ?? false,
-			fiscalConfiguracao:
-				initialState.fiscalConfiguracao ??
-				OrganizationFiscalConfigSchema.parse({
-					nomeRazaoSocial: "",
-					cpfCnpj: "",
-					endereco: {
-						logradouro: "",
-						numero: "",
-						bairro: "",
-						codigoMunicipio: "",
-						cidade: "",
-						uf: "",
-						cep: "",
-					},
-					regimeTributario: 1,
-				}),
+			fiscalConfiguracao: normalizeFiscalConfig(initialState.fiscalConfiguracao),
 		});
 	}, [initialState.fiscalConfiguracao, initialState.fiscalEmissaoAutomatica, initialState.fiscalProvedor]);
 

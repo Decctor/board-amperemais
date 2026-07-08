@@ -109,6 +109,9 @@ export type TDownloadFiscalAssetInput = {
 export type TProviderCompanySyncResult = {
 	cpfCnpj: string;
 	sincronizado: boolean;
+	companyId?: string | null;
+	companyApiKey?: string | null;
+	provedorRetorno?: Record<string, unknown> | null;
 };
 
 export type TProviderCompanyCertificateSyncInput = {

@@ -3,8 +3,7 @@ import "@/utils/scripts/load-next-env";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { mapSaleContextToNfcePayload } from "@/lib/fiscal/providers/nuvem-fiscal/mappers/nfce";
-import { mapSaleContextToNfePayload } from "@/lib/fiscal/providers/nuvem-fiscal/mappers/nfe";
+import { mapSaleContextToSpedyInvoicePayload } from "@/lib/fiscal/providers/spedy/mappers/invoice";
 import { resolveAutoDocumentType } from "@/lib/fiscal/sale-fiscal-signals";
 import { findActiveFiscalSeries, loadFiscalOrganization } from "@/lib/fiscal/settings";
 import { computeSaleTaxation } from "@/lib/fiscal/taxation-context";
@@ -286,7 +285,7 @@ async function simulateSale({ venda, organizationId }: { venda: TFiscalSaleConte
 			tipoDocumento,
 			serie: context.serie.serie,
 		});
-		const payload = tipoDocumento === "NFCE" ? mapSaleContextToNfcePayload(context, documento) : mapSaleContextToNfePayload(context, documento);
+		const payload = mapSaleContextToSpedyInvoicePayload(context, documento);
 		const existingDocuments = await db.query.fiscalOutboundDocuments.findMany({
 			where: (fields, operators) => operators.and(operators.eq(fields.organizacaoId, organizationId), operators.eq(fields.vendaId, venda.id)),
 			orderBy: (fields, operators) => operators.desc(fields.dataInsercao),
@@ -343,7 +342,7 @@ async function simulateSale({ venda, organizationId }: { venda: TFiscalSaleConte
 			})),
 			erros: taxation.erros,
 			pagamentos: context.pagamentos,
-			payloadNuvemFiscalEmulado: payload,
+			payloadSpedyEmulado: payload,
 		};
 	} catch (error) {
 		return {

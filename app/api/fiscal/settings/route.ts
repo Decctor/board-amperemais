@@ -32,7 +32,7 @@ async function getFiscalSettingsRoute() {
 }
 
 const UpdateFiscalSettingsInputSchema = z.object({
-	fiscalProvedor: z.enum(["MANUAL", "NUVEM_FISCAL"]),
+	fiscalProvedor: z.enum(["MANUAL", "SPEDY"]),
 	fiscalEmissaoAutomatica: z.boolean(),
 	fiscalConfiguracao: OrganizationFiscalConfigSchema,
 });
@@ -43,7 +43,7 @@ async function updateFiscalSettings({ input }: { input: TUpdateFiscalSettingsInp
 
 	const updated = await updateFiscalSettingsData({
 		organizacaoId: orgId,
-		fiscalProvedor: "NUVEM_FISCAL",
+		fiscalProvedor: input.fiscalProvedor,
 		fiscalEmissaoAutomatica: input.fiscalEmissaoAutomatica,
 		fiscalConfiguracao: input.fiscalConfiguracao,
 	});

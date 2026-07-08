@@ -9,14 +9,15 @@ import type { TOrganizationFiscalConfig } from "@/schemas/fiscal";
  * a UI (exibir/ocultar o controle por venda) e evitar enfileirar documentos que a org não pode emitir.
  */
 export function isOrganizationAutoFiscalCapable(organization: {
-	fiscalProvedor: "MANUAL" | "NUVEM_FISCAL" | null | undefined;
+	fiscalProvedor: "MANUAL" | "SPEDY" | null | undefined;
 	fiscalConfiguracao: TOrganizationFiscalConfig | null | undefined;
 }): boolean {
-	if (organization.fiscalProvedor !== "NUVEM_FISCAL") return false;
+	if (organization.fiscalProvedor !== "SPEDY") return false;
 
 	const config = organization.fiscalConfiguracao;
-	if (!config?.nuvemFiscal?.nfce?.csc || !config.nuvemFiscal.nfce.idCsc) return false;
-	if (!config.nuvemFiscal?.certificado?.storagePath) return false;
+	if (!config?.spedy?.nfce?.csc || !config.spedy.nfce.tokenId) return false;
+	if (!config.spedy?.certificado?.storagePath) return false;
+	if (!config.spedy?.companyApiKey) return false;
 
 	return true;
 }

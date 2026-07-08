@@ -1,12 +1,12 @@
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
-import { NuvemFiscalProvider } from "./providers/nuvem-fiscal";
+import { SpedyFiscalProvider } from "./providers/spedy";
 import { ManualFiscalProvider } from "./providers/manual";
 import type { IFiscalProvider } from "./types";
 
 export function getFiscalProvider(organization: Pick<TOrganizationEntity, "fiscalProvedor">): IFiscalProvider {
 	switch (organization.fiscalProvedor) {
-		case "NUVEM_FISCAL":
-			return new NuvemFiscalProvider();
+		case "SPEDY":
+			return new SpedyFiscalProvider();
 		case "MANUAL":
 		case null:
 		case undefined:

@@ -89,7 +89,7 @@ export async function pollInboundDocuments({ organizationId }: { organizationId:
 	const organizacao = await loadFiscalOrganization(organizationId);
 	if (!organizacao?.fiscalConfiguracao?.cpfCnpj) return { novos: 0 };
 
-	const provider = resolveInboundProvider(organizacao.fiscalProvedor);
+	const provider = resolveInboundProvider();
 	const cursor = await getOrCreateCursor(organizationId);
 	let ultNSU = cursor.ultNSU;
 	let novos = 0;
@@ -152,7 +152,7 @@ export async function manifestInboundDocument({
 	const organizacao = await loadFiscalOrganization(organizationId);
 	if (!organizacao) throw new createHttpError.NotFound("Organizacao nao encontrada.");
 
-	const provider = resolveInboundProvider(organizacao.fiscalProvedor);
+	const provider = resolveInboundProvider();
 	const result = await provider.manifestarDocumento({ chaveAcesso: doc.chaveAcesso, evento, justificativa }, organizacao);
 	await db.update(fiscalInboundDocuments).set({ manifestacaoAtual: evento }).where(eq(fiscalInboundDocuments.id, doc.id));
 

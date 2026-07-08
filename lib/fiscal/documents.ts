@@ -9,7 +9,7 @@ import { formatValidationMessages, hasBlockingErrors, type TFiscalTaxGroupWithRu
 import { FiscalReadinessError } from "./errors";
 import { computeSaleTaxation } from "./taxation-context";
 import { ManualFiscalProvider } from "./providers/manual";
-import { NuvemFiscalProvider } from "./providers/nuvem-fiscal";
+import { SpedyFiscalProvider } from "./providers/spedy";
 import { findActiveFiscalSeries, loadFiscalOrganization, reserveFiscalSeriesNumber } from "./settings";
 import { resolveOperationProfileForSale } from "./operation-profile";
 import { downloadStoredFiscalAsset, getFiscalAssetContentType, storeFiscalAsset, type TFiscalAssetType } from "./storage";
@@ -26,8 +26,8 @@ import type {
 	TSyncDocumentInput,
 } from "./types";
 
-function resolveFiscalProvider(fiscalProvedor: "MANUAL" | "NUVEM_FISCAL" | null | undefined): IFiscalProvider {
-	return fiscalProvedor === "NUVEM_FISCAL" ? new NuvemFiscalProvider() : new ManualFiscalProvider();
+function resolveFiscalProvider(fiscalProvedor: "MANUAL" | "SPEDY" | string | null | undefined): IFiscalProvider {
+	return fiscalProvedor === "SPEDY" ? new SpedyFiscalProvider() : new ManualFiscalProvider();
 }
 
 function serializeJson(value: unknown) {
@@ -388,10 +388,13 @@ function assertFiscalReadiness(context: TFiscalSaleContext) {
 	if (!fiscalConfig.cpfCnpj) throw new FiscalReadinessError("CPF/CNPJ fiscal da organizacao nao configurado.");
 	if (!fiscalConfig.nomeRazaoSocial) throw new FiscalReadinessError("Razao social fiscal da organizacao nao configurada.");
 
-	// CSC/ID CSC sao credenciais da emissao via provedor; no provedor MANUAL nao ha envio.
-	if (context.operacao.tipoDocumento === "NFCE" && context.organizacao.fiscalProvedor === "NUVEM_FISCAL") {
-		if (!fiscalConfig.nuvemFiscal?.nfce?.csc) throw new FiscalReadinessError("CSC da NFC-e nao configurado.");
-		if (!fiscalConfig.nuvemFiscal?.nfce?.idCsc) throw new FiscalReadinessError("ID CSC da NFC-e nao configurado.");
+	// CSC/token e companyApiKey sao credenciais da emissao via Spedy; no provedor MANUAL nao ha envio.
+	if (context.organizacao.fiscalProvedor === "SPEDY") {
+		if (!fiscalConfig.spedy?.companyApiKey) throw new FiscalReadinessError("Empresa fiscal nao sincronizada com a Spedy.");
+		if (context.operacao.tipoDocumento === "NFCE") {
+			if (!fiscalConfig.spedy?.nfce?.csc) throw new FiscalReadinessError("CSC da NFC-e nao configurado.");
+			if (!fiscalConfig.spedy?.nfce?.tokenId) throw new FiscalReadinessError("Token da NFC-e nao configurado.");
+		}
 	}
 	if (context.operacao.finalidade !== "DEVOLUCAO" && context.pagamentos.length > 0) {
 		const paymentTotal = context.pagamentos.reduce((total, payment) => total + payment.valor, 0);

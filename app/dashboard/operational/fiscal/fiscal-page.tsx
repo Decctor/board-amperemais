@@ -91,7 +91,6 @@ import { TGetFiscalDocumentsOutputById, TGetFiscalDocumentsOutputDefault } from 
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { FiscalDocumentDetailsContent } from "./_components/fiscal-document-details-content";
 import { uploadFile } from "@/lib/files-storage";
-import NumberInput from "@/components/Inputs/NumberInput";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -253,9 +252,15 @@ function buildFiscalDocumentCardSubtitle(document: TGetFiscalDocumentsOutputDefa
 	const parts: string[] = [];
 
 	if (document.venda?.valorTotal != null) parts.push(formatBRL(Number(document.venda.valorTotal)));
-	if (emissionDate) parts.push(formatDateAsLocale(emissionDate.toString()));
+	if (emissionDate) {
+		const formattedEmissionDate = formatDateAsLocale(emissionDate.toString());
+		if (formattedEmissionDate) parts.push(formattedEmissionDate);
+	}
 	if (document.venda?.cliente?.nome) parts.push(document.venda.cliente.nome);
-	if (isCancelled && document.dataCancelamento) parts.push(`Cancelado em ${formatDateAsLocale(document.dataCancelamento)}`);
+	if (isCancelled && document.dataCancelamento) {
+		const formattedCancelDate = formatDateAsLocale(document.dataCancelamento.toString());
+		if (formattedCancelDate) parts.push(`Cancelado em ${formattedCancelDate}`);
+	}
 
 	return parts.join(" · ");
 }
@@ -648,7 +653,7 @@ function FiscalConfigurationsView({ organizationId, userHasFiscalConfigurePermis
 	const { data, isLoading, isError, error, queryKey } = useFiscalSettings();
 	const { state, redefineState, updateSettings, updateFiscalConfig } = useInternalFiscalSettingsState({
 		initialState: {
-			fiscalProvedor: data?.fiscalProvedor ?? "MANUAL",
+			fiscalProvedor: data?.fiscalProvedor ?? "SPEDY",
 			fiscalEmissaoAutomatica: data?.fiscalEmissaoAutomatica ?? false,
 			fiscalConfiguracao: data?.fiscalConfiguracao ?? undefined,
 		},
@@ -659,7 +664,7 @@ function FiscalConfigurationsView({ organizationId, userHasFiscalConfigurePermis
 	useEffect(() => {
 		if (data) {
 			redefineState({
-				fiscalProvedor: data.fiscalProvedor ?? "MANUAL",
+				fiscalProvedor: data.fiscalProvedor ?? "SPEDY",
 				fiscalEmissaoAutomatica: data.fiscalEmissaoAutomatica ?? false,
 				fiscalConfiguracao: data.fiscalConfiguracao ?? state.fiscalConfiguracao,
 			});
@@ -699,7 +704,7 @@ function FiscalConfigurationsView({ organizationId, userHasFiscalConfigurePermis
 			<div className="flex flex-col gap-2 border-b pb-4 lg:flex-row lg:items-center lg:justify-between">
 				<div className="space-y-1">
 					<h2 className="text-xl font-semibold tracking-tight">Configuração Fiscal</h2>
-					<p className="text-sm text-muted-foreground">Configure o provedor fiscal, dados da empresa e sincronização com a Nuvem Fiscal.</p>
+					<p className="text-sm text-muted-foreground">Configure os dados da empresa e a sincronização fiscal com a Spedy.</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<Button variant="outline" onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending || !canEdit}>
@@ -928,23 +933,39 @@ function CompanyBasicInformation({ organizationId, fiscalConfig, updateFiscalCon
 					<TextInput label="CNAE" value={fiscalConfig.cnae ?? ""} placeholder="CNAE" handleChange={(value) => updateFiscalConfig({ cnae: value })} />
 				</div>
 				<div className="w-full lg:w-1/3">
-					<NumberInput
-						label="ID-CSC"
-						value={fiscalConfig.nuvemFiscal.nfce.idCsc ?? null}
-						placeholder="ID-CSC"
-						handleChange={(value) =>
-							updateFiscalConfig({ nuvemFiscal: { ...fiscalConfig.nuvemFiscal, nfce: { ...fiscalConfig.nuvemFiscal.nfce, idCsc: value } } })
-						}
+					<TextInput
+						label="TOKEN NFC-E"
+						value={fiscalConfig.spedy?.nfce.tokenId ?? ""}
+						placeholder="Token NFC-e"
+						handleChange={(value) => updateFiscalConfig({ spedy: { ...fiscalConfig.spedy, nfce: { ...fiscalConfig.spedy.nfce, tokenId: value } } })}
 					/>
 				</div>
 				<div className="w-full lg:w-1/3">
 					<TextInput
 						label="CSC"
-						value={fiscalConfig.nuvemFiscal.nfce.csc ?? ""}
+						value={fiscalConfig.spedy?.nfce?.csc ?? ""}
 						placeholder="CSC"
-						handleChange={(value) =>
-							updateFiscalConfig({ nuvemFiscal: { ...fiscalConfig.nuvemFiscal, nfce: { ...fiscalConfig.nuvemFiscal.nfce, csc: value } } })
-						}
+						handleChange={(value) => updateFiscalConfig({ spedy: { ...fiscalConfig.spedy, nfce: { ...fiscalConfig.spedy.nfce, csc: value } } })}
+					/>
+				</div>
+			</div>
+			<div className="w-full flex items-center gap-3 flex-col lg:flex-row">
+				<div className="w-full lg:w-1/2">
+					<TextInput
+						label="ID EMPRESA SPEDY"
+						value={fiscalConfig.spedy?.companyId ?? ""}
+						placeholder="Sincronize a empresa"
+						editable={false}
+						handleChange={() => undefined}
+					/>
+				</div>
+				<div className="w-full lg:w-1/2">
+					<TextInput
+						label="CREDENCIAL DE EMISSÃO"
+						value={fiscalConfig.spedy?.companyApiKey ? "ATIVA" : "PENDENTE"}
+						placeholder="Sincronize a empresa"
+						editable={false}
+						handleChange={() => undefined}
 					/>
 				</div>
 			</div>
@@ -953,7 +974,7 @@ function CompanyBasicInformation({ organizationId, fiscalConfig, updateFiscalCon
 					CERTIFICADO FISCAL
 				</Label>
 
-				{fiscalConfig.nuvemFiscal.certificado.storagePath ? (
+				{fiscalConfig.spedy?.certificado?.storagePath ? (
 					<Button variant="success-light" onClick={() => setCertificateMenuOpen(true)} className="w-fit flex items-center gap-1.5">
 						<CheckCheck className="w-4 h-4 min-w-4 min-h-4" />
 						CERTIFICADO ATIVO
@@ -967,7 +988,7 @@ function CompanyBasicInformation({ organizationId, fiscalConfig, updateFiscalCon
 			</div>
 			{certificateMenuOpen ? (
 				<FiscalCertificateMenu
-					fiscalConfigCertificate={fiscalConfig.nuvemFiscal.certificado}
+					fiscalConfigCertificate={fiscalConfig.spedy?.certificado}
 					organizationId={organizationId}
 					callbacks={callbacks}
 					closeMenu={() => setCertificateMenuOpen(false)}
@@ -979,7 +1000,7 @@ function CompanyBasicInformation({ organizationId, fiscalConfig, updateFiscalCon
 
 type FiscalCertificateMenuProps = {
 	organizationId: string;
-	fiscalConfigCertificate: TUseInternalFiscalSettingsState["state"]["fiscalConfiguracao"]["nuvemFiscal"]["certificado"];
+	fiscalConfigCertificate: TUseInternalFiscalSettingsState["state"]["fiscalConfiguracao"]["spedy"]["certificado"];
 	callbacks: {
 		onMutate: () => void;
 		onSettled: () => void;

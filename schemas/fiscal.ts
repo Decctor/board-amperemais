@@ -76,10 +76,10 @@ export const FiscalCertificateMetadataSchema = z.object({
 });
 export type TFiscalCertificateMetadata = z.infer<typeof FiscalCertificateMetadataSchema>;
 
-export const NuvemFiscalApiConfigSchema = z.object({
-	baseUrl: z.string({ invalid_type_error: "Tipo não valido para a URL base da Nuvem Fiscal." }).default("https://api.nuvemfiscal.com.br"),
+export const SpedyApiConfigSchema = z.object({
+	baseUrl: z.string({ invalid_type_error: "Tipo não valido para a URL base da Spedy." }).default("https://api.spedy.com.br"),
 });
-export type TNuvemFiscalApiConfig = z.infer<typeof NuvemFiscalApiConfigSchema>;
+export type TSpedyApiConfig = z.infer<typeof SpedyApiConfigSchema>;
 
 export const OrganizationFiscalConfigSchema = z.object({
 	ambiente: FiscalDocumentEnvironmentEnum.default("HOMOLOGACAO"),
@@ -106,19 +106,22 @@ export const OrganizationFiscalConfigSchema = z.object({
 	inscricaoMunicipal: z.string({ invalid_type_error: "Tipo não valido para a inscricao municipal." }).optional().nullable(),
 	cnae: z.string({ invalid_type_error: "Tipo não valido para o CNAE fiscal." }).optional().nullable(),
 	endereco: FiscalAddressSchema,
-	nuvemFiscal: z
+	spedy: z
 		.object({
-			api: NuvemFiscalApiConfigSchema.default({ baseUrl: "https://api.nuvemfiscal.com.br" }),
+			api: SpedyApiConfigSchema.default({ baseUrl: "https://api.spedy.com.br" }),
+			companyId: z.string({ invalid_type_error: "Tipo não valido para o ID da empresa na Spedy." }).optional().nullable(),
+			companyApiKey: z.string({ invalid_type_error: "Tipo não valido para a chave de emissão da empresa na Spedy." }).optional().nullable(),
 			certificado: FiscalCertificateMetadataSchema.default({}),
 			nfce: z.object({
-				idCsc: z.number({ invalid_type_error: "Tipo não valido para o ID CSC da NFC-e." }).int().optional().nullable(),
+				tokenId: z.string({ invalid_type_error: "Tipo não valido para o ID do token da NFC-e." }).optional().nullable(),
 				csc: z.string({ invalid_type_error: "Tipo não valido para o CSC da NFC-e." }).optional().nullable(),
 			}),
 			nfe: z.object({}).default({}),
 		})
 		.default({
-			// api: { baseUrl: "https://api.nuvemfiscal.com.br" },
-			api: { baseUrl: "https://api.sandbox.nuvemfiscal.com.br" },
+			api: { baseUrl: "https://api.spedy.com.br" },
+			companyId: null,
+			companyApiKey: null,
 			certificado: {},
 			nfce: {},
 			nfe: {},

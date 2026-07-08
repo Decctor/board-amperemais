@@ -5,11 +5,11 @@ import { fiscalOperationProfiles, fiscalSeries, fiscalTaxGroupRules, fiscalTaxGr
 import { and, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { ManualFiscalProvider } from "./providers/manual";
-import { NuvemFiscalProvider } from "./providers/nuvem-fiscal";
+import { SpedyFiscalProvider } from "./providers/spedy";
 import type { IFiscalProvider } from "./types";
 
-function resolveFiscalProvider(fiscalProvedor: "MANUAL" | "NUVEM_FISCAL" | null | undefined): IFiscalProvider {
-	return fiscalProvedor === "NUVEM_FISCAL" ? new NuvemFiscalProvider() : new ManualFiscalProvider();
+function resolveFiscalProvider(fiscalProvedor: "MANUAL" | "SPEDY" | null | undefined): IFiscalProvider {
+	return fiscalProvedor === "SPEDY" ? new SpedyFiscalProvider() : new ManualFiscalProvider();
 }
 
 export async function getFiscalSettings(organizacaoId: string) {
@@ -35,20 +35,23 @@ export async function updateFiscalSettings({
 	fiscalConfiguracao,
 }: {
 	organizacaoId: string;
-	fiscalProvedor: "MANUAL" | "NUVEM_FISCAL";
+	fiscalProvedor: "MANUAL" | "SPEDY";
 	fiscalEmissaoAutomatica: boolean;
 	fiscalConfiguracao: TOrganizationFiscalConfig;
 }) {
 	const parsedConfig = OrganizationFiscalConfigSchema.parse(fiscalConfiguracao);
 	if (fiscalEmissaoAutomatica) {
-		if (fiscalProvedor !== "NUVEM_FISCAL") {
-			throw new createHttpError.BadRequest("Emissao fiscal automatica exige provedor Nuvem Fiscal.");
+		if (fiscalProvedor !== "SPEDY") {
+			throw new createHttpError.BadRequest("Emissao fiscal automatica exige provedor Spedy.");
 		}
-		if (!parsedConfig.nuvemFiscal?.nfce?.csc || !parsedConfig.nuvemFiscal?.nfce?.idCsc) {
-			throw new createHttpError.BadRequest("CSC e ID CSC da NFC-e devem estar configurados para emissao automatica.");
+		if (!parsedConfig.spedy?.nfce?.csc || !parsedConfig.spedy?.nfce?.tokenId) {
+			throw new createHttpError.BadRequest("CSC e token da NFC-e devem estar configurados para emissao automatica.");
 		}
-		if (!parsedConfig.nuvemFiscal?.certificado?.storagePath) {
+		if (!parsedConfig.spedy?.certificado?.storagePath) {
 			throw new createHttpError.BadRequest("Certificado digital deve estar configurado para emissao automatica.");
+		}
+		if (!parsedConfig.spedy?.companyApiKey) {
+			throw new createHttpError.BadRequest("Empresa fiscal deve estar sincronizada com a Spedy antes de habilitar a emissao automatica.");
 		}
 
 		const operation = await findDefaultOperationProfileForType({
@@ -94,7 +97,19 @@ export async function syncFiscalCompany(organizacaoId: string) {
 	if (!organization) throw new createHttpError.NotFound("Organizacao nao encontrada.");
 
 	const provider = resolveFiscalProvider(organization.fiscalProvedor);
-	return provider.sincronizarEmpresa(organization);
+	const result = await provider.sincronizarEmpresa(organization);
+	if (organization.fiscalProvedor === "SPEDY" && organization.fiscalConfiguracao) {
+		const fiscalConfiguracao = OrganizationFiscalConfigSchema.parse({
+			...organization.fiscalConfiguracao,
+			spedy: {
+				...organization.fiscalConfiguracao.spedy,
+				companyId: result.companyId ?? organization.fiscalConfiguracao.spedy.companyId ?? null,
+				companyApiKey: result.companyApiKey ?? organization.fiscalConfiguracao.spedy.companyApiKey ?? null,
+			},
+		});
+		await db.update(organizations).set({ fiscalConfiguracao }).where(eq(organizations.id, organizacaoId));
+	}
+	return result;
 }
 
 export async function syncFiscalCompanyCertificate({
@@ -114,12 +129,9 @@ export async function syncFiscalCompanyCertificate({
 	const result = await provider.sincronizarCertificadoEmpresa(organization, { storagePath, password });
 	const fiscalConfiguracao = OrganizationFiscalConfigSchema.parse({
 		...organization.fiscalConfiguracao,
-		nuvemFiscal: {
-			...organization.fiscalConfiguracao.nuvemFiscal,
-			certificado: {
-				...organization.fiscalConfiguracao.nuvemFiscal.certificado,
-				...result.certificado,
-			},
+		spedy: {
+			...organization.fiscalConfiguracao.spedy,
+			certificado: result.certificado,
 		},
 	});
 

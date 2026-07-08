@@ -295,7 +295,7 @@ export const OrganizationSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
-	fiscalProvedor: z.enum(["MANUAL", "NUVEM_FISCAL"]).optional().nullable(),
+	fiscalProvedor: z.enum(["MANUAL", "SPEDY"]).optional().nullable(),
 	fiscalEmissaoAutomatica: z
 		.boolean({
 			invalid_type_error: "Tipo nao valido para a emissao automatica fiscal.",
