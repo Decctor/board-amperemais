@@ -22,6 +22,11 @@ const allowedStripeEvents: Stripe.Event.Type[] = [
 	"customer.subscription.deleted",
 	"invoice.paid",
 	"invoice.payment_succeeded",
+	// PIX Automático: o débito de renovação é assíncrono e pode falhar após a
+	// pré-notificação de 3 dias. A mudança de status da assinatura chega via
+	// customer.subscription.updated (past_due), mas rastreamos a falha no nível do
+	// invoice para observabilidade.
+	"invoice.payment_failed",
 ];
 
 export async function POST(req: NextRequest) {
@@ -53,6 +58,20 @@ async function processEvent(event: Stripe.Event) {
 
 	if (event.type === "invoice.paid" || event.type === "invoice.payment_succeeded") {
 		return await handleInvoicePaid(event.data.object as Stripe.Invoice);
+	}
+
+	if (event.type === "invoice.payment_failed") {
+		const invoice = event.data.object as Stripe.Invoice;
+		// Não altera o status da org aqui — isso é feito por customer.subscription.updated
+		// (past_due), que dispara o grace period. Aqui apenas registramos para diagnóstico
+		// de falhas de débito PIX (e de cartão).
+		console.log("[STRIPE HOOK] [INVOICE_PAYMENT_FAILED]", {
+			invoiceId: invoice.id,
+			customerId: getInvoiceCustomerId(invoice),
+			subscriptionId: getInvoiceSubscriptionId(invoice),
+			status: invoice.status,
+		});
+		return;
 	}
 
 	// All the events I track have a customerId
@@ -176,6 +195,11 @@ function addDays(date: Date, days: number) {
 	return next;
 }
 
+// Gera a comissão do parceiro a partir de um invoice efetivamente pago. Com PIX
+// Automático o pagamento é assíncrono, então este handler só dispara APÓS a confirmação
+// (invoice.paid / invoice.payment_succeeded) — nunca durante o estado pendente do PIX.
+// É idempotente por invoice.id (ver guarda existingCommission abaixo), então recebê-lo
+// mais de uma vez não duplica a comissão.
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
 	if (!invoice.id) return;
 

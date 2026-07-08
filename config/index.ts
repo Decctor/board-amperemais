@@ -685,6 +685,14 @@ export const AppSubscriptionPlans: {
 	},
 };
 
+// Teto do mandato PIX Automático (Stripe), em centavos. Cobre o maior combo mensal
+// possível — plano ESCALA + consultoria (Gestor de Crescimento) — para que upgrade,
+// downgrade ou adição da consultoria nunca exijam reautorização do débito no banco.
+// PIX Automático só se aplica ao ciclo mensal (payment_schedule "monthly").
+export const PIX_MANDATE_MAX_AMOUNT_CENTS = Math.round(
+	(AppSubscriptionPlans.ESCALA.pricing.monthly.price + CONSULTORIA_ADDON.monthlyPrice) * 100,
+);
+
 export function getOrganizationAccessToRoute({ organizationPlan, path }: { organizationPlan: keyof typeof AppSubscriptionPlans; path: string }) {
 	const plan = AppSubscriptionPlans[organizationPlan];
 	const route = plan.routes[path as keyof typeof plan.routes];

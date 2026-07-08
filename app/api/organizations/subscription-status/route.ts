@@ -77,7 +77,37 @@ async function getSubscriptionStatus(): Promise<{ data: TSubscriptionStatusData;
 		};
 	}
 
-	// 3. Canceled subscription
+	// 3. Incomplete (1ª cobrança PIX ainda não confirmada, logo após o checkout).
+	// Decisão de produto: manter o acesso liberado de forma otimista — a confirmação
+	// da primeira PIX costuma levar apenas alguns minutos.
+	if (stripeStatus === "incomplete") {
+		console.log("[INFO] Getting subscription status for incomplete subscription:", { stripeStatus });
+		return {
+			data: {
+				ativa: true,
+				status: "Confirmando pagamento",
+				modo: "warn",
+				mensagem: "Aguardando a confirmação do seu pagamento via PIX. Isso pode levar alguns minutos.",
+			},
+			message: "Status da assinatura obtido com sucesso.",
+		};
+	}
+
+	// 4. Assinatura não paga / expirada sem confirmação (PIX ou cartão) — sem acesso.
+	if (stripeStatus === "incomplete_expired" || stripeStatus === "unpaid") {
+		console.log("[INFO] Getting subscription status for unpaid/incomplete_expired subscription:", { stripeStatus });
+		return {
+			data: {
+				ativa: false,
+				status: "Pagamento não confirmado",
+				modo: "fail",
+				mensagem: "Não conseguimos confirmar o pagamento da sua assinatura. Regularize para continuar utilizando a plataforma.",
+			},
+			message: "Status da assinatura obtido com sucesso.",
+		};
+	}
+
+	// 5. Canceled subscription
 	if (stripeStatus === "canceled") {
 		console.log("[INFO] Getting subscription status for canceled subscription:", { stripeStatus });
 		return {
@@ -91,7 +121,7 @@ async function getSubscriptionStatus(): Promise<{ data: TSubscriptionStatusData;
 		};
 	}
 
-	// 4. Trial period (no Stripe subscription)
+	// 6. Trial period (no Stripe subscription)
 	if (trialStart && trialEnd) {
 		console.log("[INFO] Getting subscription status for trial period:", { trialStart, trialEnd });
 		const trialEndDate = new Date(trialEnd);
@@ -156,7 +186,7 @@ async function getSubscriptionStatus(): Promise<{ data: TSubscriptionStatusData;
 		};
 	}
 
-	// 5. No subscription, no trial
+	// 7. No subscription, no trial
 	return {
 		data: {
 			ativa: false,

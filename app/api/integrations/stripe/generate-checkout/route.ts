@@ -1,4 +1,4 @@
-import { AppSubscriptionPlans, CONSULTORIA_ADDON, type TAppSubscriptionPlanKey } from "@/config";
+import { AppSubscriptionPlans, CONSULTORIA_ADDON, PIX_MANDATE_MAX_AMOUNT_CENTS, type TAppSubscriptionPlanKey } from "@/config";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { db } from "@/services/drizzle";
@@ -7,6 +7,7 @@ import { stripe } from "@/services/stripe";
 import { eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
+import type Stripe from "stripe";
 import z from "zod";
 
 const GenerateCheckoutInputSchema = z.object({
@@ -119,19 +120,48 @@ async function generateCheckoutRoute(request: NextRequest) {
     })
     .where(eq(organizations.id, userOrgId));
 
+  // PIX (via PIX Automático) só se aplica ao ciclo mensal — o mandato opera em
+  // payment_schedule "monthly" e não suporta débito único anual. No anual, mantemos
+  // apenas cartão.
+  const paymentMethodTypes: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] =
+    modality === "monthly" ? ["card", "pix"] : ["card"];
+  const acceptsPix = paymentMethodTypes.includes("pix");
+
   // Create checkout session
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const checkoutSession = await stripe.checkout.sessions.create({
     customer: stripeCustomerId,
     line_items: lineItems,
     mode: "subscription",
+    payment_method_types: paymentMethodTypes,
     allow_promotion_codes: true,
     success_url: `${baseUrl}/dashboard?checkout=success`,
     cancel_url: `${baseUrl}/dashboard?checkout=cancelled`,
+    // Teto do mandato PIX no maior combo mensal possível (ESCALA + consultoria), para
+    // que upgrade/downgrade ou adição da consultoria não exijam reautorização no banco.
+    ...(acceptsPix && {
+      payment_method_options: {
+        pix: {
+          mandate_options: {
+            amount: PIX_MANDATE_MAX_AMOUNT_CENTS,
+            amount_type: "maximum",
+            currency: "brl",
+            payment_schedule: "monthly",
+            reference: "RecompraCRM Assinatura",
+          },
+        },
+      },
+    }),
     subscription_data: {
       metadata: {
         organizationId: userOrgId,
       },
+      // Garante que as renovações também possam ser debitadas via PIX (mandato).
+      ...(acceptsPix && {
+        payment_settings: {
+          payment_method_types: ["card", "pix"],
+        },
+      }),
     },
   });
 
