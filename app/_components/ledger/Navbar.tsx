@@ -14,6 +14,7 @@ const ANCHOR_LINKS: { label: string; href: string; isRoute?: boolean }[] = [
 	{ label: "Resultado", href: "#movimento" },
 	{ label: "Funcionalidades", href: "#inventario" },
 	{ label: "Planos", href: "#saldo" },
+	{ label: "Fundadores", href: "#fundadores" },
 	{ label: "Parcerias", href: "/partnerships", isRoute: true },
 ];
 

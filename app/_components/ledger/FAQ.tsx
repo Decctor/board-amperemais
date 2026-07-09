@@ -44,7 +44,7 @@ export function LedgerFAQ() {
 				<Reveal className="mb-12 lg:mb-16 text-center">
 					<div className="flex items-center justify-center gap-3 mb-6">
 						<span className="ledger-fade inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#24549c] text-white text-[11px] font-extrabold ledger-tabular">
-							08
+							09
 						</span>
 						<span className="ledger-fade text-[11px] font-extrabold tracking-[0.16em] uppercase text-[#24549c]" data-stagger>
 							Dúvidas
