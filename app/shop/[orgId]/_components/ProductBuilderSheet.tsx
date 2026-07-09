@@ -1,8 +1,10 @@
 "use client";
 
+import { useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { formatToMoney } from "@/lib/formatting";
+import { notifyItemAddedToCart } from "@/lib/shop/cart-toast";
 import type { TShopCatalogProduct } from "@/lib/shop/catalog";
 import { cn } from "@/lib/utils";
 import type { TShopCartItem } from "@/schemas/shop";
@@ -10,7 +12,6 @@ import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { Check, Minus, Plus } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { useShop } from "./ShopProvider";
 
 type ProductBuilderSheetProps = {
@@ -28,6 +29,7 @@ const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
 export default function ProductBuilderSheet({ product, editItem = null, onClose }: ProductBuilderSheetProps) {
 	const { availability, orderState } = useShop();
+	const { colors } = useOrgColors();
 	const isOpen = availability.status === "ABERTA";
 	const isEditing = !!editItem?.tempId;
 
@@ -133,6 +135,7 @@ export default function ProductBuilderSheet({ product, editItem = null, onClose 
 		if (!isAddable) return;
 
 		const itemName = selectedVariant ? `${product.nome} - ${selectedVariant.nome}` : product.nome;
+		const itemImage = selectedVariant?.imagemCapaUrl ?? product.imagemCapaUrl;
 
 		if (isEditing && editItem?.tempId) {
 			orderState.replaceItem(editItem.tempId, {
@@ -142,9 +145,12 @@ export default function ProductBuilderSheet({ product, editItem = null, onClose 
 				quantidade: quantity,
 				modificadores: selectedModifiers,
 			});
-			toast.success(`${itemName} atualizado no carrinho.`, {
-				dismissible: true,
-				position: "top-center",
+			notifyItemAddedToCart({
+				name: itemName,
+				imageUrl: itemImage,
+				primaryColor: colors.primary,
+				primaryForeground: colors.primaryForeground,
+				mode: "updated",
 			});
 		} else {
 			orderState.addItem({
@@ -154,9 +160,11 @@ export default function ProductBuilderSheet({ product, editItem = null, onClose 
 				quantidade: quantity,
 				modificadores: selectedModifiers,
 			});
-			toast.success(`${itemName} adicionado ao carrinho.`, {
-				dismissible: true,
-				position: "top-center",
+			notifyItemAddedToCart({
+				name: itemName,
+				imageUrl: itemImage,
+				primaryColor: colors.primary,
+				primaryForeground: colors.primaryForeground,
 			});
 		}
 		onClose();

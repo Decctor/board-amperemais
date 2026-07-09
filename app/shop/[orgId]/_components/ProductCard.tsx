@@ -1,12 +1,13 @@
 "use client";
 
+import { useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { Button } from "@/components/ui/button";
 import { formatToMoney } from "@/lib/formatting";
+import { notifyItemAddedToCart } from "@/lib/shop/cart-toast";
 import type { TShopCatalogProduct } from "@/lib/shop/catalog";
 import { cn } from "@/lib/utils";
 import { Eye, Plus } from "lucide-react";
 import Image from "next/image";
-import { toast } from "sonner";
 import { useShopActions, useShopData } from "./ShopProvider";
 
 type ProductCardProps = {
@@ -17,6 +18,7 @@ type ProductCardProps = {
 export default function ProductCard({ product, variant = "compact" }: ProductCardProps) {
 	const { availability } = useShopData();
 	const { addItem, setBuilderProduct } = useShopActions();
+	const { colors } = useOrgColors();
 	const isOpen = availability.status === "ABERTA";
 
 	const hasVariants = product.variantes.length > 0;
@@ -43,9 +45,11 @@ export default function ProductCard({ product, variant = "compact" }: ProductCar
 			quantidade: 1,
 			modificadores: [],
 		});
-		toast.success(`${product.nome} adicionado ao carrinho.`, {
-			dismissible: true,
-			position: "top-center",
+		notifyItemAddedToCart({
+			name: product.nome,
+			imageUrl: product.imagemCapaUrl,
+			primaryColor: colors.primary,
+			primaryForeground: colors.primaryForeground,
 		});
 	};
 
