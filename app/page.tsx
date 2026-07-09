@@ -1,7 +1,7 @@
 import { buildFAQPageJsonLd } from "@/components/Content/ArticleFAQ";
 import "./_components/ledger/ledger.css";
 import LandingAnalyticsTracker from "./_components/LandingAnalyticsTracker";
-import { LedgerCase } from "./_components/ledger/Case";
+import { LedgerCases } from "./_components/ledger/cases/Cases";
 import { LANDING_FAQS, LedgerFAQ } from "./_components/ledger/FAQ";
 import { LedgerClosingCTA, LedgerFooter } from "./_components/ledger/Footer";
 import { LedgerFeatures } from "./_components/ledger/Features";
@@ -24,7 +24,7 @@ export default function LandingPage() {
 			<main>
 				<LedgerHero />
 				<LedgerHowItWorks />
-				<LedgerCase />
+				<LedgerCases />
 				<LedgerFeatures />
 				<LedgerIntegrations />
 				<LedgerPricing />
