@@ -1,5 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
-import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
+import { runPagesRouteHandler, type PagesRouteHandler } from "@/lib/pages-route-compat";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { db } from "@/services/drizzle";
 import { clients } from "@/services/drizzle/schema";
@@ -27,15 +27,13 @@ const ClientByLookupInputSchema = z.object({
 export type TClientByLookupInput = z.infer<typeof ClientByLookupInputSchema>;
 
 async function getClientByLookup(input: TClientByLookupInput) {
-	console.log("[INFO] Running getClientByLookup with input:", input);
 	if (input.clientId) {
 		const client = await db.query.clients.findFirst({
-			where: eq(clients.id, input.clientId),
+			where: and(eq(clients.id, input.clientId), eq(clients.organizacaoId, input.orgId)),
 			columns: {
 				id: true,
 				nome: true,
 				telefone: true,
-				email: true,
 			},
 			with: {
 				saldos: {
@@ -82,7 +80,6 @@ async function getClientByLookup(input: TClientByLookupInput) {
 			id: true,
 			nome: true,
 			telefone: true,
-			email: true,
 		},
 		with: {
 			saldos: {
@@ -124,7 +121,6 @@ async function getClientByLookup(input: TClientByLookupInput) {
 export type TClientByLookupOutput = Awaited<ReturnType<typeof getClientByLookup>>;
 
 const clientByLookupRoute: PagesRouteHandler<TClientByLookupOutput> = async (req, res) => {
-	console.log("[INFO] Running clientByLookupRoute with query:", req.query);
 	const input = ClientByLookupInputSchema.parse(req.query);
 	const result = await getClientByLookup(input);
 	return res.status(200).json(result);

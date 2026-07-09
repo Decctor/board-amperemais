@@ -2,26 +2,22 @@
 
 import { OrgColorsProvider } from "@/components/Providers/OrgColorsProvider";
 import { useShopCatalog } from "@/lib/queries/shop";
-import { Loader2, Store } from "lucide-react";
+import type { TShopCatalogData } from "@/lib/shop/catalog-data";
+import { Store } from "lucide-react";
+import ShopLoadingSkeleton from "./_components/ShopLoadingSkeleton";
 import { ShopProvider } from "./_components/ShopProvider";
 import ShopShell from "./_components/ShopShell";
 
 type ShopPageProps = {
 	orgId: string;
+	initialCatalog: TShopCatalogData | null;
 };
 
-export default function ShopPage({ orgId }: ShopPageProps) {
-	const { data, isLoading, isError, error } = useShopCatalog({ orgId });
+export default function ShopPage({ orgId, initialCatalog }: ShopPageProps) {
+	const { data, isLoading, isError, error } = useShopCatalog({ orgId, initialData: initialCatalog ?? undefined });
 
 	if (isLoading) {
-		return (
-			<div className="min-h-screen flex items-center justify-center bg-background">
-				<div className="flex flex-col items-center gap-4">
-					<Loader2 className="w-8 h-8 animate-spin text-primary" />
-					<p className="text-sm text-muted-foreground">Carregando a loja digital...</p>
-				</div>
-			</div>
-		);
+		return <ShopLoadingSkeleton />;
 	}
 
 	if (isError || !data) {
@@ -42,6 +38,7 @@ export default function ShopPage({ orgId }: ShopPageProps) {
 
 	return (
 		<OrgColorsProvider
+			scoped
 			corPrimaria={data.organization.corPrimaria}
 			corPrimariaForeground={data.organization.corPrimariaForeground}
 			corSecundaria={data.organization.corSecundaria}

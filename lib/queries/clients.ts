@@ -196,7 +196,6 @@ export function useClientByLookup({ initialParams }: UseClientByLookupParams) {
 		},
 		1500,
 	);
-	console.log("[INFO] Running useClientByLookup with input:", debouncedInput);
 	return {
 		...useQuery({
 			queryKey: ["client-by-lookup", debouncedInput],

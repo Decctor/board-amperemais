@@ -5,6 +5,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 import { formatToMoney } from "@/lib/formatting";
 import type { TShopCatalogProduct } from "@/lib/shop/catalog";
 import { cn } from "@/lib/utils";
+import type { TShopCartItem } from "@/schemas/shop";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { Check, Minus, Plus } from "lucide-react";
 import Image from "next/image";
@@ -14,6 +15,7 @@ import { useShop } from "./ShopProvider";
 
 type ProductBuilderSheetProps = {
 	product: TShopCatalogProduct;
+	editItem?: TShopCartItem | null;
 	onClose: () => void;
 };
 
@@ -24,13 +26,16 @@ type SelectedModifier = {
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
-export default function ProductBuilderSheet({ product, onClose }: ProductBuilderSheetProps) {
-	const { catalog, orderState } = useShop();
-	const isOpen = catalog.disponibilidade.status === "ABERTA";
+export default function ProductBuilderSheet({ product, editItem = null, onClose }: ProductBuilderSheetProps) {
+	const { availability, orderState } = useShop();
+	const isOpen = availability.status === "ABERTA";
+	const isEditing = !!editItem?.tempId;
 
-	const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
-	const [selectedModifiers, setSelectedModifiers] = useState<SelectedModifier[]>([]);
-	const [quantity, setQuantity] = useState(1);
+	const [selectedVariantId, setSelectedVariantId] = useState<string | null>(editItem?.produtoVarianteId ?? null);
+	const [selectedModifiers, setSelectedModifiers] = useState<SelectedModifier[]>(
+		editItem?.modificadores.map((modifier) => ({ opcaoId: modifier.opcaoId, quantidade: modifier.quantidade })) ?? [],
+	);
+	const [quantity, setQuantity] = useState(editItem?.quantidade ?? 1);
 
 	const selectedVariant = selectedVariantId ? product.variantes.find((v) => v.id === selectedVariantId) : null;
 	const availableReferences = [...product.addOnsReferencias, ...(selectedVariant?.addOnsReferencias ?? [])];
@@ -127,19 +132,33 @@ export default function ProductBuilderSheet({ product, onClose }: ProductBuilder
 	const handleAddToCart = () => {
 		if (!isAddable) return;
 
-		orderState.addItem({
-			tempId: crypto.randomUUID(),
-			produtoId: product.id,
-			produtoVarianteId: selectedVariantId,
-			quantidade: quantity,
-			modificadores: selectedModifiers,
-		});
-
 		const itemName = selectedVariant ? `${product.nome} - ${selectedVariant.nome}` : product.nome;
-		toast.success(`${itemName} adicionado ao carrinho.`, {
-			dismissible: true,
-			position: "top-center",
-		});
+
+		if (isEditing && editItem?.tempId) {
+			orderState.replaceItem(editItem.tempId, {
+				tempId: editItem.tempId,
+				produtoId: product.id,
+				produtoVarianteId: selectedVariantId,
+				quantidade: quantity,
+				modificadores: selectedModifiers,
+			});
+			toast.success(`${itemName} atualizado no carrinho.`, {
+				dismissible: true,
+				position: "top-center",
+			});
+		} else {
+			orderState.addItem({
+				tempId: crypto.randomUUID(),
+				produtoId: product.id,
+				produtoVarianteId: selectedVariantId,
+				quantidade: quantity,
+				modificadores: selectedModifiers,
+			});
+			toast.success(`${itemName} adicionado ao carrinho.`, {
+				dismissible: true,
+				position: "top-center",
+			});
+		}
 		onClose();
 	};
 
@@ -152,7 +171,7 @@ export default function ProductBuilderSheet({ product, onClose }: ProductBuilder
 
 	return (
 		<Drawer open onOpenChange={(open) => !open && onClose()}>
-			<DrawerContent className="max-h-[92vh]">
+			<DrawerContent className="max-h-[92dvh]">
 				<MotionConfig reducedMotion="user">
 					<DrawerHeader className="text-left">
 						<DrawerTitle className="text-lg font-black tracking-tight">{product.nome}</DrawerTitle>
@@ -162,7 +181,7 @@ export default function ProductBuilderSheet({ product, onClose }: ProductBuilder
 					<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex flex-1 flex-col gap-7 overflow-auto px-1 pb-2">
 						{headerImage && (
 							<div className="relative h-44 w-full overflow-hidden rounded-2xl bg-muted shadow-sm">
-								<Image src={headerImage} alt={product.nome} fill className="object-cover" />
+								<Image src={headerImage} alt={product.nome} fill className="object-cover" sizes="100vw" />
 							</div>
 						)}
 
@@ -258,7 +277,7 @@ export default function ProductBuilderSheet({ product, onClose }: ProductBuilder
 							onClick={handleAddToCart}
 							disabled={!isAddable}
 						>
-							<span>ADICIONAR AO CARRINHO</span>
+							<span>{isEditing ? "SALVAR ALTERAÇÕES" : "ADICIONAR AO CARRINHO"}</span>
 							<span className="ml-auto overflow-hidden">
 								<motion.span
 									key={getFinalPrice()}
@@ -289,7 +308,7 @@ type GroupHeadingProps = {
 
 function GroupHeading({ title, hint, required, satisfied, count, total }: GroupHeadingProps) {
 	const atMax = count >= total;
-	const counterClass = atMax ? "bg-primary text-primary-foreground" : count > 0 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground";
+	const counterClass = atMax ? "bg-brand text-brand-foreground" : count > 0 ? "bg-brand/10 text-foreground" : "bg-muted text-muted-foreground";
 
 	return (
 		<div className="flex items-center justify-between gap-3">
@@ -347,7 +366,7 @@ function OptionTile({
 
 	const media = image ? (
 		<div className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-muted">
-			<Image src={image} alt={name} fill className="object-cover" />
+			<Image src={image} alt={name} fill className="object-cover" sizes="48px" />
 		</div>
 	) : (
 		<div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-muted">
@@ -375,7 +394,7 @@ function OptionTile({
 		<div
 			className={cn(
 				"flex items-start gap-3 rounded-xl border p-2.5 transition-all duration-200",
-				selected ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/30" : "border-border",
+				selected ? "border-brand bg-brand/5 shadow-sm ring-1 ring-brand/30" : "border-border",
 				addDisabled && "opacity-50",
 			)}
 		>
@@ -419,7 +438,7 @@ function SelectionIndicator({ selected, shape, className }: { selected: boolean;
 			className={cn(
 				"flex size-6 shrink-0 items-center justify-center border-2 transition-colors",
 				shape === "circle" ? "rounded-full" : "rounded-md",
-				selected ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/30",
+				selected ? "border-brand bg-brand text-brand-foreground" : "border-muted-foreground/30",
 				className,
 			)}
 		>
@@ -457,11 +476,13 @@ function Stepper({ value, onIncrement, onDecrement, incrementDisabled, decrement
 
 	return (
 		<div className={cn("flex items-center gap-2", className)}>
-			<Button size="icon" variant="outline" className={btn} onClick={onDecrement} disabled={decrementDisabled}>
+			<Button size="icon" variant="outline" className={btn} aria-label="Diminuir quantidade" onClick={onDecrement} disabled={decrementDisabled}>
 				<Minus className={icon} />
 			</Button>
-			<span className={cn("text-center font-black tabular-nums", valueWidth)}>{value}</span>
-			<Button size="icon" variant="outline" className={btn} onClick={onIncrement} disabled={incrementDisabled}>
+			<span className={cn("text-center font-black tabular-nums", valueWidth)} aria-live="polite">
+				{value}
+			</span>
+			<Button size="icon" variant="outline" className={btn} aria-label="Aumentar quantidade" onClick={onIncrement} disabled={incrementDisabled}>
 				<Plus className={icon} />
 			</Button>
 		</div>

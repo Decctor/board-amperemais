@@ -17,6 +17,7 @@ import {
 	RefreshCw,
 	RotateCcw,
 	ShoppingBag,
+	Sparkles,
 	StickyNote,
 	Store,
 	Ticket,
@@ -236,16 +237,35 @@ function OrderStatus({ order, isRefetching, onRefresh }: { order: PublicOrder; i
 	);
 }
 
+function CashbackEarnedBanner({ order }: { order: PublicOrder }) {
+	if (order.cashback.accumulated <= 0) return null;
+	const isCanceled = order.statusAtendimento === "CANCELADO" || order.status === "CANCELADA";
+	if (isCanceled) return null;
+
+	return (
+		<section className="flex items-center gap-4 rounded-2xl bg-brand p-5 text-brand-foreground shadow-sm sm:p-6">
+			<span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-foreground/10">
+				<Sparkles className="size-6" />
+			</span>
+			<div className="min-w-0">
+				<p className="text-xs font-extrabold tracking-[0.08em] uppercase opacity-80">Você ganhou</p>
+				<p className="text-2xl font-black tabular-nums leading-tight sm:text-3xl">{formatToMoney(order.cashback.accumulated)} de volta</p>
+				<p className="mt-1 text-sm leading-relaxed opacity-90">Esse valor fica guardado para você. Use no seu próximo pedido e pague menos.</p>
+			</div>
+		</section>
+	);
+}
+
 function OrderItems({ order }: { order: PublicOrder }) {
 	return (
 		<section className="rounded-2xl border bg-card shadow-sm">
 			<div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
 				<div className="flex items-center gap-2">
 					<ShoppingBag className="size-5 text-brand-secondary" />
-					<h2 className="font-black">ITENS DO PEDIDO</h2>
+					<h2 className="font-black">Itens do pedido</h2>
 				</div>
 				<span className="text-xs font-bold text-muted-foreground">
-					{order.items.length} {order.items.length === 1 ? "ITEM" : "ITENS"}
+					{order.items.length} {order.items.length === 1 ? "item" : "itens"}
 				</span>
 			</div>
 			<div className="divide-y">
@@ -282,7 +302,9 @@ function OrderItems({ order }: { order: PublicOrder }) {
 									))}
 								</ul>
 							) : null}
-							{item.discount > 0 ? <p className="mt-2 text-xs font-semibold text-green-700">Desconto: {formatToMoney(item.discount)}</p> : null}
+							{item.discount > 0 ? (
+								<p className="mt-2 text-xs font-semibold text-green-700 dark:text-green-400">Desconto: {formatToMoney(item.discount)}</p>
+							) : null}
 						</div>
 					</div>
 				))}
@@ -300,7 +322,7 @@ function PriceSummary({ order }: { order: PublicOrder }) {
 		<section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
 			<div className="flex items-center gap-2">
 				<Receipt className="size-5 text-brand-secondary" />
-				<h2 className="font-black">RESUMO DO PEDIDO</h2>
+				<h2 className="font-black">Resumo do pedido</h2>
 			</div>
 			<div className="mt-4 flex flex-col gap-2.5 text-sm">
 				<div className="flex justify-between gap-3 text-muted-foreground">
@@ -433,6 +455,7 @@ function OrderContent({
 			<StoreHeader organization={organization} orgId={orgId} />
 			<main className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-5 sm:py-7">
 				<OrderStatus order={order} isRefetching={isRefetching} onRefresh={onRefresh} />
+				<CashbackEarnedBanner order={order} />
 				<div className="grid items-start gap-4 md:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
 					<OrderItems order={order} />
 					<div className="flex flex-col gap-4">
@@ -473,6 +496,7 @@ export default function PublicOrderPage({ orgId, token }: PublicOrderPageProps) 
 	const { organization } = data;
 	return (
 		<OrgColorsProvider
+			scoped
 			corPrimaria={organization.corPrimaria}
 			corPrimariaForeground={organization.corPrimariaForeground}
 			corSecundaria={organization.corSecundaria}

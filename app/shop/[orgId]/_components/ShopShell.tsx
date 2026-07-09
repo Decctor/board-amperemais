@@ -1,35 +1,24 @@
 "use client";
 
-import { useShop } from "./ShopProvider";
-import ShopHeader from "./ShopHeader";
-import MenuModeView from "./MenuModeView";
-import CatalogModeView from "./CatalogModeView";
-import CartSheet from "./CartSheet";
-import CheckoutSheet from "./CheckoutSheet";
-import ProductBuilderSheet from "./ProductBuilderSheet";
-import OrderSuccessView from "./OrderSuccessView";
+import dynamic from "next/dynamic";
 import CartFloatingButton from "./CartFloatingButton";
+import CartSheet from "./CartSheet";
+import CatalogModeView from "./CatalogModeView";
+import MenuModeView from "./MenuModeView";
 import ShopAvailabilityNotice from "./ShopAvailabilityNotice";
+import ShopHeader from "./ShopHeader";
+import { useShop, useShopData } from "./ShopProvider";
+
+// Split the heavy interaction flows out of the initial bundle: the checkout only
+// loads after hydration and the builder only on the first product tap.
+const CheckoutSheet = dynamic(() => import("./CheckoutSheet"), { ssr: false });
+const ProductBuilderSheet = dynamic(() => import("./ProductBuilderSheet"), { ssr: false });
 
 export default function ShopShell() {
-	const { catalog, orderState, builderProduct, setBuilderProduct } = useShop();
-
-	if (orderState.state.checkoutStep === "SUCESSO") {
-		return <OrderSuccessView />;
-	}
+	const { catalog } = useShopData();
 
 	return (
-		<div
-			className="min-h-screen bg-background"
-			style={
-				{
-					"--shop-primary": catalog.organization.corPrimaria || "hsl(var(--primary))",
-					"--shop-primary-foreground": catalog.organization.corPrimariaForeground || "hsl(var(--primary-foreground))",
-					"--shop-secondary": catalog.organization.corSecundaria || "hsl(var(--secondary))",
-					"--shop-secondary-foreground": catalog.organization.corSecundariaForeground || "hsl(var(--secondary-foreground))",
-				} as React.CSSProperties
-			}
-		>
+		<div className="min-h-screen bg-background">
 			<ShopHeader />
 			<ShopAvailabilityNotice />
 
@@ -38,7 +27,23 @@ export default function ShopShell() {
 			<CartFloatingButton />
 			<CartSheet />
 			<CheckoutSheet />
-			{builderProduct && <ProductBuilderSheet product={builderProduct} onClose={() => setBuilderProduct(null)} />}
+			<ProductBuilderSheetHost />
 		</div>
+	);
+}
+
+function ProductBuilderSheetHost() {
+	const { builderProduct, builderEditItem, setBuilderProduct, setIsCartOpen } = useShop();
+	if (!builderProduct) return null;
+	const wasEditing = !!builderEditItem;
+	return (
+		<ProductBuilderSheet
+			product={builderProduct}
+			editItem={builderEditItem}
+			onClose={() => {
+				setBuilderProduct(null);
+				if (wasEditing) setIsCartOpen(true);
+			}}
+		/>
 	);
 }

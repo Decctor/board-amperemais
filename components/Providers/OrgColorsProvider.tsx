@@ -78,6 +78,33 @@ export function getPrimaryGradientClass(primaryColor: string): string {
 	return "";
 }
 
+// WCAG relative luminance of a hex color (0 = black, 1 = white)
+function getRelativeLuminance(hex: string): number {
+	const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+	if (!result) return 0;
+	const [r, g, b] = [result[1], result[2], result[3]].map((channel) => {
+		const value = Number.parseInt(channel, 16) / 255;
+		return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+	});
+	return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+export function getContrastRatio(hexA: string, hexB: string): number {
+	const luminanceA = getRelativeLuminance(hexA);
+	const luminanceB = getRelativeLuminance(hexB);
+	const lighter = Math.max(luminanceA, luminanceB);
+	const darker = Math.min(luminanceA, luminanceB);
+	return (lighter + 0.05) / (darker + 0.05);
+}
+
+// Org colors come straight from the database with no guarantee the configured
+// foreground is readable on the background. Below 3:1 (WCAG minimum for UI
+// components / large text) we fall back to plain black or white.
+export function ensureReadableForeground(background: string, foreground: string): string {
+	if (getContrastRatio(background, foreground) >= 3) return foreground;
+	return getContrastRatio(background, "#111111") >= getContrastRatio(background, "#ffffff") ? "#111111" : "#ffffff";
+}
+
 export type OrgColors = {
 	primary: string;
 	primaryForeground: string;
@@ -104,21 +131,36 @@ type OrgColorsProviderProps = {
 	corPrimariaForeground?: string | null;
 	corSecundaria?: string | null;
 	corSecundariaForeground?: string | null;
+	/**
+	 * When true, the org colors are applied as inline CSS variables on a wrapper
+	 * (SSR-safe, no first-paint flash, no leak to the rest of the document)
+	 * instead of mutating :root in an effect. Prefer this for public pages.
+	 */
+	scoped?: boolean;
 };
 
-export function OrgColorsProvider({ children, corPrimaria, corPrimariaForeground, corSecundaria, corSecundariaForeground }: OrgColorsProviderProps) {
-	const colors: OrgColors = useMemo(
-		() => ({
-			primary: corPrimaria || DEFAULT_ORG_COLORS.primary,
-			primaryForeground: corPrimariaForeground || DEFAULT_ORG_COLORS.primaryForeground,
-			secondary: corSecundaria || DEFAULT_ORG_COLORS.secondary,
-			secondaryForeground: corSecundariaForeground || DEFAULT_ORG_COLORS.secondaryForeground,
-		}),
-		[corPrimaria, corPrimariaForeground, corSecundaria, corSecundariaForeground],
-	);
+export function OrgColorsProvider({
+	children,
+	corPrimaria,
+	corPrimariaForeground,
+	corSecundaria,
+	corSecundariaForeground,
+	scoped = false,
+}: OrgColorsProviderProps) {
+	const colors: OrgColors = useMemo(() => {
+		const primary = corPrimaria || DEFAULT_ORG_COLORS.primary;
+		const secondary = corSecundaria || DEFAULT_ORG_COLORS.secondary;
+		return {
+			primary,
+			primaryForeground: ensureReadableForeground(primary, corPrimariaForeground || DEFAULT_ORG_COLORS.primaryForeground),
+			secondary,
+			secondaryForeground: ensureReadableForeground(secondary, corSecundariaForeground || DEFAULT_ORG_COLORS.secondaryForeground),
+		};
+	}, [corPrimaria, corPrimariaForeground, corSecundaria, corSecundariaForeground]);
 
 	// Set CSS variables for the organization colors
 	useEffect(() => {
+		if (scoped) return;
 		const root = document.documentElement;
 
 		// Set the org colors as CSS variables
@@ -162,7 +204,7 @@ export function OrgColorsProvider({ children, corPrimaria, corPrimariaForeground
 			root.style.removeProperty("--org-secondary-s");
 			root.style.removeProperty("--org-secondary-l");
 		};
-	}, [colors]);
+	}, [colors, scoped]);
 
 	const contextValue: OrgColorsContextValue = useMemo(
 		() => ({
@@ -183,6 +225,35 @@ export function OrgColorsProvider({ children, corPrimaria, corPrimariaForeground
 		}),
 		[colors],
 	);
+
+	if (scoped) {
+		const primaryHsl = hexToHsl(colors.primary);
+		const secondaryHsl = hexToHsl(colors.secondary);
+		const scopedStyle = {
+			"--org-primary": colors.primary,
+			"--org-primary-foreground": colors.primaryForeground,
+			"--org-secondary": colors.secondary,
+			"--org-secondary-foreground": colors.secondaryForeground,
+			"--color-brand": colors.primary,
+			"--color-brand-foreground": colors.primaryForeground,
+			"--color-brand-secondary": colors.secondary,
+			"--color-brand-secondary-foreground": colors.secondaryForeground,
+			"--org-primary-h": String(primaryHsl.h),
+			"--org-primary-s": `${primaryHsl.s}%`,
+			"--org-primary-l": `${primaryHsl.l}%`,
+			"--org-secondary-h": String(secondaryHsl.h),
+			"--org-secondary-s": `${secondaryHsl.s}%`,
+			"--org-secondary-l": `${secondaryHsl.l}%`,
+		} as React.CSSProperties;
+
+		return (
+			<OrgColorsContext.Provider value={contextValue}>
+				<div className="contents" style={scopedStyle}>
+					{children}
+				</div>
+			</OrgColorsContext.Provider>
+		);
+	}
 
 	return <OrgColorsContext.Provider value={contextValue}>{children}</OrgColorsContext.Provider>;
 }

@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { formatCashbackValue, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { buildShopCartLines } from "@/lib/shop/cart";
 import type { TShopPaymentMethod } from "@/schemas/shop";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Banknote, Clock3, CreditCard, Info, Package, QrCode, Send, Sparkles, Ticket, Truck, User } from "lucide-react";
@@ -81,56 +82,19 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 	const prefersReducedMotion = useReducedMotion();
 	const reduced = prefersReducedMotion ?? false;
 
-	const { catalog, orderState } = useShop();
+	const { catalog, availability, orderState } = useShop();
 	const { customer, delivery, cashback, cart, payment, coupon } = orderState.state;
 	const config = catalog.shopSettings.configuracoes;
+	const shopIsOpen = availability.status === "ABERTA";
 
-	const cartItemsWithDetails = useMemo(() => {
-		return cart.items
-			.map((item) => {
-				const product = catalog.products.find((p) => p.id === item.produtoId);
-				if (!product) return null;
-				const variant = item.produtoVarianteId ? product.variantes.find((v) => v.id === item.produtoVarianteId) : null;
+	const cartLines = useMemo(() => buildShopCartLines(cart.items, catalog.products), [cart.items, catalog.products]);
 
-				const unitPrice = variant?.precoVenda ?? product.precoVenda ?? 0;
-
-				const allReferences = [...product.addOnsReferencias, ...(variant?.addOnsReferencias ?? [])];
-				const modifiersDetails = item.modificadores
-					.map((mod) => {
-						for (const ref of allReferences) {
-							const option = ref.grupo.opcoes.find((o) => o.id === mod.opcaoId);
-							if (option) {
-								return {
-									nome: option.nome,
-									quantidade: mod.quantidade,
-									precoDelta: option.precoDelta,
-								};
-							}
-						}
-						return null;
-					})
-					.filter(Boolean);
-
-				const modifiersPrice = modifiersDetails.reduce((sum, mod) => sum + (mod?.precoDelta ?? 0) * (mod?.quantidade ?? 1), 0);
-				const lineTotal = (unitPrice + modifiersPrice) * item.quantidade;
-
-				return {
-					...item,
-					title: variant ? `${product.nome} - ${variant.nome}` : product.nome,
-					imagemUrl: variant?.imagemCapaUrl ?? product.imagemCapaUrl,
-					modificadores: modifiersDetails,
-					valorTotal: lineTotal,
-				};
-			})
-			.filter(Boolean);
-	}, [cart.items, catalog.products]);
-
-	const subtotal = cartItemsWithDetails.reduce((sum, item) => sum + (item?.valorTotal ?? 0), 0);
+	const subtotal = cartLines.reduce((sum, line) => sum + line.lineTotal, 0);
 	const couponDiscount = coupon.resgate?.valorDesconto ?? 0;
 	const cashbackDiscount = cashback.resgateSolicitado;
 	const discount = couponDiscount + cashbackDiscount;
 	const total = Math.max(0, subtotal - discount);
-	const itemCount = cartItemsWithDetails.reduce((sum, item) => sum + (item?.quantidade ?? 0), 0);
+	const itemCount = cartLines.reduce((sum, line) => sum + line.quantidade, 0);
 
 	const addressParts = delivery.endereco
 		? [
@@ -238,32 +202,31 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 				</div>
 
 				<div className="flex flex-col gap-2">
-					{cartItemsWithDetails.map((item, index) => {
-						if (!item) return null;
+					{cartLines.map((item, index) => {
 						return (
 							<motion.div key={item.tempId || index} {...fadeUp(0.3 + index * 0.05, reduced)} className="flex gap-3 rounded-2xl border bg-card p-3">
-								{item.imagemUrl ? (
+								{item.imageUrl ? (
 									<div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-muted">
-										<Image src={item.imagemUrl} alt={item.title} fill className="object-cover" sizes="56px" />
+										<Image src={item.imageUrl} alt={item.displayName} fill className="object-cover" sizes="56px" />
 									</div>
 								) : (
 									<div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-muted">
-										<span className="text-lg font-black text-muted-foreground/50">{item.title.charAt(0).toUpperCase()}</span>
+										<span className="text-lg font-black text-muted-foreground/50">{item.displayName.charAt(0).toUpperCase()}</span>
 									</div>
 								)}
 
 								<div className="flex min-w-0 flex-1 items-start justify-between gap-2">
 									<div className="min-w-0">
 										<p className="text-pretty text-sm font-semibold leading-snug">
-											<span className="font-black text-primary">{item.quantidade}x</span> {item.title}
+											<span className="font-black text-primary">{item.quantidade}x</span> {item.displayName}
 										</p>
-										{item.modificadores.length > 0 ? (
+										{item.modifiersDetails.length > 0 ? (
 											<p className="text-pretty mt-0.5 text-xs leading-relaxed text-muted-foreground">
-												{item.modificadores.map((m) => ((m?.quantidade ?? 1) > 1 ? `${m?.quantidade}x ${m?.nome}` : m?.nome)).join(" · ")}
+												{item.modifiersDetails.map((m) => (m.quantidade > 1 ? `${m.quantidade}x ${m.nome}` : m.nome)).join(" · ")}
 											</p>
 										) : null}
 									</div>
-									<span className="shrink-0 text-sm font-bold tabular-nums">{formatToMoney(item.valorTotal)}</span>
+									<span className="shrink-0 text-sm font-bold tabular-nums">{formatToMoney(item.lineTotal)}</span>
 								</div>
 							</motion.div>
 						);
@@ -308,20 +271,15 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 				</div>
 			</motion.div>
 
-			<motion.div {...fadeUp(0.44, reduced)}>
+			<motion.div {...fadeUp(0.44, reduced)} className="sticky bottom-0 z-10 -mx-4 mt-auto border-t bg-background px-4 py-3 lg:-mx-6 lg:px-6">
 				<Button
 					variant="brand"
 					className="group flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-base font-black"
 					onClick={onSubmit}
-					disabled={isSubmitting}
+					disabled={isSubmitting || !shopIsOpen}
 				>
 					ENVIAR PEDIDO
-					<motion.span
-						animate={reduced || isSubmitting ? undefined : { x: [0, 3, 0] }}
-						transition={{ duration: 1.4, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-					>
-						<Send className="size-4 transition-transform group-hover:translate-x-0.5 group-active:translate-x-1" />
-					</motion.span>
+					<Send className="size-4 transition-transform group-hover:translate-x-0.5 group-active:translate-x-1" />
 				</Button>
 			</motion.div>
 		</div>

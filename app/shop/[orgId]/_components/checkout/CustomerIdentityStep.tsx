@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
-import { useClientByLookup } from "@/lib/queries/clients";
+import { useShopClientLookup } from "@/lib/queries/shop";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -14,26 +14,24 @@ type CustomerIdentityStepProps = {
 	onNext: () => void;
 };
 
+// Keeps the focused field visible after the mobile keyboard finishes opening.
+function scrollIntoViewOnFocus(event: React.FocusEvent<HTMLInputElement>) {
+	const target = event.target;
+	setTimeout(() => {
+		target.scrollIntoView({ behavior: "smooth", block: "center" });
+	}, 300);
+}
+
 export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepProps) {
 	const { orgId, orderState } = useShop();
 	const { customer } = orderState.state;
 
 	const [nome, setNome] = useState(customer.nome || "");
 	const [cpfCnpj, setCpfCnpj] = useState(customer.cpfCnpj || "");
+	const [phone, setPhone] = useState(customer.telefone ? formatToPhone(customer.telefone) : "");
 
-	const {
-		data: client,
-		isLoading: isLookingUp,
-		isSuccess,
-		params,
-		updateParams,
-	} = useClientByLookup({
-		initialParams: {
-			orgId,
-			phone: customer.telefone ? formatToPhone(customer.telefone) : "",
-			clientId: null,
-		},
-	});
+	const { data: lookupData, isLoading: isLookingUp, isSuccess } = useShopClientLookup({ orgId, telefone: phone });
+	const client = lookupData?.client ?? null;
 
 	useEffect(() => {
 		if (isSuccess && client) {
@@ -42,16 +40,16 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 				nome: client.nome,
 				telefone: client.telefone,
 			});
-		} else if (isSuccess && !client && params.phone.length === 15) {
+		} else if (isSuccess && !client && phone.length === 15) {
 			orderState.updateCustomer({
 				id: null,
-				telefone: params.phone.replace(/\D/g, ""),
+				telefone: phone.replace(/\D/g, ""),
 			});
 		}
-	}, [isSuccess, client, params.phone]);
+	}, [isSuccess, client, phone]);
 
 	const showFoundCard = isSuccess && !!client;
-	const showNewClientForm = isSuccess && !client && params.phone.length === 15;
+	const showNewClientForm = isSuccess && !client && phone.length === 15;
 
 	const handleSubmitExisting = () => {
 		onNext();
@@ -59,7 +57,7 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 
 	const handleSubmitNew = () => {
 		orderState.updateCustomer({
-			telefone: params.phone.replace(/\D/g, ""),
+			telefone: phone.replace(/\D/g, ""),
 			nome: nome.trim() || null,
 			cpfCnpj: cpfCnpj.trim() || null,
 		});
@@ -84,9 +82,9 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 							transition={{ delay: 0.15, type: "spring", stiffness: 500, damping: 25 }}
 							className="mb-1 text-xs font-bold uppercase tracking-widest text-brand"
 						>
-							✓ PERFIL ENCONTRADO
+							Perfil encontrado
 						</motion.p>
-						<p className="font-black text-2xl uppercase italic text-brand">{client!.nome}</p>
+						<p className="font-black text-2xl text-foreground">{client!.nome}</p>
 						<p className="font-bold text-brand">{formatToPhone(client!.telefone)}</p>
 					</motion.div>
 
@@ -103,7 +101,7 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 						<Button
 							variant="ghost"
 							className="w-full text-brand hover:bg-brand/10 hover:text-brand/80"
-							onClick={() => updateParams({ phone: "", clientId: null })}
+							onClick={() => setPhone("")}
 						>
 							USAR OUTRO TELEFONE
 						</Button>
@@ -119,20 +117,20 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 					className="flex w-full flex-col gap-5"
 				>
 					<div className="flex flex-col gap-2">
-						<Label className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Número do WhatsApp</Label>
+						<Label htmlFor="shop-customer-phone" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+							Número do WhatsApp
+						</Label>
 						<div className="relative">
 							<Input
+								id="shop-customer-phone"
 								type="tel"
 								inputMode="numeric"
+								autoComplete="tel-national"
 								placeholder="(00) 00000-0000"
-								value={params.phone}
-								onChange={(e) => updateParams({ phone: formatToPhone(e.target.value) })}
+								value={phone}
+								onChange={(e) => setPhone(formatToPhone(e.target.value))}
 								className="h-12 pr-10 text-base"
-								onFocus={(e) => {
-									setTimeout(() => {
-										e.target.scrollIntoView({ behavior: "smooth", block: "center" });
-									}, 300);
-								}}
+								onFocus={scrollIntoViewOnFocus}
 							/>
 							<AnimatePresence>
 								{isLookingUp && (
@@ -171,37 +169,32 @@ export default function CustomerIdentityStep({ onNext }: CustomerIdentityStepPro
 								<p className="text-pretty text-sm text-muted-foreground">Parece que você ainda não tem um cadastro. Preencha seus dados para continuar.</p>
 
 								<div className="flex flex-col gap-2">
-									<Label className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-										Nome <span className="text-red-500">*</span>
+									<Label htmlFor="shop-customer-name" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+										Nome <span className="text-destructive">*</span>
 									</Label>
 									<Input
+										id="shop-customer-name"
+										autoComplete="name"
 										placeholder="Seu nome completo"
 										value={nome}
 										onChange={(e) => setNome(e.target.value)}
 										className="h-12 text-base"
-										onFocus={(e) => {
-											setTimeout(() => {
-												e.target.scrollIntoView({ behavior: "smooth", block: "center" });
-											}, 300);
-										}}
+										onFocus={scrollIntoViewOnFocus}
 									/>
 								</div>
 
 								<div className="flex flex-col gap-2">
-									<Label className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+									<Label htmlFor="shop-customer-cpfcnpj" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
 										CPF/CNPJ <span className="text-xs font-normal normal-case text-muted-foreground">(opcional)</span>
 									</Label>
 									<Input
+										id="shop-customer-cpfcnpj"
 										placeholder="000.000.000-00"
 										value={cpfCnpj}
 										onChange={(e) => setCpfCnpj(formatToCPForCNPJ(e.target.value))}
 										inputMode="numeric"
 										className="h-12 text-base"
-										onFocus={(e) => {
-											setTimeout(() => {
-												e.target.scrollIntoView({ behavior: "smooth", block: "center" });
-											}, 300);
-										}}
+										onFocus={scrollIntoViewOnFocus}
 									/>
 								</div>
 

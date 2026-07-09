@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { formatToMoney } from "@/lib/formatting";
 import { type TShopAvailableCoupon, useShopAvailableCoupons, useShopClientLookup } from "@/lib/queries/shop";
+import { buildShopCartLines } from "@/lib/shop/cart";
 import { ArrowRight, BadgePercent, Info, Loader2, Ticket, X } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { toast } from "sonner";
@@ -33,46 +34,18 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 		telefone: customer.telefone,
 	});
 
-	const cartItemsWithPricing = useMemo(() => {
-		return cart.items
-			.map((item) => {
-				const product = catalog.products.find((p) => p.id === item.produtoId);
-				if (!product) return null;
+	const cartLines = useMemo(() => buildShopCartLines(cart.items, catalog.products), [cart.items, catalog.products]);
 
-				const variant = item.produtoVarianteId ? product.variantes.find((v) => v.id === item.produtoVarianteId) : null;
-				const unitPrice = variant?.precoVenda ?? product.precoVenda ?? 0;
-				const allReferences = [...product.addOnsReferencias, ...(variant?.addOnsReferencias ?? [])];
-				let modifiersPrice = 0;
-
-				for (const modifier of item.modificadores) {
-					for (const ref of allReferences) {
-						const option = ref.grupo.opcoes.find((o) => o.id === modifier.opcaoId);
-						if (option) modifiersPrice += option.precoDelta * modifier.quantidade;
-					}
-				}
-
-				const unitFinal = unitPrice + modifiersPrice;
-				return {
-					produtoId: item.produtoId,
-					produtoVarianteId: item.produtoVarianteId ?? null,
-					quantidade: item.quantidade,
-					valorVendaUnitario: unitFinal,
-					lineTotal: unitFinal * item.quantidade,
-				};
-			})
-			.filter((item): item is NonNullable<typeof item> => !!item);
-	}, [cart.items, catalog.products]);
-
-	const subtotal = useMemo(() => cartItemsWithPricing.reduce((sum, item) => sum + item.lineTotal, 0), [cartItemsWithPricing]);
+	const subtotal = useMemo(() => cartLines.reduce((sum, line) => sum + line.lineTotal, 0), [cartLines]);
 	const cartItemsForCoupon = useMemo(
 		() =>
-			cartItemsWithPricing.map((item) => ({
-				produtoId: item.produtoId,
-				produtoVarianteId: item.produtoVarianteId,
-				quantidade: item.quantidade,
-				valorVendaUnitario: item.valorVendaUnitario,
+			cartLines.map((line) => ({
+				produtoId: line.produtoId,
+				produtoVarianteId: line.produtoVarianteId,
+				quantidade: line.quantidade,
+				valorVendaUnitario: line.unitFinal,
 			})),
-		[cartItemsWithPricing],
+		[cartLines],
 	);
 
 	const { data: availableCoupons, isLoading: isLoadingCoupons } = useShopAvailableCoupons({
@@ -275,10 +248,12 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 				<p className="text-xs leading-relaxed text-muted-foreground">Os descontos serão conferidos novamente antes do pedido ser confirmado.</p>
 			</div>
 
-			<Button variant="brand" className="mt-auto flex h-12 w-full items-center gap-1.5 rounded-2xl font-black" onClick={onNext}>
-				CONTINUAR PARA PAGAMENTO
-				<ArrowRight className="h-4 w-4" />
-			</Button>
+			<div className="sticky bottom-0 z-10 -mx-4 mt-auto border-t bg-background px-4 py-3 lg:-mx-6 lg:px-6">
+				<Button variant="brand" className="flex h-12 w-full items-center gap-1.5 rounded-2xl font-black" onClick={onNext}>
+					CONTINUAR PARA PAGAMENTO
+					<ArrowRight className="h-4 w-4" />
+				</Button>
+			</div>
 		</div>
 	);
 }

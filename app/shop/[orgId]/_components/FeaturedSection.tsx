@@ -2,7 +2,7 @@
 
 import type { TShopCatalogProduct } from "@/lib/shop/catalog";
 import { Star } from "lucide-react";
-import ProductMarqueeRow from "./ProductMarqueeRow";
+import ProductScrollRow from "./ProductScrollRow";
 
 type FeaturedSectionProps = {
 	products: TShopCatalogProduct[];
@@ -15,12 +15,12 @@ export default function FeaturedSection({ products }: FeaturedSectionProps) {
 		<section className="py-4">
 			<div className="px-4 mb-3">
 				<h2 className="font-black text-sm uppercase tracking-wide flex items-center gap-2">
-					<Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+					<Star className="w-4 h-4 text-brand fill-brand" />
 					Em destaque
 				</h2>
 			</div>
 
-			<ProductMarqueeRow products={products} />
+			<ProductScrollRow products={products} />
 		</section>
 	);
 }

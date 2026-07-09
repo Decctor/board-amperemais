@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { normalizeForSearch } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import { Search, X } from "lucide-react";
 import Image from "next/image";
@@ -11,7 +10,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import FeaturedSection from "./FeaturedSection";
 import MostOrderedSection from "./MostOrderedSection";
 import ProductGroupSection from "./ProductGroupSection";
-import { useShop } from "./ShopProvider";
+import { useShopData } from "./ShopProvider";
+import { useShopProductFilter } from "./use-shop-product-filter";
 
 function slugify(str: string) {
 	return str
@@ -23,10 +23,9 @@ function slugify(str: string) {
 }
 
 export default function MenuModeView() {
-	const { catalog } = useShop();
+	const { catalog } = useShopData();
 	const { products, blocks, groups, organization } = catalog;
-	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
-	const [searchValue, setSearchValue] = useState("");
+	const { searchValue, setSearchValue, selectedGroup, setSelectedGroup, filteredProducts, isFiltering, clearFilters } = useShopProductFilter(products);
 	const [isSearchStuck, setIsSearchStuck] = useState(false);
 	const stickySentinelRef = useRef<HTMLDivElement>(null);
 
@@ -40,26 +39,6 @@ export default function MenuModeView() {
 		return () => observer.disconnect();
 	}, []);
 
-	const filteredProducts = useMemo(() => {
-		let filtered = products;
-
-		if (searchValue.trim()) {
-			const search = normalizeForSearch(searchValue);
-			filtered = filtered.filter(
-				(p) =>
-					normalizeForSearch(p.nome).includes(search) ||
-					(p.codigo && normalizeForSearch(p.codigo).includes(search)) ||
-					(p.grupo && normalizeForSearch(p.grupo).includes(search)),
-			);
-		}
-
-		if (selectedGroup) {
-			filtered = filtered.filter((p) => p.grupo === selectedGroup);
-		}
-
-		return filtered;
-	}, [products, searchValue, selectedGroup]);
-
 	const productsByGroup = useMemo(() => {
 		const grouped: Record<string, typeof products> = {};
 		for (const group of groups) {
@@ -71,8 +50,6 @@ export default function MenuModeView() {
 		}
 		return grouped;
 	}, [filteredProducts, groups]);
-
-	const isFiltering = searchValue.trim().length > 0 || selectedGroup !== null;
 
 	const handleGroupClick = (group: string) => {
 		if (selectedGroup === group) {
@@ -126,7 +103,8 @@ export default function MenuModeView() {
 								<Button
 									variant="ghost"
 									size="icon"
-									className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full"
+									className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+									aria-label="Limpar busca"
 									onClick={() => setSearchValue("")}
 								>
 									<X className="w-3 h-3" />
@@ -142,11 +120,11 @@ export default function MenuModeView() {
 							{groups.map((group) => (
 								<Button
 									key={group}
-									variant={selectedGroup === group ? "default" : "outline"}
+									variant={selectedGroup === group ? "brand" : "outline"}
 									size="sm"
 									className={cn(
-										"rounded-full flex-shrink-0 h-8 text-xs font-semibold",
-										selectedGroup === group && "bg-primary text-primary-foreground",
+										"rounded-full flex-shrink-0 h-9 text-xs font-semibold",
+										selectedGroup === group && "bg-brand text-brand-foreground",
 									)}
 									onClick={() => handleGroupClick(group)}
 								>
@@ -185,8 +163,13 @@ export default function MenuModeView() {
 			)}
 
 			{filteredProducts.length === 0 && (
-				<div className="py-12 text-center">
+				<div className="flex flex-col items-center gap-3 py-12 text-center">
 					<p className="text-muted-foreground">Nenhum produto encontrado.</p>
+					{isFiltering && (
+						<Button variant="outline" size="sm" className="rounded-full" onClick={clearFilters}>
+							Limpar busca e filtros
+						</Button>
+					)}
 				</div>
 			)}
 		</div>

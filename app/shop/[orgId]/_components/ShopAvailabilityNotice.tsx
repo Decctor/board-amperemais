@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, Clock3 } from "lucide-react";
-import { useShop } from "./ShopProvider";
+import { useShopData } from "./ShopProvider";
 
 function formatNextOpening(value: string | null) {
 	if (!value) return null;
@@ -14,8 +14,7 @@ function formatNextOpening(value: string | null) {
 }
 
 export default function ShopAvailabilityNotice() {
-	const { catalog } = useShop();
-	const availability = catalog.disponibilidade;
+	const { availability } = useShopData();
 	if (availability.status === "ABERTA") return null;
 
 	const nextOpening = formatNextOpening(availability.proximaAbertura);

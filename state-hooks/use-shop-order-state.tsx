@@ -28,14 +28,10 @@ type TShopOrderState = {
 	};
 	idempotencyKey: string;
 	publicAccessToken: string;
-	checkoutStep: "CARRINHO" | "CLIENTE" | "ENTREGA" | "CASHBACK" | "PAGAMENTO" | "REVISAO" | "SUCESSO";
-	lastOrder: {
-		saleId: string;
-		orderNumber: string;
-	} | null;
+	checkoutStep: "CARRINHO" | "CLIENTE" | "ENTREGA" | "CASHBACK" | "PAGAMENTO" | "REVISAO";
 };
 
-const CHECKOUT_STEPS: TShopOrderState["checkoutStep"][] = ["CARRINHO", "CLIENTE", "ENTREGA", "CASHBACK", "PAGAMENTO", "REVISAO", "SUCESSO"];
+const CHECKOUT_STEPS: TShopOrderState["checkoutStep"][] = ["CARRINHO", "CLIENTE", "ENTREGA", "CASHBACK", "PAGAMENTO", "REVISAO"];
 
 type TStoredShopOrderState = {
 	version: number;
@@ -72,7 +68,6 @@ function getDefaultState(orgId: string, mode: "CARDAPIO" | "CATALOGO"): TShopOrd
 		payment: { metodo: "DINHEIRO", observacoes: "", precisaTroco: false, trocoPara: null },
 		...createOrderIdentity(),
 		checkoutStep: "CARRINHO",
-		lastOrder: null,
 	};
 }
 
@@ -123,7 +118,12 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			idempotencyKey: state.idempotencyKey,
 			publicAccessToken: state.publicAccessToken,
 		};
-		window.localStorage.setItem(getStorageKey(orgId), JSON.stringify(payload));
+		// Debounced: updates arrive per keystroke (payment notes, address fields) and
+		// serializing the whole cart on each one is wasted main-thread work.
+		const timeout = window.setTimeout(() => {
+			window.localStorage.setItem(getStorageKey(orgId), JSON.stringify(payload));
+		}, 300);
+		return () => window.clearTimeout(timeout);
 	}, [orgId, state.cart, state.customer, state.delivery, state.cashback, state.coupon, state.payment, state.idempotencyKey, state.publicAccessToken]);
 
 	const addItem = useCallback((item: TShopCartItem) => {
@@ -141,6 +141,15 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			cart: {
 				items: prev.cart.items.map((item) => (item.tempId === tempId ? { ...item, quantidade: Math.max(1, quantidade) } : item)),
 			},
+			coupon: { resgate: null },
+			...createOrderIdentity(),
+		}));
+	}, []);
+
+	const replaceItem = useCallback((tempId: string, item: TShopCartItem) => {
+		setState((prev) => ({
+			...prev,
+			cart: { items: prev.cart.items.map((existing) => (existing.tempId === tempId ? { ...item, tempId } : existing)) },
 			coupon: { resgate: null },
 			...createOrderIdentity(),
 		}));
@@ -215,17 +224,13 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 	}, []);
 
 	const resetCheckout = useCallback(() => {
-		setState((prev) => ({ ...prev, checkoutStep: "CARRINHO", lastOrder: null }));
+		setState((prev) => ({ ...prev, checkoutStep: "CARRINHO" }));
 	}, []);
 
 	const resetState = useCallback(() => {
 		setState(getDefaultState(orgId, mode));
 		if (typeof window !== "undefined") window.localStorage.removeItem(getStorageKey(orgId));
 	}, [orgId, mode]);
-
-	const setLastOrder = useCallback((lastOrder: TShopOrderState["lastOrder"]) => {
-		setState((prev) => ({ ...prev, lastOrder, checkoutStep: lastOrder ? "SUCESSO" : prev.checkoutStep }));
-	}, []);
 
 	const refreshOrderIdentity = useCallback(() => {
 		setState((prev) => ({ ...prev, ...createOrderIdentity() }));
@@ -269,6 +274,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 		orderInput,
 		addItem,
 		updateItemQuantity,
+		replaceItem,
 		removeItem,
 		clearCart,
 		updateCustomer,
@@ -282,7 +288,6 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 		resetCheckout,
 		resetState,
 		hydrateFromStorage,
-		setLastOrder,
 		refreshOrderIdentity,
 	};
 }

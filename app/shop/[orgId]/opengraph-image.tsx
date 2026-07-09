@@ -76,7 +76,11 @@ export default async function OpengraphImage({ params }: { params: Promise<{ org
 	const lighter = `hsl(${h}, ${s}%, ${Math.min(l + 22, 88)}%)`;
 	const darker = `hsl(${h}, ${s}%, ${Math.max(l - 12, 12)}%)`;
 
-	const logoDataUrl = await loadLogoDataUrl(organization?.logoUrl ?? null);
+	// The logo URL is arbitrary remote input; never let a slow host hang the OG render.
+	const logoDataUrl = await Promise.race([
+		loadLogoDataUrl(organization?.logoUrl ?? null),
+		new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+	]);
 	const initial = nome.trim().charAt(0).toUpperCase() || "L";
 
 	return new ImageResponse(

@@ -17,20 +17,20 @@ import PaymentStep from "./checkout/PaymentStep";
 import { useShop } from "./ShopProvider";
 
 const STEP_TITLES: Record<string, string> = {
-	CLIENTE: "SEUS DADOS",
-	ENTREGA: "FORMA DE ENTREGA",
-	CASHBACK: "DESCONTOS",
-	PAGAMENTO: "FORMA DE PAGAMENTO",
-	REVISAO: "REVISAR PEDIDO",
+	CLIENTE: "Seus dados",
+	ENTREGA: "Forma de entrega",
+	CASHBACK: "Descontos",
+	PAGAMENTO: "Forma de pagamento",
+	REVISAO: "Revisar pedido",
 };
 
 const SHOP_ORDER_PUBLIC_TOKEN_CONFLICT_MESSAGE = "Este pedido foi alterado após uma tentativa anterior. Tente enviar novamente.";
 
 export default function CheckoutSheet() {
 	const router = useRouter();
-	const { orgId, catalog, orderState, isCheckoutOpen, setIsCheckoutOpen, setIsCartOpen } = useShop();
+	const { orgId, availability, orderState, isCheckoutOpen, setIsCheckoutOpen, setIsCartOpen } = useShop();
 	const { checkoutStep } = orderState.state;
-	const isOpen = catalog.disponibilidade.status === "ABERTA";
+	const isOpen = availability.status === "ABERTA";
 
 	const { mutate: submitOrder, isPending } = useMutation({
 		mutationKey: ["create-shop-order", orgId],
@@ -50,6 +50,12 @@ export default function CheckoutSheet() {
 	});
 
 	const isInCheckout = ["CLIENTE", "ENTREGA", "CASHBACK", "PAGAMENTO", "REVISAO"].includes(checkoutStep);
+
+	const visibleSteps = orderState.state.customer.id
+		? ["CLIENTE", "ENTREGA", "CASHBACK", "PAGAMENTO", "REVISAO"]
+		: ["CLIENTE", "ENTREGA", "PAGAMENTO", "REVISAO"];
+	const stepIndex = visibleSteps.indexOf(checkoutStep);
+	const stepProgress = stepIndex >= 0 ? ((stepIndex + 1) / visibleSteps.length) * 100 : 0;
 
 	const handleBack = () => {
 		if (checkoutStep === "CLIENTE") {
@@ -83,7 +89,7 @@ export default function CheckoutSheet() {
 	}, [checkoutStep]);
 
 	return (
-		<Sheet open={isOpen && isCheckoutOpen && isInCheckout} onOpenChange={(open) => !open && handleClose()}>
+		<Sheet open={isCheckoutOpen && isInCheckout} onOpenChange={(open) => !open && handleClose()}>
 			<SheetContent
 				side="bottom"
 				showCloseButton={false}
@@ -91,19 +97,32 @@ export default function CheckoutSheet() {
 			>
 				<div className="relative flex min-h-0 flex-1 flex-col">
 					<SheetHeader className="flex shrink-0 flex-row items-center gap-3 border-b p-4 text-left">
-						<Button variant="ghost" size="icon" className="-ml-2 h-8 w-8 shrink-0" onClick={handleBack}>
+						<Button variant="ghost" size="icon" className="-ml-2 h-9 w-9 shrink-0" aria-label="Voltar" onClick={handleBack}>
 							<ArrowLeft className="h-4 w-4" />
 						</Button>
 						<div className="min-w-0 flex-1">
 							<SheetTitle className="text-lg font-black">{STEP_TITLES[checkoutStep]}</SheetTitle>
-							<SheetDescription>FINALIZAR PEDIDO</SheetDescription>
+							<SheetDescription>{stepIndex >= 0 ? `Etapa ${stepIndex + 1} de ${visibleSteps.length}` : "Finalizar pedido"}</SheetDescription>
 						</div>
 					</SheetHeader>
+
+					<div className="h-1 w-full shrink-0 bg-muted" aria-hidden>
+						<div className="h-full bg-brand transition-[width] duration-300 ease-out" style={{ width: `${stepProgress}%` }} />
+					</div>
 
 					<div
 						ref={stepScrollRef}
 						className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] lg:px-6"
 					>
+						{!isOpen && (
+							<div className="rounded-2xl border border-brand-secondary/30 bg-brand-secondary/10 px-4 py-3">
+								<p className="text-sm font-bold">A loja fechou enquanto você finalizava.</p>
+								<p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+									Seu pedido está salvo. Volte durante o horário de atendimento para enviar.
+								</p>
+							</div>
+						)}
+
 						{checkoutStep === "CLIENTE" && <CustomerIdentityStep onNext={() => orderState.nextStep()} />}
 
 						{checkoutStep === "ENTREGA" && <DeliveryStep onNext={handleNextFromDelivery} />}

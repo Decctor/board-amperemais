@@ -86,11 +86,11 @@ export default function DeliveryStep({ onNext }: DeliveryStepProps) {
 						onClick={() => handleModeSelect("RETIRADA")}
 						className={cn(
 							"flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-colors",
-							delivery.modalidade === "RETIRADA" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
+							delivery.modalidade === "RETIRADA" ? "border-brand bg-brand/5" : "border-border hover:border-brand/50",
 						)}
 					>
-						<Package className={cn("w-6 h-6", delivery.modalidade === "RETIRADA" ? "text-primary" : "text-muted-foreground")} />
-						<span className={cn("font-semibold", delivery.modalidade === "RETIRADA" && "text-primary")}>RETIRADA</span>
+						<Package className={cn("w-6 h-6", delivery.modalidade === "RETIRADA" ? "text-foreground" : "text-muted-foreground")} />
+						<span className="font-semibold">Retirada</span>
 					</button>
 
 					<button
@@ -98,11 +98,11 @@ export default function DeliveryStep({ onNext }: DeliveryStepProps) {
 						onClick={() => handleModeSelect("ENTREGA")}
 						className={cn(
 							"flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-colors",
-							delivery.modalidade === "ENTREGA" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
+							delivery.modalidade === "ENTREGA" ? "border-brand bg-brand/5" : "border-border hover:border-brand/50",
 						)}
 					>
-						<Truck className={cn("w-6 h-6", delivery.modalidade === "ENTREGA" ? "text-primary" : "text-muted-foreground")} />
-						<span className={cn("font-semibold", delivery.modalidade === "ENTREGA" && "text-primary")}>ENTREGA</span>
+						<Truck className={cn("w-6 h-6", delivery.modalidade === "ENTREGA" ? "text-foreground" : "text-muted-foreground")} />
+						<span className="font-semibold">Entrega</span>
 						<span className="text-xs text-muted-foreground">Até {service.entrega.prazoMinutos} min</span>
 					</button>
 				</div>
@@ -112,7 +112,7 @@ export default function DeliveryStep({ onNext }: DeliveryStepProps) {
 				<div className="flex items-start gap-3 p-4 rounded-xl bg-muted/50 border">
 					<MapPin className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
 					<div>
-						<p className="font-semibold text-sm">ENDEREÇO PARA RETIRADA</p>
+						<p className="font-semibold text-sm">Endereço para retirada</p>
 						<p className="text-sm text-muted-foreground mt-1">{orgLocation}</p>
 					</div>
 				</div>
@@ -123,15 +123,17 @@ export default function DeliveryStep({ onNext }: DeliveryStepProps) {
 				<p className="text-sm font-medium text-destructive">O pedido mínimo para entrega é {formatToMoney(service.entrega.pedidoMinimo)}.</p>
 			) : null}
 
-			<Button
-				variant="brand"
-				className={cn("flex items-center gap-1.5 w-full h-12 rounded-xl font-bold mt-auto", !canProceed && "opacity-50")}
-				onClick={onNext}
-				disabled={!canProceed}
-			>
-				CONTINUAR
-				<ArrowRight className="h-4 w-4" />
-			</Button>
+			<div className="sticky bottom-0 z-10 -mx-4 mt-auto border-t bg-background px-4 py-3 lg:-mx-6 lg:px-6">
+				<Button
+					variant="brand"
+					className={cn("flex items-center gap-1.5 w-full h-12 rounded-xl font-bold", !canProceed && "opacity-50")}
+					onClick={onNext}
+					disabled={!canProceed}
+				>
+					CONTINUAR
+					<ArrowRight className="h-4 w-4" />
+				</Button>
+			</div>
 		</div>
 	);
 }
@@ -142,39 +144,40 @@ type DeliveryAddressFormProps = {
 };
 function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddressFormProps) {
 	async function setAddressDataByCEP(cep: string) {
-		const addressInfo = await getCEPInfo(cep);
-		const toastID = toast.loading("Buscando informações sobre o CEP...", {
-			duration: 2000,
-		});
-		setTimeout(() => {
-			if (addressInfo) {
-				toast.dismiss(toastID);
-				toast.success("Dados do CEP buscados com sucesso.", {
-					duration: 1000,
-				});
-				updateDelivery({
-					endereco: {
-						...deliveryAddress,
-						localizacaoLogradouro: addressInfo.logradouro,
-						localizacaoBairro: addressInfo.bairro,
-						localizacaoEstado: addressInfo.uf,
-						localizacaoCidade: addressInfo.localidade.toUpperCase(),
-						localizacaoCep: cep,
-					},
-				});
+		const toastID = toast.loading("Buscando endereço pelo CEP...");
+		try {
+			const addressInfo = await getCEPInfo(cep);
+			if (!addressInfo) {
+				toast.error("CEP não encontrado. Preencha o endereço manualmente.", { id: toastID });
+				return;
 			}
-		}, 1000);
+			toast.success("Endereço preenchido a partir do CEP.", { id: toastID, duration: 2000 });
+			updateDelivery({
+				endereco: {
+					...deliveryAddress,
+					localizacaoLogradouro: addressInfo.logradouro,
+					localizacaoBairro: addressInfo.bairro,
+					localizacaoEstado: addressInfo.uf,
+					localizacaoCidade: addressInfo.localidade.toUpperCase(),
+					localizacaoCep: cep,
+				},
+			});
+		} catch {
+			toast.error("Não foi possível buscar o CEP. Preencha o endereço manualmente.", { id: toastID });
+		}
 	}
 
 	return (
 		<div className="flex flex-col gap-4 p-4 rounded-xl bg-muted/50 border">
-			<p className="text-sm font-semibold">ENDEREÇO DE ENTREGA</p>
+			<p className="text-sm font-semibold">Endereço de entrega</p>
 			<div className="w-full flex flex-col gap-3">
 				<div className="w-full flex items-center flex-col lg:flex-row gap-3">
 					<div className="w-full lg:w-1/3">
 						<TextInput
 							label="CEP"
-							placeholder="Preencha aqui o CEP do endereço de entrega..."
+							placeholder="00000-000"
+							inputMode="numeric"
+							autoComplete="postal-code"
 							value={deliveryAddress?.localizacaoCep || ""}
 							handleChange={(value) => {
 								if (value.length === 9) {
@@ -186,7 +189,7 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 					</div>
 					<div className="w-full lg:w-1/3">
 						<SelectInput
-							label="ESTADO"
+							label="Estado"
 							value={deliveryAddress?.localizacaoEstado || null}
 							handleChange={(value) => updateDelivery({ endereco: { ...deliveryAddress, localizacaoEstado: value } })}
 							options={BrazilianStatesOptions}
@@ -196,7 +199,7 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 					</div>
 					<div className="w-full lg:w-1/3">
 						<SelectInput
-							label="CIDADE"
+							label="Cidade"
 							value={deliveryAddress?.localizacaoCidade || null}
 							handleChange={(value) => updateDelivery({ endereco: { ...deliveryAddress, localizacaoCidade: value } })}
 							options={BrazilianCitiesOptionsFromUF(deliveryAddress?.localizacaoEstado ?? null)}
@@ -209,15 +212,17 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 					<div className="w-full lg:w-1/3">
 						<TextInput
 							label="Bairro"
-							placeholder="Preencha aqui o bairro do endereço de entrega..."
+							placeholder="Ex.: Centro"
+							autoComplete="address-level3"
 							value={deliveryAddress?.localizacaoBairro || ""}
 							handleChange={(value) => updateDelivery({ endereco: { ...deliveryAddress, localizacaoBairro: value } })}
 						/>
 					</div>
 					<div className="w-full lg:w-1/3">
 						<TextInput
-							label="Logradouro"
-							placeholder="Preencha aqui o logradouro do endereço de entrega..."
+							label="Rua"
+							placeholder="Ex.: Rua das Flores"
+							autoComplete="address-line1"
 							value={deliveryAddress?.localizacaoLogradouro || ""}
 							handleChange={(value) => updateDelivery({ endereco: { ...deliveryAddress, localizacaoLogradouro: value } })}
 						/>
@@ -225,7 +230,7 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 					<div className="w-full lg:w-1/3">
 						<TextInput
 							label="Número"
-							placeholder="Preencha aqui o número do endereço de entrega..."
+							placeholder="Ex.: 123"
 							value={deliveryAddress?.localizacaoNumero || ""}
 							handleChange={(value) => updateDelivery({ endereco: { ...deliveryAddress, localizacaoNumero: value } })}
 						/>
@@ -233,7 +238,8 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 				</div>
 				<TextInput
 					label="Complemento"
-					placeholder="Preencha aqui o complemento (apartamento, bloco, referência...) do endereço de entrega..."
+					placeholder="Apto, bloco, ponto de referência..."
+					autoComplete="address-line2"
 					value={deliveryAddress?.localizacaoComplemento || ""}
 					handleChange={(value) => updateDelivery({ endereco: { ...deliveryAddress, localizacaoComplemento: value } })}
 				/>

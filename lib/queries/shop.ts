@@ -1,3 +1,4 @@
+import type { TGetShopAvailabilityOutput } from "@/app/api/shop/[orgId]/availability/route";
 import type { TGetShopCatalogOutput } from "@/app/api/shop/[orgId]/catalog/route";
 import type { TGetPublicShopOrderOutput } from "@/app/api/shop/[orgId]/orders/[token]/route";
 import type { TGetAvailableShopCouponsInput, TGetAvailableShopCouponsOutput } from "@/app/api/shop/[orgId]/coupons/available/route";
@@ -14,14 +15,36 @@ async function fetchShopCatalog(orgId: string) {
 	return data.data;
 }
 
-export function useShopCatalog({ orgId }: { orgId: string }) {
+export function useShopCatalog({ orgId, initialData }: { orgId: string; initialData?: TGetShopCatalogOutput["data"] }) {
 	const queryKey = ["shop-catalog", orgId] as const;
 	return {
 		...useQuery({
 			queryKey,
 			queryFn: () => fetchShopCatalog(orgId),
 			enabled: !!orgId,
+			initialData,
+			staleTime: 60_000,
+		}),
+		queryKey,
+	};
+}
+
+async function fetchShopAvailability(orgId: string) {
+	const { data } = await axios.get<TGetShopAvailabilityOutput>(`/api/shop/${orgId}/availability`);
+	return data.data;
+}
+
+export function useShopAvailability({ orgId, initialData }: { orgId: string; initialData?: TGetShopAvailabilityOutput["data"] }) {
+	const queryKey = ["shop-availability", orgId] as const;
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchShopAvailability(orgId),
+			enabled: !!orgId,
+			initialData,
+			staleTime: 30_000,
 			refetchInterval: 60_000,
+			refetchIntervalInBackground: false,
 		}),
 		queryKey,
 	};

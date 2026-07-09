@@ -1,26 +1,32 @@
-import { db } from "@/services/drizzle";
+import { getShopCatalogData, type TShopCatalogData } from "@/lib/shop/catalog-data";
 import type { Metadata } from "next";
+import { cache } from "react";
 import ShopPage from "./shop-page";
 
 type ShopPageParams = {
 	params: Promise<{ orgId: string }>;
 };
 
+const getCachedShopCatalog = cache(async (orgId: string): Promise<TShopCatalogData | null> => {
+	try {
+		return await getShopCatalogData(orgId);
+	} catch {
+		return null;
+	}
+});
+
 export async function generateMetadata({ params }: ShopPageParams): Promise<Metadata> {
 	const { orgId } = await params;
+	const catalog = await getCachedShopCatalog(orgId);
 
-	const organization = await db.query.organizations.findFirst({
-		where: (fields, { eq }) => eq(fields.id, orgId),
-		columns: { nome: true, logoUrl: true },
-	});
-
-	if (!organization) {
+	if (!catalog) {
 		return {
 			title: "Loja Digital",
 			description: "Faça seu pedido online.",
 		};
 	}
 
+	const { organization } = catalog;
 	const title = `${organization.nome}`;
 	const description = `Faça seu pedido online na ${organization.nome}.`;
 
@@ -37,5 +43,6 @@ export async function generateMetadata({ params }: ShopPageParams): Promise<Meta
 
 export default async function Shop({ params }: ShopPageParams) {
 	const { orgId } = await params;
-	return <ShopPage orgId={orgId} />;
+	const initialCatalog = await getCachedShopCatalog(orgId);
+	return <ShopPage orgId={orgId} initialCatalog={initialCatalog} />;
 }
