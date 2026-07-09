@@ -7,6 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { formatToMoney } from "@/lib/formatting";
 import { type TShopAvailableCoupon, useShopAvailableCoupons, useShopClientLookup } from "@/lib/queries/shop";
 import { buildShopCartLines } from "@/lib/shop/cart";
+import { HAPTICS, triggerHaptic } from "@/lib/shop/haptics";
 import { ArrowRight, BadgePercent, Info, Loader2, Ticket, X } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { toast } from "sonner";
@@ -162,14 +163,15 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 							<AvailableCouponCard
 								key={availableCoupon.id}
 								coupon={availableCoupon}
-								onApply={() =>
+								onApply={() => {
+									triggerHaptic(HAPTICS.tap);
 									orderState.updateCoupon({
 										cupomId: availableCoupon.id,
 										valorDesconto: availableCoupon.avaliacao?.elegivel ? availableCoupon.avaliacao.valorDesconto : 0,
 										codigo: availableCoupon.codigo,
 										titulo: availableCoupon.titulo,
-									})
-								}
+									});
+								}}
 							/>
 						))}
 					</div>

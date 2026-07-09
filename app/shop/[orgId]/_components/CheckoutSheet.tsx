@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { getErrorMessage } from "@/lib/errors";
 import { createShopOrder } from "@/lib/mutations/shop";
+import { HAPTICS, triggerHaptic } from "@/lib/shop/haptics";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -36,11 +37,13 @@ export default function CheckoutSheet() {
 		mutationKey: ["create-shop-order", orgId],
 		mutationFn: () => createShopOrder({ orgId, input: orderState.orderInput }),
 		onSuccess: (data) => {
+			triggerHaptic(HAPTICS.success);
 			orderState.clearCart();
 			setIsCheckoutOpen(false);
 			router.replace("/shop/" + orgId + "/pedidos/" + data.data.publicAccessToken);
 		},
 		onError: (error) => {
+			triggerHaptic(HAPTICS.warning);
 			const message = getErrorMessage(error);
 			if (message === SHOP_ORDER_PUBLIC_TOKEN_CONFLICT_MESSAGE) {
 				orderState.refreshOrderIdentity();
@@ -74,7 +77,15 @@ export default function CheckoutSheet() {
 
 	const canSkipDiscounts = !orderState.state.customer.id;
 
+	// Single chokepoint for the "advanced a step" tap, so every step's CONTINUAR
+	// gets the same confirmation. Back navigation stays silent: it's a correction.
+	const advanceStep = () => {
+		triggerHaptic(HAPTICS.tap);
+		orderState.nextStep();
+	};
+
 	const handleNextFromDelivery = () => {
+		triggerHaptic(HAPTICS.tap);
 		if (canSkipDiscounts) {
 			orderState.setCheckoutStep("PAGAMENTO");
 		} else {
@@ -123,13 +134,13 @@ export default function CheckoutSheet() {
 							</div>
 						)}
 
-						{checkoutStep === "CLIENTE" && <CustomerIdentityStep onNext={() => orderState.nextStep()} />}
+						{checkoutStep === "CLIENTE" && <CustomerIdentityStep onNext={advanceStep} />}
 
 						{checkoutStep === "ENTREGA" && <DeliveryStep onNext={handleNextFromDelivery} />}
 
-						{checkoutStep === "CASHBACK" && <CashbackStep onNext={() => orderState.nextStep()} />}
+						{checkoutStep === "CASHBACK" && <CashbackStep onNext={advanceStep} />}
 
-						{checkoutStep === "PAGAMENTO" && <PaymentStep onNext={() => orderState.nextStep()} />}
+						{checkoutStep === "PAGAMENTO" && <PaymentStep onNext={advanceStep} />}
 
 						{checkoutStep === "REVISAO" && <OrderReviewStep onSubmit={() => submitOrder()} isSubmitting={isPending} />}
 					</div>

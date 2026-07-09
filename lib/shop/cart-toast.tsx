@@ -2,7 +2,7 @@
 
 import { Check } from "lucide-react";
 import { toast } from "sonner";
-import { triggerHaptic } from "./haptics";
+import { HAPTICS, triggerHaptic } from "./haptics";
 
 type NotifyItemAddedArgs = {
 	name: string;
@@ -17,7 +17,7 @@ type NotifyItemAddedArgs = {
 
 export function notifyItemAddedToCart({ name, imageUrl, primaryColor, primaryForeground, mode = "added" }: NotifyItemAddedArgs) {
 	// A short, single tap. Confirmation-level feedback, not a buzz.
-	triggerHaptic(12);
+	triggerHaptic(HAPTICS.tap);
 
 	const label = mode === "updated" ? "Atualizado no carrinho" : "Adicionado ao carrinho";
 

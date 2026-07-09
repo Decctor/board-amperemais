@@ -13,6 +13,7 @@ import { BrazilianCitiesOptionsFromUF, BrazilianStatesOptions } from "@/utils/st
 import { toast } from "sonner";
 import { getCEPInfo } from "@/lib/utils";
 import { getShopCartSubtotal } from "@/lib/shop/cart";
+import { HAPTICS, triggerHaptic } from "@/lib/shop/haptics";
 
 type DeliveryStepProps = {
 	onNext: () => void;
@@ -148,9 +149,11 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 		try {
 			const addressInfo = await getCEPInfo(cep);
 			if (!addressInfo) {
+				triggerHaptic(HAPTICS.warning);
 				toast.error("CEP não encontrado. Preencha o endereço manualmente.", { id: toastID });
 				return;
 			}
+			triggerHaptic(HAPTICS.tap);
 			toast.success("Endereço preenchido a partir do CEP.", { id: toastID, duration: 2000 });
 			updateDelivery({
 				endereco: {
@@ -163,6 +166,7 @@ function DeliveryAddressForm({ deliveryAddress, updateDelivery }: DeliveryAddres
 				},
 			});
 		} catch {
+			triggerHaptic(HAPTICS.warning);
 			toast.error("Não foi possível buscar o CEP. Preencha o endereço manualmente.", { id: toastID });
 		}
 	}
