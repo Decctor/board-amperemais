@@ -1,121 +1,136 @@
 "use client";
 import { formatDecimalPlaces } from "@/lib/formatting";
 import { useCampaignFunnel } from "@/lib/queries/campaigns";
-import { cn } from "@/lib/utils";
-import { ArrowRight, CheckCircle, MessageCircle, Send } from "lucide-react";
+import { CheckCircle2, Eye, MessageCircle, Send } from "lucide-react";
 
 type CampaignsFunnelProps = {
 	startDate: Date | null;
 	endDate: Date | null;
 };
 
+type FunnelStage = {
+	label: string;
+	sublabel: string;
+	value: number;
+	rate: number | null;
+	icon: React.ReactNode;
+	color: string;
+	bgColor: string;
+};
+
 export default function CampaignsFunnel({ startDate, endDate }: CampaignsFunnelProps) {
-	const { data: funnelData, isLoading: funnelLoading } = useCampaignFunnel({
+	const { data: funnel, isLoading } = useCampaignFunnel({
 		startDate: startDate ?? undefined,
 		endDate: endDate ?? undefined,
 	});
 
-	const stages = [
+	const stages: FunnelStage[] = [
 		{
-			label: "Enviados",
-			value: funnelData?.enviados ?? 0,
-			icon: <Send className="w-5 h-5 min-w-5 min-h-5" />,
-			color: "bg-blue-500",
-			textColor: "text-blue-600 dark:text-blue-400",
-			bgColor: "bg-blue-500/10",
+			label: "Enviadas",
+			sublabel: "mensagens disparadas",
+			value: funnel?.enviados ?? 0,
+			rate: null,
+			icon: <Send className="w-4 h-4" />,
+			color: "#24549C",
+			bgColor: "rgba(36,84,156,0.10)",
 		},
 		{
 			label: "Entregues",
-			value: funnelData?.entregues ?? 0,
-			icon: <MessageCircle className="w-5 h-5 min-w-5 min-h-5" />,
-			color: "bg-green-500",
-			textColor: "text-green-600 dark:text-green-400",
-			bgColor: "bg-green-500/10",
-			rate: funnelData?.taxaEntrega,
+			sublabel: "chegaram ao destinatário",
+			value: funnel?.entregues ?? 0,
+			rate: funnel?.taxaEntrega ?? null,
+			icon: <MessageCircle className="w-4 h-4" />,
+			color: "#0ea5e9",
+			bgColor: "rgba(14,165,233,0.10)",
 		},
-		// Disabling Lidos for now as we dont have enough reliable data to show it
-		// {
-		// 	label: "Lidos",
-		// 	value: funnelData?.lidos ?? 0,
-		// 	icon: <Eye className="w-5 h-5 min-w-5 min-h-5" />,
-		// 	color: "bg-yellow-500",
-		// 	textColor: "text-yellow-600 dark:text-yellow-400",
-		// 	bgColor: "bg-yellow-500/10",
-		// 	rate: funnelData?.taxaLeitura,
-		// },
 		{
-			label: "Convertidos",
-			value: funnelData?.convertidos ?? 0,
-			icon: <CheckCircle className="w-5 h-5 min-w-5 min-h-5" />,
-			color: "bg-purple-500",
-			textColor: "text-purple-600 dark:text-purple-400",
-			bgColor: "bg-purple-500/10",
-			rate: funnelData?.taxaConversaoDeLidos,
+			label: "Lidas",
+			sublabel: "abertas pelo cliente",
+			value: funnel?.lidos ?? 0,
+			rate: funnel?.taxaLeitura ?? null,
+			icon: <Eye className="w-4 h-4" />,
+			color: "#FFB900",
+			bgColor: "rgba(255,185,0,0.12)",
+		},
+		{
+			label: "Convertidas",
+			sublabel: "geraram uma compra",
+			value: funnel?.convertidos ?? 0,
+			rate: funnel?.taxaConversaoDeLidos ?? null,
+			icon: <CheckCircle2 className="w-4 h-4" />,
+			color: "#16a34a",
+			bgColor: "rgba(22,163,74,0.10)",
 		},
 	];
 
 	const maxValue = Math.max(...stages.map((s) => s.value), 1);
 
 	return (
-		<div className="w-full flex flex-col gap-2 py-2 h-full">
-			<div className="bg-card border-border flex w-full h-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
-				<div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
-					<h1 className="text-xs font-medium tracking-tight uppercase">FUNIL DE CONVERSÃO</h1>
-					{funnelData && (
-						<div className="flex items-center gap-1.5 rounded-md px-2 py-1 bg-primary/10">
-							<span className="text-xs font-bold text-foreground">{formatDecimalPlaces(funnelData.taxaConversaoGeral)}% taxa geral</span>
-						</div>
-					)}
-				</div>
-				<div className="flex w-full flex-1 flex-col gap-3 overflow-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 min-h-0 justify-center">
-					{funnelLoading ? (
-						<div className="flex w-full h-full items-center justify-center">
-							<p className="text-sm text-muted-foreground">Carregando funil...</p>
-						</div>
-					) : funnelData ? (
-						<div className="flex flex-col gap-3 w-full">
-							{stages.map((stage, index) => {
-								const widthPercentage = maxValue > 0 ? (stage.value / maxValue) * 100 : 0;
-								const isLast = index === stages.length - 1;
+		<div className="bg-card border-border flex min-h-0 w-full flex-col gap-4 rounded-xl border px-4 py-4 shadow-2xs lg:h-full">
+			<div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+				<h2 className="text-xs font-bold uppercase tracking-wide text-foreground">Funil de engajamento</h2>
+				{funnel && (
+					<div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold bg-primary/10 text-foreground">
+						{formatDecimalPlaces(funnel.taxaConversaoGeral)}% conversão geral
+					</div>
+				)}
+			</div>
 
-								return (
-									<div key={stage.label} className="flex flex-col gap-1">
-										<div className="flex items-center gap-3 w-full">
-											<div className={cn("flex items-center justify-center rounded-lg p-2", stage.bgColor)}>
-												<div className={stage.textColor}>{stage.icon}</div>
+			{isLoading ? (
+				<div className="flex min-h-48 flex-1 flex-col justify-between gap-3 lg:min-h-0">
+					{[...Array(4)].map((_, i) => (
+						<div key={i} className="h-14 rounded-xl bg-muted/40 animate-pulse" />
+					))}
+				</div>
+			) : funnel ? (
+				<div className="flex min-h-0 flex-1 flex-col justify-between gap-4">
+					{stages.map((stage, index) => {
+						const widthPct = maxValue > 0 ? (stage.value / maxValue) * 100 : 0;
+						const isLast = index === stages.length - 1;
+
+						return (
+							<div key={stage.label} className="flex flex-col gap-1.5">
+								<div className="flex items-center gap-3">
+									<div className="flex items-center justify-center rounded-lg p-2 shrink-0" style={{ backgroundColor: stage.bgColor, color: stage.color }}>
+										{stage.icon}
+									</div>
+
+									<div className="flex-1 flex flex-col gap-1 min-w-0">
+										<div className="flex items-center justify-between gap-2">
+											<div>
+												<span className="text-xs font-bold uppercase tracking-tight">{stage.label}</span>
+												<span className="ml-1.5 text-[0.65rem] text-muted-foreground">{stage.sublabel}</span>
 											</div>
-											<div className="flex-1 flex flex-col gap-1">
-												<div className="flex items-center justify-between gap-2">
-													<span className="text-xs font-semibold uppercase tracking-tight">{stage.label}</span>
-													<span className="text-xs font-bold">{formatDecimalPlaces(stage.value)}</span>
-												</div>
-												<div className="w-full h-8 bg-secondary/30 rounded-lg overflow-hidden relative">
-													<div
-														className={cn("h-full transition-all duration-500 flex items-center justify-end pr-2", stage.color)}
-														style={{ width: `${widthPercentage}%` }}
-													>
-														{widthPercentage > 15 && <span className="text-xs font-bold text-white">{Math.round(widthPercentage)}%</span>}
-													</div>
-												</div>
+											<span className="text-sm font-bold tabular-nums shrink-0">{formatDecimalPlaces(stage.value)}</span>
+										</div>
+										<div className="w-full h-6 rounded-lg overflow-hidden bg-muted/30">
+											<div
+												className="h-full flex items-center justify-end pr-2 rounded-lg transition-all duration-500"
+												style={{
+													width: `${widthPct}%`,
+													backgroundColor: stage.color,
+												}}
+											>
+												{widthPct > 12 && <span className="text-[0.6rem] font-bold text-white">{Math.round(widthPct)}%</span>}
 											</div>
 										</div>
-										{!isLast && stage.rate !== undefined && (
-											<div className="flex items-center gap-2 pl-16 py-1">
-												<ArrowRight className="w-4 h-4 text-muted-foreground" />
-												<span className="text-xs text-muted-foreground">{formatDecimalPlaces(stage.rate)}% converteram para próxima etapa</span>
-											</div>
-										)}
 									</div>
-								);
-							})}
-						</div>
-					) : (
-						<div className="flex w-full h-full items-center justify-center">
-							<p className="text-sm text-muted-foreground">Nenhum dado disponível para o período selecionado.</p>
-						</div>
-					)}
+								</div>
+
+								{!isLast && stage.rate !== null && (
+									<div className="flex items-center gap-1.5 pl-12">
+										<div className="h-px flex-1 bg-border" />
+										<span className="text-[0.65rem] text-muted-foreground px-2 shrink-0">{formatDecimalPlaces(stage.rate)}% avançam</span>
+										<div className="h-px flex-1 bg-border" />
+									</div>
+								)}
+							</div>
+						);
+					})}
 				</div>
-			</div>
+			) : (
+				<p className="flex flex-1 items-center justify-center py-6 text-center text-sm text-muted-foreground">Nenhum dado disponível para o período.</p>
+			)}
 		</div>
 	);
 }

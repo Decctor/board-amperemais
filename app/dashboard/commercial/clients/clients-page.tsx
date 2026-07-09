@@ -54,6 +54,7 @@ import { Pencil } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import NewClient from "@/components/Modals/Clients/NewClient";
 import ExportClients from "@/components/Modals/Clients/ExportClients";
+import { ClientsGeographicMap } from "@/components/Stats/ClientsGeographicMap";
 type ClientsPageProps = {
 	user: TAuthUserSession["user"];
 };
@@ -575,6 +576,7 @@ function ClientsStatsView() {
 					/>
 				</div>
 			</div>
+			<ClientsGeographicMap />
 		</div>
 	);
 }

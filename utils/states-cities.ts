@@ -5670,3 +5670,64 @@ export const BrazilianCitiesOptionsFromUF = (uf: string | null) => {
 		})) || []
 	);
 };
+
+/**
+ * Coordenadas geográficas (centroide municipal) resolvidas a partir dos datasets estáticos do IBGE.
+ */
+export type TMunicipalityCoordinates = { latitude: number; longitude: number };
+
+/**
+ * Normaliza uma dupla cidade + estado para uma chave estável de lookup.
+ *
+ * Remove acentos, colapsa espaços e coloca tudo em caixa alta, produzindo uma chave
+ * `CIDADE|ESTADO` que casa o padrão do banco (ex.: `"ABADIA DE GOIÁS"`, `"GO"`) com o dos
+ * JSONs do IBGE (ex.: `"Abadia de Goiás"`, `"GO"`). Cidades homônimas em UFs diferentes
+ * permanecem distintas pela chave composta.
+ */
+export function normalizeLocationKey(cidade: string, estado: string): string {
+	const normalize = (value: string) =>
+		value
+			.normalize("NFD")
+			.replace(/[̀-ͯ]/g, "")
+			.replace(/\s+/g, " ")
+			.trim()
+			.toUpperCase();
+	return `${normalize(cidade)}|${normalize(estado)}`;
+}
+
+// Índice lazy cidade+UF -> coordenadas. Os JSONs (~1.5MB) só são carregados via import dinâmico
+// na primeira chamada de resolução — mantendo-os fora do bundle inicial do cliente, já que este
+// módulo também é importado por componentes de formulário no client.
+let municipalityIndexPromise: Promise<Map<string, TMunicipalityCoordinates>> | null = null;
+
+async function buildMunicipalityIndex(): Promise<Map<string, TMunicipalityCoordinates>> {
+	const [citiesModule, statesModule] = await Promise.all([import("./jsons/brazillian-cities.json"), import("./jsons/brazillian-states.json")]);
+
+	const cities = citiesModule.default as Array<{ nome: string; latitude: number; longitude: number; codigo_uf: number }>;
+	const states = statesModule.default as Array<{ codigo_uf: number; uf: string }>;
+
+	const ufByCodigo = new Map<number, string>();
+	for (const state of states) ufByCodigo.set(state.codigo_uf, state.uf);
+
+	const index = new Map<string, TMunicipalityCoordinates>();
+	for (const city of cities) {
+		const uf = ufByCodigo.get(city.codigo_uf);
+		if (!uf) continue;
+		if (typeof city.latitude !== "number" || typeof city.longitude !== "number") continue;
+		index.set(normalizeLocationKey(city.nome, uf), { latitude: city.latitude, longitude: city.longitude });
+	}
+	return index;
+}
+
+/**
+ * Resolve as coordenadas de um município a partir de cidade + UF usando os datasets estáticos do IBGE.
+ * Retorna `null` quando cidade/estado estão vazios ou não há correspondência no dataset.
+ *
+ * Pensada para uso no servidor (ex.: rotas de API), onde o índice é construído uma única vez e reutilizado.
+ */
+export async function resolveMunicipalityCoordinates(cidade: string | null | undefined, estado: string | null | undefined): Promise<TMunicipalityCoordinates | null> {
+	if (!cidade || !estado) return null;
+	if (!municipalityIndexPromise) municipalityIndexPromise = buildMunicipalityIndex();
+	const index = await municipalityIndexPromise;
+	return index.get(normalizeLocationKey(cidade, estado)) ?? null;
+}
