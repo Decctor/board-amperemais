@@ -53,6 +53,7 @@ export default function NewPurchaseItem({ addPurchaseItem, closeMenu }: NewPurch
 		valorTotalLiquido: 0,
 		descontosTotal: 0,
 		acrescimosTotal: 0,
+		dataValidade: null,
 	});
 	function updateInfoHolder(updates: Partial<TPurchaseItemState>) {
 		setInfoHolder((prev) => {

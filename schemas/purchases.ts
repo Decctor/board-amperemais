@@ -19,6 +19,7 @@ export const PurchaseSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
+	fornecedorId: z.string({ invalid_type_error: "Tipo não válido para o ID do fornecedor." }).optional().nullable(),
 	pedidoFornecedorNome: z.string({ invalid_type_error: "Tipo não válido para o nome do fornecedor do pedido." }).optional().nullable(),
 	pedidoFornecedorCnpj: z.string({ invalid_type_error: "Tipo não válido para o CNPJ do fornecedor do pedido." }).optional().nullable(),
 	pedidoFornecedorTelefone: z.string({ invalid_type_error: "Tipo não válido para o telefone do fornecedor do pedido." }).optional().nullable(),

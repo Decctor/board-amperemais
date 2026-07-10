@@ -69,6 +69,8 @@ export default function NewPurchase({ user, closeModal, callbacks }: NewPurchase
 				addPurchaseItem={addPurchaseItem}
 				updatePurchaseItem={updatePurchaseItem}
 				removePurchaseItem={removePurchaseItem}
+				updatePurchase={updatePurchase}
+				fornecedorId={state.purchase.fornecedorId}
 			/>
 			<PurchaseOrderBlock purchase={state.purchase} updatePurchase={updatePurchase} />
 			<PurchaseTransportBlock purchase={state.purchase} updatePurchase={updatePurchase} />

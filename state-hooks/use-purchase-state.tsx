@@ -72,6 +72,7 @@ export const usePurchaseState = ({ initialState }: UsePurchaseStateProps = {}) =
 				entregaDataRecebimentoEfetivacao: initialState?.purchase?.entregaDataRecebimentoEfetivacao ?? null,
 				dataEfetivacao: initialState?.purchase?.dataEfetivacao ?? null,
 				lancamentoContabilId: initialState?.purchase?.lancamentoContabilId ?? null,
+				fornecedorId: initialState?.purchase?.fornecedorId ?? null,
 				pedidoFornecedorNome: initialState?.purchase?.pedidoFornecedorNome ?? null,
 				pedidoFornecedorCnpj: initialState?.purchase?.pedidoFornecedorCnpj ?? null,
 				pedidoFornecedorTelefone: initialState?.purchase?.pedidoFornecedorTelefone ?? null,

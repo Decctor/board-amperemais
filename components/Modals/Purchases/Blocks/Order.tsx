@@ -1,4 +1,5 @@
 import DateInput from "@/components/Inputs/DateInput";
+import SelectSupplierInput from "@/components/Inputs/SelectSupplierInput";
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { formatDateForInputValue, formatDateOnInputChange, formatToCNPJ, formatToPhone } from "@/lib/formatting";
@@ -19,10 +20,24 @@ export default function PurchaseOrderBlock({ purchase, updatePurchase }: Purchas
 			/>
 			<div className="w-full flex flex-col gap-1.5">
 				<h3 className="text-xs font-medium tracking-tight text-muted-foreground">DADOS DO FORNECEDOR</h3>
+				<SelectSupplierInput
+					label="FORNECEDOR"
+					value={purchase.fornecedorId ? { id: purchase.fornecedorId, nome: purchase.pedidoFornecedorNome || "Fornecedor sem nome" } : null}
+					onSelect={(supplier) =>
+						updatePurchase({
+							fornecedorId: supplier.id,
+							pedidoFornecedorNome: supplier.nome,
+							pedidoFornecedorCnpj: supplier.cpfCnpj ? formatToCNPJ(supplier.cpfCnpj) : purchase.pedidoFornecedorCnpj,
+							pedidoFornecedorTelefone: supplier.telefone || purchase.pedidoFornecedorTelefone,
+							pedidoFornecedorEmail: supplier.email || purchase.pedidoFornecedorEmail,
+						})
+					}
+					onClear={() => updatePurchase({ fornecedorId: null })}
+				/>
 				<div className="w-full flex flex-col lg:flex-row gap-1.5">
 					<div className="w-full lg:w-1/2">
 						<TextInput
-							label="FORNECEDOR"
+							label="NOME DO FORNECEDOR"
 							value={purchase.pedidoFornecedorNome || ""}
 							placeholder="Preencha aqui o nome do fornecedor..."
 							handleChange={(value) => updatePurchase({ pedidoFornecedorNome: value })}

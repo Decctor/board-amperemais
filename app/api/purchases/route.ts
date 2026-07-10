@@ -72,6 +72,13 @@ async function getPurchases({ input, session }: { input: TGetPurchasesInput; ses
 		const purchase = await db.query.purchases.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.id, purchaseId), eq(fields.organizacaoId, userOrgId)),
 			with: {
+				fornecedor: {
+					columns: {
+						id: true,
+						nome: true,
+						cpfCnpj: true,
+					},
+				},
 				itens: {
 					with: {
 						produto: {

@@ -15,9 +15,11 @@ import {
 } from "@/lib/spreadsheet-navigation";
 import { cn } from "@/lib/utils";
 import { TUsePurchaseState } from "@/state-hooks/use-purchase-state";
-import { BadgeDollarSign, BoxIcon, CalendarClock, CalendarOff, Lock, Plus, ShoppingCart } from "lucide-react";
+import { BadgeDollarSign, BoxIcon, CalendarClock, CalendarOff, Lock, Plus, ShoppingCart, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import ImportCompositionWithAI from "./Utils/ImportCompositionWithAI";
 
 const PURCHASE_ITEM_GRID_COL = {
 	PRODUCT: 0,
@@ -34,6 +36,9 @@ type PurchaseItemsBlockProps = {
 	addPurchaseItem: TUsePurchaseState["addPurchaseItem"];
 	updatePurchaseItem: TUsePurchaseState["updatePurchaseItem"];
 	removePurchaseItem: TUsePurchaseState["removePurchaseItem"];
+	/** Enables the AI import flow (needed to link the extracted supplier to the purchase). */
+	updatePurchase?: TUsePurchaseState["updatePurchase"];
+	fornecedorId?: string | null;
 	/** When the purchase is already received, items are frozen to preserve the lots they spawned. */
 	locked?: boolean;
 };
@@ -46,8 +51,11 @@ export default function PurchaseItemsBlock({
 	addPurchaseItem,
 	updatePurchaseItem,
 	removePurchaseItem,
+	updatePurchase,
+	fornecedorId = null,
 	locked = false,
 }: PurchaseItemsBlockProps) {
+	const [importModalIsOpen, setImportModalIsOpen] = useState(false);
 	const visibleItems = useMemo(() => purchaseItems.map((item, index) => ({ item, index })).filter(({ item }) => !item.deletar), [purchaseItems]);
 	const purchaseTotal = visibleItems.reduce((acc, { item }) => acc + getItemTotal(item), 0);
 	const gridBounds: SpreadsheetGridBounds = useMemo(
@@ -60,6 +68,23 @@ export default function PurchaseItemsBlock({
 
 	return (
 		<ResponsiveMenuSection title="ITENS" icon={<ShoppingCart className="h-4 min-h-4 w-4 min-w-4" />}>
+			{!locked && updatePurchase ? (
+				<>
+					<div className="flex w-full items-center justify-end">
+						<Button type="button" variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setImportModalIsOpen(true)}>
+							<Sparkles className="h-3.5 w-3.5" />
+							IMPORTAR COM IA
+						</Button>
+					</div>
+					<ImportCompositionWithAI
+						open={importModalIsOpen}
+						onOpenChange={setImportModalIsOpen}
+						addPurchaseItem={addPurchaseItem}
+						updatePurchase={updatePurchase}
+						currentFornecedorId={fornecedorId}
+					/>
+				</>
+			) : null}
 			{locked ? (
 				<div className="flex w-full items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
 					<Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -692,7 +717,7 @@ function roundTo2(value: number) {
 	return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-function normalizeItemValues(item: TPurchaseItemState): TPurchaseItemState {
+export function normalizeItemValues(item: TPurchaseItemState): TPurchaseItemState {
 	const quantidade = Number(item.quantidade) || 0;
 	const valorUnitarioBruto = Number(item.valorUnitarioBruto) || 0;
 	const descontosTotal = Number(item.descontosTotal) || 0;
@@ -723,7 +748,7 @@ function getItemDisplayName(item: TPurchaseItemState) {
 	return item.produto.nome || item.snapshotProdutoDescricao;
 }
 
-function createEmptyPurchaseItem(): TPurchaseItemState {
+export function createEmptyPurchaseItem(): TPurchaseItemState {
 	return {
 		produtoId: "",
 		produtoVarianteId: null,

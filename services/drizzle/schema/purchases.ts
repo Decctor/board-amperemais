@@ -5,6 +5,7 @@ import { accountingEntries, fiscalOutboundDocuments } from "./financial";
 import { users } from "./users";
 import { relations } from "drizzle-orm";
 import { products, productStockLots, productStockTransactions, productVariants } from "./products";
+import { suppliers } from "./suppliers";
 import { purchaseStatusEnum } from "./enums";
 
 export const purchases = newTable("purchases", {
@@ -20,6 +21,8 @@ export const purchases = newTable("purchases", {
 	lancamentoContabilId: varchar("lancamento_contabil_id", { length: 255 }).references(() => accountingEntries.id, { onDelete: "set null" }),
 
 	pedidoData: timestamp("pedido_data"),
+	// Entity link; the pedidoFornecedor* fields below stay as a per-purchase snapshot (still editable).
+	fornecedorId: varchar("fornecedor_id", { length: 255 }).references(() => suppliers.id, { onDelete: "set null" }),
 	pedidoFornecedorNome: text("pedido_fornecedor_nome"),
 	pedidoFornecedorCnpj: text("pedido_fornecedor_cnpj"),
 	pedidoFornecedorTelefone: text("pedido_fornecedor_telefone"),
@@ -50,6 +53,10 @@ export const purchaseRelations = relations(purchases, ({ one, many }) => ({
 	lancamentoContabil: one(accountingEntries, {
 		fields: [purchases.lancamentoContabilId],
 		references: [accountingEntries.id],
+	}),
+	fornecedor: one(suppliers, {
+		fields: [purchases.fornecedorId],
+		references: [suppliers.id],
 	}),
 	itens: many(purchaseItems),
 	documentosFiscais: many(fiscalOutboundDocuments),
