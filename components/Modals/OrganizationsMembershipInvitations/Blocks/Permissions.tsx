@@ -1,6 +1,10 @@
 import CheckboxInput from "@/components/Inputs/CheckboxInput";
+import NumberInput from "@/components/Inputs/NumberInput";
+import SelectInput from "@/components/Inputs/SelectInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { useUsers } from "@/lib/queries/users";
+import { resolveDiscountAuthority } from "@/lib/permissions/discounts";
+import type { TDiscountLimitTypeEnum } from "@/schemas/enums";
 import type { TUseOrganizationMembershipInvitationState } from "@/state-hooks/use-organization-membership-invitation-state";
 import { Shield } from "lucide-react";
 import PermissionsScope from "../../Users/Blocks/Utils/PermissionsScope";
@@ -25,6 +29,7 @@ export default function OrganizationsMembershipInvitationsPermissionsBlock({
 			{organizationHasERPAccess ? (
 				<>
 					<SalesPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
+					<SalesDiscountsPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
 					<PurchasesPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
 					<FiscalPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
 				</>
@@ -246,6 +251,62 @@ function SalesPermissions({ permissions, updateInvitationPermissions }: SalesPer
 					labelFalse="APTO A EXCLUIR VENDAS"
 					checked={permissions.vendas.excluir}
 					handleChange={(value) => updateInvitationPermissions({ vendas: { ...permissions.vendas, excluir: value } })}
+				/>
+			</div>
+		</div>
+	);
+}
+
+type SalesDiscountsPermissionsProps = {
+	permissions: TUseOrganizationMembershipInvitationState["state"]["invitation"]["permissoes"];
+	updateInvitationPermissions: TUseOrganizationMembershipInvitationState["updateInvitationPermissions"];
+};
+function SalesDiscountsPermissions({ permissions, updateInvitationPermissions }: SalesDiscountsPermissionsProps) {
+	// Resolve a semântica de ausência do bloco `descontos` (liberado sem teto) e materializa o
+	// bloco completo ao primeiro toque em qualquer campo.
+	const descontos = resolveDiscountAuthority(permissions);
+	const updateDescontos = (updates: Partial<typeof descontos>) =>
+		updateInvitationPermissions({ vendas: { ...permissions.vendas, descontos: { ...descontos, ...updates } } });
+	return (
+		<div className="w-full flex flex-col gap-2">
+			<h2 className="text-xs tracking-tight font-medium text-start w-fit">PERMISSÕES DE DESCONTOS (VENDAS)</h2>
+			<div className="w-full flex flex-col gap-2">
+				<CheckboxInput
+					labelTrue="APTO A APLICAR DESCONTOS"
+					labelFalse="APTO A APLICAR DESCONTOS"
+					checked={descontos.aplicar}
+					handleChange={(value) => updateDescontos({ aplicar: value })}
+				/>
+				{descontos.aplicar ? (
+					<div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2">
+						<SelectInput
+							label="TIPO DO LIMITE DE DESCONTO"
+							value={descontos.limiteTipo}
+							options={[
+								{ id: "FIXO", value: "FIXO", label: "VALOR FIXO (R$)" },
+								{ id: "PERCENTUAL", value: "PERCENTUAL", label: "PERCENTUAL (%)" },
+							]}
+							resetOptionLabel="SEM LIMITE"
+							handleChange={(value) => updateDescontos({ limiteTipo: value as TDiscountLimitTypeEnum, limiteValor: descontos.limiteValor ?? 0 })}
+							onReset={() => updateDescontos({ limiteTipo: null, limiteValor: null })}
+						/>
+						{descontos.limiteTipo ? (
+							<NumberInput
+								label={descontos.limiteTipo === "PERCENTUAL" ? "LIMITE DE DESCONTO (%)" : "LIMITE DE DESCONTO (R$)"}
+								placeholder={descontos.limiteTipo === "PERCENTUAL" ? "Ex: 5 (para 5%)" : "Ex: 20,00"}
+								value={descontos.limiteValor}
+								handleChange={(value) => updateDescontos({ limiteValor: Math.max(0, value) })}
+							/>
+						) : null}
+					</div>
+				) : (
+					<p className="text-[0.65rem] text-muted-foreground">Sem esta permissão, qualquer desconto aplicado por este membro exigirá aprovação.</p>
+				)}
+				<CheckboxInput
+					labelTrue="APTO A APROVAR DESCONTOS DE TERCEIROS"
+					labelFalse="APTO A APROVAR DESCONTOS DE TERCEIROS"
+					checked={descontos.aprovar}
+					handleChange={(value) => updateDescontos({ aprovar: value })}
 				/>
 			</div>
 		</div>

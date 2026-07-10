@@ -60,6 +60,13 @@ export function useUserState() {
 					criar: false,
 					editar: false,
 					excluir: false,
+					// Igual ao comportamento legado (liberado, sem teto); o gestor restringe a partir daí.
+					descontos: {
+						aplicar: true,
+						limiteTipo: null,
+						limiteValor: null,
+						aprovar: false,
+					},
 				},
 				compras: {
 					visualizar: false,

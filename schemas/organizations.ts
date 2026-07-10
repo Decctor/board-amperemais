@@ -1,5 +1,5 @@
 import z from "zod";
-import { DefaultDataSourceEnum, OrganizationIntegrationTypeEnum, SalesSessionScopeEnum } from "./enums";
+import { DefaultDataSourceEnum, DiscountLimitTypeEnum, OrganizationIntegrationTypeEnum, SalesSessionScopeEnum } from "./enums";
 import { OrganizationFiscalConfigSchema } from "./fiscal";
 import { PaymentEffectivenessTypeEnum } from "@/lib/payments/schemas";
 
@@ -455,6 +455,27 @@ export const OrganizationMemberPermissionsSchema = z.object({
 			required_error: "Permissão de exclusão de vendas não informada.",
 			invalid_type_error: "Tipo não válido para a permissão de exclusão de vendas.",
 		}),
+		// Controle de descontos no PDV. Opcional para não quebrar membros existentes: ausência/null =
+		// comportamento legado (desconto liberado sem teto; aprovar cai para empresa.editar). A semântica
+		// de ausência é resolvida em lib/permissions/discounts.ts — não leia esta chave diretamente.
+		descontos: z
+			.object({
+				aplicar: z.boolean({
+					required_error: "Permissão de aplicação de descontos não informada.",
+					invalid_type_error: "Tipo não válido para a permissão de aplicação de descontos.",
+				}),
+				limiteTipo: DiscountLimitTypeEnum.nullable(),
+				limiteValor: z
+					.number({ invalid_type_error: "Tipo não válido para o valor do limite de descontos." })
+					.nonnegative({ message: "O valor do limite de descontos não pode ser negativo." })
+					.nullable(),
+				aprovar: z.boolean({
+					required_error: "Permissão de aprovação de descontos não informada.",
+					invalid_type_error: "Tipo não válido para a permissão de aprovação de descontos.",
+				}),
+			})
+			.optional()
+			.nullable(),
 	}),
 	compras: z.object({
 		visualizar: z.boolean({

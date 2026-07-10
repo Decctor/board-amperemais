@@ -395,3 +395,24 @@ export type TIntegrationTipoEnum = z.infer<typeof IntegrationTipoEnum>;
 
 export const IntegrationStatusEnum = z.enum(["CONECTADO", "EXPIRADO", "ERRO"]);
 export type TIntegrationStatusEnum = z.infer<typeof IntegrationStatusEnum>;
+
+// ============================================================================
+// DESCONTOS / APROVAÇÕES DE AÇÕES
+// ============================================================================
+
+// Forma do teto de desconto de um membro (mesmo par FIXO/PERCENTUAL do resgate de cashback).
+export const DiscountLimitTypeEnum = z.enum(["FIXO", "PERCENTUAL"]);
+export type TDiscountLimitTypeEnum = z.infer<typeof DiscountLimitTypeEnum>;
+
+// Espelha o pgEnum actionApprovalStatusEnum.
+export const ActionApprovalStatusEnum = z.enum(["PENDENTE", "APROVADA", "REJEITADA", "CANCELADA", "EXPIRADA", "CONSUMIDA"]);
+export type TActionApprovalStatusEnum = z.infer<typeof ActionApprovalStatusEnum>;
+
+// Espelha o pgEnum actionApprovalDecisionMethodEnum.
+export const ActionApprovalDecisionMethodEnum = z.enum(["PAINEL", "SENHA_PDV"]);
+export type TActionApprovalDecisionMethodEnum = z.infer<typeof ActionApprovalDecisionMethodEnum>;
+
+// Tipos de ação aprovável. Deliberadamente NÃO é pgEnum: a coluna `tipo` é varchar para que novos
+// cenários de aprovação não custem migração de enum no Postgres (padrão ai-hints).
+export const ActionApprovalTypeEnum = z.enum(["VENDA_DESCONTO"]);
+export type TActionApprovalTypeEnum = z.infer<typeof ActionApprovalTypeEnum>;
