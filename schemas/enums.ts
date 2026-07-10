@@ -409,7 +409,7 @@ export const ActionApprovalStatusEnum = z.enum(["PENDENTE", "APROVADA", "REJEITA
 export type TActionApprovalStatusEnum = z.infer<typeof ActionApprovalStatusEnum>;
 
 // Espelha o pgEnum actionApprovalDecisionMethodEnum.
-export const ActionApprovalDecisionMethodEnum = z.enum(["PAINEL", "SENHA_PDV"]);
+export const ActionApprovalDecisionMethodEnum = z.enum(["PLATAFORMA", "SENHA_OPERADOR"]);
 export type TActionApprovalDecisionMethodEnum = z.infer<typeof ActionApprovalDecisionMethodEnum>;
 
 // Tipos de ação aprovável. Deliberadamente NÃO é pgEnum: a coluna `tipo` é varchar para que novos

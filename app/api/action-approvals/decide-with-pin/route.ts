@@ -13,7 +13,7 @@ import z from "zod";
 /**
  * Fluxo síncrono de aprovação no terminal (UX de supermercado): um aprovador presente digita o
  * identificador + senha de operador do SEU vendedor vinculado e a solicitação nasce e é decidida
- * no mesmo request (metodoDecisao = SENHA_PDV) — mas fica registrada como auditoria. Restrição
+ * no mesmo request (metodoDecisao = SENHA_OPERADOR) — mas fica registrada como auditoria. Restrição
  * implícita: aprovador por PIN precisa ser membro com vendedor vinculado; gestor sem vendedor
  * vinculado aprova pelo painel.
  */
@@ -69,7 +69,7 @@ async function decideActionApprovalWithPin({ input, session }: { input: TDecideA
 			resumo: handler.montarResumo(input.payload),
 			solicitanteId: session.user.id,
 			decididaPorId: aprovadorMembership.usuarioId,
-			metodoDecisao: "SENHA_PDV",
+			metodoDecisao: "SENHA_OPERADOR",
 			dataDecisao: now,
 			dataExpiracao: getActionApprovalExpirationDate(now),
 		})

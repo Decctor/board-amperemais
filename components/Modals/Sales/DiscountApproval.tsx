@@ -27,7 +27,7 @@ type DiscountApprovalProps = {
 /**
  * Aprovação de desconto acima do teto do operador, com dois caminhos:
  * - PIN no terminal: um gestor presente digita o identificador + senha de operador do seu vendedor
- *   vinculado e a aprovação sai na hora (registrada como SENHA_PDV);
+ *   vinculado e a aprovação sai na hora (registrada como SENHA_OPERADOR);
  * - Solicitação remota: cria uma solicitação PENDENTE na fila de aprovações e aguarda a decisão
  *   (a venda pode ser estacionada como orçamento enquanto isso).
  */

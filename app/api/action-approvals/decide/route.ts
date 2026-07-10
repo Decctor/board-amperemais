@@ -57,7 +57,7 @@ async function decideActionApproval({ input, session }: { input: TDecideActionAp
 		.set({
 			status: nextStatus,
 			decididaPorId: input.decisao === "CANCELAR" ? null : session.user.id,
-			metodoDecisao: input.decisao === "CANCELAR" ? null : "PAINEL",
+			metodoDecisao: input.decisao === "CANCELAR" ? null : "PLATAFORMA",
 			motivoDecisao: input.motivo ?? null,
 			dataDecisao: now,
 			// Aprovação vale por uma nova janela a partir da decisão — dá tempo do PDV consumir.

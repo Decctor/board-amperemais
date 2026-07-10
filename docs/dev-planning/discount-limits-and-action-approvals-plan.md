@@ -121,7 +121,7 @@ Fora do cômputo: cashback (limites próprios por programa) e cupom `AUTOMATICA`
 	// atores
 	solicitanteId,                                 // FK users (quem pediu)
 	decididaPorId,                                 // FK users, nullable
-	metodoDecisao: actionApprovalDecisionMethodEnum("metodo_decisao"),   // "PAINEL" | "SENHA_PDV", nullable
+	metodoDecisao: actionApprovalDecisionMethodEnum("metodo_decisao"),   // "PLATAFORMA" | "SENHA_OPERADOR", nullable
 	motivoDecisao: text("motivo_decisao"),         // nullable
 
 	// ciclo de vida
@@ -135,7 +135,7 @@ Fora do cômputo: cashback (limites próprios por programa) e cupom `AUTOMATICA`
 ### 4.2 Enums
 
 - `actionApprovalStatusEnum` (**pgEnum**, fechado e estável): `["PENDENTE", "APROVADA", "REJEITADA", "CANCELADA", "EXPIRADA", "CONSUMIDA"]` — gêmeo `z.enum` em `schemas/enums.ts`.
-- `actionApprovalDecisionMethodEnum` (**pgEnum**): `["PAINEL", "SENHA_PDV"]`.
+- `actionApprovalDecisionMethodEnum` (**pgEnum**): `["PLATAFORMA", "SENHA_OPERADOR"]`.
 - **`tipo` é `varchar` + `z.enum` no app, deliberadamente NÃO pgEnum**: cada novo cenário de aprovação não pode custar migração de enum no Postgres. Padrão `ai-hints`: coluna denormalizada para filtro + discriminated union Zod validando o payload.
 
 ### 4.3 Payload (o coração jsonb)
@@ -164,7 +164,7 @@ export const ActionApprovalPayloadSchema = z.discriminatedUnion("tipo", [
 - Solicitação nasce `PENDENTE` com `dataExpiracao = now + 15min`.
 - `APROVADA` é **one-shot**: finalizar a venda consome a aprovação **na mesma transação** (status → `CONSUMIDA`, `consumo: { vendaId }`, `dataConsumo`). Impede reuso em outra venda e fecha o ciclo de auditoria.
 - `CANCELADA`: solicitante desiste. `EXPIRADA`: marcada lazy na leitura/validação (sem job por ora — solicitação vencida é tratada como inválida ao validar).
-- No fluxo síncrono por PIN, a linha nasce e é decidida no mesmo request (`metodoDecisao: "SENHA_PDV"`), mas **fica registrada** — é o registro de auditoria.
+- No fluxo síncrono por PIN, a linha nasce e é decidida no mesmo request (`metodoDecisao: "SENHA_OPERADOR"`), mas **fica registrada** — é o registro de auditoria.
 
 ### 4.5 API e registry de handlers
 
@@ -210,7 +210,7 @@ Endpoint `decide-with-pin` recebe `identificador` + `senhaOperador`:
 
 1. Busca o vendedor **ativo** da org por `identificador` e confere a `senhaOperador`. (O identificador desambigua — não confiar em unicidade da senha entre vendedores.)
 2. Resolve a membership vinculada (`usuarioVendedorId`) e exige `vendas.descontos.aprovar` (com fallback `empresa.editar` quando `descontos` ausente).
-3. Cria a solicitação já `APROVADA` com `metodoDecisao: "SENHA_PDV"`, `decididaPorId` = usuário da membership aprovadora, e devolve o `approvalRequestId` para o PDV finalizar.
+3. Cria a solicitação já `APROVADA` com `metodoDecisao: "SENHA_OPERADOR"`, `decididaPorId` = usuário da membership aprovadora, e devolve o `approvalRequestId` para o PDV finalizar.
 
 Restrição implícita: aprovador por PIN precisa ser membro com vendedor vinculado. Gestor sem vendedor vinculado aprova pelo painel.
 
