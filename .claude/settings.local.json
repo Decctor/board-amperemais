@@ -26,7 +26,8 @@
       "Bash(npx tsc *)",
       "Bash(node \"C:\\\\Users\\\\decsa\\\\Projetos\\\\recompracrm\\\\.claude\\\\skills\\\\impeccable\\\\scripts\\\\load-context.mjs\")",
       "Bash(xargs wc -l)",
-      "Bash(rm \"C:\\\\Users\\\\decsa\\\\Projetos\\\\recompracrm\\\\app\\\\shop\\\\[orgId]\\\\_components\\\\ProductMarqueeRow.tsx\")"
+      "Bash(rm \"C:\\\\Users\\\\decsa\\\\Projetos\\\\recompracrm\\\\app\\\\shop\\\\[orgId]\\\\_components\\\\ProductMarqueeRow.tsx\")",
+      "Bash(npm install *)"
     ]
   }
 }
