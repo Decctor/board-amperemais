@@ -1,7 +1,7 @@
 # Limites de Desconto no PDV + Primitivo de Aprovação de Ações — plano
 
 Data: 2026-07-09
-Status: **Planejamento alinhado** (decisões de escopo fechadas; implementação não iniciada)
+Status: **Implementado** (Fases 0–3 entregues em 2026-07-10; Fase 4 segue como backlog futuro. Pendência operacional: rodar `db:push` para criar `ampmais_action_approval_requests` e os pgEnums de status/método)
 
 ## O problema em uma frase
 
