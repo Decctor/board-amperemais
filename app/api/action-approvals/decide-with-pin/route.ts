@@ -11,23 +11,22 @@ import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
 /**
- * Fluxo síncrono de aprovação no terminal (UX de supermercado): um aprovador presente digita o
- * identificador + senha de operador do SEU vendedor vinculado e a solicitação nasce e é decidida
- * no mesmo request (metodoDecisao = SENHA_OPERADOR) — mas fica registrada como auditoria. Restrição
- * implícita: aprovador por PIN precisa ser membro com vendedor vinculado; gestor sem vendedor
- * vinculado aprova pelo painel.
+ * Fluxo síncrono de aprovação no terminal (UX de supermercado): um aprovador presente digita
+ * apenas a senha de operador do SEU vendedor vinculado e a solicitação nasce e é decidida no
+ * mesmo request (metodoDecisao = SENHA_OPERADOR) — mas fica registrada como auditoria. A busca é
+ * pela senha sozinha (mesmo mecanismo das aprovações do ponto de interação): confia-se que a
+ * organização configurou senhas distintas por operador. Restrição implícita: aprovador por senha
+ * precisa ser membro com vendedor vinculado; gestor sem vendedor vinculado aprova pela plataforma.
  */
 const DecideActionApprovalWithPinInputSchema = z.object({
 	tipo: ActionApprovalTypeEnum,
 	payload: ActionApprovalPayloadSchema,
-	identificador: z.string({
-		required_error: "Identificador do aprovador não informado.",
-		invalid_type_error: "Tipo não válido para o identificador do aprovador.",
-	}),
-	senhaOperador: z.string({
-		required_error: "Senha do operador não informada.",
-		invalid_type_error: "Tipo não válido para a senha do operador.",
-	}),
+	senhaOperador: z
+		.string({
+			required_error: "Senha do operador não informada.",
+			invalid_type_error: "Tipo não válido para a senha do operador.",
+		})
+		.min(1, { message: "Senha do operador não informada." }),
 });
 export type TDecideActionApprovalWithPinInput = z.infer<typeof DecideActionApprovalWithPinInputSchema>;
 
@@ -38,13 +37,12 @@ async function decideActionApprovalWithPin({ input, session }: { input: TDecideA
 	const handler = getActionApprovalHandler(input.tipo);
 	handler.validarCriacao({ payload: input.payload, permissoes: session.membership!.permissoes });
 
-	// O identificador desambigua o vendedor; a senha confirma. Não confiar em unicidade da senha na org.
 	const aprovadorVendedor = await db.query.sellers.findFirst({
-		where: (fields, { and, eq }) => and(eq(fields.identificador, input.identificador), eq(fields.organizacaoId, orgId), eq(fields.ativo, true)),
-		columns: { id: true, senhaOperador: true },
+		where: (fields, { and, eq }) => and(eq(fields.senhaOperador, input.senhaOperador), eq(fields.organizacaoId, orgId), eq(fields.ativo, true)),
+		columns: { id: true },
 	});
-	if (!aprovadorVendedor || aprovadorVendedor.senhaOperador !== input.senhaOperador) {
-		throw new createHttpError.Unauthorized("Identificador ou senha do aprovador inválidos.");
+	if (!aprovadorVendedor) {
+		throw new createHttpError.Unauthorized("Nenhum operador encontrado para a senha informada.");
 	}
 
 	const aprovadorMembership = await db.query.organizationMembers.findFirst({

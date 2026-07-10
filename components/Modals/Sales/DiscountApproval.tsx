@@ -1,18 +1,21 @@
 "use client";
 
-import TextInput from "@/components/Inputs/TextInput";
-import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
-import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
+import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import { Button } from "@/components/ui/button";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { Label } from "@/components/ui/label";
 import { getErrorMessage } from "@/lib/errors";
 import { formatToMoney } from "@/lib/formatting";
 import { createActionApproval, decideActionApproval, decideActionApprovalWithPin } from "@/lib/mutations/action-approvals";
 import { useActionApprovalById } from "@/lib/queries/action-approvals";
 import type { TVendaDescontoApprovalPayload } from "@/schemas/action-approvals";
 import { useMutation } from "@tanstack/react-query";
+import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { KeyRound, RefreshCcw, Send } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+
+const OPERATOR_PASSWORD_LENGTH = 5;
 
 type DiscountApprovalProps = {
 	vendedorId: string | null;
@@ -25,14 +28,15 @@ type DiscountApprovalProps = {
 };
 
 /**
- * Aprovação de desconto acima do teto do operador, com dois caminhos:
- * - PIN no terminal: um gestor presente digita o identificador + senha de operador do seu vendedor
+ * Aprovação de desconto acima do teto do operador, em dois modos:
+ * - SENHA (default): um gestor presente digita a senha de operador (5 dígitos) do seu vendedor
  *   vinculado e a aprovação sai na hora (registrada como SENHA_OPERADOR);
- * - Solicitação remota: cria uma solicitação PENDENTE na fila de aprovações e aguarda a decisão
- *   (a venda pode ser estacionada como orçamento enquanto isso).
+ * - REMOTA: cria uma solicitação PENDENTE na fila de aprovações e a modal vira uma UI de espera,
+ *   com a opção de cancelar a solicitação ou voltar ao fluxo de senha (a solicitação remota segue
+ *   pendente nesse caso — a primeira aprovação que chegar vale).
  */
 export function DiscountApproval({ vendedorId, valorBase, descontoTotal, limiteSolicitante, closeModal, onApproved }: DiscountApprovalProps) {
-	const [identificador, setIdentificador] = useState("");
+	const [mode, setMode] = useState<"SENHA" | "REMOTA">("SENHA");
 	const [senhaOperador, setSenhaOperador] = useState("");
 	const [remoteRequestId, setRemoteRequestId] = useState<string | null>(null);
 	const approvedHandledRef = useRef(false);
@@ -53,6 +57,9 @@ export function DiscountApproval({ vendedorId, valorBase, descontoTotal, limiteS
 		mutationKey: ["decide-action-approval-with-pin"],
 		mutationFn: decideActionApprovalWithPin,
 		onSuccess: (data) => {
+			// A aprovação por senha resolveu: a solicitação remota pendente (se houver) vira ruído na fila.
+			if (remoteRequestId) decideActionApproval({ id: remoteRequestId, decisao: "CANCELAR" }).catch(() => null);
+			approvedHandledRef.current = true;
 			toast.success(data.message);
 			onApproved(data.data.request.id);
 		},
@@ -67,6 +74,7 @@ export function DiscountApproval({ vendedorId, valorBase, descontoTotal, limiteS
 		onSuccess: (data) => {
 			toast.success("Solicitação enviada. Aguardando aprovação de um gestor.");
 			setRemoteRequestId(data.data.request.id);
+			setMode("REMOTA");
 		},
 		onError: (error) => {
 			toast.error(getErrorMessage(error));
@@ -78,10 +86,12 @@ export function DiscountApproval({ vendedorId, valorBase, descontoTotal, limiteS
 		mutationFn: (requestId: string) => decideActionApproval({ id: requestId, decisao: "CANCELAR" }),
 		onSettled: () => {
 			setRemoteRequestId(null);
+			closeModal();
 		},
 	});
 
-	// Acompanha a solicitação remota por polling curto (a decisão pode vir de outro dispositivo).
+	// Acompanha a solicitação remota por polling curto (a decisão pode vir de outro dispositivo),
+	// em qualquer modo — quem voltar ao fluxo de senha ainda é destravado por uma aprovação remota.
 	const { data: remoteRequest } = useActionApprovalById({ requestId: remoteRequestId, refetchInterval: 4000 });
 	useEffect(() => {
 		if (!remoteRequest || approvedHandledRef.current) return;
@@ -94,41 +104,55 @@ export function DiscountApproval({ vendedorId, valorBase, descontoTotal, limiteS
 		if (remoteRequest.status === "REJEITADA") {
 			toast.error(remoteRequest.motivoDecisao ? `Solicitação rejeitada: ${remoteRequest.motivoDecisao}` : "Solicitação rejeitada pelo gestor.");
 			setRemoteRequestId(null);
+			setMode("SENHA");
 			return;
 		}
 		if (remoteRequest.status === "EXPIRADA") {
 			toast.error("A solicitação expirou. Envie uma nova solicitação.");
 			setRemoteRequestId(null);
+			setMode("SENHA");
 		}
 	}, [remoteRequest, onApproved]);
 
 	const handlePinApproval = () => {
-		if (!identificador.trim()) {
-			toast.error("Informe o identificador do vendedor do gestor aprovador.");
+		if (senhaOperador.length !== OPERATOR_PASSWORD_LENGTH) {
+			toast.error("Informe os 5 dígitos da senha de operador do gestor aprovador.");
 			return;
 		}
-		if (!senhaOperador.trim()) {
-			toast.error("Informe a senha de operador do gestor aprovador.");
+		approveWithPin({ tipo: "VENDA_DESCONTO", payload, senhaOperador });
+	};
+
+	const handleRequestRemote = () => {
+		// Já existe uma solicitação pendente: só volta para a UI de espera, sem duplicar na fila.
+		if (remoteRequestId) {
+			setMode("REMOTA");
 			return;
 		}
-		approveWithPin({ tipo: "VENDA_DESCONTO", payload, identificador: identificador.trim(), senhaOperador: senhaOperador.trim() });
+		requestRemoteApproval({ tipo: "VENDA_DESCONTO", payload });
 	};
 
 	const descontoPercentualLabel = `${payload.descontoPercentual.toFixed(1).replace(".", ",")}%`;
+	const isWaitingRemote = mode === "REMOTA";
 
 	return (
-		<ResponsiveMenu
+		<ResponsiveMenuV2
 			menuTitle="APROVAÇÃO DE DESCONTO"
 			menuDescription="O desconto aplicado excede o limite do operador e precisa da aprovação de um gestor."
 			menuActionButtonText="APROVAR COM SENHA"
 			menuCancelButtonText="CANCELAR"
+			menuSecondaryActionButtonText={remoteRequestId ? "VER SOLICITAÇÃO REMOTA" : "SOLICITAR APROVAÇÃO REMOTA"}
+			secondaryActionFunction={handleRequestRemote}
 			actionFunction={handlePinApproval}
-			actionIsLoading={isApprovingWithPin}
+			actionIsLoading={isApprovingWithPin || isRequestingRemote}
 			stateIsLoading={false}
 			stateError={null}
 			closeMenu={closeModal}
+			dialogShowFooter={!isWaitingRemote}
+			drawerShowFooter={!isWaitingRemote}
+			dialogContentClassName="min-w-0 overflow-x-hidden sm:max-w-lg"
+			drawerContentClassName="overflow-x-hidden"
 		>
-			<div className="flex flex-col gap-4">
+			<div className="flex w-full min-w-0 flex-col gap-4 overflow-x-hidden py-2">
 				<div className="flex flex-col gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 dark:border-red-800/40 dark:bg-red-900/10">
 					<p className="text-xs font-bold text-red-700 dark:text-red-300">
 						Desconto solicitado: {formatToMoney(descontoTotal)} ({descontoPercentualLabel})
@@ -141,56 +165,66 @@ export function DiscountApproval({ vendedorId, valorBase, descontoTotal, limiteS
 					) : null}
 				</div>
 
-				<ResponsiveMenuSection title="APROVAÇÃO NO TERMINAL" icon={<KeyRound className="h-4 min-h-4 w-4 min-w-4" />}>
-					<p className="text-[0.65rem] text-muted-foreground">
-						Um gestor presente informa o identificador e a senha de operador do vendedor vinculado ao seu usuário.
-					</p>
-					<TextInput
-						label="IDENTIFICADOR DO VENDEDOR"
-						placeholder="Identificador do vendedor do gestor..."
-						value={identificador}
-						handleChange={(value) => setIdentificador(value)}
-					/>
-					<TextInput
-						label="SENHA DE OPERADOR"
-						placeholder="Senha de operador do gestor..."
-						value={senhaOperador}
-						handleChange={(value) => setSenhaOperador(value)}
-					/>
-				</ResponsiveMenuSection>
-
-				<ResponsiveMenuSection title="APROVAÇÃO REMOTA" icon={<Send className="h-4 min-h-4 w-4 min-w-4" />}>
-					{remoteRequestId ? (
-						<div className="flex flex-col gap-2">
-							<div className="flex items-center gap-2 text-sm text-muted-foreground">
-								<RefreshCcw className="h-4 w-4 animate-spin" /> Aguardando aprovação de um gestor... A solicitação expira em 15 minutos.
-							</div>
-							<p className="text-[0.65rem] text-muted-foreground">
-								Você pode salvar a venda como orçamento e finalizá-la depois que a aprovação for concedida.
+				{isWaitingRemote ? (
+					<div className="flex w-full flex-col items-center gap-4 rounded-2xl border border-brand/20 bg-brand/5 px-4 py-8 text-center">
+						<RefreshCcw className="h-8 w-8 animate-spin text-brand" />
+						<div className="flex flex-col gap-1">
+							<p className="text-sm font-bold">Aguardando aprovação de um gestor...</p>
+							<p className="text-[0.7rem] text-muted-foreground">
+								A solicitação está na fila de aprovações (Vendas → Aprovações) e expira em 15 minutos. Você também pode salvar a venda como orçamento e
+								finalizá-la depois da aprovação.
 							</p>
-							<Button type="button" variant="ghost-destructive" size="sm" disabled={isCancelling} onClick={() => cancelRemoteRequest(remoteRequestId)}>
-								CANCELAR SOLICITAÇÃO
-							</Button>
 						</div>
-					) : (
-						<div className="flex flex-col gap-2">
-							<p className="text-[0.65rem] text-muted-foreground">
-								Sem um gestor presente? Envie a solicitação para a fila de aprovações (Vendas → Aprovações).
-							</p>
+						<div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
 							<Button
 								type="button"
-								variant="ghost-brand"
-								size="sm"
-								disabled={isRequestingRemote}
-								onClick={() => requestRemoteApproval({ tipo: "VENDA_DESCONTO", payload })}
+								variant="outline"
+								disabled={isCancelling}
+								onClick={() => (remoteRequestId ? cancelRemoteRequest(remoteRequestId) : closeModal())}
 							>
-								<Send className="h-4 w-4 mr-1.5" />
-								{isRequestingRemote ? "ENVIANDO SOLICITAÇÃO..." : "SOLICITAR APROVAÇÃO REMOTA"}
+								{isCancelling ? "CANCELANDO..." : "CANCELAR"}
+							</Button>
+							<Button type="button" onClick={() => setMode("SENHA")}>
+								<KeyRound className="mr-1.5 h-4 w-4" />
+								APROVAR POR SENHA
 							</Button>
 						</div>
-					)}
-				</ResponsiveMenuSection>
+					</div>
+				) : (
+					<div className="flex w-full min-w-0 flex-col gap-3 overflow-x-hidden">
+						<Label htmlFor="discount-approval-operator-password" className="text-sm font-medium tracking-tight text-foreground/80">
+							SENHA DO GESTOR APROVADOR (5 DÍGITOS)<span className="text-red-500">*</span>
+						</Label>
+						<p className="text-[0.7rem] text-muted-foreground">
+							Um gestor com permissão de aprovar descontos informa a senha de operador do vendedor vinculado ao seu usuário.
+						</p>
+						<InputOTP
+							id="discount-approval-operator-password"
+							maxLength={OPERATOR_PASSWORD_LENGTH}
+							pattern={REGEXP_ONLY_DIGITS}
+							inputMode="numeric"
+							autoComplete="off"
+							pushPasswordManagerStrategy="none"
+							value={senhaOperador}
+							onChange={(value) => setSenhaOperador(value)}
+							containerClassName="mx-auto w-full max-w-full justify-center"
+						>
+							<InputOTPGroup>
+								<InputOTPSlot index={0} />
+								<InputOTPSlot index={1} />
+								<InputOTPSlot index={2} />
+								<InputOTPSlot index={3} />
+								<InputOTPSlot index={4} />
+							</InputOTPGroup>
+						</InputOTP>
+						{remoteRequestId ? (
+							<p className="flex items-center justify-center gap-1.5 text-center text-[0.7rem] text-muted-foreground">
+								<Send className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />A solicitação remota segue pendente — a primeira aprovação que chegar libera a venda.
+							</p>
+						) : null}
+					</div>
+				)}
 			</div>
-		</ResponsiveMenu>
+		</ResponsiveMenuV2>
 	);
 }

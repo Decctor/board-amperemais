@@ -173,7 +173,7 @@ Rotas no padrão da casa (input schema → service → handler → `appApiHandle
 - `POST /api/action-approvals` — cria solicitação; valida payload contra a union.
 - `GET /api/action-approvals` — lista por org + status (fila do aprovador) / `byId`.
 - `POST /api/action-approvals/decide` — aprova/rejeita via painel; exige a permissão do domínio do `tipo`.
-- `POST /api/action-approvals/decide-with-pin` — fluxo síncrono: recebe `identificador` + `senhaOperador` do vendedor aprovador (ver §5.2).
+- `POST /api/action-approvals/decide-with-pin` — fluxo síncrono: recebe apenas a `senhaOperador` do vendedor aprovador (ver §5.2).
 
 **O primitivo fica burro e estável; a inteligência de cada cenário é plugável**:
 
@@ -206,9 +206,9 @@ Novo helper `lib/sales/sale-discount-authorization.ts` (espelho do `resolveSaleF
 
 ### 5.2 Aprovação por PIN (síncrona)
 
-Endpoint `decide-with-pin` recebe `identificador` + `senhaOperador`:
+Endpoint `decide-with-pin` recebe apenas a `senhaOperador`:
 
-1. Busca o vendedor **ativo** da org por `identificador` e confere a `senhaOperador`. (O identificador desambigua — não confiar em unicidade da senha entre vendedores.)
+1. Busca o vendedor **ativo** da org pela `senhaOperador` (mesmo mecanismo das aprovações do ponto de interação). Pedir identificador introduziria fricção exagerada no dia a dia; confia-se que a organização configurou senhas distintas por operador.
 2. Resolve a membership vinculada (`usuarioVendedorId`) e exige `vendas.descontos.aprovar` (com fallback `empresa.editar` quando `descontos` ausente).
 3. Cria a solicitação já `APROVADA` com `metodoDecisao: "SENHA_OPERADOR"`, `decididaPorId` = usuário da membership aprovadora, e devolve o `approvalRequestId` para o PDV finalizar.
 
