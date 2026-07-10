@@ -21,12 +21,18 @@ type TCaptureClientEventInput = {
 export function captureClientEvent({ event, properties, controlEvent }: TCaptureClientEventInput) {
 	if (typeof window === "undefined") return;
 	posthog.capture(event, properties);
-	const eventForControl = controlEvent ?? event;
+
+	// Control forwarding is opt-in: only events that explicitly declare a
+	// `controlEvent` reach the Control SDK. This keeps operational/analytics
+	// noise (pageviews, view_* events, scroll depth, etc.) out of Control while
+	// PostHog still receives everything.
+	if (!controlEvent) return;
+
 	if (window.ctrl?.track) {
-		window.ctrl.track(eventForControl, properties);
+		window.ctrl.track(controlEvent, properties);
 		return;
 	}
 	window.ctrl = window.ctrl || { q: [] };
 	window.ctrl.q = window.ctrl.q || [];
-	window.ctrl.q.push(["track", eventForControl, properties ?? {}]);
+	window.ctrl.q.push(["track", controlEvent, properties ?? {}]);
 }

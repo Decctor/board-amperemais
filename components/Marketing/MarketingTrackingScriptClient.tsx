@@ -19,7 +19,18 @@ type MarketingTrackingScriptClientProps = {
 	user?: MarketingTrackingUser | null;
 };
 
-const TRACKING_DISABLED_PREFIXES = ["/dashboard", "/admin-dashboard", "/partner-dashboard", "/shop", "/testing"];
+const TRACKING_DISABLED_PREFIXES = [
+	"/dashboard",
+	"/admin-dashboard",
+	"/partner-dashboard",
+	"/shop",
+	"/testing",
+	// Operational point-of-interaction surfaces: keep their pageviews/identify
+	// and view_* events out of Control so they don't pollute the evaluation.
+	"/point-of-interaction",
+	"/point-of-interaction-display",
+	"/point-of-interaction-playbook",
+];
 
 function shouldTrackPath(pathname: string) {
 	return !TRACKING_DISABLED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
