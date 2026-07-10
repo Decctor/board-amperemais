@@ -235,3 +235,19 @@ export function usePoiTransactionRequestsRealtime({
 		invalidateQueries,
 	});
 }
+
+/**
+ * Hook to subscribe to action approval requests updates (fila de aprovações e o PDV solicitante
+ * aguardando a decisão de uma solicitação remota).
+ */
+export function useActionApprovalsRealtime({ orgId, enabled = true, queryKey }: { orgId: string | null; enabled?: boolean; queryKey: QueryKey }) {
+	const filter = useMemo(() => (orgId ? { column: "organizacao_id", value: orgId } : undefined), [orgId]);
+	const invalidateQueries = useMemo(() => [queryKey], [queryKey]);
+
+	return useSupabaseRealtime({
+		table: "ampmais_action_approval_requests",
+		filter,
+		enabled: enabled && !!orgId,
+		invalidateQueries,
+	});
+}

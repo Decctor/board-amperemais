@@ -9,6 +9,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger, tabsPageToolbarActionsClassName, tabsPageToolbarClassName } from "@/components/ui/tabs";
+import { ActionApprovalsQueue } from "@/components/ActionApprovals/ActionApprovalsQueue";
 import FulfillmentBoard from "./_components/fulfillment/fulfillment-board";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
@@ -26,6 +27,7 @@ import {
 	CircleUser,
 	Clock,
 	FileSpreadsheet,
+	GitPullRequestArrow,
 	Info,
 	LayoutGrid,
 	ListFilter,
@@ -43,9 +45,10 @@ import type { ReactNode } from "react";
 type SalesPageProps = {
 	user: TAuthUserSession["user"];
 	organization: NonNullable<TAuthUserSession["membership"]>["organizacao"];
+	canApproveActionRequests: boolean;
 };
 
-export default function SalesPage({ user: _user, organization }: SalesPageProps) {
+export default function SalesPage({ user: _user, organization, canApproveActionRequests }: SalesPageProps) {
 	const orgHasERPAccess = organization.configuracao.recursos.erp.acesso;
 
 	// Organizações sem o módulo de ERP não veem a interface de abas: só o histórico.
@@ -73,6 +76,10 @@ export default function SalesPage({ user: _user, organization }: SalesPageProps)
 							<LayoutGrid className="h-4 w-4 min-h-4 min-w-4" />
 							Atendimento
 						</TabsTrigger>
+						<TabsTrigger value="aprovacoes">
+							<GitPullRequestArrow className="h-4 w-4 min-h-4 min-w-4" />
+							Aprovações
+						</TabsTrigger>
 					</TabsList>
 					<div className={tabsPageToolbarActionsClassName}>
 						<SalesModuleActions orgHasERPAccess />
@@ -83,6 +90,9 @@ export default function SalesPage({ user: _user, organization }: SalesPageProps)
 				</TabsContent>
 				<TabsContent value="atendimento" className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden">
 					<FulfillmentBoard organizationConfig={organization.configuracao} />
+				</TabsContent>
+				<TabsContent value="aprovacoes" className="mt-3 flex flex-col gap-3">
+					<ActionApprovalsQueue orgId={organization.id} canApprove={canApproveActionRequests} />
 				</TabsContent>
 			</Tabs>
 		</div>

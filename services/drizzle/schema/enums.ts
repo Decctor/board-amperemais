@@ -361,3 +361,13 @@ export const couponGrantOriginEnum = pgEnum("coupon_grant_origin", ["MANUAL", "C
 export const couponRedemptionStatusEnum = pgEnum("coupon_redemption_status", ["UTILIZADO", "CANCELADO"]);
 
 export const couponRedemptionSourceEnum = pgEnum("coupon_redemption_source", ["POS", "PONTO_INTERACAO", "LOJA_DIGITAL"]);
+
+// ============================================================================
+// ACTION APPROVALS (aprovações de ações — desconto de venda é o primeiro caso)
+// ============================================================================
+
+// Ciclo de vida fechado e estável da solicitação. O `tipo` da ação NÃO é pgEnum de propósito:
+// é varchar + z.enum no app para que novos cenários não custem migração de enum no Postgres.
+export const actionApprovalStatusEnum = pgEnum("action_approval_status", ["PENDENTE", "APROVADA", "REJEITADA", "CANCELADA", "EXPIRADA", "CONSUMIDA"]);
+
+export const actionApprovalDecisionMethodEnum = pgEnum("action_approval_decision_method", ["PAINEL", "SENHA_PDV"]);
