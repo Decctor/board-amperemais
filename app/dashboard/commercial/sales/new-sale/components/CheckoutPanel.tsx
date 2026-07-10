@@ -1,6 +1,7 @@
 import ClientVinculationMenu from "@/components/Clients/ClientVinculationMenu";
 import SelectInput from "@/components/Inputs/SelectInput";
 import { NewClientLocation } from "@/components/Modals/Clients/Locations/NewClientLocation";
+import type { TDiscountAuthority } from "@/lib/permissions/discounts";
 import { useClientLocations } from "@/lib/queries/clients/locations";
 import { useSellersSimplified } from "@/lib/queries/sellers";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
@@ -21,6 +22,7 @@ type CheckoutPanelProps = {
 	organizationFiscalEmissaoAutomatica: boolean;
 	organizationAutoFiscalCapable: boolean;
 	canEmitirFiscal: boolean;
+	discountAuthority?: TDiscountAuthority | null;
 	onCreateDraft: () => void;
 	onFinalizeSale: () => void;
 	isCreatingDraft?: boolean;
@@ -34,6 +36,7 @@ export default function CheckoutPanel({
 	organizationFiscalEmissaoAutomatica,
 	organizationAutoFiscalCapable,
 	canEmitirFiscal,
+	discountAuthority,
 	onCreateDraft,
 	onFinalizeSale,
 	isCreatingDraft,
@@ -102,7 +105,7 @@ export default function CheckoutPanel({
 				<ItemsSection saleState={saleState} />
 				<DeliverySection saleState={saleState} locationOptions={locationOptions} onOpenNewLocation={() => setIsNewLocationOpen(true)} />
 				<PaymentsSection saleState={saleState} />
-				<SummarySection saleState={saleState} organizationCashbackProgram={organizationCashbackProgram} />
+				<SummarySection saleState={saleState} organizationCashbackProgram={organizationCashbackProgram} discountAuthority={discountAuthority} />
 				<FiscalEmissionSection
 					saleState={saleState}
 					organizationFiscalEmissaoAutomatica={organizationFiscalEmissaoAutomatica}

@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import CashSessionBar from "@/components/CashSessions/CashSessionBar";
 import CashSessionGate from "@/components/CashSessions/CashSessionGate";
+import { DiscountApproval } from "@/components/Modals/Sales/DiscountApproval";
 import { getErrorMessage } from "@/lib/errors";
 import { useIsMobile } from "@/lib/hooks/use-mobile";
 import { createAndConfirmSale, createSaleDraft, updateSaleDraft } from "@/lib/mutations/pos";
+import { evaluateDiscount } from "@/lib/permissions/discounts";
+import { useSaleDiscountContext } from "@/lib/queries/action-approvals";
 import { usePOSGroups, usePOSProducts } from "@/lib/queries/pos";
 import { useActiveSalesSession } from "@/lib/queries/sales-sessions";
 import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
@@ -81,6 +84,31 @@ export default function NewSalePage({
 	const linkedClient = saleState.state.cliente;
 	const linkedClientId = linkedClient?.id ?? null;
 
+	// Controle de desconto: autoridade da identidade avaliada (vendedor selecionado) para feedback
+	// imediato; o enforcement autoritativo acontece na rota de finalização.
+	const { data: discountContext } = useSaleDiscountContext({ vendedorId: saleState.state.vendedorId ?? null });
+	const discountAuthority = discountContext?.authority ?? null;
+	const cupomManual = saleState.state.cupomResgate?.validacaoModo === "MANUAL" ? saleState.state.cupomResgate.valorDesconto : 0;
+	const descontoAgregado = useMemo(
+		() => ({
+			valorBase: saleState.subtotal,
+			descontoTotal: saleState.state.descontoGeral + saleState.totalDescontoItens + cupomManual,
+		}),
+		[saleState.subtotal, saleState.state.descontoGeral, saleState.totalDescontoItens, cupomManual],
+	);
+	const discountRequiresApproval = discountAuthority
+		? evaluateDiscount({ authority: discountAuthority, ...descontoAgregado }) === "REQUER_APROVACAO"
+		: false;
+	const [isDiscountApprovalOpen, setIsDiscountApprovalOpen] = useState(false);
+	// Aprovação concedida fica atrelada aos valores aprovados: mudou o carrinho/desconto, invalida.
+	const [discountApproval, setDiscountApproval] = useState<{ id: string; valorBase: number; descontoTotal: number } | null>(null);
+	useEffect(() => {
+		if (!discountApproval) return;
+		if (discountApproval.valorBase !== descontoAgregado.valorBase || discountApproval.descontoTotal !== descontoAgregado.descontoTotal) {
+			setDiscountApproval(null);
+		}
+	}, [discountApproval, descontoAgregado]);
+
 	// Unique product ids in the basket — drives cross-sell, stable against quantity changes.
 	const basketProductIds = useMemo(() => [...new Set(saleState.state.itens.map((item) => item.produtoId))], [saleState.state.itens]);
 
@@ -139,6 +167,7 @@ export default function NewSalePage({
 			if (data.data.confirmation.fiscal.status === "ERRO") {
 				toast.warning(`Venda finalizada, mas a emissao fiscal falhou: ${data.data.confirmation.fiscal.error}`);
 			}
+			setDiscountApproval(null);
 			saleState.setSuccess({
 				mode: "FINALIZADA",
 				title: "Venda finalizada com sucesso",
@@ -229,13 +258,9 @@ export default function NewSalePage({
 		});
 	};
 
-	const handleFinalizeSale = () => {
-		if (!saleState.isReadyForFinalize) {
-			toast.error("Complete entrega e pagamento para finalizar a venda.");
-			return;
-		}
-
+	const submitFinalizeSale = (descontoAprovacaoId: string | null) => {
 		finalizeSale({
+			descontoAprovacaoId,
 			clienteId: saleState.state.cliente?.id ?? null,
 			vendedorId: saleState.state.vendedorId,
 			vendedorNome: saleState.state.vendedorNome,
@@ -260,6 +285,21 @@ export default function NewSalePage({
 			emissaoFiscalAutomatica: saleState.state.emissaoFiscalAutomatica,
 			itens: mapItemsToApi(saleState),
 		});
+	};
+
+	const handleFinalizeSale = () => {
+		if (!saleState.isReadyForFinalize) {
+			toast.error("Complete entrega e pagamento para finalizar a venda.");
+			return;
+		}
+
+		// Desconto acima do teto do vendedor: abre o fluxo de aprovação (PIN ou remota) antes de finalizar.
+		if (discountRequiresApproval && !discountApproval) {
+			setIsDiscountApprovalOpen(true);
+			return;
+		}
+
+		submitFinalizeSale(discountApproval?.id ?? null);
 	};
 
 	if (saleState.state.success) {
@@ -366,6 +406,7 @@ export default function NewSalePage({
 							organizationFiscalEmissaoAutomatica={organizationFiscalEmissaoAutomatica}
 							organizationAutoFiscalCapable={organizationAutoFiscalCapable}
 							canEmitirFiscal={canEmitirFiscal}
+							discountAuthority={discountAuthority}
 							onCreateDraft={handleCreateDraft}
 							onFinalizeSale={handleFinalizeSale}
 							isCreatingDraft={isCreatingDraft}
@@ -395,6 +436,7 @@ export default function NewSalePage({
 										organizationFiscalEmissaoAutomatica={organizationFiscalEmissaoAutomatica}
 										organizationAutoFiscalCapable={organizationAutoFiscalCapable}
 										canEmitirFiscal={canEmitirFiscal}
+										discountAuthority={discountAuthority}
 										onCreateDraft={handleCreateDraft}
 										onFinalizeSale={handleFinalizeSale}
 										isCreatingDraft={isCreatingDraft}
@@ -424,6 +466,27 @@ export default function NewSalePage({
 				) : null}
 
 				{builderProduct ? <ProductBuilderModal product={builderProduct} onAddToCart={saleState.addItem} onClose={() => setBuilderProduct(null)} /> : null}
+
+				{isDiscountApprovalOpen ? (
+					<DiscountApproval
+						vendedorId={saleState.state.vendedorId ?? null}
+						valorBase={descontoAgregado.valorBase}
+						descontoTotal={descontoAgregado.descontoTotal}
+						limiteSolicitante={
+							discountAuthority && discountAuthority.limiteTipo
+								? { tipo: discountAuthority.limiteTipo, valor: discountAuthority.limiteValor }
+								: discountAuthority && !discountAuthority.aplicar
+									? { tipo: null, valor: 0 }
+									: null
+						}
+						closeModal={() => setIsDiscountApprovalOpen(false)}
+						onApproved={(approvalRequestId) => {
+							setDiscountApproval({ id: approvalRequestId, ...descontoAgregado });
+							setIsDiscountApprovalOpen(false);
+							submitFinalizeSale(approvalRequestId);
+						}}
+					/>
+				) : null}
 			</div>
 		</div>
 	);

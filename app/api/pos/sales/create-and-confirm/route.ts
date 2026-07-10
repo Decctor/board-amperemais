@@ -3,7 +3,9 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
 import { resolveActiveSalesSession } from "@/lib/sales-sessions";
+import { authorizeSaleDiscount, computeSaleAggregatedDiscount, consumeSaleDiscountApproval } from "@/lib/sales/sale-discount-authorization";
 import { resolveSaleFiscalEmissionOverride } from "@/lib/sales/sale-fiscal-emission-override";
+import { validateSaleItemsPricing } from "@/lib/sales/sale-pricing-validation";
 import { processSaleConfirmationInTransaction, processSaleConfirmationPostCommit } from "@/lib/sales/sale-processing";
 import { AppliedCouponSchema } from "@/schemas/coupons";
 import { db } from "@/services/drizzle";
@@ -54,6 +56,8 @@ const CreateAndConfirmSaleInputSchema = z.object({
 	sessaoVendaId: z.string({ invalid_type_error: "Tipo não válido para o ID da sessão de venda." }).optional().nullable(),
 	// Override tri-state da emissão fiscal automática. null/ausente = herda a preferência da organização.
 	emissaoFiscalAutomatica: z.boolean({ invalid_type_error: "Tipo não válido para emissão fiscal automática." }).optional().nullable(),
+	// Aprovação VENDA_DESCONTO exigida quando o desconto agregado excede o teto do vendedor.
+	descontoAprovacaoId: z.string({ invalid_type_error: "Tipo não válido para o ID da aprovação de desconto." }).optional().nullable(),
 	itens: z.array(CartItemInputSchema).min(1, { message: "Pelo menos um item é obrigatório." }),
 });
 export type TCreateAndConfirmSaleInput = z.infer<typeof CreateAndConfirmSaleInputSchema>;
@@ -66,6 +70,9 @@ function getSessionWithOrg(session: TAuthUserSession | null) {
 
 async function createAndConfirmSale({ input, session }: { input: TCreateAndConfirmSaleInput; session: TAuthUserSession }) {
 	const orgId = session.membership!.organizacao.id;
+
+	// Nunca confie nos valores do cliente: recalcula os itens contra o catálogo antes de qualquer uso.
+	await validateSaleItemsPricing({ orgId, itens: input.itens });
 
 	const productIds = [...new Set(input.itens.map((item) => item.produtoId))];
 	const variantIds = input.itens.map((item) => item.produtoVarianteId).filter((id): id is string => !!id);
@@ -132,6 +139,22 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 	if (cashbackResgate > valorAntesCashback) {
 		throw new createHttpError.BadRequest("O resgate de cashback não pode superar o valor da venda.");
 	}
+
+	// Teto de desconto do vendedor: acima do limite exige aprovação válida, consumida na transação da venda.
+	const descontoAgregado = computeSaleAggregatedDiscount({
+		itens: input.itens,
+		descontosGerais,
+		cupomResgate: input.cupomResgate,
+	});
+	const descontoAprovacaoId = await authorizeSaleDiscount({
+		orgId,
+		session,
+		vendedorId: input.vendedorId,
+		valorBase: descontoAgregado.valorBase,
+		descontoTotal: descontoAgregado.descontoTotal,
+		aprovacaoId: input.descontoAprovacaoId,
+	});
+
 	const valorTotal = Math.max(0, valorBaseItens - descontosVenda + acrescimosGerais);
 	const descontosTotalItens = input.itens.reduce((sum, item) => sum + item.valorDesconto, 0);
 	const custoTotal = input.itens.reduce((sum, item) => {
@@ -196,6 +219,11 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 
 		const newSaleId = insertedSale[0]?.id;
 		if (!newSaleId) throw new createHttpError.InternalServerError("Erro ao criar venda.");
+
+		// One-shot: a aprovação de desconto é consumida na mesma transação da venda (impede reuso).
+		if (descontoAprovacaoId) {
+			await consumeSaleDiscountApproval({ tx, aprovacaoId: descontoAprovacaoId, vendaId: newSaleId });
+		}
 
 		for (const item of input.itens) {
 			const valorCustoUnitario = item.produtoVarianteId ? (variantCostMap.get(item.produtoVarianteId) ?? 0) : (productCostMap.get(item.produtoId) ?? 0);

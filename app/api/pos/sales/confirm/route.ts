@@ -3,7 +3,12 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
 import { resolveActiveSalesSession } from "@/lib/sales-sessions";
-import { processSaleConfirmation } from "@/lib/sales/sale-processing";
+import { authorizeSaleDiscount, computeSaleAggregatedDiscount, consumeSaleDiscountApproval } from "@/lib/sales/sale-discount-authorization";
+import {
+	type TProcessSaleConfirmationInput,
+	processSaleConfirmationInTransaction,
+	processSaleConfirmationPostCommit,
+} from "@/lib/sales/sale-processing";
 import { AppliedCouponSchema, type TAppliedCoupon } from "@/schemas/coupons";
 import { db } from "@/services/drizzle";
 import { sales } from "@/services/drizzle/schema";
@@ -22,6 +27,8 @@ const ConfirmSaleInputSchema = z.object({
 	contaDebitoId: z.string({ invalid_type_error: "Tipo nao valido para conta de debito." }).optional().nullable(),
 	contaCreditoId: z.string({ invalid_type_error: "Tipo nao valido para conta de credito." }).optional().nullable(),
 	sessaoVendaId: z.string({ invalid_type_error: "Tipo nao valido para o ID da sessao de venda." }).optional().nullable(),
+	// Aprovacao VENDA_DESCONTO exigida quando o desconto agregado do orcamento excede o teto do vendedor.
+	descontoAprovacaoId: z.string({ invalid_type_error: "Tipo nao valido para o ID da aprovacao de desconto." }).optional().nullable(),
 });
 export type TConfirmSaleInput = z.infer<typeof ConfirmSaleInputSchema>;
 
@@ -34,7 +41,10 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		}),
 		db.query.sales.findFirst({
 			where: and(eq(sales.id, input.id), eq(sales.organizacaoId, orgId)),
-			columns: { id: true, rascunhoMetadados: true },
+			columns: { id: true, rascunhoMetadados: true, vendedorId: true, descontosTotal: true },
+			with: {
+				itens: { columns: { valorVendaTotalBruto: true, valorTotalDesconto: true } },
+			},
 		}),
 	]);
 
@@ -68,6 +78,7 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 			cupom?: TAppliedCoupon | null;
 		};
 		cupom?: TAppliedCoupon | null;
+		descontoGeral?: number;
 	} | null;
 	const effectiveCashbackResgate = input.cashbackResgate > 0 ? input.cashbackResgate : (shopMetadata?.shop?.cashbackResgateSolicitado ?? 0);
 	const effectiveCashbackProgramaId = input.cashbackProgramaId ?? shopMetadata?.shop?.cashbackProgramaId ?? null;
@@ -75,7 +86,27 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 	const shopAppliedCoupon = shopMetadata?.shop?.cupom ?? null;
 	const effectiveAppliedCoupon = input.cupomResgate ?? shopAppliedCoupon ?? shopMetadata?.cupom ?? null;
 
-	const result = await processSaleConfirmation({
+	// Teto de desconto do vendedor: orcamento com desconto acima do limite nao e confirmavel sem aprovacao.
+	// Desconto geral vem do rascunhoMetadados do PDV; fallback deriva do total carimbado menos cupom/cashback.
+	const descontosGerais =
+		typeof shopMetadata?.descontoGeral === "number"
+			? Math.max(0, shopMetadata.descontoGeral)
+			: Math.max(0, (saleDraft.descontosTotal ?? 0) - (effectiveAppliedCoupon?.valorDesconto ?? 0) - effectiveCashbackResgate);
+	const descontoAgregado = computeSaleAggregatedDiscount({
+		itens: saleDraft.itens.map((item) => ({ valorTotalBruto: item.valorVendaTotalBruto, valorDesconto: item.valorTotalDesconto })),
+		descontosGerais,
+		cupomResgate: effectiveAppliedCoupon,
+	});
+	const descontoAprovacaoId = await authorizeSaleDiscount({
+		orgId,
+		session,
+		vendedorId: saleDraft.vendedorId,
+		valorBase: descontoAgregado.valorBase,
+		descontoTotal: descontoAgregado.descontoTotal,
+		aprovacaoId: input.descontoAprovacaoId,
+	});
+
+	const confirmationInput: TProcessSaleConfirmationInput = {
 		organization,
 		saleId: input.id,
 		salePayments: input.pagamentos.map((pagamento) => {
@@ -104,7 +135,17 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		accountingEntryDebitAccountId,
 		accountingEntryCreditAccountId,
 		sessaoVendaId,
+	};
+
+	// Mesma transacao: confirmacao + consumo one-shot da aprovacao de desconto (impede reuso).
+	const confirmation = await db.transaction(async (tx) => {
+		if (descontoAprovacaoId) {
+			await consumeSaleDiscountApproval({ tx, aprovacaoId: descontoAprovacaoId, vendaId: input.id });
+		}
+		return processSaleConfirmationInTransaction({ tx, input: confirmationInput });
 	});
+	const fiscal = await processSaleConfirmationPostCommit(confirmationInput);
+	const result = { ...confirmation, fiscal };
 
 	return {
 		data: result,

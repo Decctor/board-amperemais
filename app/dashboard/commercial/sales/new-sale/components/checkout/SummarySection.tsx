@@ -2,10 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { formatToMoney } from "@/lib/formatting";
+import { evaluateDiscount, getDiscountCeiling, type TDiscountAuthority } from "@/lib/permissions/discounts";
 import { useClientCashbackBalance } from "@/lib/queries/cashback-programs";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import type { TUseSaleState } from "@/state-hooks/use-sale-state";
-import { DollarSign, Minus, Plus, Wallet } from "lucide-react";
+import { DollarSign, Minus, Plus, ShieldAlert, Wallet } from "lucide-react";
 import { useEffect } from "react";
 import CouponRedemptionSection from "./CouponRedemptionSection";
 
@@ -99,9 +100,17 @@ function CashbackRedemptionBlock({ saleState, clientId, organizationCashbackProg
 type SummarySectionProps = {
 	saleState: TUseSaleState;
 	organizationCashbackProgram: TCashbackProgramEntity | null;
+	discountAuthority?: TDiscountAuthority | null;
 };
 
-export default function SummarySection({ saleState, organizationCashbackProgram }: SummarySectionProps) {
+export default function SummarySection({ saleState, organizationCashbackProgram, discountAuthority }: SummarySectionProps) {
+	// Mesmo cômputo do servidor: desconto agregado (geral + itens + cupom MANUAL) sobre o bruto dos itens.
+	const cupomManual = saleState.state.cupomResgate?.validacaoModo === "MANUAL" ? saleState.state.cupomResgate.valorDesconto : 0;
+	const descontoAgregado = saleState.state.descontoGeral + saleState.totalDescontoItens + cupomManual;
+	const discountCeiling = discountAuthority ? getDiscountCeiling({ authority: discountAuthority, valorBase: saleState.subtotal }) : null;
+	const discountRequiresApproval = discountAuthority
+		? evaluateDiscount({ authority: discountAuthority, valorBase: saleState.subtotal, descontoTotal: descontoAgregado }) === "REQUER_APROVACAO"
+		: false;
 	return (
 		<div className="bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs">
 			<div className="flex items-center gap-1.5">
@@ -117,18 +126,29 @@ export default function SummarySection({ saleState, organizationCashbackProgram 
 				{saleState.state.cliente ? (
 					<CashbackRedemptionBlock saleState={saleState} clientId={saleState.state.cliente.id} organizationCashbackProgram={organizationCashbackProgram} />
 				) : null}
-				<div className="w-full flex items-center justify-between px-2 py-1 rounded-lg bg-red-200">
-					<div className="flex items-center gap-1.5">
-						<Minus className="w-3 h-3 text-red-600" />
-						<span className="text-xs text-red-600">OUTROS DESCONTOS</span>
+				<div className="w-full flex flex-col gap-1 px-2 py-1 rounded-lg bg-red-200">
+					<div className="w-full flex items-center justify-between">
+						<div className="flex items-center gap-1.5">
+							<Minus className="w-3 h-3 text-red-600" />
+							<span className="text-xs text-red-600">OUTROS DESCONTOS</span>
+						</div>
+						<Input
+							type="number"
+							placeholder="Desconto"
+							className="w-24 text-xs font-bold border border-red-600 text-red-600"
+							value={saleState.state.descontoGeral}
+							onChange={(event) => saleState.setDescontoGeral(Number(event.target.value) || 0)}
+						/>
 					</div>
-					<Input
-						type="number"
-						placeholder="Desconto"
-						className="w-24 text-xs font-bold border border-red-600 text-red-600"
-						value={saleState.state.descontoGeral}
-						onChange={(event) => saleState.setDescontoGeral(Number(event.target.value) || 0)}
-					/>
+					{discountCeiling !== null ? (
+						<span className="text-[11px] font-semibold text-red-600">LIMITE DO OPERADOR: {formatToMoney(discountCeiling)}</span>
+					) : null}
+					{discountRequiresApproval ? (
+						<div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-700">
+							<ShieldAlert className="w-3 h-3 min-w-3 min-h-3" />
+							<span>Desconto acima do limite — a finalização exigirá a aprovação de um gestor.</span>
+						</div>
+					) : null}
 				</div>
 				<div className="w-full flex items-center justify-between px-2 py-1 rounded-lg bg-green-200">
 					<div className="flex items-center gap-1.5">
