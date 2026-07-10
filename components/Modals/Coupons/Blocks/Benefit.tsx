@@ -17,7 +17,7 @@ export default function CouponBenefitBlock({ coupon, updateCoupon }: CouponBenef
 					<SelectInput
 						value={coupon.beneficioTipo}
 						label="TIPO DE BENEFÍCIO"
-						resetOptionLabel="DESCONTO PERCENTUAL"
+						resetOptionLabel="DESCONTO PERCENTUAL (%)"
 						handleChange={(value) => updateCoupon({ beneficioTipo: value as TUseInternalCouponState["state"]["coupon"]["beneficioTipo"] })}
 						options={CouponBenefitTypeOptions}
 						onReset={() => updateCoupon({ beneficioTipo: "DESCONTO_PERCENTUAL" })}
@@ -26,8 +26,8 @@ export default function CouponBenefitBlock({ coupon, updateCoupon }: CouponBenef
 				<div className="w-full lg:w-1/2">
 					<SelectInput
 						value={coupon.beneficioAplicacao}
-						label="APLICAÇÃO DO DESCONTO"
-						resetOptionLabel="VENDA TOTAL"
+						label="ONDE O DESCONTO VALE"
+						resetOptionLabel="NA COMPRA TODA"
 						handleChange={(value) => updateCoupon({ beneficioAplicacao: value as TUseInternalCouponState["state"]["coupon"]["beneficioAplicacao"] })}
 						options={CouponBenefitScopeOptions}
 						onReset={() => updateCoupon({ beneficioAplicacao: "VENDA_TOTAL" })}

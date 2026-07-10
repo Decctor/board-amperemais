@@ -120,7 +120,7 @@ function CouponCard({
 					) : null}
 					<div className="flex items-center gap-1.5">
 						{coupon.escopo === "GLOBAL" ? <Globe className="w-3 min-w-3 h-3 min-h-3" /> : <UserRound className="w-3 min-w-3 h-3 min-h-3" />}
-						<p className="text-xs tracking-tight uppercase">{coupon.escopo === "GLOBAL" ? "GLOBAL" : "INDIVIDUAL"}</p>
+						<p className="text-xs tracking-tight uppercase">{coupon.escopo === "GLOBAL" ? "QUALQUER CLIENTE" : "CLIENTES ESPECÍFICOS"}</p>
 					</div>
 					<div className="flex items-center gap-1.5">
 						<BadgePercent className="w-3 min-w-3 h-3 min-h-3" />

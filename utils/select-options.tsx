@@ -713,33 +713,33 @@ export const ClientTagIconMap = {
 // ============================================================================
 
 export const CouponScopeOptions: { id: number; label: string; value: TCouponScopeEnum }[] = [
-	{ id: 1, label: "GLOBAL (QUALQUER CLIENTE)", value: "GLOBAL" },
-	{ id: 2, label: "INDIVIDUAL (ATRIBUÍDO POR CLIENTE)", value: "INDIVIDUAL" },
+	{ id: 1, label: "QUALQUER CLIENTE", value: "GLOBAL" },
+	{ id: 2, label: "CLIENTES ESPECÍFICOS", value: "INDIVIDUAL" },
 ];
 
 export const CouponValidationModeOptions: { id: number; label: string; value: TCouponValidationModeEnum }[] = [
-	{ id: 1, label: "AUTOMÁTICA (VALIDADA PELO SISTEMA)", value: "AUTOMATICA" },
-	{ id: 2, label: "MANUAL (VALIDADA PELO OPERADOR)", value: "MANUAL" },
+	{ id: 1, label: "AUTOMÁTICA (SISTEMA CONFERE)", value: "AUTOMATICA" },
+	{ id: 2, label: "MANUAL (OPERADOR CONFERE NO BALCÃO)", value: "MANUAL" },
 ];
 
 export const CouponBenefitTypeOptions: { id: number; label: string; value: TCouponBenefitTypeEnum }[] = [
-	{ id: 1, label: "DESCONTO FIXO (R$)", value: "DESCONTO_FIXO" },
+	{ id: 1, label: "DESCONTO EM REAIS (R$)", value: "DESCONTO_FIXO" },
 	{ id: 2, label: "DESCONTO PERCENTUAL (%)", value: "DESCONTO_PERCENTUAL" },
 	{ id: 3, label: "PREÇO FIXO POR UNIDADE", value: "PRECO_FIXO" },
-	{ id: 4, label: "LEVE X PAGUE Y", value: "COMPRE_X_LEVE_Y" },
+	{ id: 4, label: "LEVE MAIS, PAGUE MENOS", value: "COMPRE_X_LEVE_Y" },
 ];
 
 export const CouponBenefitScopeOptions: { id: number; label: string; value: TCouponBenefitScopeEnum }[] = [
-	{ id: 1, label: "VENDA TOTAL", value: "VENDA_TOTAL" },
-	{ id: 2, label: "ITENS ELEGÍVEIS", value: "ITENS_ELEGIVEIS" },
+	{ id: 1, label: "NA COMPRA TODA", value: "VENDA_TOTAL" },
+	{ id: 2, label: "EM PRODUTOS ESPECÍFICOS", value: "ITENS_ELEGIVEIS" },
 ];
 
 export const CouponTargetOperatorOptions: { id: number; label: string; value: TCouponTargetOperatorEnum }[] = [
-	{ id: 1, label: "QUALQUER ALVO PRESENTE (OU)", value: "QUALQUER" },
-	{ id: 2, label: "TODOS OS ALVOS PRESENTES (E)", value: "TODOS" },
+	{ id: 1, label: "BASTA UM DOS PRODUTOS", value: "QUALQUER" },
+	{ id: 2, label: "PRECISA DE TODOS OS PRODUTOS", value: "TODOS" },
 ];
 
 export const CouponTargetRoleOptions: { id: number; label: string; value: TCouponTargetRoleEnum }[] = [
-	{ id: 1, label: "ELEGÍVEL (CONDIÇÃO)", value: "ELEGIVEL" },
-	{ id: 2, label: "BENEFICIADO (RECEBE O DESCONTO)", value: "BENEFICIADO" },
+	{ id: 1, label: "ATIVA O CUPOM", value: "ELEGIVEL" },
+	{ id: 2, label: "GANHA O DESCONTO", value: "BENEFICIADO" },
 ];
