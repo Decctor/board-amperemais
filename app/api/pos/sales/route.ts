@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { resolveSaleFiscalEmissionOverride } from "@/lib/sales/sale-fiscal-emission-override";
+import { validateSaleItemsPricing } from "@/lib/sales/sale-pricing-validation";
 import { AppliedCouponSchema } from "@/schemas/coupons";
 import { db } from "@/services/drizzle";
 import { saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
@@ -95,6 +96,9 @@ function getSessionWithOrg(session: TAuthUserSession | null) {
 
 async function createSaleDraft({ input, session }: { input: TCreateSaleDraftInput; session: TAuthUserSession }) {
 	const orgId = session.membership!.organizacao.id;
+
+	// Nunca confie nos valores do cliente: recalcula os itens contra o catálogo antes de qualquer uso.
+	await validateSaleItemsPricing({ orgId, itens: input.itens });
 
 	// Override fiscal por venda: valida permissão simétrica e resolve o valor a persistir (null = herda org).
 	const emissaoFiscalAutomatica = resolveSaleFiscalEmissionOverride({
