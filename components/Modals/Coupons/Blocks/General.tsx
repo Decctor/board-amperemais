@@ -18,7 +18,7 @@ export default function CouponGeneralBlock({ coupon, updateCoupon }: CouponGener
 				<CheckboxInput
 					checked={coupon.ativo}
 					labelTrue="ATIVO"
-					labelFalse="ATIVO"
+					labelFalse="INATIVO"
 					handleChange={(value) => updateCoupon({ ativo: value })}
 					justify="justify-center"
 				/>
@@ -51,8 +51,8 @@ export default function CouponGeneralBlock({ coupon, updateCoupon }: CouponGener
 				<div className="w-full lg:w-1/2">
 					<SelectInput
 						value={coupon.escopo}
-						label="ESCOPO"
-						resetOptionLabel="GLOBAL"
+						label="QUEM PODE USAR"
+						resetOptionLabel="QUALQUER CLIENTE"
 						handleChange={(value) => updateCoupon({ escopo: value as TUseInternalCouponState["state"]["coupon"]["escopo"] })}
 						options={CouponScopeOptions}
 						onReset={() => updateCoupon({ escopo: "GLOBAL" })}
@@ -61,8 +61,8 @@ export default function CouponGeneralBlock({ coupon, updateCoupon }: CouponGener
 				<div className="w-full lg:w-1/2">
 					<SelectInput
 						value={coupon.validacaoModo}
-						label="MODO DE VALIDAÇÃO"
-						resetOptionLabel="AUTOMÁTICA"
+						label="COMO É VALIDADO"
+						resetOptionLabel="AUTOMÁTICA (SISTEMA CONFERE)"
 						handleChange={(value) => updateCoupon({ validacaoModo: value as TUseInternalCouponState["state"]["coupon"]["validacaoModo"] })}
 						options={CouponValidationModeOptions}
 						onReset={() => updateCoupon({ validacaoModo: "AUTOMATICA" })}
@@ -72,7 +72,7 @@ export default function CouponGeneralBlock({ coupon, updateCoupon }: CouponGener
 			{coupon.validacaoModo === "MANUAL" ? (
 				<TextareaInput
 					value={coupon.condicoesTexto ?? ""}
-					label="CONDIÇÕES DE RESGATE (TEXTO)"
+					label="CONDIÇÕES DE RESGATE"
 					placeholder="Ex: Desconto válido apenas em calças. O operador deve conferir se há calça na compra..."
 					handleChange={(value) => updateCoupon({ condicoesTexto: value })}
 				/>

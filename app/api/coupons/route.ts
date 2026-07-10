@@ -6,7 +6,7 @@ import { createSimplifiedSearchCondition } from "@/lib/search";
 import { CouponAudienceSchema, CouponSchema, CouponTargetSchema } from "@/schemas/coupons";
 import { db } from "@/services/drizzle";
 import { couponAudiences, couponRedemptions, couponTargets, coupons } from "@/services/drizzle/schema";
-import { type SQL, and, count, eq } from "drizzle-orm";
+import { type SQL, and, count, countDistinct, eq, inArray, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -116,13 +116,44 @@ async function getCoupons({ input, session }: { input: TGetCouponsInput; session
 		});
 		if (!coupon) throw new createHttpError.NotFound("Cupom não encontrado.");
 
-		const redemptionCountsResult = await db
-			.select({ total: count() })
+		// Impacto comercial, agregado do ledger imutável de resgates (apenas UTILIZADO).
+		const [impactResult] = await db
+			.select({
+				resgates: count(),
+				descontoConcedido: sum(couponRedemptions.valorDesconto),
+				receitaInfluenciada: sum(couponRedemptions.vendaValor),
+				clientesUnicos: countDistinct(couponRedemptions.clienteId),
+			})
 			.from(couponRedemptions)
 			.where(and(eq(couponRedemptions.cupomId, coupon.id), eq(couponRedemptions.status, "UTILIZADO")));
 
+		const impacto = {
+			resgates: impactResult?.resgates ?? 0,
+			descontoConcedido: Number(impactResult?.descontoConcedido ?? 0),
+			receitaInfluenciada: Number(impactResult?.receitaInfluenciada ?? 0),
+			clientesUnicos: impactResult?.clientesUnicos ?? 0,
+		};
+
+		// Amostra dos resgates mais recentes para a lista de atividade.
+		const resgatesRecentes = await db.query.couponRedemptions.findMany({
+			where: eq(couponRedemptions.cupomId, coupon.id),
+			columns: {
+				id: true,
+				status: true,
+				valorDesconto: true,
+				vendaValor: true,
+				origemResgate: true,
+				dataInsercao: true,
+			},
+			with: {
+				cliente: { columns: { id: true, nome: true } },
+			},
+			orderBy: (fields, { desc }) => desc(fields.dataInsercao),
+			limit: 10,
+		});
+
 		return {
-			data: { byId: { ...coupon, resgatesUtilizados: redemptionCountsResult[0]?.total ?? 0 }, default: null },
+			data: { byId: { ...coupon, resgatesUtilizados: impacto.resgates, impacto, resgatesRecentes }, default: null },
 			message: "Cupom encontrado com sucesso.",
 		};
 	}
@@ -154,11 +185,30 @@ async function getCoupons({ input, session }: { input: TGetCouponsInput; session
 		limit: PAGE_SIZE,
 	});
 
+	// Contagem de resgates utilizados por cupom da página, para o placar dos cartões.
+	const pageCouponIds = couponsResult.map((coupon) => coupon.id);
+	const redemptionCountsByCoupon = new Map<string, number>();
+	if (pageCouponIds.length > 0) {
+		const redemptionCountRows = await db
+			.select({ cupomId: couponRedemptions.cupomId, total: count() })
+			.from(couponRedemptions)
+			.where(
+				and(
+					eq(couponRedemptions.organizacaoId, organizationId),
+					eq(couponRedemptions.status, "UTILIZADO"),
+					inArray(couponRedemptions.cupomId, pageCouponIds),
+				),
+			)
+			.groupBy(couponRedemptions.cupomId);
+		for (const row of redemptionCountRows) redemptionCountsByCoupon.set(row.cupomId, row.total);
+	}
+	const couponsWithImpact = couponsResult.map((coupon) => ({ ...coupon, resgatesUtilizados: redemptionCountsByCoupon.get(coupon.id) ?? 0 }));
+
 	return {
 		data: {
 			byId: null,
 			default: {
-				coupons: couponsResult,
+				coupons: couponsWithImpact,
 				couponsMatched: couponsMatchedCount,
 				totalPages: Math.ceil(couponsMatchedCount / PAGE_SIZE),
 			},

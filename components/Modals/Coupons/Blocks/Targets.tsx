@@ -26,11 +26,11 @@ export default function CouponTargetsBlock({
 	removeCouponTarget,
 }: CouponTargetsBlockProps) {
 	return (
-		<ResponsiveMenuSection title="CONDIÇÕES E ALVOS DE PRODUTO" icon={<Package className="h-4 min-h-4 w-4 min-w-4" />}>
+		<ResponsiveMenuSection title="PRODUTOS E CONDIÇÕES" icon={<Package className="h-4 min-h-4 w-4 min-w-4" />}>
 			<div className="w-full flex flex-col gap-1">
 				<p className="text-sm font-medium text-muted-foreground">
-					Sem alvos, o cupom vale para qualquer carrinho. Alvos ELEGÍVEIS definem quando o cupom vale; alvos BENEFICIADOS definem onde o desconto incide
-					quando a aplicação é por itens elegíveis.
+					Sem produtos, o cupom vale para qualquer compra. Marque um produto como “ativa o cupom” para exigir que ele esteja no carrinho, ou “ganha o
+					desconto” para que o benefício incida só sobre ele.
 				</p>
 			</div>
 			<div className="w-full flex items-center gap-2 flex-col lg:flex-row">
@@ -53,8 +53,8 @@ export default function CouponTargetsBlock({
 				<div className="w-full lg:w-1/3">
 					<SelectInput
 						value={coupon.condicaoAlvosOperador}
-						label="COMBINAÇÃO DOS ALVOS"
-						resetOptionLabel="QUALQUER (OU)"
+						label="COMO COMBINAR OS PRODUTOS"
+						resetOptionLabel="BASTA UM DOS PRODUTOS"
 						handleChange={(value) => updateCoupon({ condicaoAlvosOperador: value as TUseInternalCouponState["state"]["coupon"]["condicaoAlvosOperador"] })}
 						options={CouponTargetOperatorOptions}
 						onReset={() => updateCoupon({ condicaoAlvosOperador: "QUALQUER" })}
@@ -83,7 +83,7 @@ export default function CouponTargetsBlock({
 									value={target.papel}
 									label="PAPEL"
 									showLabel={false}
-									resetOptionLabel="ELEGÍVEL"
+									resetOptionLabel="ATIVA O CUPOM"
 									handleChange={(value) => updateCouponTarget(index, { papel: value as TUseInternalCouponState["state"]["couponTargets"][number]["papel"] })}
 									options={CouponTargetRoleOptions}
 									onReset={() => updateCouponTarget(index, { papel: "ELEGIVEL" })}
@@ -188,7 +188,7 @@ function CouponTargetForm({ addCouponTarget }: { addCouponTarget: TUseInternalCo
 					disabled={mode === "PRODUTO" ? !selectedProduct : !selectedGroup}
 				>
 					<Plus className="w-4 h-4 min-w-4 min-h-4" />
-					ADICIONAR ALVO
+					ADICIONAR PRODUTO
 				</Button>
 			</div>
 		</div>

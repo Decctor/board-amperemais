@@ -31,11 +31,11 @@ export default function CouponAudienceBlock({ couponAudiences, addCouponAudience
 	}
 
 	return (
-		<ResponsiveMenuSection title="AUDIÊNCIA" icon={<Users className="h-4 min-h-4 w-4 min-w-4" />}>
+		<ResponsiveMenuSection title="RESTRINGIR POR PÚBLICO" icon={<Users className="h-4 min-h-4 w-4 min-w-4" />}>
 			<div className="w-full flex flex-col gap-1">
 				<p className="text-sm font-medium text-muted-foreground">
-					Sem audiência, o cupom global vale para qualquer cliente identificado. Com audiência, o cliente precisa ter qualquer uma das tags ou estar em
-					qualquer um dos segmentos RFM listados.
+					Sem restrição, o cupom vale para qualquer cliente identificado. Ao restringir, o cliente precisa ter uma das tags ou estar em um dos segmentos
+					escolhidos.
 				</p>
 			</div>
 			<div className="w-full flex items-center gap-2">
@@ -43,7 +43,7 @@ export default function CouponAudienceBlock({ couponAudiences, addCouponAudience
 					POR TAG
 				</Button>
 				<Button variant={mode === "RFM" ? "default" : "ghost"} size="sm" onClick={() => setMode("RFM")}>
-					POR SEGMENTO RFM
+					POR SEGMENTO
 				</Button>
 			</div>
 			<div className="w-full flex items-end gap-2 flex-col lg:flex-row">
@@ -60,7 +60,7 @@ export default function CouponAudienceBlock({ couponAudiences, addCouponAudience
 					) : (
 						<SelectInput
 							value={selectedRFMTitle}
-							label="SEGMENTO RFM"
+							label="SEGMENTO DE CLIENTES"
 							resetOptionLabel="NENHUM"
 							handleChange={(value) => setSelectedRFMTitle(value)}
 							options={RFMLabels.map((rfmLabel, index) => ({ id: index, value: rfmLabel.text, label: rfmLabel.text }))}
@@ -88,7 +88,7 @@ export default function CouponAudienceBlock({ couponAudiences, addCouponAudience
 							<div className="flex items-center gap-1.5">
 								{audience.clienteTagId ? <Tag className="w-3 min-w-3 h-3 min-h-3" /> : <Users className="w-3 min-w-3 h-3 min-h-3" />}
 								<h3 className="text-xs font-bold tracking-tight uppercase">
-									{audience.clienteTagId ? `TAG: ${audience.clienteTagTitulo ?? audience.clienteTagId}` : `SEGMENTO RFM: ${audience.segmentacaoRFM}`}
+									{audience.clienteTagId ? `TAG: ${audience.clienteTagTitulo ?? audience.clienteTagId}` : `SEGMENTO: ${audience.segmentacaoRFM}`}
 								</h3>
 							</div>
 							<Button variant="ghost" size="icon" onClick={() => removeCouponAudience(index)}>

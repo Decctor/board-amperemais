@@ -2,8 +2,6 @@
 import type { TGetCouponsOutputDefault } from "@/app/api/coupons/route";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
-import ControlCoupon from "@/components/Modals/Coupons/ControlCoupon";
-import NewCoupon from "@/components/Modals/Coupons/NewCoupon";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +12,8 @@ import { deleteCoupon } from "@/lib/mutations/coupons";
 import { useCoupons } from "@/lib/queries/coupons";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BadgePercent, CalendarClock, Globe, Pencil, Plus, Tag, Ticket, Trash2, UserRound, Users } from "lucide-react";
-import { useState } from "react";
+import { BadgePercent, CalendarClock, Globe, Plus, Tag, Ticket, TrendingUp, Trash2, UserRound, Users } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 
 type CouponsPageProps = {
@@ -23,8 +21,6 @@ type CouponsPageProps = {
 };
 export default function CouponsPage({ user: _user }: CouponsPageProps) {
 	const queryClient = useQueryClient();
-	const [newCouponModalIsOpen, setNewCouponModalIsOpen] = useState<boolean>(false);
-	const [editCouponModalId, setEditCouponModalId] = useState<string | null>(null);
 	const {
 		data: couponsResult,
 		queryKey,
@@ -62,9 +58,11 @@ export default function CouponsPage({ user: _user }: CouponsPageProps) {
 					onChange={(e) => updateQueryParams({ search: e.target.value, page: 1 })}
 					className="grow rounded-xl"
 				/>
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setNewCouponModalIsOpen(true)}>
-					<Plus className="w-4 h-4 min-w-4 min-h-4" />
-					NOVO CUPOM
+				<Button className="flex items-center gap-2" size="sm" asChild>
+					<Link href="/dashboard/commercial/coupons/new">
+						<Plus className="w-4 h-4 min-w-4 min-h-4" />
+						NOVO CUPOM
+					</Link>
 				</Button>
 			</div>
 			<GeneralPaginationComponent
@@ -81,12 +79,7 @@ export default function CouponsPage({ user: _user }: CouponsPageProps) {
 				<div className="w-full flex flex-col gap-1.5">
 					{coupons && coupons.length > 0 ? (
 						coupons.map((coupon) => (
-							<CouponCard
-								key={coupon.id}
-								coupon={coupon}
-								handleEditClick={setEditCouponModalId}
-								handleDeleteClick={(id) => handleDeleteCouponMutation({ id })}
-							/>
+							<CouponCard key={coupon.id} coupon={coupon} handleDeleteClick={(id) => handleDeleteCouponMutation({ id })} />
 						))
 					) : (
 						<p className="w-full flex items-center justify-center">Nenhum cupom encontrado</p>
@@ -94,16 +87,6 @@ export default function CouponsPage({ user: _user }: CouponsPageProps) {
 				</div>
 			) : null}
 
-			{editCouponModalId ? (
-				<ControlCoupon
-					couponId={editCouponModalId}
-					closeModal={() => setEditCouponModalId(null)}
-					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
-				/>
-			) : null}
-			{newCouponModalIsOpen ? (
-				<NewCoupon closeModal={() => setNewCouponModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
-			) : null}
 		</div>
 	);
 }
@@ -119,11 +102,9 @@ function formatCouponBenefit(coupon: TGetCouponsOutputDefault["coupons"][number]
 
 function CouponCard({
 	coupon,
-	handleEditClick,
 	handleDeleteClick,
 }: {
 	coupon: TGetCouponsOutputDefault["coupons"][number];
-	handleEditClick: (id: string) => void;
 	handleDeleteClick: (id: string) => void;
 }) {
 	const activeAudiences = coupon.audiencias ?? [];
@@ -139,7 +120,7 @@ function CouponCard({
 					) : null}
 					<div className="flex items-center gap-1.5">
 						{coupon.escopo === "GLOBAL" ? <Globe className="w-3 min-w-3 h-3 min-h-3" /> : <UserRound className="w-3 min-w-3 h-3 min-h-3" />}
-						<p className="text-xs tracking-tight uppercase">{coupon.escopo === "GLOBAL" ? "GLOBAL" : "INDIVIDUAL"}</p>
+						<p className="text-xs tracking-tight uppercase">{coupon.escopo === "GLOBAL" ? "QUALQUER CLIENTE" : "CLIENTES ESPECÍFICOS"}</p>
 					</div>
 					<div className="flex items-center gap-1.5">
 						<BadgePercent className="w-3 min-w-3 h-3 min-h-3" />
@@ -165,9 +146,17 @@ function CouponCard({
 						{coupon.vigenciaFim ? `VÁLIDO ATÉ: ${formatDateAsLocale(coupon.vigenciaFim)}` : "SEM EXPIRAÇÃO"}
 					</p>
 				</div>
-				<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={() => handleEditClick(coupon.id)}>
-					<Pencil className="w-3 min-w-3 h-3 min-h-3" />
-					EDITAR
+				<div className="flex items-center gap-1.5 rounded-md bg-primary/10 px-1.5 py-0.5 text-primary">
+					<TrendingUp className="w-3 min-w-3 h-3 min-h-3" />
+					<p className="text-xs font-bold tracking-tight uppercase tabular-nums">
+						{coupon.resgatesUtilizados} {coupon.resgatesUtilizados === 1 ? "RESGATE" : "RESGATES"}
+					</p>
+				</div>
+				<Button variant="ghost" className="flex items-center gap-1.5" size="sm" asChild>
+					<Link href={`/dashboard/commercial/coupons/${coupon.id}`}>
+						<BadgePercent className="w-3 min-w-3 h-3 min-h-3" />
+						DETALHES
+					</Link>
 				</Button>
 				<Button variant="ghost" className="flex items-center gap-1.5 text-destructive" size="sm" onClick={() => handleDeleteClick(coupon.id)}>
 					<Trash2 className="w-3 min-w-3 h-3 min-h-3" />
