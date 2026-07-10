@@ -3,7 +3,6 @@ import type { TGetCouponsOutputDefault } from "@/app/api/coupons/route";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import ControlCoupon from "@/components/Modals/Coupons/ControlCoupon";
-import NewCoupon from "@/components/Modals/Coupons/NewCoupon";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +14,7 @@ import { useCoupons } from "@/lib/queries/coupons";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BadgePercent, CalendarClock, Globe, Pencil, Plus, Tag, Ticket, Trash2, UserRound, Users } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -23,7 +23,6 @@ type CouponsPageProps = {
 };
 export default function CouponsPage({ user: _user }: CouponsPageProps) {
 	const queryClient = useQueryClient();
-	const [newCouponModalIsOpen, setNewCouponModalIsOpen] = useState<boolean>(false);
 	const [editCouponModalId, setEditCouponModalId] = useState<string | null>(null);
 	const {
 		data: couponsResult,
@@ -62,9 +61,11 @@ export default function CouponsPage({ user: _user }: CouponsPageProps) {
 					onChange={(e) => updateQueryParams({ search: e.target.value, page: 1 })}
 					className="grow rounded-xl"
 				/>
-				<Button className="flex items-center gap-2" size="sm" onClick={() => setNewCouponModalIsOpen(true)}>
-					<Plus className="w-4 h-4 min-w-4 min-h-4" />
-					NOVO CUPOM
+				<Button className="flex items-center gap-2" size="sm" asChild>
+					<Link href="/dashboard/commercial/coupons/new">
+						<Plus className="w-4 h-4 min-w-4 min-h-4" />
+						NOVO CUPOM
+					</Link>
 				</Button>
 			</div>
 			<GeneralPaginationComponent
@@ -100,9 +101,6 @@ export default function CouponsPage({ user: _user }: CouponsPageProps) {
 					closeModal={() => setEditCouponModalId(null)}
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
 				/>
-			) : null}
-			{newCouponModalIsOpen ? (
-				<NewCoupon closeModal={() => setNewCouponModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
 			) : null}
 		</div>
 	);
