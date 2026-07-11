@@ -1,9 +1,9 @@
-import { BLOG_POSTS } from "@/app/_content/blog-posts";
 import { FEATURE_PAGES, getFeaturePage } from "@/app/_content/feature-pages";
+import { SEGMENT_PAGES } from "@/app/_content/segment-pages";
 import { ArticleCTA } from "@/components/Content/ArticleCTA";
 import { ArticleFAQ, buildFAQPageJsonLd } from "@/components/Content/ArticleFAQ";
 import { ArticleSection } from "@/components/Content/ArticleSection";
-import { BlogPostCard } from "@/components/Content/BlogPostCard";
+import { SegmentCard } from "@/components/Content/Segment/SegmentCard";
 import { Calendar } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 	const page = getFeaturePage(slug);
 	if (!page) return {};
 
-	const canonicalUrl = `https://recompracrm.com.br/features/${page.slug}`;
+	const canonicalUrl = `https://www.recompracrm.com.br/features/${page.slug}`;
 
 	return {
 		title: page.title,
@@ -48,7 +48,7 @@ export default async function FuncionalidadePage({ params }: Props) {
 	const page = getFeaturePage(slug);
 	if (!page) notFound();
 
-	const relatedBlogPosts = BLOG_POSTS.filter((p) => page.relatedBlogSlugs.includes(p.slug));
+	const relatedSegments = SEGMENT_PAGES.filter((p) => page.relatedSegmentSlugs.includes(p.slug));
 
 	const jsonLd = {
 		"@context": "https://schema.org",
@@ -66,7 +66,7 @@ export default async function FuncionalidadePage({ params }: Props) {
 		publisher: {
 			"@type": "Organization",
 			name: "RecompraCRM",
-			url: "https://recompracrm.com.br",
+			url: "https://www.recompracrm.com.br",
 		},
 		keywords: page.seo.keywords.join(", "),
 	};
@@ -130,13 +130,13 @@ export default async function FuncionalidadePage({ params }: Props) {
 					{/* FAQ */}
 					{page.faqs && page.faqs.length > 0 && <ArticleFAQ faqs={page.faqs} />}
 
-					{/* Related blog posts */}
-					{relatedBlogPosts.length > 0 && (
+					{/* Related segment landings */}
+					{relatedSegments.length > 0 && (
 						<section className="mt-16 pt-12 border-t border-slate-100">
 							<h2 className="text-xl font-black text-slate-900 mb-8">Veja como funciona por segmento</h2>
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-								{relatedBlogPosts.map((post) => (
-									<BlogPostCard key={post.slug} post={post} />
+								{relatedSegments.map((segment) => (
+									<SegmentCard key={segment.slug} segment={segment} />
 								))}
 							</div>
 						</section>

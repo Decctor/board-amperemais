@@ -2,15 +2,6 @@
 	"name": "ampere-mais",
 	"version": "0.1.0",
 	"private": true,
-	"browserslist": [
-		"chrome >= 93",
-		"edge >= 93",
-		"firefox >= 92",
-		"safari >= 15.4",
-		"ios_saf >= 15.4",
-		"samsung >= 17",
-		"not dead"
-	],
 	"scripts": {
 		"dev": "next dev",
 		"build": "next build",
@@ -42,7 +33,8 @@
 		"sync:organization-manual": "tsx ./utils/scripts/sync-organization-manual-collecting.ts",
 		"marketing-agent:run": "tsx ./scripts/run-marketing-agent.ts",
 		"marketing-agent:test": "tsx ./scripts/test-marketing-agent.ts",
-		"report:test-send": "tsx ./scripts/send-report-template-test.ts"
+		"report:test-send": "tsx ./scripts/send-report-template-test.ts",
+		"brand:export": "tsx ./scripts/export-brand-asset.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/react": "^2.0.78",
@@ -161,5 +153,14 @@
 		"next": {
 			"postcss": "8.5.14"
 		}
-	}
+	},
+	"browserslist": [
+		"chrome >= 93",
+		"edge >= 93",
+		"firefox >= 92",
+		"safari >= 15.4",
+		"ios_saf >= 15.4",
+		"samsung >= 17",
+		"not dead"
+	]
 }

@@ -3,26 +3,26 @@ import { FEATURE_PAGES } from "@/app/_content/feature-pages";
 import { BlogPostCard } from "@/components/Content/BlogPostCard";
 import { FeatureCard } from "@/components/Content/FeatureCard";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
 	title: "Blog — Estratégias de retenção para o varejo",
 	description:
 		"Artigos, casos de uso e guias práticos para donos de lojas físicas que querem aumentar a fidelização de clientes, reduzir o churn e crescer com o RecompraCRM.",
 	alternates: {
-		canonical: "https://recompracrm.com.br/blog",
+		canonical: "https://www.recompracrm.com.br/blog",
 	},
 	openGraph: {
 		title: "Blog RecompraCRM — Estratégias de retenção para o varejo",
 		description:
 			"Artigos, casos de uso e guias práticos para donos de lojas físicas que querem aumentar a fidelização de clientes.",
-		url: "https://recompracrm.com.br/blog",
+		url: "https://www.recompracrm.com.br/blog",
 		type: "website",
 	},
 };
 
 export default function BlogIndexPage() {
-	const casosDeUso = BLOG_POSTS.filter((p) => p.category === "casos-de-uso");
-	const outros = BLOG_POSTS.filter((p) => p.category !== "casos-de-uso");
+	const posts = BLOG_POSTS;
 
 	return (
 		<main className="pt-24 pb-20 px-6">
@@ -42,20 +42,21 @@ export default function BlogIndexPage() {
 					</p>
 				</div>
 
-				{/* Casos de Uso */}
-				{casosDeUso.length > 0 && (
-					<section className="mb-16">
-						<div className="flex items-center gap-3 mb-8">
-							<h2 className="text-xl font-black text-slate-900">Casos de Uso por Segmento</h2>
-							<div className="flex-1 h-px bg-slate-100" />
-						</div>
-						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-							{casosDeUso.map((post) => (
-								<BlogPostCard key={post.slug} post={post} />
-							))}
-						</div>
-					</section>
-				)}
+				{/* Segment landings banner */}
+				<section className="mb-16 rounded-3xl border border-slate-200 bg-gradient-to-br from-blue-50 to-slate-50 px-8 py-10 sm:flex sm:items-center sm:justify-between sm:gap-8">
+					<div>
+						<h2 className="text-xl font-black text-slate-900">Procurando o seu segmento?</h2>
+						<p className="mt-2 max-w-xl leading-relaxed text-slate-500">
+							Veja como o programa de fidelidade funciona para restaurantes, pet shops, farmácias, moda e mais de 20 tipos de loja.
+						</p>
+					</div>
+					<Link
+						href="/segmentos"
+						className="mt-6 inline-block whitespace-nowrap rounded-2xl bg-[#24549C] px-6 py-3.5 font-black text-white shadow-lg shadow-[#24549C]/25 transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#1a3d7a] sm:mt-0"
+					>
+						Ver segmentos →
+					</Link>
+				</section>
 
 				{/* Funcionalidades */}
 				{FEATURE_PAGES.length > 0 && (
@@ -72,15 +73,15 @@ export default function BlogIndexPage() {
 					</section>
 				)}
 
-				{/* Other posts */}
-				{outros.length > 0 && (
+				{/* Posts */}
+				{posts.length > 0 && (
 					<section>
 						<div className="flex items-center gap-3 mb-8">
-							<h2 className="text-xl font-black text-slate-900">Outros Artigos</h2>
+							<h2 className="text-xl font-black text-slate-900">Artigos</h2>
 							<div className="flex-1 h-px bg-slate-100" />
 						</div>
 						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-							{outros.map((post) => (
+							{posts.map((post) => (
 								<BlogPostCard key={post.slug} post={post} />
 							))}
 						</div>

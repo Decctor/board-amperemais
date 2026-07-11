@@ -26,12 +26,13 @@ const FOOTER_GROUPS = [
 		],
 	},
 	{
-		title: "Blog",
+		title: "Conteúdo",
 		links: [
-			{ label: "Todos os artigos", href: "/blog" },
-			{ label: "Sorveterias", href: "/blog/como-recompracrm-pode-ajudar-sua-sorveteria" },
-			{ label: "Pet Shops", href: "/blog/como-recompracrm-pode-ajudar-seu-petshop" },
-			{ label: "Lojas de Roupas", href: "/blog/como-recompracrm-pode-ajudar-sua-loja-de-roupas" },
+			{ label: "Blog", href: "/blog" },
+			{ label: "Todos os segmentos", href: "/segmentos" },
+			{ label: "Restaurantes", href: "/segmentos/restaurantes" },
+			{ label: "Pet Shops", href: "/segmentos/pet-shop" },
+			{ label: "Lojas de Roupas", href: "/segmentos/loja-de-roupas" },
 		],
 	},
 	{

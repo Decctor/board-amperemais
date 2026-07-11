@@ -13,6 +13,7 @@ const ANCHOR_LINKS: { label: string; href: string; isRoute?: boolean }[] = [
 	{ label: "Como funciona", href: "#como-funciona" },
 	{ label: "Resultado", href: "#movimento" },
 	{ label: "Funcionalidades", href: "#inventario" },
+	{ label: "Segmentos", href: "/segmentos", isRoute: true },
 	{ label: "Planos", href: "#saldo" },
 	{ label: "Parcerias", href: "/partnerships", isRoute: true },
 ];

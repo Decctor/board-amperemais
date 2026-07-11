@@ -14,18 +14,19 @@ Planos: dois caminhos com a mesma plataforma completa. **Plataforma** (self-serv
 
 ## Páginas principais
 
-- [Página inicial](https://recompracrm.com.br): visão geral do produto, como funciona, planos e resultados.
-- [Preços (machine-readable)](https://recompracrm.com.br/pricing.md): detalhamento dos planos, valores e inclusos.
-- [Blog](https://recompracrm.com.br/blog): artigos sobre fidelização, cashback e retenção no varejo.
+- [Página inicial](https://www.recompracrm.com.br): visão geral do produto, como funciona, planos e resultados.
+- [Preços (machine-readable)](https://www.recompracrm.com.br/pricing.md): detalhamento dos planos, valores e inclusos.
+- [Segmentos](https://www.recompracrm.com.br/segmentos): programa de fidelidade aplicado a cada tipo de loja — restaurantes, delivery, pet shops, farmácias, moda e mais de 20 segmentos, com configuração sugerida de cashback por segmento.
+- [Blog](https://www.recompracrm.com.br/blog): artigos sobre fidelização, cashback e retenção no varejo.
 
 ## Funcionalidades
 
-- [Programa de Cashback](https://recompracrm.com.br/features/programa-de-cashback): como criar e configurar cashback para a sua loja.
-- [Campanhas no WhatsApp](https://recompracrm.com.br/features/campanhas-whatsapp): campanhas automáticas com gatilhos e segmentação RFM.
-- [Ponto de Interação (PDI)](https://recompracrm.com.br/features/ponto-de-interacao): o tablet de balcão que registra vendas e resgata cashback.
-- [Business Intelligence](https://recompracrm.com.br/features/business-intelligence): relatórios e análise de dados de venda.
+- [Programa de Cashback](https://www.recompracrm.com.br/features/programa-de-cashback): como criar e configurar cashback para a sua loja.
+- [Campanhas no WhatsApp](https://www.recompracrm.com.br/features/campanhas-whatsapp): campanhas automáticas com gatilhos e segmentação RFM.
+- [Ponto de Interação (PDI)](https://www.recompracrm.com.br/features/ponto-de-interacao): o tablet de balcão que registra vendas e resgata cashback.
+- [Business Intelligence](https://www.recompracrm.com.br/features/business-intelligence): relatórios e análise de dados de venda.
 
 ## Contato
 
 - WhatsApp: https://wa.me/553499480791
-- Site: https://recompracrm.com.br
+- Site: https://www.recompracrm.com.br

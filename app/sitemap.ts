@@ -1,10 +1,11 @@
 import { BLOG_POSTS } from "@/app/_content/blog-posts";
 import { FEATURE_PAGES } from "@/app/_content/feature-pages";
 import { INTEGRATION_PAGES } from "@/app/_content/integration-pages";
+import { SEGMENT_PAGES } from "@/app/_content/segment-pages";
 import { db } from "@/services/drizzle";
 import type { MetadataRoute } from "next";
 
-const BASE_URL = "https://recompracrm.com.br";
+const BASE_URL = "https://www.recompracrm.com.br";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	const [courses, materials] = await Promise.all([
@@ -28,6 +29,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 			lastModified: new Date(post.publishedAt),
 			changeFrequency: "monthly" as const,
 			priority: 0.8,
+		})),
+	];
+
+	const segmentRoutes: MetadataRoute.Sitemap = [
+		{ url: `${BASE_URL}/segmentos`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
+		...SEGMENT_PAGES.map((page) => ({
+			url: `${BASE_URL}/segmentos/${page.slug}`,
+			lastModified: new Date(page.updatedAt),
+			changeFrequency: "monthly" as const,
+			priority: 0.85,
 		})),
 	];
 
@@ -78,5 +89,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 		priority: 0.6,
 	}));
 
-	return [...blogRoutes, ...featureRoutes, ...integrationRoutes, ...staticRoutes, ...courseRoutes, ...ebookRoutes, ...documentRoutes];
+	return [...segmentRoutes, ...blogRoutes, ...featureRoutes, ...integrationRoutes, ...staticRoutes, ...courseRoutes, ...ebookRoutes, ...documentRoutes];
 }

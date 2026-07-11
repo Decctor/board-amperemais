@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 	openGraph: {
 		title: "Comunidade | RecompraCRM",
 		description: "Acesse cursos, eBooks, documentos e tutoriais exclusivos para aprimorar suas habilidades em vendas e fidelização.",
-		url: "https://recompracrm.com.br/community",
+		url: "https://www.recompracrm.com.br/community",
 	},
 };
 

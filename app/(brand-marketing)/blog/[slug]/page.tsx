@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 	const post = getBlogPost(slug);
 	if (!post) return {};
 
-	const canonicalUrl = `https://recompracrm.com.br/blog/${post.slug}`;
+	const canonicalUrl = `https://www.recompracrm.com.br/blog/${post.slug}`;
 
 	return {
 		title: post.title,
@@ -51,7 +51,7 @@ export default async function BlogPostPage({ params }: Props) {
 
 	const relatedPosts = BLOG_POSTS.filter((p) => post.relatedSlugs.includes(p.slug));
 
-	const canonicalUrl = `https://recompracrm.com.br/blog/${post.slug}`;
+	const canonicalUrl = `https://www.recompracrm.com.br/blog/${post.slug}`;
 	const authorName = post.author ?? "Equipe RecompraCRM";
 
 	const jsonLd = {
@@ -64,15 +64,15 @@ export default async function BlogPostPage({ params }: Props) {
 		author: {
 			"@type": "Organization",
 			name: authorName,
-			url: "https://recompracrm.com.br",
+			url: "https://www.recompracrm.com.br",
 		},
 		publisher: {
 			"@type": "Organization",
 			name: "RecompraCRM",
-			url: "https://recompracrm.com.br",
+			url: "https://www.recompracrm.com.br",
 			logo: {
 				"@type": "ImageObject",
-				url: "https://recompracrm.com.br/logo.png",
+				url: "https://www.recompracrm.com.br/logo.png",
 			},
 		},
 		mainEntityOfPage: {

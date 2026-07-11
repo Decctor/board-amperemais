@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 		openGraph: {
 			title: `${course.titulo} | RecompraCRM`,
 			description: course.descricao ?? undefined,
-			url: `https://recompracrm.com.br/community/courses/${courseId}`,
+			url: `https://www.recompracrm.com.br/community/courses/${courseId}`,
 			images,
 		},
 		twitter: {

@@ -190,27 +190,32 @@ export default function FooterV2() {
 							</ul>
 						</div>
 
-						{/* Blog */}
+						{/* Conteúdo */}
 						<div>
-							<h4 className="font-bold text-slate-900 mb-3 text-sm">Blog</h4>
+							<h4 className="font-bold text-slate-900 mb-3 text-sm">Conteúdo</h4>
 							<ul className="space-y-2 text-sm text-slate-500">
 								<li>
 									<Link href="/blog" className="hover:text-[#24549C] transition-colors">
-										Todos os Artigos
+										Blog
 									</Link>
 								</li>
 								<li>
-									<Link href="/blog/como-recompracrm-pode-ajudar-sua-sorveteria" className="hover:text-[#24549C] transition-colors">
-										Sorveterias
+									<Link href="/segmentos" className="hover:text-[#24549C] transition-colors">
+										Todos os Segmentos
 									</Link>
 								</li>
 								<li>
-									<Link href="/blog/como-recompracrm-pode-ajudar-seu-petshop" className="hover:text-[#24549C] transition-colors">
+									<Link href="/segmentos/restaurantes" className="hover:text-[#24549C] transition-colors">
+										Restaurantes
+									</Link>
+								</li>
+								<li>
+									<Link href="/segmentos/pet-shop" className="hover:text-[#24549C] transition-colors">
 										Pet Shops
 									</Link>
 								</li>
 								<li>
-									<Link href="/blog/como-recompracrm-pode-ajudar-sua-loja-de-roupas" className="hover:text-[#24549C] transition-colors">
+									<Link href="/segmentos/loja-de-roupas" className="hover:text-[#24549C] transition-colors">
 										Lojas de Roupas
 									</Link>
 								</li>

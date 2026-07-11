@@ -3,6 +3,34 @@ const nextConfig = {
 	reactCompiler: true,
 	reactStrictMode: true,
 	async redirects() {
+		// Os posts de caso de uso do blog foram convertidos em landings de conversão
+		// por segmento (/segmentos/[slug]) — o conteúdo vive em app/_content/segment-pages.ts.
+		const blogCasePostToSegment = {
+			"sua-sorveteria": "sorveteria",
+			"seu-petshop": "pet-shop",
+			"sua-loja-de-roupas": "loja-de-roupas",
+			"sua-loja-de-alimentacao": "restaurantes",
+			"seu-supermercado-ou-mercearia": "supermercado-e-mercearia",
+			"sua-loja-de-calcados": "loja-de-calcados",
+			"sua-perfumaria-ou-loja-de-cosmeticos": "perfumaria-e-cosmeticos",
+			"sua-farmacia": "farmacia-e-drogaria",
+			"sua-loja-de-construcao": "materiais-de-construcao",
+			"sua-loja-de-autopecas": "autopecas",
+			"sua-loja-de-eletronicos-e-eletrodomesticos": "eletronicos-e-eletrodomesticos",
+			"sua-otica": "otica",
+			"sua-joalheria-ou-loja-de-acessorios": "joalheria-e-acessorios",
+			"sua-papelaria-ou-loja-de-presentes": "papelaria-e-presentes",
+			"sua-loja-de-casa-e-decoracao": "casa-e-decoracao",
+			"sua-loja-de-esportes-e-lazer": "esportes-e-lazer",
+			"sua-loja-de-brinquedos-e-infantil": "brinquedos-e-infantil",
+			"sua-padaria-ou-confeitaria": "padaria-e-confeitaria",
+			"seu-acougue-ou-peixaria": "acougue-e-peixaria",
+			"sua-loja-de-materiais-eletricos-e-hidraulicos": "materiais-eletricos-e-hidraulicos",
+			"seu-varejo": "varejo",
+			"seu-delivery": "delivery",
+			"sua-rede-de-lojas": "rede-de-lojas",
+		};
+
 		return [
 			// A página de lotes foi movida para dentro do módulo de Estoque.
 			{
@@ -15,6 +43,16 @@ const nextConfig = {
 				destination: "/dashboard/operational/stocks/lots/:path*",
 				permanent: true,
 			},
+			{
+				source: "/casos-de-uso",
+				destination: "/segmentos",
+				permanent: true,
+			},
+			...Object.entries(blogCasePostToSegment).map(([blogSuffix, segmentSlug]) => ({
+				source: `/blog/como-recompracrm-pode-ajudar-${blogSuffix}`,
+				destination: `/segmentos/${segmentSlug}`,
+				permanent: true,
+			})),
 		];
 	},
 	serverExternalPackages: ["@resvg/resvg-js"],

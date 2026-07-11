@@ -2,7 +2,7 @@ import { INTEGRATION_PAGES } from "@/app/_content/integration-pages";
 import { IntegrationCard } from "@/components/Content/Integration/IntegrationCard";
 import type { Metadata } from "next";
 
-const BASE_URL = "https://recompracrm.com.br";
+const BASE_URL = "https://www.recompracrm.com.br";
 
 export const metadata: Metadata = {
 	title: "Integrações — Conecte seu ERP, PDV ou e-commerce ao RecompraCRM",

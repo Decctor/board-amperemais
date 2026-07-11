@@ -17,7 +17,7 @@ export type FeaturePage = {
 	seo: {
 		keywords: string[];
 	};
-	relatedBlogSlugs: string[];
+	relatedSegmentSlugs: string[]; // segment landings (/segmentos/[slug]) shown as "por segmento"
 	relatedFeatureSlugs: string[];
 };
 
@@ -40,11 +40,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
 				"software cashback varejo",
 			],
 		},
-		relatedBlogSlugs: [
-			"como-recompracrm-pode-ajudar-sua-sorveteria",
-			"como-recompracrm-pode-ajudar-seu-petshop",
-			"como-recompracrm-pode-ajudar-sua-loja-de-roupas",
-		],
+		relatedSegmentSlugs: ["restaurantes", "pet-shop", "loja-de-roupas"],
 		relatedFeatureSlugs: ["campanhas-whatsapp", "ponto-de-interacao", "business-intelligence"],
 		sections: [
 			{
@@ -137,11 +133,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
 				"whatsapp crm varejo",
 			],
 		},
-		relatedBlogSlugs: [
-			"como-recompracrm-pode-ajudar-sua-sorveteria",
-			"como-recompracrm-pode-ajudar-seu-petshop",
-			"como-recompracrm-pode-ajudar-sua-loja-de-roupas",
-		],
+		relatedSegmentSlugs: ["delivery", "farmacia-e-drogaria", "sorveteria"],
 		relatedFeatureSlugs: ["programa-de-cashback", "ponto-de-interacao", "business-intelligence"],
 		sections: [
 			{
@@ -234,11 +226,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
 				"sistema registro vendas fidelidade",
 			],
 		},
-		relatedBlogSlugs: [
-			"como-recompracrm-pode-ajudar-sua-sorveteria",
-			"como-recompracrm-pode-ajudar-seu-petshop",
-			"como-recompracrm-pode-ajudar-sua-loja-de-roupas",
-		],
+		relatedSegmentSlugs: ["padaria-e-confeitaria", "supermercado-e-mercearia", "acougue-e-peixaria"],
 		relatedFeatureSlugs: ["programa-de-cashback", "campanhas-whatsapp", "business-intelligence"],
 		sections: [
 			{
@@ -331,11 +319,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
 				"inteligência de dados varejo",
 			],
 		},
-		relatedBlogSlugs: [
-			"como-recompracrm-pode-ajudar-sua-sorveteria",
-			"como-recompracrm-pode-ajudar-seu-petshop",
-			"como-recompracrm-pode-ajudar-sua-loja-de-roupas",
-		],
+		relatedSegmentSlugs: ["rede-de-lojas", "varejo", "joalheria-e-acessorios"],
 		relatedFeatureSlugs: ["programa-de-cashback", "campanhas-whatsapp", "ponto-de-interacao"],
 		sections: [
 			{

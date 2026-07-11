@@ -14,7 +14,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatNameAsInitials } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import LogoIcon from "@/utils/images/logo-icon.png";
-import { ArrowRightLeft, Handshake, LogOut, Shield, VideoIcon } from "lucide-react";
+import { ArrowRightLeft, Handshake, LogOut, Palette, Shield, VideoIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -42,6 +42,11 @@ const ADMIN_DOCK_NAV: TAdminDockNavItem[] = [
 		title: "Comunidade",
 		url: "/admin-dashboard/community",
 		icon: <VideoIcon className="size-[18px]" strokeWidth={1.75} />,
+	},
+	{
+		title: "Assets da Marca",
+		url: "/admin-dashboard/brand-assets",
+		icon: <Palette className="size-[18px]" strokeWidth={1.75} />,
 	},
 ];
 

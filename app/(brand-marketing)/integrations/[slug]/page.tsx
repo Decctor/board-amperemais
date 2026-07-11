@@ -10,7 +10,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { IntegrationMockup } from "../_components/mockups";
 
-const BASE_URL = "https://recompracrm.com.br";
+const BASE_URL = "https://www.recompracrm.com.br";
 
 type Props = {
 	params: Promise<{ slug: string }>;

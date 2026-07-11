@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 	openGraph: {
 		title: "Cursos | RecompraCRM",
 		description: "Explore todos os cursos disponíveis e impulsione seu conhecimento em vendas, fidelização e gestão comercial.",
-		url: "https://recompracrm.com.br/community/courses",
+		url: "https://www.recompracrm.com.br/community/courses",
 	},
 };
 

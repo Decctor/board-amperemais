@@ -18,7 +18,7 @@ const siteOgDescription =
 	"Sistema de fidelização com cashback automático para lojas físicas. Seus clientes voltam com RecompraCRM — CRM simples, WhatsApp integrado e relatórios em tempo real.";
 
 export const metadata: Metadata = {
-	metadataBase: new URL("https://recompracrm.com.br"),
+	metadataBase: new URL("https://www.recompracrm.com.br"),
 	title: {
 		default: siteTitle,
 		template: "%s | RecompraCRM",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 		type: "website",
 		siteName: "RecompraCRM",
 		locale: "pt_BR",
-		url: "https://recompracrm.com.br",
+		url: "https://www.recompracrm.com.br",
 		title: siteTitle,
 		description: siteOgDescription,
 		images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "RecompraCRM" }],
@@ -55,8 +55,8 @@ const organizationJsonLd = {
 	"@context": "https://schema.org",
 	"@type": "Organization",
 	name: "RecompraCRM",
-	url: "https://recompracrm.com.br",
-	logo: "https://recompracrm.com.br/logo.png",
+	url: "https://www.recompracrm.com.br",
+	logo: "https://www.recompracrm.com.br/logo.png",
 	description: siteMetaDescription,
 	sameAs: ["https://www.instagram.com/recompracrm/", "https://www.linkedin.com/company/recompracrm/"],
 };
@@ -65,12 +65,12 @@ const websiteJsonLd = {
 	"@context": "https://schema.org",
 	"@type": "WebSite",
 	name: "RecompraCRM",
-	url: "https://recompracrm.com.br",
+	url: "https://www.recompracrm.com.br",
 	inLanguage: "pt-BR",
 	publisher: {
 		"@type": "Organization",
 		name: "RecompraCRM",
-		url: "https://recompracrm.com.br",
+		url: "https://www.recompracrm.com.br",
 	},
 };
 
