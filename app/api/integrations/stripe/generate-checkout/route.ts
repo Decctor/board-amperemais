@@ -37,6 +37,18 @@ async function generateCheckoutRoute(request: NextRequest) {
 
 	console.log("[INFO] [GENERATE_CHECKOUT] Starting checkout generation for org:", userOrgId);
 
+	// Convenção ctrl_* lida pelo Control (Syncroniza) para identificação determinística
+	// da venda/assinatura — vincula organização, e-mail e telefone do comprador.
+	// Vai na session, na subscription e no customer, para chegar em qualquer evento.
+	const controlMetadata: Record<string, string> = {
+		ctrl_organizacao_id: userOrgId,
+		ctrl_organizacao_nome: organization.nome,
+	};
+	const buyerEmail = session.user.email || organization.email;
+	if (buyerEmail) controlMetadata.ctrl_email = buyerEmail;
+	const buyerPhone = session.user.telefone || organization.telefone;
+	if (buyerPhone) controlMetadata.ctrl_phone = buyerPhone;
+
 	// Parse subscription format: "ESSENCIAL-MONTHLY" -> plan: "ESSENCIAL", modality: "monthly"
 	const [planName, modalityName] = input.subscription.split("-") as [TAppSubscriptionPlanKey, "MONTHLY" | "YEARLY"];
 	const modality = modalityName.toLowerCase() as "monthly" | "yearly";
@@ -70,6 +82,7 @@ async function generateCheckoutRoute(request: NextRequest) {
 			name: organization.nome,
 			metadata: {
 				organizationId: userOrgId,
+				...controlMetadata,
 			},
 		});
 		stripeCustomerId = stripeCustomer.id;
@@ -82,6 +95,19 @@ async function generateCheckoutRoute(request: NextRequest) {
 				stripeCustomerId: stripeCustomerId,
 			})
 			.where(eq(organizations.id, userOrgId));
+	} else {
+		// Atualização oportunista: garante que customers criados antes da convenção
+		// ctrl_* também fiquem identificáveis pelo Control. Falha não bloqueia o checkout.
+		try {
+			await stripe.customers.update(stripeCustomerId, {
+				metadata: {
+					organizationId: userOrgId,
+					...controlMetadata,
+				},
+			});
+		} catch (error) {
+			console.error("[WARN] [GENERATE_CHECKOUT] Falha ao atualizar metadata do customer:", error);
+		}
 	}
 
 	// Update organization with selected plan
@@ -151,9 +177,11 @@ async function generateCheckoutRoute(request: NextRequest) {
 				},
 			},
 		}),
+		metadata: controlMetadata,
 		subscription_data: {
 			metadata: {
 				organizationId: userOrgId,
+				...controlMetadata,
 			},
 		},
 	});
