@@ -85,9 +85,9 @@ export const platformPartnerReferrals = newTable(
 		partnerId: varchar("partner_id", { length: 255 })
 			.references(() => platformPartners.id, { onDelete: "cascade" })
 			.notNull(),
-		organizacaoId: varchar("organizacao_id", { length: 255 })
-			.references(() => organizations.id, { onDelete: "cascade" })
-			.notNull(),
+		// set null + snapshot do nome: o histórico de indicação sobrevive à exclusão da organização
+		organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id, { onDelete: "set null" }),
+		organizacaoNomeSnapshot: text("organizacao_nome_snapshot"),
 		usuarioId: varchar("usuario_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
 		codigoUsado: text("codigo_usado").notNull(),
 		origem: text("origem").notNull(),
@@ -148,9 +148,8 @@ export const platformPartnerCommissions = newTable(
 		referralId: varchar("referral_id", { length: 255 })
 			.references(() => platformPartnerReferrals.id, { onDelete: "cascade" })
 			.notNull(),
-		organizacaoId: varchar("organizacao_id", { length: 255 })
-			.references(() => organizations.id, { onDelete: "cascade" })
-			.notNull(),
+		// set null: comissões preservam o histórico mesmo após a exclusão da organização
+		organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id, { onDelete: "set null" }),
 		payoutId: varchar("payout_id", { length: 255 }).references(() => platformPartnerPayouts.id, { onDelete: "set null" }),
 		stripeInvoiceId: text("stripe_invoice_id"),
 		stripeSubscriptionId: text("stripe_subscription_id"),

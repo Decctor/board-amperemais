@@ -14,31 +14,31 @@ export type TCouponStageMeta = {
 export const COUPON_STAGES: Record<TCouponStageId, TCouponStageMeta> = {
 	benefit: {
 		id: "benefit",
-		label: "Benefício",
+		label: "BENEFÍCIO",
 		description: "O que o cliente ganha.",
 		icon: BadgePercent,
 	},
 	rules: {
 		id: "rules",
-		label: "Regras",
+		label: "REGRAS",
 		description: "Onde vale e como é validado.",
 		icon: Package,
 	},
 	audience: {
 		id: "audience",
-		label: "Quem pode usar",
+		label: "QUEM PODE USAR",
 		description: "Para quais clientes o cupom serve.",
 		icon: Users,
 	},
 	validity: {
 		id: "validity",
-		label: "Validade e resgate",
+		label: "VALIDADE E RESGATE",
 		description: "Prazo, limites e onde resgatar.",
 		icon: CalendarClock,
 	},
 	review: {
 		id: "review",
-		label: "Revisão",
+		label: "REVISÃO",
 		description: "Confira tudo e ative.",
 		icon: ListChecks,
 	},

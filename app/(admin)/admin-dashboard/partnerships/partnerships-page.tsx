@@ -190,12 +190,12 @@ export default function PlatformPartnershipsAdminPage() {
 						{referrals.map((referral) => (
 							<Row key={referral.id}>
 								<div>
-									<p className="font-medium">{referral.organizacao.nome}</p>
+									<p className="font-medium">{referral.organizacao?.nome ?? referral.organizacaoNomeSnapshot ?? "Organizacao excluida"}</p>
 									<p className="text-xs text-muted-foreground">
 										{referral.partner.nome} - {formatDateAsLocale(referral.dataOnboarding)}
 									</p>
 								</div>
-								<Badge variant="outline">{referral.organizacao.assinaturaPlano ?? "SEM PLANO"}</Badge>
+								<Badge variant="outline">{referral.organizacao?.assinaturaPlano ?? "SEM PLANO"}</Badge>
 								<Badge>{referral.status}</Badge>
 								<p className="text-sm font-semibold">
 									{centsToMoney(referral.commissions.reduce((total, commission) => total + commission.valorComissaoCentavos, 0))}
@@ -212,7 +212,7 @@ export default function PlatformPartnershipsAdminPage() {
 								<div>
 									<p className="font-medium">{commission.partner.nome}</p>
 									<p className="text-xs text-muted-foreground">
-										{commission.organizacao.nome} - invoice #{commission.numeroInvoiceAssinatura}
+										{commission.organizacao?.nome ?? "Organizacao excluida"} - invoice #{commission.numeroInvoiceAssinatura}
 									</p>
 								</div>
 								<Badge variant="outline">{commission.status}</Badge>

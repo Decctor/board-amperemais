@@ -11,7 +11,7 @@ export default function BenefitPicker() {
 	return (
 		<div className="flex w-full flex-col gap-3">
 			<div className="flex flex-col">
-				<h2 className="text-base font-semibold tracking-tight text-foreground">O que você quer oferecer?</h2>
+				<h2 className="text-base font-semibold tracking-tight text-foreground">O QUE VOCÊ QUER OFERECER?</h2>
 				<p className="text-xs text-muted-foreground">Escolha o tipo de benefício. Você poderá trocar depois.</p>
 			</div>
 			<div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">

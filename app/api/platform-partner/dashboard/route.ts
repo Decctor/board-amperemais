@@ -76,11 +76,13 @@ async function getPlatformPartnerDashboard({ userId }: { userId: string }) {
 				payoutsPagos: payouts.filter((payout) => payout.status === "PAGO").length,
 			},
 			organizations: referrals.map((referral) => ({
-				id: referral.organizacao.id,
-				nome: referral.organizacao.nome,
-				plano: referral.organizacao.assinaturaPlano,
-				status: referral.organizacao.stripeSubscriptionStatus ?? (referral.organizacao.periodoTesteFim ? "trial" : "sem_assinatura"),
-				dataEntrada: referral.organizacao.dataInsercao,
+				id: referral.organizacao?.id ?? referral.id,
+				nome: referral.organizacao?.nome ?? referral.organizacaoNomeSnapshot ?? "Organizacao excluida",
+				plano: referral.organizacao?.assinaturaPlano ?? null,
+				status: referral.organizacao
+					? (referral.organizacao.stripeSubscriptionStatus ?? (referral.organizacao.periodoTesteFim ? "trial" : "sem_assinatura"))
+					: "excluida",
+				dataEntrada: referral.organizacao?.dataInsercao ?? referral.dataInsercao,
 				valorComissionadoCentavos: referral.commissions.reduce((total, commission) => total + commission.valorComissaoCentavos, 0),
 			})),
 			payouts,

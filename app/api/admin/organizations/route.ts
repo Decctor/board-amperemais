@@ -1,11 +1,13 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { deleteAllOrganizationData, organizationHasBlockingSubscription } from "@/lib/organizations/deletion";
 import { createSimplifiedSearchCondition } from "@/lib/search";
+import { deleteSession as deleteGatewaySession } from "@/lib/whatsapp/internal-gateway";
 import { OrganizationSchema } from "@/schemas/organizations";
 import { NewUserSchema } from "@/schemas/users";
 import { db } from "@/services/drizzle";
 import { organizationMembers, organizations, products, users } from "@/services/drizzle/schema";
-import { count, sql, and, eq } from "drizzle-orm";
+import { count, and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -69,6 +71,14 @@ async function getOrganizations({ input }: { input: TGetOrganizationInput }) {
 			logoUrl: true,
 			telefone: true,
 			email: true,
+			stripeCustomerId: true,
+			stripeSubscriptionId: true,
+			stripeSubscriptionStatus: true,
+			assinaturaPlano: true,
+			periodoTesteInicio: true,
+			periodoTesteFim: true,
+			consultoriaAtiva: true,
+			dataOnboardingConclusao: true,
 			dataInsercao: true,
 		},
 		with: {
@@ -267,6 +277,73 @@ async function updateOrganizationRoute(request: NextRequest) {
 	const result = await updateOrganization({ input });
 	return NextResponse.json(result);
 }
+
+// Delete Organization
+const DeleteOrganizationInputSchema = z.object({
+	organizationId: z.string({
+		required_error: "ID da organização não informado.",
+		invalid_type_error: "Tipo inválido para ID da organização.",
+	}),
+});
+export type TDeleteOrganizationInput = z.infer<typeof DeleteOrganizationInputSchema>;
+
+async function deleteOrganization({ input }: { input: TDeleteOrganizationInput }) {
+	const { organizationId } = input;
+
+	const organization = await db.query.organizations.findFirst({
+		where: (fields, { eq }) => eq(fields.id, organizationId),
+		columns: {
+			id: true,
+			nome: true,
+			stripeSubscriptionStatus: true,
+		},
+	});
+	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
+	if (organizationHasBlockingSubscription(organization.stripeSubscriptionStatus))
+		throw new createHttpError.BadRequest("Organização possui assinatura ativa no Stripe. Cancele a assinatura antes de excluir.");
+
+	// Desconexão das sessões WhatsApp no gateway interno (best-effort: falha não bloqueia a exclusão)
+	const gatewayConnections = await db.query.whatsappConnections.findMany({
+		where: (fields, { and, eq, isNotNull }) =>
+			and(eq(fields.organizacaoId, organizationId), eq(fields.tipoConexao, "INTERNAL_GATEWAY"), isNotNull(fields.gatewaySessaoId)),
+		columns: { id: true, gatewaySessaoId: true },
+	});
+	for (const connection of gatewayConnections) {
+		if (!connection.gatewaySessaoId) continue;
+		try {
+			await deleteGatewaySession(connection.gatewaySessaoId);
+		} catch (error) {
+			console.error("[DELETE ORGANIZATION] Falha ao desconectar sessão do gateway WhatsApp:", connection.gatewaySessaoId, error);
+		}
+	}
+
+	await db.transaction(async (tx) => {
+		await deleteAllOrganizationData({ trx: tx, organizationId, organizationName: organization.nome });
+	});
+
+	return {
+		data: { deletedId: organizationId },
+		message: "Organização excluída com sucesso.",
+	};
+}
+export type TDeleteOrganizationOutput = Awaited<ReturnType<typeof deleteOrganization>>;
+
+async function deleteOrganizationRoute(request: NextRequest) {
+	const session = await getCurrentSessionUncached();
+	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
+	if (!session.user.admin) throw new createHttpError.Forbidden("Acesso restrito a administradores.");
+
+	const searchParams = request.nextUrl.searchParams;
+	const input = DeleteOrganizationInputSchema.parse({
+		organizationId: searchParams.get("id"),
+	});
+	const result = await deleteOrganization({ input });
+	return NextResponse.json(result);
+}
+
+export const DELETE = appApiHandler({
+	DELETE: deleteOrganizationRoute,
+});
 
 export const PUT = appApiHandler({
 	PUT: updateOrganizationRoute,

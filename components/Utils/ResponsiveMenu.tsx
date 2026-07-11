@@ -47,8 +47,10 @@ type ResponsiveMenuProps = PropsWithChildren & {
 	menuDescription: string;
 	menuActionButtonText: string;
 	menuActionButtonClassName?: string;
+	menuActionButtonDisabled?: boolean;
 	menuSecondaryActionButtonText?: string;
 	menuSecondaryActionButtonClassName?: string;
+	menuSecondaryActionButtonDisabled?: boolean;
 	menuCancelButtonText: string;
 	actionFunction: () => void;
 	secondaryActionFunction?: () => void;
@@ -66,8 +68,10 @@ function ResponsiveMenu({
 	menuDescription,
 	menuActionButtonText,
 	menuActionButtonClassName,
+	menuActionButtonDisabled = false,
 	menuSecondaryActionButtonText,
 	menuSecondaryActionButtonClassName,
+	menuSecondaryActionButtonDisabled = false,
 	menuCancelButtonText,
 	closeMenu,
 	actionFunction,
@@ -125,13 +129,19 @@ function ResponsiveMenu({
 					{menuSecondaryActionButtonText && secondaryActionFunction && (
 						<LoadingButton
 							loading={actionIsLoading || stateIsLoading}
+							disabled={menuSecondaryActionButtonDisabled}
 							onClick={() => secondaryActionFunction()}
 							className={menuSecondaryActionButtonClassName}
 						>
 							{menuSecondaryActionButtonText}
 						</LoadingButton>
 					)}
-					<LoadingButton loading={actionIsLoading || stateIsLoading} onClick={() => actionFunction()} className={menuActionButtonClassName}>
+					<LoadingButton
+						loading={actionIsLoading || stateIsLoading}
+						disabled={menuActionButtonDisabled}
+						onClick={() => actionFunction()}
+						className={menuActionButtonClassName}
+					>
 						{menuActionButtonText}
 					</LoadingButton>
 				</DialogFooter>
@@ -170,13 +180,19 @@ function ResponsiveMenu({
 					{menuSecondaryActionButtonText && secondaryActionFunction && (
 						<LoadingButton
 							loading={actionIsLoading || stateIsLoading}
+							disabled={menuSecondaryActionButtonDisabled}
 							onClick={() => secondaryActionFunction()}
 							className={menuSecondaryActionButtonClassName}
 						>
 							{menuSecondaryActionButtonText}
 						</LoadingButton>
 					)}
-					<LoadingButton loading={actionIsLoading || stateIsLoading} onClick={() => actionFunction()} className={menuActionButtonClassName}>
+					<LoadingButton
+						loading={actionIsLoading || stateIsLoading}
+						disabled={menuActionButtonDisabled}
+						onClick={() => actionFunction()}
+						className={menuActionButtonClassName}
+					>
 						{menuActionButtonText}
 					</LoadingButton>
 				</DrawerFooter>

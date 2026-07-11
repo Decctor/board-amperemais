@@ -3,51 +3,42 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Input } from "@/components/ui/input";
-import type { TAuthUserSession } from "@/lib/authentication/types";
-import { useOrganizations } from "@/lib/queries/admin";
+import { useAdminUsers } from "@/lib/queries/admin";
 import { useQueryClient } from "@tanstack/react-query";
-import AdminOrganizationRow from "./AdminOrganizationRow";
+import AdminUserRow from "./AdminUserRow";
 
-type TAdminOrganizationsBlockProps = {
-	user: TAuthUserSession["user"];
-};
-export default function AdminOrganizationsBlock({ user }: TAdminOrganizationsBlockProps) {
+export default function AdminUsersBlock() {
 	const queryClient = useQueryClient();
-	const { data, isLoading, error, queryKey, params, updateParams } = useOrganizations();
+	const { data, isLoading, error, queryKey, params, updateParams } = useAdminUsers();
 
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
 
-	const organizations = data?.organizations;
+	const users = data?.users;
 
 	return (
 		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-				<h2 className="text-lg font-semibold tracking-tight uppercase">Organizações Cadastradas</h2>
+				<h2 className="text-lg font-semibold tracking-tight uppercase">Usuários Cadastrados</h2>
 				<Input
 					value={params.search ?? ""}
 					onChange={(e) => updateParams({ search: e.target.value, page: 1 })}
-					placeholder="Buscar por nome..."
-					className="w-full sm:w-64"
+					placeholder="Buscar por nome, email ou telefone..."
+					className="w-full sm:w-72"
 				/>
 			</div>
 			{isLoading ? <LoadingComponent /> : null}
-			{error ? <ErrorComponent msg="Erro ao carregar organizações" /> : null}
-			{organizations ? (
-				organizations.length > 0 ? (
+			{error ? <ErrorComponent msg="Erro ao carregar usuários" /> : null}
+			{users ? (
+				users.length > 0 ? (
 					<div className="flex w-full flex-col gap-2">
-						{organizations.map((org) => (
-							<AdminOrganizationRow
-								key={org.id}
-								sessionUser={user}
-								organization={org}
-								callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
-							/>
+						{users.map((user) => (
+							<AdminUserRow key={user.id} user={user} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
 						))}
 					</div>
 				) : (
 					<div className="bg-card border-border flex w-full flex-col items-center justify-center gap-2 rounded-xl border p-8">
-						<p className="text-sm text-foreground/60">Nenhuma organização encontrada.</p>
+						<p className="text-sm text-foreground/60">Nenhum usuário encontrado.</p>
 					</div>
 				)
 			) : null}
@@ -56,8 +47,8 @@ export default function AdminOrganizationsBlock({ user }: TAdminOrganizationsBlo
 				totalPages={data?.totalPages || 0}
 				selectPage={(page) => updateParams({ page })}
 				queryLoading={isLoading}
-				itemsMatchedText={`${data?.organizationsMatched || 0} organizações encontradas.`}
-				itemsShowingText={`Mostrando ${organizations?.length || 0} organizações.`}
+				itemsMatchedText={`${data?.usersMatched || 0} usuários encontrados.`}
+				itemsShowingText={`Mostrando ${users?.length || 0} usuários.`}
 			/>
 		</div>
 	);

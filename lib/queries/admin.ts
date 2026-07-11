@@ -1,5 +1,7 @@
 import type { TGetOrganizationInput, TGetOrganizationsAdminOutput } from "@/app/api/admin/organizations/route";
+import type { TGetOrganizationDeletionSummaryOutput } from "@/app/api/admin/organizations/deletion-summary/route";
 import type { TGetAdminStatsOutput } from "@/app/api/admin/stats/route";
+import type { TGetUsersAdminInput, TGetUsersAdminOutput } from "@/app/api/admin/users/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
@@ -64,4 +66,71 @@ export function useOrganizationById({ id }: { id: string }) {
 		queryKey: ["admin-organization-by-id", id],
 		queryFn: () => fetchOrganizationById(id),
 	});
+}
+
+async function fetchOrganizationDeletionSummary(id: string) {
+	const response = await axios.get<TGetOrganizationDeletionSummaryOutput>(`/api/admin/organizations/deletion-summary?id=${id}`);
+	return response.data.data;
+}
+
+export function useOrganizationDeletionSummary({ id }: { id: string }) {
+	return {
+		...useQuery({
+			queryKey: ["admin-organization-deletion-summary", id],
+			queryFn: () => fetchOrganizationDeletionSummary(id),
+		}),
+		queryKey: ["admin-organization-deletion-summary", id],
+	};
+}
+
+async function fetchAdminUsers(input: TGetUsersAdminInput) {
+	const searchParams = new URLSearchParams();
+	if (input.id) searchParams.set("id", input.id);
+	if (input.page) searchParams.set("page", input.page.toString());
+	if (input.search) searchParams.set("search", input.search);
+
+	const queryString = searchParams.toString();
+	const response = await axios.get<TGetUsersAdminOutput>(`/api/admin/users?${queryString}`);
+	const defaultResult = response.data.data.default;
+	if (!defaultResult) throw new Error("Usuários não encontrados.");
+	return defaultResult;
+}
+
+async function fetchAdminUserById(id: string) {
+	const response = await axios.get<TGetUsersAdminOutput>(`/api/admin/users?id=${id}`);
+	const byIdResult = response.data.data.byId;
+	if (!byIdResult) throw new Error("Usuário não encontrado.");
+	return byIdResult;
+}
+
+export function useAdminUsers() {
+	const [params, setParams] = useState<TGetUsersAdminInput>({
+		page: 1,
+		search: null,
+	});
+
+	function updateParams(newParams: Partial<TGetUsersAdminInput>) {
+		setParams((prevParams) => ({ ...prevParams, ...newParams }));
+	}
+	const debouncedSearch = useDebounceMemo({ search: params.search }, 1000);
+	const finalParams = { ...params, ...debouncedSearch };
+	return {
+		...useQuery({
+			queryKey: ["admin-users", finalParams],
+			queryFn: () => fetchAdminUsers(finalParams),
+		}),
+		queryKey: ["admin-users", finalParams],
+		params,
+		updateParams,
+	};
+}
+
+export function useAdminUserById({ id }: { id: string }) {
+	return {
+		...useQuery({
+			queryKey: ["admin-user-by-id", id],
+			queryFn: () => fetchAdminUserById(id),
+		}),
+		queryKey: ["admin-user-by-id", id],
+	};
 }

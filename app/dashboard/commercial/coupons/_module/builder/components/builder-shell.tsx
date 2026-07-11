@@ -62,7 +62,9 @@ function BuilderShellContent() {
 	});
 
 	function handleSubmit() {
-		const invalidStage = STAGE_ORDER.map((stage) => ({ stage, result: validateStage(stage, coupon, couponTargets) })).find((item) => !item.result.valid);
+		const invalidStage = STAGE_ORDER.map((stage) => ({ stage, result: validateStage(stage, coupon, couponTargets) })).find(
+			(item) => !item.result.valid,
+		);
 		if (invalidStage) {
 			setCurrentStage(invalidStage.stage);
 			toast.error(invalidStage.result.reason ?? "Revise os campos obrigatórios.");
@@ -75,7 +77,7 @@ function BuilderShellContent() {
 	const showStageHeading = !(currentStage === "benefit" && !benefitPicked);
 
 	return (
-		<div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-3 py-4 lg:px-6">
+		<div className="mx-auto flex w-full flex-col gap-4 px-3 py-4 lg:px-6">
 			<BuilderHeader backToUrl={BACK_TO_URL} />
 			<BuilderStepper />
 			<LivePreview />

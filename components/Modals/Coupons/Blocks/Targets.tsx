@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { usePOSGroups } from "@/lib/queries/pos";
 import type { TUseInternalCouponState } from "@/state-hooks/use-internal-coupon-state";
 import { CouponTargetOperatorOptions, CouponTargetRoleOptions } from "@/utils/select-options";
-import { Package, Plus, Trash2 } from "lucide-react";
+import { Package, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
 type CouponTargetsBlockProps = {
@@ -16,6 +16,9 @@ type CouponTargetsBlockProps = {
 	addCouponTarget: TUseInternalCouponState["addCouponTarget"];
 	updateCouponTarget: TUseInternalCouponState["updateCouponTarget"];
 	removeCouponTarget: TUseInternalCouponState["removeCouponTarget"];
+	// Quando fornecido, a seção ganha um controle para recolher/remover as condições
+	// (usado no builder guiado, onde produtos e condições são opcionais).
+	onRemoveConditions?: () => void;
 };
 export default function CouponTargetsBlock({
 	coupon,
@@ -24,9 +27,26 @@ export default function CouponTargetsBlock({
 	addCouponTarget,
 	updateCouponTarget,
 	removeCouponTarget,
+	onRemoveConditions,
 }: CouponTargetsBlockProps) {
 	return (
-		<ResponsiveMenuSection title="PRODUTOS E CONDIÇÕES" icon={<Package className="h-4 min-h-4 w-4 min-w-4" />}>
+		<ResponsiveMenuSection
+			title="PRODUTOS E CONDIÇÕES"
+			icon={<Package className="h-4 min-h-4 w-4 min-w-4" />}
+			action={
+				onRemoveConditions ? (
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={onRemoveConditions}
+						className="h-7 gap-1.5 px-2 text-xs font-semibold text-muted-foreground hover:text-destructive"
+					>
+						<X className="h-3.5 w-3.5" />
+						<span className="hidden sm:inline">REMOVER</span>
+					</Button>
+				) : undefined
+			}
+		>
 			<div className="w-full flex flex-col gap-1">
 				<p className="text-sm font-medium text-muted-foreground">
 					Sem produtos, o cupom vale para qualquer compra. Marque um produto como “ativa o cupom” para exigir que ele esteja no carrinho, ou “ganha o
