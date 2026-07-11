@@ -88,12 +88,12 @@ export const LANDING_CASES: TLandingCase[] = [
 		quote: {
 			text: "Nenhum anúncio novo. Nenhum desconto agressivo. Só a mensagem certa, para quem já conhecia a loja, no momento certo.",
 		},
-		// TODO: gravar depoimento e preencher com o playback ID público do Mux
-		// video: {
-		// 	muxPlaybackId: "xxxxxxxx",
-		// 	kind: "resultado",
-		// 	title: "Como a Ampère Mais gerou R$17 mil extras em 30 dias",
-		// },
+		video: {
+			muxPlaybackId: "4taz2R5ysEqdh5V028dKVcRiv4Ezrv7GiC5pEsiTGpu4",
+			kind: "resultado",
+			title: "Como a Ampère Mais gerou R$17 mil extras em 30 dias",
+			orientation: "landscape",
+		},
 	},
 	{
 		id: "congelatte",
