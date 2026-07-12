@@ -1,13 +1,22 @@
 "use client";
 
 import { useOrgColors } from "@/components/Providers/OrgColorsProvider";
-import { formatDecimalPlaces } from "@/lib/formatting";
+import { formatDateAsLocale, formatDecimalPlaces } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { History, TrendingDown, TrendingUp } from "lucide-react";
 
 type TStat = {
 	value: number;
 	format: (n: number) => string;
+};
+/**
+ * Escopo temporal ACUMULADO: a métrica é um retrato da base até uma data (snapshot),
+ * e não do período filtrado na página. Cards de período não recebem tag — o filtro de
+ * datas acima deles já é a explicação; sinalizamos apenas a exceção.
+ */
+type TTemporalScope = {
+	tipo: "ACUMULADO";
+	ate?: Date | string | null;
 };
 type StatUnitCardProps = {
 	title: string;
@@ -19,6 +28,7 @@ type StatUnitCardProps = {
 	lowerIsBetter?: boolean;
 	className?: string;
 	footer?: React.ReactNode;
+	temporalScope?: TTemporalScope;
 };
 export default function StatUnitCard({
 	title,
@@ -30,6 +40,7 @@ export default function StatUnitCard({
 	lowerIsBetter,
 	className,
 	footer,
+	temporalScope,
 }: StatUnitCardProps) {
 	const { colors } = useOrgColors();
 	const showComparison = !!previous;
@@ -50,8 +61,16 @@ export default function StatUnitCard({
 	return (
 		<div className={cn("bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs", className)}>
 			<div className="flex items-center justify-between">
-				<div className="flex flex-col">
-					<h1 className="text-xs font-medium tracking-tight uppercase">{title}</h1>
+				<div className="flex flex-col gap-0.5">
+					<div className="flex items-center gap-1.5">
+						<h1 className="text-xs font-medium tracking-tight uppercase">{title}</h1>
+						{temporalScope ? (
+							<span className="inline-flex w-fit shrink-0 items-center gap-1 rounded-full bg-secondary px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-muted-foreground">
+								<History className="h-2.5 w-2.5 min-h-2.5 min-w-2.5" />
+								{temporalScope.ate ? `Até ${formatDateAsLocale(temporalScope.ate)}` : "Vida toda"}
+							</span>
+						) : null}
+					</div>
 					{subtitle && <p className="text-[0.65rem] text-muted-foreground">{subtitle}</p>}
 				</div>
 				<div className="flex items-center gap-2">

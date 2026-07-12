@@ -380,6 +380,16 @@ function ClientsMultiFilter({
 	);
 }
 
+// Eyebrow que separa os grupos de métricas por escopo temporal (período filtrado vs. base acumulada).
+function StatsScopeHeading({ label, description }: { label: string; description?: string }) {
+	return (
+		<div className="mt-1 flex w-full items-baseline gap-2">
+			<h2 className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">{label}</h2>
+			{description ? <span className="hidden text-[0.65rem] text-muted-foreground/70 sm:inline">{description}</span> : null}
+		</div>
+	);
+}
+
 function ClientsStatsView() {
 	const initialStartDate = dayjs().startOf("month");
 	const initialEndDate = dayjs().endOf("month");
@@ -395,8 +405,6 @@ function ClientsStatsView() {
 		comparingPeriodAfter: filters.comparingPeriodAfter,
 		comparingPeriodBefore: filters.comparingPeriodBefore,
 	});
-
-	console.log(clientsOverallStats);
 
 	return (
 		<div className="w-full flex flex-col gap-3">
@@ -419,10 +427,13 @@ function ClientsStatsView() {
 					}
 				/>
 			</div>
+			<StatsScopeHeading label="Base acumulada" description="retrato da sua base até o fim do período" />
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
 				<StatUnitCard
 					title="TOTAL DE CLIENTES"
 					icon={<Users className="w-4 h-4 min-w-4 min-h-4" />}
+					temporalScope={{ tipo: "ACUMULADO", ate: filters.periodBefore }}
+					previousLabel="NO FIM DO PERÍODO ANTERIOR"
 					current={{
 						value: clientsOverallStats?.totalClients.current || 0,
 						format: (n) => formatDecimalPlaces(n),
@@ -437,24 +448,11 @@ function ClientsStatsView() {
 					}
 				/>
 				<StatUnitCard
-					title="TOTAL DE CLIENTES NOVOS"
-					icon={<UserPlus className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{
-						value: clientsOverallStats?.totalNewClients.current || 0,
-						format: (n) => formatDecimalPlaces(n),
-					}}
-					previous={
-						clientsOverallStats?.totalNewClients.comparison
-							? {
-									value: clientsOverallStats?.totalNewClients.comparison || 0,
-									format: (n) => formatDecimalPlaces(n),
-								}
-							: undefined
-					}
-				/>
-				<StatUnitCard
 					title="LTV"
+					subtitle="Gasto médio por cliente ao longo da vida"
 					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					temporalScope={{ tipo: "ACUMULADO", ate: filters.periodBefore }}
+					previousLabel="NO FIM DO PERÍODO ANTERIOR"
 					current={{
 						value: clientsOverallStats?.ltv.current || 0,
 						format: (n) => formatToMoney(n),
@@ -470,7 +468,10 @@ function ClientsStatsView() {
 				/>
 				<StatUnitCard
 					title="LIFETIME MÉDIO"
+					subtitle="Da 1ª à última compra, clientes com 2+ compras"
 					icon={<BsCalendar className="w-4 h-4 min-w-4 min-h-4" />}
+					temporalScope={{ tipo: "ACUMULADO", ate: filters.periodBefore }}
+					previousLabel="NO FIM DO PERÍODO ANTERIOR"
 					current={{
 						value: clientsOverallStats?.avgLifetime.current || 0,
 						format: (n) => `${formatDecimalPlaces(n)} dias`,
@@ -483,6 +484,44 @@ function ClientsStatsView() {
 								}
 							: undefined
 					}
+				/>
+			</div>
+			<StatsScopeHeading label="No período selecionado" description="o que aconteceu dentro da janela filtrada" />
+			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
+				<StatUnitCard
+					title="TOTAL DE CLIENTES NOVOS"
+					icon={<UserPlus className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: clientsOverallStats?.totalNewClients.current || 0,
+						format: (n) => formatDecimalPlaces(n),
+					}}
+					previous={
+						clientsOverallStats?.totalNewClients.comparison
+							? {
+									value: clientsOverallStats?.totalNewClients.comparison || 0,
+									format: (n) => formatDecimalPlaces(n),
+								}
+							: undefined
+					}
+					className="w-full lg:w-1/2"
+				/>
+				<StatUnitCard
+					title="RECEITA MÉDIA POR CLIENTE"
+					subtitle="Entre os clientes identificados que compraram no período"
+					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					current={{
+						value: clientsOverallStats?.periodRevenuePerClient.current || 0,
+						format: (n) => formatToMoney(n),
+					}}
+					previous={
+						clientsOverallStats?.periodRevenuePerClient.comparison
+							? {
+									value: clientsOverallStats?.periodRevenuePerClient.comparison || 0,
+									format: (n) => formatToMoney(n),
+								}
+							: undefined
+					}
+					className="w-full lg:w-1/2"
 				/>
 			</div>
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3">

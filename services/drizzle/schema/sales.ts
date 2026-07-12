@@ -88,6 +88,8 @@ export const sales = newTable(
 		naturezaIdx: index("idx_sales_natureza").on(table.natureza),
 		valorTotalIdx: index("idx_sales_valor_total").on(table.valorTotal),
 		sessaoVendaIdx: index("idx_sales_sessao").on(table.sessaoVendaId),
+		// Listagem do histórico e stats sempre filtram por organização e ordenam/filtram por data.
+		orgDataVendaIdx: index("idx_sales_org_data_venda").on(table.organizacaoId, table.dataVenda),
 	}),
 );
 export type TSaleEntity = typeof sales.$inferSelect;

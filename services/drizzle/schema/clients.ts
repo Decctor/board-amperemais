@@ -80,6 +80,7 @@ export const clients = newTable(
 		telefoneIndex: index("idx_clients_telefone").using("gist", sql`${table.telefoneBase} gist_trgm_ops`),
 		emailIndex: index("idx_clients_email").using("gist", sql`lower(${table.email}) gist_trgm_ops`),
 		rfmTituloIdx: index("idx_clients_rfm_titulo").on(table.analiseRFMTitulo),
+		orgPrimeiraCompraIdx: index("idx_clients_org_primeira_compra").on(table.organizacaoId, table.primeiraCompraData),
 	}),
 );
 

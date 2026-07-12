@@ -1,10 +1,11 @@
 import { appApiHandler } from "@/lib/app-api";
-import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
+import { runPagesRouteHandler, type PagesRouteHandler } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { getValidSaleConditions } from "@/lib/sales/valid-sale";
 import { db } from "@/services/drizzle";
 import { clients, sales } from "@/services/drizzle/schema";
-import { and, count, desc, eq, gte, inArray, isNull, lt, lte, notInArray, sql, sum } from "drizzle-orm";
+import { and, count, eq, gte, isNotNull, isNull, lt, lte, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import z from "zod";
 
@@ -49,295 +50,218 @@ const GetClientsOverallStatsInputSchema = z.object({
 
 export type TGetClientsOverallStatsInput = z.infer<typeof GetClientsOverallStatsInputSchema>;
 
+// ============================================================================
+// Métricas de SNAPSHOT (acumuladas): retratam a base como ela estava ao final
+// do período selecionado ("até"), e não o que aconteceu dentro do período.
+// ============================================================================
+
+async function countClientsUpTo({ orgId, until }: { orgId: string; until: Date | null }) {
+	const result = await db
+		.select({ count: count() })
+		.from(clients)
+		.where(and(eq(clients.organizacaoId, orgId), until ? lte(clients.primeiraCompraData, until) : undefined));
+	return result[0]?.count ?? 0;
+}
+
+/**
+ * LTV: gasto médio por cliente identificado ao longo da vida (todas as vendas válidas até o
+ * fim do período). Vendas sem cliente ("AO CONSUMIDOR") ficam fora — agrupá-las viraria um
+ * pseudo-cliente único gigante distorcendo a média.
+ */
+async function computeLtvSnapshot({ orgId, until }: { orgId: string; until: Date | null }) {
+	const perClient = db
+		.select({ totalCliente: sum(sales.valorTotal).as("total_cliente") })
+		.from(sales)
+		.where(and(...getValidSaleConditions({ orgId }), isNotNull(sales.clienteId), until ? lte(sales.dataVenda, until) : undefined))
+		.groupBy(sales.clienteId)
+		.as("vendas_por_cliente");
+
+	const result = await db.select({ avg: sql<number>`AVG(${perClient.totalCliente})` }).from(perClient);
+	return Number(result[0]?.avg ?? 0);
+}
+
+/**
+ * Lifetime médio (dias): tempo médio entre a primeira e a última compra dos clientes
+ * recorrentes (2+ compras) da base até o fim do período. Clientes de compra única não têm
+ * lifetime observável (seria sempre 0 e afundaria a média sem informação).
+ * Aproximações conscientes: metadataTotalCompras é o valor atual (não o do fim do período);
+ * a última compra é limitada ao fim do período via LEAST para snapshots históricos.
+ */
+async function computeAvgLifetimeSnapshot({ orgId, until }: { orgId: string; until: Date | null }) {
+	const lifetimeDays = until
+		? sql<number>`AVG(EXTRACT(EPOCH FROM (LEAST(${clients.ultimaCompraData}, ${until}) - ${clients.primeiraCompraData})) / 86400)`
+		: sql<number>`AVG(EXTRACT(EPOCH FROM (${clients.ultimaCompraData} - ${clients.primeiraCompraData})) / 86400)`;
+
+	const result = await db
+		.select({ avg: lifetimeDays })
+		.from(clients)
+		.where(
+			and(
+				eq(clients.organizacaoId, orgId),
+				isNotNull(clients.primeiraCompraData),
+				isNotNull(clients.ultimaCompraData),
+				gte(clients.metadataTotalCompras, 2),
+				until ? lte(clients.primeiraCompraData, until) : undefined,
+			),
+		);
+	return Number(result[0]?.avg ?? 0);
+}
+
+// ============================================================================
+// Métricas de PERÍODO: o que aconteceu dentro da janela selecionada.
+// ============================================================================
+
+async function countNewClients({ orgId, after, before }: { orgId: string; after: Date | null; before: Date | null }) {
+	const result = await db
+		.select({ count: count() })
+		.from(clients)
+		.where(
+			and(
+				eq(clients.organizacaoId, orgId),
+				after ? gte(clients.primeiraCompraData, after) : undefined,
+				before ? lte(clients.primeiraCompraData, before) : undefined,
+			),
+		);
+	return result[0]?.count ?? 0;
+}
+
+/** Receita média por cliente identificado dentro do período (a leitura mensal que o LTV antigo media). */
+async function computePeriodRevenuePerClient({ orgId, after, before }: { orgId: string; after: Date | null; before: Date | null }) {
+	const perClient = db
+		.select({ totalCliente: sum(sales.valorTotal).as("total_cliente") })
+		.from(sales)
+		.where(
+			and(
+				...getValidSaleConditions({ orgId }),
+				isNotNull(sales.clienteId),
+				after ? gte(sales.dataVenda, after) : undefined,
+				before ? lte(sales.dataVenda, before) : undefined,
+			),
+		)
+		.groupBy(sales.clienteId)
+		.as("vendas_cliente_periodo");
+
+	const result = await db.select({ avg: sql<number>`AVG(${perClient.totalCliente})` }).from(perClient);
+	return Number(result[0]?.avg ?? 0);
+}
+
+async function computePeriodRevenueBreakdown({ orgId, after, before }: { orgId: string; after: Date | null; before: Date | null }) {
+	const saleConditions = [
+		...getValidSaleConditions({ orgId }),
+		after ? gte(sales.dataVenda, after) : undefined,
+		before ? lte(sales.dataVenda, before) : undefined,
+	];
+
+	const totalResult = await db
+		.select({ total: sum(sales.valorTotal) })
+		.from(sales)
+		.where(and(...saleConditions));
+	const total = Number(totalResult[0]?.total ?? 0);
+
+	// Clientes existentes: primeira compra ANTES do início do período.
+	const existingResult = await db
+		.select({ total: sum(sales.valorTotal) })
+		.from(sales)
+		.innerJoin(clients, eq(sales.clienteId, clients.id))
+		.where(and(...saleConditions, after ? lt(clients.primeiraCompraData, after) : undefined));
+	const existing = Number(existingResult[0]?.total ?? 0);
+
+	// Clientes novos: primeira compra DENTRO do período.
+	const fromNewResult = await db
+		.select({ total: sum(sales.valorTotal) })
+		.from(sales)
+		.innerJoin(clients, eq(sales.clienteId, clients.id))
+		.where(
+			and(
+				...saleConditions,
+				after ? gte(clients.primeiraCompraData, after) : undefined,
+				before ? lte(clients.primeiraCompraData, before) : undefined,
+			),
+		);
+	const fromNew = Number(fromNewResult[0]?.total ?? 0);
+
+	// Vendas sem cliente identificado (AO CONSUMIDOR).
+	const nonIdentifiedResult = await db
+		.select({ total: sum(sales.valorTotal) })
+		.from(sales)
+		.leftJoin(clients, eq(sales.clienteId, clients.id))
+		.where(and(...saleConditions, isNull(clients.id)));
+	const nonIdentified = Number(nonIdentifiedResult[0]?.total ?? 0);
+
+	return { total, existing, fromNew, nonIdentified };
+}
+
 async function getClientsOverallStats({ input, session }: { input: TGetClientsOverallStatsInput; session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	// Stats to get:
-	// 1. Total clients count (up until the before period peram)
-	// 2. Total new clients count (within the period param)
-	// 3. LTV (within the period param)
-	// 4. Avg lifetime (first sale to last sale) (within the period param)
-
-	console.log("[INFO] [GET CLIENTS STATS] Starting:", {
-		userOrg: userOrgId,
-		input,
-	});
 	const { periodAfter, periodBefore, comparingPeriodAfter, comparingPeriodBefore } = input;
-	const saleConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.natureza, "SN01")];
+	const hasComparison = !!comparingPeriodAfter || !!comparingPeriodBefore;
 
-	const totalClientsResult = await db
-		.select({ count: count() })
-		.from(clients)
-		.where(and(eq(clients.organizacaoId, userOrgId), periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined));
+	console.log("[INFO] [GET CLIENTS STATS] Starting:", { userOrg: userOrgId, input });
 
-	const totalNewClientsResult = await db
-		.select({ count: count() })
-		.from(clients)
-		.where(
-			and(
-				eq(clients.organizacaoId, userOrgId),
-				periodAfter ? gte(clients.primeiraCompraData, periodAfter) : undefined,
-				periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined,
-			),
-		);
-	// LTV: média do valor total de vendas por cliente dentro do período / filtros informados
-	const salesByClient = await db
-		.select({
-			clienteId: sales.clienteId,
-			totalVendasCliente: sum(sales.valorTotal),
-		})
-		.from(sales)
-		.where(
-			and(...saleConditions, periodAfter ? gte(sales.dataVenda, periodAfter) : undefined, periodBefore ? lte(sales.dataVenda, periodBefore) : undefined),
-		)
-		.groupBy(sales.clienteId);
+	const [totalClients, newClients, ltv, avgLifetime, periodRevenuePerClient, revenue] = await Promise.all([
+		countClientsUpTo({ orgId: userOrgId, until: periodBefore }),
+		countNewClients({ orgId: userOrgId, after: periodAfter, before: periodBefore }),
+		computeLtvSnapshot({ orgId: userOrgId, until: periodBefore }),
+		computeAvgLifetimeSnapshot({ orgId: userOrgId, until: periodBefore }),
+		computePeriodRevenuePerClient({ orgId: userOrgId, after: periodAfter, before: periodBefore }),
+		computePeriodRevenueBreakdown({ orgId: userOrgId, after: periodAfter, before: periodBefore }),
+	]);
 
-	const ltvClientsCount = salesByClient.length;
-	const ltvTotal = salesByClient.reduce((acc, row) => acc + Number(row.totalVendasCliente ?? 0), 0);
-	const ltvAverage = ltvClientsCount > 0 ? ltvTotal / ltvClientsCount : 0;
+	const comparison = hasComparison
+		? {
+				totalClients: await countClientsUpTo({ orgId: userOrgId, until: comparingPeriodBefore }),
+				newClients: await countNewClients({ orgId: userOrgId, after: comparingPeriodAfter, before: comparingPeriodBefore }),
+				ltv: await computeLtvSnapshot({ orgId: userOrgId, until: comparingPeriodBefore }),
+				avgLifetime: await computeAvgLifetimeSnapshot({ orgId: userOrgId, until: comparingPeriodBefore }),
+				periodRevenuePerClient: await computePeriodRevenuePerClient({
+					orgId: userOrgId,
+					after: comparingPeriodAfter,
+					before: comparingPeriodBefore,
+				}),
+				revenue: await computePeriodRevenueBreakdown({ orgId: userOrgId, after: comparingPeriodAfter, before: comparingPeriodBefore }),
+			}
+		: null;
 
-	// Lifetime médio (em dias) considerando primeira e última compra dos clientes no período
-	const avgLifetimeDaysResult = await db
-		.select({
-			avgLifetimeDays: sql<number>`AVG(EXTRACT(EPOCH FROM (${clients.ultimaCompraData} - ${clients.primeiraCompraData})) / 86400)`,
-		})
-		.from(clients)
-		.where(
-			and(
-				eq(clients.organizacaoId, userOrgId),
-				periodAfter ? gte(clients.primeiraCompraData, periodAfter) : undefined,
-				periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined,
-			),
-		);
-
-	const totalRevenueResult = await db
-		.select({ total: sum(sales.valorTotal) })
-		.from(sales)
-		.where(
-			and(...saleConditions, periodAfter ? gte(sales.dataVenda, periodAfter) : undefined, periodBefore ? lte(sales.dataVenda, periodBefore) : undefined),
-		);
-	const totalRevenue = Number(totalRevenueResult[0]?.total ?? 0);
-	console.log("[INFO] [GET CLIENTS STATS] Total Revenue:", totalRevenue);
-	// Revenue from Existing Clients (first purchase BEFORE periodAfter)
-	const existingClientsRevenueResult = await db
-		.select({ total: sum(sales.valorTotal) })
-		.from(sales)
-		.innerJoin(clients, eq(sales.clienteId, clients.id))
-		.where(
-			and(
-				...saleConditions,
-				periodAfter ? gte(sales.dataVenda, periodAfter) : undefined,
-				periodBefore ? lte(sales.dataVenda, periodBefore) : undefined,
-				periodAfter ? lt(clients.primeiraCompraData, periodAfter) : undefined,
-			),
-		);
-
-	const existingClientsRevenue = Number(existingClientsRevenueResult[0]?.total ?? 0);
-	// Revenue from New Clients (first purchase WITHIN periodAfter and periodBefore)
-	const newClientsRevenueResult = await db
-		.select({ total: sum(sales.valorTotal) })
-		.from(sales)
-		.innerJoin(clients, eq(sales.clienteId, clients.id))
-		.where(
-			and(
-				...saleConditions,
-				periodAfter ? gte(sales.dataVenda, periodAfter) : undefined,
-				periodBefore ? lte(sales.dataVenda, periodBefore) : undefined,
-				periodAfter ? gte(clients.primeiraCompraData, periodAfter) : undefined,
-				periodBefore ? lte(clients.primeiraCompraData, periodBefore) : undefined,
-			),
-		);
-	const newClientsRevenue = Number(newClientsRevenueResult[0]?.total ?? 0);
-	// Revenue from Non-Identified Clients (sales without valid client - AO CONSUMIDOR)
-	const nonIdentifiedClientsRevenueResult = await db
-		.select({ total: sum(sales.valorTotal) })
-		.from(sales)
-		.leftJoin(clients, eq(sales.clienteId, clients.id))
-		.where(
-			and(
-				...saleConditions,
-				periodAfter ? gte(sales.dataVenda, periodAfter) : undefined,
-				periodBefore ? lte(sales.dataVenda, periodBefore) : undefined,
-				isNull(clients.id),
-			),
-		);
-	const nonIdentifiedClientsRevenue = Number(nonIdentifiedClientsRevenueResult[0]?.total ?? 0);
-	console.log("NEW CLIENTS PERCENTAGE:", totalRevenue > 0 ? (newClientsRevenue / totalRevenue) * 100 : 0);
-
-	if (!comparingPeriodAfter && !comparingPeriodBefore) {
-		return {
-			data: {
-				totalClients: {
-					current: totalClientsResult[0]?.count ?? 0,
-					comparison: null,
-				},
-				totalNewClients: {
-					current: totalNewClientsResult[0]?.count ?? 0,
-					comparison: null,
-				},
-				ltv: {
-					current: ltvAverage,
-					comparison: null,
-				},
-				avgLifetime: {
-					current: avgLifetimeDaysResult[0]?.avgLifetimeDays ?? 0,
-					comparison: null,
-				},
-				revenueFromRecurrentClients: {
-					current: existingClientsRevenue,
-					comparison: null,
-					percentage: totalRevenue > 0 ? (existingClientsRevenue / totalRevenue) * 100 : 0,
-				},
-				revenueFromNewClients: {
-					current: newClientsRevenue,
-					comparison: null,
-					percentage: totalRevenue > 0 ? (newClientsRevenue / totalRevenue) * 100 : 0,
-				},
-				revenueFromNonIdentifiedClients: {
-					current: nonIdentifiedClientsRevenue,
-					comparison: null,
-					percentage: totalRevenue > 0 ? (nonIdentifiedClientsRevenue / totalRevenue) * 100 : 0,
-				},
-			},
-		};
-	}
-
-	const comparisonTotalClientsResult = await db
-		.select({ count: count() })
-		.from(clients)
-		.where(and(eq(clients.organizacaoId, userOrgId), comparingPeriodBefore ? lte(clients.primeiraCompraData, comparingPeriodBefore) : undefined));
-
-	const comparisonTotalNewClientsResult = await db
-		.select({ count: count() })
-		.from(clients)
-		.where(
-			and(
-				eq(clients.organizacaoId, userOrgId),
-				comparingPeriodAfter ? gte(clients.primeiraCompraData, comparingPeriodAfter) : undefined,
-				comparingPeriodBefore ? lte(clients.primeiraCompraData, comparingPeriodBefore) : undefined,
-			),
-		);
-	// LTV: média do valor total de vendas por cliente dentro do período / filtros informados
-	const comparisonSalesByClient = await db
-		.select({
-			clienteId: sales.clienteId,
-			totalVendasCliente: sum(sales.valorTotal),
-		})
-		.from(sales)
-		.where(
-			and(
-				...saleConditions,
-				comparingPeriodAfter ? gte(sales.dataVenda, comparingPeriodAfter) : undefined,
-				comparingPeriodBefore ? lte(sales.dataVenda, comparingPeriodBefore) : undefined,
-			),
-		)
-		.groupBy(sales.clienteId);
-
-	const comparisonLtvClientsCount = comparisonSalesByClient.length;
-	const comparisonLtvTotal = comparisonSalesByClient.reduce((acc, row) => acc + Number(row.totalVendasCliente ?? 0), 0);
-	const comparisonLtvAverage = comparisonLtvClientsCount > 0 ? comparisonLtvTotal / comparisonLtvClientsCount : 0;
-
-	// Lifetime médio (em dias) considerando primeira e última compra dos clientes no período
-	const comparisonAvgLifetimeDaysResult = await db
-		.select({
-			avgLifetimeDays: sql<number>`AVG(EXTRACT(EPOCH FROM (${clients.ultimaCompraData} - ${clients.primeiraCompraData})) / 86400)`,
-		})
-		.from(clients)
-		.where(
-			and(
-				eq(clients.organizacaoId, userOrgId),
-				comparingPeriodAfter ? gte(clients.primeiraCompraData, comparingPeriodAfter) : undefined,
-				comparingPeriodBefore ? lte(clients.primeiraCompraData, comparingPeriodBefore) : undefined,
-			),
-		);
-
-	// Comparison Total Revenue
-	const comparisonTotalRevenueResult = await db
-		.select({ total: sum(sales.valorTotal) })
-		.from(sales)
-		.where(
-			and(
-				...saleConditions,
-				comparingPeriodAfter ? gte(sales.dataVenda, comparingPeriodAfter) : undefined,
-				comparingPeriodBefore ? lte(sales.dataVenda, comparingPeriodBefore) : undefined,
-			),
-		);
-	const comparisonTotalRevenue = Number(comparisonTotalRevenueResult[0]?.total ?? 0);
-	// Comparison Revenue from Existing Clients
-	const comparisonExistingClientsRevenueResult = await db
-		.select({ total: sum(sales.valorTotal) })
-		.from(sales)
-		.innerJoin(clients, eq(sales.clienteId, clients.id))
-		.where(
-			and(
-				...saleConditions,
-				comparingPeriodAfter ? gte(sales.dataVenda, comparingPeriodAfter) : undefined,
-				comparingPeriodBefore ? lte(sales.dataVenda, comparingPeriodBefore) : undefined,
-				comparingPeriodAfter ? lt(clients.primeiraCompraData, comparingPeriodAfter) : undefined,
-			),
-		);
-
-	// Comparison Revenue from New Clients
-	const comparisonNewClientsRevenueResult = await db
-		.select({ total: sum(sales.valorTotal) })
-		.from(sales)
-		.innerJoin(clients, eq(sales.clienteId, clients.id))
-		.where(
-			and(
-				...saleConditions,
-				comparingPeriodAfter ? gte(sales.dataVenda, comparingPeriodAfter) : undefined,
-				comparingPeriodBefore ? lte(sales.dataVenda, comparingPeriodBefore) : undefined,
-				comparingPeriodAfter ? gte(clients.primeiraCompraData, comparingPeriodAfter) : undefined,
-				comparingPeriodBefore ? lte(clients.primeiraCompraData, comparingPeriodBefore) : undefined,
-			),
-		);
-
-	// Comparison Revenue from Non-Identified Clients (AO CONSUMIDOR)
-	const comparisonNonIdentifiedClientsRevenueResult = await db
-		.select({ total: sum(sales.valorTotal) })
-		.from(sales)
-		.leftJoin(clients, eq(sales.clienteId, clients.id))
-		.where(
-			and(
-				...saleConditions,
-				comparingPeriodAfter ? gte(sales.dataVenda, comparingPeriodAfter) : undefined,
-				comparingPeriodBefore ? lte(sales.dataVenda, comparingPeriodBefore) : undefined,
-				isNull(clients.id),
-			),
-		);
 	return {
 		data: {
+			// Snapshot (acumulado até o fim do período)
 			totalClients: {
-				current: totalClientsResult[0]?.count ?? 0,
-				comparison: comparisonTotalClientsResult[0]?.count ?? 0,
-			},
-			totalNewClients: {
-				current: totalNewClientsResult[0]?.count ?? 0,
-				comparison: comparisonTotalNewClientsResult[0]?.count ?? 0,
+				current: totalClients,
+				comparison: comparison ? comparison.totalClients : null,
 			},
 			ltv: {
-				current: ltvAverage,
-				comparison: comparisonLtvAverage,
+				current: ltv,
+				comparison: comparison ? comparison.ltv : null,
 			},
 			avgLifetime: {
-				current: avgLifetimeDaysResult[0]?.avgLifetimeDays ?? 0,
-				comparison: comparisonAvgLifetimeDaysResult[0]?.avgLifetimeDays ?? 0,
+				current: avgLifetime,
+				comparison: comparison ? comparison.avgLifetime : null,
+			},
+			// Período
+			totalNewClients: {
+				current: newClients,
+				comparison: comparison ? comparison.newClients : null,
+			},
+			periodRevenuePerClient: {
+				current: periodRevenuePerClient,
+				comparison: comparison ? comparison.periodRevenuePerClient : null,
 			},
 			revenueFromRecurrentClients: {
-				current: existingClientsRevenueResult[0]?.total ? Number(existingClientsRevenueResult[0]?.total) : 0,
-				comparison: comparisonExistingClientsRevenueResult[0]?.total ? Number(comparisonExistingClientsRevenueResult[0]?.total) : 0,
-				percentage: totalRevenue > 0 ? (existingClientsRevenue / totalRevenue) * 100 : 0,
+				current: revenue.existing,
+				comparison: comparison ? comparison.revenue.existing : null,
+				percentage: revenue.total > 0 ? (revenue.existing / revenue.total) * 100 : 0,
 			},
 			revenueFromNewClients: {
-				current: newClientsRevenueResult[0]?.total ? Number(newClientsRevenueResult[0]?.total) : 0,
-				comparison: comparisonNewClientsRevenueResult[0]?.total ? Number(comparisonNewClientsRevenueResult[0]?.total) : 0,
-				percentage: totalRevenue > 0 ? (newClientsRevenue / totalRevenue) * 100 : 0,
+				current: revenue.fromNew,
+				comparison: comparison ? comparison.revenue.fromNew : null,
+				percentage: revenue.total > 0 ? (revenue.fromNew / revenue.total) * 100 : 0,
 			},
 			revenueFromNonIdentifiedClients: {
-				current: nonIdentifiedClientsRevenueResult[0]?.total ? Number(nonIdentifiedClientsRevenueResult[0]?.total) : 0,
-				comparison: comparisonNonIdentifiedClientsRevenueResult[0]?.total ? Number(comparisonNonIdentifiedClientsRevenueResult[0]?.total) : 0,
-				percentage: totalRevenue > 0 ? (nonIdentifiedClientsRevenue / totalRevenue) * 100 : 0,
+				current: revenue.nonIdentified,
+				comparison: comparison ? comparison.revenue.nonIdentified : null,
+				percentage: revenue.total > 0 ? (revenue.nonIdentified / revenue.total) * 100 : 0,
 			},
 		},
 	};

@@ -7,6 +7,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { campaignAudienceHasClient, resolveCampaignAudiencesByCampaignId } from "@/lib/campaigns/filters";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
+import { getValidClientSaleWhere } from "@/lib/sales/valid-sale";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
@@ -22,7 +23,7 @@ import {
 	sales,
 } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, asc, count, desc, eq, gt, gte, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import z from "zod";
 
@@ -937,16 +938,6 @@ export type TDeleteSaleOutput = {
 	};
 	message: string;
 };
-
-function getValidClientSaleWhere({ orgId, clientId }: { orgId: string; clientId: string }) {
-	return and(
-		eq(sales.organizacaoId, orgId),
-		eq(sales.clienteId, clientId),
-		eq(sales.natureza, "SN01"),
-		gt(sales.valorTotal, 0),
-		or(isNull(sales.statusVenda), ne(sales.statusVenda, "CANCELADA")),
-	);
-}
 
 async function recalculateClientPurchaseMetadata({ tx, orgId, clientId }: { tx: DBTransaction; orgId: string; clientId: string }) {
 	const validSalesWhere = getValidClientSaleWhere({ orgId, clientId });
