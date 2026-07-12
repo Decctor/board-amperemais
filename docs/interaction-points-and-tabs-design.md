@@ -232,7 +232,7 @@ Visao de operacao dia a dia, complementar ao fulfillment board existente:
 ## Pontos de decisao em aberto
 
 1. **Nome do primitivo de conta**: `tabs` (recomendado — curto, termo consagrado de POS) vs. algo como `serviceAccounts`. `accounts` puro colide com `financialAccounts`.
-2. **Momento da baixa fisica de estoque**: no fechamento, junto da confirmacao (recomendado para v1 — um unico momento de efeitos) vs. na entrega de cada pedido (`tabOrders.status -> ENTREGUE`), que e o evento fisico real (um chopp entregue saiu do estoque mesmo que a conta nunca feche), mas exige tratar baixa contra venda em rascunho e cancelamento de conta com itens ja consumidos.
+2. **Momento da baixa fisica de estoque** — decidido: na entrega de cada pedido (`tabOrders.status -> ENTREGUE`), o evento fisico real, mesmo com a venda ainda em rascunho. Alinha a comanda com o comportamento ja existente para vendas confirmadas (`processSaleAttendanceStatusChange` baixa na transicao com saida fisica). Deduplicacao por item via delta `quantidade - quantidadeEntregue`, tornando o fechamento idempotente. Detalhes — incluindo itens com producao (baixa por composicao de ficha tecnica) — em `tabs-implementation-plan.md`.
 3. **Abertura via QR**: sempre com aprovacao de operador (recomendado como default, igual ao POI atual) vs. auto-abertura configuravel.
 4. **Criacao da venda em rascunho**: lazy no primeiro pedido (recomendado — abrir conta nao cria venda vazia) vs. na abertura da tab.
 5. **Rotulo por segmento**: configuracao da organizacao para exibir "Comanda"/"Conta"/"Ficha" na UI — fica para quando outro segmento usar o primitivo.
