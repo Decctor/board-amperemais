@@ -88,8 +88,9 @@ async function computeLtvSnapshot({ orgId, until }: { orgId: string; until: Date
  * a última compra é limitada ao fim do período via LEAST para snapshots históricos.
  */
 async function computeAvgLifetimeSnapshot({ orgId, until }: { orgId: string; until: Date | null }) {
+	// Date crua interpolada em sql`` não tem contexto de coluna para o driver serializar; vai como ISO string + cast.
 	const lifetimeDays = until
-		? sql<number>`AVG(EXTRACT(EPOCH FROM (LEAST(${clients.ultimaCompraData}, ${until}) - ${clients.primeiraCompraData})) / 86400)`
+		? sql<number>`AVG(EXTRACT(EPOCH FROM (LEAST(${clients.ultimaCompraData}, ${until.toISOString()}::timestamp) - ${clients.primeiraCompraData})) / 86400)`
 		: sql<number>`AVG(EXTRACT(EPOCH FROM (${clients.ultimaCompraData} - ${clients.primeiraCompraData})) / 86400)`;
 
 	const result = await db
@@ -172,11 +173,7 @@ async function computePeriodRevenueBreakdown({ orgId, after, before }: { orgId: 
 		.from(sales)
 		.innerJoin(clients, eq(sales.clienteId, clients.id))
 		.where(
-			and(
-				...saleConditions,
-				after ? gte(clients.primeiraCompraData, after) : undefined,
-				before ? lte(clients.primeiraCompraData, before) : undefined,
-			),
+			and(...saleConditions, after ? gte(clients.primeiraCompraData, after) : undefined, before ? lte(clients.primeiraCompraData, before) : undefined),
 		);
 	const fromNew = Number(fromNewResult[0]?.total ?? 0);
 

@@ -174,41 +174,41 @@ function SalesHistoryView() {
 }
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
-	DINHEIRO: "Dinheiro",
+	DINHEIRO: "DINHEIRO",
 	PIX: "PIX",
-	CARTAO_CREDITO: "Crédito",
-	CARTAO_DEBITO: "Débito",
-	BOLETO: "Boleto",
-	TRANSFERENCIA: "Transferência",
-	CASHBACK: "Cashback",
-	VALE: "Vale",
-	A_DEFINIR: "A definir",
-	FIADO_NOTA: "Fiado",
-	OUTRO: "Outro",
+	CARTAO_CREDITO: "CRÉDITO",
+	CARTAO_DEBITO: "DÉBITO",
+	BOLETO: "BOLETO",
+	TRANSFERENCIA: "TRANSFERÊNCIA",
+	CASHBACK: "CASHBACK",
+	VALE: "VALE",
+	A_DEFINIR: "A DEFINIR",
+	FIADO_NOTA: "FIADO",
+	OUTRO: "OUTRO",
 };
 
 const FINANCIAL_CHIP_META: Record<string, { label: string; className: string }> = {
-	PENDENTE: { label: "A receber", className: "border-border/60 bg-muted/30 text-foreground/80" },
-	PARCIALMENTE_RECEBIDA: { label: "Parcial", className: "border-border/60 bg-muted/30 text-foreground/80" },
-	RECEBIDA: { label: "Recebido", className: "border-green-600/25 bg-green-500/10 text-green-700 dark:text-green-400" },
-	EM_ATRASO: { label: "Em atraso", className: "border-destructive/30 bg-destructive/10 text-destructive" },
+	PENDENTE: { label: "A RECEBER", className: "border-border/60 bg-muted/30 text-foreground/80" },
+	PARCIALMENTE_RECEBIDA: { label: "PARCIAL", className: "border-border/60 bg-muted/30 text-foreground/80" },
+	RECEBIDA: { label: "RECEBIDA", className: "border-green-600/25 bg-green-500/10 text-green-700 dark:text-green-400" },
+	EM_ATRASO: { label: "EM ATRASO", className: "border-destructive/30 bg-destructive/10 text-destructive" },
 };
 
 const FISCAL_CHIP_META: Record<string, { label: string; className: string }> = {
-	NAO_EMITIDO: { label: "Sem nota", className: "border-border/60 bg-muted/30 text-muted-foreground" },
-	PENDENTE: { label: "Nota pendente", className: "border-border/60 bg-muted/30 text-foreground/80" },
-	EM_PROCESSAMENTO: { label: "Nota processando", className: "border-border/60 bg-muted/30 text-foreground/80" },
-	AUTORIZADO: { label: "Autorizada", className: "border-green-600/25 bg-green-500/10 text-green-700 dark:text-green-400" },
-	REJEITADO: { label: "Nota rejeitada", className: "border-destructive/30 bg-destructive/10 text-destructive" },
-	CANCELADO: { label: "Nota cancelada", className: "border-border/60 bg-muted/30 text-muted-foreground" },
-	INUTILIZADO: { label: "Nota inutilizada", className: "border-border/60 bg-muted/30 text-muted-foreground" },
-	ERRO: { label: "Erro fiscal", className: "border-destructive/30 bg-destructive/10 text-destructive" },
+	NAO_EMITIDO: { label: "SEM NOTA", className: "border-border/60 bg-muted/30 text-muted-foreground" },
+	PENDENTE: { label: "NOTA PENDENTE", className: "border-border/60 bg-muted/30 text-foreground/80" },
+	EM_PROCESSAMENTO: { label: "NOTA PROCESSANDO", className: "border-border/60 bg-muted/30 text-foreground/80" },
+	AUTORIZADO: { label: "AUTORIZADA", className: "border-green-600/25 bg-green-500/10 text-green-700 dark:text-green-400" },
+	REJEITADO: { label: "NOTA REJEITADA", className: "border-destructive/30 bg-destructive/10 text-destructive" },
+	CANCELADO: { label: "NOTA CANCELADA", className: "border-border/60 bg-muted/30 text-muted-foreground" },
+	INUTILIZADO: { label: "NOTA INUTILIZADA", className: "border-border/60 bg-muted/30 text-muted-foreground" },
+	ERRO: { label: "ERRO FISCAL", className: "border-destructive/30 bg-destructive/10 text-destructive" },
 };
 
 const SALE_STATUS_CHIP_META: Record<string, { label: string; className: string }> = {
-	ORCAMENTO: { label: "Orçamento", className: "border-border/60 bg-muted/30 text-foreground/80" },
-	CONDICIONAL: { label: "Condicional", className: "border-border/60 bg-muted/30 text-foreground/80" },
-	CANCELADA: { label: "Cancelada", className: "border-destructive/30 bg-destructive/10 text-destructive" },
+	ORCAMENTO: { label: "ORÇAMENTO", className: "border-border/60 bg-muted/30 text-foreground/80" },
+	CONDICIONAL: { label: "CONDICIONAL", className: "border-border/60 bg-muted/30 text-foreground/80" },
+	CANCELADA: { label: "CANCELADA", className: "border-destructive/30 bg-destructive/10 text-destructive" },
 };
 
 function SaleErpChip({ icon, children, className }: { icon: ReactNode; children: ReactNode; className: string }) {

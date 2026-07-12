@@ -431,6 +431,7 @@ function ClientsStatsView() {
 			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
 				<StatUnitCard
 					title="TOTAL DE CLIENTES"
+					subtitle="Número de clientes identificados"
 					icon={<Users className="w-4 h-4 min-w-4 min-h-4" />}
 					temporalScope={{ tipo: "ACUMULADO", ate: filters.periodBefore }}
 					previousLabel="NO FIM DO PERÍODO ANTERIOR"
@@ -507,7 +508,6 @@ function ClientsStatsView() {
 				/>
 				<StatUnitCard
 					title="RECEITA MÉDIA POR CLIENTE"
-					subtitle="Entre os clientes identificados que compraram no período"
 					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
 					current={{
 						value: clientsOverallStats?.periodRevenuePerClient.current || 0,

@@ -11,13 +11,13 @@ import ProductsPortfolioAnalysisSection from "@/app/dashboard/commercial/product
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
-import { StatBadge } from "@/components/ui/stat-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
-import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useProducts, useProductsOverallStats } from "@/lib/queries/products";
 import { cn } from "@/lib/utils";
 import type { TGetProductsDefaultInput, TGetProductsOutputDefault } from "@/app/api/products/route";
@@ -29,9 +29,9 @@ import {
 	AlertCircle,
 	AlertTriangle,
 	BadgeDollarSign,
-	CirclePlus,
+	ChevronDown,
+	ChevronUp,
 	Code,
-	Clock,
 	Diamond,
 	DollarSign,
 	Info,
@@ -40,14 +40,13 @@ import {
 	Plus,
 	RefreshCw,
 	ShoppingCart,
-	Star,
 	TrendingUp,
 	Users,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 type ProductsPageProps = {
 	user: TAuthUserSession["user"];
@@ -376,6 +375,30 @@ function ProductsStatsView() {
 	);
 }
 
+function ProductStatCell({ label, tooltip, children }: { label: string; tooltip?: ReactNode; children: ReactNode }) {
+	const content = (
+		<div className="flex min-w-0 flex-col items-start gap-1">
+			<span className="text-[0.6rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+			{children}
+		</div>
+	);
+
+	if (!tooltip) return content;
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>{content}</TooltipTrigger>
+			<TooltipContent>{tooltip}</TooltipContent>
+		</Tooltip>
+	);
+}
+
+function ProductStatValue({ children, className }: { children: ReactNode; className?: string }) {
+	if (children === null || children === undefined) {
+		return <span className="text-sm font-semibold tracking-tight text-muted-foreground">—</span>;
+	}
+	return <span className={cn("text-sm font-semibold tracking-tight tabular-nums", className)}>{children}</span>;
+}
+
 function ProductCard({
 	product,
 	periodAfter,
@@ -387,6 +410,7 @@ function ProductCard({
 	periodBefore: Date | null;
 	showStockData: boolean;
 }) {
+	const [showMoreMetrics, setShowMoreMetrics] = useState(false);
 	// Calculate stock status
 	const quantidade = product.quantidade ?? 0;
 	const getStockStatus = () => {
@@ -445,9 +469,23 @@ function ProductCard({
 	const turnoverResult = calculateTurnover();
 	const turnoverDays = turnoverResult?.days ?? null;
 
+	const vendasQtde = product.estatisticas.vendasQtdeTotal;
+	const vendasValor = product.estatisticas.vendasValorTotal;
+	const vendasCusto = product.estatisticas.vendasCustoTotal;
+	const hasSales = vendasQtde > 0;
+	// Custo zerado quase sempre significa produto sem custo cadastrado no ERP — exibir "—" evita uma margem de 100% falsa
+	const hasCost = vendasCusto > 0;
+	const precoMedio = hasSales ? vendasValor / vendasQtde : null;
+	const custoMedio = hasSales && hasCost ? vendasCusto / vendasQtde : null;
+	const lucro = hasCost ? vendasValor - vendasCusto : null;
+	const margem = hasCost && vendasValor > 0 ? ((vendasValor - vendasCusto) / vendasValor) * 100 : null;
+
+	const noCostTooltip = "Sem custo registrado nas vendas do período. Verifique o preço de custo do produto.";
+	const noSalesTooltip = "Sem vendas no período.";
+
 	return (
 		<div className={cn("bg-card border-border flex w-full flex-col sm:flex-row gap-2 rounded-xl border px-3 py-4 shadow-2xs")}>
-			<div className="flex items-center justify-center">
+			<div className="flex items-start justify-center">
 				<div className="relative h-16 max-h-16 min-h-16 w-16 max-w-16 min-w-16 overflow-hidden rounded-lg">
 					{product.imagemCapaUrl ? (
 						<Image src={product.imagemCapaUrl} alt="Imagem de capa do produto" fill={true} objectFit="cover" />
@@ -458,83 +496,22 @@ function ProductCard({
 					)}
 				</div>
 			</div>
-			<div className=" flex flex-col grow gap-1">
-				<div className="w-full flex items-center flex-col md:flex-row justify-between gap-2">
-					<div className="flex items-center gap-2 flex-wrap">
-						<h1 className="text-xs font-bold tracking-tight lg:text-sm">{product.nome}</h1>
-						<div className="flex items-center gap-1">
-							<Code className="w-4 h-4 min-w-4 min-h-4" />
-							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{product.codigo}</h1>
-						</div>
-						{product.grupo ? (
+			<div className="flex flex-col grow gap-2">
+				<div className="w-full flex items-start flex-col md:flex-row justify-between gap-2">
+					<div className="flex flex-col gap-0.5">
+						<div className="flex items-center gap-2 flex-wrap">
+							<h1 className="text-xs font-bold tracking-tight lg:text-sm">{product.nome}</h1>
 							<div className="flex items-center gap-1">
-								<Diamond className="w-4 h-4 min-w-4 min-h-4" />
-								<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{product.grupo}</h1>
+								<Code className="w-4 h-4 min-w-4 min-h-4" />
+								<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{product.codigo}</h1>
 							</div>
-						) : null}
-					</div>
-					<div className="flex items-center gap-3 flex-col md:flex-row gap-y-1">
-						<TooltipProvider>
-							<div className="flex items-center gap-3 flex-wrap">
-								{showStockData ? (
-									<>
-										{/* Stock Status Badge */}
-										<StatBadge
-											icon={<Package className="w-4 min-w-4 h-4 min-h-4" />}
-											value={stockStatus.label}
-											tooltipContent="Quantidade em estoque atual"
-											className={cn(stockStatus.color)}
-										/>
-										{/* Turnover Indicator */}
-										{turnoverDays !== null && (
-											<StatBadge
-												icon={<Clock className="w-4 min-w-4 h-4 min-h-4" />}
-												value={turnoverResult?.isCapped ? `${turnoverDays}+D` : `${turnoverDays}D`}
-												tooltipContent="Dias de estoque restantes no ritmo de vendas atual"
-												className={cn({
-													"bg-red-500 dark:bg-red-600 text-white": turnoverDays < 7,
-													"bg-yellow-500 dark:bg-yellow-600 text-white": turnoverDays >= 7 && turnoverDays < 30,
-													"bg-green-500 dark:bg-green-600 text-white": turnoverDays >= 30 && turnoverDays < 90,
-													"bg-blue-500 dark:bg-blue-600 text-white": turnoverDays >= 90 && turnoverDays < 180,
-													"bg-purple-500 dark:bg-purple-600 text-white": turnoverDays >= 180,
-												})}
-											/>
-										)}
-									</>
-								) : null}
-
-								<StatBadge
-									icon={<CirclePlus className="w-4 min-w-4 h-4 min-h-4" />}
-									value={product.estatisticas.vendasQtdeTotal}
-									tooltipContent="Quantidade total vendida no período"
-								/>
-								<StatBadge
-									icon={<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />}
-									value={formatToMoney(product.estatisticas.vendasValorTotal)}
-									tooltipContent="Faturamento total no período"
-								/>
-								<StatBadge
-									icon={<Star className="w-4 min-w-4 h-4 min-h-4" />}
-									value={product.estatisticas.curvaABC}
-									tooltipContent={`Curva ABC: ${
-										product.estatisticas.curvaABC === "A"
-											? "80% do faturamento"
-											: product.estatisticas.curvaABC === "B"
-												? "15% do faturamento"
-												: "5% do faturamento"
-									}`}
-									className={cn({
-										"bg-green-500 dark:bg-green-600 text-white": product.estatisticas.curvaABC === "A",
-										"bg-yellow-500 dark:bg-yellow-600 text-white": product.estatisticas.curvaABC === "B",
-										"bg-red-500 dark:bg-red-600 text-white": product.estatisticas.curvaABC === "C",
-									})}
-								/>
-							</div>
-						</TooltipProvider>
-					</div>
-				</div>
-				<div className="w-full flex items-center justify-between gap-2 flex-wrap">
-					<div className="flex items-center gap-1.5">
+							{product.grupo ? (
+								<div className="flex items-center gap-1">
+									<Diamond className="w-4 h-4 min-w-4 min-h-4" />
+									<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">{product.grupo}</h1>
+								</div>
+							) : null}
+						</div>
 						<div className="flex items-center gap-1">
 							<DollarSign className="w-4 h-4 min-w-4 min-h-4" />
 							<h1 className="py-0.5 text-center text-[0.65rem] font-medium italic text-foreground/80">
@@ -557,6 +534,131 @@ function ProductCard({
 						</Button>
 					</div>
 				</div>
+				<TooltipProvider>
+					<div
+						className={cn(
+							"grid w-full gap-x-2 gap-y-2 border-t border-border pt-2",
+							showStockData ? "grid-cols-3 lg:grid-cols-6" : "grid-cols-2 lg:grid-cols-4",
+						)}
+					>
+						{showStockData ? (
+							<>
+								<ProductStatCell label="Estoque" tooltip="Quantidade em estoque atual">
+									<Chip.Root size="xs" shape="pill" className={cn(stockStatus.color)}>
+										<Chip.Label caps weight="bold">
+											{stockStatus.label}
+										</Chip.Label>
+									</Chip.Root>
+								</ProductStatCell>
+								<ProductStatCell
+									label="Giro"
+									tooltip={
+										turnoverDays !== null ? "Dias de estoque restantes no ritmo de vendas do período" : "Sem vendas no período para calcular o giro."
+									}
+								>
+									{turnoverDays !== null ? (
+										<Chip.Root
+											size="xs"
+											shape="pill"
+											className={cn({
+												"bg-red-500 dark:bg-red-600 text-white": turnoverDays < 7,
+												"bg-yellow-500 dark:bg-yellow-600 text-white": turnoverDays >= 7 && turnoverDays < 30,
+												"bg-green-500 dark:bg-green-600 text-white": turnoverDays >= 30 && turnoverDays < 90,
+												"bg-blue-500 dark:bg-blue-600 text-white": turnoverDays >= 90 && turnoverDays < 180,
+												"bg-purple-500 dark:bg-purple-600 text-white": turnoverDays >= 180,
+											})}
+										>
+											<Chip.Label caps weight="bold">
+												{turnoverResult?.isCapped ? `${turnoverDays}+ dias` : `${turnoverDays} dias`}
+											</Chip.Label>
+										</Chip.Root>
+									) : (
+										<ProductStatValue>{null}</ProductStatValue>
+									)}
+								</ProductStatCell>
+							</>
+						) : null}
+						<ProductStatCell
+							label="Curva"
+							tooltip={`Curva ABC: ${
+								product.estatisticas.curvaABC === "A"
+									? "80% do faturamento"
+									: product.estatisticas.curvaABC === "B"
+										? "15% do faturamento"
+										: "5% do faturamento"
+							}`}
+						>
+							<Chip.Root
+								size="xs"
+								shape="pill"
+								className={cn({
+									"bg-green-500 dark:bg-green-600 text-white": product.estatisticas.curvaABC === "A",
+									"bg-yellow-500 dark:bg-yellow-600 text-white": product.estatisticas.curvaABC === "B",
+									"bg-red-500 dark:bg-red-600 text-white": product.estatisticas.curvaABC === "C",
+								})}
+							>
+								<Chip.Label caps weight="bold">
+									{product.estatisticas.curvaABC}
+								</Chip.Label>
+							</Chip.Root>
+						</ProductStatCell>
+						<ProductStatCell label="Vendidos" tooltip="Quantidade total vendida no período">
+							<ProductStatValue>{formatDecimalPlaces(vendasQtde)}</ProductStatValue>
+						</ProductStatCell>
+						<ProductStatCell label="Faturamento" tooltip="Faturamento total no período">
+							<ProductStatValue>{formatToMoney(vendasValor)}</ProductStatValue>
+						</ProductStatCell>
+						<ProductStatCell
+							label="Margem"
+							tooltip={margem !== null ? "Margem bruta do período: (faturamento − custo) ÷ faturamento" : hasSales ? noCostTooltip : noSalesTooltip}
+						>
+							<ProductStatValue className={cn(margem !== null && margem < 0 && "text-red-600 dark:text-red-500")}>
+								{margem !== null ? `${formatDecimalPlaces(margem)}%` : null}
+							</ProductStatValue>
+						</ProductStatCell>
+					</div>
+					{showMoreMetrics ? (
+						<div className="grid w-full grid-cols-2 lg:grid-cols-5 gap-x-2 gap-y-2 rounded-lg bg-muted/40 p-2">
+							<ProductStatCell label="Preço médio" tooltip={precoMedio !== null ? "Faturamento ÷ quantidade vendida no período" : noSalesTooltip}>
+								<ProductStatValue>{precoMedio !== null ? formatToMoney(precoMedio) : null}</ProductStatValue>
+							</ProductStatCell>
+							<ProductStatCell
+								label="Custo médio"
+								tooltip={custoMedio !== null ? "Custo total ÷ quantidade vendida no período" : hasSales ? noCostTooltip : noSalesTooltip}
+							>
+								<ProductStatValue>{custoMedio !== null ? formatToMoney(custoMedio) : null}</ProductStatValue>
+							</ProductStatCell>
+							<ProductStatCell
+								label="Custo total"
+								tooltip={hasCost ? "Custo dos itens vendidos no período" : hasSales ? noCostTooltip : noSalesTooltip}
+							>
+								<ProductStatValue>{hasCost ? formatToMoney(vendasCusto) : null}</ProductStatValue>
+							</ProductStatCell>
+							<ProductStatCell
+								label="Lucro"
+								tooltip={lucro !== null ? "Faturamento − custo no período" : hasSales ? noCostTooltip : noSalesTooltip}
+							>
+								<ProductStatValue className={cn(lucro !== null && lucro < 0 && "text-red-600 dark:text-red-500")}>
+									{lucro !== null ? formatToMoney(lucro) : null}
+								</ProductStatValue>
+							</ProductStatCell>
+							<ProductStatCell label="Última venda" tooltip="Data da última venda do produto no período">
+								<ProductStatValue>
+									{product.estatisticas.dataUltimaVenda ? formatDateAsLocale(product.estatisticas.dataUltimaVenda) : null}
+								</ProductStatValue>
+							</ProductStatCell>
+						</div>
+					) : null}
+				</TooltipProvider>
+				<Button
+					variant="ghost"
+					size="sm"
+					className="h-6 w-full gap-1 text-[0.65rem] font-medium text-muted-foreground"
+					onClick={() => setShowMoreMetrics((prev) => !prev)}
+				>
+					{showMoreMetrics ? <ChevronUp className="w-3 min-w-3 h-3 min-h-3" /> : <ChevronDown className="w-3 min-w-3 h-3 min-h-3" />}
+					{showMoreMetrics ? "MENOS MÉTRICAS" : "MAIS MÉTRICAS"}
+				</Button>
 			</div>
 		</div>
 	);

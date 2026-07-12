@@ -660,6 +660,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 				"total_sales_value",
 			),
 			totalSalesQty: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.quantidade} ELSE 0 END)`.as("total_sales_qty"),
+			totalCostValue: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorCustoTotal} ELSE 0 END)`.as("total_cost_value"),
 			firstSaleDate: min(sales.dataVenda).as("first_sale_date"),
 			lastSaleDate: max(sales.dataVenda).as("last_sale_date"),
 			// Curva ABC - calculamos via window functions
@@ -706,6 +707,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 			dataUltimaSincronizacao: productStatsSubquery.dataUltimaSincronizacao,
 			totalSalesValue: productStatsSubquery.totalSalesValue,
 			totalSalesQty: productStatsSubquery.totalSalesQty,
+			totalCostValue: productStatsSubquery.totalCostValue,
 			firstSaleDate: productStatsSubquery.firstSaleDate,
 			lastSaleDate: productStatsSubquery.lastSaleDate,
 			curvaABC: curvaABCSql.as("curva_abc"),
@@ -781,6 +783,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 			estatisticas: {
 				vendasValorTotal: totalSales,
 				vendasQtdeTotal: row.totalSalesQty ? Number(row.totalSalesQty) : 0,
+				vendasCustoTotal: row.totalCostValue ? Number(row.totalCostValue) : 0,
 				dataPrimeiraVenda: row.firstSaleDate ?? null,
 				dataUltimaVenda: row.lastSaleDate ?? null,
 				curvaABC: row.curvaABC,
