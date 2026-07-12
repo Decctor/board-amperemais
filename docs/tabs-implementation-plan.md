@@ -281,6 +281,19 @@ Todas seguindo o padrao quatro partes (schema de input, service, handler, `appAp
 | `app/api/tabs/cancel/route.ts` | POST (cancelar conta ou pedido, com flag de tratamento de estoque p/ entregues) | |
 | `app/api/sales/fulfillment/route.ts` | GET (existente) | adicionar segunda fonte de cards a partir de `tabOrders` ativos (`map-tab-order-to-fulfillment-card.ts`) |
 
+### KDS: um board, duas fontes de ticket
+
+O board de cozinha e uma **view**, nao uma entidade. Ele une dois tipos de card com o mesmo enum (`saleAttendanceStatusEnum`) e as mesmas transicoes:
+
+- **vendas confirmadas com preparo** (delivery, retirada, balcao, integracoes externas) — fonte que ja existe. Nessas modalidades o grao do ticket coincide com a venda: 1 venda = 1 ticket, nascendo `EM_PREPARO` via `resolveInitialAttendanceStatus`. Delivery nao passa por tab/ponto/tabOrder — `tabId` e nullable em tudo justamente por isso;
+- **`tabOrders` ativos de contas abertas** — a fonte nova, para o unico caso em que o grao diverge (comanda: 1 venda rascunho : N rodadas).
+
+Para o operador de cozinha os tickets sao homogeneos (itens, status, tempo decorrido, quick actions); a origem e apenas um badge no card ("Mesa 12", "iFood", "Retirada").
+
+**Nao** criar um `tabOrder` por venda de delivery para unificar a fonte: duplicaria estado (`statusAtendimento` da venda + status do ticket) com onus de sincronizacao e ganho zero — o wrapper so tem valor quando o grao diverge.
+
+Evolucao futura, se surgir demanda de KDS dedicado (roteamento por praca/estacao, tempos por item): generalizar `tab_orders` em tickets de cozinha com `vendaId` e `tabId` nullable, criados na confirmacao para modalidades com preparo, e derivar `statusAtendimento` dos tickets. Como `tabOrders` ja reusa o enum e as transicoes das vendas, essa generalizacao e aditiva e nao exige migracao dolorosa. Fora do escopo atual.
+
 Paginas externas (QR), seguindo o padrao do playbook de POI (`tokenPublico` opaco, sem autenticacao, acao sensivel via `poiTransactionRequest`):
 
 - `app/(external)/poi/[token]/` — resolve ponto: mostra conta(s) aberta(s) ou CTA "abrir conta" (cria request `ABERTURA_TAB` pendente de aprovacao);
