@@ -110,38 +110,92 @@ Notas:
 
 ## Relacao com vendas
 
-Cada **pedido/rodada** dentro da conta e uma venda normal ligada a tab:
+O grao comercial correto da comanda e a **conta**, nao o pedido. Na operacao real, pagamento, fiscal e contabilidade acontecem uma unica vez, no fechamento:
+
+- pagamento: um acerto no final, frequentemente dividido entre pessoas/metodos — que nao mapeia para as rodadas individuais;
+- fiscal: uma NFC-e cobrindo todo o consumo da conta, nao uma por rodada;
+- contabil: um lancamento por conta.
+
+Somente a cozinha opera no grao do pedido (rodada). O modelo reflete isso:
+
+### Venda em rascunho por conta
+
+Ao lancar o primeiro pedido de uma tab, criar uma venda em rascunho (`statusVenda = "ORCAMENTO"`) ligada a conta:
 
 ```ts
 sales.tabId // varchar FK tabs, set null, nullable
 ```
 
-A tab e um **container de vendas**, nao uma venda gigante:
+Os pedidos seguintes apendam itens nessa mesma venda, reusando toda a infra existente de itens (`saleItems`, `saleItemModifiers`, precificacao, adicionais). Isso se apoia diretamente na decisao previa de `sales-status-and-fulfillment-design.md`: status comercial e status operacional sao eixos independentes — uma venda em `ORCAMENTO` nao dispara nenhum efeito de ERP.
 
-- cada rodada confirmada (`statusVenda = "CONFIRMADA"`) entra no pipeline operacional existente (`statusAtendimento`, fulfillment board) sem nenhuma mudanca — a cozinha enxerga rodadas, nao a conta;
-- o total da tab e derivado (soma das vendas nao canceladas ligadas a ela); `valorTotal` so e congelado no fechamento, como `salesSessions` faz com `totalEsperado`;
-- financeiro: as rodadas confirmadas geram `financialTransactions` a receber (`dataEfetivacao = null`), coerente com o design em `sales-status-and-fulfillment-design.md`. No fechamento da tab, o operador informa os metodos de pagamento e as transacoes sao efetivadas — vinculadas a `salesSession` aberta de quem fecha, para a conferencia de caixa continuar integra;
-- `deliveryModeEnum = "COMANDA"` continua marcando as rodadas de consumo no local (o `resolveInitialAttendanceStatus` existente ja trata).
+Regras:
 
-### Alternativa rejeitada: venda unica crescente
+- partial unique index em `sales.tabId WHERE status_venda = 'ORCAMENTO'` — uma unica venda em aberto por conta;
+- a FK permanece 1:N estruturalmente para suportar **fechamento parcial** no futuro (mover itens selecionados para uma nova venda e confirma-la, deixando o resto da conta aberta) sem migracao;
+- `dataVenda` e definida no fechamento — o momento comercial real da venda e quando ela e paga, nao quando a conta abriu.
 
-Modelar a comanda como uma unica venda em rascunho que acumula itens e e confirmada no fechamento:
+### Pedidos (`tabOrders`)
 
-- quebra o pipeline de cozinha por rodada (o `statusAtendimento` e por venda; rodadas diferentes estariam em etapas diferentes);
-- atrasa todos os efeitos de ERP para o fechamento, distorcendo data de venda e relatorios intra-dia;
-- conflita com o principio ja decidido de separar status comercial de status operacional.
+As rodadas viram uma entidade operacional leve, nao uma venda:
 
-O modelo de container preserva tudo que ja foi construido para fulfillment.
+```ts
+tabOrders {
+  id
+  organizacaoId            // FK organizations, cascade
+  tabId                    // FK tabs, cascade
+  numero                   // sequencial dentro da conta (Pedido 1, 2, 3...)
+  status                   // reusa saleAttendanceStatusEnum (NAO_INICIADO, EM_PREPARO, PRONTO, ENTREGUE, CANCELADO)
+  observacoes              // "sem cebola", nome da pessoa da rodada
+  dataEnvio                // defaultNow — quando o pedido foi lancado
+  dataInsercao
+}
+```
+
+E os itens ganham o vinculo com a rodada:
+
+```ts
+saleItems.tabOrderId // varchar FK tabOrders, set null, nullable
+```
+
+`tabOrders` nao tem identidade comercial, financeira nem fiscal — e puramente o ticket operacional que a cozinha enxerga, espelhando a comanda de papel (varios pedidos enviados ao longo do atendimento).
+
+Fulfillment board: hoje ele lista apenas vendas com `statusVenda = "CONFIRMADA"` (`app/api/sales/fulfillment/route.ts`), portanto pedidos de comanda exigiriam trabalho no board em qualquer modelo. Com `tabOrders`, o board ganha uma segunda fonte de cards (pedidos ativos de contas abertas), usando o mesmo enum e transicoes analogas as ja validadas para vendas. A cozinha enxerga tickets por rodada; a conta agrega.
+
+### Fechamento
+
+Fechar a conta = checkout da venda em rascunho:
+
+1. o operador informa os metodos de pagamento reais — divisao entre pessoas vira multiplas `financialTransactions` com metodos/valores distintos na mesma venda;
+2. `statusVenda -> "CONFIRMADA"`: todos os efeitos de ERP disparam uma unica vez com dados verdadeiros — lancamento contabil, transacoes financeiras ja efetivadas e vinculadas ao turno de caixa (`salesSession`) aberto de quem fecha, emissao fiscal automatica conforme configuracao, estoque;
+3. `statusAtendimento` da venda vai para `ENTREGUE`; tab vai para `FECHADA` com `valorTotal` congelado.
+
+Nao existem recebiveis sinteticos durante o consumo: enquanto a conta esta aberta, o "financeiro" dela e apenas o total parcial derivado dos itens, exibido no board.
+
+### Alternativa rejeitada: cada pedido como venda confirmada com recebiveis
+
+Confirmar cada rodada como venda propria, gerando `financialTransactions` a receber e efetivando no fechamento. Rejeitada porque:
+
+- o metodo de pagamento nao e conhecido no momento do pedido — as transacoes a receber por rodada seriam placeholders sem informacao real;
+- o pagamento real (unico, ou dividido entre pessoas) nao mapeia para as rodadas; alocar valores pro-rata entre vendas seria dado inventado;
+- fiscal: emite-se uma NFC-e por conta, e `fiscalOutboundDocuments` referencia uma venda — N vendas por conta exigiria N documentos ou documento multi-venda;
+- lancamentos contabeis por rodada geram ruido e possiveis estornos no fechamento.
+
+O unico ponto forte desse modelo — pipeline de cozinha por rodada via `statusAtendimento` — e coberto por `tabOrders` com custo menor.
+
+### Efeitos colaterais aceitos
+
+- vendas em rascunho de contas abertas nao aparecem em relatorios de venda ate o fechamento. Comercialmente correto (a venda ainda nao aconteceu); o board de contas abertas expoe o "consumo em aberto" como metrica derivada para quem precisar do numero intra-dia;
+- contas abandonadas: o board mostra a idade da conta; cancelar a tab cancela a venda em rascunho (`CANCELADA`) e os pedidos.
 
 ## QR Codes
 
-Dois QRs, dois tokens, duas anceoras — ambos seguindo o padrao de seguranca ja existente em `poiTransactionRequests` (`tokenPublico` opaco, pagina externa, acao sensivel exige aprovacao de operador):
+Dois QRs, dois tokens, duas ancoras — ambos seguindo o padrao de seguranca ja existente em `poiTransactionRequests` (`tokenPublico` opaco, pagina externa, acao sensivel exige aprovacao de operador):
 
 ### QR do ponto (duravel, impresso na mesa/quarto/box)
 
 Pagina publica em `app/(external)/` resolve o token do ponto:
 
-- se ha tab(s) aberta(s) no ponto: exibe a conta atual (rodadas, itens, total parcial);
+- se ha tab(s) aberta(s) no ponto: exibe a conta atual (pedidos, itens, total parcial);
 - se nao ha: CTA "abrir conta", que cria uma `poiTransactionRequest` com novo tipo (ex.: `ABERTURA_TAB`) pendente de aprovacao do operador — mesmo fluxo de aprovacao do POI atual. Auto-abertura sem aprovacao pode virar configuracao da organizacao depois;
 - `poiTransactionRequestTypeEnum` ganha o(s) novo(s) tipo(s); `poiTransactionRequests` ganha `pontoInteracaoId` e `tabId` nullable.
 
@@ -153,41 +207,44 @@ Fora de escopo nesta fase: self-order completo pelo QR (cliente montando pedido 
 
 ## Board operacional
 
-Visao de operacao dia a dia, complementar ao fulfillment board existente (que continua sendo o eixo da cozinha):
+Visao de operacao dia a dia, complementar ao fulfillment board existente:
 
 - **eixo conta**: tabs com `status = "ABERTA"` da organizacao, com ponto, cliente, responsavel, total parcial derivado e idade da conta;
 - **eixo ponto**: pontos ativos LEFT JOIN tabs abertas — ponto sem tab aberta aparece como "livre", com tab(s) como "ocupado". Isso da o "mapa de mesas" sem precisar de tabela de mesa;
-- indices ja previstos cobrem as duas queries (`tabs (organizacaoId, status)`, `pointsOfInteraction (organizacaoId, ativo)`).
+- **eixo cozinha**: o fulfillment board existente ganha cards de `tabOrders` ativos alem dos cards de venda;
+- indices ja previstos cobrem as queries (`tabs (organizacaoId, status)`, `pointsOfInteraction (organizacaoId, ativo)`, `tabOrders (tabId)` + `(organizacaoId, status)`).
 
 ## Migracao e compatibilidade
 
 - `sales.comandaNumero` permanece como snapshot legado. No novo fluxo, ao ligar uma venda a uma tab, denormalizar `tab.codigo` em `comandaNumero` para relatorios existentes continuarem funcionando. Deprecar o campo apenas quando o fluxo novo estiver consolidado;
 - vendas antigas com `comandaNumero` preenchido nao precisam de backfill — tabs passam a existir apenas para contas novas;
-- nenhuma mudanca em `salesSessions`: caixa e comanda seguem ortogonais (a comanda fecha *dentro* de um turno de caixa).
+- nenhuma mudanca em `salesSessions`: caixa e comanda seguem ortogonais (a comanda fecha *dentro* de um turno de caixa);
+- `deliveryModeEnum = "COMANDA"` continua marcando a venda da conta (o `resolveInitialAttendanceStatus` existente ja trata).
 
 ## O que nao fazer agora
 
 - reserva de mesa/agenda de pontos;
 - mapa visual de salao com posicionamento (coordenadas em `metadados` do ponto se um dia precisar);
-- divisao de conta item a item entre clientes (dividir por rodada ja sai de graca: cada venda da tab pode ter `clienteId` diferente);
+- fechamento parcial e divisao de conta item a item (a estrutura 1:N de `sales.tabId` ja suporta a evolucao; dividir por metodo de pagamento no fechamento ja atende o caso comum);
 - self-order completo via QR;
 - impressao termica de comanda.
 
 ## Pontos de decisao em aberto
 
 1. **Nome do primitivo de conta**: `tabs` (recomendado — curto, termo consagrado de POS) vs. algo como `serviceAccounts`. `accounts` puro colide com `financialAccounts`.
-2. **Nome da FK em vendas**: `sales.tabId` (recomendado) — "tab" vira termo do dominio, como "poi" ja e.
-3. **Fechamento e pagamento**: efetivar as `financialTransactions` das rodadas no fechamento da tab (recomendado) vs. permitir pagamento parcial por rodada. A primeira versao pode suportar apenas fechamento total.
-4. **Abertura via QR**: sempre com aprovacao de operador (recomendado como default, igual ao POI atual) vs. auto-abertura configuravel.
+2. **Momento da baixa fisica de estoque**: no fechamento, junto da confirmacao (recomendado para v1 — um unico momento de efeitos) vs. na entrega de cada pedido (`tabOrders.status -> ENTREGUE`), que e o evento fisico real (um chopp entregue saiu do estoque mesmo que a conta nunca feche), mas exige tratar baixa contra venda em rascunho e cancelamento de conta com itens ja consumidos.
+3. **Abertura via QR**: sempre com aprovacao de operador (recomendado como default, igual ao POI atual) vs. auto-abertura configuravel.
+4. **Criacao da venda em rascunho**: lazy no primeiro pedido (recomendado — abrir conta nao cria venda vazia) vs. na abertura da tab.
 5. **Rotulo por segmento**: configuracao da organizacao para exibir "Comanda"/"Conta"/"Ficha" na UI — fica para quando outro segmento usar o primitivo.
 
 ## Plano de implementacao sugerido
 
-1. Criar `tabStatusEnum` (Drizzle + Zod) em `enums.ts`.
-2. Criar `services/drizzle/schema/points-of-interaction.ts` e `services/drizzle/schema/tabs.ts`, com relations e barrel-export.
-3. Adicionar `sales.tabId` e relation; manter `comandaNumero` como snapshot.
+1. Criar `tabStatusEnum` (Drizzle + Zod) em `enums.ts` — pedidos reusam `saleAttendanceStatusEnum`.
+2. Criar `services/drizzle/schema/points-of-interaction.ts` e `services/drizzle/schema/tabs.ts` (tabs + tabOrders), com relations e barrel-export.
+3. Adicionar `sales.tabId` (com partial unique de rascunho) e `saleItems.tabOrderId`; manter `comandaNumero` como snapshot.
 4. Adicionar `pontoInteracaoId`/`tabId` em `poiTransactionRequests` e novo(s) tipo(s) em `poiTransactionRequestTypeEnum`.
-5. APIs App Router: CRUD de pontos, abrir/consultar/fechar tab, listagem do board (contas abertas + ocupacao de pontos).
-6. Fechamento da tab: service que consolida vendas da tab, recebe metodos de pagamento, efetiva transacoes financeiras vinculadas ao turno de caixa aberto.
-7. Paginas externas de QR (ponto e tab), seguindo o padrao do playbook de POI.
-8. UI do board operacional e integracao com o fluxo de nova venda (selecionar tab aberta ao lancar rodada).
+5. APIs App Router: CRUD de pontos; abrir conta; lancar pedido (append de itens na venda em rascunho + criacao do `tabOrder`, em transacao); consultar conta; cancelar conta.
+6. Fechamento da conta: service de checkout que recebe os metodos de pagamento, confirma a venda em rascunho (efeitos de ERP unicos, transacoes vinculadas ao turno de caixa aberto) e fecha a tab com snapshot.
+7. Fulfillment board: segunda fonte de cards a partir de `tabOrders` ativos, com quick actions de transicao de status.
+8. Paginas externas de QR (ponto e tab), seguindo o padrao do playbook de POI.
+9. UI do board de contas/pontos e integracao com o fluxo de nova venda (lancar pedido em conta aberta).
