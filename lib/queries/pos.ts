@@ -1,6 +1,7 @@
 import type { TGetSaleDraftOutput } from "@/app/api/pos/sales/route";
 import type { TGetPOSGroupsOutput } from "@/app/api/pos/groups/route";
 import type { TGetPOSProductsInput, TGetPOSProductsOutput } from "@/app/api/pos/products/route";
+import type { TGetPOSTopProductsOutput } from "@/app/api/pos/top-products/route";
 import type { TGetCrossSellOutput } from "@/app/api/pos/cross-sell/route";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
@@ -51,6 +52,28 @@ export function usePOSProducts({ initialFilters }: UsePOSProductsParams = {}) {
 		queryKey: ["pos-products", debouncedFilters],
 		filters,
 		updateFilters,
+	};
+}
+
+// ============================================================================
+// Top products ("mais pedidos") — faixa de acesso rápido do PDV
+// ============================================================================
+
+async function fetchPOSTopProducts() {
+	const { data } = await axios.get<TGetPOSTopProductsOutput>("/api/pos/top-products");
+	return data.data;
+}
+
+export function usePOSTopProducts() {
+	const queryKey = ["pos-top-products"];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: fetchPOSTopProducts,
+			// O ranking de 90 dias não muda venda a venda; evita refetch a cada montagem do PDV.
+			staleTime: 5 * 60 * 1000,
+		}),
+		queryKey,
 	};
 }
 

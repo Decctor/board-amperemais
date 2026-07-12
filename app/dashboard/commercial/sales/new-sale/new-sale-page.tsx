@@ -26,6 +26,7 @@ import CategoriesBar from "./components/composition/CategoriesBar";
 import PaginationBlock from "./components/composition/PaginationBlock";
 import ProductsGridBlock from "./components/composition/ProductsGridBlock";
 import SearchBlock from "./components/composition/SearchBlock";
+import TopProductsStrip from "./components/composition/TopProductsStrip";
 import ViewModeToggle, { type ProductViewMode } from "./components/composition/ViewModeToggle";
 import ClientContextPanel from "./components/context/ClientContextPanel";
 import ClientContextSheet from "./components/context/ClientContextSheet";
@@ -358,6 +359,8 @@ export default function NewSalePage({
 							</div>
 							<ViewModeToggle value={viewMode} onChange={setViewMode} />
 						</div>
+						{/* Faixa de mais pedidos recolhe quando o operador está buscando ou filtrou uma categoria — o espaço volta para o resultado. */}
+						{!searchValue && !selectedGroup ? <TopProductsStrip onProductClick={handleProductClick} /> : null}
 						{groupsLoading ? null : (
 							<CategoriesBar groups={groupsData?.groups ?? []} selectedGroup={selectedGroup} onGroupSelect={handleGroupSelect} isLoading={productsLoading} />
 						)}
