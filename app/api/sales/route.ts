@@ -8,6 +8,8 @@ import { campaignAudienceHasClient, resolveCampaignAudiencesByCampaignId } from 
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
 import { getValidClientSaleWhere } from "@/lib/sales/valid-sale";
+import { computeSaleFinancialStatus, computeSaleFiscalStatus } from "@/lib/sales/utils";
+import type { TPaymentMethodEnum, TSaleFinancialDerivedStatusEnum, TSaleFiscalDerivedStatusEnum } from "@/schemas/enums";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
@@ -174,6 +176,105 @@ const GetSalesInputSchema = z.object({
 });
 
 export type TGetSalesInput = z.infer<typeof GetSalesInputSchema>;
+
+/**
+ * Resumo ERP (financeiro + fiscal) por venda para a listagem do histórico. Calculado só para
+ * organizações com o módulo de ERP, a partir de 2 consultas agregadas sobre os IDs da página
+ * (ambas atendidas pelos índices de venda_id) — sem engordar a query relacional principal.
+ */
+export type TSaleErpSummary = {
+	financeiro: {
+		status: TSaleFinancialDerivedStatusEnum;
+		metodos: TPaymentMethodEnum[];
+		maxParcelas: number | null;
+	};
+	fiscal: {
+		status: TSaleFiscalDerivedStatusEnum;
+		documento: { tipo: string; numero: string | null } | null;
+	};
+};
+
+async function getSalesErpSummaries({
+	orgId,
+	salesPage,
+}: {
+	orgId: string;
+	salesPage: { id: string; valorTotal: number }[];
+}): Promise<Map<string, TSaleErpSummary>> {
+	const saleIds = salesPage.map((sale) => sale.id);
+	const summaries = new Map<string, TSaleErpSummary>();
+	if (saleIds.length === 0) return summaries;
+
+	const [entries, fiscalDocs] = await Promise.all([
+		db.query.accountingEntries.findMany({
+			where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, orgId), inArray(fields.vendaId, saleIds)),
+			columns: { id: true, vendaId: true },
+			with: {
+				transacoesFinanceiras: {
+					columns: {
+						valor: true,
+						tipo: true,
+						metodo: true,
+						totalParcelas: true,
+						dataEfetivacao: true,
+						dataPrevisao: true,
+						provedorStatus: true,
+					},
+				},
+			},
+		}),
+		db.query.fiscalOutboundDocuments.findMany({
+			where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, orgId), inArray(fields.vendaId, saleIds)),
+			columns: { vendaId: true, tipo: true, statusInterno: true, numero: true, dataInsercao: true },
+			orderBy: (fields, { asc }) => asc(fields.dataInsercao),
+		}),
+	]);
+
+	const transactionsBySaleId = new Map<string, (typeof entries)[number]["transacoesFinanceiras"]>();
+	for (const entry of entries) {
+		if (!entry.vendaId) continue;
+		const existing = transactionsBySaleId.get(entry.vendaId) ?? [];
+		transactionsBySaleId.set(entry.vendaId, existing.concat(entry.transacoesFinanceiras));
+	}
+	const fiscalDocsBySaleId = new Map<string, typeof fiscalDocs>();
+	for (const doc of fiscalDocs) {
+		if (!doc.vendaId) continue;
+		const existing = fiscalDocsBySaleId.get(doc.vendaId) ?? [];
+		existing.push(doc);
+		fiscalDocsBySaleId.set(doc.vendaId, existing);
+	}
+
+	const now = new Date();
+	for (const sale of salesPage) {
+		const transactions = transactionsBySaleId.get(sale.id) ?? [];
+		const receipts = transactions.filter(
+			(transaction) => transaction.tipo === "ENTRADA" && !["CANCELADO", "ESTORNADO"].includes(transaction.provedorStatus ?? ""),
+		);
+		const metodos = [...new Set(receipts.map((transaction) => transaction.metodo))];
+		const maxParcelas = receipts.reduce<number | null>(
+			(acc, transaction) => (transaction.totalParcelas && transaction.totalParcelas > (acc ?? 0) ? transaction.totalParcelas : acc),
+			null,
+		);
+
+		const docs = fiscalDocsBySaleId.get(sale.id) ?? [];
+		// Documento "principal" do chip: o autorizado mais recente; sem autorizado, o mais recente.
+		const primaryDoc = [...docs].reverse().find((doc) => doc.statusInterno === "AUTORIZADO") ?? docs[docs.length - 1] ?? null;
+
+		summaries.set(sale.id, {
+			financeiro: {
+				status: computeSaleFinancialStatus({ transactions, saleTotal: sale.valorTotal, now }),
+				metodos,
+				maxParcelas,
+			},
+			fiscal: {
+				status: computeSaleFiscalStatus({ documents: docs }),
+				documento: primaryDoc ? { tipo: primaryDoc.tipo, numero: primaryDoc.numero } : null,
+			},
+		});
+	}
+
+	return summaries;
+}
 
 async function getSales({ input, sessionUser }: { input: TGetSalesInput; sessionUser: TAuthUserSession }) {
 	const PAGE_SIZE = 25;
@@ -486,19 +587,27 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 		limit: limit,
 	});
 
+	// Resumo ERP (pagamento/fiscal) apenas para organizações com o módulo: as demais não pagam as consultas extra.
+	const orgHasERPAccess = !!sessionUser.membership?.organizacao.configuracao?.recursos?.erp?.acesso;
+	const erpSummaries = orgHasERPAccess ? await getSalesErpSummaries({ orgId: userOrgId, salesPage: salesResult }) : null;
+	const salesWithErp = salesResult.map((sale) => ({
+		...sale,
+		erp: erpSummaries?.get(sale.id) ?? null,
+	}));
+
 	return {
 		data: {
 			default: clientId
 				? null
 				: {
-						sales: salesResult,
+						sales: salesWithErp,
 						totalPages: totalPages,
 						salesMatched: salesMatchedCount,
 					},
 			byId: null,
 			byClientId: clientId
 				? {
-						sales: salesResult,
+						sales: salesWithErp,
 						totalPages: totalPages,
 						salesMatched: salesMatchedCount,
 					}

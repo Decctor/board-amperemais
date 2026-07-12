@@ -38,6 +38,7 @@ import {
 	Tag,
 	TrendingDown,
 	TrendingUp,
+	Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -172,6 +173,89 @@ function SalesHistoryView() {
 	);
 }
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+	DINHEIRO: "Dinheiro",
+	PIX: "PIX",
+	CARTAO_CREDITO: "Crédito",
+	CARTAO_DEBITO: "Débito",
+	BOLETO: "Boleto",
+	TRANSFERENCIA: "Transferência",
+	CASHBACK: "Cashback",
+	VALE: "Vale",
+	A_DEFINIR: "A definir",
+	FIADO_NOTA: "Fiado",
+	OUTRO: "Outro",
+};
+
+const FINANCIAL_CHIP_META: Record<string, { label: string; className: string }> = {
+	PENDENTE: { label: "A receber", className: "border-border/60 bg-muted/30 text-foreground/80" },
+	PARCIALMENTE_RECEBIDA: { label: "Parcial", className: "border-border/60 bg-muted/30 text-foreground/80" },
+	RECEBIDA: { label: "Recebido", className: "border-green-600/25 bg-green-500/10 text-green-700 dark:text-green-400" },
+	EM_ATRASO: { label: "Em atraso", className: "border-destructive/30 bg-destructive/10 text-destructive" },
+};
+
+const FISCAL_CHIP_META: Record<string, { label: string; className: string }> = {
+	NAO_EMITIDO: { label: "Sem nota", className: "border-border/60 bg-muted/30 text-muted-foreground" },
+	PENDENTE: { label: "Nota pendente", className: "border-border/60 bg-muted/30 text-foreground/80" },
+	EM_PROCESSAMENTO: { label: "Nota processando", className: "border-border/60 bg-muted/30 text-foreground/80" },
+	AUTORIZADO: { label: "Autorizada", className: "border-green-600/25 bg-green-500/10 text-green-700 dark:text-green-400" },
+	REJEITADO: { label: "Nota rejeitada", className: "border-destructive/30 bg-destructive/10 text-destructive" },
+	CANCELADO: { label: "Nota cancelada", className: "border-border/60 bg-muted/30 text-muted-foreground" },
+	INUTILIZADO: { label: "Nota inutilizada", className: "border-border/60 bg-muted/30 text-muted-foreground" },
+	ERRO: { label: "Erro fiscal", className: "border-destructive/30 bg-destructive/10 text-destructive" },
+};
+
+const SALE_STATUS_CHIP_META: Record<string, { label: string; className: string }> = {
+	ORCAMENTO: { label: "Orçamento", className: "border-border/60 bg-muted/30 text-foreground/80" },
+	CONDICIONAL: { label: "Condicional", className: "border-border/60 bg-muted/30 text-foreground/80" },
+	CANCELADA: { label: "Cancelada", className: "border-destructive/30 bg-destructive/10 text-destructive" },
+};
+
+function SaleErpChip({ icon, children, className }: { icon: ReactNode; children: ReactNode; className: string }) {
+	return (
+		<span className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.65rem] font-semibold tracking-tight", className)}>
+			{icon}
+			{children}
+		</span>
+	);
+}
+
+// Linha de resumo ERP do card: métodos de pagamento + situação do recebimento e da emissão fiscal.
+// Só renderiza para organizações com o módulo de ERP (sale.erp vem null nas demais).
+function SaleErpSummaryRow({ sale }: { sale: TGetSalesOutputDefault["sales"][number] }) {
+	const erp = sale.erp;
+	if (!erp) return null;
+
+	const financialMeta = FINANCIAL_CHIP_META[erp.financeiro.status];
+	const fiscalMeta = FISCAL_CHIP_META[erp.fiscal.status];
+	const statusMeta = sale.statusVenda ? SALE_STATUS_CHIP_META[sale.statusVenda] : undefined;
+	const paymentLabel = erp.financeiro.metodos.map((metodo) => PAYMENT_METHOD_LABELS[metodo] ?? metodo).join(" + ");
+	const installmentsLabel = erp.financeiro.maxParcelas && erp.financeiro.maxParcelas > 1 ? ` ${erp.financeiro.maxParcelas}x` : "";
+	const fiscalNumberLabel = erp.fiscal.documento?.numero ? `${erp.fiscal.documento.tipo} Nº ${erp.fiscal.documento.numero} · ` : "";
+
+	return (
+		<div className="flex items-center gap-1.5 flex-wrap">
+			{statusMeta ? (
+				<SaleErpChip icon={<Info className="w-3 h-3" />} className={statusMeta.className}>
+					{statusMeta.label}
+				</SaleErpChip>
+			) : null}
+			{financialMeta && paymentLabel ? (
+				<SaleErpChip icon={<Wallet className="w-3 h-3" />} className={financialMeta.className}>
+					{paymentLabel}
+					{installmentsLabel} · {financialMeta.label}
+				</SaleErpChip>
+			) : null}
+			{fiscalMeta ? (
+				<SaleErpChip icon={<ReceiptText className="w-3 h-3" />} className={fiscalMeta.className}>
+					{fiscalNumberLabel}
+					{fiscalMeta.label}
+				</SaleErpChip>
+			) : null}
+		</div>
+	);
+}
+
 function SaleCard({ sale }: { sale: TGetSalesOutputDefault["sales"][number] }) {
 	return (
 		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs hover:border-border hover:shadow-sm transition-all cursor-pointer">
@@ -192,6 +276,7 @@ function SaleCard({ sale }: { sale: TGetSalesOutputDefault["sales"][number] }) {
 							<span>{sale.natureza}</span>
 						</div>
 					</div>
+					<SaleErpSummaryRow sale={sale} />
 				</div>
 
 				{/* Financials & Items Summary */}
