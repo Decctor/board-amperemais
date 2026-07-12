@@ -21,6 +21,7 @@
 		"backfill:onboarding-conclusao": "tsx ./scripts/backfill-onboarding-conclusao.ts",
 		"backfill:poi-conversion-attribution": "tsx ./scripts/backfill-poi-conversion-attribution.ts",
 		"backfill:poi-sales-processing-source": "tsx ./scripts/backfill-poi-sales-processing-source.ts",
+		"backfill:stripe-control-metadata": "tsx ./scripts/backfill-stripe-control-metadata.ts",
 		"knip": "knip",
 		"test:weekly-quota-recurrent": "tsx ./utils/scripts/test-recurrent-campaign-weekly-quota.ts",
 		"test:nuvemshop-fetch": "tsx ./utils/scripts/test-nuvemshop-fetch.ts",
