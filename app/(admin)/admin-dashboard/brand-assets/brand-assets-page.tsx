@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
 import { useAdminBrandAssetTemplates } from "@/lib/queries/brand-assets";
 import { Download, Palette } from "lucide-react";
+import { BrandAssetStudio } from "./brand-asset-studio";
 
 function buildAssetUrl({ template, variant, format, download }: { template: string; variant: string; format: "png" | "svg"; download?: boolean }) {
 	const searchParams = new URLSearchParams({ template, variant, format });
@@ -31,6 +32,8 @@ export default function BrandAssetsAdminPage() {
 				</h1>
 				<p className="text-sm text-muted-foreground">Fundos, capas e outros assets gerados direto da codebase, sempre com os logos e cores oficiais.</p>
 			</div>
+
+			<BrandAssetStudio />
 
 			{templates.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum template de asset registrado.</p> : null}
 
