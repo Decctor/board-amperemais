@@ -144,7 +144,7 @@ export async function accumulateCashbackForClient({
 			valorRestante: accumulatedValue,
 			saldoValorAnterior: previousAvailableBalance,
 			saldoValorPosterior: newAvailableBalance,
-			expiracaoData: dayjs().add(program.expiracaoRegraValidadeValor, "day").toDate(),
+			expiracaoData: dayjs(timestamp).add(program.expiracaoRegraValidadeValor, "day").toDate(),
 			dataInsercao: timestamp,
 			operadorId: operatorId ?? null,
 			operadorVendedorId: operatorSellerId ?? null,

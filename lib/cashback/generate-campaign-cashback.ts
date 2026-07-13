@@ -15,6 +15,8 @@ type GenerateCashbackForCampaignParams = {
 	saleValue: number | null; // Required for PERCENTUAL calculation
 	expirationMeasure: TTimeDurationUnitsEnum | null;
 	expirationValue: number | null;
+	createdAt?: Date;
+	metadata?: Record<string, unknown>;
 };
 
 const DEFAULT_EXPIRATION_DAYS = 30;
@@ -30,6 +32,8 @@ export async function generateCashbackForCampaign({
 	saleValue,
 	expirationMeasure,
 	expirationValue,
+	createdAt,
+	metadata,
 }: GenerateCashbackForCampaignParams): Promise<{
 	cashbackAmount: number;
 	transactionId: string;
@@ -96,7 +100,7 @@ export async function generateCashbackForCampaign({
 	}
 
 	// 4. Calculate expiration date
-	const now = new Date();
+	const now = createdAt ?? new Date();
 	let expirationDate: Date;
 
 	if (expirationMeasure && expirationValue && expirationValue > 0) {
@@ -146,6 +150,7 @@ export async function generateCashbackForCampaign({
 			saldoValorPosterior: newBalance,
 			expiracaoData: expirationDate,
 			campanhaId: campaignId,
+			metadados: metadata ?? null,
 			dataInsercao: now,
 		})
 		.returning({ id: cashbackProgramTransactions.id });
