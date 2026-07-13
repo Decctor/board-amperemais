@@ -5,6 +5,7 @@ import {
 	Banknote,
 	BookText,
 	Boxes,
+	CalendarCheck,
 	CirclePlay,
 	Factory,
 	Goal,
@@ -70,6 +71,13 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 	{
 		group: "Comercial",
 		items: [
+			{
+				title: "Minha Rotina",
+				url: "/dashboard/team/routine",
+				icon: <CalendarCheck className="w-4 h-4" />,
+				items: null,
+				checkAccess: () => true,
+			},
 			{
 				title: "Ponto de Interação",
 				url: "/dashboard/commercial/point-of-interaction",

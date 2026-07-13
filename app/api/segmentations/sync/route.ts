@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 
-import { resolveCampaignAudienceClientIds } from "@/lib/campaigns/filters";
+import { filterCommunicationPausedClientIds, resolveCampaignAudienceClientIds } from "@/lib/campaigns/filters";
 import { applyCampaignBonusToInteractionMetadata, buildBaseCashbackInteractionMetadata } from "@/lib/campaigns/interaction-metadata";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPeriodAmountFromReferenceUnit, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
@@ -134,7 +134,11 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 				segmentations: [],
 				filters: campaign.filtros,
 			});
-			return [campaign.id, new Set(clientIds)] as const;
+			const deliverableClientIds = await filterCommunicationPausedClientIds({
+				organizationId: userOrgId,
+				clientIds,
+			});
+			return [campaign.id, new Set(deliverableClientIds)] as const;
 		}),
 	);
 	const filterAudiencesByCampaignId = new Map(filterAudienceEntries);

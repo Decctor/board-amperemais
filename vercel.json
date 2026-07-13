@@ -75,6 +75,10 @@
 		{
 			"path": "/api/cron/product-client-references",
 			"schedule": "30 2 * * *"
+		},
+		{
+			"path": "/api/cron/client-seller-references",
+			"schedule": "45 2 * * *"
 		}
 	]
 }

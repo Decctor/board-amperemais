@@ -765,6 +765,11 @@ export const AppRoutes = [
 		description: "Painel de acompanhamento e gestão de marketing.",
 	},
 	{
+		path: "/dashboard/team/routine",
+		title: "Minha rotina",
+		description: "Quem abordar, o que oferecer e por quê — sua rotina do dia.",
+	},
+	{
 		path: "/dashboard/team/sellers",
 		title: "Vendedores",
 		description: "Painel detalhadado dos seus vendedores.",

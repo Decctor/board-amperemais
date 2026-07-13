@@ -33,6 +33,14 @@ export const InteractionMetadataSchema = z.object({
 	channelsSkipped: z.array(z.string()).optional(),
 	channelsSent: z.array(InteractionDeliveryChannelEnum).optional(),
 	channelErrors: z.record(z.string()).optional(),
+
+	// Interações manuais (rotina do vendedor) — snapshots do contexto no momento do contato,
+	// para analytics por segmento sem reprocessar histórico.
+	snapshotSegmentoRFM: z.string().optional().nullable(),
+	snapshotDiasSemContato: z.number().optional().nullable(),
+	// dataInsercao - dataInteracao acima do limiar: registro retroativo honesto na timeline,
+	// mas excluído da métrica de influência (anti-gaming — docs/seller-routine-hub-design.md §7).
+	registroRetroativo: z.boolean().optional().nullable(),
 });
 export type TInteractionMetadata = z.infer<typeof InteractionMetadataSchema>;
 

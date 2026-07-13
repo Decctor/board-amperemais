@@ -22,6 +22,15 @@ export const recurrenceFrequencyEnum = pgEnum("recurrence_frequency", ["DIARIO",
 export const timeDurationUnitsEnum = pgEnum("time_duration_units", ["MINUTOS", "HORAS", "DIAS", "SEMANAS", "MESES", "ANOS"]);
 
 export const interactionTypeEnum = pgEnum("interaction_type", ["ENVIO-MENSAGEM", "ENVIO-EMAIL", "LIGAÇÃO", "ATENDIMENTO"]);
+
+// Interações como primitivo de relacionamento (docs/seller-routine-hub-design.md).
+// `interactionTypeEnum` acima segue como legado da máquina de entrega de campanhas;
+// código novo classifica por canal + direção + iniciador.
+export const interactionChannelEnum = pgEnum("interaction_channel", ["WHATSAPP", "EMAIL", "LIGACAO", "PRESENCIAL", "VISITA", "SMS", "OUTRO"]);
+export const interactionDirectionEnum = pgEnum("interaction_direction", ["SAIDA", "ENTRADA"]);
+export const interactionInitiatorEnum = pgEnum("interaction_initiator", ["AUTOMACAO", "USUARIO", "AGENTE_IA", "CLIENTE"]);
+// Ciclo de vida de interações manuais/planejadas — statusEnvio segue sendo exclusivamente entrega.
+export const interactionLifecycleStatusEnum = pgEnum("interaction_lifecycle_status", ["PLANEJADA", "REALIZADA", "CANCELADA"]);
 export const interactionsCronJobTimeBlocksEnum = pgEnum("interactions_cron_time_blocks", [
 	"00:00",
 	"01:00",
