@@ -248,8 +248,11 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 		}
 
 		const cashbackProgramIsActive = program.ativo;
-		// Transactions only require accumulation processing when organization allows it
-		const transactionRequiresAccumulationProcessing = cashbackProgramIsActive && program.acumuloPermitirViaPontoIntegracao;
+		const prizeRedemption = input.sale.prizeRedemption;
+		const isPrizeRedemption = !!prizeRedemption;
+		// Prize redemptions do not generate cashback, even when accumulation via POI is enabled.
+		const transactionRequiresAccumulationProcessing =
+			cashbackProgramIsActive && program.acumuloPermitirViaPontoIntegracao && !isPrizeRedemption;
 		// Transactions only require sale processing when organization has no defined integration
 		const transactionRequiresSaleProcessing = !program.organizacao.integracaoTipo;
 		// Transactions only require redemption processing when cashback is applied and has a positive value
@@ -456,8 +459,6 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 		}
 
 		// PRIZE VALIDATION (if prize redemption is requested)
-		const prizeRedemption = input.sale.prizeRedemption;
-		const isPrizeRedemption = !!prizeRedemption;
 		let validatedPrize: {
 			id: string;
 			valor: number;
@@ -494,10 +495,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				throw new createHttpError.BadRequest("A recompensa selecionada não possui vínculo com produto ou variante.");
 			}
 
-			const prizeSaleValue = prize.produtoVariante?.precoVenda ?? prize.produto?.precoVenda ?? null;
-			if (prizeSaleValue === null || prizeSaleValue === undefined) {
-				throw new createHttpError.BadRequest("A recompensa selecionada não possui valor comercial configurado.");
-			}
+			const prizeSaleValue = prize.produtoVariante?.precoVenda ?? prize.produto?.precoVenda ?? 0;
 
 			validatedPrize = {
 				id: prize.id,
