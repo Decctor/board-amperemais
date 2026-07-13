@@ -1,228 +1,338 @@
-# Rotina do Vendedor (Hub) — Proposta de UI/UX
+# Rotina do Vendedor (Hub) — Proposta de UI/UX e Modelo de Interações
 
-> Status: proposta de design para discussão — nada implementado.
-> Origem: sugestão de cliente em prospecção. O RecompraCRM opera de forma
-> majoritariamente autônoma; este hub cria a primeira superfície de **operação
-> diária do vendedor**, alimentada pela inteligência que já existe (RFM, ciclo
-> de recompra, produto sugerido, metas por vendedor).
+> Status: proposta v2 para discussão — nada implementado.
+> v1: hub com fila gerada por gatilhos (RFM, ciclo, aniversário) e tabela própria de abordagens.
+> v2 (este documento): **interação como primitivo central**. A fila de trabalho passa a ser
+> *derivada* da ausência de interações frente à cadência de comunicação de cada segmento —
+> alinhada à premissa do produto: comunicação e relacionamento como motores de receita.
 > Um mockup navegável (light/dark, mobile/desktop) acompanha esta proposta.
 
 ---
 
 ## 1. Conceito em uma frase
 
-Uma página que transforma a inteligência do CRM em uma **fila de abordagens
-executável**: todo dia o vendedor abre o hub e vê *quem* abordar, *por que
-agora*, *o que* oferecer e *por qual canal* — e cada desfecho registrado
-realimenta o sistema.
+Todo contato com um cliente — campanha, mensagem do vendedor, ligação, visita, atendimento —
+é uma **interação**. Cada segmento de cliente tem uma **cadência ideal de comunicação**.
+A fila de trabalho do vendedor é o **débito de comunicação**: clientes da sua carteira cujo
+tempo sem interação estourou a cadência do segmento — priorizados por valor e contexto
+(queda RFM, ciclo de recompra, aniversário).
 
-A tese de UX: **fila, não dashboard**. O gestor analisa; o vendedor executa.
-Nada de gráficos como elemento central — a unidade da tela é o "card de
-abordagem", que cabe no polegar e se resolve em um toque.
+Corolários importantes desse modelo:
+
+- **A fila deixa de ser uma tabela e vira uma consulta.** Não existe mais a tabela
+  `seller_approaches` da v1. Menos estado persistido = menos sincronização = menos gambiarra.
+- **A supressão cruzada com campanhas sai de graça.** Se campanha e abordagem manual são ambas
+  interações, qualquer uma delas "reseta o relógio" do cliente — o problema de colisão
+  (cliente bombardeado por campanha + vendedor no mesmo dia) se resolve por construção,
+  sem mecanismo dedicado.
+- **"Não é eficiente conversar com todo mundo toda hora"** vira parâmetro explícito: a cadência
+  tem um teto (dias ideais entre contatos) *e um piso* (mínimo de dias entre contatos —
+  proteção contra fadiga). Cliente dentro da cadência não aparece na fila.
 
 ---
 
 ## 2. Persona e princípios
 
-**Persona**: vendedor(a) de loja física, no balcão, com o celular na mão.
-Já autenticado como membro da organização com `usuarioVendedorId` preenchido
-(`organizationMembers`) — o hub escopa tudo automaticamente para esse vendedor.
+**Persona**: vendedor(a) de loja física, no balcão, com o celular na mão. Autenticado como
+membro da organização com `usuarioVendedorId` preenchido (`organizationMembers`) — o hub
+escopa tudo automaticamente para esse vendedor.
 
-Princípios de design:
-
-1. **Cada card responde 4 perguntas, nesta ordem:** quem (nome + segmento RFM),
-   por que agora (motivo em linguagem natural, sempre visível — nunca só um
-   score), o que oferecer (recompra/cross-sell), por onde (WhatsApp em 1 toque).
-2. **O motivo é o produto.** "Era Campeã e caiu para Em risco — sem comprar há
-   52 dias (ciclo dela: ~28)" gera confiança na fila. Um badge "prioridade 87"
-   não gera. Toda sugestão algorítmica vem com explicação.
-3. **Mobile-first de verdade.** A fila funciona inteira em uma coluna; ações
-   principais têm alvo de toque ≥ 44px; detalhe do cliente abre em drawer
-   (`ResponsiveMenuV2` já alterna Dialog/Drawer por breakpoint).
-4. **Fechar o ciclo é obrigatório.** Abordagem sem desfecho registrado é fila
-   morta. O registro custa 2 toques (Registrar → desfecho → salvar) e é o que
-   alimenta follow-ups, silencia clientes que pediram pausa e dá ao gestor
-   visão de *atividade*, não só de resultado.
-5. **Âmbar só em celebração.** Segue o DESIGN.md: azul estrutural em CTAs e
-   estados ativos; ouro comercial apenas nos momentos de conquista (recompras
-   geradas, topo do ranking, meta batida) — proporção ~1:3.
+1. **Fila, não dashboard.** O gestor analisa; o vendedor executa. A unidade da tela é o card
+   de abordagem, que se resolve em um toque.
+2. **Cada card responde 4 perguntas, nesta ordem:** quem (nome + segmento RFM), por que agora
+   (motivo em linguagem natural — "sem contato há 45 dias; a cadência de Em risco é 14"),
+   o que oferecer (recompra/cross-sell), por onde (canal em 1 toque).
+3. **O motivo é o produto.** Toda sugestão algorítmica vem com explicação; nunca um score opaco.
+4. **Fechar o ciclo é obrigatório e barato.** Registrar o desfecho custa 2 toques — e o
+   registro *é* uma interação, não um formulário paralelo.
+5. **Toda comunicação é uma interação.** Um primitivo único alimenta fila, timeline do cliente,
+   supressão, fadiga e métricas de influência. Nada de logs paralelos por modalidade.
+6. **Âmbar só em celebração** (DESIGN.md): azul estrutural; ouro nos momentos de conquista
+   (recompras geradas, topo do ranking, meta batida), proporção ~1:3.
 
 ---
 
-## 3. Arquitetura de informação
+## 3. O primitivo: evolução de `interactions`
 
-```
-/dashboard/team/routine            ← ou /dashboard/routine ("Minha rotina")
-├── Tab: Meu dia        (default)  ← fila de abordagens + follow-ups + ranking
-├── Tab: Minha carteira            ← clientes do vendedor, derivados por recorrência
-└── Tab: Meus resultados           ← SellersStats/SellersGraphs filtrados p/ ele
+### 3.1 Diagnóstico do estado atual (por que precisa evoluir)
+
+A tabela `interactions` hoje é, na prática, **uma fila de entrega de mensagens de campanha**:
+
+| Fato | Evidência |
+|---|---|
+| Só um tipo é escrito | Todos os inserts usam `tipo="ENVIO-MENSAGEM"`; `LIGAÇÃO`/`ATENDIMENTO`/`ENVIO-EMAIL` existem no enum (`schemas/enums.ts`) mas nunca são gravados |
+| O processador exige campanha | O cron `process-interactions` filtra `campanhaId IS NOT NULL` — uma linha manual seria invisível ao pipeline |
+| Não há criação manual | Não existe rota `app/api/interactions/*`; o único POST relacionado é retry de envio falho |
+| `dataExecucao` acumula 3 papéis | Claim atômico da reserva de quota (`campaign-weekly-limits.ts`), âncora da janela de quota semanal e âncora da janela de atribuição (`lib/conversions/attribution.ts`) |
+| Status é ciclo de entrega | `statusEnvio` = PENDENTE→ENVIADO→ENTREGUE→LIDO / FALHOU / BLOQUEADA — não descreve uma ligação ou visita |
+| Chats é um mundo à parte | Atendimentos grava em `chat_messages` (inclusive inbound do cliente) sem tocar `interactions`; só há um ponteiro solto `metadados.chatMessageId` no sentido campanha→chat |
+
+Nada disso é defeito — é uma máquina de entrega bem resolvida (reserva atômica com
+`FOR UPDATE`, ranking progressivo de status, quotas). O erro seria **forçar interações manuais
+para dentro dessa máquina**. A proposta é separar os papéis dentro da mesma tabela.
+
+### 3.2 Evolução proposta (aditiva, inspirada no modelo do Control)
+
+O modelo do Control acerta em quatro separações que importam aqui:
+**canal** (por onde) ≠ **direção** (quem falou com quem) ≠ **iniciador** (quem originou) ≠
+**autor** (quem registrou); e **`dataInteracao` ≠ `dataInsercao`** (quando aconteceu vs.
+quando foi registrado — essencial para registro retroativo honesto). Também traz o padrão de
+**snapshots em metadados** (contexto no momento da interação, para analytics posterior).
+
+Colunas novas em `interactions` (todas nullable — zero impacto nas linhas existentes):
+
+```ts
+// Classificação (substituem gradualmente a sobrecarga de `tipo`)
+canal: interactionChannelEnum("canal"),
+// WHATSAPP | EMAIL | LIGACAO | PRESENCIAL | VISITA | SMS | OUTRO
+direcao: interactionDirectionEnum("direcao"),          // SAIDA | ENTRADA
+iniciadoPor: interactionInitiatorEnum("iniciado_por"), // AUTOMACAO | USUARIO | AGENTE_IA | CLIENTE
+
+// Autoria operacional (o vendedor é a persona do hub; `autorId` → users continua)
+vendedorId: varchar("vendedor_id").references(() => sellers.id),
+
+// Tempo canônico do relacionamento (≠ dataInsercao, ≠ dataExecucao)
+dataInteracao: timestamp("data_interacao"),
+
+// Ciclo de vida de interações manuais/planejadas (statusEnvio segue sendo só entrega)
+status: interactionLifecycleEnum("status"),            // PLANEJADA | REALIZADA | CANCELADA
+desfecho: interactionOutcomeEnum("desfecho"),
+// VENDA | RESPONDEU_SEM_VENDA | SEM_RESPOSTA | REAGENDADO | PEDIU_PAUSA
 ```
 
-- Entrada na sidebar (grupo **Comercial** ou **Geral**), com `checkAccess`
-  exigindo membro com `usuarioVendedorId` — admins/gestores veem um seletor de
-  vendedor no topo (modo "ver como").
-- Registrar título/descrição em `AppRoutes` (`config/index.ts`) — ex.:
-  título "Minha rotina", descrição "Quem abordar, o que oferecer e por quê".
-- Página segue o padrão: server component com gate de sessão + client
-  component `routine-page.tsx`; container `flex h-full w-full flex-col gap-3`;
-  tabs `variant="page"`.
+Backfill único: `dataInteracao = COALESCE(dataEnvio, dataExecucao)`, `canal` derivado dos
+`metadados.channelsSent`, `direcao='SAIDA'`, `iniciadoPor='AUTOMACAO'`, `status='REALIZADA'`
+para enviadas. A partir daí, **`dataInteracao` é a única âncora de cadência e de ordenação
+de relacionamento**; `dataExecucao` volta a ser detalhe interno da máquina de entrega.
+
+Snapshots em `metadados` para interações manuais (padrão do Control adaptado):
+`snapshotSegmentoRFM` (segmento no momento — permite "interações médias por segmento" e
+medir se a cadência está sendo cumprida *por segmento* sem reprocessar histórico) e
+`snapshotDiasSemContato`.
+
+**Follow-up = interação `PLANEJADA`** (com `dataInteracao` futura). Não existe tabela de
+tarefas: agendar retorno cria uma interação planejada; realizá-la muda o status e preenche
+desfecho; o card "Depois" (adiar) cria uma planejada para o dia seguinte. Um primitivo só.
+
+### 3.3 Invariantes (os guardrails anti-gambiarra)
+
+Estas regras devem virar CHECK constraints ou validação central única (ex.: um
+`createInteraction()` em `lib/interactions/create.ts` por onde TODA escrita manual passa):
+
+1. `campanhaId IS NOT NULL` ⇒ `iniciadoPor='AUTOMACAO'` e a linha pertence à máquina de
+   entrega (agendamento/statusEnvio/quota). Recíproca: linha manual **nunca** tem
+   `agendamento*`, `statusEnvio` ou `dataExecucao`.
+2. Linhas manuais **não consomem quota semanal** — a quota
+   (`limiteMensagensSemanaisViaCampanhas`) protege custo/limite de disparo automatizado;
+   uma ligação não gasta WhatsApp. As queries de quota já filtram
+   `tipo='ENVIO-MENSAGEM'`; ainda assim, adicionar o filtro explícito
+   `iniciadoPor='AUTOMACAO'` nelas e nas queries de stats de campanha (funil divide
+   convertidos/enviados) para não depender de coincidência de enum.
+3. `status='PLANEJADA'` não conta para **nada** (cadência, fadiga, influência, timeline
+   pública) até virar `REALIZADA`.
+4. `dataInteracao <= now()` para `REALIZADA` (registro retroativo é permitido e honesto,
+   registro futuro realizado não existe). Se `dataInsercao - dataInteracao >` limiar
+   (ex.: 24h), marcar `metadados.registroRetroativo=true` — ver §7 (anti-gaming).
+5. `desfecho='PEDIU_PAUSA'` grava pausa no **cliente** (`clients.comunicacaoPausadaAte`),
+   e a pausa vale para **campanhas e fila** — hoje não existe opt-out de cliente; este é
+   um gap que o primitivo resolve para os dois mundos de uma vez.
+6. `tipo` (legado) permanece: linhas manuais usam os valores hoje mortos
+   (`LIGAÇÃO`, `ATENDIMENTO`) ou um novo valor — assim **todos os filtros existentes
+   (`tipo='ENVIO-MENSAGEM'`) excluem linhas manuais por construção**, sem tocar uma query
+   no dia 1. Código novo lê `canal`/`direcao`/`iniciadoPor`; `tipo` entra em deprecação.
 
 ---
 
-## 4. Anatomia da tela
+## 4. Cadência por segmento
 
-### 4.1 Header + KPIs do dia (linha de 4 `StatUnitCard`)
+Config nova (tabela `segment_cadences` — queryável em JOIN pelo gerador da fila; org pode
+ajustar; seeds sugeridos):
 
-| KPI | Fonte | Observação de UX |
+| Segmento RFM | Ideal entre contatos | Mínimo entre contatos (fadiga) |
 |---|---|---|
-| Meta do dia (R$ X / R$ Y + barra) | `getSellerSaleGoal` pró-rateada | "Faltam R$ 230" é acionável hoje; meta mensal não é |
-| Abordagens (feitas/planejadas + barra) | novo (ver §6) | é o "todo list" do dia; atualiza ao registrar desfecho |
-| Vendas hoje + ticket médio | `getSellerStats` | reforço imediato |
-| Recompras geradas no mês (+delta) | `sales` × abordagens registradas | **único card âmbar** — é a métrica-alma do produto |
+| Campeões | 30 dias | 7 dias |
+| Clientes leais | 25 dias | 7 dias |
+| Não pode perdê-los | 20 dias | 5 dias |
+| Em risco | 14 dias | 5 dias |
+| Prestes a dormir | 12 dias | 5 dias |
+| Precisam de atenção | 15 dias | 5 dias |
+| Recentes / Promissores | 10 dias (janela da 2ª compra) | 3 dias |
+| Hibernando | 40 dias | 10 dias |
+| Perdidos | 90 dias ou nunca | 15 dias |
 
-Saudação pessoal ("Bom dia, Mariana") + data por extenso: o hub é um ritual de
-início de turno, não um relatório.
+**Saldo de comunicação** do cliente = `diasDesdeUltimaInteracao − cadenciaIdeal(segmento)`.
+Positivo = em débito → candidato à fila. O que conta como "última interação":
 
-### 4.2 Fila de abordagens (coluna principal)
-
-Agrupada por **motivo de prioridade**, não por segmento (o vendedor pensa em
-"o que faço primeiro", não em taxonomia RFM):
-
-- **Prioridade do dia** — queda de segmento RFM recente
-  (`analiseRFMUltimaAlteracao`), ciclo de recompra estourado
-  (`ultimaCompraData` vs. ciclo médio do cliente), aniversário
-  (`dataNascimento`), top-cliente da carteira esfriando.
-- **Oportunidades** — cross-sell (`metadataProdutoSugeridoId` +
-  `product_client_references`), janela de 2ª compra (cliente recente),
-  categoria nunca comprada.
-
-Anatomia do card (estado colapsado ≈ 96px de altura):
-
-```
-[avatar]  NOME DO CLIENTE   [chip RFM colorido]     [chevron expandir]
-          14 compras · ticket médio R$ 186
-POR QUE AGORA   Era Campeã e caiu para Em risco em 02/07 — sem comprar
-                há 52 dias (o ciclo dela é ~28).
-O QUE OFERECER  Recompra: Ração Premier 15kg · Sugestão: Petisco dental
-[Abordar no WhatsApp]  [Registrar]  [Depois]
-```
-
-Expandido (inline no desktop; drawer no mobile) = mini cliente-360 via
-`getClientContext`: compras/LTV/ciclo, últimas 3 compras, e **mensagem
-sugerida** com botão copiar (template com nome, produto e gancho do motivo —
-futuro `ai_hints assunto="sellers"`).
-
-Ações:
-- **Abordar no WhatsApp** (CTA primário azul): deep-link `wa.me/<telefone>`
-  com a mensagem sugerida pré-preenchida; registra o clique como início de
-  abordagem. Integrável depois ao gateway interno de WhatsApp/Atendimentos.
-- **Registrar**: dialog leve com 4 desfechos — *venda realizada* / *respondeu,
-  sem venda* / *pediu para falar depois (agenda follow-up)* / *sem resposta
-  (recoloca na fila em N dias)*. Card ganha estado "Abordada" e some da conta.
-- **Depois**: move para o fim da fila sem punição (o vendedor manda no dia).
-
-### 4.3 Rail lateral (desktop) / seções abaixo (mobile)
-
-1. **Follow-ups de hoje** — compromissos com hora, nascidos dos desfechos.
-   Regra dura: follow-up é *promessa a um cliente*; a inteligência nunca
-   reordena nem remove — só a fila algorítmica é dinâmica.
-2. **Ranking da semana** — reusa o componente `Ranking` (coroa/ouro no 1º).
-   Gamificação leve; sem streaks punitivos.
-3. **Sugestão inteligente** — 1 insight agregado por dia ("6 clientes seus
-   compram areia todo mês e não conhecem a linha nova") com ação em 1 toque.
-   Ponto de entrada natural para `ai_hints` com `assunto="sellers"`.
-
-### 4.4 Tab "Minha carteira"
-
-Lista em card-rows (sem tabela densa): nome + chip RFM, "N compras com você ·
-última há X dias", LTV, ciclo, e uma barra de **força do vínculo** que torna o
-critério de atribuição transparente. Filtros por segmento em chips
-(`InteractiveFilter` para filtros avançados). Card explicativo fixo: "como a
-carteira é montada" — transparência evita a sensação de caixa-preta e
-disputas entre vendedores.
-
-### 4.5 Tab "Meus resultados"
-
-Reaproveita `SellersStats`/`SellersGraphs`/`getSellerStats` filtrados para o
-vendedor logado (gráficos na paleta ouro). Nenhuma consulta nova — só uma
-visão "primeira pessoa" do que o gestor já vê.
+- Campanha: conta a partir de `ENTREGUE` (enviada e falhada/bloqueada não é contato).
+- Manual `REALIZADA` (qualquer canal, qualquer direção).
+- Inbound do cliente: v1 usa `chats.ultimaInteracaoClienteData` como sinal read-only
+  (cliente que falou com a loja ontem não entra na fila); v2 faz a ponte formal (§9).
+- `PLANEJADA` não conta — mas **suprime** o cliente da fila (já tem retorno agendado).
 
 ---
 
-## 5. Mapeamento inteligência existente → UI
+## 5. A fila de trabalho (derivada)
 
-| Sinal já existente | Onde vive | Tratamento na UI |
+```
+candidatos = clientes da carteira do vendedor
+  WHERE saldoComunicacao > 0
+    AND diasDesdeUltimaInteracao >= minimoFadiga
+    AND (comunicacaoPausadaAte IS NULL OR vencida)
+    AND sem interação PLANEJADA pendente
+ORDEM  = round(saldoRelativo × pesoValor) com boosts
+CAP    = ~12/dia (configurável) — fila terminável cria hábito; infinita vira ruído
+```
+
+- `saldoRelativo` = diasDesdeUltimaInteracao / cadenciaIdeal (2.0 = dobro do tolerável).
+- `pesoValor` = LTV normalizado na carteira.
+- Boosts aditivos de contexto (viram o "por que agora" do card): queda de segmento RFM
+  recente (`analiseRFMUltimaAlteracao`), ciclo de recompra estourado
+  (`ultimaCompraData` vs. ciclo), aniversário, top-cliente esfriando.
+- O "o que oferecer" continua vindo de `metadataProdutoSugeridoId` /
+  `metadataProdutoMaisCompradoId` / `product_client_references`.
+
+Computada on-demand (query + ranking em memória) com cache diário opcional. Follow-ups do
+dia (`PLANEJADA` com data de hoje) aparecem em seção própria, **acima** da fila algorítmica,
+e nunca são reordenados pela inteligência — compromisso com cliente não é sugestão.
+
+---
+
+## 6. UI (o que muda vs. v1)
+
+A estrutura da página não muda: `/dashboard/team/routine`, tabs **Meu dia / Minha carteira /
+Meus resultados**, KPIs do dia, fila em cards, rail com follow-ups + ranking + 1 insight de
+IA/dia, carteira derivada com "força do vínculo". Mudanças da v2:
+
+1. **Motivo do card ganha a dimensão de relacionamento:** "Sem contato há 45 dias — a
+   cadência de *Em risco* é 14. Última interação: campanha de reativação (lida, sem
+   resposta) em 28/05." A ausência de interação *é* o motivo-base; RFM/ciclo/aniversário
+   são o contexto que prioriza.
+2. **Timeline do cliente (novo componente).** Não existe hoje nenhuma linha do tempo de
+   relacionamento (o detalhe do cliente mostra só cashback e compras). O card expandido do
+   hub e a página do cliente ganham uma timeline unificada: campanhas (com status de
+   entrega), interações manuais (com desfecho), compras (com badge de conversão) —
+   ordenada por `dataInteracao`/`dataVenda`. API: `GET /api/interactions?clienteId=`.
+3. **"Registrar" = criar interação.** O dialog de desfecho da v1 vira o formulário de
+   interação manual: canal (chips: WhatsApp/Ligação/Presencial/Visita), desfecho, nota
+   opcional, "agendar retorno?" (cria a `PLANEJADA`). Mesmo formulário disponível na página
+   do cliente e no Atendimentos ("registrar ligação").
+4. **KPI "Abordagens" lê de interações** (`iniciadoPor='USUARIO'` + `vendedorId` + hoje);
+   "Recompras geradas" lê da métrica de influência (§7).
+
+---
+
+## 7. Conversões e atribuição (a pergunta difícil)
+
+**Pergunta colocada:** uma interação manual depois de um envio de campanha deveria
+desqualificar a campanha para conversão?
+
+**Recomendação: não — em v1, nenhum touch rouba conversão de outro. Registra-se tudo,
+reporta-se em paralelo, e a sobreposição vira métrica explícita.**
+
+Fundamentos:
+
+1. **Last-touch entre tipos heterogêneos envenena os dois lados.** Se o vendedor rouba a
+   conversão da campanha, um "oi, tudo bem?" atrás de cada disparo captura a receita da
+   campanha inteira (Goodhart: a métrica vira alvo e morre como métrica — pior ainda com
+   ranking gamificado). Se a campanha rouba do vendedor, o trabalho consultivo dele some do
+   relatório. "Desqualificar" pressupõe uma certeza causal que ninguém tem.
+2. **Comparabilidade histórica.** `campaign_conversions` alimenta funil, ranking, qualidade
+   de conversão e relatórios existentes. Mudar a semântica da série histórica no mesmo PR
+   que introduz interações manuais tornaria impossível saber o que mudou por quê.
+3. **O schema atual nem comporta** o roubo: `campaign_conversions.campanhaId` é NOT NULL —
+   interação manual não é representável ali, e não deve ser.
+
+Modelo proposto (duas lentes + sobreposição):
+
+- **Conversão de campanha** — intocada: last-touch entre envios de campanha, janela
+  `atribuicaoJanelaDias` por campanha, como hoje (`lib/conversions/attribution.ts`).
+- **Venda influenciada (vendedor)** — nova métrica *computada* (sem tabela nova em v1):
+  venda cujo `sales.vendedorId = vendedor` E que teve interação manual `REALIZADA` desse
+  mesmo vendedor com o cliente dentro de N dias antes de `dataVenda` (N: reutilizar a
+  janela de atribuição da org; default 14). Exigir `vendedorId` da interação = `vendedorId`
+  da venda elimina por construção a disputa entre vendedores pelo mesmo cliente.
+- **Sobreposição explícita**: venda com conversão de campanha *e* influência de vendedor é
+  contada nas duas lentes e ganha flag `assistida` nos dois relatórios, com um número
+  honesto no dashboard do gestor: "R$ X convertido por campanha · R$ Y influenciado por
+  vendedor · R$ Z por ambos". Nenhuma receita é dividida em v1.
+- **v2+, com dados reais de sobreposição**: se um número único for necessário, o caminho já
+  está pavimentado — `atribuicaoModelo`/`atribuicaoPeso` existem em `campaign_conversions`
+  justamente para modelos multi-touch ponderados. Decidir pesos *antes* de medir a
+  sobreposição real seria chute.
+
+### Edge cases mapeados (e a regra que fecha cada um)
+
+| # | Caso | Regra |
 |---|---|---|
-| Segmento RFM + data da última mudança | `clients.analiseRFM*` (cron `rfm-analysis`) | Chip colorido (cores de `utils/rfm.ts`) + motivo "caiu de X para Y em DD/MM" |
-| Recência vs. ciclo de recompra | `clients.ultimaCompraData` + histórico `sales` | Motivo "ciclo estourado há N dias" — o gatilho mais acionável da fila |
-| Produto sugerido (cross-sell) | `clients.metadataProdutoSugeridoId` (cron `product-client-references`) | Linha "O que oferecer — Sugestão: …" |
-| Produto mais comprado / recompra | `clients.metadataProdutoMaisCompradoId`, `product_client_references` (janelas GERAL/30/90) | Linha "Recompra: …" + histórico no card expandido |
-| Aniversário | `clients.dataNascimento` (cron `birthday-notify`) | Card de prioridade com oferta de cupom |
-| Meta por vendedor | `goals`/`goalsSellers` + `getSellerSaleGoal` | KPI "Meta do dia" pró-rateada |
-| Cliente-360 | `getClientContext` (`/api/clients/context`) | Card expandido / drawer |
-| Ranking e stats por vendedor | `getSellerStats`, `SellersRanking` | Rail lateral + tab Resultados |
-| Toques automatizados | `interactions` | Base para o log de desfechos (evitar colisão: não abordar manualmente quem recebeu campanha há < N dias) |
+| 1 | Vendedor registra interação retroativa *depois* de ver a venda entrar (gaming do ranking) | Influência exige `dataInsercao da interação <= dataVenda + tolerância de sync`. Registro retroativo continua permitido para a *timeline* (é a verdade do relacionamento), mas `registroRetroativo=true` não pontua influência |
+| 2 | Venda ingerida por sync de ERP horas/dias depois de acontecer | Atribuição roda na transação de insert da venda (como hoje) e considera interações existentes naquele momento; sem reprocessamento retroativo automático (o cron `fix-previous-sales` existe se a política mudar) |
+| 3 | Vendedor manda WhatsApp pelo Atendimentos E registra interação manual | Dedupe futuro pela ponte chats↔interactions (`chatMessageId`); em v1, orientação de produto: quem usa o chat do app não precisa registrar de novo (v2 auto-loga, §9) |
+| 4 | Cliente pediu pausa ao vendedor, campanha dispara no dia seguinte | `desfecho='PEDIU_PAUSA'` grava `comunicacaoPausadaAte` no cliente; o enqueue de campanhas passa a respeitá-la (hoje não existe opt-out — resolver para os dois mundos juntos) |
+| 5 | Interação manual "conta quota" e bloqueia campanha legítima (ou vice-versa) | Invariante §3.3.2: quota é só da máquina automatizada |
+| 6 | `PLANEJADA` esquecida para sempre | Planejada vencida há mais de X dias reaparece na fila com selo "retorno atrasado"; nunca some silenciosamente |
+| 7 | Dois vendedores atendem o mesmo cliente na mesma semana | Influência exige match com `sales.vendedorId`; a *carteira* derivada indica o dono do vínculo, mas não bloqueia registro — timeline mostra tudo |
+| 8 | Interação inbound (cliente chamou a loja) resetando fila indevidamente | Inbound conta para *fadiga* (não abordar quem acabou de falar conosco) mas não zera o *débito de cadência de saída* — são relógios distintos: `ultimoContatoQualquer` vs. `ultimaSaidaRealizada` |
+| 9 | Funil de campanha poluído por novos tipos | Invariante §3.3.6 + filtro explícito `iniciadoPor='AUTOMACAO'` nas queries de stats |
+| 10 | Fuso horário no registro manual retroativo | `dataInteracao` capturada no fuso da org (`America/Sao_Paulo`), como os time-blocks de campanha |
 
 ---
 
-## 6. O que precisa ser construído (gaps)
+## 8. Mapeamento inteligência existente → UI
 
-1. **Carteira derivada (vendedor × cliente).** Não existe atribuição
-   persistida. Derivar de `sales.vendedorId × clienteId` (frequência com decay
-   de recência), no mesmo padrão do cron de `product_client_references` — ex.:
-   tabela `client_seller_references` com `totalVendas`, `ultimaVendaData`,
-   `rankingVinculo`. Clientes sem vendedor dominante ficam na "carteira da
-   loja". Empate/decay e janela (12 meses) a calibrar.
-2. **Abordagens (tarefas de rotina).** Nova tabela (ex.: `seller_approaches`):
-   `vendedorId`, `clienteId`, `motivoTipo` (enum: RFM_QUEDA, CICLO_ESTOURADO,
-   ANIVERSARIO, CROSS_SELL, SEGUNDA_COMPRA, TOP_CLIENTE_FRIO, MANUAL),
-   `motivoDetalhe` (JSONB), `produtoSugeridoId`, `status`, `desfecho`,
-   `followUpEm`, `dataInsercao`. Gerada por cron diário; desfechos também
-   podem espelhar em `interactions` (`tipo="ABORDAGEM_VENDEDOR"`).
-3. **Gerador da fila (cron diário).** Prioriza por: follow-up do dia > queda
-   RFM recente > ciclo estourado (ponderado por LTV) > aniversário >
-   cross-sell > 2ª compra. Cap de ~12/dia (configurável) — fila terminável é o
-   que cria o hábito; fila infinita vira ruído. Supressões: pediu pausa,
-   campanha automática recente, abordado há < N dias.
-4. **Gerador de `ai_hints` para `assunto="sellers"`** (schema já permite; o
-   gerador é stub) — mensagens sugeridas e insights agregados.
-5. **Permissão/rota**: entrada na sidebar com gate por `usuarioVendedorId`,
-   modo "ver como" para gestores, entrada em `AppRoutes`.
+| Sinal | Onde vive | Tratamento na UI |
+|---|---|---|
+| Ausência de interação vs. cadência | `interactions.dataInteracao` + `segment_cadences` (novo) | Motivo-base do card: "sem contato há N dias (cadência: M)" |
+| Segmento RFM + última mudança | `clients.analiseRFM*` (cron `rfm-analysis`) | Chip colorido + boost "caiu de X para Y em DD/MM" |
+| Recência vs. ciclo de recompra | `clients.ultimaCompraData` + histórico | Boost "ciclo estourado há N dias" |
+| Produto sugerido / recompra | `clients.metadataProdutoSugeridoId`, `product_client_references` | Linha "o que oferecer" |
+| Aniversário | `clients.dataNascimento` | Boost + oferta de cupom |
+| Meta por vendedor | `goals`/`goalsSellers` + `getSellerSaleGoal` | KPI "meta do dia" pró-rateada |
+| Cliente-360 | `getClientContext` | Card expandido / drawer |
+| Entrega de campanha | `interactions.statusEnvio` | Timeline: "campanha X — lida, sem resposta" |
+| Conversões | `campaign_conversions` + influência (nova) | KPI âmbar "recompras geradas" + badges na timeline |
+| Recência de conversa | `chats.ultimaInteracaoClienteData` | Supressão de fadiga na fila (v1, read-only) |
 
 ---
 
-## 7. Componentes reutilizados (custo baixo de UI)
+## 9. O que construir (revisado)
 
-`SectionWrapper`, `StatUnitCard`, `Ranking`, `InteractiveFilter`,
-`GeneralPaginationComponent`, `ResponsiveMenuV2` (drawer mobile), `Empty`,
-chips de status no padrão de `sales-page.tsx`, cores RFM de `utils/rfm.ts`,
-toasts sonner. Nada de kanban na v1 — estados de abordagem são chips, não
-colunas (o board dnd-kit do fulfillment fica disponível se uma v2 pedir
-gestão visual de follow-ups).
+1. **Evolução de `interactions`** (§3.2): colunas + enums novos, backfill, invariantes,
+   `createInteraction()` central, rota `app/api/interactions` (POST manual + GET por
+   cliente/vendedor).
+2. **`segment_cadences`** + seeds + UI de configuração (org ajusta cadências).
+3. **Carteira derivada** (`client_seller_references`, inalterado da v1): frequência com
+   decay de recência sobre `sales.vendedorId × clienteId`, padrão do cron de
+   `product_client_references`.
+4. **Gerador/consulta da fila** (§5) — query + ranking, sem tabela.
+5. **Métrica de influência do vendedor** (§7) — computada nas stats; flags de sobreposição
+   no relatório de campanhas.
+6. **`clients.comunicacaoPausadaAte`** respeitada por campanhas e fila.
+7. **Página do hub** (§6) + **timeline do cliente** (componente novo, reuso na página do
+   cliente).
+8. **Gerador de `ai_hints` `assunto="sellers"`** (mensagem sugerida por contexto) — v2.
+9. **Ponte chats↔interactions** — v2: outbound humano no Atendimentos auto-loga interação
+   (`canal=WHATSAPP`, `iniciadoPor=USUARIO`, dedupe por `chatMessageId`); inbound relevante
+   vira interação `ENTRADA` ou, no mínimo, alimenta o relógio de fadiga formalmente.
 
----
+## 10. Roadmap
 
-## 8. Roadmap sugerido
+- **v1:** itens 1–7. Fila por cadência + boosts; registro manual (WhatsApp deep-link,
+  ligação, presencial); follow-ups como `PLANEJADA`; timeline; influência em paralelo às
+  conversões de campanha (sem tocar na atribuição existente).
+- **v2:** itens 8–9 + modo "ver como" do gestor com visão de atividade agregada da equipe;
+  revisão do modelo de atribuição *com dados de sobreposição em mãos*.
+- **v3:** abordagem sem sair do app (gateway interno), desfecho inferido da conversa,
+  metas de atividade (interações/dia) ao lado das metas de venda.
 
-- **v1 (validável com o cliente da prospecção):** carteira derivada + fila
-  gerada por cron (motivos: ciclo estourado, queda RFM, aniversário,
-  cross-sell) + registro de desfecho + follow-ups + KPIs do dia. Mensagem
-  sugerida por template estático.
-- **v2:** mensagens/insights via `ai_hints`, modo "ver como" do gestor com
-  visão de atividade da equipe, supressão inteligente vs. campanhas.
-- **v3:** integração com o gateway interno de WhatsApp (abordar sem sair do
-  app, desfecho inferido da conversa), metas de atividade (abordagens/dia)
-  ao lado das metas de venda.
+## 11. Riscos a vigiar
 
----
-
-## 9. Riscos de UX a vigiar
-
-- **Fila que erra o motivo mata a confiança.** Melhor 6 cards certos que 20
-  duvidosos; começar com gatilhos de alta precisão (ciclo estourado,
-  aniversário) e só depois ampliar.
-- **Vendedor como alvo de cobrança.** O hub deve parecer um assistente, não
-  um painel de vigilância — a visão do gestor mostra atividade agregada, não
-  "tempo de resposta por vendedor".
-- **Colisão com automações.** Cliente abordado por campanha e por vendedor no
-  mesmo dia percebe spam; a supressão cruzada (item 6.3) é requisito de v1.
+- **Fila que erra o motivo mata a confiança** — começar com gatilhos de alta precisão e
+  cadências conservadoras; melhor 6 cards certos que 20 duvidosos.
+- **Gamificação envenenando o registro** — o ranking premia *venda*, não volume de
+  interações; influência tem trava anti-retroativo (§7.1). Nunca criar meta de "N
+  interações/dia" antes de existir cultura de registro honesto (v3, com dados).
+- **Vigilância** — o hub é assistente do vendedor; o gestor vê atividade agregada, não
+  cronômetro por pessoa.
+- **Enum `tipo` legado esquecido pela metade** — deprecação precisa de dono: enquanto
+  `tipo` existir, toda query nova usa `canal`/`iniciadoPor` e o lint/review barra filtros
+  novos por `tipo`.
