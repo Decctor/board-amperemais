@@ -1,10 +1,11 @@
 # Rotina do Vendedor (Hub) — Proposta de UI/UX e Modelo de Interações
 
-> Status: proposta v2 para discussão — nada implementado.
-> v1: hub com fila gerada por gatilhos (RFM, ciclo, aniversário) e tabela própria de abordagens.
-> v2 (este documento): **interação como primitivo central**. A fila de trabalho passa a ser
-> *derivada* da ausência de interações frente à cadência de comunicação de cada segmento —
-> alinhada à premissa do produto: comunicação e relacionamento como motores de receita.
+> Status: **v3 — plano final acordado**, pronto para virar plano de implementação.
+> v1: hub com fila gerada por gatilhos e tabela própria de abordagens.
+> v2: interação como primitivo central; fila derivada da cadência de comunicação por segmento.
+> v3: sem campo `desfecho` (registro leve; qualidade de abordagem será *inferida*, não
+> declarada); opt-out desacoplado da interação; fronteira da máquina de entrega
+> (`campanhaId`) reconhecida como design, não defeito.
 > Um mockup navegável (light/dark, mobile/desktop) acompanha esta proposta.
 
 ---
@@ -43,8 +44,8 @@ escopa tudo automaticamente para esse vendedor.
    (motivo em linguagem natural — "sem contato há 45 dias; a cadência de Em risco é 14"),
    o que oferecer (recompra/cross-sell), por onde (canal em 1 toque).
 3. **O motivo é o produto.** Toda sugestão algorítmica vem com explicação; nunca um score opaco.
-4. **Fechar o ciclo é obrigatório e barato.** Registrar o desfecho custa 2 toques — e o
-   registro *é* uma interação, não um formulário paralelo.
+4. **Fechar o ciclo é obrigatório e barato.** Registrar um contato custa 2 toques (canal +
+   salvar) — e o registro *é* uma interação, não um formulário paralelo.
 5. **Toda comunicação é uma interação.** Um primitivo único alimenta fila, timeline do cliente,
    supressão, fadiga e métricas de influência. Nada de logs paralelos por modalidade.
 6. **Âmbar só em celebração** (DESIGN.md): azul estrutural; ouro nos momentos de conquista
@@ -61,7 +62,7 @@ A tabela `interactions` hoje é, na prática, **uma fila de entrega de mensagens
 | Fato | Evidência |
 |---|---|
 | Só um tipo é escrito | Todos os inserts usam `tipo="ENVIO-MENSAGEM"`; `LIGAÇÃO`/`ATENDIMENTO`/`ENVIO-EMAIL` existem no enum (`schemas/enums.ts`) mas nunca são gravados |
-| O processador exige campanha | O cron `process-interactions` filtra `campanhaId IS NOT NULL` — uma linha manual seria invisível ao pipeline |
+| O processador é da máquina de entrega | O cron `process-interactions` filtra `campanhaId IS NOT NULL` porque o template da mensagem vem da campanha. **Isso é a fronteira natural do fluxo automatizado e permanece intocada**: linhas manuais nunca entram nessa máquina — a separação já existe por construção |
 | Não há criação manual | Não existe rota `app/api/interactions/*`; o único POST relacionado é retry de envio falho |
 | `dataExecucao` acumula 3 papéis | Claim atômico da reserva de quota (`campaign-weekly-limits.ts`), âncora da janela de quota semanal e âncora da janela de atribuição (`lib/conversions/attribution.ts`) |
 | Status é ciclo de entrega | `statusEnvio` = PENDENTE→ENVIADO→ENTREGUE→LIDO / FALHOU / BLOQUEADA — não descreve uma ligação ou visita |
@@ -96,9 +97,23 @@ dataInteracao: timestamp("data_interacao"),
 
 // Ciclo de vida de interações manuais/planejadas (statusEnvio segue sendo só entrega)
 status: interactionLifecycleEnum("status"),            // PLANEJADA | REALIZADA | CANCELADA
-desfecho: interactionOutcomeEnum("desfecho"),
-// VENDA | RESPONDEU_SEM_VENDA | SEM_RESPOSTA | REAGENDADO | PEDIU_PAUSA
 ```
+
+**Sem campo `desfecho` (decisão fechada).** Um enum de desfecho só seria preenchível em
+linhas manuais (não é automatizável para envios de campanha sem pesar os fluxos de
+processamento) e criaria uma taxonomia declarada à mão — dado caro e pouco confiável.
+Tudo que ele habilitaria tem caminho independente e mais barato:
+
+- *Pausar comunicação* → ação no **cliente** (§3.3.5), não na interação.
+- *Agendar retorno* → criar a interação `PLANEJADA`, ação independente no mesmo dialog.
+- *Re-entrada na fila* → o relógio de cadência resolve sozinho: interação `REALIZADA`
+  reseta o relógio e o cliente volta quando a cadência estourar de novo.
+- *Qualidade da abordagem* (respondeu? converteu?) → **inferível** de sinais que já
+  existem: resposta inbound no Atendimentos (`chats.ultimaInteracaoClienteData`) na janela
+  pós-contato, e venda na janela (§7). Desfecho *inferido* em v2, nunca digitado.
+
+O registro manual fica com custo mínimo: **canal + nota livre opcional** (`descricao` já
+existe). Menos atrito = mais registro = dado melhor.
 
 Backfill único: `dataInteracao = COALESCE(dataEnvio, dataExecucao)`, `canal` derivado dos
 `metadados.channelsSent`, `direcao='SAIDA'`, `iniciadoPor='AUTOMACAO'`, `status='REALIZADA'`
@@ -111,8 +126,8 @@ medir se a cadência está sendo cumprida *por segmento* sem reprocessar histór
 `snapshotDiasSemContato`.
 
 **Follow-up = interação `PLANEJADA`** (com `dataInteracao` futura). Não existe tabela de
-tarefas: agendar retorno cria uma interação planejada; realizá-la muda o status e preenche
-desfecho; o card "Depois" (adiar) cria uma planejada para o dia seguinte. Um primitivo só.
+tarefas: agendar retorno cria uma interação planejada; realizá-la muda o status para
+`REALIZADA`; o card "Depois" (adiar) cria uma planejada para o dia seguinte. Um primitivo só.
 
 ### 3.3 Invariantes (os guardrails anti-gambiarra)
 
@@ -133,9 +148,10 @@ Estas regras devem virar CHECK constraints ou validação central única (ex.: u
 4. `dataInteracao <= now()` para `REALIZADA` (registro retroativo é permitido e honesto,
    registro futuro realizado não existe). Se `dataInsercao - dataInteracao >` limiar
    (ex.: 24h), marcar `metadados.registroRetroativo=true` — ver §7 (anti-gaming).
-5. `desfecho='PEDIU_PAUSA'` grava pausa no **cliente** (`clients.comunicacaoPausadaAte`),
-   e a pausa vale para **campanhas e fila** — hoje não existe opt-out de cliente; este é
-   um gap que o primitivo resolve para os dois mundos de uma vez.
+5. **Opt-out é do cliente, não da interação**: `clients.comunicacaoPausadaAte`, gravada por
+   ação manual explícita ("pausar comunicação" — disponível no dialog de registro e na
+   página do cliente), vale para **campanhas e fila**. Hoje não existe opt-out de cliente;
+   é um gap independente do primitivo de interação, resolvido junto por conveniência.
 6. `tipo` (legado) permanece: linhas manuais usam os valores hoje mortos
    (`LIGAÇÃO`, `ATENDIMENTO`) ou um novo valor — assim **todos os filtros existentes
    (`tipo='ENVIO-MENSAGEM'`) excluem linhas manuais por construção**, sem tocar uma query
@@ -210,12 +226,13 @@ IA/dia, carteira derivada com "força do vínculo". Mudanças da v2:
 2. **Timeline do cliente (novo componente).** Não existe hoje nenhuma linha do tempo de
    relacionamento (o detalhe do cliente mostra só cashback e compras). O card expandido do
    hub e a página do cliente ganham uma timeline unificada: campanhas (com status de
-   entrega), interações manuais (com desfecho), compras (com badge de conversão) —
+   entrega), interações manuais (com canal e nota), compras (com badge de conversão) —
    ordenada por `dataInteracao`/`dataVenda`. API: `GET /api/interactions?clienteId=`.
-3. **"Registrar" = criar interação.** O dialog de desfecho da v1 vira o formulário de
-   interação manual: canal (chips: WhatsApp/Ligação/Presencial/Visita), desfecho, nota
-   opcional, "agendar retorno?" (cria a `PLANEJADA`). Mesmo formulário disponível na página
-   do cliente e no Atendimentos ("registrar ligação").
+3. **"Registrar" = criar interação, em 2 toques.** Formulário mínimo: canal (chips:
+   WhatsApp/Ligação/Presencial/Visita) + nota livre opcional. Duas ações independentes no
+   mesmo dialog: "agendar retorno" (cria a `PLANEJADA`) e "pausar comunicação" (grava no
+   cliente). Sem enum de desfecho — ver §3.2. Mesmo formulário disponível na página do
+   cliente e no Atendimentos ("registrar ligação").
 4. **KPI "Abordagens" lê de interações** (`iniciadoPor='USUARIO'` + `vendedorId` + hoje);
    "Recompras geradas" lê da métrica de influência (§7).
 
@@ -267,7 +284,7 @@ Modelo proposto (duas lentes + sobreposição):
 | 1 | Vendedor registra interação retroativa *depois* de ver a venda entrar (gaming do ranking) | Influência exige `dataInsercao da interação <= dataVenda + tolerância de sync`. Registro retroativo continua permitido para a *timeline* (é a verdade do relacionamento), mas `registroRetroativo=true` não pontua influência |
 | 2 | Venda ingerida por sync de ERP horas/dias depois de acontecer | Atribuição roda na transação de insert da venda (como hoje) e considera interações existentes naquele momento; sem reprocessamento retroativo automático (o cron `fix-previous-sales` existe se a política mudar) |
 | 3 | Vendedor manda WhatsApp pelo Atendimentos E registra interação manual | Dedupe futuro pela ponte chats↔interactions (`chatMessageId`); em v1, orientação de produto: quem usa o chat do app não precisa registrar de novo (v2 auto-loga, §9) |
-| 4 | Cliente pediu pausa ao vendedor, campanha dispara no dia seguinte | `desfecho='PEDIU_PAUSA'` grava `comunicacaoPausadaAte` no cliente; o enqueue de campanhas passa a respeitá-la (hoje não existe opt-out — resolver para os dois mundos juntos) |
+| 4 | Cliente pediu pausa ao vendedor, campanha dispara no dia seguinte | "Pausar comunicação" (ação de 1 toque no dialog/página do cliente) grava `comunicacaoPausadaAte`; o enqueue de campanhas passa a respeitá-la (hoje não existe opt-out — resolver para os dois mundos juntos) |
 | 5 | Interação manual "conta quota" e bloqueia campanha legítima (ou vice-versa) | Invariante §3.3.2: quota é só da máquina automatizada |
 | 6 | `PLANEJADA` esquecida para sempre | Planejada vencida há mais de X dias reaparece na fila com selo "retorno atrasado"; nunca some silenciosamente |
 | 7 | Dois vendedores atendem o mesmo cliente na mesma semana | Influência exige match com `sales.vendedorId`; a *carteira* derivada indica o dono do vínculo, mas não bloqueia registro — timeline mostra tudo |
@@ -320,7 +337,9 @@ Modelo proposto (duas lentes + sobreposição):
   ligação, presencial); follow-ups como `PLANEJADA`; timeline; influência em paralelo às
   conversões de campanha (sem tocar na atribuição existente).
 - **v2:** itens 8–9 + modo "ver como" do gestor com visão de atividade agregada da equipe;
-  revisão do modelo de atribuição *com dados de sobreposição em mãos*.
+  revisão do modelo de atribuição *com dados de sobreposição em mãos*; **desfecho
+  inferido** (respondeu = inbound no Atendimentos na janela pós-contato; converteu = venda
+  na janela) — qualidade de abordagem sem digitação e sem taxonomia declarada.
 - **v3:** abordagem sem sair do app (gateway interno), desfecho inferido da conversa,
   metas de atividade (interações/dia) ao lado das metas de venda.
 
