@@ -4,8 +4,16 @@ import { index, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { campaigns } from "./campaigns";
 import { clients } from "./clients";
 import { newTable } from "./common";
-import { interactionTypeEnum, interactionsCronJobTimeBlocksEnum } from "./enums";
+import {
+	interactionChannelEnum,
+	interactionDirectionEnum,
+	interactionInitiatorEnum,
+	interactionLifecycleStatusEnum,
+	interactionTypeEnum,
+	interactionsCronJobTimeBlocksEnum,
+} from "./enums";
 import { organizations } from "./organizations";
+import { sellers } from "./sellers";
 import { users } from "./users";
 
 export const interactions = newTable(
@@ -23,6 +31,19 @@ export const interactions = newTable(
 		descricao: text("descricao"),
 		tipo: interactionTypeEnum("tipo").notNull(),
 		autorId: varchar("autor_id", { length: 255 }).references(() => users.id),
+
+		// Primitivo de relacionamento (docs/seller-routine-hub-design.md). Todas nullable:
+		// linhas legadas são backfilladas; código novo classifica por canal/direção/iniciador
+		// em vez de sobrecarregar `tipo` (que segue como legado da máquina de entrega).
+		canal: interactionChannelEnum("canal"),
+		direcao: interactionDirectionEnum("direcao"),
+		iniciadoPor: interactionInitiatorEnum("iniciado_por"),
+		vendedorId: varchar("vendedor_id", { length: 255 }).references(() => sellers.id),
+		// Âncora canônica de cadência e ordenação de relacionamento: quando a interação
+		// aconteceu (≠ dataInsercao = quando foi registrada; ≠ dataExecucao = claim de entrega).
+		dataInteracao: timestamp("data_interacao"),
+		// Ciclo de vida de interações manuais/planejadas. `statusEnvio` segue sendo só entrega.
+		status: interactionLifecycleStatusEnum("status"),
 
 		// Scheduling specific
 		agendamentoDataReferencia: text("agendamento_data_referencia"), // ISO 8601 format YYYY-MM-DDTHH:MM:SSZ
@@ -52,6 +73,10 @@ export const interactions = newTable(
 			table.tipo,
 			table.dataExecucao,
 		),
+		// Cadência/timeline: última interação por cliente.
+		clientRelationshipIdx: index("idx_interactions_org_cliente_data_interacao").on(table.organizacaoId, table.clienteId, table.dataInteracao),
+		// Rotina do vendedor: interações e follow-ups (PLANEJADA) do dia.
+		sellerRoutineIdx: index("idx_interactions_org_vendedor_status_data").on(table.organizacaoId, table.vendedorId, table.status, table.dataInteracao),
 	}),
 );
 export const interactionRelations = relations(interactions, ({ one }) => ({
@@ -66,6 +91,10 @@ export const interactionRelations = relations(interactions, ({ one }) => ({
 	autor: one(users, {
 		fields: [interactions.autorId],
 		references: [users.id],
+	}),
+	vendedor: one(sellers, {
+		fields: [interactions.vendedorId],
+		references: [sellers.id],
 	}),
 }));
 export type TInteractionEntity = typeof interactions.$inferSelect;

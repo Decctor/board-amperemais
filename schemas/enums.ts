@@ -25,6 +25,14 @@ export const TimeDurationUnitsEnum = z.enum(["MINUTOS", "HORAS", "DIAS", "SEMANA
 export type TTimeDurationUnitsEnum = z.infer<typeof TimeDurationUnitsEnum>;
 export const InteractionTypeEnum = z.enum(["ENVIO-MENSAGEM", "ENVIO-EMAIL", "LIGAÇÃO", "ATENDIMENTO"]);
 export type TInteractionTypeEnum = z.infer<typeof InteractionTypeEnum>;
+export const InteractionChannelEnum = z.enum(["WHATSAPP", "EMAIL", "LIGACAO", "PRESENCIAL", "VISITA", "SMS", "OUTRO"]);
+export type TInteractionChannelEnum = z.infer<typeof InteractionChannelEnum>;
+export const InteractionDirectionEnum = z.enum(["SAIDA", "ENTRADA"]);
+export type TInteractionDirectionEnum = z.infer<typeof InteractionDirectionEnum>;
+export const InteractionInitiatorEnum = z.enum(["AUTOMACAO", "USUARIO", "AGENTE_IA", "CLIENTE"]);
+export type TInteractionInitiatorEnum = z.infer<typeof InteractionInitiatorEnum>;
+export const InteractionLifecycleStatusEnum = z.enum(["PLANEJADA", "REALIZADA", "CANCELADA"]);
+export type TInteractionLifecycleStatusEnum = z.infer<typeof InteractionLifecycleStatusEnum>;
 export const InteractionsCronJobTimeBlocksEnum = z.enum([
 	"00:00",
 	"01:00",

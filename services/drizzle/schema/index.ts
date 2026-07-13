@@ -13,6 +13,8 @@ export * from "./enums";
 export * from "./campaigns";
 export * from "./campaign-conversions";
 export * from "./interactions";
+export * from "./segment-cadences";
+export * from "./client-seller-references";
 export * from "./message-templates";
 export * from "./whatsapp-templates";
 export * from "./cashback-programs";

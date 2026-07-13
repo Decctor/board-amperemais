@@ -65,6 +65,10 @@ export const clients = newTable(
 		metadataProdutoSugeridoId: varchar("metadata_produto_sugerido_id", { length: 255 }), // Cross-sell suggestion (computed by cron)
 		metadataUltimaAtualizacao: timestamp("metadata_ultima_atualizacao"), // Last metadata update timestamp
 
+		// Opt-out de comunicação (pedido do cliente): suprime campanhas e fila da rotina
+		// até a data. Null = sem pausa. Gravada por ação manual explícita.
+		comunicacaoPausadaAte: timestamp("comunicacao_pausada_ate"),
+
 		dataNascimento: timestamp("data_nascimento"),
 		dataFundacao: timestamp("data_fundacao"),
 		profissao: text("profissao"),
