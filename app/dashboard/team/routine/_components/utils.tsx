@@ -1,9 +1,10 @@
 import type { TInteractionChannelEnum } from "@/schemas/enums";
-import { Handshake, Mail, MessageCircle, MessageSquareText, Phone, Store } from "lucide-react";
+import { Handshake, Mail, MessageSquareText, Phone, Store } from "lucide-react";
+import { WhatsappIcon } from "@/components/icons";
 import type { ReactNode } from "react";
 
 export const INTERACTION_CHANNEL_META: Record<TInteractionChannelEnum, { label: string; icon: ReactNode }> = {
-	WHATSAPP: { label: "WhatsApp", icon: <MessageCircle className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" /> },
+	WHATSAPP: { label: "WhatsApp", icon: <WhatsappIcon className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" /> },
 	LIGACAO: { label: "Ligação", icon: <Phone className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" /> },
 	PRESENCIAL: { label: "Presencial", icon: <Store className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" /> },
 	VISITA: { label: "Visita", icon: <Handshake className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" /> },

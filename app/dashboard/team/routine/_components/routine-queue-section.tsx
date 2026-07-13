@@ -17,6 +17,7 @@ import {
 	Cake,
 	ChevronDown,
 	ClipboardCheck,
+	PhoneIcon,
 	ListChecks,
 	MessageCircle,
 	Megaphone,
@@ -30,6 +31,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { RegisterInteractionMenu } from "./register-interaction-menu";
 import { INTERACTION_CHANNEL_META, buildWhatsappLink, getClientInitials } from "./utils";
+import { WhatsappIcon } from "@/components/icons";
 
 type TQueueItem = TGetRoutineOutput["data"]["fila"][number];
 
@@ -90,7 +92,7 @@ function QueueCard({ item, vendedorId, onRegistered }: { item: TQueueItem; vende
 	const [handled, setHandled] = useState(false);
 
 	const whatsappLink = buildWhatsappLink(item.cliente.telefone);
-
+	const callLink = item.cliente.telefone ? `tel:${item.cliente.telefone}` : null;
 	const { mutate: snooze, isPending: snoozePending } = useMutation({
 		mutationKey: ["snooze-approach", item.cliente.id],
 		// "Depois" cria uma interação PLANEJADA para amanhã: suprime o cliente da fila até lá.
@@ -184,17 +186,24 @@ function QueueCard({ item, vendedorId, onRegistered }: { item: TQueueItem; vende
 			{!handled ? (
 				<div className="flex flex-wrap items-center gap-1.5">
 					{whatsappLink ? (
-						<Button asChild size="sm" className="gap-1.5">
+						<Button asChild size="sm" variant={"brand"} className="gap-1.5">
 							<a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-								<MessageCircle className="h-3.5 w-3.5" /> Abordar no WhatsApp
+								<WhatsappIcon className="h-3.5 w-3.5" /> ABORDAR VIA WHATSAPP
+							</a>
+						</Button>
+					) : null}
+					{callLink ? (
+						<Button asChild size="sm" variant="brand-secondary" className="gap-1.5">
+							<a href={callLink} target="_blank" rel="noopener noreferrer">
+								<PhoneIcon className="h-3.5 w-3.5" /> ABORDAR VIA LIGAÇÃO
 							</a>
 						</Button>
 					) : null}
 					<Button variant="outline" size="sm" className="gap-1.5" onClick={() => setRegisterModalOpen(true)}>
-						<ClipboardCheck className="h-3.5 w-3.5" /> Registrar
+						<ClipboardCheck className="h-3.5 w-3.5" /> REGISTRAR
 					</Button>
 					<Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => snooze()} disabled={snoozePending}>
-						Depois
+						DEPOIS
 					</Button>
 				</div>
 			) : (

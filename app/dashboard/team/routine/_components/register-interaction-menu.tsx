@@ -69,7 +69,7 @@ export function RegisterInteractionMenu({ cliente, vendedorId, closeModal, callb
 
 	return (
 		<ResponsiveMenuV2
-			menuTitle="Registrar contato"
+			menuTitle="REGISTRAR CONTATO"
 			menuDescription={`Registre o contato com ${cliente.nome}. Isso reinicia o relógio de cadência e alimenta a linha do tempo do cliente.`}
 			menuActionButtonText="REGISTRAR"
 			menuCancelButtonText="CANCELAR"
