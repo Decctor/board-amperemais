@@ -98,10 +98,12 @@ export async function createManualInteraction(params: TCreateManualInteractionPa
 	});
 
 	const registroRetroativo = !planejada && dayjs(now).diff(dataInteracao, "hour") > RETROACTIVE_THRESHOLD_HOURS;
-	const snapshotDiasSemContato = lastRealizedInteraction?.dataInteracao ? dayjs(dataInteracao).diff(lastRealizedInteraction.dataInteracao, "day") : null;
+	const snapshotDiasSemContato = lastRealizedInteraction?.dataInteracao
+		? dayjs(dataInteracao).diff(lastRealizedInteraction.dataInteracao, "day")
+		: null;
 
 	const metadados: TInteractionMetadata = {
-		...(params.metadados ?? {}),
+		...params.metadados,
 		snapshotSegmentoRFM: client.analiseRFMTitulo ?? null,
 		snapshotDiasSemContato,
 		registroRetroativo: registroRetroativo || null,

@@ -17,7 +17,10 @@ async function main() {
 	const apply = process.argv.includes("--apply");
 
 	const pendingWhere = and(isNull(interactions.iniciadoPor), isNull(interactions.dataInteracao));
-	const [pending] = await db.select({ total: sql<number>`count(*)` }).from(interactions).where(pendingWhere);
+	const [pending] = await db
+		.select({ total: sql<number>`count(*)` })
+		.from(interactions)
+		.where(pendingWhere);
 	console.log(`${pending?.total ?? 0} interação(ões) sem campos de relacionamento.`);
 
 	if (!Number(pending?.total)) {

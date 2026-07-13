@@ -55,7 +55,10 @@ async function getInteractions({ input, session }: { input: TGetInteractionsInpu
 	if (input.status) conditions.push(eq(interactions.status, input.status));
 	const where = and(...conditions);
 
-	const [totalResult] = await db.select({ total: count(interactions.id) }).from(interactions).where(where);
+	const [totalResult] = await db
+		.select({ total: count(interactions.id) })
+		.from(interactions)
+		.where(where);
 	const total = totalResult?.total ?? 0;
 
 	const rows = await db.query.interactions.findMany({
@@ -126,16 +129,10 @@ const CreateInteractionInputSchema = z.object({
 		required_error: "ID do cliente não informado.",
 		invalid_type_error: "Tipo inválido para o ID do cliente.",
 	}),
-	vendedorId: z
-		.string({ invalid_type_error: "Tipo inválido para o ID do vendedor." })
-		.optional()
-		.nullable(),
+	vendedorId: z.string({ invalid_type_error: "Tipo inválido para o ID do vendedor." }).optional().nullable(),
 	canal: InteractionChannelEnum,
 	direcao: InteractionDirectionEnum.optional().default("SAIDA"),
-	descricao: z
-		.string({ invalid_type_error: "Tipo inválido para a nota." })
-		.optional()
-		.nullable(),
+	descricao: z.string({ invalid_type_error: "Tipo inválido para a nota." }).optional().nullable(),
 	dataInteracao: z
 		.string({ invalid_type_error: "Tipo inválido para a data da interação." })
 		.datetime({ message: "Tipo inválido para a data da interação." })
@@ -150,10 +147,7 @@ const CreateInteractionInputSchema = z.object({
 		.transform((val) => new Date(val))
 		.optional()
 		.nullable(),
-	followUpDescricao: z
-		.string({ invalid_type_error: "Tipo inválido para a nota do follow-up." })
-		.optional()
-		.nullable(),
+	followUpDescricao: z.string({ invalid_type_error: "Tipo inválido para a nota do follow-up." }).optional().nullable(),
 });
 export type TCreateInteractionInput = z.infer<typeof CreateInteractionInputSchema>;
 
@@ -222,10 +216,7 @@ const ResolveInteractionInputSchema = z.object({
 		required_error: "Resolução não informada.",
 		invalid_type_error: "Tipo inválido para a resolução.",
 	}),
-	descricao: z
-		.string({ invalid_type_error: "Tipo inválido para a nota." })
-		.optional()
-		.nullable(),
+	descricao: z.string({ invalid_type_error: "Tipo inválido para a nota." }).optional().nullable(),
 });
 export type TResolveInteractionInput = z.infer<typeof ResolveInteractionInputSchema>;
 

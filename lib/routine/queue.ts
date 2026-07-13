@@ -42,7 +42,9 @@ type TPortfolioClientRow = {
 	scoreVinculo: number;
 };
 
-function computeAveragePurchaseCycleDays(client: Pick<TPortfolioClientRow, "primeiraCompraData" | "ultimaCompraData" | "totalCompras">): number | null {
+function computeAveragePurchaseCycleDays(
+	client: Pick<TPortfolioClientRow, "primeiraCompraData" | "ultimaCompraData" | "totalCompras">,
+): number | null {
 	if (!client.primeiraCompraData || !client.ultimaCompraData) return null;
 	if (!client.totalCompras || client.totalCompras < MIN_PURCHASES_FOR_RELIABLE_CYCLE) return null;
 	const spanDays = dayjs(client.ultimaCompraData).diff(client.primeiraCompraData, "day");

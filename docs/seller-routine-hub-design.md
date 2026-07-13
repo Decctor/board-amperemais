@@ -1,6 +1,8 @@
 # Rotina do Vendedor (Hub) — Proposta de UI/UX e Modelo de Interações
 
-> Status: **v3 — plano final acordado**, pronto para virar plano de implementação.
+> Status: **v3 — plano final acordado; v1 implementada** (schema, crons, rotas, hub em
+> `/dashboard/team/routine`). Pós-deploy: rodar `db:push`, `backfill:interactions-relationship`
+> e o cron `client-seller-references`.
 > v1: hub com fila gerada por gatilhos e tabela própria de abordagens.
 > v2: interação como primitivo central; fila derivada da cadência de comunicação por segmento.
 > v3: sem campo `desfecho` (registro leve; qualidade de abordagem será *inferida*, não
