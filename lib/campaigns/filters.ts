@@ -181,7 +181,7 @@ export async function resolveCampaignAudienceClientIds({
 /**
  * Remove clientes com comunicação pausada (`clients.comunicacaoPausadaAte` no futuro) de uma
  * lista de destinatários. A pausa é um opt-out de DISPARO, não de pertencimento a audiência:
- * vale para todo enqueue de campanha (e para a fila da rotina do vendedor), mas não para
+ * vale para todo enqueue de campanha (e para a fila da carteira do vendedor), mas não para
  * preview de audiência nem para sincronização de públicos de anúncios.
  */
 export async function filterCommunicationPausedClientIds({

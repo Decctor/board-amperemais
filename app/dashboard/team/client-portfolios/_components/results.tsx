@@ -12,13 +12,13 @@ import dayjs from "dayjs";
 import { BadgeDollarSign, ChartColumn, ShoppingCart, Target, Ticket } from "lucide-react";
 import Link from "next/link";
 
-type RoutineResultsProps = {
+type ResultsProps = {
 	vendedorId: string;
 };
 
 // Visão "primeira pessoa" dos resultados: reaproveita as consultas que o gestor já usa
 // (getSellerStats), filtradas para o vendedor logado e para o mês corrente.
-export function RoutineResults({ vendedorId }: RoutineResultsProps) {
+export function Results({ vendedorId }: ResultsProps) {
 	const { data, isLoading, error } = useSellerStats({
 		sellerId: vendedorId,
 		initialFilters: {

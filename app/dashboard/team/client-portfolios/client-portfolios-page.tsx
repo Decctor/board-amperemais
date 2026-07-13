@@ -8,34 +8,34 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
-import { useRoutine, useRoutineStats } from "@/lib/queries/routine";
+import { useClientPortfolio, useClientPortfolioStats } from "@/lib/queries/client-portfolios";
 import { useSellersSimplified } from "@/lib/queries/sellers";
 import { useQueryClient } from "@tanstack/react-query";
 import { CalendarCheck, ChartColumn, ListChecks, RefreshCw, ShoppingCart, Target, UserRound, Wallet } from "lucide-react";
 import { useState } from "react";
-import { RoutineFollowUps } from "./_components/routine-follow-ups";
-import { RoutinePortfolio } from "./_components/routine-portfolio";
-import { RoutineQueueSection } from "./_components/routine-queue-section";
-import { RoutineResults } from "./_components/routine-results";
+import { FollowUps } from "./_components/follow-ups";
+import { Portfolio } from "./_components/portfolio";
+import { QueueSection } from "./_components/queue-section";
+import { Results } from "./_components/results";
 
-type RoutinePageProps = {
+type ClientPortfoliosPageProps = {
 	boundSellerId: string | null;
 	canPickSeller: boolean;
 };
 
-export default function RoutinePage({ boundSellerId, canPickSeller }: RoutinePageProps) {
+export default function ClientPortfoliosPage({ boundSellerId, canPickSeller }: ClientPortfoliosPageProps) {
 	const [pickedSellerId, setPickedSellerId] = useState<string | null>(null);
 	const effectiveSellerId = boundSellerId ?? pickedSellerId;
 
 	const queryClient = useQueryClient();
 	const { data: sellersSimplified } = useSellersSimplified();
 
-	const routineQuery = useRoutine({ vendedorId: effectiveSellerId && !boundSellerId ? effectiveSellerId : null });
-	const statsQuery = useRoutineStats({ vendedorId: effectiveSellerId && !boundSellerId ? effectiveSellerId : null });
+	const portfolioQuery = useClientPortfolio({ vendedorId: effectiveSellerId && !boundSellerId ? effectiveSellerId : null });
+	const statsQuery = useClientPortfolioStats({ vendedorId: effectiveSellerId && !boundSellerId ? effectiveSellerId : null });
 
-	function refreshRoutine() {
-		queryClient.invalidateQueries({ queryKey: ["routine"] });
-		queryClient.invalidateQueries({ queryKey: ["routine-stats"] });
+	function refreshPortfolio() {
+		queryClient.invalidateQueries({ queryKey: ["client-portfolios"] });
+		queryClient.invalidateQueries({ queryKey: ["client-portfolios-stats"] });
 	}
 
 	// Usuário sem vínculo com vendedor e sem permissão de ver resultados: nada a mostrar.
@@ -53,7 +53,7 @@ export default function RoutinePage({ boundSellerId, canPickSeller }: RoutinePag
 		);
 	}
 
-	// Gestor sem vínculo: escolhe qual rotina visualizar ("ver como").
+	// Gestor sem vínculo: escolhe qual carteira visualizar ("ver como").
 	if (!effectiveSellerId) {
 		return (
 			<div className="flex w-full flex-col items-center gap-4 py-12">
@@ -63,7 +63,7 @@ export default function RoutinePage({ boundSellerId, canPickSeller }: RoutinePag
 							<CalendarCheck />
 						</EmptyMedia>
 						<EmptyTitle>Escolha um vendedor</EmptyTitle>
-						<EmptyDescription>Seu usuário não está vinculado a um vendedor — selecione de quem você quer visualizar a rotina.</EmptyDescription>
+						<EmptyDescription>Seu usuário não está vinculado a um vendedor — selecione de quem você quer visualizar a carteira.</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 				<div className="w-full max-w-xs">
@@ -85,8 +85,8 @@ export default function RoutinePage({ boundSellerId, canPickSeller }: RoutinePag
 	}
 
 	const stats = statsQuery.data;
-	const routine = routineQuery.data;
-	const abordagensPlanejadas = (stats?.abordagensHoje ?? 0) + (routine?.fila.length ?? 0);
+	const clientPortfolio = portfolioQuery.data;
+	const abordagensPlanejadas = (stats?.abordagensHoje ?? 0) + (clientPortfolio?.fila.length ?? 0);
 
 	return (
 		<div className="flex h-full w-full flex-col gap-3">
@@ -111,6 +111,7 @@ export default function RoutinePage({ boundSellerId, canPickSeller }: RoutinePag
 
 			<div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
 				<StatUnitCard
+					variant="horizontal"
 					title="META DO DIA"
 					icon={<Target className="h-4 w-4 min-h-4 min-w-4" />}
 					current={{ value: stats?.vendasHoje.valor ?? 0, format: (n) => formatToMoney(n) }}
@@ -132,21 +133,24 @@ export default function RoutinePage({ boundSellerId, canPickSeller }: RoutinePag
 					}
 				/>
 				<StatUnitCard
+					variant="horizontal"
 					title="ABORDAGENS HOJE"
 					icon={<ListChecks className="h-4 w-4 min-h-4 min-w-4" />}
 					current={{
 						value: stats?.abordagensHoje ?? 0,
 						format: (n) => (abordagensPlanejadas > 0 ? `${formatDecimalPlaces(n)} / ${abordagensPlanejadas}` : formatDecimalPlaces(n)),
 					}}
-					subtitle={routine ? (routine.fila.length > 0 ? `${routine.fila.length} clientes na fila` : "Fila concluída!") : undefined}
+					subtitle={clientPortfolio ? (clientPortfolio.fila.length > 0 ? `${clientPortfolio.fila.length} clientes na fila` : "Fila concluída!") : undefined}
 				/>
 				<StatUnitCard
+					variant="horizontal"
 					title="VENDAS HOJE"
 					icon={<ShoppingCart className="h-4 w-4 min-h-4 min-w-4" />}
 					current={{ value: stats?.vendasHoje.qtde ?? 0, format: (n) => formatDecimalPlaces(n) }}
 					subtitle={stats && stats.vendasHoje.qtde > 0 ? `Ticket médio ${formatToMoney(stats.vendasHoje.ticketMedio)}` : undefined}
 				/>
 				<StatUnitCard
+					variant="horizontal"
 					title="VENDAS INFLUENCIADAS NO MÊS"
 					icon={<RefreshCw className="h-4 w-4 min-h-4 min-w-4" />}
 					current={{ value: stats?.influenciadasMes.qtde ?? 0, format: (n) => formatDecimalPlaces(n) }}
@@ -169,28 +173,28 @@ export default function RoutinePage({ boundSellerId, canPickSeller }: RoutinePag
 				</TabsList>
 
 				<TabsContent value="dia">
-					{routineQuery.isLoading ? <LoadingComponent /> : null}
-					{routineQuery.error ? <ErrorComponent msg={getErrorMessage(routineQuery.error)} /> : null}
-					{routine ? (
+					{portfolioQuery.isLoading ? <LoadingComponent /> : null}
+					{portfolioQuery.error ? <ErrorComponent msg={getErrorMessage(portfolioQuery.error)} /> : null}
+					{clientPortfolio ? (
 						<div className="grid w-full grid-cols-1 items-start gap-3 xl:grid-cols-[2fr_1fr]">
-							<RoutineQueueSection
-								fila={routine.fila}
-								totalEmDebito={routine.totalEmDebito}
-								carteiraTotal={routine.carteiraTotal}
+							<QueueSection
+								fila={clientPortfolio.fila}
+								totalEmDebito={clientPortfolio.totalEmDebito}
+								carteiraTotal={clientPortfolio.carteiraTotal}
 								vendedorId={effectiveSellerId}
-								onRegistered={refreshRoutine}
+								onRegistered={refreshPortfolio}
 							/>
-							<RoutineFollowUps followUps={routine.followUps} onResolved={refreshRoutine} />
+							<FollowUps followUps={clientPortfolio.followUps} onResolved={refreshPortfolio} />
 						</div>
 					) : null}
 				</TabsContent>
 
 				<TabsContent value="carteira">
-					<RoutinePortfolio vendedorId={effectiveSellerId && !boundSellerId ? effectiveSellerId : null} />
+					<Portfolio vendedorId={effectiveSellerId && !boundSellerId ? effectiveSellerId : null} />
 				</TabsContent>
 
 				<TabsContent value="resultados">
-					<RoutineResults vendedorId={effectiveSellerId} />
+					<Results vendedorId={effectiveSellerId} />
 				</TabsContent>
 			</Tabs>
 		</div>

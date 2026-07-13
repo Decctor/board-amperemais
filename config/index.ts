@@ -188,6 +188,9 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES: TOrganizationConfig
 		conferenciaCega: false,
 		bloquearFechamentoComPendenciaFiscal: false,
 	},
+	carteirasClientes: {
+		habilitado: false,
+	},
 };
 
 const DEFAULT_PAYMENT_METHOD_CONFIGURATION: TOrganizationConfiguration["defaults"]["pagamentos"]["metodos"]["DINHEIRO"] = {
@@ -765,9 +768,9 @@ export const AppRoutes = [
 		description: "Painel de acompanhamento e gestão de marketing.",
 	},
 	{
-		path: "/dashboard/team/routine",
-		title: "Minha rotina",
-		description: "Quem abordar, o que oferecer e por quê — sua rotina do dia.",
+		path: "/dashboard/team/client-portfolios",
+		title: "Carteira de Clientes",
+		description: "Quem abordar, o que oferecer e por quê — sua carteira do dia.",
 	},
 	{
 		path: "/dashboard/team/sellers",

@@ -1,65 +1,65 @@
 import type { TGetInteractionsOutput } from "@/app/api/interactions/route";
-import type { TGetRoutineOutput } from "@/app/api/routine/route";
-import type { TGetRoutinePortfolioOutput } from "@/app/api/routine/portfolio/route";
-import type { TGetRoutineStatsOutput } from "@/app/api/routine/stats/route";
+import type { TGetClientPortfolioOutput } from "@/app/api/client-portfolios/route";
+import type { TGetPortfolioOutput } from "@/app/api/client-portfolios/portfolio/route";
+import type { TGetClientPortfolioStatsOutput } from "@/app/api/client-portfolios/stats/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
 
-async function fetchRoutine(vendedorId: string | null) {
+async function fetchClientPortfolio(vendedorId: string | null) {
 	const searchParams = new URLSearchParams();
 	if (vendedorId) searchParams.set("vendedorId", vendedorId);
-	const { data } = await axios.get<TGetRoutineOutput>(`/api/routine?${searchParams.toString()}`);
+	const { data } = await axios.get<TGetClientPortfolioOutput>(`/api/client-portfolios?${searchParams.toString()}`);
 	return data.data;
 }
 
-export function useRoutine({ vendedorId }: { vendedorId: string | null }) {
-	const queryKey = ["routine", vendedorId];
+export function useClientPortfolio({ vendedorId }: { vendedorId: string | null }) {
+	const queryKey = ["client-portfolios", vendedorId];
 	return {
-		...useQuery({ queryKey, queryFn: () => fetchRoutine(vendedorId) }),
+		...useQuery({ queryKey, queryFn: () => fetchClientPortfolio(vendedorId) }),
 		queryKey,
 	};
 }
 
-async function fetchRoutineStats(vendedorId: string | null) {
+async function fetchClientPortfolioStats(vendedorId: string | null) {
 	const searchParams = new URLSearchParams();
 	if (vendedorId) searchParams.set("vendedorId", vendedorId);
-	const { data } = await axios.get<TGetRoutineStatsOutput>(`/api/routine/stats?${searchParams.toString()}`);
+	const { data } = await axios.get<TGetClientPortfolioStatsOutput>(`/api/client-portfolios/stats?${searchParams.toString()}`);
 	return data.data;
 }
 
-export function useRoutineStats({ vendedorId }: { vendedorId: string | null }) {
-	const queryKey = ["routine-stats", vendedorId];
+export function useClientPortfolioStats({ vendedorId }: { vendedorId: string | null }) {
+	const queryKey = ["client-portfolios-stats", vendedorId];
 	return {
-		...useQuery({ queryKey, queryFn: () => fetchRoutineStats(vendedorId) }),
+		...useQuery({ queryKey, queryFn: () => fetchClientPortfolioStats(vendedorId) }),
 		queryKey,
 	};
 }
 
-type TRoutinePortfolioFilters = {
+type TPortfolioFilters = {
 	segmento: string | null;
 	page: number;
 };
 
-async function fetchRoutinePortfolio({ vendedorId, filters }: { vendedorId: string | null; filters: TRoutinePortfolioFilters }) {
+async function fetchPortfolio({ vendedorId, filters }: { vendedorId: string | null; filters: TPortfolioFilters }) {
 	const searchParams = new URLSearchParams();
 	if (vendedorId) searchParams.set("vendedorId", vendedorId);
 	if (filters.segmento) searchParams.set("segmento", filters.segmento);
 	if (filters.page) searchParams.set("page", filters.page.toString());
-	const { data } = await axios.get<TGetRoutinePortfolioOutput>(`/api/routine/portfolio?${searchParams.toString()}`);
+	const { data } = await axios.get<TGetPortfolioOutput>(`/api/client-portfolios/portfolio?${searchParams.toString()}`);
 	return data.data;
 }
 
-export function useRoutinePortfolio({ vendedorId }: { vendedorId: string | null }) {
-	const [filters, setFilters] = useState<TRoutinePortfolioFilters>({ segmento: null, page: 1 });
-	function updateFilters(newFilters: Partial<TRoutinePortfolioFilters>) {
+export function usePortfolio({ vendedorId }: { vendedorId: string | null }) {
+	const [filters, setFilters] = useState<TPortfolioFilters>({ segmento: null, page: 1 });
+	function updateFilters(newFilters: Partial<TPortfolioFilters>) {
 		setFilters((prevFilters) => ({ ...prevFilters, ...newFilters }));
 	}
 	const debouncedFilters = useDebounceMemo(filters, 300);
-	const queryKey = ["routine-portfolio", vendedorId, debouncedFilters];
+	const queryKey = ["client-portfolios-portfolio", vendedorId, debouncedFilters];
 	return {
-		...useQuery({ queryKey, queryFn: () => fetchRoutinePortfolio({ vendedorId, filters: debouncedFilters }) }),
+		...useQuery({ queryKey, queryFn: () => fetchPortfolio({ vendedorId, filters: debouncedFilters }) }),
 		queryKey,
 		filters,
 		updateFilters,

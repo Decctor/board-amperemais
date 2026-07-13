@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { resolveRoutineSeller } from "@/lib/routine/resolve-seller";
+import { resolveClientPortfolioSeller } from "@/lib/client-portfolios/resolve-seller";
 import { db } from "@/services/drizzle";
 import { clientSellerReferences, clients } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -14,7 +14,7 @@ const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 100;
 const MIN_PURCHASES_FOR_RELIABLE_CYCLE = 3;
 
-const GetRoutinePortfolioInputSchema = z.object({
+const GetPortfolioInputSchema = z.object({
 	vendedorId: z
 		.string({ invalid_type_error: "Tipo inválido para o ID do vendedor." })
 		.optional()
@@ -36,10 +36,10 @@ const GetRoutinePortfolioInputSchema = z.object({
 		.nullable()
 		.transform((v) => (v ? Math.min(MAX_PAGE_SIZE, Math.max(1, Number(v))) : DEFAULT_PAGE_SIZE)),
 });
-export type TGetRoutinePortfolioInput = z.infer<typeof GetRoutinePortfolioInputSchema>;
+export type TGetPortfolioInput = z.infer<typeof GetPortfolioInputSchema>;
 
-async function getRoutinePortfolio({ input, session }: { input: TGetRoutinePortfolioInput; session: TAuthUserSession }) {
-	const { organizacaoId, seller } = await resolveRoutineSeller({ session, explicitSellerId: input.vendedorId });
+async function getPortfolio({ input, session }: { input: TGetPortfolioInput; session: TAuthUserSession }) {
+	const { organizacaoId, seller } = await resolveClientPortfolioSeller({ session, explicitSellerId: input.vendedorId });
 
 	const baseConditions = [
 		eq(clientSellerReferences.organizacaoId, organizacaoId),
@@ -126,22 +126,24 @@ async function getRoutinePortfolio({ input, session }: { input: TGetRoutinePortf
 		message: "Carteira carregada com sucesso.",
 	};
 }
-export type TGetRoutinePortfolioOutput = Awaited<ReturnType<typeof getRoutinePortfolio>>;
+export type TGetPortfolioOutput = Awaited<ReturnType<typeof getPortfolio>>;
 
-async function getRoutinePortfolioRoute(request: NextRequest) {
+async function getPortfolioRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	if (!session.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
+	if (!session.membership.organizacao.configuracao.preferencias.carteirasClientes?.habilitado)
+		throw new createHttpError.Forbidden("O módulo de carteira de clientes não está habilitado para esta organização.");
 
 	const { searchParams } = new URL(request.url);
-	const input = GetRoutinePortfolioInputSchema.parse({
+	const input = GetPortfolioInputSchema.parse({
 		vendedorId: searchParams.get("vendedorId"),
 		segmento: searchParams.get("segmento"),
 		page: searchParams.get("page"),
 		limit: searchParams.get("limit"),
 	});
-	const result = await getRoutinePortfolio({ input, session });
+	const result = await getPortfolio({ input, session });
 	return NextResponse.json(result, { status: 200 });
 }
 
-export const GET = appApiHandler({ GET: getRoutinePortfolioRoute });
+export const GET = appApiHandler({ GET: getPortfolioRoute });

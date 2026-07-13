@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { DEFAULT_SEGMENT_CADENCES, getEffectiveSegmentCadences } from "@/lib/routine/cadence";
+import { DEFAULT_SEGMENT_CADENCES, getEffectiveSegmentCadences } from "@/lib/client-portfolios/cadence";
 import { db } from "@/services/drizzle";
 import { segmentCadences } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
@@ -36,6 +36,8 @@ async function getSegmentCadencesRoute(_request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	if (!session.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
+	if (!session.membership.organizacao.configuracao.preferencias.carteirasClientes?.habilitado)
+		throw new createHttpError.Forbidden("O módulo de carteira de clientes não está habilitado para esta organização.");
 
 	const result = await getSegmentCadences({ session });
 	return NextResponse.json(result, { status: 200 });
@@ -118,6 +120,8 @@ async function updateSegmentCadencesRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	if (!session.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
+	if (!session.membership.organizacao.configuracao.preferencias.carteirasClientes?.habilitado)
+		throw new createHttpError.Forbidden("O módulo de carteira de clientes não está habilitado para esta organização.");
 	if (!session.membership.permissoes.empresa.editar)
 		throw new createHttpError.Forbidden("Você não tem permissão para editar as cadências de comunicação.");
 

@@ -4,9 +4,9 @@ import { newTable } from "./common";
 import { organizations } from "./organizations";
 
 // Cadência de comunicação por segmento RFM (docs/seller-routine-hub-design.md §4).
-// A fila da rotina do vendedor é o "débito de comunicação": dias desde a última
+// A fila da carteira do vendedor é o "débito de comunicação": dias desde a última
 // interação vs. a cadência ideal do segmento. Só existem linhas para overrides da
-// organização — os defaults por segmento vivem em lib/routine/cadence.ts.
+// organização — os defaults por segmento vivem em lib/client-portfolios/cadence.ts.
 export const segmentCadences = newTable(
 	"segment_cadences",
 	{

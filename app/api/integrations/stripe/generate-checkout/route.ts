@@ -131,6 +131,8 @@ async function generateCheckoutRoute(request: NextRequest) {
 						conferenciaCega: false,
 						bloquearFechamentoComPendenciaFiscal: false,
 					},
+					// Preferência controlada por nós (feature flag) — preserva ao trocar de plano.
+					carteirasClientes: organization.configuracao.preferencias.carteirasClientes ?? { habilitado: false },
 				},
 				defaults: organization.configuracao.defaults,
 			},

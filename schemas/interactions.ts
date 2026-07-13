@@ -34,7 +34,7 @@ export const InteractionMetadataSchema = z.object({
 	channelsSent: z.array(InteractionDeliveryChannelEnum).optional(),
 	channelErrors: z.record(z.string()).optional(),
 
-	// Interações manuais (rotina do vendedor) — snapshots do contexto no momento do contato,
+	// Interações manuais (carteira do vendedor) — snapshots do contexto no momento do contato,
 	// para analytics por segmento sem reprocessar histórico.
 	snapshotSegmentoRFM: z.string().optional().nullable(),
 	snapshotDiasSemContato: z.number().optional().nullable(),

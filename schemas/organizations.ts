@@ -223,6 +223,13 @@ export const OrganizationConfigurationSchema = z.object({
 				conferenciaCega: false,
 				bloquearFechamentoComPendenciaFiscal: false,
 			}),
+		carteirasClientes: z
+			.object({
+				habilitado: z.boolean({ invalid_type_error: "Tipo não válido para a habilitação do módulo de carteira de clientes." }),
+			})
+			.default({
+				habilitado: false,
+			}),
 	}),
 	defaults: OrganizationDefaultsSchema,
 });

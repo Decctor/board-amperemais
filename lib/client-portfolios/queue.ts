@@ -1,10 +1,10 @@
-import { getCadenceForSegment, getEffectiveSegmentCadences } from "@/lib/routine/cadence";
+import { getCadenceForSegment, getEffectiveSegmentCadences } from "@/lib/client-portfolios/cadence";
 import { db } from "@/services/drizzle";
 import { chats, clientSellerReferences, clients, interactions, products } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { and, desc, eq, inArray, lte, sql } from "drizzle-orm";
 
-// Fila da rotina do vendedor (docs/seller-routine-hub-design.md §5).
+// Fila da carteira do vendedor (docs/seller-routine-hub-design.md §5).
 // A fila é uma CONSULTA, não uma tabela: débito de comunicação (dias desde a última
 // interação vs. cadência do segmento), com piso de fadiga, supressões (pausa, follow-up
 // pendente, inbound recente) e boosts de contexto. Cap diário: fila terminável cria hábito.
@@ -52,7 +52,7 @@ function computeAveragePurchaseCycleDays(
 	return Math.round(spanDays / (client.totalCompras - 1));
 }
 
-export async function buildRoutineQueue({ organizacaoId, vendedorId }: { organizacaoId: string; vendedorId: string }) {
+export async function buildClientPortfolioQueue({ organizacaoId, vendedorId }: { organizacaoId: string; vendedorId: string }) {
 	const now = dayjs();
 	const cadences = await getEffectiveSegmentCadences(organizacaoId);
 
@@ -241,10 +241,10 @@ export async function buildRoutineQueue({ organizacaoId, vendedorId }: { organiz
 	const productRows = productIds.length
 		? await db.query.products.findMany({
 				where: and(eq(products.organizacaoId, organizacaoId), inArray(products.id, productIds)),
-				columns: { id: true, nome: true },
+				columns: { id: true, nome: true, imagemCapaUrl: true },
 			})
 		: [];
-	const productNamesById = new Map(productRows.map((product) => [product.id, product.nome]));
+	const productsById = new Map(productRows.map((product) => [product.id, product]));
 
 	const cappedClientIds = capped.map((candidate) => candidate.client.clienteId);
 	const lastTouchDetails = cappedClientIds.length
@@ -289,9 +289,15 @@ export async function buildRoutineQueue({ organizacaoId, vendedorId }: { organiz
 			cicloMedioDias: candidate.cicloMedioDias,
 			oferta: {
 				produtoRecompraId: candidate.client.produtoMaisCompradoId,
-				produtoRecompraNome: candidate.client.produtoMaisCompradoId ? (productNamesById.get(candidate.client.produtoMaisCompradoId) ?? null) : null,
+				produtoRecompraNome: candidate.client.produtoMaisCompradoId ? (productsById.get(candidate.client.produtoMaisCompradoId)?.nome ?? null) : null,
+				produtoRecompraImagemUrl: candidate.client.produtoMaisCompradoId
+					? (productsById.get(candidate.client.produtoMaisCompradoId)?.imagemCapaUrl ?? null)
+					: null,
 				produtoSugeridoId: candidate.client.produtoSugeridoId,
-				produtoSugeridoNome: candidate.client.produtoSugeridoId ? (productNamesById.get(candidate.client.produtoSugeridoId) ?? null) : null,
+				produtoSugeridoNome: candidate.client.produtoSugeridoId ? (productsById.get(candidate.client.produtoSugeridoId)?.nome ?? null) : null,
+				produtoSugeridoImagemUrl: candidate.client.produtoSugeridoId
+					? (productsById.get(candidate.client.produtoSugeridoId)?.imagemCapaUrl ?? null)
+					: null,
 			},
 			ultimoContato: lastTouch
 				? {
@@ -307,7 +313,7 @@ export async function buildRoutineQueue({ organizacaoId, vendedorId }: { organiz
 
 	return { queue, totalEmDebito, carteiraTotal };
 }
-export type TRoutineQueue = Awaited<ReturnType<typeof buildRoutineQueue>>;
+export type TClientPortfolioQueue = Awaited<ReturnType<typeof buildClientPortfolioQueue>>;
 
 /** Follow-ups do dia (interações PLANEJADA com data até o fim de hoje, atrasadas inclusas). */
 export async function getDayFollowUps({ organizacaoId, vendedorId }: { organizacaoId: string; vendedorId: string }) {

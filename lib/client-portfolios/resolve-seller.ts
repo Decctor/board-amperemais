@@ -5,10 +5,10 @@ import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 
 /**
- * Resolve o vendedor da rotina: o vinculado ao membro logado (persona padrão do hub) ou,
+ * Resolve o vendedor da carteira: o vinculado ao membro logado (persona padrão do hub) ou,
  * para gestores ("ver como"), um vendedorId explícito — desde que da mesma organização.
  */
-export async function resolveRoutineSeller({ session, explicitSellerId }: { session: TAuthUserSession; explicitSellerId?: string | null }) {
+export async function resolveClientPortfolioSeller({ session, explicitSellerId }: { session: TAuthUserSession; explicitSellerId?: string | null }) {
 	const organizacaoId = session.membership?.organizacao.id;
 	if (!organizacaoId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 

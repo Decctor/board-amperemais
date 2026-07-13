@@ -75,8 +75,8 @@ export const interactions = newTable(
 		),
 		// Cadência/timeline: última interação por cliente.
 		clientRelationshipIdx: index("idx_interactions_org_cliente_data_interacao").on(table.organizacaoId, table.clienteId, table.dataInteracao),
-		// Rotina do vendedor: interações e follow-ups (PLANEJADA) do dia.
-		sellerRoutineIdx: index("idx_interactions_org_vendedor_status_data").on(table.organizacaoId, table.vendedorId, table.status, table.dataInteracao),
+		// Carteira do vendedor: interações e follow-ups (PLANEJADA) do dia.
+		sellerPortfolioIdx: index("idx_interactions_org_vendedor_status_data").on(table.organizacaoId, table.vendedorId, table.status, table.dataInteracao),
 	}),
 );
 export const interactionRelations = relations(interactions, ({ one }) => ({

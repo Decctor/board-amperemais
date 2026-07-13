@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { resolveRoutineSeller } from "@/lib/routine/resolve-seller";
+import { resolveClientPortfolioSeller } from "@/lib/client-portfolios/resolve-seller";
 import { db } from "@/services/drizzle";
 import { goals, goalsSellers, interactions, sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -20,14 +20,14 @@ const INFLUENCE_WINDOW_DAYS = 14;
 // (com folga para atrasos de sync do ERP).
 const INFLUENCE_INSERTION_TOLERANCE_HOURS = 6;
 
-const GetRoutineStatsInputSchema = z.object({
+const GetClientPortfolioStatsInputSchema = z.object({
 	vendedorId: z
 		.string({ invalid_type_error: "Tipo inválido para o ID do vendedor." })
 		.optional()
 		.nullable()
 		.transform((v) => v || null),
 });
-export type TGetRoutineStatsInput = z.infer<typeof GetRoutineStatsInputSchema>;
+export type TGetClientPortfolioStatsInput = z.infer<typeof GetClientPortfolioStatsInputSchema>;
 
 /** Meta do dia: metas do vendedor vigentes hoje, pró-rateadas por dia do período. */
 async function getSellerDailyGoal({ organizacaoId, vendedorId }: { organizacaoId: string; vendedorId: string }) {
@@ -72,8 +72,8 @@ function influencedSaleExistsCondition() {
 	)`;
 }
 
-async function getRoutineStats({ input, session }: { input: TGetRoutineStatsInput; session: TAuthUserSession }) {
-	const { organizacaoId, seller } = await resolveRoutineSeller({ session, explicitSellerId: input.vendedorId });
+async function getClientPortfolioStats({ input, session }: { input: TGetClientPortfolioStatsInput; session: TAuthUserSession }) {
+	const { organizacaoId, seller } = await resolveClientPortfolioSeller({ session, explicitSellerId: input.vendedorId });
 
 	const startOfDay = dayjs().startOf("day").toDate();
 	const startOfMonth = dayjs().startOf("month").toDate();
@@ -146,20 +146,22 @@ async function getRoutineStats({ input, session }: { input: TGetRoutineStatsInpu
 				assistidasPorCampanha: Number(influencedResult?.assistidas ?? 0),
 			},
 		},
-		message: "Indicadores da rotina carregados com sucesso.",
+		message: "Indicadores da carteira carregados com sucesso.",
 	};
 }
-export type TGetRoutineStatsOutput = Awaited<ReturnType<typeof getRoutineStats>>;
+export type TGetClientPortfolioStatsOutput = Awaited<ReturnType<typeof getClientPortfolioStats>>;
 
-async function getRoutineStatsRoute(request: NextRequest) {
+async function getClientPortfolioStatsRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	if (!session.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
+	if (!session.membership.organizacao.configuracao.preferencias.carteirasClientes?.habilitado)
+		throw new createHttpError.Forbidden("O módulo de carteira de clientes não está habilitado para esta organização.");
 
 	const { searchParams } = new URL(request.url);
-	const input = GetRoutineStatsInputSchema.parse({ vendedorId: searchParams.get("vendedorId") });
-	const result = await getRoutineStats({ input, session });
+	const input = GetClientPortfolioStatsInputSchema.parse({ vendedorId: searchParams.get("vendedorId") });
+	const result = await getClientPortfolioStats({ input, session });
 	return NextResponse.json(result, { status: 200 });
 }
 
-export const GET = appApiHandler({ GET: getRoutineStatsRoute });
+export const GET = appApiHandler({ GET: getClientPortfolioStatsRoute });

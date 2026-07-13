@@ -1,6 +1,6 @@
 "use client";
 
-import type { TGetRoutineOutput } from "@/app/api/routine/route";
+import type { TGetClientPortfolioOutput } from "@/app/api/client-portfolios/route";
 import { Button } from "@/components/ui/button";
 import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { getErrorMessage } from "@/lib/errors";
@@ -11,12 +11,12 @@ import dayjs from "dayjs";
 import { Check, Clock, X } from "lucide-react";
 import { toast } from "sonner";
 
-type RoutineFollowUpsProps = {
-	followUps: TGetRoutineOutput["data"]["followUps"];
+type FollowUpsProps = {
+	followUps: TGetClientPortfolioOutput["data"]["followUps"];
 	onResolved: () => void;
 };
 
-export function RoutineFollowUps({ followUps, onResolved }: RoutineFollowUpsProps) {
+export function FollowUps({ followUps, onResolved }: FollowUpsProps) {
 	const { mutate: resolve, isPending } = useMutation({
 		mutationKey: ["resolve-follow-up"],
 		mutationFn: resolveInteraction,

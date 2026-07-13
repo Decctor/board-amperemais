@@ -72,11 +72,11 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 		group: "Comercial",
 		items: [
 			{
-				title: "Minha Rotina",
-				url: "/dashboard/team/routine",
+				title: "Carteira de Clientes",
+				url: "/dashboard/team/client-portfolios",
 				icon: <CalendarCheck className="w-4 h-4" />,
 				items: null,
-				checkAccess: () => true,
+				checkAccess: (org) => org.configuracao.preferencias.carteirasClientes?.habilitado ?? false,
 			},
 			{
 				title: "Ponto de Interação",

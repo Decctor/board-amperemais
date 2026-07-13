@@ -8,7 +8,7 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
-import { useRoutinePortfolio } from "@/lib/queries/routine";
+import { usePortfolio } from "@/lib/queries/client-portfolios";
 import { cn } from "@/lib/utils";
 import { RFMLabels, getRFMConfigByLabel } from "@/utils/rfm";
 import { Info, PauseCircle, Wallet } from "lucide-react";
@@ -17,12 +17,12 @@ import { getClientInitials } from "./utils";
 
 const SEGMENT_FILTERS = ["Todos", ...RFMLabels.map((label) => label.text)];
 
-type RoutinePortfolioProps = {
+type PortfolioProps = {
 	vendedorId: string | null;
 };
 
-export function RoutinePortfolio({ vendedorId }: RoutinePortfolioProps) {
-	const { data, isLoading, error, filters, updateFilters } = useRoutinePortfolio({ vendedorId });
+export function Portfolio({ vendedorId }: PortfolioProps) {
+	const { data, isLoading, error, filters, updateFilters } = usePortfolio({ vendedorId });
 
 	return (
 		<SectionWrapper

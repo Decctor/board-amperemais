@@ -378,6 +378,13 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 		updatePreferencias({ sessoesVenda: { ...current, ...partial } });
 	}
 
+	function updateCarteirasClientes(partial: Partial<NonNullable<typeof state.organization.configuracao.preferencias.carteirasClientes>>) {
+		const current = state.organization.configuracao.preferencias.carteirasClientes ?? {
+			habilitado: false,
+		};
+		updatePreferencias({ carteirasClientes: { ...current, ...partial } });
+	}
+
 	function updatePaymentMethod(key: string, data: TOrganizationPaymentMethodDefaults) {
 		updateOrgState({
 			configuracao: {
@@ -429,6 +436,9 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 		exigirFundoTroco: false,
 		conferenciaCega: false,
 		bloquearFechamentoComPendenciaFiscal: false,
+	};
+	const carteirasClientesConfig = state.organization.configuracao.preferencias.carteirasClientes ?? {
+		habilitado: false,
 	};
 
 	return (
@@ -573,6 +583,20 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 						onReset={() => updatePreferencias({ relatoriosDestinatariosIds: null })}
 						editable={userHasEditPermissions}
 					/>
+
+					{/* Carteira de clientes */}
+					<div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3">
+						<div className="flex flex-col gap-0.5">
+							<span className="text-sm font-medium tracking-tight">CARTEIRA DE CLIENTES</span>
+							<span className="text-xs text-muted-foreground">Habilita a &quot;Carteira de Clientes&quot; — fila diária de atendimentos e follow-ups por vendedor.</span>
+						</div>
+						<Switch
+							checked={carteirasClientesConfig.habilitado}
+							onCheckedChange={(checked) => userHasEditPermissions && updateCarteirasClientes({ habilitado: checked })}
+							disabled={!userHasEditPermissions}
+						/>
+					</div>
+
 					{/* Message limit */}
 					<div className={cn("flex w-full flex-col gap-1")}>
 						<h3 className={cn("text-sm font-medium tracking-tight text-foreground/80")}>LIMITE DE ENVIOS DE MENSAGEM VIA CAMPANHA (POR SEMANA)</h3>

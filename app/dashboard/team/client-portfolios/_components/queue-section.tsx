@@ -1,13 +1,13 @@
 "use client";
 
-import type { TGetRoutineOutput } from "@/app/api/routine/route";
+import type { TGetClientPortfolioOutput } from "@/app/api/client-portfolios/route";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { createInteraction } from "@/lib/mutations/interactions";
-import { useClientInteractions } from "@/lib/queries/routine";
+import { useClientInteractions } from "@/lib/queries/client-portfolios";
 import { cn } from "@/lib/utils";
 import { getRFMConfigByLabel } from "@/utils/rfm";
 import { useMutation } from "@tanstack/react-query";
@@ -32,8 +32,9 @@ import { toast } from "sonner";
 import { RegisterInteractionMenu } from "./register-interaction-menu";
 import { INTERACTION_CHANNEL_META, buildWhatsappLink, getClientInitials } from "./utils";
 import { WhatsappIcon } from "@/components/icons";
+import Image from "next/image";
 
-type TQueueItem = TGetRoutineOutput["data"]["fila"][number];
+type TQueueItem = TGetClientPortfolioOutput["data"]["fila"][number];
 
 const REASON_ICONS: Record<TQueueItem["motivos"][number]["tipo"], React.ReactNode> = {
 	DEBITO_CADENCIA: <AlarmClock className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />,
@@ -86,6 +87,28 @@ function ClientRelationshipTimeline({ clienteId }: { clienteId: string }) {
 	);
 }
 
+function OfferItem({ label, nome, imagemUrl }: { label: string; nome: string; imagemUrl: string | null }) {
+	const showImg = !!imagemUrl;
+	return (
+		<div className="flex items-center gap-2 text-xs font-medium">
+			{showImg ? (
+				<Image
+					src={imagemUrl ?? undefined}
+					alt=""
+					loading="lazy"
+					className="h-4 w-4 min-h-4 min-w-4 shrink-0 rounded-[4px] border border-border/60 object-cover"
+				/>
+			) : (
+				<span className="flex h-4 w-4 min-h-4 min-w-4 shrink-0 items-center justify-center rounded-[4px] bg-muted text-muted-foreground">
+					<Tag className="h-2.5 w-2.5" />
+				</span>
+			)}
+			<span className="shrink-0 text-muted-foreground">{label}:</span>
+			<span className="truncate font-semibold">{nome}</span>
+		</div>
+	);
+}
+
 function QueueCard({ item, vendedorId, onRegistered }: { item: TQueueItem; vendedorId: string | null; onRegistered: () => void }) {
 	const [expanded, setExpanded] = useState(false);
 	const [registerModalOpen, setRegisterModalOpen] = useState(false);
@@ -102,7 +125,7 @@ function QueueCard({ item, vendedorId, onRegistered }: { item: TQueueItem; vende
 				vendedorId,
 				canal: "OUTRO",
 				direcao: "SAIDA",
-				descricao: "Abordagem adiada pela fila da rotina.",
+				descricao: "Abordagem adiada pela fila da carteira.",
 				dataInteracao: dayjs().add(1, "day").hour(9).minute(0).second(0).millisecond(0).toDate(),
 				planejada: true,
 				followUpEm: null,
@@ -162,23 +185,15 @@ function QueueCard({ item, vendedorId, onRegistered }: { item: TQueueItem; vende
 			</div>
 
 			{item.oferta.produtoRecompraNome || item.oferta.produtoSugeridoNome ? (
-				<div className="flex flex-col gap-1">
+				<div className="flex flex-col gap-1.5">
 					<h4 className="text-[0.6rem] font-bold tracking-wide uppercase text-muted-foreground">O que oferecer</h4>
-					<div className="flex items-start gap-1.5 text-xs font-medium">
-						<Tag className="mt-0.5 h-3.5 w-3.5 min-h-3.5 min-w-3.5 text-muted-foreground" />
-						<span>
-							{item.oferta.produtoRecompraNome ? (
-								<>
-									Recompra: <b>{item.oferta.produtoRecompraNome}</b>
-								</>
-							) : null}
-							{item.oferta.produtoRecompraNome && item.oferta.produtoSugeridoNome ? " · " : ""}
-							{item.oferta.produtoSugeridoNome ? (
-								<>
-									Sugestão: <b>{item.oferta.produtoSugeridoNome}</b>
-								</>
-							) : null}
-						</span>
+					<div className="flex flex-col gap-1.5">
+						{item.oferta.produtoRecompraNome ? (
+							<OfferItem label="Recompra" nome={item.oferta.produtoRecompraNome} imagemUrl={item.oferta.produtoRecompraImagemUrl} />
+						) : null}
+						{item.oferta.produtoSugeridoNome ? (
+							<OfferItem label="Sugestão" nome={item.oferta.produtoSugeridoNome} imagemUrl={item.oferta.produtoSugeridoImagemUrl} />
+						) : null}
 					</div>
 				</div>
 			) : null}
@@ -233,15 +248,15 @@ function QueueCard({ item, vendedorId, onRegistered }: { item: TQueueItem; vende
 	);
 }
 
-type RoutineQueueSectionProps = {
-	fila: TGetRoutineOutput["data"]["fila"];
+type QueueSectionProps = {
+	fila: TGetClientPortfolioOutput["data"]["fila"];
 	totalEmDebito: number;
 	carteiraTotal: number;
 	vendedorId: string | null;
 	onRegistered: () => void;
 };
 
-export function RoutineQueueSection({ fila, totalEmDebito, carteiraTotal, vendedorId, onRegistered }: RoutineQueueSectionProps) {
+export function QueueSection({ fila, totalEmDebito, carteiraTotal, vendedorId, onRegistered }: QueueSectionProps) {
 	return (
 		<SectionWrapper
 			title="Fila de abordagens"
