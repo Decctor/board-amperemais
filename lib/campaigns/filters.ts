@@ -1,7 +1,7 @@
 import { type DBTransaction, db } from "@/services/drizzle";
 import { clients, productClientReferences } from "@/services/drizzle/schema";
 import type { TCampaignFilterCondition, TCampaignFilterTreeNode, TCampaignFilters } from "@/schemas/campaigns";
-import { and, count, eq, gt, inArray, lte } from "drizzle-orm";
+import { and, count, eq, gt, inArray, isNotNull, lte, sql } from "drizzle-orm";
 
 type TCampaignAudienceExecutor = typeof db | DBTransaction;
 
@@ -178,6 +178,40 @@ export async function resolveCampaignAudienceClientIds({
 	return Array.from(intersectSets(baseSet, filterClientIds));
 }
 
+/**
+ * Remove clientes com comunicação pausada (`clients.comunicacaoPausadaAte` no futuro) de uma
+ * lista de destinatários. A pausa é um opt-out de DISPARO, não de pertencimento a audiência:
+ * vale para todo enqueue de campanha (e para a fila da rotina do vendedor), mas não para
+ * preview de audiência nem para sincronização de públicos de anúncios.
+ */
+export async function filterCommunicationPausedClientIds({
+	executor = db,
+	organizationId,
+	clientIds,
+}: {
+	executor?: TCampaignAudienceExecutor;
+	organizationId: string;
+	clientIds: string[];
+}) {
+	if (clientIds.length === 0) return clientIds;
+
+	const pausedRows = await executor
+		.select({ id: clients.id })
+		.from(clients)
+		.where(
+			and(
+				eq(clients.organizacaoId, organizationId),
+				inArray(clients.id, clientIds),
+				isNotNull(clients.comunicacaoPausadaAte),
+				sql`${clients.comunicacaoPausadaAte} > now()`,
+			),
+		);
+	if (pausedRows.length === 0) return clientIds;
+
+	const pausedIds = new Set(pausedRows.map((row) => row.id));
+	return clientIds.filter((clientId) => !pausedIds.has(clientId));
+}
+
 export async function resolveCampaignAudienceClientIdsForCampaign({
 	executor = db,
 	organizationId,
@@ -187,12 +221,15 @@ export async function resolveCampaignAudienceClientIdsForCampaign({
 	organizationId: string;
 	campaign: TCampaignAudienceSource;
 }) {
-	return resolveCampaignAudienceClientIds({
+	const clientIds = await resolveCampaignAudienceClientIds({
 		executor,
 		organizationId,
 		segmentations: campaign.segmentacoes?.map((segmentation) => segmentation.segmentacao).filter((segmentacao): segmentacao is string => !!segmentacao) ?? [],
 		filters: campaign.filtros,
 	});
+
+	// Enqueue de campanha nunca alcança clientes com comunicação pausada.
+	return filterCommunicationPausedClientIds({ executor, organizationId, clientIds });
 }
 
 export async function resolveCampaignAudiencesByCampaignId({

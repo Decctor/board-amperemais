@@ -46,7 +46,7 @@ async function main() {
 		where iniciado_por is null and data_interacao is null
 	`);
 
-	console.log("Backfill aplicado.", result.rowCount != null ? `${result.rowCount} linha(s) atualizada(s).` : "");
+	console.log(`Backfill aplicado. ${result.count} linha(s) atualizada(s).`);
 }
 
 main()

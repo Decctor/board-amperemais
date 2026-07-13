@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { appApiHandler } from "@/lib/app-api";
 import { applyCampaignBonusToInteractionMetadata, buildBaseCashbackInteractionMetadata } from "@/lib/campaigns/interaction-metadata";
-import { resolveCampaignAudienceClientIds } from "@/lib/campaigns/filters";
+import { filterCommunicationPausedClientIds, resolveCampaignAudienceClientIds } from "@/lib/campaigns/filters";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPeriodAmountFromReferenceUnit, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
@@ -191,7 +191,11 @@ async function getRFMAnalysisRoute(_req: NextRequest) {
 						segmentations: [],
 						filters: campaign.filtros,
 					});
-					return [campaign.id, new Set(clientIds)] as const;
+					const deliverableClientIds = await filterCommunicationPausedClientIds({
+						organizationId: organization.id,
+						clientIds,
+					});
+					return [campaign.id, new Set(deliverableClientIds)] as const;
 				}),
 			);
 			const filterAudiencesByCampaignId = new Map(filterAudienceEntries);
