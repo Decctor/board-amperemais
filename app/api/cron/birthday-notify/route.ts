@@ -222,6 +222,7 @@ async function getBirthdayNotifyRoute(_req: NextRequest) {
 								available: clientBalance?.saldoValorDisponivel ?? 0,
 								accumulated: clientBalance?.saldoValorAcumuladoTotal ?? 0,
 							};
+							const interactionId = crypto.randomUUID();
 							const bonusResult = await applyCampaignBonusToInteractionMetadata({
 								tx,
 								baseMetadata: buildBaseCashbackInteractionMetadata({
@@ -235,6 +236,7 @@ async function getBirthdayNotifyRoute(_req: NextRequest) {
 								clientId: client.id,
 								saleId: null,
 								saleValue: null,
+								interactionId,
 								enabled: campaign.cashbackGeracaoTipo === "FIXO",
 							});
 							runningBalanceByClientId.set(client.id, {
@@ -250,6 +252,7 @@ async function getBirthdayNotifyRoute(_req: NextRequest) {
 							const [insertedInteraction] = await tx
 								.insert(interactions)
 								.values({
+									id: interactionId,
 									clienteId: client.id,
 									campanhaId: campaign.id,
 									organizacaoId: organization.id,

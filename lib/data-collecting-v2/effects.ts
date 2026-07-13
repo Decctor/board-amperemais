@@ -353,6 +353,7 @@ export async function processDataCollectingV2Effects({
 				value: campaign.execucaoAgendadaValor,
 			});
 			const currentBalance = balancesByClientId.get(persistedSale.clientId);
+			const interactionId = crypto.randomUUID();
 			const bonusResult = await applyCampaignBonusToInteractionMetadata({
 				tx,
 				baseMetadata: buildBasePurchaseInteractionMetadata({
@@ -370,6 +371,7 @@ export async function processDataCollectingV2Effects({
 				clientId: persistedSale.clientId,
 				saleId: persistedSale.id,
 				saleValue: persistedSale.sale.totalValue,
+				interactionId,
 				enabled: !!cashbackProgram?.ativo,
 			});
 			const metadata = bonusResult.metadata;
@@ -390,6 +392,7 @@ export async function processDataCollectingV2Effects({
 			const [insertedInteraction] = await tx
 				.insert(interactions)
 				.values({
+					id: interactionId,
 					clienteId: persistedSale.clientId,
 					campanhaId: campaign.id,
 					organizacaoId: organizationId,
@@ -443,6 +446,7 @@ export async function processDataCollectingV2Effects({
 					unit: campaign.execucaoAgendadaMedida,
 					value: campaign.execucaoAgendadaValor,
 				});
+				const interactionId = crypto.randomUUID();
 				const bonusResult = await applyCampaignBonusToInteractionMetadata({
 					tx,
 					baseMetadata: {
@@ -461,6 +465,7 @@ export async function processDataCollectingV2Effects({
 					clientId: persistedSale.clientId,
 					saleId: persistedSale.id,
 					saleValue: persistedSale.sale.totalValue,
+					interactionId,
 					enabled: !!cashbackProgram?.ativo,
 				});
 				const metadata = bonusResult.metadata;
@@ -483,6 +488,7 @@ export async function processDataCollectingV2Effects({
 				const [insertedInteraction] = await tx
 					.insert(interactions)
 					.values({
+						id: interactionId,
 						clienteId: persistedSale.clientId,
 						campanhaId: campaign.id,
 						organizacaoId: organizationId,

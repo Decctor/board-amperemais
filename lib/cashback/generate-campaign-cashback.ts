@@ -15,6 +15,7 @@ type GenerateCashbackForCampaignParams = {
 	saleValue: number | null; // Required for PERCENTUAL calculation
 	expirationMeasure: TTimeDurationUnitsEnum | null;
 	expirationValue: number | null;
+	interactionId?: string | null; // Links the transaction to the interaction that granted it (metadados.interacaoId), enabling reversal when the send is blocked
 	createdAt?: Date;
 	metadata?: Record<string, unknown>;
 };
@@ -32,6 +33,7 @@ export async function generateCashbackForCampaign({
 	saleValue,
 	expirationMeasure,
 	expirationValue,
+	interactionId,
 	createdAt,
 	metadata,
 }: GenerateCashbackForCampaignParams): Promise<{
@@ -134,6 +136,9 @@ export async function generateCashbackForCampaign({
 		.where(eq(cashbackProgramBalances.id, balance.id));
 
 	// 7. Create transaction record
+	const transactionMetadata: Record<string, unknown> = { ...metadata };
+	if (interactionId) transactionMetadata.interacaoId = interactionId;
+
 	const insertedTransaction = await tx
 		.insert(cashbackProgramTransactions)
 		.values({
@@ -150,7 +155,7 @@ export async function generateCashbackForCampaign({
 			saldoValorPosterior: newBalance,
 			expiracaoData: expirationDate,
 			campanhaId: campaignId,
-			metadados: metadata ?? null,
+			metadados: Object.keys(transactionMetadata).length > 0 ? transactionMetadata : null,
 			dataInsercao: now,
 		})
 		.returning({ id: cashbackProgramTransactions.id });
@@ -182,6 +187,7 @@ type GenerateCashbackForCampaignBatchParams = {
 	cashbackValue: number; // FIXO amount, applied equally to every client
 	expirationMeasure: TTimeDurationUnitsEnum | null;
 	expirationValue: number | null;
+	interactionIdByClientId?: Map<string, string>; // Links each transaction to the interaction that granted it (metadados.interacaoId)
 };
 
 // Set-based FIXO cashback generation for a chunk of clients. Avoids the per-client
@@ -194,6 +200,7 @@ export async function generateCashbackForCampaignBatch({
 	cashbackValue,
 	expirationMeasure,
 	expirationValue,
+	interactionIdByClientId,
 }: GenerateCashbackForCampaignBatchParams): Promise<{ generatedCount: number; cashbackAmount: number }> {
 	const uniqueClientIds = Array.from(new Set(clientIds));
 	if (uniqueClientIds.length === 0) {
@@ -253,6 +260,7 @@ export async function generateCashbackForCampaignBatch({
 	await tx.insert(cashbackProgramTransactions).values(
 		uniqueClientIds.map((clientId) => {
 			const previousBalance = previousBalanceByClientId.get(clientId) ?? 0;
+			const interactionId = interactionIdByClientId?.get(clientId);
 			return {
 				organizacaoId: organizationId,
 				clienteId: clientId,
@@ -267,6 +275,7 @@ export async function generateCashbackForCampaignBatch({
 				saldoValorPosterior: previousBalance + cashbackAmount,
 				expiracaoData: expirationDate,
 				campanhaId: campaignId,
+				metadados: interactionId ? { interacaoId: interactionId } : null,
 				dataInsercao: now,
 			};
 		}),

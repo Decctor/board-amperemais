@@ -1,3 +1,4 @@
+import { reverseCampaignCashbackForBlockedInteractions } from "@/lib/cashback/reverse-campaign-cashback";
 import { EmailTemplate, sendEmailWithResend } from "@/lib/email";
 import {
 	buildWhatsappTemplateSendPayload,
@@ -55,6 +56,17 @@ async function blockInteractionSend({
 		organizationId,
 		erroEnvio: errorMessage,
 	});
+
+	// Bloqueio terminal: a mensagem nunca será enviada, então o bônus de campanha concedido
+	// na criação da interação é estornado.
+	await db.transaction((tx) =>
+		reverseCampaignCashbackForBlockedInteractions({
+			tx,
+			organizationId,
+			interactionIds: [interactionId],
+			reason: "ENVIO_BLOQUEADO_SEM_CONTATO",
+		}),
+	);
 }
 
 async function resolveOrganizationMessagingContext(organizationId: string) {

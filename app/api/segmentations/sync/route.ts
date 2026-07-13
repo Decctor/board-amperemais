@@ -279,6 +279,7 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 							available: clientBalance.saldoValorDisponivel,
 							accumulated: clientBalance.saldoValorAcumuladoTotal,
 						};
+						const interactionId = crypto.randomUUID();
 						const bonusResult = await applyCampaignBonusToInteractionMetadata({
 							tx,
 							baseMetadata: buildBaseCashbackInteractionMetadata({
@@ -292,6 +293,7 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 							clientId: results.clientId,
 							saleId: null,
 							saleValue: null,
+							interactionId,
 							enabled: campaign.cashbackGeracaoTipo === "FIXO",
 						});
 						runningBalanceByClientId.set(results.clientId, {
@@ -305,6 +307,7 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 						const [insertedInteraction] = await tx
 							.insert(interactions)
 							.values({
+								id: interactionId,
 								clienteId: results.clientId,
 								campanhaId: campaign.id,
 								organizacaoId: userOrgId,
@@ -428,6 +431,7 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 							available: clientBalance.saldoValorDisponivel,
 							accumulated: clientBalance.saldoValorAcumuladoTotal,
 						};
+						const interactionId = crypto.randomUUID();
 						const bonusResult = await applyCampaignBonusToInteractionMetadata({
 							tx,
 							baseMetadata: buildBaseCashbackInteractionMetadata({
@@ -441,6 +445,7 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 							clientId: results.clientId,
 							saleId: null,
 							saleValue: null,
+							interactionId,
 							enabled: campaign.cashbackGeracaoTipo === "FIXO",
 						});
 						runningBalanceByClientId.set(results.clientId, {
@@ -454,6 +459,7 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 						const [insertedInteraction] = await tx
 							.insert(interactions)
 							.values({
+								id: interactionId,
 								clienteId: results.clientId,
 								campanhaId: campaign.id,
 								organizacaoId: userOrgId,

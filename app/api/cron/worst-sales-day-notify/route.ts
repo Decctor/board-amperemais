@@ -204,6 +204,7 @@ async function getWorstSalesDayNotifyRoute(_req: NextRequest) {
 								available: clientBalance?.saldoValorDisponivel ?? 0,
 								accumulated: clientBalance?.saldoValorAcumuladoTotal ?? 0,
 							};
+							const interactionId = crypto.randomUUID();
 							const bonusResult = await applyCampaignBonusToInteractionMetadata({
 								tx,
 								baseMetadata: buildBaseCashbackInteractionMetadata({
@@ -217,6 +218,7 @@ async function getWorstSalesDayNotifyRoute(_req: NextRequest) {
 								clientId,
 								saleId: null,
 								saleValue: null,
+								interactionId,
 								enabled: campaign.cashbackGeracaoTipo === "FIXO",
 							});
 							runningBalanceByClientId.set(clientId, {
@@ -228,6 +230,7 @@ async function getWorstSalesDayNotifyRoute(_req: NextRequest) {
 							const [insertedInteraction] = await tx
 								.insert(interactions)
 								.values({
+									id: interactionId,
 									clienteId: clientId,
 									campanhaId: campaign.id,
 									organizacaoId: organization.id,

@@ -167,6 +167,7 @@ async function enqueueCampaignChunk({
 				cashbackValue,
 				expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 				expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+				interactionIdByClientId: new Map(inserted.map((row) => [row.clienteId, row.id])),
 			});
 			cashbackGenerated = generatedCount;
 		}

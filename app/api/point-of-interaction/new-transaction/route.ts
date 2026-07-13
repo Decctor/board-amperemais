@@ -1190,6 +1190,7 @@ async function handleCampaignProcessingForNewPurchase({
 				continue;
 			}
 
+			const interactionId = crypto.randomUUID();
 			const bonusResult = await applyCampaignBonusToInteractionMetadata({
 				tx,
 				baseMetadata: buildBasePurchaseInteractionMetadata({
@@ -1206,6 +1207,7 @@ async function handleCampaignProcessingForNewPurchase({
 				clientId,
 				saleId,
 				saleValue,
+				interactionId,
 			});
 			const interactionContextMetadados = bonusResult.metadata;
 			runningAvailableBalance = bonusResult.runningAvailableBalance;
@@ -1222,6 +1224,7 @@ async function handleCampaignProcessingForNewPurchase({
 			const [insertedInteraction] = await tx
 				.insert(interactions)
 				.values({
+					id: interactionId,
 					clienteId: clientId,
 					campanhaId: campaign.id,
 					organizacaoId: orgId,
@@ -1331,6 +1334,7 @@ async function handleCampaignProcessingForFirstPurchase({
 				continue;
 			}
 
+			const interactionId = crypto.randomUUID();
 			const bonusResult = await applyCampaignBonusToInteractionMetadata({
 				tx,
 				baseMetadata: buildBasePurchaseInteractionMetadata({
@@ -1347,6 +1351,7 @@ async function handleCampaignProcessingForFirstPurchase({
 				clientId,
 				saleId,
 				saleValue,
+				interactionId,
 			});
 			const interactionContextMetadados = bonusResult.metadata;
 			runningAvailableBalance = bonusResult.runningAvailableBalance;
@@ -1361,6 +1366,7 @@ async function handleCampaignProcessingForFirstPurchase({
 			const [insertedInteraction] = await tx
 				.insert(interactions)
 				.values({
+					id: interactionId,
 					clienteId: clientId,
 					campanhaId: campaign.id,
 					organizacaoId: orgId,
@@ -1649,6 +1655,7 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 				continue;
 			}
 
+			const interactionId = crypto.randomUUID();
 			const bonusResult = await applyCampaignBonusToInteractionMetadata({
 				tx,
 				baseMetadata: buildBasePurchaseInteractionMetadata({
@@ -1665,6 +1672,7 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 				clientId,
 				saleId,
 				saleValue,
+				interactionId,
 			});
 			const interactionContextMetadados = bonusResult.metadata;
 			runningAvailableBalance = bonusResult.runningAvailableBalance;
@@ -1679,6 +1687,7 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 			const [insertedInteraction] = await tx
 				.insert(interactions)
 				.values({
+					id: interactionId,
 					clienteId: clientId,
 					campanhaId: campaign.id,
 					organizacaoId: orgId,
@@ -1798,6 +1807,7 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 				continue;
 			}
 
+			const interactionId = crypto.randomUUID();
 			const bonusResult = await applyCampaignBonusToInteractionMetadata({
 				tx,
 				baseMetadata: buildBasePurchaseInteractionMetadata({
@@ -1814,6 +1824,7 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 				clientId,
 				saleId,
 				saleValue,
+				interactionId,
 			});
 			const interactionContextMetadados = bonusResult.metadata;
 			runningAvailableBalance = bonusResult.runningAvailableBalance;
@@ -1828,6 +1839,7 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 			const [insertedInteraction] = await tx
 				.insert(interactions)
 				.values({
+					id: interactionId,
 					clienteId: clientId,
 					campanhaId: campaign.id,
 					organizacaoId: orgId,

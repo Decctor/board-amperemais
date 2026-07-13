@@ -92,6 +92,7 @@ export async function applyCampaignBonusToInteractionMetadata({
 	clientId,
 	saleId,
 	saleValue,
+	interactionId,
 	enabled = true,
 }: {
 	tx: DBTransaction;
@@ -101,6 +102,7 @@ export async function applyCampaignBonusToInteractionMetadata({
 	clientId: string;
 	saleId: string | null;
 	saleValue: number | null;
+	interactionId?: string | null; // ID pré-gerado da interação que concede o bônus; gravado em metadados.interacaoId da transação para permitir estorno em bloqueio de envio
 	enabled?: boolean;
 }): Promise<TApplyCampaignBonusResult> {
 	const runningAvailableBalance = baseMetadata.cashbackSaldoDisponivel ?? baseMetadata.compraCashbackNovoSaldo ?? 0;
@@ -147,6 +149,7 @@ export async function applyCampaignBonusToInteractionMetadata({
 		saleValue,
 		expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
 		expirationValue: campaign.cashbackGeracaoExpiracaoValor,
+		interactionId,
 	});
 
 	if (!result) {

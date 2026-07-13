@@ -1,3 +1,4 @@
+import { reverseCampaignCashbackForBlockedInteractions } from "@/lib/cashback/reverse-campaign-cashback";
 import { type DBTransaction, db } from "@/services/drizzle";
 import { campaigns, interactions, organizations } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -584,6 +585,8 @@ export async function reserveCampaignWeeklyQuota({
 				})
 				.where(eq(interactions.id, interactionId));
 
+			await reverseCampaignCashbackForBlockedInteractions({ tx, organizationId, interactionIds: [interactionId] });
+
 			return {
 				...limitCheck,
 				status: "LIMIT_REACHED" as const,
@@ -720,6 +723,8 @@ export async function reserveCampaignWeeklyQuotaBatch({
 					and(eq(interactions.organizacaoId, organizationId), eq(interactions.campanhaId, campaignId), inArray(interactions.id, claimableInteractionIds)),
 				);
 
+			await reverseCampaignCashbackForBlockedInteractions({ tx, organizationId, interactionIds: claimableInteractionIds });
+
 			return {
 				...limitCheck,
 				reservedAt: null,
@@ -775,6 +780,8 @@ export async function reserveCampaignWeeklyQuotaBatch({
 				.where(
 					and(eq(interactions.organizacaoId, organizationId), eq(interactions.campanhaId, campaignId), inArray(interactions.id, blockedInteractionIds)),
 				);
+
+			await reverseCampaignCashbackForBlockedInteractions({ tx, organizationId, interactionIds: blockedInteractionIds });
 
 			return {
 				...buildWeeklyLimitCheckResult({
@@ -979,6 +986,10 @@ export async function reserveOrganizationWeeklyQuotaBatch({
 				.where(and(eq(interactions.organizacaoId, organizationId), inArray(interactions.id, interactionIdsForMessage)));
 		}
 
+		if (blockedInteractionIds.length > 0) {
+			await reverseCampaignCashbackForBlockedInteractions({ tx, organizationId, interactionIds: blockedInteractionIds });
+		}
+
 		return {
 			weekKey,
 			reservedAt: claimedInteractionIds.length > 0 ? reservedAt : null,
@@ -1039,11 +1050,22 @@ export async function markInteractionAsWeeklyLimitFailed({
 	interactionId: string;
 	reason: TCampaignWeeklyLimitFailureReason;
 }) {
-	await db
-		.update(interactions)
-		.set({
-			statusEnvio: "BLOQUEADA",
-			erroEnvio: getCampaignWeeklyLimitFailureMessage(reason),
-		})
-		.where(eq(interactions.id, interactionId));
+	await db.transaction(async (tx) => {
+		const [blockedInteraction] = await tx
+			.update(interactions)
+			.set({
+				statusEnvio: "BLOQUEADA",
+				erroEnvio: getCampaignWeeklyLimitFailureMessage(reason),
+			})
+			.where(eq(interactions.id, interactionId))
+			.returning({ organizacaoId: interactions.organizacaoId });
+
+		if (blockedInteraction?.organizacaoId) {
+			await reverseCampaignCashbackForBlockedInteractions({
+				tx,
+				organizationId: blockedInteraction.organizacaoId,
+				interactionIds: [interactionId],
+			});
+		}
+	});
 }
