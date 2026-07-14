@@ -52,16 +52,16 @@ function mapItemsToApi(saleState: TUseSaleState) {
 type NewSalePageProps = {
 	organizationCashbackProgram: TCashbackProgramEntity | null;
 	organizationConfiguration: TOrganizationConfiguration;
-	organizationFiscalEmissaoAutomatica: boolean;
+	organizationAutoFiscalEmission: boolean;
 	organizationAutoFiscalCapable: boolean;
-	canEmitirFiscal: boolean;
+	canEmitFiscal: boolean;
 };
 export default function NewSalePage({
 	organizationCashbackProgram,
 	organizationConfiguration,
-	organizationFiscalEmissaoAutomatica,
+	organizationAutoFiscalEmission,
 	organizationAutoFiscalCapable,
-	canEmitirFiscal,
+	canEmitFiscal,
 }: NewSalePageProps) {
 	const isMobile = useIsMobile();
 	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -406,9 +406,9 @@ export default function NewSalePage({
 						<CheckoutPanel
 							organizationCashbackProgram={organizationCashbackProgram}
 							saleState={saleState}
-							organizationFiscalEmissaoAutomatica={organizationFiscalEmissaoAutomatica}
+							organizationAutoFiscalEmission={organizationAutoFiscalEmission}
 							organizationAutoFiscalCapable={organizationAutoFiscalCapable}
-							canEmitirFiscal={canEmitirFiscal}
+							canEmitFiscal={canEmitFiscal}
 							discountAuthority={discountAuthority}
 							onCreateDraft={handleCreateDraft}
 							onFinalizeSale={handleFinalizeSale}
@@ -432,16 +432,16 @@ export default function NewSalePage({
 								className="flex h-[92dvh] max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-2xl p-0 data-[side=bottom]:h-[92dvh]"
 							>
 								<SheetHeader className="shrink-0 border-b p-4 text-left">
-									<SheetTitle className="text-lg font-black">Checkout</SheetTitle>
+									<SheetTitle className="text-lg font-black">CHECKOUT</SheetTitle> <SheetDescription>Finalize ou salve como orçamento.</SheetDescription>
 									<SheetDescription>Finalize ou salve como orçamento.</SheetDescription>
 								</SheetHeader>
 								<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
 									<CheckoutPanel
 										organizationCashbackProgram={organizationCashbackProgram}
 										saleState={saleState}
-										organizationFiscalEmissaoAutomatica={organizationFiscalEmissaoAutomatica}
+										organizationAutoFiscalEmission={organizationAutoFiscalEmission}
 										organizationAutoFiscalCapable={organizationAutoFiscalCapable}
-										canEmitirFiscal={canEmitirFiscal}
+										canEmitFiscal={canEmitFiscal}
 										discountAuthority={discountAuthority}
 										onCreateDraft={handleCreateDraft}
 										onFinalizeSale={handleFinalizeSale}

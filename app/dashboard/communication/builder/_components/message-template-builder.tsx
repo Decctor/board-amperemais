@@ -20,7 +20,8 @@ import { DynamicHeaderImagePreview, type OrganizationTemplateTheme } from "../..
 import { WhatsappIcon } from "@/components/icons";
 import { TGetBuilderMessageTemplateById } from "../_lib";
 import { TUseMessageTemplateState, useMessageTemplateState } from "@/state-hooks/use-message-template-state";
-import { MessageTemplateBodyEditor } from "./message-template-body-editor";
+import { MessageTemplateBodyEditor } from "@/components/MessageTemplates/MessageTemplateBodyEditor";
+import { renderResolvedTemplateWithHighlights } from "@/components/MessageTemplates/message-template-utils";
 import { useMutation } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/errors";
 import { submitMessageTemplate } from "@/lib/mutations/message-templates";
@@ -719,36 +720,6 @@ function HeaderPreview({
 			Documento anexado
 		</a>
 	);
-}
-function renderResolvedTemplateWithHighlights(
-	text: string,
-	parametros: TUseMessageTemplateState["state"]["messageTemplate"]["conteudo"]["corpo"]["parametros"],
-) {
-	const normalizedText = text
-		.replace(/<span[^>]*data-type=["']mention["'][^>]*data-id=["']([^"']+)["'][^>]*>[\s\S]*?<\/span>/gi, (_, dataId: string) => `{{${dataId}}}`)
-		.replace(/<\/p>\s*<p[^>]*>/gi, "\n")
-		.replace(/<p[^>]*>/gi, "")
-		.replace(/<\/p>/gi, "")
-		.replace(/<br\s*\/?>/gi, "\n")
-		.replace(/<[^>]+>/g, "");
-	const nodes: React.ReactNode[] = [];
-	let lastIndex = 0;
-	let index = 0;
-	for (const match of normalizedText.matchAll(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g)) {
-		const start = match.index ?? 0;
-		const end = start + match[0].length;
-		const parametro = parametros.find((item) => item.identificadorInterno === match[1]);
-		if (start > lastIndex) nodes.push(normalizedText.slice(lastIndex, start));
-		nodes.push(
-			<span key={`${match[0]}-${index}`} className="rounded-md bg-primary/15 px-1 py-0.5 font-semibold text-primary">
-				{parametro?.exemplo || match[0]}
-			</span>,
-		);
-		lastIndex = end;
-		index += 1;
-	}
-	if (lastIndex < normalizedText.length) nodes.push(normalizedText.slice(lastIndex));
-	return nodes.length > 0 ? nodes : normalizedText;
 }
 function Warnings({ warnings }: { warnings: string[] }) {
 	if (warnings.length === 0) {

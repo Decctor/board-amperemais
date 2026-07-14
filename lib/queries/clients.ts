@@ -116,6 +116,8 @@ export function useClientsBySearch({ initialSearch = "" }: UseClientsBySearchPar
 	const [search, setSearch] = useState(initialSearch);
 	const debouncedParams = useDebounceMemo({ search }, 1200);
 	const queryKey = ["clients-by-search", debouncedParams.search];
+	const debouncedSearch = debouncedParams.search;
+	const isSearchPending = search.trim() !== debouncedSearch.trim();
 
 	function updateSearch(value: string) {
 		setSearch(value);
@@ -129,6 +131,8 @@ export function useClientsBySearch({ initialSearch = "" }: UseClientsBySearchPar
 		}),
 		queryKey,
 		search,
+		debouncedSearch,
+		isSearchPending,
 		setSearch,
 		updateSearch,
 	};

@@ -1,3 +1,4 @@
+import { renderWhatsappTextWithFormatting } from "@/components/Whatsapp/WhatsappMessageText";
 import { MessageSquare } from "lucide-react";
 import { SectionLabel } from "./SectionLabel";
 
@@ -11,9 +12,6 @@ type WhatsappTextPreviewProps = {
  */
 function WhatsappTextPreview({ text }: WhatsappTextPreviewProps) {
 	const currentTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-
-	// Split text into segments: plain text and {{variable}} parts
-	const segments = text.split(/({{[^}]+}})/g);
 
 	return (
 		<div className="w-full flex flex-col gap-3">
@@ -35,18 +33,8 @@ function WhatsappTextPreview({ text }: WhatsappTextPreviewProps) {
 					<div className="bg-white rounded-lg shadow-md overflow-hidden max-w-[85%] relative">
 						<div className="px-3 py-2 pt-3">
 							<p className="text-sm text-gray-900 whitespace-pre-wrap break-words leading-relaxed">
-								{segments.map((segment, i) => {
-									if (/^{{[^}]+}}$/.test(segment)) {
-										return (
-											<span
-												key={i.toString()}
-												className="bg-[#dcf8c6] text-[#075e54] rounded px-0.5 font-medium"
-											>
-												{segment}
-											</span>
-										);
-									}
-									return <span key={i.toString()}>{segment}</span>;
+								{renderWhatsappTextWithFormatting(text, {
+									renderVariable: ({ raw }) => <span className="bg-[#dcf8c6] text-[#075e54] rounded px-0.5 font-medium">{raw}</span>,
 								})}
 							</p>
 

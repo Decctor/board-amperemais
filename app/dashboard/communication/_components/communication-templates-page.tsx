@@ -45,7 +45,6 @@ export default function CommunicationTemplatesPage({
 	showNewTemplateAction = true,
 }: CommunicationTemplatesPageProps) {
 	const queryClient = useQueryClient();
-
 	const { data: whatsappConnections } = useWhatsappConnections();
 	const {
 		data: templatesResult,

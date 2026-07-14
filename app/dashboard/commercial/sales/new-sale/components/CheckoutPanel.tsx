@@ -19,9 +19,9 @@ import SummarySection from "./checkout/SummarySection";
 type CheckoutPanelProps = {
 	organizationCashbackProgram: TCashbackProgramEntity | null;
 	saleState: TUseSaleState;
-	organizationFiscalEmissaoAutomatica: boolean;
+	organizationAutoFiscalEmission: boolean;
 	organizationAutoFiscalCapable: boolean;
-	canEmitirFiscal: boolean;
+	canEmitFiscal: boolean;
 	discountAuthority?: TDiscountAuthority | null;
 	onCreateDraft: () => void;
 	onFinalizeSale: () => void;
@@ -33,9 +33,9 @@ type CheckoutPanelProps = {
 export default function CheckoutPanel({
 	organizationCashbackProgram,
 	saleState,
-	organizationFiscalEmissaoAutomatica,
+	organizationAutoFiscalEmission,
 	organizationAutoFiscalCapable,
-	canEmitirFiscal,
+	canEmitFiscal,
 	discountAuthority,
 	onCreateDraft,
 	onFinalizeSale,
@@ -108,9 +108,9 @@ export default function CheckoutPanel({
 				<SummarySection saleState={saleState} organizationCashbackProgram={organizationCashbackProgram} discountAuthority={discountAuthority} />
 				<FiscalEmissionSection
 					saleState={saleState}
-					organizationFiscalEmissaoAutomatica={organizationFiscalEmissaoAutomatica}
+					organizationAutoFiscalEmission={organizationAutoFiscalEmission}
 					organizationAutoFiscalCapable={organizationAutoFiscalCapable}
-					canEmitirFiscal={canEmitirFiscal}
+					canEmitFiscal={canEmitFiscal}
 				/>
 				<ActionsSection
 					saleState={saleState}

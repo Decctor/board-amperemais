@@ -165,6 +165,34 @@ export function replaceMessageTemplateVariablesWithExamples(text: string, parame
 	);
 }
 
+/**
+ * Resolve o valor de exibição de um token de variável ({{token}}) para previews:
+ * com `values` usa o valor de runtime; sem, usa o exemplo do parâmetro (aceitando
+ * identificador interno, label ou posição externa como "1"). Retorna null se não resolver.
+ */
+export function resolveMessageTemplateVariablePreviewValue({
+	token,
+	parameters,
+	values,
+}: {
+	token: string;
+	parameters: TMessageTemplateParameter[];
+	values?: TMessageTemplateRuntimeValues;
+}) {
+	const identifier = resolveMessageTemplateVariableToken(token) ?? token.trim();
+
+	if (values) {
+		const value = values[identifier];
+		if (value === null || value === undefined) return null;
+		if (value instanceof Date) return value.toISOString();
+		return String(value);
+	}
+
+	const parameter =
+		parameters.find((item) => item.identificadorInterno === identifier) ?? parameters.find((item) => item.identificadorExterno === identifier);
+	return parameter?.exemplo || null;
+}
+
 export function replaceMessageTemplateVariables(text: string, values: TMessageTemplateRuntimeValues) {
 	const normalizedText = normalizeMessageTemplateVariableTokensInText(text);
 

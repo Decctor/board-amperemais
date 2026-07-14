@@ -1,5 +1,6 @@
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { DynamicHeaderImagePreview, type OrganizationTemplateTheme } from "@/app/dashboard/communication/_components/dynamic-header-image-preview";
+import { renderWhatsappTextWithFormatting } from "@/components/Whatsapp/WhatsappMessageText";
 import {
 	MESSAGE_TEMPLATE_BODY_MAX_LENGTH,
 	MESSAGE_TEMPLATE_BUTTONS_MAX_COUNT,
@@ -38,7 +39,7 @@ function MessageTemplateHeaderPreview({
 		const headerText = replaceMessageTemplateVariablesWithExamples(cabecalho.conteudoTexto ?? "", parameters);
 		return (
 			<div className="px-3 pt-3">
-				<p className="font-semibold text-sm text-gray-900">{headerText || "Texto do cabeçalho"}</p>
+				<p className="font-semibold text-sm text-gray-900">{headerText ? renderWhatsappTextWithFormatting(headerText) : "Texto do cabeçalho"}</p>
 			</div>
 		);
 	}
@@ -146,11 +147,13 @@ function TemplatePreview({ content, organizationTheme }: TemplatePreviewProps) {
 							) : null}
 
 							<div className="px-3 py-2 pt-3">
-								<div className="whitespace-pre-wrap text-sm text-gray-900 break-words">{bodyWithExamples || "Digite o conteúdo da mensagem..."}</div>
+								<div className="whitespace-pre-wrap text-sm text-gray-900 break-words">
+									{bodyWithExamples ? renderWhatsappTextWithFormatting(bodyWithExamples) : "Digite o conteúdo da mensagem..."}
+								</div>
 
 								{footerText ? (
 									<div className="mt-2">
-										<p className="text-xs text-[#00a884]">{footerText}</p>
+										<p className="text-xs text-[#00a884]">{renderWhatsappTextWithFormatting(footerText)}</p>
 									</div>
 								) : null}
 

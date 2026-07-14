@@ -40,9 +40,9 @@ export default async function NewSale() {
 		<NewSalePage
 			organizationCashbackProgram={organizationCashbackProgram ?? null}
 			organizationConfiguration={sessionUser.membership.organizacao.configuracao as TOrganizationConfiguration}
-			organizationFiscalEmissaoAutomatica={fiscalSettings.fiscalEmissaoAutomatica}
+			organizationAutoFiscalEmission={fiscalSettings.fiscalEmissaoAutomatica}
 			organizationAutoFiscalCapable={isOrganizationAutoFiscalCapable(fiscalSettings)}
-			canEmitirFiscal={sessionUser.membership.permissoes.fiscal.emitir}
+			canEmitFiscal={sessionUser.membership.permissoes.fiscal.emitir}
 		/>
 	);
 }

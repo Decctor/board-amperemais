@@ -51,3 +51,32 @@ export function isValidCNPJ(cnpj: string): boolean {
 
 	return Number.parseInt(cleanCNPJ[13]) === secondDigit;
 }
+
+/**
+ * Validates a Brazilian CPF (Cadastro de Pessoas Físicas).
+ * @param cpf - The CPF string to validate (can include formatting characters)
+ * @returns true if valid, false otherwise
+ */
+export function isValidCPF(cpf: string): boolean {
+	if (!cpf) return false;
+
+	const cleanCPF = cpf.replace(/\D/g, "");
+	if (cleanCPF.length !== 11) return false;
+	if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
+
+	const calculateVerificationDigit = (length: number) => {
+		let sum = 0;
+		for (let index = 0; index < length; index++) {
+			sum += Number.parseInt(cleanCPF[index]) * (length + 1 - index);
+		}
+
+		const remainder = (sum * 10) % 11;
+		return remainder === 10 ? 0 : remainder;
+	};
+
+	const firstDigit = calculateVerificationDigit(9);
+	if (Number.parseInt(cleanCPF[9]) !== firstDigit) return false;
+
+	const secondDigit = calculateVerificationDigit(10);
+	return Number.parseInt(cleanCPF[10]) === secondDigit;
+}

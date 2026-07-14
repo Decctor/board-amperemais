@@ -2,32 +2,30 @@
 
 import ClientGeneralBlock from "@/components/Modals/Clients/Blocks/General";
 import ClientLocationsBlock from "@/components/Modals/Clients/Blocks/Locations";
-import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
-import { formatToPhone } from "@/lib/formatting";
+import { getClientSearchIntentLabel, parseClientSearchIntent } from "@/lib/clients/parse-client-search-intent";
 import { createClient } from "@/lib/mutations/clients";
 import { useClientsBySearch } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
-import type { TGetClientsOutputDefault } from "@/app/api/clients/route";
 import type { TSearchClientsOutput } from "@/app/api/clients/search/route";
 import { useClientState } from "@/state-hooks/use-client-state";
 import { useMutation } from "@tanstack/react-query";
 import { LinkIcon, Search, UserRound } from "lucide-react";
 import { IdCard, Mail, Phone } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import ResponsiveMenuViewOnly from "../Utils/ResponsiveMenuViewOnly";
 import { Input } from "../ui/input";
-import { LoadingButton } from "../loading-button";
 type ClientVinculationMenuProps = {
 	closeModal: () => void;
 	onSelectClient: (client: { id: string; nome: string; telefone: string }) => void;
 };
 
 export default function ClientVinculationMenu({ closeModal, onSelectClient }: ClientVinculationMenuProps) {
-	const { search, updateSearch, data: clients = [], isFetching } = useClientsBySearch({ initialSearch: "" });
+	const { search, updateSearch, debouncedSearch, isSearchPending, data: clients = [], isFetching } = useClientsBySearch({ initialSearch: "" });
 	const { state, updateClient, addClientLocation, updateClientLocation, removeClientLocation, resetState } = useClientState();
+	const lastAppliedSearchRef = useRef<string | null>(null);
 
 	const { mutate: handleCreateClient, isPending } = useMutation({
 		mutationKey: ["create-client-from-vinculation"],
@@ -47,15 +45,40 @@ export default function ClientVinculationMenu({ closeModal, onSelectClient }: Cl
 		},
 	});
 
-	const hasSearch = !!search.trim().length;
+	const hasSearch = search.trim().length > 0;
 	const hasResults = clients.length > 0;
-	const showCreateForm = hasSearch && !isFetching && !hasResults;
+	const isSearchSettled = debouncedSearch.trim().length >= 2 && !isSearchPending;
+	const showCreateForm = isSearchSettled && !isFetching && !hasResults;
+	const searchIntent = showCreateForm ? parseClientSearchIntent(debouncedSearch) : null;
+	const isCreateValid = state.client.nome.trim().length > 0;
 
 	useEffect(() => {
-		if (!showCreateForm) return;
-		if (state.client.telefone) return;
-		updateClient({ telefone: formatToPhone(search) });
-	}, [search, showCreateForm, state.client.telefone, updateClient]);
+		if (!showCreateForm) {
+			if (lastAppliedSearchRef.current !== null) {
+				resetState();
+				lastAppliedSearchRef.current = null;
+			}
+			return;
+		}
+
+		const settledSearch = debouncedSearch.trim();
+		if (lastAppliedSearchRef.current === settledSearch) return;
+
+		resetState();
+		const intent = parseClientSearchIntent(settledSearch);
+		switch (intent.kind) {
+			case "name":
+				updateClient({ nome: intent.nome });
+				break;
+			case "phone":
+				updateClient({ telefone: intent.telefone });
+				break;
+			case "cpf_cnpj":
+				updateClient({ cpfCnpj: intent.cpfCnpj });
+				break;
+		}
+		lastAppliedSearchRef.current = settledSearch;
+	}, [debouncedSearch, resetState, showCreateForm, updateClient]);
 
 	function handleCreateAndLink() {
 		if (!state.client.nome.trim()) {
@@ -92,6 +115,10 @@ export default function ClientVinculationMenu({ closeModal, onSelectClient }: Cl
 			menuTitle="VINCULAR CLIENTE"
 			menuDescription="Busque por nome, telefone ou CPF/CNPJ para vincular um cliente na venda."
 			menuCancelButtonText="CANCELAR"
+			menuActionButtonText={showCreateForm ? "VINCULAR" : undefined}
+			actionFunction={showCreateForm ? handleCreateAndLink : undefined}
+			actionIsLoading={isPending}
+			menuActionButtonDisabled={!isCreateValid}
 			stateIsLoading={false}
 			stateError={null}
 			closeMenu={closeModal}
@@ -117,14 +144,14 @@ export default function ClientVinculationMenu({ closeModal, onSelectClient }: Cl
 					</p>
 					<div className="mt-4 flex flex-wrap justify-center gap-2">
 						{["NOME", "TELEFONE", "CPF/CNPJ"].map((hint) => (
-							<span key={hint} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-brand/10 text-brand-foreground border border-brand/20">
+							<span key={hint} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-brand/60 text-brand-foreground border border-brand/80">
 								{hint}
 							</span>
 						))}
 					</div>
 				</div>
 			) : null}
-			{isFetching ? <p className="text-sm text-muted-foreground">Buscando clientes...</p> : null}
+			{isSearchPending || isFetching ? <p className="text-sm text-muted-foreground">Buscando clientes...</p> : null}
 			{hasResults ? (
 				<div className="w-full flex flex-col gap-3">
 					<p className="text-sm font-medium">Clientes encontrados:</p>
@@ -136,9 +163,12 @@ export default function ClientVinculationMenu({ closeModal, onSelectClient }: Cl
 
 			{showCreateForm ? (
 				<div className="flex flex-col gap-3 rounded-lg border border-dashed p-3">
-					<div className="flex items-center gap-2 text-sm font-semibold">
-						<UserRound className="h-4 w-4" />
-						Nenhum cliente encontrado. Crie um novo cadastro:
+					<div className="space-y-1">
+						<div className="flex items-center gap-2 text-sm font-semibold">
+							<UserRound className="h-4 w-4" />
+							{searchIntent ? getClientSearchIntentLabel(searchIntent.kind) : null}
+						</div>
+						<p className="text-xs text-muted-foreground">Preenchemos automaticamente o campo detectado na busca.</p>
 					</div>
 					<ClientGeneralBlock client={state.client} updateClient={updateClient} />
 					<ClientLocationsBlock
@@ -147,12 +177,6 @@ export default function ClientVinculationMenu({ closeModal, onSelectClient }: Cl
 						updateClientLocation={updateClientLocation}
 						removeClientLocation={removeClientLocation}
 					/>
-					<div className="w-full flex items-center justify-end">
-						<LoadingButton onClick={handleCreateAndLink} className="flex items-center gap-1.5" loading={isPending}>
-							<LinkIcon className="w-3 min-w-3 h-3 min-h-3" />
-							VINCULAR
-						</LoadingButton>
-					</div>
 				</div>
 			) : null}
 		</ResponsiveMenuViewOnly>

@@ -20,15 +20,15 @@ export default function PauseCampaignDialog({ open, isPending, onCancel, onConfi
 		>
 			<DialogContent className="max-w-md">
 				<DialogHeader>
-					<DialogTitle>Pausar campanha?</DialogTitle>
+					<DialogTitle>PAUSAR CAMPANHA?</DialogTitle>
 					<DialogDescription>Pausar esta campanha interrompe os próximos envios. Deseja continuar?</DialogDescription>
 				</DialogHeader>
 				<DialogFooter>
 					<Button variant="outline" onClick={onCancel} disabled={isPending}>
-						Cancelar
+						CANCELAR
 					</Button>
 					<Button variant="destructive" onClick={onConfirm} disabled={isPending}>
-						{isPending ? "PAUSANDO..." : "Pausar campanha"}
+						{isPending ? "PAUSANDO..." : "PAUSAR CAMPANHA"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

@@ -1,7 +1,7 @@
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
-import { type VariantProps, cva } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import type { PropsWithChildren } from "react";
 
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
@@ -45,6 +45,10 @@ type ResponsiveMenuViewOnlyProps = PropsWithChildren & {
 	menuTitle: string;
 	menuDescription: string;
 	menuCancelButtonText: string;
+	menuActionButtonText?: string;
+	menuActionButtonDisabled?: boolean;
+	actionFunction?: () => void;
+	actionIsLoading?: boolean;
 	stateIsLoading: boolean;
 	stateError?: string | null;
 	closeMenu: () => void;
@@ -58,6 +62,10 @@ function ResponsiveMenuViewOnly({
 	menuTitle,
 	menuDescription,
 	menuCancelButtonText,
+	menuActionButtonText,
+	menuActionButtonDisabled = false,
+	actionFunction,
+	actionIsLoading = false,
 	closeMenu,
 	stateIsLoading,
 	stateError,
@@ -90,6 +98,11 @@ function ResponsiveMenuViewOnly({
 						<DialogClose asChild>
 							<Button variant="outline">{menuCancelButtonText}</Button>
 						</DialogClose>
+						{menuActionButtonText ? (
+							<LoadingButton loading={actionIsLoading || stateIsLoading} disabled={menuActionButtonDisabled} onClick={() => actionFunction?.()}>
+								{menuActionButtonText}
+							</LoadingButton>
+						) : null}
 					</DialogFooter>
 				)}
 			</DialogContent>
@@ -117,6 +130,11 @@ function ResponsiveMenuViewOnly({
 						<DrawerClose asChild>
 							<Button variant="outline">{menuCancelButtonText}</Button>
 						</DrawerClose>
+						{menuActionButtonText ? (
+							<LoadingButton loading={actionIsLoading || stateIsLoading} disabled={menuActionButtonDisabled} onClick={() => actionFunction?.()}>
+								{menuActionButtonText}
+							</LoadingButton>
+						) : null}
 					</DrawerFooter>
 				)}
 			</DrawerContent>

@@ -12,9 +12,12 @@ import type { TWhatsappTemplateBodyParameter } from "@/schemas/whatsapp-template
 import Mention from "@tiptap/extension-mention";
 import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { Braces, ChevronDown, FileText, List, ListOrdered } from "lucide-react";
+import { Bold, Braces, ChevronDown, FileText, Italic, List, ListOrdered, Strikethrough } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createSuggestion } from "./suggestion";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { EditorToolbarButton, WhatsappEditorBubbleMenu } from "@/components/Whatsapp/WhatsappEditorBubbleMenu";
+import { WhatsappFormattingMarks } from "@/components/Whatsapp/whatsapp-editor-marks";
 type TemplateBodyEditorProps = {
 	content: string;
 	contentChangeCallback: (content: string) => void;
@@ -45,7 +48,10 @@ function TemplateBodyEditor({ content, contentChangeCallback, parametros, onPara
 
 	const editor = useEditor({
 		extensions: [
-			StarterKit,
+			// Marks padrão desativados: os WhatsappFormattingMarks reaplicam bold/italic/strike
+			// com autoformatação na sintaxe do WhatsApp (*negrito*, _itálico_, ~tachado~).
+			StarterKit.configure({ bold: false, italic: false, strike: false }),
+			...WhatsappFormattingMarks,
 			Mention.configure({
 				HTMLAttributes: {
 					class: "mention",
@@ -180,54 +186,55 @@ function TemplateBodyEditor({ content, contentChangeCallback, parametros, onPara
 	});
 	return (
 		<ResponsiveMenuSection title="CORPO DA MENSAGEM" icon={<FileText size={15} />}>
-			<div className="flex items-center flex-wrap gap-2 border-b border-border p-3">
-				<div className="flex gap-1">
-					<Button
-						type="button"
-						size="sm"
-						variant={editor.isActive("bold") ? "default" : "ghost"}
-						onClick={() => editor.chain().focus().toggleBold().run()}
-					>
-						<strong>B</strong>
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						onClick={() => editor.chain().focus().toggleItalic().run()}
-						variant={editor.isActive("italic") ? "default" : "ghost"}
-					>
-						<em>I</em>
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						onClick={() => editor.chain().focus().toggleStrike().run()}
-						variant={editor.isActive("strike") ? "default" : "ghost"}
-					>
-						<s>S</s>
-					</Button>
-				</div>
+			<TooltipProvider delayDuration={400}>
+				<div className="flex items-center flex-wrap gap-2 border-b border-border p-3">
+					<div className="flex gap-1">
+						<EditorToolbarButton
+							tooltip="Negrito"
+							shortcut="Ctrl+B"
+							isActive={editor.isActive("bold")}
+							onClick={() => editor.chain().focus().toggleBold().run()}
+						>
+							<Bold className="h-4 w-4" />
+						</EditorToolbarButton>
+						<EditorToolbarButton
+							tooltip="Itálico"
+							shortcut="Ctrl+I"
+							isActive={editor.isActive("italic")}
+							onClick={() => editor.chain().focus().toggleItalic().run()}
+						>
+							<Italic className="h-4 w-4" />
+						</EditorToolbarButton>
+						<EditorToolbarButton
+							tooltip="Tachado"
+							shortcut="Ctrl+Shift+S"
+							isActive={editor.isActive("strike")}
+							onClick={() => editor.chain().focus().toggleStrike().run()}
+						>
+							<Strikethrough className="h-4 w-4" />
+						</EditorToolbarButton>
+					</div>
 
-				<div className="h-6 w-px bg-gray-300" />
+					<div className="h-6 w-px bg-gray-300" />
 
-				<div className="flex gap-1">
-					<Button
-						type="button"
-						size="sm"
-						onClick={() => editor.chain().focus().toggleBulletList().run()}
-						variant={editor.isActive("bulletList") ? "default" : "ghost"}
-					>
-						<List className="w-4 h-4 min-w-4 min-h-4" />
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						onClick={() => editor.chain().focus().toggleOrderedList().run()}
-						variant={editor.isActive("orderedList") ? "default" : "ghost"}
-					>
-						<ListOrdered className="w-4 h-4 min-w-4 min-h-4" />
-					</Button>
-				</div>
+					<div className="flex gap-1">
+						<EditorToolbarButton
+							tooltip="Lista com marcadores"
+							shortcut="Ctrl+Shift+8"
+							isActive={editor.isActive("bulletList")}
+							onClick={() => editor.chain().focus().toggleBulletList().run()}
+						>
+							<List className="w-4 h-4 min-w-4 min-h-4" />
+						</EditorToolbarButton>
+						<EditorToolbarButton
+							tooltip="Lista numerada"
+							shortcut="Ctrl+Shift+7"
+							isActive={editor.isActive("orderedList")}
+							onClick={() => editor.chain().focus().toggleOrderedList().run()}
+						>
+							<ListOrdered className="w-4 h-4 min-w-4 min-h-4" />
+						</EditorToolbarButton>
+					</div>
 
 				<div className="h-6 w-px bg-gray-300" />
 
@@ -278,13 +285,15 @@ function TemplateBodyEditor({ content, contentChangeCallback, parametros, onPara
 					</DropdownMenuContent>
 				</DropdownMenu>
 
-				<div className="ml-auto flex items-center gap-2">
-					<span className={`text-sm font-medium ${isOverLimit ? "text-red-500" : "text-foreground/60"}`}>
-						{charCount} / {maxChars}
-					</span>
+					<div className="ml-auto flex items-center gap-2">
+						<span className={`text-sm font-medium ${isOverLimit ? "text-red-500" : "text-foreground/60"}`}>
+							{charCount} / {maxChars}
+						</span>
+					</div>
 				</div>
-			</div>
+			</TooltipProvider>
 
+			<WhatsappEditorBubbleMenu editor={editor} />
 			<EditorContent editor={editor} className="prose max-w-none p-6 min-h-[200px]" suppressHydrationWarning />
 
 			{parametros.length > 0 && (

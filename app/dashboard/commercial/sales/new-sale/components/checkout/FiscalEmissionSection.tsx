@@ -4,22 +4,22 @@ import { LockIcon, ReceiptTextIcon } from "lucide-react";
 
 type FiscalEmissionSectionProps = {
 	saleState: TUseSaleState;
-	organizationFiscalEmissaoAutomatica: boolean;
+	organizationAutoFiscalEmission: boolean;
 	organizationAutoFiscalCapable: boolean;
-	canEmitirFiscal: boolean;
+	canEmitFiscal: boolean;
 };
 
 export default function FiscalEmissionSection({
 	saleState,
-	organizationFiscalEmissaoAutomatica,
+	organizationAutoFiscalEmission,
 	organizationAutoFiscalCapable,
-	canEmitirFiscal,
+	canEmitFiscal,
 }: FiscalEmissionSectionProps) {
 	// Sem capacidade fiscal configurada, não há emissão automática possível: oculta o controle.
 	if (!organizationAutoFiscalCapable) return null;
 
 	// null = herda a preferência da organização; boolean = decisão explícita desta venda.
-	const efetivo = saleState.state.emissaoFiscalAutomatica ?? organizationFiscalEmissaoAutomatica;
+	const efetivo = saleState.state.emissaoFiscalAutomatica ?? organizationAutoFiscalEmission;
 
 	return (
 		<div className="bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs">
@@ -28,10 +28,10 @@ export default function FiscalEmissionSection({
 					<ReceiptTextIcon className="w-4 h-4 text-foreground" />
 					<h3 className="font-bold text-xs tracking-wide">EMISSÃO DE NOTA FISCAL</h3>
 				</div>
-				<Switch checked={efetivo} disabled={!canEmitirFiscal} onCheckedChange={(checked) => saleState.setEmissaoFiscalAutomatica(checked)} />
+				<Switch checked={efetivo} disabled={!canEmitFiscal} onCheckedChange={(checked) => saleState.setEmissaoFiscalAutomatica(checked)} />
 			</div>
 			<p className="text-[11px] leading-snug text-muted-foreground">
-				{canEmitirFiscal ? (
+				{canEmitFiscal ? (
 					efetivo ? (
 						"A nota fiscal será emitida automaticamente ao finalizar/entregar esta venda."
 					) : (

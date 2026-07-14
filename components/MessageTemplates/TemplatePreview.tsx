@@ -1,5 +1,6 @@
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { DynamicHeaderImagePreview, type OrganizationTemplateTheme } from "@/app/dashboard/communication/_components/dynamic-header-image-preview";
+import { renderWhatsappTextWithFormatting } from "@/components/Whatsapp/WhatsappMessageText";
 import {
 	MESSAGE_TEMPLATE_BODY_MAX_LENGTH,
 	MESSAGE_TEMPLATE_BUTTONS_MAX_COUNT,
@@ -7,7 +8,7 @@ import {
 	MESSAGE_TEMPLATE_HEADER_TEXT_MAX_LENGTH,
 } from "@/lib/message-templates/constants";
 import { convertHtmlToWhatsappText } from "@/lib/message-templates/formatting";
-import { replaceMessageTemplateVariables, replaceMessageTemplateVariablesWithExamples } from "@/lib/message-templates/parsing";
+import { resolveMessageTemplateVariablePreviewValue } from "@/lib/message-templates/parsing";
 import type { TMessageTemplateRuntimeValues } from "@/lib/message-templates/types";
 import type { TMessageTemplateContent } from "@/schemas/message-templates";
 import { Eye, FileText as FileTextIcon, ImageIcon, MapPin, VideoIcon } from "lucide-react";
@@ -19,17 +20,15 @@ type TemplatePreviewProps = {
 	variables?: TMessageTemplateRuntimeValues;
 };
 
-function resolvePreviewText(
-	text: string,
-	parameters: TMessageTemplateContent["corpo"]["parametros"],
-	variables?: TMessageTemplateRuntimeValues,
-) {
-	if (variables) {
-		return convertHtmlToWhatsappText(replaceMessageTemplateVariables(text, variables));
-	}
-
-	const plainText = convertHtmlToWhatsappText(text);
-	return replaceMessageTemplateVariablesWithExamples(plainText, parameters);
+// Mantém os tokens {{...}} no texto e resolve cada variável na hora do render,
+// destacando o valor preenchido (exemplo ou valor de runtime) no balão do preview.
+function renderPreviewText(text: string, parameters: TMessageTemplateContent["corpo"]["parametros"], variables?: TMessageTemplateRuntimeValues) {
+	return renderWhatsappTextWithFormatting(convertHtmlToWhatsappText(text), {
+		renderVariable: ({ identifier, raw }) => {
+			const resolved = resolveMessageTemplateVariablePreviewValue({ token: identifier, parameters, values: variables });
+			return <span className="rounded bg-[#dcf8c6] px-1 py-0.5 font-medium text-[#075e54]">{resolved ?? raw}</span>;
+		},
+	});
 }
 
 function getButtonIcon(tipo: TMessageTemplateContent["botoes"][number]["tipo"]) {
@@ -53,10 +52,11 @@ function MessageTemplateHeaderPreview({
 	if (cabecalho.tipo === "NENHUM") return null;
 
 	if (cabecalho.tipo === "TEXTO") {
-		const headerText = resolvePreviewText(cabecalho.conteudoTexto ?? "", parameters, variables);
 		return (
 			<div className="px-3 pt-3">
-				<p className="font-semibold text-sm text-gray-900">{headerText || "Texto do cabeçalho"}</p>
+				<p className="font-semibold text-sm text-gray-900">
+					{cabecalho.conteudoTexto ? renderPreviewText(cabecalho.conteudoTexto, parameters, variables) : "Texto do cabeçalho"}
+				</p>
 			</div>
 		);
 	}
@@ -138,8 +138,7 @@ function TemplatePreview({ content, organizationTheme, compact = false, variable
 
 	const { cabecalho, corpo, rodape, botoes } = content;
 	const bodyText = convertHtmlToWhatsappText(corpo.conteudo);
-	const bodyPreviewText = resolvePreviewText(corpo.conteudo, corpo.parametros, variables);
-	const footerText = rodape ? resolvePreviewText(rodape, corpo.parametros, variables) : null;
+	const footerText = rodape ? convertHtmlToWhatsappText(rodape) : null;
 	const currentTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 	const headerTextLength = cabecalho?.tipo === "TEXTO" ? (cabecalho.conteudoTexto?.length ?? 0) : 0;
 
@@ -174,11 +173,13 @@ function TemplatePreview({ content, organizationTheme, compact = false, variable
 							) : null}
 
 							<div className="px-3 py-2 pt-3">
-								<div className="whitespace-pre-wrap text-sm text-gray-900 break-words">{bodyPreviewText || "Digite o conteúdo da mensagem..."}</div>
+								<div className="whitespace-pre-wrap text-sm text-gray-900 break-words">
+									{bodyText ? renderPreviewText(corpo.conteudo, corpo.parametros, variables) : "Digite o conteúdo da mensagem..."}
+								</div>
 
-								{footerText ? (
+								{footerText && rodape ? (
 									<div className="mt-2">
-										<p className="text-xs text-[#00a884]">{footerText}</p>
+										<p className="text-xs text-[#00a884]">{renderPreviewText(rodape, corpo.parametros, variables)}</p>
 									</div>
 								) : null}
 

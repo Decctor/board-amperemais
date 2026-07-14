@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { WhatsappMessageText } from "@/components/Whatsapp/WhatsappMessageText";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDesktopNotifications } from "@/lib/hooks/use-desktop-notifications";
 import { useChatMessagesRealtime } from "@/lib/hooks/use-supabase-realtime";
@@ -254,7 +255,7 @@ function MessageBubble({ message, isUser, isSameAuthorAsPrevious, isSameAuthorAs
 						/>
 					</div>
 				) : (
-					<p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{message.conteudoTexto}</p>
+					<WhatsappMessageText text={message.conteudoTexto ?? ""} onPrimary={isUser} className="text-sm leading-relaxed" />
 				)}
 
 				{/* Timestamp and Status */}

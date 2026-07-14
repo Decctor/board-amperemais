@@ -1,6 +1,8 @@
 "use client";
 
+import { renderWhatsappTextWithFormatting } from "@/components/Whatsapp/WhatsappMessageText";
 import { getMessageTemplateButtonPreset } from "@/lib/message-templates/button-presets";
+import { convertHtmlToWhatsappText } from "@/lib/message-templates/formatting";
 import type { TUseMessageTemplateState } from "@/state-hooks/use-message-template-state";
 
 export type TMessageTemplateEntity = TUseMessageTemplateState["state"]["messageTemplate"];
@@ -52,31 +54,12 @@ export function slugifyMessageTemplateSender(value: string) {
 }
 
 export function renderResolvedTemplateWithHighlights(text: string, parametros: TMessageTemplateParameter[]) {
-	const normalizedText = text
-		.replace(/<span[^>]*data-type=["']mention["'][^>]*data-id=["']([^"']+)["'][^>]*>[\s\S]*?<\/span>/gi, (_, dataId: string) => `{{${dataId}}}`)
-		.replace(/<\/p>\s*<p[^>]*>/gi, "\n")
-		.replace(/<p[^>]*>/gi, "")
-		.replace(/<\/p>/gi, "")
-		.replace(/<br\s*\/?>/gi, "\n")
-		.replace(/<[^>]+>/g, "");
-	const nodes: React.ReactNode[] = [];
-	let lastIndex = 0;
-	let index = 0;
-	for (const match of normalizedText.matchAll(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g)) {
-		const start = match.index ?? 0;
-		const end = start + match[0].length;
-		const parametro = parametros.find((item) => item.identificadorInterno === match[1]);
-		if (start > lastIndex) nodes.push(normalizedText.slice(lastIndex, start));
-		nodes.push(
-			<span key={`${match[0]}-${index}`} className="rounded-md bg-primary/15 px-1 py-0.5 font-semibold text-primary">
-				{parametro?.exemplo || match[0]}
-			</span>,
-		);
-		lastIndex = end;
-		index += 1;
-	}
-	if (lastIndex < normalizedText.length) nodes.push(normalizedText.slice(lastIndex));
-	return nodes.length > 0 ? nodes : normalizedText;
+	return renderWhatsappTextWithFormatting(convertHtmlToWhatsappText(text), {
+		renderVariable: ({ identifier, raw }) => {
+			const parametro = parametros.find((item) => item.identificadorInterno === identifier);
+			return <span className="rounded-md bg-primary/15 px-1 py-0.5 font-semibold text-primary">{parametro?.exemplo || raw}</span>;
+		},
+	});
 }
 
 export function getMessageTemplateButtonPreviewHref({ button, organizationId }: { button: TMessageTemplateButton; organizationId: string }) {

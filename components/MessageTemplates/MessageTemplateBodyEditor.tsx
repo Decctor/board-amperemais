@@ -8,9 +8,12 @@ import type { TMessageTemplateContent } from "@/schemas/message-templates";
 import Mention from "@tiptap/extension-mention";
 import { type JSONContent, EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { Braces, ChevronDown, Italic, List, ListOrdered } from "lucide-react";
+import { Bold, Braces, ChevronDown, Italic, List, ListOrdered, Strikethrough } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createSuggestion } from "@/components/MessageTemplates/suggestion";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { EditorToolbarButton, WhatsappEditorBubbleMenu } from "@/components/Whatsapp/WhatsappEditorBubbleMenu";
+import { WhatsappFormattingMarks } from "@/components/Whatsapp/whatsapp-editor-marks";
 
 type MessageTemplateBodyEditorProps = {
 	content: string;
@@ -110,7 +113,10 @@ export function MessageTemplateBodyEditor({ content, onContentChange, parametros
 
 	const editor = useEditor({
 		extensions: [
-			StarterKit,
+			// Marks padrão desativados: os WhatsappFormattingMarks reaplicam bold/italic/strike
+			// com autoformatação na sintaxe do WhatsApp (*negrito*, _itálico_, ~tachado~).
+			StarterKit.configure({ bold: false, italic: false, strike: false }),
+			...WhatsappFormattingMarks,
 			Mention.configure({
 				HTMLAttributes: {
 					class: "mention",
@@ -181,19 +187,43 @@ export function MessageTemplateBodyEditor({ content, onContentChange, parametros
 
 	return (
 		<div className="border-border overflow-hidden rounded-xl border bg-background">
-			<div className="border-border flex flex-wrap items-center gap-2 border-b p-2">
-				<Button type="button" size="sm" variant={editor.isActive("bold") ? "default" : "ghost"} onClick={() => editor.chain().focus().toggleBold().run()}>
-					<strong>B</strong>
-				</Button>
-				<Button type="button" size="sm" variant={editor.isActive("italic") ? "default" : "ghost"} onClick={() => editor.chain().focus().toggleItalic().run()}>
-					<Italic className="h-4 w-4" />
-				</Button>
-				<Button type="button" size="sm" variant={editor.isActive("bulletList") ? "default" : "ghost"} onClick={() => editor.chain().focus().toggleBulletList().run()}>
-					<List className="h-4 w-4" />
-				</Button>
-				<Button type="button" size="sm" variant={editor.isActive("orderedList") ? "default" : "ghost"} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
-					<ListOrdered className="h-4 w-4" />
-				</Button>
+			<TooltipProvider delayDuration={400}>
+				<div className="border-border flex flex-wrap items-center gap-2 border-b p-2">
+					<EditorToolbarButton tooltip="Negrito" shortcut="Ctrl+B" isActive={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
+						<Bold className="h-4 w-4" />
+					</EditorToolbarButton>
+					<EditorToolbarButton
+						tooltip="Itálico"
+						shortcut="Ctrl+I"
+						isActive={editor.isActive("italic")}
+						onClick={() => editor.chain().focus().toggleItalic().run()}
+					>
+						<Italic className="h-4 w-4" />
+					</EditorToolbarButton>
+					<EditorToolbarButton
+						tooltip="Tachado"
+						shortcut="Ctrl+Shift+S"
+						isActive={editor.isActive("strike")}
+						onClick={() => editor.chain().focus().toggleStrike().run()}
+					>
+						<Strikethrough className="h-4 w-4" />
+					</EditorToolbarButton>
+					<EditorToolbarButton
+						tooltip="Lista com marcadores"
+						shortcut="Ctrl+Shift+8"
+						isActive={editor.isActive("bulletList")}
+						onClick={() => editor.chain().focus().toggleBulletList().run()}
+					>
+						<List className="h-4 w-4" />
+					</EditorToolbarButton>
+					<EditorToolbarButton
+						tooltip="Lista numerada"
+						shortcut="Ctrl+Shift+7"
+						isActive={editor.isActive("orderedList")}
+						onClick={() => editor.chain().focus().toggleOrderedList().run()}
+					>
+						<ListOrdered className="h-4 w-4" />
+					</EditorToolbarButton>
 
 				<div className="bg-border h-6 w-px" />
 
@@ -226,11 +256,13 @@ export function MessageTemplateBodyEditor({ content, onContentChange, parametros
 					</DropdownMenuContent>
 				</DropdownMenu>
 
-				<span className={`ml-auto text-sm font-medium ${isOverLimit ? "text-red-500" : "text-muted-foreground"}`}>
-					{charCount} / {maxChars}
-				</span>
-			</div>
+					<span className={`ml-auto text-sm font-medium ${isOverLimit ? "text-red-500" : "text-muted-foreground"}`}>
+						{charCount} / {maxChars}
+					</span>
+				</div>
+			</TooltipProvider>
 
+			<WhatsappEditorBubbleMenu editor={editor} />
 			<EditorContent editor={editor} className="prose max-w-none p-4 text-sm leading-6 [&_.ProseMirror]:min-h-56 [&_.ProseMirror]:outline-none" />
 
 			<style jsx global>{`

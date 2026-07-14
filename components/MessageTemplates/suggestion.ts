@@ -27,13 +27,24 @@ export function createSuggestion(variables: TMessageTemplateVariable[]) {
 				if (!popup) {
 					return;
 				}
+
+				// Vira o popup para cima quando não há espaço suficiente abaixo do cursor.
+				const popupHeight = popup.offsetHeight || 280;
+				const spaceBelow = window.innerHeight - rect.bottom;
+				const flipUp = spaceBelow < popupHeight + 16;
+
 				if (popupContainer && popupContainer !== document.body) {
 					const containerRect = popupContainer.getBoundingClientRect();
-					popup.style.top = `${rect.bottom - containerRect.top + popupContainer.scrollTop}px`;
+					if (flipUp) {
+						popup.style.top = `${rect.top - containerRect.top - popupHeight - 6 + popupContainer.scrollTop}px`;
+					} else {
+						popup.style.top = `${rect.bottom - containerRect.top + 4 + popupContainer.scrollTop}px`;
+					}
 					popup.style.left = `${rect.left - containerRect.left + popupContainer.scrollLeft}px`;
 					return;
 				}
-				popup.style.top = `${rect.bottom}px`;
+
+				popup.style.top = flipUp ? `${rect.top - popupHeight - 6}px` : `${rect.bottom + 4}px`;
 				popup.style.left = `${rect.left}px`;
 			};
 
