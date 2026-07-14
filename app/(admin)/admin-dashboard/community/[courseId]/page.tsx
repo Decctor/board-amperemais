@@ -6,8 +6,7 @@ import CourseEditorPage from "./course-editor-page";
 export default async function AdminCourseEditor({ params }: { params: Promise<{ courseId: string }> }) {
 	const authSession = await getCurrentSession();
 	if (!authSession) redirect("/auth/signin");
-	if (!authSession.user.admin)
-		return <UnauthorizedPage message="Oops, aparentemente você não possui permissão para acessar essa área." />;
+	if (!authSession.user.admin) return <UnauthorizedPage message="Oops, aparentemente você não possui permissão para acessar essa área." />;
 
 	const { courseId } = await params;
 	return <CourseEditorPage courseId={courseId} />;

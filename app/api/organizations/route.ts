@@ -18,6 +18,7 @@ import {
 import { captureServerEvent } from "@/lib/analytics/posthog-server";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { getDealWithAvailableLicense, linkOrganizationToDeal } from "@/lib/deals";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { OrganizationConfigurationSchema, OrganizationDefaultsSchema, OrganizationSchema } from "@/schemas/organizations";
 import { db } from "@/services/drizzle";
@@ -321,17 +322,41 @@ async function createOrganization({
 	});
 
 	// 6. Process subscription
+	// Deal (multi-licença): se o usuário é obtentor de um deal ATIVO com licença disponível,
+	// a organização nasce vinculada ao deal — sem trial e sem checkout próprio. O claim por
+	// email (deals criados antes do comprador ter conta) acontece dentro desta checagem.
+	const availableDealLicense = await getDealWithAvailableLicense({ userId: sessionUser.id, email: sessionUser.email });
+
 	try {
 		await captureServerEvent({
 			distinctId: sessionUser.id,
 			event: "onboarding_organization_created",
 			properties: {
 				organization_id: insertedOrgId,
-				subscription: subscription ?? "FREE-TRIAL",
+				subscription: availableDealLicense ? `DEAL-${availableDealLicense.deal.planoBase}` : (subscription ?? "FREE-TRIAL"),
 			},
 		});
 	} catch (error) {
 		console.error("[WARN] [CREATE_ORGANIZATION] Falha ao capturar evento onboarding_organization_created:", error);
+	}
+
+	if (availableDealLicense) {
+		const { deal, licencasUtilizadas } = availableDealLicense;
+		console.log("[INFO] [CREATE_ORGANIZATION] Deal license available. Linking organization to deal.", {
+			organizationId: insertedOrgId,
+			dealId: deal.id,
+			licencasUtilizadas,
+			quantidadeLicencas: deal.quantidadeLicencas,
+		});
+		await linkOrganizationToDeal({ organizationId: insertedOrgId, deal });
+
+		return {
+			data: {
+				insertedId: insertedOrgId,
+				redirectTo: "/dashboard",
+			},
+			message: `Organização criada com sucesso! Licença ${licencasUtilizadas + 1} de ${deal.quantidadeLicencas} do seu plano utilizada.`,
+		};
 	}
 
 	if (!subscription || subscription === "FREE-TRIAL") {

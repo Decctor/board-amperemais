@@ -3,9 +3,10 @@ import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OrganizationNicheOptions } from "@/config/onboarding";
 import { formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
+import { useAvailableDealLicense } from "@/lib/queries/deals";
 import { cn } from "@/lib/utils";
 import type { TUseOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
-import { Check, LayoutGrid, Store } from "lucide-react";
+import { BadgeCheck, Check, LayoutGrid, Store } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { MdAttachFile } from "react-icons/md";
@@ -18,8 +19,24 @@ type GeneralInfoStageProps = {
 };
 
 export function GeneralInfoStage({ state, updateOrganization, updateOrganizationLogoHolder, updateOnboarding }: GeneralInfoStageProps) {
+	// Licença de deal (venda B2B multi-licença): se o usuário é obtentor de um deal ativo
+	// com licença disponível, a organização será ativada sem trial e sem checkout.
+	const { data: dealLicense } = useAvailableDealLicense();
+
 	return (
 		<>
+			{dealLicense?.available ? (
+				<div className="flex w-full items-start gap-3 rounded-xl border border-emerald-300 bg-emerald-50 p-3">
+					<BadgeCheck className="h-5 w-5 min-w-5 min-h-5 text-emerald-600" />
+					<div className="flex flex-col gap-0.5">
+						<h4 className="text-sm font-semibold tracking-tight text-emerald-800">VOCÊ POSSUI LICENÇAS DISPONÍVEIS</h4>
+						<p className="text-xs text-emerald-700">
+							{dealLicense.licencasUtilizadas} de {dealLicense.deal.quantidadeLicencas} licenças do seu plano estão em uso. Esta organização será ativada
+							automaticamente no plano {dealLicense.deal.planoBase}, sem período de teste e sem checkout.
+						</p>
+					</div>
+				</div>
+			) : null}
 			<ResponsiveMenuSection title="INFORMAÇÕES GERAIS" icon={<LayoutGrid className="h-4 min-h-4 w-4 min-w-4" />}>
 				<div className="w-full flex items-center lg:items-start flex-col lg:flex-row gap-x-6 gap-y-3">
 					<ImageContent

@@ -7,6 +7,7 @@ import type {
 import { relations } from "drizzle-orm";
 import { boolean, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
+import { deals } from "./deals";
 import { defaultDataSourceEnum, fiscalProviderEnum, organizationIntegrationTypeEnum, paymentProviderEnum } from "./enums";
 import { sellers } from "./sellers";
 import { users } from "./users";
@@ -42,6 +43,9 @@ export const organizations = newTable("organizations", {
 	stripeSubscriptionStatusUltimaAlteracao: timestamp("stripe_subscription_status_ultima_alteracao"),
 
 	assinaturaPlano: text("assinatura_plano").default("ESSENCIAL"),
+	// Deal (venda B2B multi-licença): quando presente, a assinatura desta org é governada
+	// pelo deal — o webhook replica o status para cá e os campos stripe* acima ficam nulos.
+	dealId: varchar("deal_id", { length: 255 }).references(() => deals.id, { onDelete: "set null" }),
 	dadosViaERP: boolean("dados_via_erp").notNull().default(false),
 	dadosViaPDI: boolean("dados_via_pdi").notNull().default(false),
 	dadosViaIntegracoes: boolean("dados_via_integracoes").notNull().default(false),
@@ -86,6 +90,10 @@ export const organizationsRelations = relations(organizations, ({ one, many }) =
 	autor: one(users, {
 		fields: [organizations.autorId],
 		references: [users.id],
+	}),
+	deal: one(deals, {
+		fields: [organizations.dealId],
+		references: [deals.id],
 	}),
 	membros: many(organizationMembers),
 }));

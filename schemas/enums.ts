@@ -424,3 +424,11 @@ export type TActionApprovalDecisionMethodEnum = z.infer<typeof ActionApprovalDec
 // cenários de aprovação não custem migração de enum no Postgres (padrão ai-hints).
 export const ActionApprovalTypeEnum = z.enum(["VENDA_DESCONTO"]);
 export type TActionApprovalTypeEnum = z.infer<typeof ActionApprovalTypeEnum>;
+
+// Espelha o pgEnum dealStatusEnum.
+export const DealStatusEnum = z.enum(["PENDENTE", "ATIVO", "INADIMPLENTE", "CANCELADO"]);
+export type TDealStatusEnum = z.infer<typeof DealStatusEnum>;
+
+// Espelha o pgEnum dealIntervaloEnum.
+export const DealIntervaloEnum = z.enum(["MENSAL", "ANUAL"]);
+export type TDealIntervaloEnum = z.infer<typeof DealIntervaloEnum>;

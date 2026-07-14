@@ -1,4 +1,5 @@
 import { CONSULTORIA_ADDON } from "@/config";
+import { findDealByStripeCustomerId, syncDealSubscriptionState } from "@/lib/deals";
 import {
 	PLATFORM_PARTNER_COMMISSION_RULE_VERSION,
 	PLATFORM_PARTNER_MONTHLY_FIRST_INVOICE_BPS,
@@ -80,6 +81,26 @@ async function processEvent(event: Stripe.Event) {
 	};
 	if (typeof customerId !== "string") {
 		throw new Error(`[STRIPE HOOK] Customer ID is not a string??? \n Event type: ${event.type}`);
+	}
+
+	// Deals (multi-licença): o customer pertence ao deal, não a uma organização. O status
+	// é gravado no deal e replicado (fan-out) para todas as organizações vinculadas —
+	// as orgs de deal não têm stripeCustomerId próprio, então o fluxo abaixo não as acharia.
+	const deal = await findDealByStripeCustomerId(customerId);
+	if (deal) {
+		const { id, status } = event.data.object as Stripe.Subscription;
+		const stripeStatus = event.type === "customer.subscription.deleted" ? "canceled" : status;
+		console.log("[STRIPE HOOK] [HANDLE_DEAL_SUBSCRIPTION_EVENT]", {
+			dealId: deal.id,
+			customerId,
+			eventType: event.type,
+			stripeStatus,
+		});
+		return await syncDealSubscriptionState({
+			dealId: deal.id,
+			stripeStatus,
+			stripeSubscriptionId: id,
+		});
 	}
 
 	if (event.type === "customer.subscription.deleted") {
@@ -205,6 +226,19 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 
 	const customerId = getInvoiceCustomerId(invoice);
 	if (!customerId) return;
+
+	// Faturas de deal (multi-licença) ficam fora do fluxo de comissões de parceiros: são
+	// vendas fechadas diretamente pelo admin, sem indicação. O lookup por organização
+	// abaixo já não as encontraria (orgs de deal não têm stripeCustomerId), mas o skip
+	// explícito documenta a decisão e evita processamento desnecessário.
+	const deal = await findDealByStripeCustomerId(customerId);
+	if (deal) {
+		console.log("[STRIPE HOOK] [INVOICE_PAID] Fatura pertence a um deal — sem comissão de parceiro.", {
+			dealId: deal.id,
+			invoiceId: invoice.id,
+		});
+		return;
+	}
 
 	const existingCommission = await db.query.platformPartnerCommissions.findFirst({
 		where: eq(platformPartnerCommissions.stripeInvoiceId, invoice.id),

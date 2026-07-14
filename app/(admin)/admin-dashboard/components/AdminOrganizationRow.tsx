@@ -132,6 +132,7 @@ export default function AdminOrganizationRow({ sessionUser, organization, callba
 						{organization.consultoriaAtiva ? (
 							<StatusPill pill={{ label: "CONSULTORIA", className: "bg-purple-500/15 text-purple-600 dark:text-purple-400" }} />
 						) : null}
+						{organization.dealId ? <StatusPill pill={{ label: "DEAL", className: "bg-sky-500/15 text-sky-600 dark:text-sky-400" }} /> : null}
 						{!organization.dataOnboardingConclusao ? (
 							<StatusPill pill={{ label: "ONBOARDING PENDENTE", className: "bg-orange-500/15 text-orange-600 dark:text-orange-400" }} />
 						) : null}

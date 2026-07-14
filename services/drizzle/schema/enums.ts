@@ -379,4 +379,15 @@ export const couponRedemptionSourceEnum = pgEnum("coupon_redemption_source", ["P
 // é varchar + z.enum no app para que novos cenários não custem migração de enum no Postgres.
 export const actionApprovalStatusEnum = pgEnum("action_approval_status", ["PENDENTE", "APROVADA", "REJEITADA", "CANCELADA", "EXPIRADA", "CONSUMIDA"]);
 
+// ============================================================================
+// DEALS (vendas B2B personalizadas — múltiplas licenças numa assinatura Stripe)
+// ============================================================================
+
+// Ciclo de vida do deal: PENDENTE (checkout gerado, aguardando pagamento) → ATIVO →
+// INADIMPLENTE (past_due/unpaid no Stripe) → CANCELADO. Derivado do status Stripe cru,
+// que fica guardado à parte (stripe_subscription_status) para diagnóstico.
+export const dealStatusEnum = pgEnum("deal_status", ["PENDENTE", "ATIVO", "INADIMPLENTE", "CANCELADO"]);
+
+export const dealIntervaloEnum = pgEnum("deal_intervalo", ["MENSAL", "ANUAL"]);
+
 export const actionApprovalDecisionMethodEnum = pgEnum("action_approval_decision_method", ["PLATAFORMA", "SENHA_OPERADOR"]);

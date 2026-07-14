@@ -41,12 +41,7 @@ export default function CourseFormMetadataBlock({ state, updateState }: CourseFo
 			{/* Thumbnail URL */}
 			<div className="flex flex-col gap-1.5">
 				<Label htmlFor="thumbnailUrl">URL da thumbnail</Label>
-				<Input
-					id="thumbnailUrl"
-					placeholder="https://..."
-					value={state.thumbnailUrl}
-					onChange={(e) => updateState("thumbnailUrl", e.target.value)}
-				/>
+				<Input id="thumbnailUrl" placeholder="https://..." value={state.thumbnailUrl} onChange={(e) => updateState("thumbnailUrl", e.target.value)} />
 			</div>
 
 			{/* Access Level + Status row */}
@@ -54,10 +49,7 @@ export default function CourseFormMetadataBlock({ state, updateState }: CourseFo
 				{/* Access Level */}
 				<div className="flex flex-col gap-1.5">
 					<Label>Nível de acesso</Label>
-					<Select
-						value={state.nivelAcesso}
-						onValueChange={(v) => updateState("nivelAcesso", v as TCommunityCourseAccessLevel)}
-					>
+					<Select value={state.nivelAcesso} onValueChange={(v) => updateState("nivelAcesso", v as TCommunityCourseAccessLevel)}>
 						<SelectTrigger>
 							<SelectValue />
 						</SelectTrigger>
@@ -72,10 +64,7 @@ export default function CourseFormMetadataBlock({ state, updateState }: CourseFo
 				{/* Status */}
 				<div className="flex flex-col gap-1.5">
 					<Label>Status</Label>
-					<Select
-						value={state.status}
-						onValueChange={(v) => updateState("status", v as TCommunityCourseStatus)}
-					>
+					<Select value={state.status} onValueChange={(v) => updateState("status", v as TCommunityCourseStatus)}>
 						<SelectTrigger>
 							<SelectValue />
 						</SelectTrigger>

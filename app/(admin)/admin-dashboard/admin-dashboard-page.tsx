@@ -1,11 +1,13 @@
 "use client";
+import NewDeal from "@/components/Modals/Deals/NewDeal";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { BookOpen, Building2, Plus, Users } from "lucide-react";
-import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
+import { Building2, Handshake, Plus, Users } from "lucide-react";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useState } from "react";
+import AdminDealsBlock from "./components/AdminDealsBlock";
 import AdminKPIsBlock from "./components/AdminKPIsBlock";
 import AdminOrganizationsBlock from "./components/AdminOrganizationsBlock";
 import AdminUsersBlock from "./components/AdminUsersBlock";
@@ -15,8 +17,10 @@ type TAdminDashboardPageProps = {
 	user: TAuthUserSession["user"];
 };
 export default function AdminDashboardPage({ user }: TAdminDashboardPageProps) {
-	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum(["organizations", "users"]));
+	const queryClient = useQueryClient();
+	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum(["organizations", "users", "deals"]));
 	const [newOrganizationModalOpen, setNewOrganizationModalOpen] = useState(false);
+	const [newDealModalOpen, setNewDealModalOpen] = useState(false);
 
 	const activeView = viewMode ?? "organizations";
 
@@ -31,10 +35,16 @@ export default function AdminDashboardPage({ user }: TAdminDashboardPageProps) {
 							NOVA ORGANIZAÇÃO
 						</Button>
 					) : null}
+					{activeView === "deals" ? (
+						<Button onClick={() => setNewDealModalOpen(true)} className="flex items-center gap-2">
+							<Plus className="w-4 h-4 min-w-4 min-h-4" />
+							NOVO DEAL
+						</Button>
+					) : null}
 				</div>
 			</div>
 
-			<Tabs value={activeView} onValueChange={(v: string) => setViewMode(v as "organizations" | "users")}>
+			<Tabs value={activeView} onValueChange={(v: string) => setViewMode(v as "organizations" | "users" | "deals")}>
 				<TabsList variant="page">
 					<TabsTrigger value="organizations">
 						<Building2 className="w-4 h-4 min-w-4 min-h-4" />
@@ -43,6 +53,10 @@ export default function AdminDashboardPage({ user }: TAdminDashboardPageProps) {
 					<TabsTrigger value="users">
 						<Users className="w-4 h-4 min-w-4 min-h-4" />
 						Usuários
+					</TabsTrigger>
+					<TabsTrigger value="deals">
+						<Handshake className="w-4 h-4 min-w-4 min-h-4" />
+						Deals
 					</TabsTrigger>
 				</TabsList>
 				<TabsContent value="organizations">
@@ -57,10 +71,21 @@ export default function AdminDashboardPage({ user }: TAdminDashboardPageProps) {
 				<TabsContent value="users">
 					<AdminUsersBlock />
 				</TabsContent>
+				<TabsContent value="deals">
+					<AdminDealsBlock />
+				</TabsContent>
 			</Tabs>
 
 			{/* New Organization Modal */}
 			{newOrganizationModalOpen && <NewOrganization closeModal={() => setNewOrganizationModalOpen(false)} />}
+
+			{/* New Deal Modal */}
+			{newDealModalOpen && (
+				<NewDeal
+					closeModal={() => setNewDealModalOpen(false)}
+					callbacks={{ onSettled: () => queryClient.invalidateQueries({ queryKey: ["admin-deals"] }) }}
+				/>
+			)}
 		</div>
 	);
 }
