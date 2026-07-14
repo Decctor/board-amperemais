@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { buildClientPortfolioQueue, getDayFollowUps } from "@/lib/client-portfolios/queue";
+import { buildClientPortfolioQueue } from "@/lib/client-portfolios/queue";
 import { resolveClientPortfolioSeller } from "@/lib/client-portfolios/resolve-seller";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -19,16 +19,12 @@ export type TGetClientPortfolioInput = z.infer<typeof GetClientPortfolioInputSch
 async function getClientPortfolio({ input, session }: { input: TGetClientPortfolioInput; session: TAuthUserSession }) {
 	const { organizacaoId, seller } = await resolveClientPortfolioSeller({ session, explicitSellerId: input.vendedorId });
 
-	const [queueResult, followUps] = await Promise.all([
-		buildClientPortfolioQueue({ organizacaoId, vendedorId: seller.id }),
-		getDayFollowUps({ organizacaoId, vendedorId: seller.id }),
-	]);
+	const queueResult = await buildClientPortfolioQueue({ organizacaoId, vendedorId: seller.id });
 
 	return {
 		data: {
 			vendedor: seller,
 			fila: queueResult.queue,
-			followUps,
 			totalEmDebito: queueResult.totalEmDebito,
 			carteiraTotal: queueResult.carteiraTotal,
 		},

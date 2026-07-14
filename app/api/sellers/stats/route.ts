@@ -1,5 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
-import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
+import { runPagesRouteHandler, type PagesRouteHandler } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
@@ -171,6 +171,15 @@ async function getSellerStats({ session, input }: GetSellerStatsParams) {
 		.groupBy(weekDayExpr)
 		.orderBy(weekDayExpr);
 
+	// Qualitative: grouped by day of week + hour (weekly revenue heatmap)
+	const hourExpr = sql<number>`extract(hour from ${sales.dataVenda})`;
+	const byWeekDayHourRaw = await db
+		.select({ semana: weekDayExpr, hora: hourExpr, qtde: count(sales.id), total: sum(sales.valorTotal) })
+		.from(sales)
+		.where(saleWhere)
+		.groupBy(weekDayExpr, hourExpr)
+		.orderBy(weekDayExpr, hourExpr);
+
 	return {
 		data: {
 			vendedor: {
@@ -221,6 +230,12 @@ async function getSellerStats({ session, input }: GetSellerStatsParams) {
 				})),
 				diaSemana: byWeekDayRaw.map((row) => ({
 					diaSemana: Number(row.semana),
+					quantidade: Number(row.qtde ?? 0),
+					total: row.total ? Number(row.total) : 0,
+				})),
+				diaSemanaHora: byWeekDayHourRaw.map((row) => ({
+					diaSemana: Number(row.semana),
+					hora: Number(row.hora),
 					quantidade: Number(row.qtde ?? 0),
 					total: row.total ? Number(row.total) : 0,
 				})),

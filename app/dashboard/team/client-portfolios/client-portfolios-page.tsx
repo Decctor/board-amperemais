@@ -13,7 +13,7 @@ import { useSellersSimplified } from "@/lib/queries/sellers";
 import { useQueryClient } from "@tanstack/react-query";
 import { CalendarCheck, ChartColumn, ListChecks, RefreshCw, ShoppingCart, Target, UserRound, Wallet } from "lucide-react";
 import { useState } from "react";
-import { FollowUps } from "./_components/follow-ups";
+import { PortfolioAgenda } from "./_components/agenda";
 import { Portfolio } from "./_components/portfolio";
 import { QueueSection } from "./_components/queue-section";
 import { Results } from "./_components/results";
@@ -36,6 +36,9 @@ export default function ClientPortfoliosPage({ boundSellerId, canPickSeller }: C
 	function refreshPortfolio() {
 		queryClient.invalidateQueries({ queryKey: ["client-portfolios"] });
 		queryClient.invalidateQueries({ queryKey: ["client-portfolios-stats"] });
+		// Snooze/registro criam interações PLANEJADA que aparecem na agenda.
+		queryClient.invalidateQueries({ queryKey: ["client-portfolios-agenda-day"] });
+		queryClient.invalidateQueries({ queryKey: ["client-portfolios-agenda-calendar"] });
 	}
 
 	// Usuário sem vínculo com vendedor e sem permissão de ver resultados: nada a mostrar.
@@ -140,7 +143,9 @@ export default function ClientPortfoliosPage({ boundSellerId, canPickSeller }: C
 						value: stats?.abordagensHoje ?? 0,
 						format: (n) => (abordagensPlanejadas > 0 ? `${formatDecimalPlaces(n)} / ${abordagensPlanejadas}` : formatDecimalPlaces(n)),
 					}}
-					subtitle={clientPortfolio ? (clientPortfolio.fila.length > 0 ? `${clientPortfolio.fila.length} clientes na fila` : "Fila concluída!") : undefined}
+					subtitle={
+						clientPortfolio ? (clientPortfolio.fila.length > 0 ? `${clientPortfolio.fila.length} clientes na fila` : "Fila concluída!") : undefined
+					}
 				/>
 				<StatUnitCard
 					variant="horizontal"
@@ -176,7 +181,7 @@ export default function ClientPortfoliosPage({ boundSellerId, canPickSeller }: C
 					{portfolioQuery.isLoading ? <LoadingComponent /> : null}
 					{portfolioQuery.error ? <ErrorComponent msg={getErrorMessage(portfolioQuery.error)} /> : null}
 					{clientPortfolio ? (
-						<div className="grid w-full grid-cols-1 items-start gap-3 xl:grid-cols-[2fr_1fr]">
+						<div className="grid w-full grid-cols-1 items-start gap-3 xl:grid-cols-[3fr_2fr]">
 							<QueueSection
 								fila={clientPortfolio.fila}
 								totalEmDebito={clientPortfolio.totalEmDebito}
@@ -184,7 +189,7 @@ export default function ClientPortfoliosPage({ boundSellerId, canPickSeller }: C
 								vendedorId={effectiveSellerId}
 								onRegistered={refreshPortfolio}
 							/>
-							<FollowUps followUps={clientPortfolio.followUps} onResolved={refreshPortfolio} />
+							<PortfolioAgenda vendedorId={effectiveSellerId && !boundSellerId ? effectiveSellerId : null} onChanged={refreshPortfolio} />
 						</div>
 					) : null}
 				</TabsContent>

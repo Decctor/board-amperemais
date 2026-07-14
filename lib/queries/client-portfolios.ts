@@ -1,9 +1,11 @@
 import type { TGetInteractionsOutput } from "@/app/api/interactions/route";
+import type { TGetAgendaOutput } from "@/app/api/client-portfolios/agenda/route";
 import type { TGetClientPortfolioOutput } from "@/app/api/client-portfolios/route";
 import type { TGetPortfolioOutput } from "@/app/api/client-portfolios/portfolio/route";
 import type { TGetClientPortfolioStatsOutput } from "@/app/api/client-portfolios/stats/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import dayjs from "dayjs";
 import { useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
 
@@ -63,6 +65,44 @@ export function usePortfolio({ vendedorId }: { vendedorId: string | null }) {
 		queryKey,
 		filters,
 		updateFilters,
+	};
+}
+
+async function fetchAgendaDay({ vendedorId, dateKey }: { vendedorId: string | null; dateKey: string }) {
+	const searchParams = new URLSearchParams();
+	if (vendedorId) searchParams.set("vendedorId", vendedorId);
+	searchParams.set("date", dateKey);
+	const { data } = await axios.get<TGetAgendaOutput>(`/api/client-portfolios/agenda?${searchParams.toString()}`);
+	const result = data.data.day;
+	if (!result) throw new Error("Agenda do dia não encontrada.");
+	return result;
+}
+
+export function useClientPortfolioAgendaDay({ vendedorId, dateKey }: { vendedorId: string | null; dateKey: string }) {
+	const queryKey = ["client-portfolios-agenda-day", vendedorId, dateKey];
+	return {
+		...useQuery({ queryKey, queryFn: () => fetchAgendaDay({ vendedorId, dateKey }) }),
+		queryKey,
+	};
+}
+
+async function fetchAgendaCalendar({ vendedorId, monthKey }: { vendedorId: string | null; monthKey: string }) {
+	const month = dayjs(`${monthKey}-01`);
+	const searchParams = new URLSearchParams();
+	if (vendedorId) searchParams.set("vendedorId", vendedorId);
+	searchParams.set("monthStart", month.startOf("month").toISOString());
+	searchParams.set("monthEnd", month.endOf("month").toISOString());
+	const { data } = await axios.get<TGetAgendaOutput>(`/api/client-portfolios/agenda?${searchParams.toString()}`);
+	const result = data.data.calendar;
+	if (!result) throw new Error("Calendário da agenda não encontrado.");
+	return result;
+}
+
+export function useClientPortfolioAgendaCalendar({ vendedorId, monthKey }: { vendedorId: string | null; monthKey: string }) {
+	const queryKey = ["client-portfolios-agenda-calendar", vendedorId, monthKey];
+	return {
+		...useQuery({ queryKey, queryFn: () => fetchAgendaCalendar({ vendedorId, monthKey }) }),
+		queryKey,
 	};
 }
 

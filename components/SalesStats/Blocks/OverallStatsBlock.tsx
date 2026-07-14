@@ -1,13 +1,12 @@
 import { useOrgColors } from "@/components/Providers/OrgColorsProvider";
+import { GoalTrackingBar } from "@/components/Stats/GoalTrackingBar";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useOverallSalesStats } from "@/lib/queries/stats/overall";
-import { cn } from "@/lib/utils";
 import type { TOverallSalesStats } from "@/app/api/stats/sales-overall/route";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import { BadgeDollarSign, Percent, ShoppingBag, UserRoundX } from "lucide-react";
-import type React from "react";
 import { useEffect, useState } from "react";
 import { BsCart } from "react-icons/bs";
 import { BsFileEarmarkText, BsTicketPerforated } from "react-icons/bs";
@@ -41,8 +40,7 @@ function OverallStatsBlock({ user, userMembership, userOrg, generalQueryParams }
 				<div className="w-full flex items-center justify-center p-2">
 					<GoalTrackingBar
 						barStyle={getPrimaryGradientStyle()}
-						goalText={`${overallStats?.faturamentoMeta || "..."}`}
-						barHeigth="25px"
+						barHeight="25px"
 						valueGoal={overallStats?.faturamentoMeta || 0}
 						valueHit={overallStats?.faturamento.atual || 0}
 						formattedValueGoal={formatToMoney(overallStats?.faturamentoMeta || 0)}
@@ -268,63 +266,3 @@ function OverallStatsBlockPlus({ overallStats, isUserAllowedToSeeSensitiveData }
 	);
 }
 
-type GoalTrackingBarProps = {
-	valueGoal?: number;
-	valueHit: number;
-	formattedValueGoal?: string;
-	formattedValueHit?: string;
-	goalText: string;
-	barHeigth: string;
-	barStyle?: React.CSSProperties;
-};
-function GoalTrackingBar({ valueGoal, valueHit, formattedValueGoal, formattedValueHit, goalText, barHeigth, barStyle }: GoalTrackingBarProps) {
-	function getPercentage({ goal, hit }: { goal: number | undefined; hit: number | undefined }) {
-		if (!hit || hit === 0) return "0%";
-		if (!goal && hit) return "100%";
-		if (goal && !hit) return "0%";
-		if (goal && hit) {
-			const percentage = ((hit / goal) * 100).toFixed(2);
-			return `${percentage}%`;
-		}
-	}
-	function getWidth({ goal, hit }: { goal: number | undefined; hit: number | undefined }) {
-		if (!hit || hit === 0) return "0%";
-		if (!goal && hit) return "100%";
-		if (goal && !hit) return "0%";
-		if (goal && hit) {
-			let percentage: number | string = (hit / goal) * 100;
-			percentage = percentage > 100 ? 100 : percentage.toFixed(2);
-			return `${percentage}%`;
-		}
-	}
-
-	return (
-		<div className="flex w-full items-center gap-1">
-			<div className="flex grow gap-2">
-				<div className="grow">
-					<div
-						style={{
-							width: getWidth({ goal: valueGoal, hit: valueHit }),
-							height: barHeigth,
-							...barStyle,
-						}}
-						className="flex items-center justify-center rounded-sm text-xs text-white shadow-xs"
-					/>
-				</div>
-			</div>
-			<div className="flex min-w-[70px] flex-col items-end justify-end lg:min-w-[100px]">
-				<p className="text-xs font-medium uppercase tracking-tight lg:text-sm">{getPercentage({ goal: valueGoal, hit: valueHit })}</p>
-				<p className="text-[0.5rem] italic text-gray-500 lg:text-[0.65rem]">
-					<strong>{formattedValueHit || valueHit?.toLocaleString("pt-br", { maximumFractionDigits: 2 }) || 0}</strong> de{" "}
-					<strong>
-						{formattedValueGoal ||
-							valueGoal?.toLocaleString("pt-br", {
-								maximumFractionDigits: 2,
-							}) ||
-							0}
-					</strong>{" "}
-				</p>
-			</div>
-		</div>
-	);
-}

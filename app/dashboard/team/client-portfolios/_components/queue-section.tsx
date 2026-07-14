@@ -2,6 +2,7 @@
 
 import type { TGetClientPortfolioOutput } from "@/app/api/client-portfolios/route";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { getErrorMessage } from "@/lib/errors";
@@ -35,6 +36,13 @@ import { WhatsappIcon } from "@/components/icons";
 import Image from "next/image";
 
 type TQueueItem = TGetClientPortfolioOutput["data"]["fila"][number];
+
+// Presets de adiamento (espelham os FOLLOW_UP_PRESETS do register-interaction-menu, às 9h como o snooze original).
+const SNOOZE_PRESETS = [
+	{ label: "Amanhã", getDate: () => dayjs().add(1, "day") },
+	{ label: "Em 3 dias", getDate: () => dayjs().add(3, "day") },
+	{ label: "Próxima semana", getDate: () => dayjs().add(7, "day") },
+];
 
 const REASON_ICONS: Record<TQueueItem["motivos"][number]["tipo"], React.ReactNode> = {
 	DEBITO_CADENCIA: <AlarmClock className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />,
@@ -88,14 +96,15 @@ function ClientRelationshipTimeline({ clienteId }: { clienteId: string }) {
 }
 
 function OfferItem({ label, nome, imagemUrl }: { label: string; nome: string; imagemUrl: string | null }) {
-	const showImg = !!imagemUrl;
 	return (
 		<div className="flex items-center gap-2 text-xs font-medium">
-			{showImg ? (
+			{imagemUrl ? (
 				<Image
-					src={imagemUrl ?? undefined}
-					alt=""
-					loading="lazy"
+					src={imagemUrl}
+					alt={nome}
+					width={16}
+					height={16}
+					sizes="16px"
 					className="h-4 w-4 min-h-4 min-w-4 shrink-0 rounded-[4px] border border-border/60 object-cover"
 				/>
 			) : (
@@ -118,21 +127,21 @@ function QueueCard({ item, vendedorId, onRegistered }: { item: TQueueItem; vende
 	const callLink = item.cliente.telefone ? `tel:${item.cliente.telefone}` : null;
 	const { mutate: snooze, isPending: snoozePending } = useMutation({
 		mutationKey: ["snooze-approach", item.cliente.id],
-		// "Depois" cria uma interação PLANEJADA para amanhã: suprime o cliente da fila até lá.
-		mutationFn: () =>
+		// "Depois" cria uma interação PLANEJADA na data do preset: suprime o cliente da fila até lá.
+		mutationFn: (preset: (typeof SNOOZE_PRESETS)[number]) =>
 			createInteraction({
 				clienteId: item.cliente.id,
 				vendedorId,
 				canal: "OUTRO",
 				direcao: "SAIDA",
 				descricao: "Abordagem adiada pela fila da carteira.",
-				dataInteracao: dayjs().add(1, "day").hour(9).minute(0).second(0).millisecond(0).toDate(),
+				dataInteracao: preset.getDate().hour(9).minute(0).second(0).millisecond(0).toDate(),
 				planejada: true,
 				followUpEm: null,
 				followUpDescricao: null,
 			}),
-		onSuccess: () => {
-			toast.success("Movida para amanhã — o cliente sai da fila até lá.");
+		onSuccess: (_data, preset) => {
+			toast.success(`Movida para ${preset.label.toLowerCase()} — o cliente sai da fila até lá.`);
 			setHandled(true);
 			onRegistered();
 		},
@@ -217,9 +226,21 @@ function QueueCard({ item, vendedorId, onRegistered }: { item: TQueueItem; vende
 					<Button variant="outline" size="sm" className="gap-1.5" onClick={() => setRegisterModalOpen(true)}>
 						<ClipboardCheck className="h-3.5 w-3.5" /> REGISTRAR
 					</Button>
-					<Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => snooze()} disabled={snoozePending}>
-						DEPOIS
-					</Button>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" disabled={snoozePending}>
+								DEPOIS <ChevronDown className="h-3.5 w-3.5" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="start">
+							{SNOOZE_PRESETS.map((preset) => (
+								<DropdownMenuItem key={preset.label} disabled={snoozePending} onSelect={() => snooze(preset)}>
+									{preset.label}
+									<span className="ml-auto text-xs text-muted-foreground">{preset.getDate().format("DD/MM")}</span>
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 			) : (
 				<p className="text-xs font-bold text-green-600 uppercase tracking-wide">Tratada ✓</p>

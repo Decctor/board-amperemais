@@ -16,11 +16,12 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { StatEmptyState } from "@/components/SalesStats/StatEmptyState";
+import { WeeklyRevenueHeatmap } from "@/components/SalesStats/Blocks/WeeklyRevenueHeatmap";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { getExcelFromJSON } from "@/lib/excel-utils";
 import { isValidNumber } from "@/lib/validation";
-import { BadgeDollarSign, Calendar, CirclePlus, Download, Flame, Radio, Truck, UserRound, Users } from "lucide-react";
+import { BadgeDollarSign, Calendar, CirclePlus, Download, Radio, Truck, UserRound, Users } from "lucide-react";
 import { VariableSizeList } from "react-window";
 import { Pie, PieChart } from "recharts";
 import { toast } from "sonner";
@@ -84,12 +85,20 @@ function GroupedStatsBlock({ generalQueryParams, user: _user, userOrg }: Grouped
 				</div>
 
 				<div className="w-full">
-					<WeeklyStatsBlock
-						porDiaDaSemana={groupedStats?.porDiaDaSemana || []}
-						porDiaSemanaHora={groupedStats?.porDiaSemanaHora || []}
-						period={queryParams.period}
-						onSelectDrilldown={setSelectedWeeklyDrilldown}
-					/>
+					<WeeklyRevenueHeatmap.Frame hint="A intensidade da cor indica o volume de faturamento em cada horário. Passe o mouse para ver os detalhes e clique para abrir a análise segmentada.">
+						<WeeklyRevenueHeatmap.WeekDayStrip
+							data={groupedStats?.porDiaDaSemana || []}
+							onSelectDrilldown={(params) =>
+								setSelectedWeeklyDrilldown({ ...params, periodStart: queryParams.period.after, periodEnd: queryParams.period.before })
+							}
+						/>
+						<WeeklyRevenueHeatmap.Grid
+							data={groupedStats?.porDiaSemanaHora || []}
+							onSelectDrilldown={(params) =>
+								setSelectedWeeklyDrilldown({ ...params, periodStart: queryParams.period.after, periodEnd: queryParams.period.before })
+							}
+						/>
+					</WeeklyRevenueHeatmap.Frame>
 				</div>
 			</div>
 			{selectedWeeklyDrilldown ? <WeeklyStatsDetailMenu params={selectedWeeklyDrilldown} closeMenu={() => setSelectedWeeklyDrilldown(null)} /> : null}
@@ -619,290 +628,6 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 	);
 }
 
-type WeeklyStatsBlockProps = {
-	porDiaDaSemana: TGroupedSalesStats["porDiaDaSemana"];
-	porDiaSemanaHora: TGroupedSalesStats["porDiaSemanaHora"];
-	period: TSaleStatsGeneralQueryParams["period"];
-	onSelectDrilldown: (params: TSalesDetailedAnalysisInput) => void;
-};
-
-function WeeklyStatsBlock({ porDiaDaSemana, porDiaSemanaHora, period, onSelectDrilldown }: WeeklyStatsBlockProps) {
-	return (
-		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs min-h-[420px]">
-			<div className="flex items-center justify-between">
-				<h1 className="text-xs font-medium tracking-tight uppercase">ANÁLISE DE FATURAMENTO SEMANAL</h1>
-				<div className="flex items-center gap-2">
-					<Flame className="w-4 h-4 min-w-4 min-h-4" />
-				</div>
-			</div>
-
-			<p className="text-[0.65rem] text-muted-foreground italic shrink-0">
-				A intensidade da cor indica o volume de faturamento em cada horário. Passe o mouse para ver os detalhes e clique para abrir a análise segmentada.
-			</p>
-			{/* Faixa resumo por dia (7 células) + Heatmap (ocupa espaço restante) */}
-			<div className="flex flex-col gap-3 flex-1 min-h-0">
-				<GroupedByWeekDayStrip data={porDiaDaSemana} period={period} onSelectDrilldown={onSelectDrilldown} />
-				<div className="flex-1 min-h-0 flex flex-col overflow-x-auto overflow-y-hidden">
-					<RevenueHeatmapCore data={porDiaSemanaHora} period={period} onSelectDrilldown={onSelectDrilldown} />
-				</div>
-			</div>
-		</div>
-	);
-}
-
-/** Faixa horizontal com 7 dias: total por dia da semana (resumo acima do heatmap) */
-function GroupedByWeekDayStrip({
-	data,
-	period,
-	onSelectDrilldown,
-}: {
-	data: TGroupedSalesStats["porDiaDaSemana"];
-	period: TSaleStatsGeneralQueryParams["period"];
-	onSelectDrilldown: (params: TSalesDetailedAnalysisInput) => void;
-}) {
-	const { colors } = useOrgColors();
-	const maxValue = Math.max(...data.map((item) => item.total), 0);
-	const minValue = Math.min(...data.map((item) => item.total), 0);
-	const range = maxValue - minValue;
-
-	function getWeekDayResult(index: number) {
-		return data.find((item) => Number(item.diaSemana) === index);
-	}
-
-	function getColorIntensity(value: number): number {
-		if (range === 0) return 0.3;
-		const normalized = (value - minValue) / range;
-		return 0.1 + normalized * 0.9;
-	}
-
-	function DayCell({ index }: { index: number }) {
-		const result = getWeekDayResult(index);
-		const intensity = result ? getColorIntensity(result.total) : 0;
-		const bgColor = result ? hexToRgba(colors.primary, intensity) : "rgba(0,0,0,0.03)";
-		const ticketMedio = result && result.qtde > 0 ? result.total / result.qtde : 0;
-
-		return (
-			<Tooltip delayDuration={150}>
-				<TooltipTrigger asChild>
-					<button
-						type="button"
-						className="flex flex-col items-center justify-center py-2 px-1 rounded-md border border-border min-h-[44px] min-w-0 flex-1 transition-all hover:scale-[1.02] cursor-pointer"
-						style={{ backgroundColor: bgColor }}
-						onClick={() =>
-							onSelectDrilldown({
-								weekday: index,
-								periodStart: period.after,
-								periodEnd: period.before,
-							})
-						}
-					>
-						<span className="text-[0.6rem] font-bold tracking-tight uppercase">{WEEKDAY_MAP_HEATMAP[index as keyof typeof WEEKDAY_MAP_HEATMAP]}</span>
-						{result ? (
-							<span className="text-[0.6rem] font-medium text-foreground/80 truncate max-w-full text-center">{formatToMoney(result.total)}</span>
-						) : (
-							<span className="text-[0.6rem] text-foreground/80">—</span>
-						)}
-					</button>
-				</TooltipTrigger>
-				{result ? (
-					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
-						<div className="flex flex-col gap-2">
-							<h3 className="text-sm font-semibold mb-1">{WEEKDAY_MAP_FULL[index as keyof typeof WEEKDAY_MAP_FULL]}</h3>
-							<div className="flex items-center justify-between gap-4">
-								<div className="flex items-center gap-1">
-									<CirclePlus className="w-5 h-5 min-w-5 min-h-5" />
-									<span className="text-xs font-medium tracking-tight">VENDAS</span>
-								</div>
-								<span className="text-sm font-bold">{formatDecimalPlaces(result.qtde)}</span>
-							</div>
-							<div className="flex items-center justify-between gap-4">
-								<div className="flex items-center gap-1">
-									<BadgeDollarSign className="w-5 h-5 min-w-5 min-h-5" />
-									<span className="text-xs font-medium tracking-tight">FATURAMENTO</span>
-								</div>
-								<span className="text-sm font-bold">{formatToMoney(result.total)}</span>
-							</div>
-							<div className="border-t border-border-foreground/80 mt-1 pt-2">
-								<div className="flex items-center justify-between gap-4">
-									<span className="text-xs font-medium tracking-tight">TICKET MÉDIO</span>
-									<span className="text-sm font-bold">{formatToMoney(ticketMedio)}</span>
-								</div>
-							</div>
-						</div>
-					</TooltipContent>
-				) : (
-					<TooltipContent className="bg-primary text-foreground-foreground p-3">
-						<div className="flex flex-col gap-1">
-							<h3 className="text-sm font-semibold">{WEEKDAY_MAP_FULL[index as keyof typeof WEEKDAY_MAP_FULL]}</h3>
-							<span className="text-xs">SEM DADOS</span>
-						</div>
-					</TooltipContent>
-				)}
-			</Tooltip>
-		);
-	}
-
-	return (
-		<TooltipProvider>
-			<div className="flex gap-1.5 w-full">
-				{[0, 1, 2, 3, 4, 5, 6].map((diaIndex) => (
-					<DayCell key={WEEKDAY_MAP_HEATMAP[diaIndex as keyof typeof WEEKDAY_MAP_HEATMAP]} index={diaIndex} />
-				))}
-			</div>
-		</TooltipProvider>
-	);
-}
-
-const WEEKDAY_MAP_HEATMAP = {
-	0: "Dom",
-	1: "Seg",
-	2: "Ter",
-	3: "Qua",
-	4: "Qui",
-	5: "Sex",
-	6: "Sáb",
-} as const;
-
-function formatHourLabel(hour: number): string {
-	return `${hour}:00`;
-	// if (hour === 0) return "12a";
-	// if (hour <= 11) return `${hour}a`;
-	// if (hour === 12) return "12p";
-	// return `${hour - 12}p`;
-}
-
-/** Grid do heatmap (sem card): dias x horas */
-function RevenueHeatmapCore({
-	data,
-	period,
-	onSelectDrilldown,
-}: {
-	data: TGroupedSalesStats["porDiaSemanaHora"];
-	period: TSaleStatsGeneralQueryParams["period"];
-	onSelectDrilldown: (params: TSalesDetailedAnalysisInput) => void;
-}) {
-	const { colors } = useOrgColors();
-	const dataMap = useMemo(() => {
-		const map = new Map<string, { qtde: number; total: number }>();
-		for (const item of data) {
-			map.set(`${item.diaSemana}-${item.hora}`, { qtde: item.qtde, total: item.total });
-		}
-		return map;
-	}, [data]);
-
-	const maxTotal = useMemo(() => (data.length > 0 ? Math.max(...data.map((d) => d.total)) : 0), [data]);
-
-	function getCellValue(diaSemana: number, hora: number) {
-		return dataMap.get(`${diaSemana}-${hora}`);
-	}
-
-	function getColorIntensity(value: number): number {
-		if (maxTotal === 0) return 0;
-		const normalized = value / maxTotal;
-		return 0.1 + normalized * 0.9;
-	}
-
-	const HOURS = Array.from({ length: 24 }, (_, i) => i);
-
-	function HeatmapCell({ diaSemana, hora }: { diaSemana: number; hora: number }) {
-		const result = getCellValue(diaSemana, hora);
-		const intensity = result ? getColorIntensity(result.total) : 0;
-		const bgColor = result ? hexToRgba(colors.primary, intensity) : "rgba(0,0,0,0.03)";
-		const ticketMedio = result && result.qtde > 0 ? result.total / result.qtde : 0;
-
-		return (
-			<Tooltip delayDuration={150}>
-				<TooltipTrigger asChild>
-					<div className="flex-1 min-w-0 min-h-0 flex items-center justify-center p-0.5">
-						<button
-							type="button"
-							className="w-full aspect-square max-w-full max-h-full rounded-full transition-all hover:scale-110 hover:z-10 cursor-pointer border border-border"
-							style={{ backgroundColor: bgColor }}
-							onClick={() =>
-								onSelectDrilldown({
-									weekday: diaSemana,
-									hourIntervalStart: hora,
-									hourIntervalEnd: hora + 1,
-									periodStart: period.after,
-									periodEnd: period.before,
-								})
-							}
-						/>
-					</div>
-				</TooltipTrigger>
-				{result ? (
-					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
-						<div className="flex flex-col gap-2">
-							<h3 className="text-sm font-semibold">
-								{WEEKDAY_MAP_HEATMAP[diaSemana as keyof typeof WEEKDAY_MAP_HEATMAP]} às {formatHourLabel(hora)}
-							</h3>
-							<div className="flex items-center justify-between gap-4">
-								<div className="flex items-center gap-1">
-									<CirclePlus className="w-4 h-4 min-w-4 min-h-4" />
-									<span className="text-xs font-medium tracking-tight">VENDAS</span>
-								</div>
-								<span className="text-sm font-bold">{formatDecimalPlaces(result.qtde)}</span>
-							</div>
-							<div className="flex items-center justify-between gap-4">
-								<div className="flex items-center gap-1">
-									<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />
-									<span className="text-xs font-medium tracking-tight">FATURAMENTO</span>
-								</div>
-								<span className="text-sm font-bold">{formatToMoney(result.total)}</span>
-							</div>
-							<div className="border-t border-border-foreground/80 mt-1 pt-2 flex flex-col gap-1">
-								<div className="flex items-center justify-between gap-4">
-									<span className="text-xs font-medium tracking-tight">TICKET MÉDIO</span>
-									<span className="text-sm font-bold">{formatToMoney(ticketMedio)}</span>
-								</div>
-							</div>
-						</div>
-					</TooltipContent>
-				) : (
-					<TooltipContent className="bg-primary text-foreground-foreground p-3">
-						<div className="flex flex-col gap-1">
-							<h3 className="text-sm font-semibold">
-								{WEEKDAY_MAP_HEATMAP[diaSemana as keyof typeof WEEKDAY_MAP_HEATMAP]} às {formatHourLabel(hora)}
-							</h3>
-							<span className="text-xs">SEM DADOS</span>
-						</div>
-					</TooltipContent>
-				)}
-			</Tooltip>
-		);
-	}
-
-	return (
-		<TooltipProvider>
-			<div className="w-full h-full min-h-[200px] min-w-[520px] flex flex-col overflow-hidden">
-				{/* Eixo horizontal: horas */}
-				<div className="flex gap-0.5 pl-12 shrink-0">
-					{HOURS.map((h) => (
-						<div key={h} className="flex-1 min-w-0 flex items-center justify-center text-[0.6rem] text-muted-foreground">
-							{formatHourLabel(h)}
-						</div>
-					))}
-				</div>
-				{/* Grid: dias x horas - ocupa o espaço restante */}
-				<div className="flex-1 min-h-0 flex flex-col gap-0.5 mt-1">
-					{[0, 1, 2, 3, 4, 5, 6].map((diaSemana) => (
-						<div key={diaSemana} className="flex-1 min-h-0 flex items-stretch gap-1">
-							<div className="w-10 shrink-0 flex items-center text-[0.65rem] font-medium text-muted-foreground">
-								{WEEKDAY_MAP_HEATMAP[diaSemana as keyof typeof WEEKDAY_MAP_HEATMAP]}
-							</div>
-							<div className="flex-1 min-w-0 flex gap-0.5">
-								{HOURS.map((hora) => (
-									<HeatmapCell key={`${diaSemana}-${hora}`} diaSemana={diaSemana} hora={hora} />
-								))}
-							</div>
-						</div>
-					))}
-				</div>
-			</div>
-		</TooltipProvider>
-	);
-}
-
 function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }) {
 	const { colors } = useOrgColors();
 	// Calculate color intensity based on performance ranking
@@ -1130,16 +855,6 @@ function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
 		</TooltipProvider>
 	);
 }
-
-const WEEKDAY_MAP_FULL = {
-	0: "Domingo",
-	1: "Segunda",
-	2: "Terça",
-	3: "Quarta",
-	4: "Quinta",
-	5: "Sexta",
-	6: "Sábado",
-} as const;
 
 function ResultsByChannelGraph({ data }: { data: TGroupedSalesStats["porCanal"] }) {
 	const [type, setType] = useState<"qtde" | "total">("total");

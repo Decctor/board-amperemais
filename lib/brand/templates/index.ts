@@ -1,3 +1,4 @@
+import { instagramCarteirasTemplate } from "./instagram-carteiras";
 import { meetingBackgroundTemplate } from "./meeting-background";
 import type { TBrandTemplate } from "./types";
 
@@ -9,4 +10,5 @@ import type { TBrandTemplate } from "./types";
  */
 export const BRAND_TEMPLATES: Record<string, TBrandTemplate> = {
 	"meeting-background": meetingBackgroundTemplate,
+	"instagram-carteiras": instagramCarteirasTemplate,
 };

@@ -2,7 +2,7 @@ import { getCadenceForSegment, getEffectiveSegmentCadences } from "@/lib/client-
 import { db } from "@/services/drizzle";
 import { chats, clientSellerReferences, clients, interactions, products } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, desc, eq, inArray, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 
 // Fila da carteira do vendedor (docs/seller-routine-hub-design.md §5).
 // A fila é uma CONSULTA, não uma tabela: débito de comunicação (dias desde a última
@@ -315,9 +315,14 @@ export async function buildClientPortfolioQueue({ organizacaoId, vendedorId }: {
 }
 export type TClientPortfolioQueue = Awaited<ReturnType<typeof buildClientPortfolioQueue>>;
 
-/** Follow-ups do dia (interações PLANEJADA com data até o fim de hoje, atrasadas inclusas). */
-export async function getDayFollowUps({ organizacaoId, vendedorId }: { organizacaoId: string; vendedorId: string }) {
-	const endOfDay = dayjs().endOf("day").toDate();
+/**
+ * Follow-ups de um dia (interações PLANEJADA). Para hoje (default), inclui atrasados
+ * (tudo com data até o fim de hoje); para outros dias, limita ao próprio dia.
+ */
+export async function getDayFollowUps({ organizacaoId, vendedorId, date }: { organizacaoId: string; vendedorId: string; date?: Date }) {
+	const targetDay = dayjs(date ?? new Date());
+	const isToday = targetDay.isSame(dayjs(), "day");
+	const endOfDay = targetDay.endOf("day").toDate();
 	const startOfDay = dayjs().startOf("day").toDate();
 
 	const rows = await db.query.interactions.findMany({
@@ -326,6 +331,7 @@ export async function getDayFollowUps({ organizacaoId, vendedorId }: { organizac
 			eq(interactions.vendedorId, vendedorId),
 			eq(interactions.status, "PLANEJADA"),
 			lte(interactions.dataInteracao, endOfDay),
+			isToday ? undefined : gte(interactions.dataInteracao, targetDay.startOf("day").toDate()),
 		),
 		columns: { id: true, clienteId: true, titulo: true, descricao: true, canal: true, dataInteracao: true },
 		with: {
