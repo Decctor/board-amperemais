@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import CashSessionBar from "@/components/CashSessions/CashSessionBar";
 import CashSessionGate from "@/components/CashSessions/CashSessionGate";
 import { DiscountApproval } from "@/components/Modals/Sales/DiscountApproval";
@@ -68,7 +68,7 @@ export default function NewSalePage({
 	const [searchValue, setSearchValue] = useState("");
 	const [viewMode, setViewMode] = useState<ProductViewMode>("grid");
 	const [builderProduct, setBuilderProduct] = useState<TGetPOSProductsOutput["data"]["products"][number] | null>(null);
-	const [isCheckoutDrawerOpen, setIsCheckoutDrawerOpen] = useState(false);
+	const [isCheckoutSheetOpen, setIsCheckoutSheetOpen] = useState(false);
 	const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
 	const [isContextSheetOpen, setIsContextSheetOpen] = useState(false);
 	const saleState = useSaleState({ organizationConfig: organizationConfiguration });
@@ -421,18 +421,21 @@ export default function NewSalePage({
 
 				{isMobile ? (
 					<div className="fixed bottom-4 right-4 z-50 lg:hidden">
-						<Drawer open={isCheckoutDrawerOpen} onOpenChange={setIsCheckoutDrawerOpen}>
-							<DrawerTrigger asChild>
+						<Sheet open={isCheckoutSheetOpen} onOpenChange={setIsCheckoutSheetOpen}>
+							<SheetTrigger asChild>
 								<Button className="rounded-full shadow-lg px-4">
 									<ShoppingCart className="w-4 h-4 mr-2" /> CHECKOUT ({saleState.itemCount})
 								</Button>
-							</DrawerTrigger>
-							<DrawerContent className="h-[90vh]">
-								<DrawerHeader>
-									<DrawerTitle>Checkout</DrawerTitle>
-									<DrawerDescription>Finalize ou salve como orçamento.</DrawerDescription>
-								</DrawerHeader>
-								<div className="overflow-y-auto pb-4">
+							</SheetTrigger>
+							<SheetContent
+								side="bottom"
+								className="flex h-[92dvh] max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-2xl p-0 data-[side=bottom]:h-[92dvh]"
+							>
+								<SheetHeader className="shrink-0 border-b p-4 text-left">
+									<SheetTitle className="text-lg font-black">Checkout</SheetTitle>
+									<SheetDescription>Finalize ou salve como orçamento.</SheetDescription>
+								</SheetHeader>
+								<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
 									<CheckoutPanel
 										organizationCashbackProgram={organizationCashbackProgram}
 										saleState={saleState}
@@ -445,13 +448,13 @@ export default function NewSalePage({
 										isCreatingDraft={isCreatingDraft}
 										isFinalizingSale={isFinalizingSale}
 										onOpenContext={() => {
-											setIsCheckoutDrawerOpen(false);
+											setIsCheckoutSheetOpen(false);
 											setIsContextSheetOpen(true);
 										}}
 									/>
 								</div>
-							</DrawerContent>
-						</Drawer>
+							</SheetContent>
+						</Sheet>
 					</div>
 				) : null}
 

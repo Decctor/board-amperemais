@@ -79,6 +79,11 @@ export default function ClientVinculationMenu({ closeModal, onSelectClient }: Cl
 					localizacaoLatitude: location.localizacaoLatitude,
 					localizacaoLongitude: location.localizacaoLongitude,
 				})),
+			clientTags: state.clientTags
+				.filter((tag) => !tag.deletar)
+				.map((tag) => ({
+					clienteTagId: tag.clienteTagId,
+				})),
 		});
 	}
 
@@ -91,6 +96,7 @@ export default function ClientVinculationMenu({ closeModal, onSelectClient }: Cl
 			stateError={null}
 			closeMenu={closeModal}
 			dialogVariant="sm"
+			drawerVariant="full"
 		>
 			<Input
 				value={search ?? ""}

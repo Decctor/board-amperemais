@@ -31,6 +31,7 @@ const drawerVariants = cva("flex flex-col", {
 			sm: "flex flex-col h-fit min-h-[50dvh] max-h-[70dvh]",
 			md: "flex flex-col h-fit min-h-[50dvh] max-h-[80dvh]",
 			lg: "flex flex-col h-fit min-h-[70dvh] max-h-[90dvh]",
+			full: "flex flex-col h-[92dvh] min-h-[92dvh] max-h-[92dvh] data-[vaul-drawer-direction=bottom]:max-h-[92dvh]",
 		},
 	},
 	defaultVariants: {
@@ -48,7 +49,7 @@ type ResponsiveMenuViewOnlyProps = PropsWithChildren & {
 	stateError?: string | null;
 	closeMenu: () => void;
 	dialogVariant?: "fit" | "sm" | "md" | "lg";
-	drawerVariant?: "fit" | "sm" | "md" | "lg";
+	drawerVariant?: "fit" | "sm" | "md" | "lg" | "full";
 	dialogShowFooter?: boolean;
 	drawerShowFooter?: boolean;
 };
