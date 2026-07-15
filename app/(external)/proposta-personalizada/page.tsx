@@ -19,7 +19,6 @@ const ActiveProposal = PraticoSupermercadosProposal;
 /* -------------------------------------------------------------------------- */
 
 export default function PropostaPersonalizadaPage() {
-	return <div className="h-screen w-screen bg-red-500"></div>;
 	function handlePrint() {
 		window.print();
 	}
