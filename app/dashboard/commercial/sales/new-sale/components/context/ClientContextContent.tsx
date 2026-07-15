@@ -2,7 +2,7 @@ import type { TGetCrossSellOutput } from "@/app/api/pos/cross-sell/route";
 import type { TGetClientContextOutput } from "@/app/api/clients/context/route";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatNameAsInitials, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { formatToMoney, formatToPhone } from "@/lib/formatting";
 import { useClientCashbackBalance } from "@/lib/queries/cashback-programs";
 import { useClientContext } from "@/lib/queries/clients/context";
 import { usePOSCrossSellProducts } from "@/lib/queries/pos";

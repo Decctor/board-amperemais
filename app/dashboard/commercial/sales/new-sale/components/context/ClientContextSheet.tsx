@@ -16,8 +16,11 @@ type ClientContextSheetProps = {
 export default function ClientContextSheet({ open, onOpenChange, ...contentProps }: ClientContextSheetProps) {
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent side="bottom" className="h-[88vh] gap-0 border-t border-brand/20 bg-brand/[0.05] p-0">
-				<SheetHeader className="sr-only bg-brand/[0.05]">
+			<SheetContent
+				side="bottom"
+				className="h-[88dvh] gap-0 overflow-hidden rounded-t-2xl border-t border-brand/20 bg-background p-0 pb-[env(safe-area-inset-bottom)] data-[side=bottom]:h-[88dvh]"
+			>
+				<SheetHeader className="sr-only">
 					<SheetTitle>CONTEXTO DO CLIENTE</SheetTitle>
 					<SheetDescription>Dados, sugestões e histórico do cliente vinculado.</SheetDescription>
 				</SheetHeader>
