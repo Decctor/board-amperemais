@@ -3,9 +3,11 @@
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import { useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { WeeklyRevenueHeatmap } from "@/components/SalesStats/Blocks/WeeklyRevenueHeatmap";
 import { SellerResultsByMonthBlock, SellerResultsByMonthDayBlock, SellerResultsByWeekDayBlock } from "@/components/SellerStats/Blocks/PeriodHeatmapBlocks";
 import { SellerTopClientsBlock, SellerTopProductGroupsBlock, SellerTopProductsBlock } from "@/components/SellerStats/Blocks/TopRankingBlocks";
+import { GoalTrackingCard } from "@/components/Stats/GoalTrackingBar";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import { Button } from "@/components/ui/button";
 import { SectionWrapper } from "@/components/ui/section-wrapper";
@@ -23,6 +25,7 @@ type ResultsProps = {
 // Visão "primeira pessoa" dos resultados: reaproveita as consultas que o gestor já usa
 // (getSellerStats), filtradas para o vendedor logado. Default: mês corrente até hoje.
 export function Results({ vendedorId }: ResultsProps) {
+	const { getPrimaryGradientStyle } = useOrgColors();
 	const { data, isLoading, error, filters, updateFilters } = useSellerStats({
 		sellerId: vendedorId,
 		initialFilters: {
@@ -57,19 +60,6 @@ export function Results({ vendedorId }: ResultsProps) {
 							title="META DO PERÍODO"
 							icon={<Target className="h-4 w-4 min-h-4 min-w-4" />}
 							current={{ value: data.faturamentoMeta || 0, format: (n) => formatToMoney(n) }}
-							footer={
-								data.faturamentoMeta > 0 ? (
-									<div className="flex w-full flex-col gap-1">
-										<div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-											<div
-												className="h-full rounded-full bg-primary"
-												style={{ width: `${Math.min(100, Math.round(data.faturamentoMetaPorcentagem || 0))}%` }}
-											/>
-										</div>
-										<span className="text-[0.65rem] text-muted-foreground">{formatDecimalPlaces(data.faturamentoMetaPorcentagem || 0)}% atingido</span>
-									</div>
-								) : null
-							}
 						/>
 						<StatUnitCard
 							title="VENDAS NO PERÍODO"
@@ -82,6 +72,16 @@ export function Results({ vendedorId }: ResultsProps) {
 							current={{ value: data.ticketMedio || 0, format: (n) => formatToMoney(n) }}
 						/>
 					</div>
+
+					<GoalTrackingCard
+						goalText="Acompanhamento da meta do período"
+						valueGoal={data.faturamentoMeta}
+						valueHit={data.faturamentoBrutoTotal}
+						formattedValueGoal={formatToMoney(data.faturamentoMeta || 0)}
+						formattedValueHit={formatToMoney(data.faturamentoBrutoTotal || 0)}
+						barHeight="25px"
+						barStyle={getPrimaryGradientStyle()}
+					/>
 
 					<div className="w-full">
 						<WeeklyRevenueHeatmap.Frame hint="A intensidade da cor indica o volume de faturamento em cada horário. Passe o mouse para ver os detalhes.">

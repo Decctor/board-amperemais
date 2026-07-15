@@ -11,9 +11,10 @@ import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs, { type Dayjs } from "dayjs";
 import "dayjs/locale/pt-br";
-import { AlarmClock, Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, CircleDot, Clock, LayoutList, X } from "lucide-react";
+import { AlarmClock, Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, CircleDot, Clock, LayoutList, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { CreateAgendaInteractionMenu } from "./create-agenda-interaction-menu";
 
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MAX_DOTS = 5;
@@ -46,6 +47,7 @@ export function PortfolioAgenda({ vendedorId, onChanged }: PortfolioAgendaProps)
 	const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
 	const [selectedDate, setSelectedDate] = useState(() => dayjs().startOf("day"));
 	const [calendarMonth, setCalendarMonth] = useState(() => dayjs().startOf("month"));
+	const [createForDate, setCreateForDate] = useState<Dayjs | null>(null);
 
 	const dayQuery = useClientPortfolioAgendaDay({ vendedorId, dateKey: selectedDate.format("YYYY-MM-DD") });
 	const calendarQuery = useClientPortfolioAgendaCalendar({ vendedorId, monthKey: calendarMonth.format("YYYY-MM") });
@@ -179,8 +181,18 @@ export function PortfolioAgenda({ vendedorId, onChanged }: PortfolioAgendaProps)
 					isError={calendarQuery.isError}
 					error={calendarQuery.error}
 					onSelectDay={handleSelectDay}
+					onCreate={setCreateForDate}
 				/>
 			)}
+
+			{createForDate ? (
+				<CreateAgendaInteractionMenu
+					date={createForDate}
+					vendedorId={vendedorId}
+					closeModal={() => setCreateForDate(null)}
+					callbacks={{ onSuccess: onChanged }}
+				/>
+			) : null}
 		</div>
 	);
 }
@@ -302,9 +314,10 @@ type AgendaCalendarProps = {
 	isError: boolean;
 	error: Error | null;
 	onSelectDay: (date: Dayjs) => void;
+	onCreate: (date: Dayjs) => void;
 };
 
-function AgendaCalendar({ calendarMonth, onMonthChange, days, isLoading, isError, error, onSelectDay }: AgendaCalendarProps) {
+function AgendaCalendar({ calendarMonth, onMonthChange, days, isLoading, isError, error, onSelectDay, onCreate }: AgendaCalendarProps) {
 	const today = dayjs();
 	const isCurrentYear = calendarMonth.year() === today.year();
 	const monthLabel = isCurrentYear ? calendarMonth.locale("pt-br").format("MMMM") : calendarMonth.locale("pt-br").format("MMMM [de] YYYY");
@@ -363,27 +376,55 @@ function AgendaCalendar({ calendarMonth, onMonthChange, days, isLoading, isError
 						const dateKey = date.format("YYYY-MM-DD");
 						const dayInteractions = days[dateKey] ?? [];
 						const isToday = today.date() === day && today.month() === calendarMonth.month() && today.year() === calendarMonth.year();
+						// Dias passados não são acionáveis para criação (o servidor rejeita PLANEJADA no passado).
+						const canCreate = !date.isBefore(today, "day");
 						const shown = dayInteractions.slice(0, MAX_DOTS);
 						const overflow = dayInteractions.length - MAX_DOTS;
 						return (
-							<button
+							<div
 								key={day}
-								type="button"
+								role="button"
+								tabIndex={0}
 								onClick={() => onSelectDay(date)}
+								onKeyDown={(event) => {
+									if (event.key === "Enter" || event.key === " ") {
+										event.preventDefault();
+										onSelectDay(date);
+									}
+								}}
 								aria-label={`Ver follow-ups do dia ${day}`}
 								className={cn(
 									"group relative flex w-full flex-col justify-between rounded-md border p-1 min-h-14 text-left cursor-pointer transition-colors",
 									isToday ? "border-primary/50 bg-primary/12" : "border-primary/10 bg-transparent hover:bg-primary/5",
 								)}
 							>
-								<span
-									className={cn(
-										"text-xs font-semibold leading-none self-end",
-										isToday ? "flex items-center justify-center w-4 h-4 rounded-full bg-primary text-primary-foreground" : "text-foreground/60",
+								<div className="flex items-start justify-between gap-0.5">
+									{canCreate ? (
+										<button
+											type="button"
+											onClick={(event) => {
+												event.preventDefault();
+												event.stopPropagation();
+												onCreate(date);
+											}}
+											className="inline-flex h-5 w-5 min-h-5 min-w-5 items-center justify-center rounded-full border border-border bg-card/90 text-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity hover:bg-primary hover:text-primary-foreground"
+											aria-label={`Criar interação para o dia ${day}`}
+											title="Criar interação"
+										>
+											<Plus className="h-3 w-3 min-h-3 min-w-3" />
+										</button>
+									) : (
+										<span />
 									)}
-								>
-									{day}
-								</span>
+									<span
+										className={cn(
+											"text-xs font-semibold leading-none",
+											isToday ? "flex items-center justify-center w-4 h-4 rounded-full bg-primary text-primary-foreground" : "text-foreground/60",
+										)}
+									>
+										{day}
+									</span>
+								</div>
 								{dayInteractions.length > 0 && (
 									<div className="flex flex-wrap gap-0.5 mt-0.5">
 										{shown.map((interaction) => (
@@ -395,7 +436,7 @@ function AgendaCalendar({ calendarMonth, onMonthChange, days, isLoading, isError
 										{overflow > 0 && <span className="text-[8px] text-foreground/50 font-bold leading-none self-end">+{overflow}</span>}
 									</div>
 								)}
-							</button>
+							</div>
 						);
 					})}
 				</div>
