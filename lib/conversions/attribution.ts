@@ -2,7 +2,8 @@ import type { DBTransaction } from "@/services/drizzle";
 import { campaignConversions, campaigns, interactions, sales } from "@/services/drizzle/schema";
 import type { TConversionTypeEnum } from "@/schemas/enums";
 import dayjs from "dayjs";
-import { and, eq, isNotNull, lt, lte } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lt, lte } from "drizzle-orm";
+import { CAMPAIGN_SENT_INTERACTION_STATUSES } from "../campaigns/utils";
 
 interface AttributionParams {
 	vendaId: string;
@@ -40,12 +41,7 @@ async function calculateClientProfileSnapshot(
 ): Promise<ClientProfileSnapshot> {
 	// Get all previous sales for this client (before current sale)
 	const previousSales = await tx.query.sales.findMany({
-		where: and(
-			eq(sales.clienteId, clienteId),
-			eq(sales.organizacaoId, organizacaoId),
-			lt(sales.dataVenda, dataVenda),
-			isNotNull(sales.dataVenda),
-		),
+		where: and(eq(sales.clienteId, clienteId), eq(sales.organizacaoId, organizacaoId), lt(sales.dataVenda, dataVenda), isNotNull(sales.dataVenda)),
 		columns: {
 			id: true,
 			valorTotal: true,
@@ -77,9 +73,7 @@ async function calculateClientProfileSnapshot(
 
 	// Calculate days since last purchase
 	const lastPurchaseDate = previousSales[0]?.dataVenda;
-	const diasDesdeUltimaCompra = lastPurchaseDate
-		? dayjs(dataVenda).diff(dayjs(lastPurchaseDate), "day")
-		: null;
+	const diasDesdeUltimaCompra = lastPurchaseDate ? dayjs(dataVenda).diff(dayjs(lastPurchaseDate), "day") : null;
 
 	// Calculate average purchase cycle (only if we have enough data)
 	let cicloCompraMedio: number | null = null;
@@ -87,9 +81,7 @@ async function calculateClientProfileSnapshot(
 
 	if (qtdeCompras >= 2) {
 		// Calculate average days between consecutive purchases
-		const sortedSales = [...previousSales].sort(
-			(a, b) => new Date(a.dataVenda!).getTime() - new Date(b.dataVenda!).getTime(),
-		);
+		const sortedSales = [...previousSales].sort((a, b) => new Date(a.dataVenda!).getTime() - new Date(b.dataVenda!).getTime());
 
 		let totalDaysBetween = 0;
 		for (let i = 1; i < sortedSales.length; i++) {
@@ -137,7 +129,7 @@ async function calculateClientProfileSnapshot(
 	// Monetary deltas
 	if (ticketMedio > 0) {
 		deltaMonetarioAbsoluto = valorVenda - ticketMedio;
-		deltaMonetarioPercentual = ((valorVenda / ticketMedio) - 1) * 100;
+		deltaMonetarioPercentual = (valorVenda / ticketMedio - 1) * 100;
 	}
 
 	return {
@@ -232,6 +224,7 @@ export async function processConversionAttribution(tx: DBTransaction, params: At
 			eq(interactions.tipo, "ENVIO-MENSAGEM"),
 			isNotNull(interactions.dataExecucao),
 			lte(interactions.dataExecucao, dataVenda),
+			inArray(interactions.statusEnvio, CAMPAIGN_SENT_INTERACTION_STATUSES),
 		),
 		with: {
 			campanha: true,

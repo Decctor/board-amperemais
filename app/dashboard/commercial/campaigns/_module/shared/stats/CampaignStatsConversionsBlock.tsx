@@ -1,7 +1,7 @@
 "use client";
 
 import type { TGetCampaignConversionsInput } from "@/app/api/campaigns/conversions/route";
-import { CampaignConversionCard, CONVERSION_TYPE_CONFIG } from "@/app/dashboard/commercial/campaigns/_module/shared/stats/CampaignConversionCard";
+import { CampaignConversionCard, CONVERSION_TYPE_CONFIG } from "@/components/Campaigns/Conversions/CampaignConversionCard";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
@@ -120,7 +120,32 @@ export function CampaignStatsConversionsBlock({ startDate, endDate }: CampaignSt
 				{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 				{isSuccess ? (
 					items.length > 0 ? (
-						items.map((conversion) => <CampaignConversionCard key={conversion.id} conversion={conversion} showCampaignLink />)
+						items.map((conversion) => (
+							<CampaignConversionCard.Provider key={conversion.id} conversion={conversion}>
+								<CampaignConversionCard.Frame>
+									<CampaignConversionCard.CampaignLink />
+									<CampaignConversionCard.Header>
+										<CampaignConversionCard.Leading>
+											<CampaignConversionCard.ConversionType />
+											<CampaignConversionCard.ClientChip />
+										</CampaignConversionCard.Leading>
+										<CampaignConversionCard.Metadata>
+											<CampaignConversionCard.ConversionDate />
+											<CampaignConversionCard.TimeToConversion />
+										</CampaignConversionCard.Metadata>
+									</CampaignConversionCard.Header>
+									<CampaignConversionCard.Metrics>
+										<CampaignConversionCard.SaleValue />
+										<CampaignConversionCard.MetricDivider />
+										<CampaignConversionCard.AttributedRevenue />
+									</CampaignConversionCard.Metrics>
+									<CampaignConversionCard.Impacts>
+										<CampaignConversionCard.FrequencyImpact />
+										<CampaignConversionCard.TicketImpact />
+									</CampaignConversionCard.Impacts>
+								</CampaignConversionCard.Frame>
+							</CampaignConversionCard.Provider>
+						))
 					) : (
 						<p className="w-full flex items-center justify-center text-sm text-muted-foreground py-6">
 							Nenhuma conversão neste período. Ajuste as datas ou os filtros de tipo acima.
