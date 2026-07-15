@@ -186,20 +186,20 @@ export default function ClientPortfoliosPage({ boundSellerId, canPickSeller }: C
 								fila={clientPortfolio.fila}
 								totalEmDebito={clientPortfolio.totalEmDebito}
 								carteiraTotal={clientPortfolio.carteiraTotal}
-								vendedorId={effectiveSellerId}
+								sellerId={effectiveSellerId}
 								onRegistered={refreshPortfolio}
 							/>
-							<PortfolioAgenda vendedorId={effectiveSellerId && !boundSellerId ? effectiveSellerId : null} onChanged={refreshPortfolio} />
+							<PortfolioAgenda sellerId={effectiveSellerId && !boundSellerId ? effectiveSellerId : null} onChanged={refreshPortfolio} />
 						</div>
 					) : null}
 				</TabsContent>
 
 				<TabsContent value="carteira">
-					<Portfolio vendedorId={effectiveSellerId && !boundSellerId ? effectiveSellerId : null} />
+					<Portfolio sellerId={effectiveSellerId && !boundSellerId ? effectiveSellerId : null} />
 				</TabsContent>
 
 				<TabsContent value="resultados">
-					<Results vendedorId={effectiveSellerId} />
+					<Results sellerId={effectiveSellerId} />
 				</TabsContent>
 			</Tabs>
 		</div>

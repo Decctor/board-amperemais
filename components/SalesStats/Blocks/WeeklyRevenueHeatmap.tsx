@@ -84,6 +84,7 @@ function WeeklyRevenueHeatmapWeekDayStrip({
 		const result = getWeekDayResult(index);
 		const intensity = result ? getColorIntensity(result.total) : 0;
 		const bgColor = result ? hexToRgba(colors.primary, intensity) : "rgba(0,0,0,0.03)";
+		const textColor = result ? hexToRgba(colors.primaryForeground, 0.8) : "rgba(0,0,0,0.5)";
 		const ticketMedio = result && result.qtde > 0 ? result.total / result.qtde : 0;
 
 		return (
@@ -95,7 +96,7 @@ function WeeklyRevenueHeatmapWeekDayStrip({
 							"flex flex-col items-center justify-center py-2 px-1 rounded-md border border-border min-h-[44px] min-w-0 flex-1 transition-all",
 							onSelectDrilldown ? "hover:scale-[1.02] cursor-pointer" : "cursor-default",
 						)}
-						style={{ backgroundColor: bgColor }}
+						style={{ backgroundColor: bgColor, color: textColor }}
 						onClick={onSelectDrilldown ? () => onSelectDrilldown({ weekday: index }) : undefined}
 					>
 						<span className="text-[0.6rem] font-bold tracking-tight uppercase">{WEEKDAY_MAP_SHORT[index]}</span>

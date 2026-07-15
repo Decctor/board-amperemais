@@ -22,14 +22,14 @@ const FOLLOW_UP_PRESETS = [
 
 type RegisterInteractionMenuProps = {
 	cliente: { id: string; nome: string };
-	vendedorId: string | null;
+	sellerId: string | null;
 	closeModal: () => void;
 	callbacks?: {
 		onSuccess?: () => void;
 	};
 };
 
-export function RegisterInteractionMenu({ cliente, vendedorId, closeModal, callbacks }: RegisterInteractionMenuProps) {
+export function RegisterInteractionMenu({ cliente, sellerId, closeModal, callbacks }: RegisterInteractionMenuProps) {
 	const [canal, setCanal] = useState<TInteractionChannelEnum>("WHATSAPP");
 	const [nota, setNota] = useState("");
 	const [followUpPresetIndex, setFollowUpPresetIndex] = useState<number | null>(null);
@@ -41,7 +41,7 @@ export function RegisterInteractionMenu({ cliente, vendedorId, closeModal, callb
 			const followUpPreset = followUpPresetIndex !== null ? FOLLOW_UP_PRESETS[followUpPresetIndex] : null;
 			const created = await createInteraction({
 				clienteId: cliente.id,
-				vendedorId,
+				vendedorId: sellerId,
 				canal,
 				direcao: "SAIDA",
 				descricao: nota || null,

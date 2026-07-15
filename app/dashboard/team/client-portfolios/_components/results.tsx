@@ -19,15 +19,15 @@ import { BadgeDollarSign, ChartColumn, ShoppingCart, Target, Ticket } from "luci
 import Link from "next/link";
 
 type ResultsProps = {
-	vendedorId: string;
+	sellerId: string;
 };
 
 // Visão "primeira pessoa" dos resultados: reaproveita as consultas que o gestor já usa
 // (getSellerStats), filtradas para o vendedor logado. Default: mês corrente até hoje.
-export function Results({ vendedorId }: ResultsProps) {
+export function Results({ sellerId }: ResultsProps) {
 	const { getPrimaryGradientStyle } = useOrgColors();
 	const { data, isLoading, error, filters, updateFilters } = useSellerStats({
-		sellerId: vendedorId,
+		sellerId,
 		initialFilters: {
 			periodAfter: dayjs().startOf("month").toISOString(),
 			periodBefore: dayjs().endOf("day").toISOString(),
@@ -126,7 +126,7 @@ export function Results({ vendedorId }: ResultsProps) {
 						<div className="flex flex-col items-start gap-2">
 							<p className="text-sm text-muted-foreground">Perfil, edição e histórico completo ficam no seu painel detalhado de vendedor.</p>
 							<Button asChild variant="outline" size="sm">
-								<Link href={`/dashboard/team/sellers/id/${vendedorId}`}>Ver painel completo</Link>
+								<Link href={`/dashboard/team/sellers/id/${sellerId}`}>Ver painel completo</Link>
 							</Button>
 						</div>
 					</SectionWrapper>

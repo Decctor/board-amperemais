@@ -2,7 +2,8 @@
 
 import type { TGetClientPortfolioOutput } from "@/app/api/client-portfolios/route";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { NewInteraction } from "@/components/Modals/Interactions/NewInteraction";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { getErrorMessage } from "@/lib/errors";
@@ -118,9 +119,10 @@ function OfferItem({ label, nome, imagemUrl }: { label: string; nome: string; im
 	);
 }
 
-function QueueCard({ item, vendedorId, onRegistered }: { item: TQueueItem; vendedorId: string | null; onRegistered: () => void }) {
+function QueueCard({ item, sellerId, onRegistered }: { item: TQueueItem; sellerId: string | null; onRegistered: () => void }) {
 	const [expanded, setExpanded] = useState(false);
 	const [registerModalOpen, setRegisterModalOpen] = useState(false);
+	const [customSnoozeOpen, setCustomSnoozeOpen] = useState(false);
 	const [handled, setHandled] = useState(false);
 
 	const whatsappLink = buildWhatsappLink(item.cliente.telefone);
@@ -131,7 +133,7 @@ function QueueCard({ item, vendedorId, onRegistered }: { item: TQueueItem; vende
 		mutationFn: (preset: (typeof SNOOZE_PRESETS)[number]) =>
 			createInteraction({
 				clienteId: item.cliente.id,
-				vendedorId,
+				vendedorId: sellerId,
 				canal: "OUTRO",
 				direcao: "SAIDA",
 				descricao: "Abordagem adiada pela fila da carteira.",
@@ -239,6 +241,10 @@ function QueueCard({ item, vendedorId, onRegistered }: { item: TQueueItem; vende
 									<span className="ml-auto text-xs text-muted-foreground">{preset.getDate().format("DD/MM")}</span>
 								</DropdownMenuItem>
 							))}
+							<DropdownMenuSeparator />
+							<DropdownMenuItem disabled={snoozePending} onSelect={() => setCustomSnoozeOpen(true)}>
+								Personalizado...
+							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
@@ -255,8 +261,25 @@ function QueueCard({ item, vendedorId, onRegistered }: { item: TQueueItem; vende
 			{registerModalOpen ? (
 				<RegisterInteractionMenu
 					cliente={{ id: item.cliente.id, nome: item.cliente.nome }}
-					vendedorId={vendedorId}
+					sellerId={sellerId}
 					closeModal={() => setRegisterModalOpen(false)}
+					callbacks={{
+						onSuccess: () => {
+							setHandled(true);
+							onRegistered();
+						},
+					}}
+				/>
+			) : null}
+
+			{customSnoozeOpen ? (
+				<NewInteraction
+					sellerId={sellerId}
+					initialState={{
+						cliente: { id: item.cliente.id, nome: item.cliente.nome, telefone: item.cliente.telefone ?? "" },
+						modo: "AGENDAR",
+					}}
+					closeModal={() => setCustomSnoozeOpen(false)}
 					callbacks={{
 						onSuccess: () => {
 							setHandled(true);
@@ -273,11 +296,11 @@ type QueueSectionProps = {
 	fila: TGetClientPortfolioOutput["data"]["fila"];
 	totalEmDebito: number;
 	carteiraTotal: number;
-	vendedorId: string | null;
+	sellerId: string | null;
 	onRegistered: () => void;
 };
 
-export function QueueSection({ fila, totalEmDebito, carteiraTotal, vendedorId, onRegistered }: QueueSectionProps) {
+export function QueueSection({ fila, totalEmDebito, carteiraTotal, sellerId, onRegistered }: QueueSectionProps) {
 	return (
 		<SectionWrapper
 			title="Fila de abordagens"
@@ -307,7 +330,7 @@ export function QueueSection({ fila, totalEmDebito, carteiraTotal, vendedorId, o
 			) : (
 				<div className="flex flex-col gap-2.5">
 					{fila.map((item) => (
-						<QueueCard key={item.cliente.id} item={item} vendedorId={vendedorId} onRegistered={onRegistered} />
+						<QueueCard key={item.cliente.id} item={item} sellerId={sellerId} onRegistered={onRegistered} />
 					))}
 				</div>
 			)}

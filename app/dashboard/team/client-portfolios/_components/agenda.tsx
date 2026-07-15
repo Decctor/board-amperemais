@@ -14,7 +14,7 @@ import "dayjs/locale/pt-br";
 import { AlarmClock, Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, CircleDot, Clock, LayoutList, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { CreateAgendaInteractionMenu } from "./create-agenda-interaction-menu";
+import { NewInteraction } from "@/components/Modals/Interactions/NewInteraction";
 
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MAX_DOTS = 5;
@@ -38,19 +38,19 @@ function getDayLabel(date: Dayjs) {
 }
 
 type PortfolioAgendaProps = {
-	vendedorId: string | null;
+	sellerId: string | null;
 	onChanged: () => void;
 };
 
-export function PortfolioAgenda({ vendedorId, onChanged }: PortfolioAgendaProps) {
+export function PortfolioAgenda({ sellerId, onChanged }: PortfolioAgendaProps) {
 	const queryClient = useQueryClient();
 	const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
 	const [selectedDate, setSelectedDate] = useState(() => dayjs().startOf("day"));
 	const [calendarMonth, setCalendarMonth] = useState(() => dayjs().startOf("month"));
 	const [createForDate, setCreateForDate] = useState<Dayjs | null>(null);
 
-	const dayQuery = useClientPortfolioAgendaDay({ vendedorId, dateKey: selectedDate.format("YYYY-MM-DD") });
-	const calendarQuery = useClientPortfolioAgendaCalendar({ vendedorId, monthKey: calendarMonth.format("YYYY-MM") });
+	const dayQuery = useClientPortfolioAgendaDay({ vendedorId: sellerId, dateKey: selectedDate.format("YYYY-MM-DD") });
+	const calendarQuery = useClientPortfolioAgendaCalendar({ vendedorId: sellerId, monthKey: calendarMonth.format("YYYY-MM") });
 	const stats = calendarQuery.data?.stats;
 
 	const { mutate: resolve, isPending: resolvePending } = useMutation({
@@ -186,9 +186,9 @@ export function PortfolioAgenda({ vendedorId, onChanged }: PortfolioAgendaProps)
 			)}
 
 			{createForDate ? (
-				<CreateAgendaInteractionMenu
-					date={createForDate}
-					vendedorId={vendedorId}
+				<NewInteraction
+					sellerId={sellerId}
+					initialState={{ modo: "AGENDAR", dataInteracao: createForDate.toDate() }}
 					closeModal={() => setCreateForDate(null)}
 					callbacks={{ onSuccess: onChanged }}
 				/>

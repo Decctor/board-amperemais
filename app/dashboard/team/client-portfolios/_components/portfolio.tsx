@@ -18,11 +18,11 @@ import { getClientInitials } from "./utils";
 const SEGMENT_FILTERS = ["Todos", ...RFMLabels.map((label) => label.text)];
 
 type PortfolioProps = {
-	vendedorId: string | null;
+	sellerId: string | null;
 };
 
-export function Portfolio({ vendedorId }: PortfolioProps) {
-	const { data, isLoading, error, filters, updateFilters } = usePortfolio({ vendedorId });
+export function Portfolio({ sellerId }: PortfolioProps) {
+	const { data, isLoading, error, filters, updateFilters } = usePortfolio({ vendedorId: sellerId });
 
 	return (
 		<SectionWrapper
