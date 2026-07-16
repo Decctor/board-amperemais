@@ -1,0 +1,131 @@
+import type { AxiosInstance } from "axios";
+import { mapIfoodError } from "./errors";
+import {
+	IFOOD_CATALOG_BASE_URL,
+	IfoodBatchResponseSchema,
+	IfoodCatalogVersionResponseSchema,
+	IfoodCatalogsListResponseSchema,
+	IfoodCategoriesListResponseSchema,
+	IfoodOptionGroupDetailResponseSchema,
+	IfoodOptionGroupsListResponseSchema,
+	IfoodProductsListResponseSchema,
+	mapIfoodBatch,
+	mapIfoodCatalog,
+	mapIfoodCatalogVersion,
+	mapIfoodCategory,
+	mapIfoodOptionGroup,
+	mapIfoodOptionGroupsList,
+	mapIfoodProductsPage,
+	type TIfoodBatchDTO,
+	type TIfoodCatalogDTO,
+	type TIfoodCatalogVersion,
+	type TIfoodCategoryDTO,
+	type TIfoodOptionGroupDTO,
+	type TIfoodProductsPageDTO,
+} from "./catalog-types";
+
+/**
+ * Funções de LEITURA da Catalog API v2.0 do iFood. Todas recebem o axios client autenticado e o
+ * merchantId (já validado pelo `resolveIfoodManagementContext`) e retornam DTOs mapeados.
+ */
+
+function catalogUrl(merchantId: string, path: string) {
+	return `${IFOOD_CATALOG_BASE_URL}/merchants/${merchantId}${path}`;
+}
+
+export async function getIfoodCatalogs(client: AxiosInstance, merchantId: string): Promise<TIfoodCatalogDTO[]> {
+	try {
+		const response = await client.get<unknown>(catalogUrl(merchantId, "/catalogs"));
+		return IfoodCatalogsListResponseSchema.parse(response.data)
+			.map(mapIfoodCatalog)
+			.filter((catalog): catalog is TIfoodCatalogDTO => !!catalog);
+	} catch (error) {
+		mapIfoodError("getIfoodCatalogs", error);
+	}
+}
+
+export async function getIfoodCatalogVersion(client: AxiosInstance, merchantId: string): Promise<TIfoodCatalogVersion> {
+	try {
+		const response = await client.get<unknown>(catalogUrl(merchantId, "/catalog/version"));
+		return mapIfoodCatalogVersion(IfoodCatalogVersionResponseSchema.parse(response.data));
+	} catch (error) {
+		mapIfoodError("getIfoodCatalogVersion", error);
+	}
+}
+
+export async function upgradeIfoodCatalogVersion(client: AxiosInstance, merchantId: string): Promise<void> {
+	try {
+		await client.post(catalogUrl(merchantId, "/version/upgrade"));
+	} catch (error) {
+		mapIfoodError("upgradeIfoodCatalogVersion", error);
+	}
+}
+
+export async function listIfoodCategories(
+	client: AxiosInstance,
+	merchantId: string,
+	{ catalogId }: { catalogId: string },
+): Promise<TIfoodCategoryDTO[]> {
+	try {
+		const response = await client.get<unknown>(catalogUrl(merchantId, `/catalogs/${catalogId}/categories`), {
+			params: { includeItems: true },
+		});
+		return IfoodCategoriesListResponseSchema.parse(response.data)
+			.map(mapIfoodCategory)
+			.filter((category): category is TIfoodCategoryDTO => !!category);
+	} catch (error) {
+		mapIfoodError("listIfoodCategories", error);
+	}
+}
+
+export async function listIfoodProducts(
+	client: AxiosInstance,
+	merchantId: string,
+	{ page, limit }: { page: number; limit: number },
+): Promise<TIfoodProductsPageDTO> {
+	try {
+		const response = await client.get<unknown>(catalogUrl(merchantId, "/products"), {
+			params: { page, limit },
+		});
+		return mapIfoodProductsPage(IfoodProductsListResponseSchema.parse(response.data));
+	} catch (error) {
+		mapIfoodError("listIfoodProducts", error);
+	}
+}
+
+export async function listIfoodOptionGroups(
+	client: AxiosInstance,
+	merchantId: string,
+	{ page, limit }: { page: number; limit: number },
+): Promise<TIfoodOptionGroupDTO[]> {
+	try {
+		const response = await client.get<unknown>(catalogUrl(merchantId, "/optionGroups"), {
+			params: { page, limit, includeOptions: true },
+		});
+		return mapIfoodOptionGroupsList(IfoodOptionGroupsListResponseSchema.parse(response.data));
+	} catch (error) {
+		mapIfoodError("listIfoodOptionGroups", error);
+	}
+}
+
+export async function getIfoodOptionGroup(client: AxiosInstance, merchantId: string, optionGroupId: string): Promise<TIfoodOptionGroupDTO> {
+	try {
+		const response = await client.get<unknown>(catalogUrl(merchantId, `/optionGroups/${optionGroupId}`), {
+			params: { includeOptions: true },
+		});
+		const group = mapIfoodOptionGroup(IfoodOptionGroupDetailResponseSchema.parse(response.data));
+		if (!group) throw new Error("Grupo de complementos do iFood não encontrado.");
+		return group;
+	} catch (error) {
+		mapIfoodError("getIfoodOptionGroup", error);
+	}
+}
+
+export async function getIfoodBatch(client: AxiosInstance, merchantId: string, batchId: string): Promise<TIfoodBatchDTO> {
+	try {
+		const response = await client.get<unknown>(catalogUrl(merchantId, `/batch/${batchId}`));
+		return mapIfoodBatch(IfoodBatchResponseSchema.parse(response.data));
+	} catch (error) {
+		mapIfoodError("getIfoodBatch", error);
+	}
+}

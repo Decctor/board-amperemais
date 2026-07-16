@@ -4,6 +4,7 @@ import type {
 	TDeleteIfoodInterruptionInput,
 	TDeleteIfoodInterruptionOutput,
 } from "@/app/api/integrations/ifood/merchants/interruptions/route";
+import type { TCatalogActionInput, TCatalogActionOutput } from "@/app/api/integrations/ifood/catalog/route";
 import type {
 	TUpdateIfoodOpeningHoursInput,
 	TUpdateIfoodOpeningHoursOutput,
@@ -24,5 +25,10 @@ export async function deleteIfoodInterruption(input: TDeleteIfoodInterruptionInp
 
 export async function updateIfoodOpeningHours(input: TUpdateIfoodOpeningHoursInput) {
 	const { data } = await axios.put<TUpdateIfoodOpeningHoursOutput>("/api/integrations/ifood/merchants/opening-hours", input);
+	return data;
+}
+
+export async function upgradeIfoodCatalog(input: TCatalogActionInput) {
+	const { data } = await axios.post<TCatalogActionOutput>("/api/integrations/ifood/catalog", input);
 	return data;
 }

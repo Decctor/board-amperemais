@@ -8,6 +8,7 @@ import { useIfoodMerchants } from "@/lib/queries/ifood";
 import IfoodLogo from "@/utils/images/integrations/ifood-logo.png";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { IfoodCatalogTab } from "./_module/catalog/IfoodCatalogTab";
 import { IfoodOverviewTab } from "./_module/overview/IfoodOverviewTab";
 import { IfoodConnectionGate } from "./_module/shared/IfoodConnectionGate";
 import { MerchantSelector } from "./_module/shared/MerchantSelector";
@@ -53,12 +54,16 @@ export default function IntegrationsIFoodPage({ sessionUser: _sessionUser, membe
 						<TabsList>
 							<TabsTrigger value="overview">Visão geral</TabsTrigger>
 							<TabsTrigger value="status">Status & Horários</TabsTrigger>
+							<TabsTrigger value="catalog">Catálogo</TabsTrigger>
 						</TabsList>
 						<TabsContent value="overview" className="pt-2">
 							<IfoodOverviewTab merchantId={selectedMerchantId} />
 						</TabsContent>
 						<TabsContent value="status" className="pt-2">
 							<IfoodStatusTab merchantId={selectedMerchantId} canManage={canManage} />
+						</TabsContent>
+						<TabsContent value="catalog" className="pt-2">
+							<IfoodCatalogTab merchantId={selectedMerchantId} canManage={canManage} />
 						</TabsContent>
 					</Tabs>
 				)}

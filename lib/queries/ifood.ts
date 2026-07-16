@@ -1,3 +1,7 @@
+import type { TGetIfoodCategoriesOutput } from "@/app/api/integrations/ifood/catalog/categories/route";
+import type { TGetIfoodOptionGroupsOutput } from "@/app/api/integrations/ifood/catalog/option-groups/route";
+import type { TGetIfoodProductsOutput } from "@/app/api/integrations/ifood/catalog/products/route";
+import type { TGetIfoodCatalogsOutput } from "@/app/api/integrations/ifood/catalog/route";
 import type { TGetIfoodInterruptionsOutput } from "@/app/api/integrations/ifood/merchants/interruptions/route";
 import type { TGetIfoodOpeningHoursOutput } from "@/app/api/integrations/ifood/merchants/opening-hours/route";
 import type { TGetIfoodMerchantsOutput } from "@/app/api/integrations/ifood/merchants/route";
@@ -81,6 +85,82 @@ export function useIfoodInterruptions({ merchantId }: { merchantId: string | nul
 			queryKey,
 			queryFn: () => fetchIfoodInterruptions(merchantId as string),
 			enabled: !!merchantId,
+			retry: false,
+		}),
+		queryKey,
+	};
+}
+
+async function fetchIfoodCatalogs(merchantId: string) {
+	const { data } = await axios.get<TGetIfoodCatalogsOutput>(`/api/integrations/ifood/catalog?merchantId=${merchantId}`);
+	return data.data;
+}
+
+export function useIfoodCatalogs({ merchantId }: { merchantId: string | null }) {
+	const queryKey = ["ifood-catalogs", merchantId];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchIfoodCatalogs(merchantId as string),
+			enabled: !!merchantId,
+			retry: false,
+		}),
+		queryKey,
+	};
+}
+
+async function fetchIfoodCategories({ merchantId, catalogId }: { merchantId: string; catalogId: string }) {
+	const { data } = await axios.get<TGetIfoodCategoriesOutput>(
+		`/api/integrations/ifood/catalog/categories?merchantId=${merchantId}&catalogId=${catalogId}`,
+	);
+	return data.data.categorias;
+}
+
+export function useIfoodCategories({ merchantId, catalogId }: { merchantId: string | null; catalogId: string | null }) {
+	const queryKey = ["ifood-categories", merchantId, catalogId];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchIfoodCategories({ merchantId: merchantId as string, catalogId: catalogId as string }),
+			enabled: !!merchantId && !!catalogId,
+			retry: false,
+		}),
+		queryKey,
+	};
+}
+
+async function fetchIfoodProducts({ merchantId, page }: { merchantId: string; page: number }) {
+	const { data } = await axios.get<TGetIfoodProductsOutput>(`/api/integrations/ifood/catalog/products?merchantId=${merchantId}&page=${page}`);
+	return data.data;
+}
+
+export function useIfoodProducts({ merchantId, page }: { merchantId: string | null; page: number }) {
+	const queryKey = ["ifood-products", merchantId, page];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchIfoodProducts({ merchantId: merchantId as string, page }),
+			enabled: !!merchantId,
+			retry: false,
+		}),
+		queryKey,
+	};
+}
+
+async function fetchIfoodOptionGroups(merchantId: string) {
+	const { data } = await axios.get<TGetIfoodOptionGroupsOutput>(`/api/integrations/ifood/catalog/option-groups?merchantId=${merchantId}`);
+	const result = data.data.default;
+	if (!result) throw new Error("Grupos de complementos não encontrados.");
+	return result;
+}
+
+export function useIfoodOptionGroups({ merchantId, enabled = true }: { merchantId: string | null; enabled?: boolean }) {
+	const queryKey = ["ifood-option-groups", merchantId];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchIfoodOptionGroups(merchantId as string),
+			enabled: !!merchantId && enabled,
 			retry: false,
 		}),
 		queryKey,
