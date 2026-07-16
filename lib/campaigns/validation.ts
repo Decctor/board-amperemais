@@ -110,37 +110,22 @@ export async function getOrganizationWeeklyCampaignLimit(organizationId: string)
 	return organization?.configuracao?.preferencias?.limiteMensagensSemanaisViaCampanhas ?? null;
 }
 
-export function getEffectiveCampaignWeeklyLimit({
-	organizationWeeklyLimit,
+// Rejects a campaign weekly limit above the organization limit at save time. Before this,
+// the excess was silently clamped during processing, surfacing only as blocked sends.
+export function validateCampaignWeeklyLimit({
 	campaignWeeklyLimit,
-	operation,
-	campaignId,
-	organizationId,
+	organizationWeeklyLimit,
 }: {
-	organizationWeeklyLimit: number | null;
 	campaignWeeklyLimit: number | null | undefined;
-	operation: "CREATE" | "UPDATE";
-	campaignId?: string;
-	organizationId: string;
+	organizationWeeklyLimit: number | null;
 }) {
-	if (campaignWeeklyLimit == null) return organizationWeeklyLimit;
-	if (organizationWeeklyLimit == null) return campaignWeeklyLimit;
+	if (campaignWeeklyLimit == null || organizationWeeklyLimit == null) return;
 
-	const effectiveLimit = Math.min(campaignWeeklyLimit, organizationWeeklyLimit);
 	if (campaignWeeklyLimit > organizationWeeklyLimit) {
-		console.warn(
-			`[WARN] [${operation}_CAMPAIGN] limiteEnviosSemanais da campanha excede limite da organização; limite efetivo será aplicado no processamento.`,
-			{
-				campaignId: campaignId ?? null,
-				organizationId,
-				campaignWeeklyLimit,
-				organizationWeeklyLimit,
-				effectiveLimit,
-			},
+		throw new createHttpError.BadRequest(
+			`O limite semanal de envios da campanha (${campaignWeeklyLimit}) não pode ser maior que o limite semanal da organização (${organizationWeeklyLimit}).`,
 		);
 	}
-
-	return effectiveLimit;
 }
 
 export function validateCampaignCashbackGeneration(campaign: z.infer<typeof CampaignSchema>) {

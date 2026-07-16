@@ -14,6 +14,7 @@ type TResolveExclusivePurchaseTriggerCampaignsParams<TCampaign extends TExclusiv
 	isFirstPurchase: boolean;
 	saleValue: number;
 	totalPurchaseCount: number | null;
+	previousTotalPurchaseCount: number | null;
 	allowNewPurchaseOnFirstPurchase?: boolean;
 };
 
@@ -29,6 +30,7 @@ export function resolveExclusivePurchaseTriggerCampaigns<TCampaign extends TExcl
 	isFirstPurchase,
 	saleValue,
 	totalPurchaseCount,
+	previousTotalPurchaseCount,
 	allowNewPurchaseOnFirstPurchase = false,
 }: TResolveExclusivePurchaseTriggerCampaignsParams<TCampaign>) {
 	if (!clientId) return [];
@@ -40,11 +42,15 @@ export function resolveExclusivePurchaseTriggerCampaigns<TCampaign extends TExcl
 	);
 	if (firstPurchaseCampaigns.length > 0) return firstPurchaseCampaigns;
 
+	// Crossing semantics: the trigger fires when this sale makes the client cross the threshold,
+	// so totals that jump past the exact value (e.g. batch imports) still fire exactly once.
 	const totalPurchaseCountCampaigns = campaigns.filter(
 		(campaign) =>
 			campaign.gatilhoTipo === "QUANTIDADE-TOTAL-COMPRAS" &&
 			campaign.gatilhoQuantidadeTotalCompras != null &&
-			totalPurchaseCount === campaign.gatilhoQuantidadeTotalCompras &&
+			totalPurchaseCount != null &&
+			totalPurchaseCount >= campaign.gatilhoQuantidadeTotalCompras &&
+			(previousTotalPurchaseCount ?? 0) < campaign.gatilhoQuantidadeTotalCompras &&
 			campaignAppliesToClient(campaign),
 	);
 	if (totalPurchaseCountCampaigns.length > 0) return totalPurchaseCountCampaigns;

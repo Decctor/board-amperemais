@@ -8,12 +8,12 @@ import {
 } from "@/app/api/message-templates/_lib";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import {
-	getEffectiveCampaignWeeklyLimit,
 	getOrganizationWeeklyCampaignLimit,
 	validateCampaignCashbackGeneration,
 	validateCampaignFrequencyInterval,
 	validateCampaignTemplateTriggerCompatibility,
 	validateCashbackExpiringTrigger,
+	validateCampaignWeeklyLimit,
 	validateExecutionDelayDirection,
 	validateRecurrentCampaign,
 	validateSingleUseCampaign,
@@ -201,11 +201,9 @@ async function createCampaignFromApprovedHint({
 	validateCampaignCashbackGeneration({ ...campaign, autorId: session.user.id, dataInsercao: new Date() });
 
 	const organizationWeeklyLimit = await getOrganizationWeeklyCampaignLimit(organizationId);
-	getEffectiveCampaignWeeklyLimit({
-		organizationWeeklyLimit,
+	validateCampaignWeeklyLimit({
 		campaignWeeklyLimit: campaign.limiteEnviosSemanais,
-		operation: "CREATE",
-		organizationId,
+		organizationWeeklyLimit,
 	});
 
 	const templatePayload: TMessageTemplatePayload = {
@@ -300,12 +298,9 @@ async function updateCampaignFromApprovedHint({
 	validateCampaignCashbackGeneration({ ...effectiveCampaign, autorId: session.user.id, dataInsercao: new Date() });
 
 	const organizationWeeklyLimit = await getOrganizationWeeklyCampaignLimit(organizationId);
-	getEffectiveCampaignWeeklyLimit({
-		organizationWeeklyLimit,
+	validateCampaignWeeklyLimit({
 		campaignWeeklyLimit: effectiveCampaign.limiteEnviosSemanais,
-		operation: "UPDATE",
-		campaignId: existingCampaign.id,
-		organizationId,
+		organizationWeeklyLimit,
 	});
 
 	const templatePayload: TMessageTemplatePayload = {

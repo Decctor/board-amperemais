@@ -84,6 +84,8 @@ export type TPersistedSaleForEffects = {
 	managedFiscalEmissionCandidate: boolean;
 	newTotalPurchaseCount: number | null;
 	newTotalPurchaseValue: number | null;
+	previousTotalPurchaseCount: number | null;
+	previousTotalPurchaseValue: number | null;
 };
 
 export type TDataCollectingV2RunError = {

@@ -838,7 +838,9 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 				clientId,
 				isFirstPurchase: clientIsNew,
 				saleValue: effectiveSaleValue,
+				// clientCurrentPurchaseCount was already incremented by this transaction's sale.
 				totalPurchaseCount: transactionRequiresSaleProcessing ? clientCurrentPurchaseCount : null,
+				previousTotalPurchaseCount: transactionRequiresSaleProcessing ? clientCurrentPurchaseCount - 1 : null,
 				allowNewPurchaseOnFirstPurchase: true,
 			});
 			const exclusivePurchaseTrigger = exclusivePurchaseCampaigns[0]?.gatilhoTipo ?? null;
@@ -1608,11 +1610,12 @@ async function handleCampaignProcessingForTotalPurchaseCount({
 }: THandleCampaignProcessingForTotalPurchaseCountParams) {
 	if (campaignsForTotalPurchaseCount.length === 0) return;
 	const applicableCampaigns = campaignsForTotalPurchaseCount.filter((campaign) => {
-		// Check if the client has reached or exceeded the threshold
+		// Crossing semantics: fires when this sale makes the client cross the threshold.
 		const meetsThreshold =
 			campaign.gatilhoQuantidadeTotalCompras !== null &&
 			campaign.gatilhoQuantidadeTotalCompras !== undefined &&
-			clientNewTotalPurchaseCount === campaign.gatilhoQuantidadeTotalCompras;
+			clientNewTotalPurchaseCount >= campaign.gatilhoQuantidadeTotalCompras &&
+			clientNewTotalPurchaseCount - 1 < campaign.gatilhoQuantidadeTotalCompras;
 
 		// Check segmentation match
 		const meetsSegmentation = campaignAudienceHasClient(audiencesByCampaignId, campaign.id, clientId);
@@ -1760,11 +1763,13 @@ async function handleCampaignProcessingForTotalPurchaseValue({
 	if (campaignsForTotalPurchaseValue.length === 0) return;
 
 	const applicableCampaigns = campaignsForTotalPurchaseValue.filter((campaign) => {
-		// Check if the client has reached or exceeded the threshold
+		// Crossing semantics: fires when this sale crosses the threshold, instead of the old float
+		// equality that missed any sale jumping past the exact configured value.
 		const meetsThreshold =
 			campaign.gatilhoValorTotalCompras !== null &&
 			campaign.gatilhoValorTotalCompras !== undefined &&
-			clientNewTotalPurchaseValue === campaign.gatilhoValorTotalCompras; // TODO: Fix this. The validation should occur in obligatory "frequency" definitions
+			clientNewTotalPurchaseValue >= campaign.gatilhoValorTotalCompras &&
+			clientNewTotalPurchaseValue - saleValue < campaign.gatilhoValorTotalCompras;
 
 		// Check segmentation match
 		const meetsSegmentation = campaignAudienceHasClient(audiencesByCampaignId, campaign.id, clientId);

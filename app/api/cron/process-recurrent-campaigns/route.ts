@@ -1,10 +1,10 @@
 import { appApiHandler } from "@/lib/app-api";
 import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
+import { ENQUEUE_CHUNK_SIZE, MAX_ENQUEUE_ATTEMPTS, chunkArray, enqueueChunkWithRetries, processEnqueuedChunkImmediateInteractions } from "@/lib/campaigns/shared";
 import { INTERACTIONS_CRON_TIMEZONE, getCurrentTimeBlock, type TInteractionCronTimeBlock } from "@/lib/campaigns/time-blocks";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
 import { notifyCampaignEnqueueFailure } from "@/lib/cron/notify-campaign-enqueue-failure";
 import { DASTJS_TIME_DURATION_UNITS_MAP } from "@/lib/dates";
-import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
 import { type TCampaignWeeklyLimitCache, createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
@@ -13,33 +13,7 @@ import dayjs from "dayjs";
 import { and, eq, gt, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-const IMMEDIATE_PROCESSING_CONCURRENCY = 5;
-// Insertions are chunked so each transaction stays short and stays under Postgres'
-// 65535 bind-parameter limit (interactions: ~8 columns per row).
-const ENQUEUE_CHUNK_SIZE = 1000;
-const MAX_ENQUEUE_ATTEMPTS = 3;
-const ENQUEUE_RETRY_BASE_DELAY_MS = 250;
-
 type TRecurrentCampaign = Awaited<ReturnType<typeof getRecurrentCampaignsForBlock>>[number];
-
-function chunkArray<T>(array: T[], size: number): T[][] {
-	if (size <= 0) return [array];
-
-	const chunks: T[][] = [];
-	for (let index = 0; index < array.length; index += size) {
-		chunks.push(array.slice(index, index + size));
-	}
-
-	return chunks;
-}
-
-function sleep(ms: number) {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : "Erro desconhecido ao enfileirar interações.";
-}
 
 /**
  * Checks if a recurrent campaign should run today based on its schedule configuration.
@@ -184,87 +158,6 @@ async function enqueueRecurrentCampaignChunk({
 	});
 }
 
-async function processChunkImmediateInteractions({
-	organizationId,
-	campaign,
-	inserted,
-	weeklyLimitCache,
-}: {
-	organizationId: string;
-	campaign: TRecurrentCampaign;
-	inserted: { id: string; clienteId: string }[];
-	weeklyLimitCache: TCampaignWeeklyLimitCache;
-}) {
-	const clientIds = inserted.map((row) => row.clienteId);
-	const clientsData = await db.query.clients.findMany({
-		where: (fields, { inArray: inArrayFilter }) => inArrayFilter(fields.id, clientIds),
-		columns: {
-			id: true,
-			nome: true,
-			telefone: true,
-			email: true,
-			analiseRFMTitulo: true,
-			metadataProdutoMaisCompradoId: true,
-			metadataGrupoProdutoMaisComprado: true,
-			metadataProdutoSugeridoId: true,
-		},
-	});
-	const clientDataById = new Map(clientsData.map((client) => [client.id, client]));
-
-	const immediateProcessingDataList: ImmediateProcessingData[] = [];
-	for (const row of inserted) {
-		const clientData = clientDataById.get(row.clienteId);
-		if (!clientData) continue;
-
-		immediateProcessingDataList.push({
-			interactionId: row.id,
-			organizationId,
-			client: {
-				id: clientData.id,
-				nome: clientData.nome,
-				telefone: clientData.telefone,
-				email: clientData.email,
-				analiseRFMTitulo: clientData.analiseRFMTitulo,
-				metadataProdutoMaisCompradoId: clientData.metadataProdutoMaisCompradoId,
-				metadataGrupoProdutoMaisComprado: clientData.metadataGrupoProdutoMaisComprado,
-				metadataProdutoSugeridoId: clientData.metadataProdutoSugeridoId,
-			},
-			campaign: {
-				autorId: campaign.autorId,
-				whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
-				whatsappTemplate: campaign.whatsappTemplate,
-			},
-			whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
-			whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
-		});
-	}
-
-	if (immediateProcessingDataList.length === 0) return;
-
-	console.log(`[ORG: ${organizationId}] [INFO] Processing ${immediateProcessingDataList.length} immediate interactions`);
-	const processingSummary = await processOrganizationInteractionsBatch({
-		organizationId,
-		interactions: immediateProcessingDataList,
-		sendConcurrency: IMMEDIATE_PROCESSING_CONCURRENCY,
-		weeklyLimitCache,
-	});
-
-	if (processingSummary.failed > 0 || processingSummary.blocked > 0) {
-		for (const failedResult of processingSummary.results.filter((itemResult) => !itemResult.success)) {
-			console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${failedResult.interactionId}:`, failedResult.error);
-		}
-	}
-
-	console.log(`[ORG: ${organizationId}] [INFO] Finished immediate interactions processing`, {
-		total: processingSummary.total,
-		succeeded: processingSummary.sent + processingSummary.queued,
-		failed: processingSummary.failed,
-		durationMs: processingSummary.durationMs,
-		claimed: processingSummary.claimed,
-		blocked: processingSummary.blocked,
-	});
-}
-
 async function processRecurrentCampaign({
 	organizationId,
 	campaign,
@@ -296,39 +189,46 @@ async function processRecurrentCampaign({
 
 	const chunks = chunkArray(targetClientIds, ENQUEUE_CHUNK_SIZE);
 	for (const chunk of chunks) {
-		let inserted: { id: string; clienteId: string }[] | null = null;
-		let lastError: unknown = null;
-
-		for (let attempt = 1; attempt <= MAX_ENQUEUE_ATTEMPTS; attempt += 1) {
-			try {
-				const result = await enqueueRecurrentCampaignChunk({
+		const enqueueResult = await enqueueChunkWithRetries({
+			enqueue: () =>
+				enqueueRecurrentCampaignChunk({
 					organizationId,
 					campaign,
 					clientIds: chunk,
 					currentDate,
 					currentTimeBlock,
-				});
-				inserted = result.inserted;
-				break;
-			} catch (error) {
-				lastError = error;
-				console.error(`[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}] Enqueue attempt ${attempt} failed:`, getErrorMessage(error));
-				if (attempt < MAX_ENQUEUE_ATTEMPTS) {
-					await sleep(ENQUEUE_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1));
-				}
-			}
-		}
+				}),
+			logPrefix: `[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}]`,
+		});
 
-		if (!inserted) {
+		if (!enqueueResult.success) {
 			failedClientIds.push(...chunk);
-			enqueueErrors.push(getErrorMessage(lastError));
+			enqueueErrors.push(enqueueResult.error);
 			continue;
 		}
 
+		const { inserted } = enqueueResult.result;
 		campaignEnqueuedCount += inserted.length;
 
 		if (hasDeliveryConfig && inserted.length > 0) {
-			await processChunkImmediateInteractions({ organizationId, campaign, inserted, weeklyLimitCache });
+			try {
+				await processEnqueuedChunkImmediateInteractions({
+					organizationId,
+					inserted,
+					campaign: {
+						autorId: campaign.autorId,
+						whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
+						whatsappTemplate: campaign.whatsappTemplate,
+					},
+					whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+					whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
+					weeklyLimitCache,
+					logTag: "RECURRENT_CAMPAIGNS",
+				});
+			} catch (error) {
+				// The enqueued interactions stay pending and will be drained by the process-interactions cron.
+				console.error(`[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}] [RECURRENT_CAMPAIGNS] Post-enqueue processing failed for chunk:`, error);
+			}
 		}
 	}
 

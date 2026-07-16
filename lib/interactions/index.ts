@@ -3,16 +3,6 @@ export { buildContextVariablesMap, buildInteractionMessageVariables } from "./me
 export type { TInteractionMessagePreviewClient } from "./message-preview";
 export { sendReservedInteraction } from "./send-reserved-interaction";
 export { processOrganizationInteractionsBatch } from "./process-organization-interactions";
-export { processMultipleInteractions } from "./process-multiple-interactions";
-export {
-	markInteractionBlocked,
-	markInteractionDelivered,
-	markInteractionFailed,
-	markInteractionQueued,
-	markInteractionRead,
-	markInteractionSent,
-	updateInteractionDeliveryState,
-} from "./delivery-state";
 export type {
 	ImmediateProcessingData,
 	ProcessSingleInteractionResult,
@@ -21,8 +11,3 @@ export type {
 	TProcessOrganizationInteractionsBatchItemResult,
 	TProcessOrganizationInteractionsBatchResult,
 } from "./types";
-export type {
-	TProcessMultipleInteractionItemResult,
-	TProcessMultipleInteractionsOptions,
-	TProcessMultipleInteractionsResult,
-} from "./process-multiple-interactions";

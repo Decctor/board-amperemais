@@ -78,7 +78,16 @@ function getCampaignsForSale({
 	audiencesByCampaignId: Map<string, Set<string>>;
 	persistedSale: TPersistedSaleForEffects;
 }) {
-	const { sale, clientId, becameValid, isFirstPurchase, newTotalPurchaseCount, newTotalPurchaseValue } = persistedSale;
+	const {
+		sale,
+		clientId,
+		becameValid,
+		isFirstPurchase,
+		newTotalPurchaseCount,
+		newTotalPurchaseValue,
+		previousTotalPurchaseCount,
+		previousTotalPurchaseValue,
+	} = persistedSale;
 	if (!becameValid || !clientId) return [];
 
 	const exclusivePurchaseCampaigns = resolveExclusivePurchaseTriggerCampaigns({
@@ -88,13 +97,21 @@ function getCampaignsForSale({
 		isFirstPurchase,
 		saleValue: sale.totalValue,
 		totalPurchaseCount: newTotalPurchaseCount,
+		previousTotalPurchaseCount,
 	});
 
 	const totalPurchaseValueCampaigns = campaigns.filter((campaign) => {
 		if (!campaignAudienceHasClient(audiencesByCampaignId, campaign.id, clientId)) return false;
 
 		if (campaign.gatilhoTipo === "VALOR-TOTAL-COMPRAS") {
-			return campaign.gatilhoValorTotalCompras != null && newTotalPurchaseValue === campaign.gatilhoValorTotalCompras;
+			// Crossing semantics: fires when this sale crosses the threshold, instead of the old
+			// float equality that missed any sale jumping past the exact configured value.
+			return (
+				campaign.gatilhoValorTotalCompras != null &&
+				newTotalPurchaseValue != null &&
+				newTotalPurchaseValue >= campaign.gatilhoValorTotalCompras &&
+				(previousTotalPurchaseValue ?? 0) < campaign.gatilhoValorTotalCompras
+			);
 		}
 
 		return false;

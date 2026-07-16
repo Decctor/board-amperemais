@@ -117,22 +117,6 @@ export async function updateInteractionDeliveryState({
 	};
 }
 
-export function markInteractionQueued(params: Omit<TUpdateInteractionDeliveryStateInput, "statusEnvio">) {
-	return updateInteractionDeliveryState({ ...params, statusEnvio: "PENDENTE" });
-}
-
-export function markInteractionSent(params: Omit<TUpdateInteractionDeliveryStateInput, "statusEnvio">) {
-	return updateInteractionDeliveryState({ ...params, statusEnvio: "ENVIADO" });
-}
-
-export function markInteractionDelivered(params: Omit<TUpdateInteractionDeliveryStateInput, "statusEnvio">) {
-	return updateInteractionDeliveryState({ ...params, statusEnvio: "ENTREGUE" });
-}
-
-export function markInteractionRead(params: Omit<TUpdateInteractionDeliveryStateInput, "statusEnvio">) {
-	return updateInteractionDeliveryState({ ...params, statusEnvio: "LIDO" });
-}
-
 export function markInteractionFailed(params: Omit<TUpdateInteractionDeliveryStateInput, "statusEnvio">) {
 	return updateInteractionDeliveryState({ ...params, statusEnvio: "FALHOU" });
 }

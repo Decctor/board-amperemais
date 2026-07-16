@@ -212,10 +212,14 @@ async function updateClientMetrics({
 	saleId: string;
 	isFirstPurchase: boolean;
 }) {
-	if (!sale.isValidSale) return { totalPurchaseCount: null, totalPurchaseValue: null };
+	if (!sale.isValidSale) {
+		return { totalPurchaseCount: null, totalPurchaseValue: null, previousTotalPurchaseCount: null, previousTotalPurchaseValue: null };
+	}
 
-	const totalPurchaseCount = client.metadataTotalPurchases + 1;
-	const totalPurchaseValue = client.metadataTotalPurchaseValue + sale.totalValue;
+	const previousTotalPurchaseCount = client.metadataTotalPurchases;
+	const previousTotalPurchaseValue = client.metadataTotalPurchaseValue;
+	const totalPurchaseCount = previousTotalPurchaseCount + 1;
+	const totalPurchaseValue = previousTotalPurchaseValue + sale.totalValue;
 
 	await tx
 		.update(clients)
@@ -233,7 +237,7 @@ async function updateClientMetrics({
 	client.metadataTotalPurchases = totalPurchaseCount;
 	client.metadataTotalPurchaseValue = totalPurchaseValue;
 
-	return { totalPurchaseCount, totalPurchaseValue };
+	return { totalPurchaseCount, totalPurchaseValue, previousTotalPurchaseCount, previousTotalPurchaseValue };
 }
 
 export async function syncSales({
@@ -385,7 +389,7 @@ export async function syncSales({
 		const totals =
 			client && becameValid
 				? await updateClientMetrics({ tx, client, sale, saleId, isFirstPurchase })
-				: { totalPurchaseCount: null, totalPurchaseValue: null };
+				: { totalPurchaseCount: null, totalPurchaseValue: null, previousTotalPurchaseCount: null, previousTotalPurchaseValue: null };
 
 		persistedSales.push({
 			id: saleId,
@@ -402,6 +406,8 @@ export async function syncSales({
 			managedFiscalEmissionCandidate: saleIsDelivered && !!erp && erp.policy.fiscal,
 			newTotalPurchaseCount: totals.totalPurchaseCount,
 			newTotalPurchaseValue: totals.totalPurchaseValue,
+			previousTotalPurchaseCount: totals.previousTotalPurchaseCount,
+			previousTotalPurchaseValue: totals.previousTotalPurchaseValue,
 		});
 	}
 

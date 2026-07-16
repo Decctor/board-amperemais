@@ -2,10 +2,17 @@ import { appApiHandler } from "@/lib/app-api";
 import { generateCashbackForCampaignBatch } from "@/lib/cashback/generate-campaign-cashback";
 import { generateCouponGrantsForCampaignBatch } from "@/lib/coupons/generate-campaign-coupon";
 import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
+import {
+	ENQUEUE_CHUNK_SIZE,
+	MAX_ENQUEUE_ATTEMPTS,
+	chunkArray,
+	enqueueChunkWithRetries,
+	getEnqueueErrorMessage,
+	processEnqueuedChunkImmediateInteractions,
+} from "@/lib/campaigns/shared";
 import { INTERACTIONS_CRON_TIMEZONE, getCurrentTimeBlock, type TInteractionCronTimeBlock } from "@/lib/campaigns/time-blocks";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
 import { notifyCampaignEnqueueFailure } from "@/lib/cron/notify-campaign-enqueue-failure";
-import { type ImmediateProcessingData, processOrganizationInteractionsBatch } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import { db } from "@/services/drizzle";
 import { campaigns, interactions } from "@/services/drizzle/schema";
@@ -13,13 +20,6 @@ import type { TCampaignEntity, TInteractionEntity } from "@/services/drizzle/sch
 import dayjs from "dayjs";
 import { and, count, eq, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-
-const IMMEDIATE_PROCESSING_CONCURRENCY = 5;
-// Insertions are chunked so each transaction stays short and stays under Postgres'
-// 65535 bind-parameter limit (interactions: ~8 columns, cashback: ~13 columns per row).
-const ENQUEUE_CHUNK_SIZE = 1000;
-const MAX_ENQUEUE_ATTEMPTS = 3;
-const ENQUEUE_RETRY_BASE_DELAY_MS = 250;
 
 type TOrganizationSingleUseSummary = {
 	activeCampaigns: number;
@@ -45,25 +45,6 @@ function createOrganizationSummary(): TOrganizationSingleUseSummary {
 		immediateEligibleWithoutClientData: 0,
 		cashbacksGenerated: 0,
 	};
-}
-
-function chunkArray<T>(array: T[], size: number): T[][] {
-	if (size <= 0) return [array];
-
-	const chunks: T[][] = [];
-	for (let index = 0; index < array.length; index += size) {
-		chunks.push(array.slice(index, index + size));
-	}
-
-	return chunks;
-}
-
-function sleep(ms: number) {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : "Erro desconhecido ao enfileirar interações.";
 }
 
 async function getSingleUseCampaignsForBlock({
@@ -207,6 +188,24 @@ async function countPersistedInteractionsForCampaignChunk({
 	return Number(row?.total ?? 0);
 }
 
+// Releases the atomic claim so the campaign is not silently lost after an enqueue failure:
+// while the schedule window still matches, a later run can re-claim it and enqueue only the
+// missing clients (enqueueCampaignChunk deduplicates per client); once the window has passed,
+// the campaign stays visibly active so it can be rescheduled manually. Never throws.
+async function reactivateCampaignAfterEnqueueFailure({ organizationId, campaignId }: { organizationId: string; campaignId: string }) {
+	try {
+		await db
+			.update(campaigns)
+			.set({ ativo: true })
+			.where(and(eq(campaigns.id, campaignId), eq(campaigns.organizacaoId, organizationId)));
+		console.log(`[ORG: ${organizationId}] [CAMPAIGN: ${campaignId}] Campaign reactivated after enqueue failure.`);
+		return true;
+	} catch (error) {
+		console.error(`[ORG: ${organizationId}] [CAMPAIGN: ${campaignId}] Failed to reactivate campaign after enqueue failure:`, error);
+		return false;
+	}
+}
+
 async function processSingleUseCampaign({
 	organizationId,
 	campaign,
@@ -221,6 +220,7 @@ async function processSingleUseCampaign({
 	summary: TOrganizationSingleUseSummary;
 }) {
 	// Atomic claim up front guards against overlapping cron runs processing the same campaign twice.
+	// Every failure path below releases the claim via reactivateCampaignAfterEnqueueFailure.
 	const [claimedCampaign] = await db
 		.update(campaigns)
 		.set({ ativo: false })
@@ -234,11 +234,33 @@ async function processSingleUseCampaign({
 
 	summary.claimedCampaigns += 1;
 
-	const targetClientIds = await resolveCampaignAudienceClientIdsForCampaign({
-		executor: db,
-		organizationId,
-		campaign,
-	});
+	let targetClientIds: string[];
+	try {
+		targetClientIds = await resolveCampaignAudienceClientIdsForCampaign({
+			executor: db,
+			organizationId,
+			campaign,
+		});
+	} catch (error) {
+		console.error(`[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}] Failed to resolve campaign audience:`, error);
+		const reactivated = await reactivateCampaignAfterEnqueueFailure({ organizationId, campaignId: campaign.id });
+		await notifyCampaignEnqueueFailure({
+			organizationId,
+			campaignId: campaign.id,
+			campaignTitle: campaign.titulo,
+			audienceSize: 0,
+			enqueuedCount: 0,
+			failedClientIds: [],
+			errors: [getEnqueueErrorMessage(error)],
+			notes: [
+				"Falha ao resolver a audiência da campanha; nenhum cliente foi enfileirado.",
+				reactivated
+					? "A campanha foi reativada e será reprocessada enquanto a janela agendada estiver vigente."
+					: "ATENÇÃO: a campanha NÃO pôde ser reativada; reative-a manualmente.",
+			],
+		});
+		return;
+	}
 	summary.targetClients += targetClientIds.length;
 
 	console.log(`[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}] Found ${targetClientIds.length} matching clients.`);
@@ -256,12 +278,9 @@ async function processSingleUseCampaign({
 
 	const chunks = chunkArray(targetClientIds, ENQUEUE_CHUNK_SIZE);
 	for (const chunk of chunks) {
-		let inserted: { id: string; clienteId: string }[] | null = null;
-		let lastError: unknown = null;
-
-		for (let attempt = 1; attempt <= MAX_ENQUEUE_ATTEMPTS; attempt += 1) {
-			try {
-				const result = await enqueueCampaignChunk({
+		const enqueueResult = await enqueueChunkWithRetries({
+			enqueue: () =>
+				enqueueCampaignChunk({
 					organizationId,
 					campaign,
 					clientIds: chunk,
@@ -269,29 +288,26 @@ async function processSingleUseCampaign({
 					currentTimeBlock,
 					cashbackActive,
 					cashbackValue,
-				});
-				inserted = result.inserted;
-				summary.cashbacksGenerated += result.cashbackGenerated;
-				break;
-			} catch (error) {
-				lastError = error;
-				console.error(`[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}] Enqueue attempt ${attempt} failed:`, getErrorMessage(error));
-				if (attempt < MAX_ENQUEUE_ATTEMPTS) {
-					await sleep(ENQUEUE_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1));
-				}
-			}
-		}
+				}),
+			logPrefix: `[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}]`,
+		});
 
-		if (!inserted) {
+		if (!enqueueResult.success) {
 			failedClientIds.push(...chunk);
-			enqueueErrors.push(getErrorMessage(lastError));
+			enqueueErrors.push(enqueueResult.error);
 			continue;
 		}
 
+		const { inserted, cashbackGenerated } = enqueueResult.result;
+		summary.cashbacksGenerated += cashbackGenerated;
 		summary.interactionsInserted += inserted.length;
 		campaignEnqueuedCount += inserted.length;
 
-		if (inserted.length > 0) {
+		if (inserted.length === 0) continue;
+
+		// From here on the chunk is already persisted: diagnostics/send errors must not abort the
+		// loop, otherwise the remaining chunks would never be enqueued.
+		try {
 			const persistedInteractionsCount = await countPersistedInteractionsForCampaignChunk({
 				organizationId,
 				campaignId: campaign.id,
@@ -313,28 +329,38 @@ async function processSingleUseCampaign({
 					sampleInteractionIds: inserted.slice(0, 5).map((row) => row.id),
 				});
 			}
+
+			if (!hasDeliveryConfig) {
+				summary.immediateEligibleWithoutDeliveryConfig += inserted.length;
+				continue;
+			}
+
+			const immediateResult = await processEnqueuedChunkImmediateInteractions({
+				organizationId,
+				inserted,
+				campaign: {
+					autorId: campaign.autorId,
+					whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
+					whatsappTemplate: campaign.whatsappTemplate,
+				},
+				whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
+				whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
+				weeklyLimitCache,
+				logTag: "SINGLE_USE_CAMPAIGNS",
+			});
+			summary.interactionsQueuedForImmediateProcessing += immediateResult.queuedForImmediateProcessing;
+			summary.immediateEligibleWithoutClientData += immediateResult.missingClientData;
+		} catch (error) {
+			// The enqueued interactions stay pending and will be drained by the process-interactions cron.
+			console.error(`[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}] [SINGLE_USE_CAMPAIGNS] Post-enqueue processing failed for chunk:`, error);
 		}
-
-		if (!hasDeliveryConfig) {
-			summary.immediateEligibleWithoutDeliveryConfig += inserted.length;
-			continue;
-		}
-
-		if (inserted.length === 0) continue;
-
-		await processChunkImmediateInteractions({
-			organizationId,
-			campaign,
-			inserted,
-			weeklyLimitCache,
-			summary,
-		});
 	}
 
 	if (failedClientIds.length > 0) {
 		console.error(
 			`[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}] Failed to enqueue ${failedClientIds.length} clients after ${MAX_ENQUEUE_ATTEMPTS} attempts.`,
 		);
+		const reactivated = await reactivateCampaignAfterEnqueueFailure({ organizationId, campaignId: campaign.id });
 		await notifyCampaignEnqueueFailure({
 			organizationId,
 			campaignId: campaign.id,
@@ -343,96 +369,13 @@ async function processSingleUseCampaign({
 			enqueuedCount: campaignEnqueuedCount,
 			failedClientIds,
 			errors: enqueueErrors,
-			notes: ["A campanha permaneceu desativada e NÃO foi reativada."],
+			notes: [
+				reactivated
+					? "A campanha foi reativada: enquanto a janela agendada estiver vigente, uma nova execução enfileirará apenas os clientes faltantes (deduplicação por cliente)."
+					: "ATENÇÃO: a campanha NÃO pôde ser reativada após a falha; reative-a manualmente.",
+			],
 		});
 	}
-}
-
-async function processChunkImmediateInteractions({
-	organizationId,
-	campaign,
-	inserted,
-	weeklyLimitCache,
-	summary,
-}: {
-	organizationId: string;
-	campaign: TSingleUseCampaign;
-	inserted: { id: string; clienteId: string }[];
-	weeklyLimitCache: ReturnType<typeof createCampaignWeeklyLimitCache>;
-	summary: TOrganizationSingleUseSummary;
-}) {
-	const clientIds = inserted.map((row) => row.clienteId);
-	const clientsData = await db.query.clients.findMany({
-		where: (fields, { inArray: inArrayFilter }) => inArrayFilter(fields.id, clientIds),
-		columns: {
-			id: true,
-			nome: true,
-			telefone: true,
-			email: true,
-			analiseRFMTitulo: true,
-			metadataProdutoMaisCompradoId: true,
-			metadataGrupoProdutoMaisComprado: true,
-			metadataProdutoSugeridoId: true,
-		},
-	});
-	const clientDataById = new Map(clientsData.map((client) => [client.id, client]));
-
-	const immediateProcessingDataList: ImmediateProcessingData[] = [];
-	for (const row of inserted) {
-		const clientData = clientDataById.get(row.clienteId);
-		if (!clientData) {
-			summary.immediateEligibleWithoutClientData += 1;
-			continue;
-		}
-
-		summary.interactionsQueuedForImmediateProcessing += 1;
-		immediateProcessingDataList.push({
-			interactionId: row.id,
-			organizationId,
-			client: {
-				id: clientData.id,
-				nome: clientData.nome,
-				telefone: clientData.telefone,
-				email: clientData.email,
-				analiseRFMTitulo: clientData.analiseRFMTitulo,
-				metadataProdutoMaisCompradoId: clientData.metadataProdutoMaisCompradoId,
-				metadataGrupoProdutoMaisComprado: clientData.metadataGrupoProdutoMaisComprado,
-				metadataProdutoSugeridoId: clientData.metadataProdutoSugeridoId,
-			},
-			campaign: {
-				autorId: campaign.autorId,
-				whatsappConexaoTelefoneId: campaign.whatsappConexaoTelefoneId,
-				whatsappTemplate: campaign.whatsappTemplate,
-			},
-			whatsappToken: campaign.whatsappConexaoTelefone?.conexao?.token ?? undefined,
-			whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
-		});
-	}
-
-	if (immediateProcessingDataList.length === 0) return;
-
-	console.log(`[ORG: ${organizationId}] [INFO] [SINGLE_USE_CAMPAIGNS] Processing ${immediateProcessingDataList.length} immediate interactions`);
-	const processingSummary = await processOrganizationInteractionsBatch({
-		organizationId,
-		interactions: immediateProcessingDataList,
-		sendConcurrency: IMMEDIATE_PROCESSING_CONCURRENCY,
-		weeklyLimitCache,
-	});
-
-	if (processingSummary.failed > 0 || processingSummary.blocked > 0) {
-		for (const failedResult of processingSummary.results.filter((itemResult) => !itemResult.success)) {
-			console.error(`[SINGLE_USE_CAMPAIGNS] Failed to process interaction ${failedResult.interactionId}:`, failedResult.error);
-		}
-	}
-
-	console.log(`[ORG: ${organizationId}] [INFO] [SINGLE_USE_CAMPAIGNS] Immediate interactions processed`, {
-		total: processingSummary.total,
-		succeeded: processingSummary.sent + processingSummary.queued,
-		failed: processingSummary.failed,
-		claimed: processingSummary.claimed,
-		blocked: processingSummary.blocked,
-		durationMs: processingSummary.durationMs,
-	});
 }
 
 async function getProcessSingleUseCampaignsRoute(_req: NextRequest) {

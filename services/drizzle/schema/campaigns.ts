@@ -1,6 +1,6 @@
 import type { TAttributionModelEnum } from "@/schemas/enums";
 import { relations } from "drizzle-orm";
-import { boolean, doublePrecision, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, integer, jsonb, text, timestamp, unique, varchar } from "drizzle-orm/pg-core";
 import { messageTemplates, newTable, users, whatsappConnectionPhones } from ".";
 import {
 	campaignExecutionDelayDirectionEnum,
