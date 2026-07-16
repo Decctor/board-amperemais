@@ -85,7 +85,7 @@ export function useCampaignState() {
 			frequenciaIntervaloValor: 0,
 			frequenciaIntervaloMedida: "DIAS",
 			atribuicaoModelo: "LAST_TOUCH",
-			atribuicaoJanelaDias: 14,
+			atribuicaoJanelaDias: 7,
 			cashbackGeracaoAtivo: false,
 			cashbackGeracaoTipo: null,
 			cashbackGeracaoValor: null,
