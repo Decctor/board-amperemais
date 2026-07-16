@@ -24,9 +24,13 @@ export type TGetIfoodCatalogsInput = z.infer<typeof GetIfoodCatalogsInputSchema>
 
 async function getIfoodCatalogsService({ input, organizacaoId }: { input: TGetIfoodCatalogsInput; organizacaoId: string }) {
 	const context = await resolveIfoodManagementContext({ organizacaoId, merchantId: input.merchantId });
+	// A checagem de versão é auxiliar — se falhar (formato inesperado, loja sem versão), não bloqueia a listagem.
 	const [catalogos, versao] = await Promise.all([
 		getIfoodCatalogs(context.client, input.merchantId),
-		getIfoodCatalogVersion(context.client, input.merchantId),
+		getIfoodCatalogVersion(context.client, input.merchantId).catch((error) => {
+			console.error("[ERROR] [IFOOD] Falha ao consultar a versão do catálogo (seguindo sem versão):", error);
+			return null;
+		}),
 	]);
 	return { data: { catalogos, versao }, message: "Catálogos da loja do iFood buscados com sucesso." };
 }

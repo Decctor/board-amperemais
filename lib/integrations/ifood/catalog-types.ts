@@ -46,11 +46,16 @@ const IfoodCatalogResponseSchema = z
 
 export const IfoodCatalogsListResponseSchema = z.array(IfoodCatalogResponseSchema);
 
-export const IfoodCatalogVersionResponseSchema = z
-	.object({
-		version: z.union([z.string(), z.number()]).optional().nullable(),
-	})
-	.passthrough();
+// O endpoint /catalog/version responde ora com objeto ({ version }), ora com a string/número puro.
+export const IfoodCatalogVersionResponseSchema = z.union([
+	z.string(),
+	z.number(),
+	z
+		.object({
+			version: z.union([z.string(), z.number()]).optional().nullable(),
+		})
+		.passthrough(),
+]);
 
 export type TIfoodCatalogDTO = {
 	id: string;
@@ -73,7 +78,8 @@ export function mapIfoodCatalog(catalog: z.infer<typeof IfoodCatalogResponseSche
 export type TIfoodCatalogVersion = "V1" | "V2" | null;
 
 export function mapIfoodCatalogVersion(payload: z.infer<typeof IfoodCatalogVersionResponseSchema>): TIfoodCatalogVersion {
-	const version = payload.version === null || payload.version === undefined ? null : String(payload.version);
+	const rawVersion = typeof payload === "object" && payload !== null ? payload.version : payload;
+	const version = rawVersion === null || rawVersion === undefined ? null : String(rawVersion);
 	if (!version) return null;
 	if (version.includes("2")) return "V2";
 	if (version.includes("1")) return "V1";
