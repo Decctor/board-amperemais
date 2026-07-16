@@ -1,9 +1,11 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getIfoodOptionGroup, listIfoodOptionGroups } from "@/lib/integrations/ifood/catalog";
+import { deleteIfoodOptionGroup, patchIfoodOptionGroupStatus, updateIfoodOptionGroup } from "@/lib/integrations/ifood/catalog-items";
 import type { TIfoodOptionGroupDTO } from "@/lib/integrations/ifood/catalog-types";
 import { resolveIfoodManagementContext } from "@/lib/integrations/ifood/context";
-import { canViewIntegrations } from "@/lib/integrations/mask";
+import { canManageIntegrations, canViewIntegrations } from "@/lib/integrations/mask";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -71,7 +73,102 @@ async function getIfoodOptionGroupsRoute(request: NextRequest) {
 	return NextResponse.json(result);
 }
 
+// ---------------------------------------------------------------------------
+// PATCH — atualiza um grupo de complementos (nome ou status)
+// ---------------------------------------------------------------------------
+
+const UpdateIfoodOptionGroupInputSchema = z
+	.object({
+		merchantId: z
+			.string({
+				required_error: "ID da loja do iFood não informado.",
+				invalid_type_error: "Tipo inválido para o ID da loja do iFood.",
+			})
+			.min(1, "ID da loja do iFood não informado."),
+		optionGroupId: z
+			.string({
+				required_error: "ID do grupo de complementos não informado.",
+				invalid_type_error: "Tipo inválido para o ID do grupo de complementos.",
+			})
+			.min(1, "ID do grupo de complementos não informado."),
+		nome: z.string({ invalid_type_error: "Tipo inválido para o nome do grupo de complementos." }).trim().optional().nullable(),
+		status: z.string({ invalid_type_error: "Tipo inválido para o status do grupo de complementos." }).optional().nullable(),
+	})
+	.refine((value) => value.nome || value.status, { message: "Nenhuma alteração informada para o grupo de complementos." });
+export type TUpdateIfoodOptionGroupInput = z.infer<typeof UpdateIfoodOptionGroupInputSchema>;
+
+async function updateIfoodOptionGroupService({ input, session }: { input: TUpdateIfoodOptionGroupInput; session: TAuthUserSession }) {
+	const organizacaoId = session.membership?.organizacao.id as string;
+	const context = await resolveIfoodManagementContext({ organizacaoId, merchantId: input.merchantId });
+
+	if (input.nome) await updateIfoodOptionGroup(context.client, input.merchantId, input.optionGroupId, { nome: input.nome });
+	if (input.status) await patchIfoodOptionGroupStatus(context.client, input.merchantId, input.optionGroupId, input.status);
+
+	return { data: { id: input.optionGroupId }, message: "Grupo de complementos atualizado com sucesso no iFood." };
+}
+export type TUpdateIfoodOptionGroupOutput = Awaited<ReturnType<typeof updateIfoodOptionGroupService>>;
+
+async function updateIfoodOptionGroupRoute(request: NextRequest) {
+	const session = await getCurrentSessionUncached();
+	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para gerenciar a integração do iFood.");
+	if (!session.membership?.organizacao.id)
+		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização para gerenciar a integração do iFood.");
+	if (!canManageIntegrations(session.membership?.permissoes))
+		throw new createHttpError.Forbidden("Você não possui permissão para gerenciar integrações.");
+
+	const input = UpdateIfoodOptionGroupInputSchema.parse(await request.json());
+	const result = await updateIfoodOptionGroupService({ input, session });
+	return NextResponse.json(result);
+}
+
+// ---------------------------------------------------------------------------
+// DELETE — remove um grupo de complementos
+// ---------------------------------------------------------------------------
+
+const DeleteIfoodOptionGroupInputSchema = z.object({
+	merchantId: z
+		.string({
+			required_error: "ID da loja do iFood não informado.",
+			invalid_type_error: "Tipo inválido para o ID da loja do iFood.",
+		})
+		.min(1, "ID da loja do iFood não informado."),
+	optionGroupId: z
+		.string({
+			required_error: "ID do grupo de complementos não informado.",
+			invalid_type_error: "Tipo inválido para o ID do grupo de complementos.",
+		})
+		.min(1, "ID do grupo de complementos não informado."),
+});
+export type TDeleteIfoodOptionGroupInput = z.infer<typeof DeleteIfoodOptionGroupInputSchema>;
+
+async function deleteIfoodOptionGroupService({ input, session }: { input: TDeleteIfoodOptionGroupInput; session: TAuthUserSession }) {
+	const organizacaoId = session.membership?.organizacao.id as string;
+	const context = await resolveIfoodManagementContext({ organizacaoId, merchantId: input.merchantId });
+	await deleteIfoodOptionGroup(context.client, input.merchantId, input.optionGroupId);
+	return { data: { id: input.optionGroupId }, message: "Grupo de complementos removido com sucesso do iFood." };
+}
+export type TDeleteIfoodOptionGroupOutput = Awaited<ReturnType<typeof deleteIfoodOptionGroupService>>;
+
+async function deleteIfoodOptionGroupRoute(request: NextRequest) {
+	const session = await getCurrentSessionUncached();
+	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para gerenciar a integração do iFood.");
+	if (!session.membership?.organizacao.id)
+		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização para gerenciar a integração do iFood.");
+	if (!canManageIntegrations(session.membership?.permissoes))
+		throw new createHttpError.Forbidden("Você não possui permissão para gerenciar integrações.");
+
+	const searchParams = request.nextUrl.searchParams;
+	const input = DeleteIfoodOptionGroupInputSchema.parse({
+		merchantId: searchParams.get("merchantId"),
+		optionGroupId: searchParams.get("optionGroupId"),
+	});
+	const result = await deleteIfoodOptionGroupService({ input, session });
+	return NextResponse.json(result);
+}
+
 export const GET = appApiHandler({ GET: getIfoodOptionGroupsRoute });
+export const PATCH = appApiHandler({ PATCH: updateIfoodOptionGroupRoute });
+export const DELETE = appApiHandler({ DELETE: deleteIfoodOptionGroupRoute });
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

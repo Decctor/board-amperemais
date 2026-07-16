@@ -6,8 +6,10 @@ import {
 	IfoodCatalogVersionResponseSchema,
 	IfoodCatalogsListResponseSchema,
 	IfoodCategoriesListResponseSchema,
+	IfoodCategoryDetailResponseSchema,
 	IfoodOptionGroupDetailResponseSchema,
 	IfoodOptionGroupsListResponseSchema,
+	IfoodProductDetailResponseSchema,
 	IfoodProductsListResponseSchema,
 	mapIfoodBatch,
 	mapIfoodCatalog,
@@ -15,6 +17,7 @@ import {
 	mapIfoodCategory,
 	mapIfoodOptionGroup,
 	mapIfoodOptionGroupsList,
+	mapIfoodProduct,
 	mapIfoodProductsPage,
 	type TIfoodBatchDTO,
 	type TIfoodCatalogDTO,
@@ -127,5 +130,136 @@ export async function getIfoodBatch(client: AxiosInstance, merchantId: string, b
 		return mapIfoodBatch(IfoodBatchResponseSchema.parse(response.data));
 	} catch (error) {
 		mapIfoodError("getIfoodBatch", error);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Escritas — categorias
+// ---------------------------------------------------------------------------
+
+export type TIfoodCategoryWritePayload = {
+	nome: string;
+	codigoExterno?: string | null;
+	status?: string | null;
+	indice?: number | null;
+	template?: string | null;
+};
+
+function toIfoodCategoryBody(payload: TIfoodCategoryWritePayload) {
+	return {
+		name: payload.nome,
+		externalCode: payload.codigoExterno ?? undefined,
+		status: payload.status ?? "AVAILABLE",
+		index: payload.indice ?? undefined,
+		template: payload.template ?? "DEFAULT",
+	};
+}
+
+export async function createIfoodCategory(
+	client: AxiosInstance,
+	merchantId: string,
+	{ catalogId, categoria }: { catalogId: string; categoria: TIfoodCategoryWritePayload },
+) {
+	try {
+		const response = await client.post<unknown>(catalogUrl(merchantId, `/catalogs/${catalogId}/categories`), toIfoodCategoryBody(categoria));
+		return mapIfoodCategory(IfoodCategoryDetailResponseSchema.parse(response.data));
+	} catch (error) {
+		mapIfoodError("createIfoodCategory", error);
+	}
+}
+
+export async function updateIfoodCategory(
+	client: AxiosInstance,
+	merchantId: string,
+	{ catalogId, categoryId, categoria }: { catalogId: string; categoryId: string; categoria: TIfoodCategoryWritePayload },
+) {
+	try {
+		const response = await client.patch<unknown>(
+			catalogUrl(merchantId, `/catalogs/${catalogId}/categories/${categoryId}`),
+			toIfoodCategoryBody(categoria),
+		);
+		return mapIfoodCategory(IfoodCategoryDetailResponseSchema.parse(response.data));
+	} catch (error) {
+		mapIfoodError("updateIfoodCategory", error);
+	}
+}
+
+export async function deleteIfoodCategory(client: AxiosInstance, merchantId: string, categoryId: string): Promise<void> {
+	try {
+		await client.delete(catalogUrl(merchantId, `/categories/${categoryId}`));
+	} catch (error) {
+		mapIfoodError("deleteIfoodCategory", error);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Escritas — produtos + lotes de preço/status
+// ---------------------------------------------------------------------------
+
+export type TIfoodProductWritePayload = {
+	nome: string;
+	descricao?: string | null;
+	codigoExterno?: string | null;
+	imagemPath?: string | null;
+};
+
+function toIfoodProductBody(payload: TIfoodProductWritePayload) {
+	return {
+		name: payload.nome,
+		description: payload.descricao ?? undefined,
+		externalCode: payload.codigoExterno ?? undefined,
+		image: payload.imagemPath ?? undefined,
+	};
+}
+
+export async function createIfoodProduct(client: AxiosInstance, merchantId: string, produto: TIfoodProductWritePayload) {
+	try {
+		const response = await client.post<unknown>(catalogUrl(merchantId, "/products"), toIfoodProductBody(produto));
+		return mapIfoodProduct(IfoodProductDetailResponseSchema.parse(response.data));
+	} catch (error) {
+		mapIfoodError("createIfoodProduct", error);
+	}
+}
+
+export async function updateIfoodProduct(client: AxiosInstance, merchantId: string, productId: string, produto: TIfoodProductWritePayload) {
+	try {
+		const response = await client.put<unknown>(catalogUrl(merchantId, `/products/${productId}`), { id: productId, ...toIfoodProductBody(produto) });
+		return mapIfoodProduct(IfoodProductDetailResponseSchema.parse(response.data));
+	} catch (error) {
+		mapIfoodError("updateIfoodProduct", error);
+	}
+}
+
+export async function deleteIfoodProduct(client: AxiosInstance, merchantId: string, productId: string): Promise<void> {
+	try {
+		await client.delete(catalogUrl(merchantId, `/products/${productId}`));
+	} catch (error) {
+		mapIfoodError("deleteIfoodProduct", error);
+	}
+}
+
+export async function batchUpdateIfoodProductsPrice(
+	client: AxiosInstance,
+	merchantId: string,
+	itens: { externalCode: string; price: { value: number; originalValue?: number | null } }[],
+): Promise<TIfoodBatchDTO> {
+	try {
+		const response = await client.patch<unknown>(catalogUrl(merchantId, "/products/price"), itens);
+		return mapIfoodBatch(IfoodBatchResponseSchema.parse(response.data));
+	} catch (error) {
+		mapIfoodError("batchUpdateIfoodProductsPrice", error);
+	}
+}
+
+export async function batchUpdateIfoodProductsStatus(
+	client: AxiosInstance,
+	merchantId: string,
+	itens: { externalCode: string; status: string }[],
+): Promise<TIfoodBatchDTO> {
+	try {
+		const response = await client.patch<unknown>(catalogUrl(merchantId, "/products/status"), itens);
+		return mapIfoodBatch(IfoodBatchResponseSchema.parse(response.data));
+	} catch (error) {
+		mapIfoodError("batchUpdateIfoodProductsStatus", error);
 	}
 }
