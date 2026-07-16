@@ -3,19 +3,21 @@
 // mas a proposta vive aqui pela qualidade do design system.
 // Renderizada dentro do shell de impressão em ../page.tsx (A4). Não faz parte do produto.
 //
-// Estrutura (6 folhas):
+// Estrutura (7 folhas):
 //   01 · Cenário, solução e escopo
 //   02 · Pilar 01 — Cadastro via QR Code (principal interesse do cliente)
 //   03 · Pilar 02 — Integração com o ERPFlex (CPF no PDV)
 //   04 · Pilar 03 — Fidelização com cashback + Matriz RFM
 //   05 · Pilar 04 — Reativação automática no WhatsApp
-//   06 · Investimento, caminho e fechamento
+//   06 · Pilar 05 — Pontos, vale-compras e sorteios (pedido do cliente)
+//   07 · Investimento, caminho e fechamento
 
 import { ARTHUR_WHATSAPP_NUMBER, LUCAS_WHATSAPP_NUMBER } from "@/config/internal-coms";
 import {
 	ArrowRight,
 	BarChart3,
 	Check,
+	Coins,
 	Contact,
 	Database,
 	DoorOpen,
@@ -32,6 +34,7 @@ import {
 	ShoppingCart,
 	Sparkles,
 	Star,
+	Ticket,
 	Users,
 	Wallet,
 } from "lucide-react";
@@ -147,7 +150,7 @@ const ROADMAP: { icon: LucideIcon; title: string; body: string; now?: boolean }[
 	{
 		icon: Gift,
 		title: "Clube de fidelidade",
-		body: "Cashback e vantagens exclusivas sobre a base já cadastrada.",
+		body: "Cashback ou pontos, vale-compras e sorteios sobre a base já cadastrada.",
 	},
 	{
 		icon: Megaphone,
@@ -173,6 +176,7 @@ export function PraticoSupermercadosProposal() {
 			<ErpFlexSheet />
 			<LoyaltySheet />
 			<ReactivationSheet />
+			<PointsAndRafflesSheet />
 			<InvestmentSheet />
 		</>
 	);
@@ -390,7 +394,7 @@ function IntroSheet() {
 					</div>
 				</div>
 			</div>
-			<SheetFooter index="01 / 06" label="Proposta · Prático Supermercados" />
+			<SheetFooter index="01 / 07" label="Proposta · Prático Supermercados" />
 		</Sheet>
 	);
 }
@@ -465,7 +469,7 @@ function QrCodeSheet() {
 
 				<TakeawayStrip>uma base que cresce todos os dias — dentro e fora da loja — com o perfil completo de cada contato.</TakeawayStrip>
 			</div>
-			<SheetFooter index="02 / 06" label="Pilar 01 · Cadastro via QR Code" />
+			<SheetFooter index="02 / 07" label="Pilar 01 · Cadastro via QR Code" />
 		</Sheet>
 	);
 }
@@ -712,7 +716,7 @@ function ErpFlexSheet() {
 
 				<TakeawayStrip>cada CPF digitado no PDV vira histórico de compra no perfil do cliente — sem nenhum trabalho manual da equipe.</TakeawayStrip>
 			</div>
-			<SheetFooter index="03 / 06" label="Pilar 02 · Integração ERPFlex" />
+			<SheetFooter index="03 / 07" label="Pilar 02 · Integração ERPFlex" />
 		</Sheet>
 	);
 }
@@ -851,7 +855,7 @@ function LoyaltySheet() {
 
 				<TakeawayStrip>clientes com um motivo concreto para escolher o Prático — e uma base que se segmenta sozinha a cada compra.</TakeawayStrip>
 			</div>
-			<SheetFooter index="04 / 06" label="Pilar 03 · Fidelização" />
+			<SheetFooter index="04 / 07" label="Pilar 03 · Fidelização" />
 		</Sheet>
 	);
 }
@@ -1046,7 +1050,7 @@ function ReactivationSheet() {
 
 				<TakeawayStrip>clientes que sumiram voltando a comprar — no piloto automático, sem você levantar um dedo.</TakeawayStrip>
 			</div>
-			<SheetFooter index="05 / 06" label="Pilar 04 · Reativação" />
+			<SheetFooter index="05 / 07" label="Pilar 04 · Reativação" />
 		</Sheet>
 	);
 }
@@ -1102,7 +1106,206 @@ function WhatsappCampaignMock() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  6 · Investimento, caminho e fechamento                                     */
+/*  6 · Pilar 05 — Pontos, vale-compras e sorteios                             */
+/* -------------------------------------------------------------------------- */
+
+const POINTS_CONVERSION = [
+	{ value: "R$ 1,00", label: "em compras" },
+	{ value: "1 ponto", label: "creditado na hora" },
+	{ value: "500 pts", label: "= R$ 5,00 em vale-compras" },
+];
+
+function PointsAndRafflesSheet() {
+	return (
+		<Sheet>
+			<div className="flex flex-1 flex-col px-11 pt-10 pb-8">
+				<PillarHeader
+					n="05"
+					icon={Coins}
+					title="Pontos, vale-compras e sorteios"
+					badge="Pedido do Prático"
+					lead="O modelo que o Prático pediu, rodando no mesmo motor do clube: cada real vira ponto, pontos viram vale-compras digital — e as campanhas geram números da sorte para sorteios."
+				/>
+
+				{/* Bloco A — Pontos e vale-compras */}
+				<div className="mt-6">
+					<div className="mb-3 flex items-center gap-2">
+						<span className="flex h-7 w-7 items-center justify-center rounded-lg text-white" style={{ backgroundColor: BRAND.green }}>
+							<Coins className="h-4 w-4" />
+						</span>
+						<h3 className="text-sm font-black uppercase tracking-wide text-neutral-900">Pontos e vale-compras</h3>
+						<span
+							className="rounded-full px-2 py-0.5 text-[0.55rem] font-black uppercase tracking-wider"
+							style={{ backgroundColor: hexToRgba(BRAND.green, 0.08), color: BRAND.green }}
+						>
+							Mesmo motor do cashback · só muda a régua
+						</span>
+					</div>
+
+					<div className="grid grid-cols-[1.05fr_0.95fr] items-start gap-6">
+						<div className="flex flex-col gap-4">
+							{/* régua de conversão */}
+							<div className="flex items-stretch gap-2">
+								{POINTS_CONVERSION.map((step, i) => (
+									<div key={step.value} className="flex flex-1 items-center gap-2">
+										<div
+											className="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl border px-2 py-2.5 text-center"
+											style={
+												i === POINTS_CONVERSION.length - 1
+													? { borderColor: BRAND.lime, backgroundColor: hexToRgba(BRAND.lime, 0.12) }
+													: { borderColor: "#e5e5e5", backgroundColor: "#fff" }
+											}
+										>
+											<span className="text-[1.05rem] font-black tabular-nums leading-none" style={{ color: BRAND.green }}>
+												{step.value}
+											</span>
+											<span className="text-[0.58rem] font-semibold leading-tight text-neutral-500">{step.label}</span>
+										</div>
+										{i < POINTS_CONVERSION.length - 1 ? (
+											<ArrowRight className="h-4 w-4 flex-shrink-0" style={{ color: BRAND.limeText }} />
+										) : null}
+									</div>
+								))}
+							</div>
+
+							<ul className="flex flex-col gap-2.5">
+								<BenefitRow>A cada R$ 1,00 em compras, o cliente ganha 1 ponto — creditado pelo CPF no caixa.</BenefitRow>
+								<BenefitRow>O resgate emite um vale-compras digital: voucher com código único, enviado no WhatsApp.</BenefitRow>
+								<BenefitRow>O voucher vale desconto na próxima compra, aplicado direto no caixa.</BenefitRow>
+								<BenefitRow>Conversão, validade e limites de resgate configurados por você — sem travar a operação.</BenefitRow>
+							</ul>
+						</div>
+
+						{/* mockup voucher */}
+						<div className="flex flex-col items-center gap-2">
+							<VoucherMock />
+							<span className="text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-neutral-500">Vale-compras digital · enviado no WhatsApp</span>
+						</div>
+					</div>
+				</div>
+
+				{/* Bloco B — Sorteios */}
+				<div className="mt-6">
+					<div className="mb-3 flex items-center gap-2">
+						<span className="flex h-7 w-7 items-center justify-center rounded-lg text-white" style={{ backgroundColor: BRAND.green }}>
+							<Ticket className="h-4 w-4" />
+						</span>
+						<h3 className="text-sm font-black uppercase tracking-wide text-neutral-900">Campanhas que geram números para sorteios</h3>
+					</div>
+
+					<div className="grid grid-cols-[0.95fr_1.05fr] items-start gap-6">
+						{/* mockup números da sorte */}
+						<div className="flex flex-col items-center gap-2">
+							<RaffleTicketsMock />
+							<span className="text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-neutral-500">Números da sorte · gerados a cada compra</span>
+						</div>
+
+						<ul className="flex flex-col gap-2.5 pt-1">
+							<BenefitRow>A campanha define a regra — ex.: a cada R$ 100,00 em compras no período, um número da sorte.</BenefitRow>
+							<BenefitRow>O número é gerado automaticamente na compra e enviado por WhatsApp na hora.</BenefitRow>
+							<BenefitRow>Cada número é único e fica registrado no cadastro do cliente — auditável para o dia do sorteio.</BenefitRow>
+							<BenefitRow>O painel lista todos os números emitidos por campanha, cliente e loja — pronto para a apuração.</BenefitRow>
+						</ul>
+					</div>
+				</div>
+
+				<TakeawayStrip>pontos que viram vale-compras e compras que viram números da sorte — tudo sobre o mesmo cadastro e a mesma integração, sem sistema paralelo.</TakeawayStrip>
+			</div>
+			<SheetFooter index="06 / 07" label="Pilar 05 · Pontos, vale-compras e sorteios" />
+		</Sheet>
+	);
+}
+
+function VoucherMock() {
+	return (
+		<div className="w-full max-w-[330px] overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-neutral-200">
+			{/* topo */}
+			<div className="flex items-center justify-between px-5 py-3 text-white" style={heroGradient}>
+				<div className="flex items-center gap-2">
+					<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-[0.68rem] font-black">PS</div>
+					<span className="text-[0.78rem] font-extrabold">Vale-Compras · Prático</span>
+				</div>
+				<Gift className="h-4 w-4 text-white/80" />
+			</div>
+
+			{/* valor */}
+			<div className="flex flex-col items-center gap-1 px-5 pt-4 pb-3">
+				<span className="text-[0.6rem] font-black uppercase tracking-[0.2em]" style={{ color: BRAND.limeText }}>
+					Desconto na próxima compra
+				</span>
+				<span className="text-4xl font-black tabular-nums" style={{ color: BRAND.greenDeep }}>
+					R$ 5,00
+				</span>
+				<span className="text-[0.64rem] text-neutral-500">500 pontos resgatados · válido por 30 dias</span>
+			</div>
+
+			{/* código — linha perfurada */}
+			<div className="relative mx-5 border-t border-dashed border-neutral-300">
+				<span className="absolute -left-7 -top-2.5 h-5 w-5 rounded-full bg-neutral-100" />
+				<span className="absolute -right-7 -top-2.5 h-5 w-5 rounded-full bg-neutral-100" />
+			</div>
+			<div className="flex items-center justify-between px-5 py-3.5">
+				<div className="flex flex-col leading-tight">
+					<span className="text-[0.56rem] font-black uppercase tracking-wide text-neutral-400">Código do voucher</span>
+					<span className="text-[0.95rem] font-black tracking-[0.2em]" style={{ color: BRAND.green }}>
+						PRATICO-8F3K
+					</span>
+				</div>
+				<span
+					className="rounded-full px-2.5 py-1 text-[0.56rem] font-black uppercase tracking-wide"
+					style={{ backgroundColor: BRAND.lime, color: BRAND.greenDeep }}
+				>
+					Informe o CPF no caixa
+				</span>
+			</div>
+		</div>
+	);
+}
+
+const RAFFLE_TICKETS = [
+	{ number: "04821", detail: "Compra de R$ 214,90 · Loja Matriz" },
+	{ number: "04822", detail: "Compra de R$ 187,40 · Loja 02" },
+	{ number: "05107", detail: "Compra de R$ 96,20 · Loja Matriz" },
+];
+
+function RaffleTicketsMock() {
+	return (
+		<div className="flex w-full max-w-[340px] flex-col gap-2">
+			{/* cabeçalho da campanha */}
+			<div className="flex items-center gap-2.5 rounded-xl px-4 py-2.5 text-white" style={heroGradient}>
+				<Ticket className="h-4 w-4 flex-shrink-0" style={{ color: BRAND.lime }} />
+				<div className="flex min-w-0 flex-col leading-tight">
+					<span className="text-[0.74rem] font-extrabold">Sorteio de Aniversário do Prático</span>
+					<span className="text-[0.6rem] text-white/65">A cada R$ 100 em compras · 1 número da sorte</span>
+				</div>
+			</div>
+
+			{RAFFLE_TICKETS.map((ticket) => (
+				<div key={ticket.number} className="flex items-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-neutral-200">
+					<div
+						className="flex h-full flex-col items-center justify-center self-stretch border-r border-dashed border-neutral-300 px-3.5 py-2.5"
+						style={{ backgroundColor: hexToRgba(BRAND.lime, 0.15) }}
+					>
+						<span className="text-[0.5rem] font-black uppercase tracking-wide" style={{ color: BRAND.limeText }}>
+							Nº da sorte
+						</span>
+						<span className="text-[1.05rem] font-black tabular-nums leading-none" style={{ color: BRAND.greenDeep }}>
+							{ticket.number}
+						</span>
+					</div>
+					<div className="flex min-w-0 flex-1 flex-col px-3.5 py-2 leading-tight">
+						<span className="text-[0.74rem] font-extrabold text-neutral-900">Maria Souza</span>
+						<span className="text-[0.62rem] text-neutral-500">{ticket.detail}</span>
+					</div>
+					<FaWhatsapp className="mr-3.5 h-4 w-4 flex-shrink-0 text-green-600" />
+				</div>
+			))}
+		</div>
+	);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  7 · Investimento, caminho e fechamento                                     */
 /* -------------------------------------------------------------------------- */
 
 function InvestmentSheet() {
@@ -1183,7 +1386,7 @@ function InvestmentSheet() {
 						))}
 					</div>
 					<p className="mt-3 text-[0.72rem] leading-snug text-neutral-500">
-						Cada etapa usa a mesma base de clientes construída no hub — nada se refaz, tudo se soma. Os pilares 03 e 04 desta proposta mostram as etapas 2
+						Cada etapa usa a mesma base de clientes construída no hub — nada se refaz, tudo se soma. Os pilares 03 a 05 desta proposta mostram as etapas 2
 						e 3 já funcionando.
 					</p>
 				</div>
@@ -1222,7 +1425,7 @@ function InvestmentSheet() {
 					</div>
 				</div>
 			</div>
-			<SheetFooter index="06 / 06" label="Investimento" />
+			<SheetFooter index="07 / 07" label="Investimento" />
 		</Sheet>
 	);
 }
