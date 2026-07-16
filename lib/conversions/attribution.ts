@@ -210,7 +210,7 @@ export async function processConversionAttribution(tx: DBTransaction, params: At
 		allCampaigns.map((c) => [
 			c.id,
 			{
-				windowDays: c.atribuicaoJanelaDias ?? 14,
+				windowDays: c.atribuicaoJanelaDias ?? 7,
 				model: c.atribuicaoModelo ?? "LAST_TOUCH",
 			},
 		]),

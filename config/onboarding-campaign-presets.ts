@@ -89,7 +89,7 @@ const SHARED_NULL_TRIGGERS = {
 	frequenciaIntervaloValor: 0,
 	frequenciaIntervaloMedida: "DIAS",
 	atribuicaoModelo: "LAST_TOUCH",
-	atribuicaoJanelaDias: 14,
+	atribuicaoJanelaDias: 7,
 	execucaoAgendadaDirecao: "DEPOIS",
 	filtros: null,
 } satisfies Partial<TOnboardingCampaignFields>;

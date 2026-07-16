@@ -365,7 +365,9 @@ function InteractionCardRetryButton() {
 		mutationKey: ["retry-campaign-interaction", interaction.id],
 		mutationFn: async () => await retryCampaignInteraction({ interactionId: interaction.id }),
 		onSuccess: async (response) => {
-			toast.success(response.message);
+			// O endpoint responde 200 mesmo quando o reenvio não foi executado (reenviada: false)
+			if (response.data.reenviada) toast.success(response.message);
+			else toast.error(response.message);
 			await queryClient.invalidateQueries({ queryKey: ["campaign-interactions-logs"] });
 		},
 		onError: (error) => {
@@ -373,16 +375,24 @@ function InteractionCardRetryButton() {
 		},
 	});
 
-	if (!interaction.erroEnvio || interaction.dataExecucao) return null;
+	if (interaction.statusEnvio !== "FALHOU" && interaction.statusEnvio !== "BLOQUEADA") return null;
 
 	return (
-		<Button size="sm" variant="ghost" onClick={() => handleRetryInteraction()} disabled={retryIsPending} className="flex items-center gap-1.5">
+		<Button
+			type="button"
+			size="sm"
+			variant="ghost"
+			onClick={() => handleRetryInteraction()}
+			disabled={retryIsPending}
+			aria-label="Reenviar interação"
+			className="h-7 gap-1.5 px-2.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+		>
 			<RefreshCw
 				className={cn("w-4 h-4 min-w-4 min-h-4", {
 					"animate-spin": retryIsPending,
 				})}
 			/>
-			{/* {retryIsPending ? "REENVIANDO..." : "TENTAR NOVAMENTE"} */}
+			<span className="hidden sm:inline">{retryIsPending ? "REENVIANDO..." : "REENVIAR"}</span>
 		</Button>
 	);
 }
