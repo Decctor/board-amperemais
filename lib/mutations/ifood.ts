@@ -25,11 +25,13 @@ import type {
 	TUpdateIfoodOptionGroupInput,
 	TUpdateIfoodOptionGroupOutput,
 } from "@/app/api/integrations/ifood/catalog/option-groups/route";
-import type { TCreateIfoodOptionsInput, TCreateIfoodOptionsOutput, TPatchIfoodOptionsInput, TPatchIfoodOptionsOutput } from "@/app/api/integrations/ifood/catalog/options/route";
 import type {
-	TBatchUpdateIfoodProductsInput,
-	TBatchUpdateIfoodProductsOutput,
-} from "@/app/api/integrations/ifood/catalog/products/batch/route";
+	TCreateIfoodOptionsInput,
+	TCreateIfoodOptionsOutput,
+	TPatchIfoodOptionsInput,
+	TPatchIfoodOptionsOutput,
+} from "@/app/api/integrations/ifood/catalog/options/route";
+import type { TBatchUpdateIfoodProductsInput, TBatchUpdateIfoodProductsOutput } from "@/app/api/integrations/ifood/catalog/products/batch/route";
 import type {
 	TCreateIfoodProductInput,
 	TCreateIfoodProductOutput,
@@ -39,11 +41,14 @@ import type {
 	TUpdateIfoodProductOutput,
 } from "@/app/api/integrations/ifood/catalog/products/route";
 import type { TCatalogActionInput, TCatalogActionOutput } from "@/app/api/integrations/ifood/catalog/route";
-import type {
-	TUpdateIfoodOpeningHoursInput,
-	TUpdateIfoodOpeningHoursOutput,
-} from "@/app/api/integrations/ifood/merchants/opening-hours/route";
+import type { TUpdateIfoodOpeningHoursInput, TUpdateIfoodOpeningHoursOutput } from "@/app/api/integrations/ifood/merchants/opening-hours/route";
+import type { TPostIfoodOrderActionInput, TPostIfoodOrderActionOutput } from "@/app/api/integrations/ifood/orders/actions/route";
 import axios from "axios";
+
+export async function postIfoodOrderAction(input: TPostIfoodOrderActionInput) {
+	const { data } = await axios.post<TPostIfoodOrderActionOutput>("/api/integrations/ifood/orders/actions", input);
+	return data;
+}
 
 export async function createIfoodInterruption(input: TCreateIfoodInterruptionInput) {
 	const { data } = await axios.post<TCreateIfoodInterruptionOutput>("/api/integrations/ifood/merchants/interruptions", input);

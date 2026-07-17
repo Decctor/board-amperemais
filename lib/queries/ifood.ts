@@ -6,6 +6,8 @@ import type { TGetIfoodInterruptionsOutput } from "@/app/api/integrations/ifood/
 import type { TGetIfoodOpeningHoursOutput } from "@/app/api/integrations/ifood/merchants/opening-hours/route";
 import type { TGetIfoodMerchantsOutput } from "@/app/api/integrations/ifood/merchants/route";
 import type { TGetIfoodMerchantStatusOutput } from "@/app/api/integrations/ifood/merchants/status/route";
+import type { TGetIfoodOrderDetailsOutput } from "@/app/api/integrations/ifood/orders/details/route";
+import type { TGetIfoodOrdersOutput } from "@/app/api/integrations/ifood/orders/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
@@ -161,6 +163,44 @@ export function useIfoodOptionGroups({ merchantId, enabled = true }: { merchantI
 			queryKey,
 			queryFn: () => fetchIfoodOptionGroups(merchantId as string),
 			enabled: !!merchantId && enabled,
+			retry: false,
+		}),
+		queryKey,
+	};
+}
+
+async function fetchIfoodOrders() {
+	const { data } = await axios.get<TGetIfoodOrdersOutput>("/api/integrations/ifood/orders");
+	return data.data.orders;
+}
+
+export function useIfoodOrders({ enabled = true }: { enabled?: boolean } = {}) {
+	const queryKey = ["ifood-orders"];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: fetchIfoodOrders,
+			enabled,
+			retry: false,
+			// O painel de pedidos é operacional: mantém a lista fresca enquanto aberto.
+			refetchInterval: 30 * 1000,
+		}),
+		queryKey,
+	};
+}
+
+async function fetchIfoodOrderDetails(orderId: string) {
+	const { data } = await axios.get<TGetIfoodOrderDetailsOutput>(`/api/integrations/ifood/orders/details?orderId=${orderId}`);
+	return data.data;
+}
+
+export function useIfoodOrderDetails({ orderId }: { orderId: string | null }) {
+	const queryKey = ["ifood-order-details", orderId];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchIfoodOrderDetails(orderId as string),
+			enabled: !!orderId,
 			retry: false,
 		}),
 		queryKey,
