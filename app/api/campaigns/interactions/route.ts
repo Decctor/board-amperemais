@@ -298,9 +298,11 @@ async function retryCampaignInteraction({ input, session }: { input: TRetryCampa
 	if (!campaignWhatsappConnectionPhoneId) {
 		throw new createHttpError.BadRequest("Telefone de conexão do WhatsApp não encontrado para essa campanha.");
 	}
-	if (interaction.dataExecucao) throw new createHttpError.BadRequest("Essa interação já foi executada e não pode ser reenviada manualmente.");
-	if (interaction.statusEnvio !== "FALHOU" && !interaction.erroEnvio) {
-		throw new createHttpError.BadRequest("Apenas interações com falha podem ser reenviadas manualmente.");
+	if (interaction.statusEnvio === "ENVIADO" || interaction.statusEnvio === "ENTREGUE" || interaction.statusEnvio === "LIDO") {
+		throw new createHttpError.BadRequest("Essa interação já foi enviada e não pode ser reenviada manualmente.");
+	}
+	if (interaction.statusEnvio !== "FALHOU" && interaction.statusEnvio !== "BLOQUEADA") {
+		throw new createHttpError.BadRequest("Apenas interações com falha de envio podem ser reenviadas manualmente.");
 	}
 
 	const whatsappConnection = interaction.campanha.whatsappConexaoTelefone?.conexao;
@@ -329,6 +331,9 @@ async function retryCampaignInteraction({ input, session }: { input: TRetryCampa
 		whatsappToken: whatsappConnection.tipoConexao === "META_CLOUD_API" ? (whatsappConnection.token ?? undefined) : undefined,
 		whatsappSessionId: whatsappConnection.tipoConexao === "INTERNAL_GATEWAY" ? (whatsappConnection.gatewaySessaoId ?? undefined) : undefined,
 		contextMetadados: (interaction.metadados ?? undefined) as TInteractionContextMetadados | undefined,
+		// Falha após reserva mantém dataExecucao preenchido (a quota semanal já foi consumida por essa
+		// interação) — re-reservar retornaria ALREADY_RESERVED. Sem reserva prévia, o limite é reavaliado.
+		weeklyLimitMode: interaction.dataExecucao ? "skip" : "enforce",
 	});
 
 	if (!processingResult.success) {

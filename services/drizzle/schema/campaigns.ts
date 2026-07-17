@@ -75,7 +75,7 @@ export const campaigns = newTable("campaigns", {
 
 	// Attribution settings
 	atribuicaoModelo: text("atribuicao_modelo").$type<TAttributionModelEnum>().default("LAST_TOUCH").notNull(), // LAST_TOUCH, FIRST_TOUCH, LINEAR
-	atribuicaoJanelaDias: integer("atribuicao_janela_dias").default(14).notNull(),
+	atribuicaoJanelaDias: integer("atribuicao_janela_dias").default(7).notNull(),
 
 	// Recurrent campaign schedule configuration (only used when gatilhoTipo === "RECORRENTE")
 	recorrenciaTipo: recurrenceFrequencyEnum("recorrencia_tipo"), // DIARIO, SEMANAL, MENSAL
