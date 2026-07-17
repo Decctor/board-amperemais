@@ -78,8 +78,8 @@ function getCampaignsForSale({
 	audiencesByCampaignId: Map<string, Set<string>>;
 	persistedSale: TPersistedSaleForEffects;
 }) {
-	const { sale, clientId, isNewSale, isFirstPurchase, newTotalPurchaseCount, newTotalPurchaseValue } = persistedSale;
-	if (!isNewSale || !sale.isValidSale || !clientId) return [];
+	const { sale, clientId, becameValid, isFirstPurchase, newTotalPurchaseCount, newTotalPurchaseValue } = persistedSale;
+	if (!becameValid || !clientId) return [];
 
 	const exclusivePurchaseCampaigns = resolveExclusivePurchaseTriggerCampaigns({
 		campaigns,
@@ -249,7 +249,7 @@ export async function processDataCollectingV2Effects({
 	for (const persistedSale of persistedSales) {
 		let saleCashbackAccumulation: TSaleCashbackAccumulation | null = null;
 
-		if (options.processConversionAttribution && persistedSale.isNewSale && persistedSale.sale.isValidSale && persistedSale.clientId) {
+		if (options.processConversionAttribution && persistedSale.becameValid && persistedSale.clientId) {
 			await processConversionAttribution(tx, {
 				vendaId: persistedSale.id,
 				clienteId: persistedSale.clientId,
@@ -269,13 +269,7 @@ export async function processDataCollectingV2Effects({
 			});
 		}
 
-		if (
-			cashbackProgram?.ativo &&
-			cashbackProgram.acumuloPermitirViaIntegracao &&
-			persistedSale.isNewSale &&
-			persistedSale.sale.isValidSale &&
-			persistedSale.clientId
-		) {
+		if (cashbackProgram?.ativo && cashbackProgram.acumuloPermitirViaIntegracao && persistedSale.becameValid && persistedSale.clientId) {
 			const buyerAccumulation = await accumulateCashbackForClient({
 				tx,
 				orgId: organizationId,
@@ -286,7 +280,7 @@ export async function processDataCollectingV2Effects({
 				createdAt: persistedSale.sale.occurredAt,
 			});
 
-			if (buyerAccumulation.transactionId) {
+			if (buyerAccumulation.transactionId && !buyerAccumulation.alreadyProcessed) {
 				cashbackTransactionsCount += 1;
 				cashbackAccumulatedValue += buyerAccumulation.accumulatedValue;
 			}
@@ -323,7 +317,7 @@ export async function processDataCollectingV2Effects({
 					},
 				});
 
-				if (partnerAccumulation.transactionId) {
+				if (partnerAccumulation.transactionId && !partnerAccumulation.alreadyProcessed) {
 					cashbackTransactionsCount += 1;
 					cashbackAccumulatedValue += partnerAccumulation.accumulatedValue;
 				}

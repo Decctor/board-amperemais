@@ -182,10 +182,7 @@ export function isPaymentTransactionEditable(transaction: SalePaymentTransaction
 	return getPaymentNonEditableReason(transaction) == null;
 }
 
-export function isPaymentOverdue(
-	payment: Pick<ClassifiedPayment, "dataEfetivacao" | "dataPrevisao" | "provedorStatus">,
-	now = new Date(),
-): boolean {
+export function isPaymentOverdue(payment: Pick<ClassifiedPayment, "dataEfetivacao" | "dataPrevisao" | "provedorStatus">, now = new Date()): boolean {
 	if (toDateOrNull(payment.dataEfetivacao) != null) return false;
 	if (NON_EDITABLE_PAYMENT_STATUSES.has(payment.provedorStatus ?? "")) return false;
 	const previsao = toDateOrNull(payment.dataPrevisao);
@@ -218,9 +215,7 @@ export function classifySalePaymentTransactions(transactions: SalePaymentTransac
 
 	const editaveis = todas.filter((payment) => payment.editavel);
 	const efetivadas = todas.filter((payment) => payment.dataEfetivacao != null);
-	const pendentes = todas.filter(
-		(payment) => payment.dataEfetivacao == null && !NON_EDITABLE_PAYMENT_STATUSES.has(payment.provedorStatus ?? ""),
-	);
+	const pendentes = todas.filter((payment) => payment.dataEfetivacao == null && !NON_EDITABLE_PAYMENT_STATUSES.has(payment.provedorStatus ?? ""));
 
 	const gruposParcelas: Record<string, ClassifiedPayment[]> = {};
 	for (const payment of todas) {

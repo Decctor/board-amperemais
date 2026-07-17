@@ -59,11 +59,15 @@ ERP (o board de atendimento filtra `INTERNO`, `app/api/sales/fulfillment/route.t
 type TChannelErpPolicy = {
 	fulfillment: boolean; // aparece na esteira de atendimento
 	estoque: boolean; // baixa física na entrega (processStockDeduction)
-	financeiro: boolean; // lançamento contábil + transações financeiras
-	fiscal: boolean; // emissão automática (processSaleAutomaticFiscalEmissionIfEligible)
-	cashback: boolean; // acúmulo (hoje já acontece no data-collecting — mover para um lugar só)
+	financeiro: boolean; // lançamento contábil + transações financeiras (fase 4)
+	fiscal: boolean; // emissão automática (fase 5)
 };
 ```
+
+Cashback **não** faz parte da política: o controle já existe e continua sendo
+`cashbackPrograms.acumuloPermitirViaIntegracao` (padrão vigente: acumula). Implementação:
+`configuracao.preferencias.integracaoERP` (defaults todos `false`) + accessor defensivo
+`getChannelErpPolicy` em `lib/sales/fulfillment-channels/policy.ts` (jsonb antigo não tem o bloco).
 
 - O pipeline continua único (`processSaleConfirmationInTransaction`,
   `processSaleAttendanceStatusChange`, `processStockDeduction`) — os blocos são pulados conforme a
@@ -76,21 +80,21 @@ type TChannelErpPolicy = {
 O board passa a exibir vendas `CONFIRMADA` de qualquer canal com `fulfillment: true`. A diferença
 fica num adapter:
 
-| Card               | Transição no board                                                             | Efeito                          |
-| ------------------ | ------------------------------------------------------------------------------ | ------------------------------- |
-| Interno            | aplica direto (como hoje)                                                      | efeitos locais                  |
-| iFood              | chama a API do iFood primeiro; só aplica o estado local se o iFood aceitar     | efeitos locais + estado externo |
+| Card    | Transição no board                                                         | Efeito                          |
+| ------- | -------------------------------------------------------------------------- | ------------------------------- |
+| Interno | aplica direto (como hoje)                                                  | efeitos locais                  |
+| iFood   | chama a API do iFood primeiro; só aplica o estado local se o iFood aceitar | efeitos locais + estado externo |
 
 Mapeamento de transições iFood:
 
-| Ação no board                  | Chamada iFood                                  |
-| ------------------------------ | ---------------------------------------------- |
-| Confirmar (sai de NAO_INICIADO) | `POST /orders/{id}/confirm` (SLA 8 min)        |
-| Em preparo                     | `POST /orders/{id}/startPreparation`           |
-| Pronto (retirada: obrigatório) | `POST /orders/{id}/readyToPickup`              |
-| Em entrega (entrega própria)   | `POST /orders/{id}/dispatch` (deliveredBy=MERCHANT) |
-| Cancelar                       | `GET /cancellationReasons` + `POST /requestCancellation` |
-| Entregue                       | não é ação nossa — chega via evento `CONCLUDED` |
+| Ação no board                   | Chamada iFood                                            |
+| ------------------------------- | -------------------------------------------------------- |
+| Confirmar (sai de NAO_INICIADO) | `POST /orders/{id}/confirm` (SLA 8 min)                  |
+| Em preparo                      | `POST /orders/{id}/startPreparation`                     |
+| Pronto (retirada: obrigatório)  | `POST /orders/{id}/readyToPickup`                        |
+| Em entrega (entrega própria)    | `POST /orders/{id}/dispatch` (deliveredBy=MERCHANT)      |
+| Cancelar                        | `GET /cancellationReasons` + `POST /requestCancellation` |
+| Entregue                        | não é ação nossa — chega via evento `CONCLUDED`          |
 
 Sincronização bidirecional: o lojista pode operar pelo Gestor de Pedidos do iFood em paralelo
 ("múltiplos devices"). Eventos `CFM`/`DSP`/`CON`/`CAN` recebidos (webhook ou polling) aplicam a
@@ -176,12 +180,38 @@ pagamento (o iFood repassa), sponsorship `MERCHANT` é desconto real da loja.
 - Configuração manual no Developer Portal: habilitar webhook + URL + modo de presença.
   **Depende da migração para autenticação centralizada (seção 3).**
 
-### Fase 3 — Política de canal + esteira unificada (planejada)
+### Fase 3 — Política de canal + esteira unificada (implementada)
 
-- Introduzir `TChannelErpPolicy` na configuração da integração da organização.
-- Board de atendimento passa a incluir vendas de canais com `fulfillment: true`; adapter iFood
-  nas transições; eventos aplicam transições (bidirecional).
-- Consolidar efeitos (cashback etc.) num único lugar com guardas de idempotência.
+Decisões fechadas na implementação:
+
+- **Eixo canônico de fulfillment**: `TCanonicalSale.attendanceStatus` (novo); o conector iFood
+  mapeia o ciclo completo (PLACED→NAO_INICIADO, CONFIRMED/PREPARATION→EM_PREPARO,
+  READY_TO_PICKUP→PRONTO, DISPATCHED→EM_ENTREGA, CONCLUDED→ENTREGUE, CANCELLED→CANCELADO) e os
+  eventos intermediários (RTP/DSP/SPS/SPE/COL) entraram nos relevantes — ações no Gestor de
+  Pedidos movem o board via ingestão. Conectores sem granularidade mantêm o comportamento legado.
+- **`becameValid` substitui `isNewSale && isValidSale`** como gatilho dos efeitos de "nova
+  compra" (cashback, atribuição de conversão, campanhas, métricas do cliente). Motivo: com
+  ingestão em tempo real todo pedido é visto primeiro em `PLACED` (inválido) e o gate antigo
+  nunca mais disparava os efeitos na confirmação. `becameValid = isValidSale && !previouslyValid`
+  dispara exatamente uma vez por venda.
+- **Guarda de cashback na fonte**: `accumulateCashbackForClient` só acumula se não existir
+  transação ACÚMULO para (venda, cliente) — comprador e parceiro seguem acumulando separadamente.
+  Os três chamadores (import, confirmação interna, entrega) ficam idempotentes por construção.
+- **Ingestão aplica transições**: para canais gerenciados o `sync-sales` respeita
+  `isValidAttendanceTransition` (evento fora de ordem é ignorado com log), nunca rebaixa
+  `statusVenda`, e na chegada à entrega executa baixa de estoque guardada num savepoint
+  (falha de estoque não aborta a importação). Venda que nasce entregue faz fast-forward.
+- **Pedidos `PLACED` não são cards**: ficam com `statusVenda: null` e aparecem na **pill de
+  pedidos a confirmar** no topo da esteira (estilo das pills de conexões do dashboard), que abre
+  dialog/drawer com a fila: confirmar (promove localmente + `confirm` no iFood) ou recusar
+  (motivo obrigatório via `cancellationReasons`; o pedido só sai quando o evento `CANCELLED`
+  chega — cancelamento tem gatilho único: o evento).
+- **Adapter no board**: transição de card iFood chama a Order API antes do estado local
+  (`lib/sales/fulfillment-channels/`); se o iFood rejeitar, nada muda. Board envia
+  `allowUnpaidDelivery` implícito para canais gerenciados (financeiro chega na fase 4) e os
+  gates `enableStockDeduction`/`enableAutomaticFiscalEmission` seguem a política.
+- Rollout: política default desligada; ligar por organização piloto e validar com pedidos de
+  teste antes de habilitar `estoque` (depende do matching externalCode→produto do catálogo).
 
 ### Fase 4 — Financeiro de repasse (planejada)
 

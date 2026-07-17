@@ -1,9 +1,55 @@
 import type { TCanonicalImportBatch, TCanonicalSale, TCanonicalSaleItem } from "@/lib/data-connectors";
 import { mapCanonicalSaleAttendanceStatus, mapCanonicalSaleCommercialStatus } from "@/lib/data-connectors";
+import { attendanceStatusRequiresPhysicalOut, isValidAttendanceTransition } from "@/lib/sales/sale-processing/attendance";
+import { isManagedFulfillmentSaleModel, type TChannelErpPolicy } from "@/lib/sales/fulfillment-channels/policy";
+import { processStockDeductionIfNotDeducted } from "@/lib/sales/sale-processing/process-stock-deduction";
 import { clients, saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { getCanonicalClientResolutionKey, resolveClientForCanonicalSale } from "./sync-auxiliary-entities";
 import type { TDataCollectingV2Executor, TPersistedSaleForEffects, TResolvedAuxiliaryEntities, TResolvedClientForImport } from "./types";
+
+export type TSyncSalesErpOptions = {
+	policy: TChannelErpPolicy;
+	stockTrackingEnabled: boolean;
+};
+
+/**
+ * Baixa de estoque + registro de quantidade entregue para uma venda de canal gerenciado que
+ * atingiu a entrega via ingestão. Roda num savepoint: falha de estoque (produto sem lote, sem
+ * saldo etc.) não pode abortar a importação da organização inteira.
+ */
+async function applyManagedSaleDeliveryEffects({
+	tx,
+	organizationId,
+	saleId,
+}: {
+	tx: TDataCollectingV2Executor;
+	organizationId: string;
+	saleId: string;
+}) {
+	const itemsForStock = await tx.query.saleItems.findMany({
+		where: and(eq(saleItems.vendaId, saleId), eq(saleItems.organizacaoId, organizationId)),
+		with: { adicionais: true },
+	});
+
+	try {
+		await tx.transaction(async (nested) => {
+			await processStockDeductionIfNotDeducted(nested, {
+				organizationId,
+				saleId,
+				saleItems: itemsForStock,
+				saleAuthorId: null,
+			});
+		});
+	} catch (error) {
+		console.error(`[SYNC_SALES] Falha na baixa de estoque da venda gerenciada ${saleId} — venda importada sem baixa.`, error);
+		return;
+	}
+
+	for (const item of itemsForStock) {
+		await tx.update(saleItems).set({ quantidadeEntregue: item.quantidade }).where(eq(saleItems.id, item.id));
+	}
+}
 
 function getSellerId(context: TResolvedAuxiliaryEntities, sale: TCanonicalSale) {
 	return sale.seller?.identifier ? (context.sellersByIdentifier.get(sale.seller.identifier) ?? null) : null;
@@ -166,10 +212,13 @@ export async function syncSales({
 	tx,
 	batch,
 	context,
+	erp,
 }: {
 	tx: TDataCollectingV2Executor;
 	batch: TCanonicalImportBatch;
 	context: TResolvedAuxiliaryEntities;
+	/** Política de canal da organização. Ausente = comportamento legado (sem efeitos de ERP). */
+	erp?: TSyncSalesErpOptions | null;
 }): Promise<TPersistedSaleForEffects[]> {
 	const saleSourceIds = batch.sales.map((sale) => sale.sourceSaleId);
 	const existingSales =
@@ -181,6 +230,8 @@ export async function syncSales({
 						idExterno: true,
 						natureza: true,
 						valorTotal: true,
+						statusVenda: true,
+						statusAtendimento: true,
 					},
 				})
 			: [];
@@ -214,8 +265,17 @@ export async function syncSales({
 		let saleId: string;
 		let isNewSale = false;
 		const previouslyValid = existingSale ? existingSale.natureza === "SN01" && existingSale.valorTotal > 0 : false;
+		// Tornou-se válida NESTE sync: dispara os efeitos de "nova compra" exatamente uma vez por
+		// venda (na próxima sincronização previouslyValid já é true, pois a natureza persiste SN01).
+		const becameValid = sale.isValidSale && !previouslyValid;
 		const nowCanceled = sale.isCanceled;
 		const clientKey = getCanonicalClientResolutionKey(batch, sale.client);
+
+		// Canal gerenciado: o conector informa o eixo de atendimento e a política de canal está
+		// ligada — a ingestão passa a respeitar transições e a disparar os efeitos de entrega.
+		const saleIsManaged = !!erp?.policy.fulfillment && isManagedFulfillmentSaleModel(sale.model) && sale.attendanceStatus != null;
+		const deductStockOnDelivery = saleIsManaged && !!erp && erp.policy.estoque && erp.stockTrackingEnabled;
+		let reachedDeliveryThisSync = false;
 
 		if (!existingSale) {
 			isNewSale = true;
@@ -223,25 +283,47 @@ export async function syncSales({
 			const inserted = await tx.insert(sales).values(saleValues).returning({ id: sales.id });
 			saleId = inserted[0].id;
 			await insertSaleItems({ tx, batch, context, saleId, clientId, items: sale.items });
+			// Fast-forward: venda gerenciada que já nasce entregue executa os efeitos de entrega.
+			reachedDeliveryThisSync = saleIsManaged && attendanceStatusRequiresPhysicalOut(saleValues.statusAtendimento);
 		} else {
 			saleId = existingSale.id;
 			console.log(`[SYNC_SALES] Updating existing sale of ${sale.sourceSaleId} (${sale.occurredAt.toISOString()})...`);
-			await tx.update(sales).set(saleValues).where(eq(sales.id, existingSale.id));
+
+			const updateValues = { ...saleValues };
+			if (saleIsManaged) {
+				// Eixo comercial nunca regride por evento atrasado (ex.: PLACED replayed após CFM).
+				if (!updateValues.statusVenda && existingSale.statusVenda) updateValues.statusVenda = existingSale.statusVenda;
+
+				// Eixo operacional só avança por transições válidas; evento fora de ordem é ignorado.
+				const currentAttendance = existingSale.statusAtendimento;
+				const targetAttendance = saleValues.statusAtendimento;
+				if (currentAttendance === targetAttendance) {
+					updateValues.statusAtendimento = currentAttendance;
+				} else if (isValidAttendanceTransition(currentAttendance, targetAttendance)) {
+					reachedDeliveryThisSync = attendanceStatusRequiresPhysicalOut(targetAttendance);
+				} else {
+					console.log(
+						`[SYNC_SALES] Transição de atendimento ignorada para ${sale.sourceSaleId}: ${currentAttendance} -> ${targetAttendance} (evento fora de ordem).`,
+					);
+					updateValues.statusAtendimento = currentAttendance;
+				}
+			}
+
+			await tx.update(sales).set(updateValues).where(eq(sales.id, existingSale.id));
 			if (batch.policies.saleItemRewritePolicy === "REPLACE_ON_EVERY_SYNC") {
 				await tx.delete(saleItems).where(and(eq(saleItems.vendaId, existingSale.id), eq(saleItems.organizacaoId, batch.organizationId)));
 				await insertSaleItems({ tx, batch, context, saleId, clientId, items: sale.items });
 			}
 		}
 
+		if (reachedDeliveryThisSync && deductStockOnDelivery) {
+			await applyManagedSaleDeliveryEffects({ tx, organizationId: batch.organizationId, saleId });
+		}
+
 		const isFirstPurchase =
-			!!client &&
-			client.isNew &&
-			sale.isValidSale &&
-			isNewSale &&
-			!!clientKey &&
-			firstValidSaleByClientKey.get(clientKey)?.sourceSaleId === sale.sourceSaleId;
+			!!client && client.isNew && becameValid && !!clientKey && firstValidSaleByClientKey.get(clientKey)?.sourceSaleId === sale.sourceSaleId;
 		const totals =
-			client && isNewSale
+			client && becameValid
 				? await updateClientMetrics({ tx, client, sale, saleId, isFirstPurchase })
 				: { totalPurchaseCount: null, totalPurchaseValue: null };
 
@@ -255,6 +337,7 @@ export async function syncSales({
 			isNewClient: client?.isNew ?? false,
 			isFirstPurchase,
 			previouslyValid,
+			becameValid,
 			nowCanceled,
 			newTotalPurchaseCount: totals.totalPurchaseCount,
 			newTotalPurchaseValue: totals.totalPurchaseValue,

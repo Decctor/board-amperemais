@@ -319,10 +319,7 @@ export function mapCardapioWebSaleItem(item: TGetCardapioWebOrderDetailsOutput["
 			.filter((opt) => opt.option_group_id && opt.option_id)
 			.map((opt) => ({
 				addOnIdExterno: (opt.option_group_id as number).toString(),
-				optionIdExterno: getCardapioWebAddOnOptionExternalId(
-					(opt.option_group_id as number).toString(),
-					(opt.option_id as number).toString(),
-				),
+				optionIdExterno: getCardapioWebAddOnOptionExternalId((opt.option_group_id as number).toString(), (opt.option_id as number).toString()),
 				quantidade: opt.quantity,
 				valorUnitario: opt.unit_price,
 			})),

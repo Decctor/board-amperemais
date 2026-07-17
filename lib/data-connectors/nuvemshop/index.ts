@@ -44,15 +44,7 @@ function delay(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function getNuvemshopOrdersPage({
-	client,
-	window,
-	page,
-}: {
-	client: AxiosInstance;
-	window: TCanonicalImportWindow;
-	page: number;
-}) {
+async function getNuvemshopOrdersPage({ client, window, page }: { client: AxiosInstance; window: TCanonicalImportWindow; page: number }) {
 	try {
 		const response = await client.get<unknown>("/orders", {
 			params: {

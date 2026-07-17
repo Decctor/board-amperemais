@@ -1,3 +1,4 @@
+import type { TGetFulfillmentOrderConfirmationOutput } from "@/app/api/sales/fulfillment/order-confirmation/route";
 import type { TGetSalesFulfillmentOutput } from "@/app/api/sales/fulfillment/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -26,5 +27,24 @@ export function useSalesFulfillment({ paused = false }: { paused?: boolean } = {
 			refetchOnWindowFocus: paused ? false : true,
 		}),
 		queryKey: SALES_FULFILLMENT_QUERY_KEY,
+	};
+}
+
+async function fetchFulfillmentOrderCancellationReasons(saleId: string) {
+	const { data } = await axios.get<TGetFulfillmentOrderConfirmationOutput>(`/api/sales/fulfillment/order-confirmation?saleId=${saleId}`);
+	return data.data.motivos;
+}
+
+/** Motivos de recusa do canal (ex.: iFood) para um pedido da fila de confirmação. */
+export function useFulfillmentOrderCancellationReasons({ saleId }: { saleId: string | null }) {
+	const queryKey = ["fulfillment-order-cancellation-reasons", saleId];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchFulfillmentOrderCancellationReasons(saleId as string),
+			enabled: !!saleId,
+			retry: false,
+		}),
+		queryKey,
 	};
 }

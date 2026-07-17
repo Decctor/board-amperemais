@@ -67,6 +67,14 @@ export type TPersistedSaleForEffects = {
 	isNewClient: boolean;
 	isFirstPurchase: boolean;
 	previouslyValid: boolean;
+	/**
+	 * A venda tornou-se válida NESTE sync (nova já válida, ou existente que era inválida —
+	 * ex.: pedido iFood visto primeiro em PLACED e confirmado depois). É o gatilho único dos
+	 * efeitos de "nova compra" (cashback, atribuição, campanhas, métricas do cliente) — o gate
+	 * antigo `isNewSale && isValidSale` perdia a transição PLACED→CONFIRMED com ingestão em
+	 * tempo real.
+	 */
+	becameValid: boolean;
 	nowCanceled: boolean;
 	newTotalPurchaseCount: number | null;
 	newTotalPurchaseValue: number | null;

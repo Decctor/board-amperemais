@@ -116,10 +116,7 @@ function QuickPaymentMethodControl({
 					type="button"
 					variant="ghost"
 					size="sm"
-					className={cn(
-						"h-7 max-w-full gap-1.5 rounded-md px-2 text-[11px] font-semibold uppercase tracking-tight",
-						toneClasses,
-					)}
+					className={cn("h-7 max-w-full gap-1.5 rounded-md px-2 text-[11px] font-semibold uppercase tracking-tight", toneClasses)}
 					onPointerDown={stopDragPropagation}
 				>
 					{selectedMethod?.icon ?? <Wallet className="h-3 w-3 shrink-0" />}
@@ -182,11 +179,7 @@ export function CardQuickActions({ card, organizationConfig, disabled, onPatch }
 		<div className={cn("flex flex-col gap-1.5 border-t border-border/60 pt-2", disabled && "pointer-events-none opacity-60")}>
 			{hasPaymentControls ? (
 				displayPayments.map((payment, index) => (
-					<QuickActionRow
-						key={payment.id}
-						label={paymentRowLabel(payment, index, displayPayments.length)}
-						tooltip={paymentRowTooltip(payment)}
-					>
+					<QuickActionRow key={payment.id} label={paymentRowLabel(payment, index, displayPayments.length)} tooltip={paymentRowTooltip(payment)}>
 						<QuickPaymentMethodControl
 							payment={payment}
 							saleId={card.id}

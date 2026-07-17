@@ -1,4 +1,5 @@
 import type { TOrganizationIntegrationConfig } from "@/schemas/organizations";
+import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 
 export type TDataConnectorKind = NonNullable<TOrganizationEntity["integracaoTipo"]>;
@@ -132,6 +133,12 @@ export type TCanonicalSale = {
 	items: TCanonicalSaleItem[];
 	isValidSale: boolean;
 	isCanceled: boolean;
+	/**
+	 * Status operacional granular informado pelo conector (ex.: ciclo de pedido do iFood).
+	 * null/undefined = conector sem granularidade de fulfillment (comportamento legado:
+	 * venda externa chega como histórico concluído).
+	 */
+	attendanceStatus?: TSaleAttendanceStatusEnum | null;
 	raw?: unknown;
 };
 

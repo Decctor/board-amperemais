@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { applyChannelFulfillmentTransition, getChannelErpPolicy, resolveFulfillmentChannelForSale } from "@/lib/sales/fulfillment-channels";
 import { processSaleAttendanceStatusChange } from "@/lib/sales/sale-processing";
 import { PaymentMethodEnum, SaleAttendanceStatusEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
@@ -19,6 +20,8 @@ const UpdateSaleAttendanceStatusInputSchema = z.object({
 	allowUnpaidDelivery: z.boolean({ invalid_type_error: "Tipo não válido para entrega sem recebimento." }).optional().default(false),
 	paymentMethod: PaymentMethodEnum.optional().nullable(),
 	financialAccountId: z.string({ invalid_type_error: "Tipo não válido para conta financeira." }).optional().nullable(),
+	// Canais gerenciados (ex.: iFood): motivo exigido pelo canal ao cancelar o pedido.
+	cancellationCode: z.string({ invalid_type_error: "Tipo não válido para o motivo de cancelamento." }).optional().nullable(),
 });
 export type TUpdateSaleAttendanceStatusInput = z.infer<typeof UpdateSaleAttendanceStatusInputSchema>;
 
@@ -37,15 +40,49 @@ async function updateSaleAttendanceStatus({ input, session }: { input: TUpdateSa
 	});
 	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
 
+	const sale = await db.query.sales.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.id, input.id), eq(fields.organizacaoId, orgId)),
+		columns: { id: true, idExterno: true, modelo: true, processamentoOrigem: true, statusAtendimento: true },
+	});
+	if (!sale) throw new createHttpError.NotFound("Venda não encontrada.");
+
+	// Canal gerenciado (ex.: iFood): a ação externa acontece ANTES do estado local — se o canal
+	// rejeitar, nada muda. Cancelamento é assíncrono: o estado local só muda com o evento do canal.
+	const policy = getChannelErpPolicy(organization.configuracao);
+	const channel = resolveFulfillmentChannelForSale(sale, policy);
+	if (channel) {
+		const channelResult = await applyChannelFulfillmentTransition({
+			channel,
+			organizacaoId: orgId,
+			orderId: sale.idExterno,
+			fromStatus: sale.statusAtendimento,
+			toStatus: input.attendanceStatus,
+			cancellationCode: input.cancellationCode,
+		});
+
+		if (!channelResult.appliedLocally) {
+			return {
+				data: {
+					saleId: sale.id,
+					statusAtendimentoAnterior: sale.statusAtendimento,
+					statusAtendimento: sale.statusAtendimento,
+				},
+				message: "Solicitação enviada ao canal. O pedido será atualizado quando o canal confirmar.",
+			};
+		}
+	}
+
 	const result = await processSaleAttendanceStatusChange({
 		organization,
 		saleId: input.id,
 		targetStatus: input.attendanceStatus,
 		authorId: session.user.id,
 		settlePendingPayment: input.settlePendingPayment,
-		allowUnpaidDelivery: input.allowUnpaidDelivery,
+		allowUnpaidDelivery: channel ? true : input.allowUnpaidDelivery,
 		paymentMethod: input.paymentMethod,
 		financialAccountId: input.financialAccountId,
+		enableStockDeduction: channel ? policy.estoque : true,
+		enableAutomaticFiscalEmission: channel ? policy.fiscal : true,
 	});
 
 	return {

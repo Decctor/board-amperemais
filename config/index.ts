@@ -191,6 +191,12 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES: TOrganizationConfig
 	carteirasClientes: {
 		habilitado: false,
 	},
+	integracaoERP: {
+		fulfillment: false,
+		estoque: false,
+		financeiro: false,
+		fiscal: false,
+	},
 };
 
 const DEFAULT_PAYMENT_METHOD_CONFIGURATION: TOrganizationConfiguration["defaults"]["pagamentos"]["metodos"]["DINHEIRO"] = {

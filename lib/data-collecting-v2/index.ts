@@ -1,4 +1,5 @@
 import { fetchConnectorImportBatch, type TCanonicalImportWindow } from "@/lib/data-connectors";
+import { getChannelErpPolicy } from "@/lib/sales/fulfillment-channels/policy";
 import { processOrganizationInteractionsBatch, type ImmediateProcessingData } from "@/lib/interactions";
 import { db } from "@/services/drizzle";
 import { campaigns, organizations } from "@/services/drizzle/schema";
@@ -11,7 +12,7 @@ import { z } from "zod";
 import { resolveCampaignAudiences } from "./campaign-audiences";
 import { processDataCollectingV2Effects } from "./effects";
 import { syncAuxiliaryEntities } from "./sync-auxiliary-entities";
-import { syncSales } from "./sync-sales";
+import { syncSales, type TSyncSalesErpOptions } from "./sync-sales";
 import type {
 	TCampaignWithAudienceRelations,
 	TDataCollectingV2EffectsOptions,
@@ -97,6 +98,7 @@ async function loadOrganizations(organizationIds?: string[]) {
 			id: true,
 			integracaoTipo: true,
 			integracaoConfiguracao: true,
+			configuracao: true,
 		},
 	});
 }
@@ -137,23 +139,29 @@ async function loadCampaigns(organizationId: string): Promise<TCampaignWithAudie
 async function processOrganization({
 	organizationId,
 	config,
+	organizationConfiguration,
 	window,
 	effects,
 	includeRawInResult,
 }: {
 	organizationId: string;
 	config: NonNullable<Awaited<ReturnType<typeof loadOrganizations>>[number]["integracaoConfiguracao"]>;
+	organizationConfiguration: Awaited<ReturnType<typeof loadOrganizations>>[number]["configuracao"];
 	window: TCanonicalImportWindow;
 	effects: TDataCollectingV2EffectsOptions;
 	includeRawInResult?: boolean;
 }) {
+	const erp: TSyncSalesErpOptions = {
+		policy: getChannelErpPolicy(organizationConfiguration),
+		stockTrackingEnabled: organizationConfiguration?.preferencias?.rastreamentoEstoque ?? false,
+	};
 	const batch = await fetchConnectorImportBatch({ organizationId, config, window });
 	const campaignsForOrganization = effects.processCampaigns ? await loadCampaigns(organizationId) : [];
 	let immediateProcessingDataList: ImmediateProcessingData[] = [];
 
 	const summary = await db.transaction(async (tx): Promise<TDataCollectingV2RunSummary> => {
 		const auxiliaryContext = await syncAuxiliaryEntities({ tx, batch });
-		const persistedSales = await syncSales({ tx, batch, context: auxiliaryContext });
+		const persistedSales = await syncSales({ tx, batch, context: auxiliaryContext, erp });
 		// Audiences are resolved once from the post-sync state. Keep audience filters independent
 		// from client metrics mutated by this batch; per-sale trigger counters live in persistedSales.
 		const audiencesByCampaignId = effects.processCampaigns
@@ -226,6 +234,7 @@ export async function runDataCollectingV2({
 			const { summary, immediateProcessingDataList, raw } = await processOrganization({
 				organizationId: organization.id,
 				config: organization.integracaoConfiguracao,
+				organizationConfiguration: organization.configuracao,
 				window,
 				effects,
 				includeRawInResult,

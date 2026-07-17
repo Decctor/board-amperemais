@@ -1,24 +1,29 @@
 import { db } from "@/services/drizzle";
-import { financialTransactions, productStockTransactions, saleItems, sales } from "@/services/drizzle/schema";
+import { financialTransactions, saleItems, sales } from "@/services/drizzle/schema";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import type { TPaymentMethodEnum, TSaleAttendanceStatusEnum } from "@/schemas/enums";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { attendanceStatusRequiresPhysicalOut, isValidAttendanceTransition } from "./attendance";
 import { getSaleFinancialState } from "./get-sale-financial-state";
 import { processSaleAutomaticFiscalEmissionIfEligible } from "./process-sale-automatic-fiscal-emission";
 import { processSaleCashbackAccumulationIfEligible } from "./process-sale-cashback-accumulation";
-import { processStockDeduction } from "./process-stock-deduction";
+import { processStockDeductionIfNotDeducted } from "./process-stock-deduction";
 
 type ProcessSaleAttendanceStatusChangeInput = {
 	organization: TOrganizationEntity;
 	saleId: string;
 	targetStatus: TSaleAttendanceStatusEnum;
-	authorId: string;
+	/** null = ator de sistema (transições disparadas por ingestão/eventos de integração). */
+	authorId: string | null;
 	settlePendingPayment?: boolean;
 	allowUnpaidDelivery?: boolean;
 	paymentMethod?: TPaymentMethodEnum | null;
 	financialAccountId?: string | null;
+	/** Política de canal: desligar baixa de estoque para vendas de integração sem `estoque`. */
+	enableStockDeduction?: boolean;
+	/** Política de canal: desligar emissão fiscal automática para vendas de integração sem `fiscal`. */
+	enableAutomaticFiscalEmission?: boolean;
 };
 
 /**
@@ -98,25 +103,13 @@ export async function processSaleAttendanceStatusChange(input: ProcessSaleAttend
 			}
 		}
 
-		if (requiresPhysicalOut && input.organization.configuracao.preferencias.rastreamentoEstoque) {
-			// Evita baixa duplicada: so baixa se ainda nao houver saida de estoque para esta venda.
-			const existingDeduction = await tx.query.productStockTransactions.findFirst({
-				where: and(
-					eq(productStockTransactions.organizacaoId, input.organization.id),
-					eq(productStockTransactions.vendaId, input.saleId),
-					eq(productStockTransactions.tipo, "SAIDA"),
-				),
-				columns: { id: true },
+		if (requiresPhysicalOut && input.organization.configuracao.preferencias.rastreamentoEstoque && (input.enableStockDeduction ?? true)) {
+			await processStockDeductionIfNotDeducted(tx, {
+				organizationId: input.organization.id,
+				saleId: input.saleId,
+				saleItems: sale.itens,
+				saleAuthorId: input.authorId,
 			});
-
-			if (!existingDeduction) {
-				await processStockDeduction(tx, {
-					organizationId: input.organization.id,
-					saleId: input.saleId,
-					saleItems: sale.itens,
-					saleAuthorId: input.authorId,
-				});
-			}
 		}
 
 		await tx.update(sales).set({ statusAtendimento: input.targetStatus }).where(eq(sales.id, input.saleId));
@@ -135,11 +128,13 @@ export async function processSaleAttendanceStatusChange(input: ProcessSaleAttend
 			saleId: input.saleId,
 			authorId: input.authorId,
 		});
-		await processSaleAutomaticFiscalEmissionIfEligible({
-			organization: input.organization,
-			saleId: input.saleId,
-			authorId: input.authorId,
-		});
+		if (input.enableAutomaticFiscalEmission ?? true) {
+			await processSaleAutomaticFiscalEmissionIfEligible({
+				organization: input.organization,
+				saleId: input.saleId,
+				authorId: input.authorId,
+			});
+		}
 	}
 
 	return {

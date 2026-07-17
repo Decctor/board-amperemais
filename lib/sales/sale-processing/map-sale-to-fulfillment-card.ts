@@ -1,3 +1,4 @@
+import { isManagedFulfillmentSaleModel } from "@/lib/sales/fulfillment-channels/policy";
 import { classifySalePaymentTransactions, extractPaymentObservacoesFromTitle, type SalePaymentTransactionInput } from "@/lib/sales/utils";
 import { computeSaleFinancialStatus, computeSaleFiscalStatus } from "@/lib/sales/utils";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
@@ -13,6 +14,8 @@ type SaleFulfillmentRow = {
 	clienteId: string | null;
 	observacoes: string | null;
 	dataVenda: Date | null;
+	modelo?: string | null;
+	processamentoOrigem?: string | null;
 	cliente: { id: string; nome: string; telefone: string | null } | null;
 	documentosFiscais: { statusInterno: string | null; dataInsercao: Date }[];
 	lancamentosContabeis: {
@@ -44,9 +47,7 @@ export function mapSaleRowToFulfillmentCard(sale: SaleFulfillmentRow) {
 	);
 	const classification = classifySalePaymentTransactions(rawTransactions);
 	const paymentNotes =
-		rawTransactions
-			.map((transaction) => extractPaymentObservacoesFromTitle(transaction.titulo))
-			.find((note) => note != null) ?? null;
+		rawTransactions.map((transaction) => extractPaymentObservacoesFromTitle(transaction.titulo)).find((note) => note != null) ?? null;
 
 	return {
 		id: sale.id,
@@ -54,6 +55,8 @@ export function mapSaleRowToFulfillmentCard(sale: SaleFulfillmentRow) {
 		valorTotal: sale.valorTotal,
 		statusVenda: sale.statusVenda,
 		statusAtendimento: sale.statusAtendimento,
+		// Canal de fulfillment gerenciado (ex.: iFood). Null = venda interna/fluxo local puro.
+		integracaoCanal: sale.processamentoOrigem === "EXTERNO" && isManagedFulfillmentSaleModel(sale.modelo) ? ("IFOOD" as const) : null,
 		entregaModalidade: sale.entregaModalidade,
 		comandaNumero: sale.comandaNumero,
 		clienteId: sale.clienteId,

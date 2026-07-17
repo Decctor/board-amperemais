@@ -92,6 +92,31 @@ export async function accumulateCashbackForClient({
 		programId: program.id,
 	});
 
+	// Guarda de idempotência na fonte: uma venda acumula no máximo uma vez POR CLIENTE
+	// (comprador e parceiro são acúmulos legítimos distintos na mesma venda). Protege contra
+	// caminhos concorrentes (import, confirmação, entrega) e replays de eventos de webhook.
+	if (saleId) {
+		const existingAccumulation = await tx.query.cashbackProgramTransactions.findFirst({
+			where: and(
+				eq(cashbackProgramTransactions.organizacaoId, orgId),
+				eq(cashbackProgramTransactions.vendaId, saleId),
+				eq(cashbackProgramTransactions.clienteId, clientId),
+				eq(cashbackProgramTransactions.tipo, "ACÚMULO"),
+			),
+			columns: { id: true },
+		});
+		if (existingAccumulation) {
+			return {
+				accumulatedValue: 0,
+				previousAvailableBalance: balance.saldoValorDisponivel,
+				newAvailableBalance: balance.saldoValorDisponivel,
+				newAccumulatedBalance: balance.saldoValorAcumuladoTotal,
+				transactionId: existingAccumulation.id,
+				alreadyProcessed: true,
+			};
+		}
+	}
+
 	const accumulationValueToUse = accumulationValueOverride ?? program.acumuloValor;
 	const accumulatedValue = calculateAccumulatedCashbackValue({
 		accumulationType: program.acumuloTipo,
@@ -107,6 +132,7 @@ export async function accumulateCashbackForClient({
 			newAvailableBalance: balance.saldoValorDisponivel,
 			newAccumulatedBalance: balance.saldoValorAcumuladoTotal,
 			transactionId: null as string | null,
+			alreadyProcessed: false,
 		};
 	}
 
@@ -158,5 +184,6 @@ export async function accumulateCashbackForClient({
 		newAvailableBalance,
 		newAccumulatedBalance,
 		transactionId: insertedTransaction[0]?.id ?? null,
+		alreadyProcessed: false,
 	};
 }

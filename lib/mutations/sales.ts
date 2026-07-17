@@ -2,6 +2,10 @@ import type {
 	TCreatePointOfInteractionTransactionInput,
 	TCreatePointOfInteractionTransactionOutput,
 } from "@/app/api/point-of-interaction/new-transaction/route";
+import type {
+	TPostFulfillmentOrderConfirmationInput,
+	TPostFulfillmentOrderConfirmationOutput,
+} from "@/app/api/sales/fulfillment/order-confirmation/route";
 import type { TPatchSalesFulfillmentInput, TPatchSalesFulfillmentOutput } from "@/app/api/sales/fulfillment/route";
 import type { TUpdateSaleAttendanceStatusInput, TUpdateSaleAttendanceStatusOutput } from "@/app/api/pos/sales/attendance-status/route";
 import type { TCreateSaleInput, TCreateSaleOutput, TDeleteSaleOutput } from "@/app/api/sales/route";
@@ -15,6 +19,11 @@ export async function patchSalesFulfillment(input: TPatchSalesFulfillmentInput) 
 
 export async function updateSaleAttendanceStatus(input: TUpdateSaleAttendanceStatusInput) {
 	const { data } = await axios.post<TUpdateSaleAttendanceStatusOutput>("/api/pos/sales/attendance-status", input);
+	return data;
+}
+
+export async function postFulfillmentOrderConfirmation(input: TPostFulfillmentOrderConfirmationInput) {
+	const { data } = await axios.post<TPostFulfillmentOrderConfirmationOutput>("/api/sales/fulfillment/order-confirmation", input);
 	return data;
 }
 

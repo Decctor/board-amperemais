@@ -1,7 +1,16 @@
 ﻿import { formatPhoneAsBase, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import dayjs from "dayjs";
 import dayjsCustomParseFormat from "dayjs/plugin/customParseFormat";
-import type { TCanonicalClient, TCanonicalImportBatch, TCanonicalImportWindow, TCanonicalPartner, TCanonicalProduct, TCanonicalSale, TCanonicalSaleItem, TCanonicalSeller } from "../types";
+import type {
+	TCanonicalClient,
+	TCanonicalImportBatch,
+	TCanonicalImportWindow,
+	TCanonicalPartner,
+	TCanonicalProduct,
+	TCanonicalSale,
+	TCanonicalSaleItem,
+	TCanonicalSeller,
+} from "../types";
 import type { TOnlineSoftwareSaleImportation, TOnlineSoftwareSaleItemImportation } from "./types";
 
 dayjs.extend(dayjsCustomParseFormat);
@@ -14,7 +23,11 @@ export function computeOnlineSoftwareSaleDate(sale: TOnlineSoftwareSaleImportati
 		throw new Error(`Data inválida recebida da Online Software. data="${sale.data}" datahora="${sale.datahora ?? ""}"`);
 	}
 
-	return saleDateTime?.isValid() ? saleDateTime.toDate() : dayjs().isSame(baseSaleDate, "day") ? dayjs().toDate() : baseSaleDate.add(3, "hours").toDate();
+	return saleDateTime?.isValid()
+		? saleDateTime.toDate()
+		: dayjs().isSame(baseSaleDate, "day")
+			? dayjs().toDate()
+			: baseSaleDate.add(3, "hours").toDate();
 }
 
 function isValidOnlineSoftwareClient(sale: TOnlineSoftwareSaleImportation) {
@@ -201,4 +214,3 @@ export function toCanonicalOnlineSoftwareImportBatch({
 		raw: sales,
 	};
 }
-

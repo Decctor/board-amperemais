@@ -1,11 +1,14 @@
 "use client";
 
+import IntegrationErpSettings from "@/components/Modals/Integrations/IntegrationErpSettings";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { canManageIntegrations } from "@/lib/integrations/mask";
+import { canManageIntegrations, canViewIntegrations } from "@/lib/integrations/mask";
 import { useIfoodMerchants } from "@/lib/queries/ifood";
 import IfoodLogo from "@/utils/images/integrations/ifood-logo.png";
+import { SlidersHorizontal } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { IfoodCatalogTab } from "./_module/catalog/IfoodCatalogTab";
@@ -24,9 +27,11 @@ export default function IntegrationsIFoodPage({ sessionUser: _sessionUser, membe
 	const isConnected = membership.organizacao.integracaoTipo === "IFOOD";
 	const canManage = canManageIntegrations(membership.permissoes);
 
+	const canView = canViewIntegrations(membership.permissoes);
 	const merchantsQuery = useIfoodMerchants({ enabled: isConnected });
 	const merchants = merchantsQuery.data ?? [];
 	const [selectedMerchantId, setSelectedMerchantId] = useState<string | null>(null);
+	const [settingsIsOpen, setSettingsIsOpen] = useState(false);
 
 	useEffect(() => {
 		if (!selectedMerchantId && merchants.length > 0) setSelectedMerchantId(merchants[0].id);
@@ -44,8 +49,18 @@ export default function IntegrationsIFoodPage({ sessionUser: _sessionUser, membe
 						<p className="text-sm text-muted-foreground">Gerencie o status, os horários e o catálogo da sua loja no iFood.</p>
 					</div>
 				</div>
-				<MerchantSelector merchants={merchants} selectedMerchantId={selectedMerchantId} onSelect={setSelectedMerchantId} />
+				<div className="flex items-center gap-2">
+					{isConnected && canView ? (
+						<Button variant="outline" size="sm" onClick={() => setSettingsIsOpen(true)}>
+							<SlidersHorizontal className="h-4 w-4" />
+							EFEITOS NO ERP
+						</Button>
+					) : null}
+					<MerchantSelector merchants={merchants} selectedMerchantId={selectedMerchantId} onSelect={setSelectedMerchantId} />
+				</div>
 			</div>
+
+			{settingsIsOpen ? <IntegrationErpSettings canManage={canManage} closeMenu={() => setSettingsIsOpen(false)} /> : null}
 
 			<IfoodConnectionGate isConnected={isConnected} error={merchantsQuery.error} canManage={canManage}>
 				{merchantsQuery.isLoading ? (

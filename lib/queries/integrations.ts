@@ -1,4 +1,5 @@
 import type { TGetIntegrationsInput, TGetIntegrationsOutput } from "@/app/api/integrations/route";
+import type { TGetIntegrationSettingsOutput } from "@/app/api/integrations/settings/route";
 import type { TIntegrationTipoEnum } from "@/schemas/enums";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -39,5 +40,25 @@ export function useIntegrationById({ integrationId }: { integrationId: string })
 			enabled: !!integrationId,
 		}),
 		queryKey,
+	};
+}
+
+export const INTEGRATION_SETTINGS_QUERY_KEY = ["integration-settings"] as const;
+
+async function fetchIntegrationSettings() {
+	const { data } = await axios.get<TGetIntegrationSettingsOutput>("/api/integrations/settings");
+	return data.data;
+}
+
+/** Política de canal de ERP (efeitos das vendas de integração: atendimento, estoque, financeiro, fiscal). */
+export function useIntegrationSettings({ enabled = true }: { enabled?: boolean } = {}) {
+	return {
+		...useQuery({
+			queryKey: INTEGRATION_SETTINGS_QUERY_KEY,
+			queryFn: fetchIntegrationSettings,
+			enabled,
+			retry: false,
+		}),
+		queryKey: INTEGRATION_SETTINGS_QUERY_KEY,
 	};
 }

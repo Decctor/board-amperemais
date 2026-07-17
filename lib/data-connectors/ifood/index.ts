@@ -3,7 +3,31 @@ import { createIfoodClient, getIfoodOrder, getValidIfoodConfig, acknowledgeIfood
 import { toCanonicalIfoodImportBatch } from "./mappers";
 import { IfoodConfigSchema, type TIfoodEvent } from "./types";
 
-const IFOOD_RELEVANT_ORDER_EVENT_CODES = new Set(["PLC", "CFM", "CON", "CAN", "PLACED", "CONFIRMED", "CONCLUDED", "CANCELLED", "CANCELED"]);
+// Inclui as etapas intermediarias do ciclo (preparo/pronto/despacho) para que acoes feitas em
+// outros devices (ex.: Gestor de Pedidos) movam o quadro de atendimento via ingestao.
+const IFOOD_RELEVANT_ORDER_EVENT_CODES = new Set([
+	"PLC",
+	"CFM",
+	"PRS",
+	"SPS",
+	"SPE",
+	"RTP",
+	"DSP",
+	"COL",
+	"CON",
+	"CAN",
+	"PLACED",
+	"CONFIRMED",
+	"PREPARATION_STARTED",
+	"SEPARATION_STARTED",
+	"SEPARATION_ENDED",
+	"READY_TO_PICKUP",
+	"DISPATCHED",
+	"COLLECTED",
+	"CONCLUDED",
+	"CANCELLED",
+	"CANCELED",
+]);
 
 function getRelevantOrderEvents(events: TIfoodEvent[]) {
 	return events.filter((event) => {

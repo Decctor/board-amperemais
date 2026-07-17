@@ -19,6 +19,23 @@ type ProcessStockDeductionParams = {
 	saleAuthorId: string | null;
 };
 
+/**
+ * Baixa de estoque guardada por idempotência: só executa se a venda ainda não tem SAÍDA de
+ * estoque registrada. Retorna true quando a baixa foi executada nesta chamada. É o ponto único
+ * usado pelo serviço de transição de atendimento e pela ingestão de canais gerenciados —
+ * eventos duplicados/replays de webhook nunca baixam duas vezes.
+ */
+export async function processStockDeductionIfNotDeducted(tx: DBTransaction, params: ProcessStockDeductionParams): Promise<boolean> {
+	const existingDeduction = await tx.query.productStockTransactions.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, params.organizationId), eq(fields.vendaId, params.saleId), eq(fields.tipo, "SAIDA")),
+		columns: { id: true },
+	});
+	if (existingDeduction) return false;
+
+	await processStockDeduction(tx, params);
+	return true;
+}
+
 export async function processStockDeduction(tx: DBTransaction, params: ProcessStockDeductionParams) {
 	const optionIds = [
 		...new Set(

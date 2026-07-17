@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { ATTENDANCE_COLUMN_META, ATTENDANCE_STATUS_LABEL, BOARD_STATUSES, type TBoardStatus, transitionNeedsConfirmation } from "./config";
 import { FulfillmentCard } from "./fulfillment-card";
 import { FulfillmentColumn } from "./fulfillment-column";
+import { PendingConfirmationPill } from "./pending-confirmation";
 
 const KANBAN_SCROLL_CLASS = "scrollbar-subtle";
 const BOARD_DESKTOP_MAX_HEIGHT = "md:max-h-[calc(100dvh-10.5rem)] md:overflow-hidden";
@@ -73,13 +74,13 @@ export default function FulfillmentBoard({ organizationConfig }: FulfillmentBoar
 
 	function setCardStatus(cardId: string, target: TSaleAttendanceStatusEnum) {
 		queryClient.setQueryData<FulfillmentData>(SALES_FULFILLMENT_QUERY_KEY, (old) =>
-			old ? { cards: old.cards.map((card) => (card.id === cardId ? { ...card, statusAtendimento: target } : card)) } : old,
+			old ? { ...old, cards: old.cards.map((card) => (card.id === cardId ? { ...card, statusAtendimento: target } : card)) } : old,
 		);
 	}
 
 	function replaceCard(updatedCard: TSalesFulfillmentCard) {
 		queryClient.setQueryData<FulfillmentData>(SALES_FULFILLMENT_QUERY_KEY, (old) =>
-			old ? { cards: old.cards.map((card) => (card.id === updatedCard.id ? updatedCard : card)) } : old,
+			old ? { ...old, cards: old.cards.map((card) => (card.id === updatedCard.id ? updatedCard : card)) } : old,
 		);
 	}
 
@@ -94,13 +95,13 @@ export default function FulfillmentBoard({ organizationConfig }: FulfillmentBoar
 				queryClient.setQueryData<FulfillmentData>(SALES_FULFILLMENT_QUERY_KEY, (old) =>
 					old
 						? {
+								...old,
 								cards: old.cards.map((card) =>
 									card.id === input.id
 										? {
 												...card,
 												entregaModalidade: input.entrega!.modalidade,
-												comandaNumero:
-													input.entrega!.modalidade === "COMANDA" ? (input.entrega!.comandaNumero ?? null) : null,
+												comandaNumero: input.entrega!.modalidade === "COMANDA" ? (input.entrega!.comandaNumero ?? null) : null,
 											}
 										: card,
 								),
@@ -113,14 +114,13 @@ export default function FulfillmentBoard({ organizationConfig }: FulfillmentBoar
 				queryClient.setQueryData<FulfillmentData>(SALES_FULFILLMENT_QUERY_KEY, (old) =>
 					old
 						? {
+								...old,
 								cards: old.cards.map((card) =>
 									card.id === input.id
 										? {
 												...card,
 												pagamentos: card.pagamentos.map((payment) =>
-													payment.id === input.pagamento!.transacaoId
-														? { ...payment, metodo: input.pagamento!.metodo }
-														: payment,
+													payment.id === input.pagamento!.transacaoId ? { ...payment, metodo: input.pagamento!.metodo } : payment,
 												),
 											}
 										: card,
@@ -260,13 +260,20 @@ export default function FulfillmentBoard({ organizationConfig }: FulfillmentBoar
 
 	return (
 		<div className={cn("flex min-h-0 flex-1 flex-col gap-3", BOARD_DESKTOP_MAX_HEIGHT)}>
-			<div className="flex shrink-0 items-center justify-between">
+			<div className="flex shrink-0 items-center justify-between gap-2">
 				<p className="text-xs text-muted-foreground">
 					{cards.length > 0 ? `${cards.length} pedido(s) em atendimento` : "Nenhum pedido em atendimento no momento"}
 				</p>
-				<Button variant="ghost" size="icon" onClick={() => refetch()} disabled={isRefetching} aria-label="Atualizar">
-					<RefreshCw className={`h-4 w-4 ${isRefetching ? "animate-spin" : ""}`} />
-				</Button>
+				<div className="flex items-center gap-2">
+					<PendingConfirmationPill
+						pending={data?.pendingConfirmation ?? []}
+						canManage
+						onChanged={() => queryClient.invalidateQueries({ queryKey: SALES_FULFILLMENT_QUERY_KEY })}
+					/>
+					<Button variant="ghost" size="icon" onClick={() => refetch()} disabled={isRefetching} aria-label="Atualizar">
+						<RefreshCw className={`h-4 w-4 ${isRefetching ? "animate-spin" : ""}`} />
+					</Button>
+				</div>
 			</div>
 
 			{cards.length === 0 ? (

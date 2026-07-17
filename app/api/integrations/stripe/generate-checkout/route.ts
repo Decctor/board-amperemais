@@ -133,6 +133,13 @@ async function generateCheckoutRoute(request: NextRequest) {
 					},
 					// Preferência controlada por nós (feature flag) — preserva ao trocar de plano.
 					carteirasClientes: organization.configuracao.preferencias.carteirasClientes ?? { habilitado: false },
+					// Política de canal de integrações (feature flag) — preserva ao trocar de plano.
+					integracaoERP: organization.configuracao.preferencias.integracaoERP ?? {
+						fulfillment: false,
+						estoque: false,
+						financeiro: false,
+						fiscal: false,
+					},
 				},
 				defaults: organization.configuracao.defaults,
 			},

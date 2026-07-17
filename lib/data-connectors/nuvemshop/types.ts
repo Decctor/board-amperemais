@@ -17,28 +17,44 @@ export const NuvemshopConfigSchema = z.object({
 });
 export type TNuvemshopConfig = z.infer<typeof NuvemshopConfigSchema>;
 
-const NuvemshopNullableStringSchema = z.union([z.string(), z.number(), z.boolean()]).nullable().optional().transform((value) => {
-	if (value === null || value === undefined) return null;
-	return String(value);
-});
+const NuvemshopNullableStringSchema = z
+	.union([z.string(), z.number(), z.boolean()])
+	.nullable()
+	.optional()
+	.transform((value) => {
+		if (value === null || value === undefined) return null;
+		return String(value);
+	});
 
-const NuvemshopMoneySchema = z.union([z.string(), z.number()]).nullable().optional().transform((value) => {
-	if (value === null || value === undefined || value === "") return 0;
-	const numberValue = Number(value);
-	return Number.isFinite(numberValue) ? numberValue : 0;
-});
+const NuvemshopMoneySchema = z
+	.union([z.string(), z.number()])
+	.nullable()
+	.optional()
+	.transform((value) => {
+		if (value === null || value === undefined || value === "") return 0;
+		const numberValue = Number(value);
+		return Number.isFinite(numberValue) ? numberValue : 0;
+	});
 
-const NuvemshopNullableMoneySchema = z.union([z.string(), z.number()]).nullable().optional().transform((value) => {
-	if (value === null || value === undefined || value === "") return null;
-	const numberValue = Number(value);
-	return Number.isFinite(numberValue) ? numberValue : null;
-});
+const NuvemshopNullableMoneySchema = z
+	.union([z.string(), z.number()])
+	.nullable()
+	.optional()
+	.transform((value) => {
+		if (value === null || value === undefined || value === "") return null;
+		const numberValue = Number(value);
+		return Number.isFinite(numberValue) ? numberValue : null;
+	});
 
-const NuvemshopStockSchema = z.union([z.string(), z.number()]).nullable().optional().transform((value) => {
-	if (value === null || value === undefined || value === "") return null;
-	const numberValue = Number(value);
-	return Number.isFinite(numberValue) ? numberValue : null;
-});
+const NuvemshopStockSchema = z
+	.union([z.string(), z.number()])
+	.nullable()
+	.optional()
+	.transform((value) => {
+		if (value === null || value === undefined || value === "") return null;
+		const numberValue = Number(value);
+		return Number.isFinite(numberValue) ? numberValue : null;
+	});
 
 const NuvemshopLocalizedStringSchema = z
 	.record(z.string().nullable().optional())
@@ -86,11 +102,15 @@ export const NuvemshopOrderProductSchema = z
 		barcode: NuvemshopNullableStringSchema,
 		price: NuvemshopMoneySchema,
 		cost: NuvemshopMoneySchema,
-		quantity: z.union([z.string(), z.number()]).nullable().optional().transform((value) => {
-			if (value === null || value === undefined || value === "") return 0;
-			const numberValue = Number(value);
-			return Number.isFinite(numberValue) ? numberValue : 0;
-		}),
+		quantity: z
+			.union([z.string(), z.number()])
+			.nullable()
+			.optional()
+			.transform((value) => {
+				if (value === null || value === undefined || value === "") return 0;
+				const numberValue = Number(value);
+				return Number.isFinite(numberValue) ? numberValue : 0;
+			}),
 		properties: z
 			.union([z.array(z.unknown()), z.record(z.unknown())])
 			.optional()

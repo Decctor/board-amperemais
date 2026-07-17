@@ -1,11 +1,12 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { getChannelErpPolicy, type TChannelErpPolicy } from "@/lib/sales/fulfillment-channels";
 import { mapSaleRowToFulfillmentCard } from "@/lib/sales/sale-processing/map-sale-to-fulfillment-card";
 import { processSaleFulfillmentCorrection } from "@/lib/sales/sale-processing/process-sale-fulfillment-correction";
 import { DeliveryModeEnum, PaymentMethodEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { sales } from "@/services/drizzle/schema";
-import { and, eq, gte, inArray, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, or } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -49,10 +50,7 @@ const SALE_FULFILLMENT_WITH = {
 
 const PatchSalesFulfillmentEntregaSchema = z.object({
 	modalidade: DeliveryModeEnum,
-	comandaNumero: z
-		.string({ invalid_type_error: "Tipo inválido para número da comanda." })
-		.optional()
-		.nullable(),
+	comandaNumero: z.string({ invalid_type_error: "Tipo inválido para número da comanda." }).optional().nullable(),
 });
 
 const PatchSalesFulfillmentPagamentoSchema = z.object({
@@ -83,18 +81,25 @@ export type TPatchSalesFulfillmentInput = z.infer<typeof PatchSalesFulfillmentIn
 // GET SERVICE
 // ============================================================================
 
-async function getSalesFulfillment({ orgId }: { orgId: string }) {
+const PENDING_CONFIRMATION_VISIBILITY_HOURS = 24;
+
+async function getSalesFulfillment({ orgId, policy }: { orgId: string; policy: TChannelErpPolicy }) {
 	const deliveredCutoff = new Date(Date.now() - DELIVERED_VISIBILITY_DAYS * 24 * 60 * 60 * 1000);
+	const attendanceVisibilityFilter = or(
+		inArray(sales.statusAtendimento, [...ACTIVE_ATTENDANCE_STATUSES]),
+		and(eq(sales.statusAtendimento, "ENTREGUE"), gte(sales.dataVenda, deliveredCutoff)),
+	);
 
 	const result = await db.query.sales.findMany({
 		where: and(
 			eq(sales.organizacaoId, orgId),
 			eq(sales.statusVenda, "CONFIRMADA"),
-			eq(sales.processamentoOrigem, "INTERNO"),
-			or(
-				inArray(sales.statusAtendimento, [...ACTIVE_ATTENDANCE_STATUSES]),
-				and(eq(sales.statusAtendimento, "ENTREGUE"), gte(sales.dataVenda, deliveredCutoff)),
-			),
+			attendanceVisibilityFilter,
+			// Vendas internas sempre; vendas de canais gerenciados (ex.: iFood) quando a política
+			// de fulfillment de integrações está ligada.
+			policy.fulfillment
+				? or(eq(sales.processamentoOrigem, "INTERNO"), and(eq(sales.processamentoOrigem, "EXTERNO"), eq(sales.modelo, "IFOOD")))
+				: eq(sales.processamentoOrigem, "INTERNO"),
 		),
 		columns: {
 			id: true,
@@ -107,6 +112,8 @@ async function getSalesFulfillment({ orgId }: { orgId: string }) {
 			clienteId: true,
 			observacoes: true,
 			dataVenda: true,
+			modelo: true,
+			processamentoOrigem: true,
 		},
 		with: SALE_FULFILLMENT_WITH,
 		orderBy: (fields, { asc }) => asc(fields.dataVenda),
@@ -114,8 +121,51 @@ async function getSalesFulfillment({ orgId }: { orgId: string }) {
 
 	const cards = result.map((sale) => mapSaleRowToFulfillmentCard(sale));
 
+	// Fila de pedidos a confirmar: pedidos de canal gerenciado ainda não confirmados no canal
+	// (iFood PLACED: statusVenda nulo + atendimento NAO_INICIADO). SLA de confirmação: 8 minutos.
+	const pendingConfirmationCutoff = new Date(Date.now() - PENDING_CONFIRMATION_VISIBILITY_HOURS * 60 * 60 * 1000);
+	const pendingConfirmation = policy.fulfillment
+		? (
+				await db.query.sales.findMany({
+					where: and(
+						eq(sales.organizacaoId, orgId),
+						eq(sales.processamentoOrigem, "EXTERNO"),
+						eq(sales.modelo, "IFOOD"),
+						isNull(sales.statusVenda),
+						eq(sales.statusAtendimento, "NAO_INICIADO"),
+						gte(sales.dataVenda, pendingConfirmationCutoff),
+					),
+					columns: {
+						id: true,
+						idExterno: true,
+						documento: true,
+						valorTotal: true,
+						entregaModalidade: true,
+						observacoes: true,
+						dataVenda: true,
+					},
+					with: {
+						cliente: { columns: { id: true, nome: true, telefone: true } },
+						itens: { columns: { id: true } },
+					},
+					orderBy: desc(sales.dataVenda),
+				})
+			).map((sale) => ({
+				vendaId: sale.id,
+				orderId: sale.idExterno,
+				displayId: sale.documento,
+				valorTotal: sale.valorTotal,
+				entregaModalidade: sale.entregaModalidade,
+				observacoes: sale.observacoes,
+				dataVenda: sale.dataVenda,
+				cliente: sale.cliente,
+				quantidadeItens: sale.itens.length,
+				canal: "IFOOD" as const,
+			}))
+		: [];
+
 	return {
-		data: { cards },
+		data: { cards, pendingConfirmation },
 		message: "Pedidos de atendimento carregados com sucesso.",
 	};
 }
@@ -127,13 +177,7 @@ export type TSalesFulfillmentCard = TGetSalesFulfillmentOutput["data"]["cards"][
 // PATCH SERVICE
 // ============================================================================
 
-async function patchSalesFulfillment({
-	input,
-	orgId,
-}: {
-	input: TPatchSalesFulfillmentInput;
-	orgId: string;
-}) {
+async function patchSalesFulfillment({ input, orgId }: { input: TPatchSalesFulfillmentInput; orgId: string }) {
 	const organization = await db.query.organizations.findFirst({
 		where: (fields, { eq }) => eq(fields.id, orgId),
 	});
@@ -173,7 +217,8 @@ async function getSalesFulfillmentRoute(_request: NextRequest) {
 		throw new createHttpError.Forbidden("Sua organização não possui acesso ao módulo de ERP.");
 	}
 
-	const result = await getSalesFulfillment({ orgId: session.membership.organizacao.id });
+	const policy = getChannelErpPolicy(session.membership.organizacao.configuracao);
+	const result = await getSalesFulfillment({ orgId: session.membership.organizacao.id, policy });
 	return NextResponse.json(result);
 }
 

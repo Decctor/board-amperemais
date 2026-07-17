@@ -23,7 +23,7 @@ Antes de criar um componente, modal, hook, query ou padrão visual, procure um e
 
 Bons pontos de partida:
 
-- CRUD modal: `components/Modals/Internal/**`
+- CRUD modal: `components/Modals/**`
 - modal responsivo: `components/Utils/ResponsiveMenu.tsx`
 - agrupamento de campos em modal: `components/Utils/ResponsiveMenuSection.tsx`
 - cards compostos: `components/Interactions/InteractionCard.tsx`
@@ -237,7 +237,7 @@ Evite introduzir:
 - hooks de mutation dentro de `lib/queries`;
 - estado de formulário grande dentro de páginas ou blocos visuais;
 - edição inline para CRUD administrativo;
-- classes Tailwind dinâmicas como ``w-[${width}]``;
+- classes Tailwind dinâmicas como `w-[${width}]`;
 - cores utilitárias fora da paleta documentada;
 - componentes locais que duplicam primitives existentes;
 - arquivos de página que concentram múltiplas responsabilidades;

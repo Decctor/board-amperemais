@@ -81,7 +81,10 @@ export const IfoodMerchantSchema = z
 	.passthrough();
 export type TIfoodMerchant = z.infer<typeof IfoodMerchantSchema>;
 
-export const IfoodMerchantsOutputSchema = z.union([z.array(IfoodMerchantSchema), z.object({ merchants: z.array(IfoodMerchantSchema) }).passthrough()]);
+export const IfoodMerchantsOutputSchema = z.union([
+	z.array(IfoodMerchantSchema),
+	z.object({ merchants: z.array(IfoodMerchantSchema) }).passthrough(),
+]);
 
 export const IfoodEventSchema = z
 	.object({

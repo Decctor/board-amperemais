@@ -1,4 +1,5 @@
 import { formatPhoneAsBase, formatToCEP, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
+import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
 import dayjs from "dayjs";
 import type {
 	TCanonicalClient,
@@ -23,12 +24,45 @@ const IFOOD_EVENT_STATUS_BY_CODE: Record<string, string> = {
 	PLACED: "PLACED",
 	CFM: "CONFIRMED",
 	CONFIRMED: "CONFIRMED",
+	PRS: "PREPARATION_STARTED",
+	PREPARATION_STARTED: "PREPARATION_STARTED",
+	SPS: "SEPARATION_STARTED",
+	SEPARATION_STARTED: "SEPARATION_STARTED",
+	SPE: "SEPARATION_ENDED",
+	SEPARATION_ENDED: "SEPARATION_ENDED",
+	RTP: "READY_TO_PICKUP",
+	READY_TO_PICKUP: "READY_TO_PICKUP",
+	DSP: "DISPATCHED",
+	DISPATCHED: "DISPATCHED",
+	COL: "COLLECTED",
+	COLLECTED: "COLLECTED",
 	CON: "CONCLUDED",
 	CONCLUDED: "CONCLUDED",
 	CAN: "CANCELLED",
 	CANCELLED: "CANCELLED",
 	CANCELED: "CANCELED",
 };
+
+// Traducao do ciclo de pedido do iFood para o eixo operacional de atendimento da plataforma.
+// Status desconhecido retorna null — o mapper canonico cai no comportamento legado.
+const IFOOD_ATTENDANCE_STATUS_BY_ORDER_STATUS: Record<string, TSaleAttendanceStatusEnum> = {
+	PLACED: "NAO_INICIADO",
+	CONFIRMED: "EM_PREPARO",
+	PREPARATION_STARTED: "EM_PREPARO",
+	SEPARATION_STARTED: "EM_PREPARO",
+	SEPARATION_ENDED: "PRONTO",
+	READY_TO_PICKUP: "PRONTO",
+	DISPATCHED: "EM_ENTREGA",
+	COLLECTED: "EM_ENTREGA",
+	CONCLUDED: "ENTREGUE",
+	CANCELLED: "CANCELADO",
+	CANCELED: "CANCELADO",
+};
+
+function mapIfoodAttendanceStatus(statusText: string | null): TSaleAttendanceStatusEnum | null {
+	if (!statusText) return null;
+	return IFOOD_ATTENDANCE_STATUS_BY_ORDER_STATUS[statusText.toUpperCase()] ?? null;
+}
 
 function getEventStatus(event: TIfoodEvent) {
 	const code = event.code.toUpperCase();
@@ -44,7 +78,15 @@ function getOrderEventState(events: TIfoodEvent[]): TIfoodOrderEventState {
 		cancelledAt: null,
 	};
 
-	for (const event of events) {
+	// Eventos podem chegar fora de ordem (garantia at-least-once, sem ordenacao) — o status
+	// derivado deve ser o do evento mais recente por createdAt, nao o ultimo do array.
+	const orderedEvents = [...events].sort((a, b) => {
+		const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+		const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+		return aTime - bTime;
+	});
+
+	for (const event of orderedEvents) {
 		const status = getEventStatus(event);
 		if (!status) continue;
 		state.statusText = status;
@@ -156,11 +198,27 @@ function isCanceled(order: TIfoodOrder, eventState: TIfoodOrderEventState) {
 	return status === "CANCELLED" || status === "CANCELED" || !!order.cancelledAt || !!eventState.cancelledAt;
 }
 
+// Status que implicam pedido confirmado (etapas do ciclo posteriores a confirmacao).
+const IFOOD_CONFIRMED_OR_LATER_STATUSES = new Set([
+	"CONFIRMED",
+	"PREPARATION_STARTED",
+	"SEPARATION_STARTED",
+	"SEPARATION_ENDED",
+	"READY_TO_PICKUP",
+	"DISPATCHED",
+	"COLLECTED",
+	"CONCLUDED",
+]);
+
 function isValidSale(order: TIfoodOrder, eventState: TIfoodOrderEventState) {
 	const status = (order.status || eventState.statusText)?.toUpperCase();
 	return (
 		!isCanceled(order, eventState) &&
-		(status === "CONFIRMED" || status === "CONCLUDED" || !!order.confirmedAt || !!eventState.confirmedAt || !!order.concludedAt || !!eventState.concludedAt)
+		((!!status && IFOOD_CONFIRMED_OR_LATER_STATUSES.has(status)) ||
+			!!order.confirmedAt ||
+			!!eventState.confirmedAt ||
+			!!order.concludedAt ||
+			!!eventState.concludedAt)
 	);
 }
 
@@ -198,6 +256,7 @@ export function mapIfoodSale(order: TIfoodOrder, events: TIfoodEvent[] = []): TC
 		items: order.items.map(mapIfoodSaleItem),
 		isValidSale: validSale,
 		isCanceled: canceled,
+		attendanceStatus: mapIfoodAttendanceStatus(statusText),
 		raw: order,
 	};
 }

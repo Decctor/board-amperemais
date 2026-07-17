@@ -21,7 +21,12 @@ import { ptBR } from "date-fns/locale";
 import { CircleUser, Clock, GripVertical, Loader2, MoveRight } from "lucide-react";
 import { forwardRef, type CSSProperties } from "react";
 import { ATTENDANCE_STATUS_LABEL, FINANCIAL_BADGE_META, getValidBoardTargets } from "./config";
-import { CardQuickActions, fulfillmentCardShowsFinancialBadge, getPaymentControlTone, QuickPaymentMethodControl } from "./quick-actions/CardQuickActions";
+import {
+	CardQuickActions,
+	fulfillmentCardShowsFinancialBadge,
+	getPaymentControlTone,
+	QuickPaymentMethodControl,
+} from "./quick-actions/CardQuickActions";
 
 const TONE_CLASSES: Record<"success" | "muted" | "neutral" | "danger", string> = {
 	success: "border-green-200 bg-green-100 text-green-600",
@@ -89,8 +94,7 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 	const clientPhone = card.cliente?.telefone ? formatToPhone(card.cliente.telefone) : null;
 	const hasPaymentSection =
 		Boolean(onPatch) &&
-		(card.pagamentos.some((payment) => payment.editavel || payment.dataEfetivacao != null) ||
-			card.resumoPagamentos.totalPendentes > 0);
+		(card.pagamentos.some((payment) => payment.editavel || payment.dataEfetivacao != null) || card.resumoPagamentos.totalPendentes > 0);
 	const showFinancialBadge = fulfillmentCardShowsFinancialBadge(card, hasPaymentSection);
 
 	return (
@@ -132,6 +136,9 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 					<div className="flex min-w-0 items-center gap-1.5">
 						<CircleUser className="h-3.5 w-3.5 shrink-0 text-foreground/60" />
 						<span className="truncate text-sm font-bold tracking-tight">{card.cliente?.nome ?? "Ao consumidor"}</span>
+						{card.integracaoCanal === "IFOOD" ? (
+							<span className="shrink-0 rounded-md bg-[#EA1D2C]/10 px-1.5 py-0.5 text-[0.6rem] font-bold tracking-tight text-[#EA1D2C]">iFood</span>
+						) : null}
 					</div>
 					<span className="truncate text-[11px] text-muted-foreground">#{card.idExterno}</span>
 				</div>
@@ -168,12 +175,7 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 			</div>
 
 			{onPatch ? (
-				<CardQuickActions
-					card={card}
-					organizationConfig={organizationConfig}
-					disabled={isPending || awaitingConfirm}
-					onPatch={onPatch}
-				/>
+				<CardQuickActions card={card} organizationConfig={organizationConfig} disabled={isPending || awaitingConfirm} onPatch={onPatch} />
 			) : null}
 
 			{showFinancialBadge ? (
@@ -194,15 +196,12 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 					<p className="text-[11px] leading-snug text-muted-foreground">
 						{card.financeiro === "RECEBIDA"
 							? "Confirmar entrega? Isso registra a baixa física de estoque do pedido."
-						 : `Pagamento pendente${editablePayments.length > 0 ? ` (${editablePayments.length} recebimento${editablePayments.length > 1 ? "s" : ""})` : ""}. Confirme o recebimento antes de entregar.`}
+							: `Pagamento pendente${editablePayments.length > 0 ? ` (${editablePayments.length} recebimento${editablePayments.length > 1 ? "s" : ""})` : ""}. Confirme o recebimento antes de entregar.`}
 					</p>
 					{card.financeiro !== "RECEBIDA" && primaryPendingPayment && onPatch ? (
 						<div className="flex flex-col gap-1.5">
 							{editablePayments.map((payment, index) => (
-								<QuickActionRow
-									key={payment.id}
-									label={editablePayments.length > 1 ? `Receber ${index + 1}` : "Receber como"}
-								>
+								<QuickActionRow key={payment.id} label={editablePayments.length > 1 ? `Receber ${index + 1}` : "Receber como"}>
 									<QuickPaymentMethodControl
 										payment={payment}
 										saleId={card.id}

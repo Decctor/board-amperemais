@@ -32,7 +32,10 @@ function pickLocalizedValue(value: Record<string, string | null | undefined>) {
 
 function stripHtml(value: string | null) {
 	if (!value) return null;
-	const text = value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+	const text = value
+		.replace(/<[^>]*>/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
 	return text.length > 0 ? text : null;
 }
 
@@ -105,13 +108,7 @@ export function mapNuvemshopProduct(product: TNuvemshopOrderProduct): TCanonical
 }
 
 function getCatalogProductCode(product: TNuvemshopProduct, variant: TNuvemshopProductVariant | null) {
-	return (
-		variant?.sku ||
-		toStringId(variant?.id) ||
-		toStringId(variant?.product_id) ||
-		toStringId(product.id) ||
-		"PRODUTO-NUVEM-SHOP"
-	);
+	return variant?.sku || toStringId(variant?.id) || toStringId(variant?.product_id) || toStringId(product.id) || "PRODUTO-NUVEM-SHOP";
 }
 
 function getCatalogProductImageUrl(product: TNuvemshopProduct) {

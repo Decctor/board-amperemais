@@ -2,7 +2,15 @@ import dayjs from "dayjs";
 import type { TCanonicalImportWindow, TDataConnector } from "../types";
 import { createBlingClient, fetchBlingPaginated, fetchBlingSingle, getValidBlingConfig } from "./client";
 import { toCanonicalBlingImportBatch } from "./mappers";
-import { BlingConfigSchema, BlingContactSchema, BlingProductSchema, BlingSaleSchema, type TBlingContact, type TBlingProduct, type TBlingSale } from "./types";
+import {
+	BlingConfigSchema,
+	BlingContactSchema,
+	BlingProductSchema,
+	BlingSaleSchema,
+	type TBlingContact,
+	type TBlingProduct,
+	type TBlingSale,
+} from "./types";
 
 const LOG_PREFIX = "[BLING_SYNC]";
 
@@ -98,10 +106,7 @@ export const blingDataConnector: TDataConnector = {
 		const client = createBlingClient(validConfig);
 
 		const sales = await fetchBlingSalesWithDetails(client, window);
-		const [contacts, products] = await Promise.all([
-			fetchBlingContactsForSales(client, sales),
-			fetchBlingProductsForSales(client, sales),
-		]);
+		const [contacts, products] = await Promise.all([fetchBlingContactsForSales(client, sales), fetchBlingProductsForSales(client, sales)]);
 
 		const batch = toCanonicalBlingImportBatch({
 			organizationId,
@@ -111,7 +116,9 @@ export const blingDataConnector: TDataConnector = {
 			products,
 		});
 
-		console.log(`${LOG_PREFIX} Batch canônico montado: ${batch.sales.length} venda(s), ${batch.products.length} produto(s), ${batch.sellers.length} vendedor(es).`);
+		console.log(
+			`${LOG_PREFIX} Batch canônico montado: ${batch.sales.length} venda(s), ${batch.products.length} produto(s), ${batch.sellers.length} vendedor(es).`,
+		);
 
 		return batch;
 	},

@@ -105,8 +105,7 @@ async function patchEntrega({
 		throw new createHttpError.BadRequest("Entrega exige cliente vinculado.");
 	}
 
-	const comandaNumero =
-		entrega.modalidade === "COMANDA" ? (entrega.comandaNumero?.trim() || null) : null;
+	const comandaNumero = entrega.modalidade === "COMANDA" ? entrega.comandaNumero?.trim() || null : null;
 	if (entrega.modalidade === "COMANDA" && !comandaNumero) {
 		throw new createHttpError.BadRequest("Informe o número da comanda.");
 	}

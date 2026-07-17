@@ -18,6 +18,7 @@ import type { TSaleAttendanceStatusEnum, TSaleStatusEnum } from "@/schemas/enums
 type CanonicalSaleStatusSignals = {
 	isValidSale: boolean;
 	isCanceled: boolean;
+	attendanceStatus?: TSaleAttendanceStatusEnum | null;
 };
 
 /**
@@ -34,10 +35,17 @@ export function mapCanonicalSaleCommercialStatus({ isValidSale, isCanceled }: Ca
 
 /**
  * Status operacional derivado dos sinais canonicos da integracao.
- * Vendas externas chegam como historico concluido (ENTREGUE) ou canceladas (CANCELADO).
- * Sem sinal confiavel, mantem o valor neutro NAO_INICIADO.
+ * Conectores com granularidade de fulfillment (ex.: ciclo de pedido do iFood) informam
+ * `attendanceStatus` diretamente e ele prevalece. Sem granularidade, comportamento legado:
+ * vendas externas chegam como historico concluido (ENTREGUE) ou canceladas (CANCELADO);
+ * sem sinal confiavel, mantem o valor neutro NAO_INICIADO.
  */
-export function mapCanonicalSaleAttendanceStatus({ isValidSale, isCanceled }: CanonicalSaleStatusSignals): TSaleAttendanceStatusEnum {
+export function mapCanonicalSaleAttendanceStatus({
+	isValidSale,
+	isCanceled,
+	attendanceStatus,
+}: CanonicalSaleStatusSignals): TSaleAttendanceStatusEnum {
+	if (attendanceStatus) return attendanceStatus;
 	if (isCanceled) return "CANCELADO";
 	if (isValidSale) return "ENTREGUE";
 	return "NAO_INICIADO";

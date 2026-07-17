@@ -17,19 +17,19 @@ export type ClientExportRow = {
 	TELEFONE: string;
 	EMAIL: string;
 	"CPF/CNPJ": string;
-	"AQUISIÇÃO": string;
+	AQUISIÇÃO: string;
 	"SEGMENTAÇÃO RFM": string;
 	"VALOR TOTAL DE COMPRAS": string;
 	"QUANTIDADE TOTAL DE COMPRAS": number;
-	"PRIMEIRA COMPRA": string;
-	"ÚLTIMA COMPRA": string;
+	"PRIMEIRA COMPRA": string | null;
+	"ÚLTIMA COMPRA": string | null;
 	"CASHBACK DISPONÍVEL": string;
-	"CIDADE": string;
-	"ESTADO": string;
-	"BAIRRO": string;
-	"CEP": string;
+	CIDADE: string;
+	ESTADO: string;
+	BAIRRO: string;
+	CEP: string;
 	"PRODUTO/GRUPO MAIS COMPRADO": string;
-	"DATA DE CADASTRO": string;
+	"DATA DE CADASTRO": string | null;
 };
 
 export type UseClientsExportReturn = {
@@ -81,7 +81,7 @@ function formatClientForExport(client: ClientExportClient): ClientExportRow {
 		TELEFONE: client.telefone ? formatToPhone(client.telefone) : "",
 		EMAIL: client.email ?? "",
 		"CPF/CNPJ": client.cpfCnpj ?? "",
-		"AQUISIÇÃO": client.canalAquisicao ?? "",
+		AQUISIÇÃO: client.canalAquisicao ?? "",
 		"SEGMENTAÇÃO RFM": client.analiseRFMTitulo ?? "",
 		"VALOR TOTAL DE COMPRAS": formatToMoney(client.estatisticas.comprasValorTotal),
 		"QUANTIDADE TOTAL DE COMPRAS": client.estatisticas.comprasQtdeTotal,

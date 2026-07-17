@@ -230,6 +230,22 @@ export const OrganizationConfigurationSchema = z.object({
 			.default({
 				habilitado: false,
 			}),
+		// Política de canal para vendas de integrações (fase 3 do plano iFood/fulfillment):
+		// quais efeitos de ERP as vendas de canais gerenciados (ex.: iFood) geram na plataforma.
+		// Cashback NÃO entra aqui: continua governado por cashbackPrograms.acumuloPermitirViaIntegracao.
+		integracaoERP: z
+			.object({
+				fulfillment: z.boolean({ invalid_type_error: "Tipo não válido para a habilitação do atendimento de vendas de integração." }),
+				estoque: z.boolean({ invalid_type_error: "Tipo não válido para a baixa de estoque de vendas de integração." }),
+				financeiro: z.boolean({ invalid_type_error: "Tipo não válido para o financeiro de vendas de integração." }),
+				fiscal: z.boolean({ invalid_type_error: "Tipo não válido para a emissão fiscal de vendas de integração." }),
+			})
+			.default({
+				fulfillment: false,
+				estoque: false,
+				financeiro: false,
+				fiscal: false,
+			}),
 	}),
 	defaults: OrganizationDefaultsSchema,
 });
