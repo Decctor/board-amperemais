@@ -44,9 +44,62 @@ const SALE_FULFILLMENT_WITH = {
 	},
 } as const;
 
+const SALE_FULFILLMENT_DETAILS_WITH = {
+	...SALE_FULFILLMENT_WITH,
+	cliente: { columns: { id: true, nome: true, telefone: true } },
+	entregaLocalizacao: {
+		columns: {
+			id: true,
+			titulo: true,
+			localizacaoCep: true,
+			localizacaoEstado: true,
+			localizacaoCidade: true,
+			localizacaoBairro: true,
+			localizacaoLogradouro: true,
+			localizacaoNumero: true,
+			localizacaoComplemento: true,
+		},
+	},
+	itens: {
+		columns: {
+			id: true,
+			quantidade: true,
+			valorVendaUnitario: true,
+			valorVendaTotalBruto: true,
+			valorTotalDesconto: true,
+			valorVendaTotalLiquido: true,
+		},
+		with: {
+			produto: { columns: { id: true, nome: true, codigo: true, unidade: true, imagemCapaUrl: true } },
+			produtoVariante: { columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true } },
+			adicionais: {
+				columns: { id: true, quantidade: true, valorUnitario: true, valorTotal: true },
+				with: { opcao: { columns: { id: true, nome: true } } },
+			},
+		},
+	},
+	documentosFiscais: {
+		columns: {
+			id: true,
+			tipo: true,
+			statusInterno: true,
+			numero: true,
+			serie: true,
+			dataEmissao: true,
+			dataInsercao: true,
+		},
+	},
+} as const;
+
 // ============================================================================
 // INPUT SCHEMA
 // ============================================================================
+
+const GetSalesFulfillmentInputSchema = z.object({
+	id: z.string({ invalid_type_error: "Tipo inválido para ID da venda." }).optional().nullable(),
+});
+
+export type TGetSalesFulfillmentInput = z.infer<typeof GetSalesFulfillmentInputSchema>;
 
 const PatchSalesFulfillmentEntregaSchema = z.object({
 	modalidade: DeliveryModeEnum,
@@ -83,7 +136,52 @@ export type TPatchSalesFulfillmentInput = z.infer<typeof PatchSalesFulfillmentIn
 
 const PENDING_CONFIRMATION_VISIBILITY_HOURS = 24;
 
-async function getSalesFulfillment({ orgId, policy }: { orgId: string; policy: TChannelErpPolicy }) {
+async function getSalesFulfillment({ input, orgId, policy }: { input: TGetSalesFulfillmentInput; orgId: string; policy: TChannelErpPolicy }) {
+	if (input.id) {
+		const sale = await db.query.sales.findFirst({
+			where: and(eq(sales.id, input.id), eq(sales.organizacaoId, orgId)),
+			columns: {
+				id: true,
+				idExterno: true,
+				documento: true,
+				valorTotal: true,
+				descontosTotal: true,
+				acrescimosTotal: true,
+				statusVenda: true,
+				statusAtendimento: true,
+				entregaModalidade: true,
+				comandaNumero: true,
+				clienteId: true,
+				observacoes: true,
+				dataVenda: true,
+				canal: true,
+				modelo: true,
+				processamentoOrigem: true,
+			},
+			with: SALE_FULFILLMENT_DETAILS_WITH,
+		});
+
+		if (!sale) throw new createHttpError.NotFound("Venda não encontrada.");
+
+		const card = mapSaleRowToFulfillmentCard(sale);
+		return {
+			data: {
+				default: null,
+				byId: {
+					...card,
+					documento: sale.documento,
+					canal: sale.canal,
+					descontosTotal: sale.descontosTotal,
+					acrescimosTotal: sale.acrescimosTotal,
+					entregaLocalizacao: sale.entregaLocalizacao,
+					itens: sale.itens,
+					documentosFiscais: sale.documentosFiscais,
+				},
+			},
+			message: "Detalhes operacionais da venda carregados com sucesso.",
+		};
+	}
+
 	const deliveredCutoff = new Date(Date.now() - DELIVERED_VISIBILITY_DAYS * 24 * 60 * 60 * 1000);
 	const attendanceVisibilityFilter = or(
 		inArray(sales.statusAtendimento, [...ACTIVE_ATTENDANCE_STATUSES]),
@@ -165,13 +263,15 @@ async function getSalesFulfillment({ orgId, policy }: { orgId: string; policy: T
 		: [];
 
 	return {
-		data: { cards, pendingConfirmation },
+		data: { default: { cards, pendingConfirmation }, byId: null },
 		message: "Pedidos de atendimento carregados com sucesso.",
 	};
 }
 
 export type TGetSalesFulfillmentOutput = Awaited<ReturnType<typeof getSalesFulfillment>>;
-export type TSalesFulfillmentCard = TGetSalesFulfillmentOutput["data"]["cards"][number];
+export type TGetSalesFulfillmentOutputDefault = NonNullable<TGetSalesFulfillmentOutput["data"]["default"]>;
+export type TGetSalesFulfillmentOutputById = NonNullable<TGetSalesFulfillmentOutput["data"]["byId"]>;
+export type TSalesFulfillmentCard = TGetSalesFulfillmentOutputDefault["cards"][number];
 
 // ============================================================================
 // PATCH SERVICE
@@ -209,7 +309,7 @@ export type TPatchSalesFulfillmentOutput = Awaited<ReturnType<typeof patchSalesF
 // HANDLERS
 // ============================================================================
 
-async function getSalesFulfillmentRoute(_request: NextRequest) {
+async function getSalesFulfillmentRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	if (!session.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
@@ -218,7 +318,8 @@ async function getSalesFulfillmentRoute(_request: NextRequest) {
 	}
 
 	const policy = getChannelErpPolicy(session.membership.organizacao.configuracao);
-	const result = await getSalesFulfillment({ orgId: session.membership.organizacao.id, policy });
+	const input = GetSalesFulfillmentInputSchema.parse({ id: request.nextUrl.searchParams.get("id") });
+	const result = await getSalesFulfillment({ input, orgId: session.membership.organizacao.id, policy });
 	return NextResponse.json(result);
 }
 

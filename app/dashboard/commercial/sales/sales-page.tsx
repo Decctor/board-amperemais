@@ -10,6 +10,7 @@ import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger, tabsPageToolbarActionsClassName, tabsPageToolbarClassName } from "@/components/ui/tabs";
 import { ActionApprovalsQueue } from "@/components/ActionApprovals/ActionApprovalsQueue";
+import { SaleFulfillmentDetailsMenu } from "@/components/Modals/Sales/SaleFulfillmentDetailsMenu";
 import FulfillmentBoard from "./_components/fulfillment/fulfillment-board";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
@@ -42,6 +43,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { parseAsString, useQueryState } from "nuqs";
 
 type SalesPageProps = {
 	user: TAuthUserSession["user"];
@@ -51,6 +53,15 @@ type SalesPageProps = {
 
 export default function SalesPage({ user: _user, organization, canApproveActionRequests }: SalesPageProps) {
 	const orgHasERPAccess = organization.configuracao.recursos.erp.acesso;
+	const [selectedSaleId, setSelectedSaleId] = useQueryState("saleId", parseAsString.withOptions({ shallow: true }));
+
+	function closeSaleDetails() {
+		const triggerId = selectedSaleId ? `sale-details-trigger-${selectedSaleId}` : null;
+		void setSelectedSaleId(null, { history: "replace" }).then(() => {
+			if (!triggerId) return;
+			requestAnimationFrame(() => document.getElementById(triggerId)?.focus());
+		});
+	}
 
 	// Organizações sem o módulo de ERP não veem a interface de abas: só o histórico.
 	if (!orgHasERPAccess) {
@@ -66,7 +77,7 @@ export default function SalesPage({ user: _user, organization, canApproveActionR
 
 	return (
 		<div className="flex h-full w-full flex-col gap-3">
-			<Tabs defaultValue="historico" className="flex h-full w-full flex-col">
+			<Tabs defaultValue={selectedSaleId ? "atendimento" : "historico"} className="flex h-full w-full flex-col">
 				<div className={tabsPageToolbarClassName}>
 					<TabsList variant="page">
 						<TabsTrigger value="historico">
@@ -90,12 +101,16 @@ export default function SalesPage({ user: _user, organization, canApproveActionR
 					<SalesHistoryView />
 				</TabsContent>
 				<TabsContent value="atendimento" className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden">
-					<FulfillmentBoard organizationConfig={organization.configuracao} />
+					<FulfillmentBoard
+						organizationConfig={organization.configuracao}
+						onViewDetails={(saleId) => void setSelectedSaleId(saleId, { history: "push" })}
+					/>
 				</TabsContent>
 				<TabsContent value="aprovacoes" className="mt-3 flex flex-col gap-3">
 					<ActionApprovalsQueue orgId={organization.id} canApprove={canApproveActionRequests} />
 				</TabsContent>
 			</Tabs>
+			{selectedSaleId ? <SaleFulfillmentDetailsMenu saleId={selectedSaleId} closeMenu={closeSaleDetails} /> : null}
 		</div>
 	);
 }

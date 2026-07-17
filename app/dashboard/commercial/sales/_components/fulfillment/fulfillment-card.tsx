@@ -18,7 +18,7 @@ import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
 import type { DraggableAttributes, DraggableSyntheticListeners } from "@dnd-kit/core";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CircleUser, Clock, GripVertical, Loader2, MoveRight } from "lucide-react";
+import { CircleUser, Clock, Eye, GripVertical, Loader2, MoveRight } from "lucide-react";
 import { forwardRef, type CSSProperties } from "react";
 import { ATTENDANCE_STATUS_LABEL, FINANCIAL_BADGE_META, getValidBoardTargets } from "./config";
 import {
@@ -61,6 +61,7 @@ type FulfillmentCardProps = {
 	onConfirmDelivery?: () => void;
 	onDeliverWithoutPayment?: () => void;
 	onCancelConfirm?: () => void;
+	onViewDetails?: () => void;
 	dragAttributes?: DraggableAttributes;
 	dragListeners?: DraggableSyntheticListeners;
 	style?: CSSProperties;
@@ -80,6 +81,7 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 		onConfirmDelivery,
 		onDeliverWithoutPayment,
 		onCancelConfirm,
+		onViewDetails,
 		dragAttributes,
 		dragListeners,
 		style,
@@ -143,26 +145,44 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 					<span className="truncate text-[11px] text-muted-foreground">#{card.idExterno}</span>
 				</div>
 
-				{onMove && moveTargets.length > 0 ? (
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							aria-label="Mover pedido"
-							onPointerDown={(e) => e.stopPropagation()}
-							className="rounded-md p-1 text-muted-foreground/60 hover:bg-accent hover:text-foreground focus-visible:outline-none"
+				<div className="flex shrink-0 items-center gap-0.5">
+					{onViewDetails ? (
+						<button
+							id={`sale-details-trigger-${card.id}`}
+							type="button"
+							aria-label="Ver detalhes do pedido"
+							onPointerDown={(event) => event.stopPropagation()}
+							onClick={(event) => {
+								event.stopPropagation();
+								onViewDetails();
+							}}
+							className="rounded-md p-1 text-muted-foreground/60 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
-							<MoveRight className="h-4 w-4" />
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							<DropdownMenuLabel className="text-[11px]">Mover para</DropdownMenuLabel>
-							<DropdownMenuSeparator />
-							{moveTargets.map((target) => (
-								<DropdownMenuItem key={target} onSelect={() => onMove?.(target)}>
-									{ATTENDANCE_STATUS_LABEL[target]}
-								</DropdownMenuItem>
-							))}
-						</DropdownMenuContent>
-					</DropdownMenu>
-				) : null}
+							<Eye className="h-4 w-4" />
+						</button>
+					) : null}
+
+					{onMove && moveTargets.length > 0 ? (
+						<DropdownMenu>
+							<DropdownMenuTrigger
+								aria-label="Mover pedido"
+								onPointerDown={(e) => e.stopPropagation()}
+								className="rounded-md p-1 text-muted-foreground/60 hover:bg-accent hover:text-foreground focus-visible:outline-none"
+							>
+								<MoveRight className="h-4 w-4" />
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								<DropdownMenuLabel className="text-[11px]">Mover para</DropdownMenuLabel>
+								<DropdownMenuSeparator />
+								{moveTargets.map((target) => (
+									<DropdownMenuItem key={target} onSelect={() => onMove?.(target)}>
+										{ATTENDANCE_STATUS_LABEL[target]}
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					) : null}
+				</div>
 			</div>
 
 			<div className="flex items-center justify-between gap-2 pl-5">

@@ -1,6 +1,6 @@
 "use client";
 
-import type { TGetSalesFulfillmentOutput, TPatchSalesFulfillmentInput, TSalesFulfillmentCard } from "@/app/api/sales/fulfillment/route";
+import type { TGetSalesFulfillmentOutputDefault, TPatchSalesFulfillmentInput, TSalesFulfillmentCard } from "@/app/api/sales/fulfillment/route";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,17 +35,18 @@ import { PendingConfirmationPill } from "./pending-confirmation";
 const KANBAN_SCROLL_CLASS = "scrollbar-subtle";
 const BOARD_DESKTOP_MAX_HEIGHT = "md:max-h-[calc(100dvh-10.5rem)] md:overflow-hidden";
 
-type FulfillmentData = TGetSalesFulfillmentOutput["data"];
+type FulfillmentData = TGetSalesFulfillmentOutputDefault;
 
 type FulfillmentBoardProps = {
 	organizationConfig: TOrganizationConfiguration;
+	onViewDetails: (saleId: string) => void;
 };
 
 const screenReaderInstructions: ScreenReaderInstructions = {
 	draggable: "Para mover um pedido pelo teclado, use o botão 'Mover pedido' em cada card e escolha a etapa de destino.",
 };
 
-export default function FulfillmentBoard({ organizationConfig }: FulfillmentBoardProps) {
+export default function FulfillmentBoard({ organizationConfig, onViewDetails }: FulfillmentBoardProps) {
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const [pendingCardIds, setPendingCardIds] = useState<Set<string>>(new Set());
 	const [confirm, setConfirm] = useState<{ cardId: string; previousStatus: TSaleAttendanceStatusEnum } | null>(null);
@@ -306,6 +307,7 @@ export default function FulfillmentBoard({ organizationConfig }: FulfillmentBoar
 								onConfirmDelivery={handleConfirmDelivery}
 								onDeliverWithoutPayment={handleDeliverWithoutPayment}
 								onCancelConfirm={handleCancelConfirm}
+								onViewDetails={onViewDetails}
 							/>
 						))}
 					</div>

@@ -1,7 +1,7 @@
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
-import { type VariantProps, cva } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import type { PropsWithChildren } from "react";
 
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
@@ -40,11 +40,25 @@ const drawerVariants = cva("flex flex-col", {
 	},
 });
 
-type ResponsiveMenuProps = PropsWithChildren & {
+type ResponsiveMenuBaseProps = PropsWithChildren & {
 	dialogContentClassName?: string;
 	drawerContentClassName?: string;
+	headerClassName?: string;
+	contentClassName?: string;
+	titleClassName?: string;
+	descriptionClassName?: string;
 	menuTitle: string;
 	menuDescription: string;
+	stateIsLoading: boolean;
+	stateError?: string | null;
+	closeMenu: () => void;
+	dialogVariant?: "fit" | "sm" | "md" | "lg" | "xl";
+	drawerVariant?: "fit" | "sm" | "md" | "lg" | "xl";
+	lockClose?: boolean;
+};
+
+type ResponsiveMenuActionProps = {
+	mode?: "actionable";
 	menuActionButtonText: string;
 	menuActionButtonClassName?: string;
 	menuActionButtonDisabled?: boolean;
@@ -55,36 +69,42 @@ type ResponsiveMenuProps = PropsWithChildren & {
 	actionFunction: () => void;
 	secondaryActionFunction?: () => void;
 	actionIsLoading: boolean;
-	stateIsLoading: boolean;
-	stateError?: string | null;
-	closeMenu: () => void;
-	dialogVariant?: "fit" | "sm" | "md" | "lg" | "xl";
-	drawerVariant?: "fit" | "sm" | "md" | "lg" | "xl";
-	lockClose?: boolean;
 };
-function ResponsiveMenu({
-	children,
-	menuTitle,
-	menuDescription,
-	menuActionButtonText,
-	menuActionButtonClassName,
-	menuActionButtonDisabled = false,
-	menuSecondaryActionButtonText,
-	menuSecondaryActionButtonClassName,
-	menuSecondaryActionButtonDisabled = false,
-	menuCancelButtonText,
-	closeMenu,
-	actionFunction,
-	secondaryActionFunction,
-	stateIsLoading,
-	stateError,
-	actionIsLoading,
-	dialogContentClassName,
-	drawerContentClassName,
-	dialogVariant = "sm",
-	drawerVariant = "sm",
-	lockClose = false,
-}: ResponsiveMenuProps) {
+
+type ResponsiveMenuReadOnlyProps = {
+	mode: "read-only";
+	menuActionButtonText?: never;
+	menuActionButtonClassName?: never;
+	menuActionButtonDisabled?: never;
+	menuSecondaryActionButtonText?: never;
+	menuSecondaryActionButtonClassName?: never;
+	menuSecondaryActionButtonDisabled?: never;
+	menuCancelButtonText?: string;
+	actionFunction?: never;
+	secondaryActionFunction?: never;
+	actionIsLoading?: never;
+};
+
+type ResponsiveMenuProps = ResponsiveMenuBaseProps & (ResponsiveMenuActionProps | ResponsiveMenuReadOnlyProps);
+
+function ResponsiveMenu(props: ResponsiveMenuProps) {
+	const {
+		children,
+		menuTitle,
+		menuDescription,
+		closeMenu,
+		stateIsLoading,
+		stateError,
+		dialogContentClassName,
+		drawerContentClassName,
+		headerClassName,
+		contentClassName,
+		titleClassName,
+		descriptionClassName,
+		dialogVariant = "sm",
+		drawerVariant = "sm",
+		lockClose = false,
+	} = props;
 	const isDesktop = useMediaQuery("(min-width: 768px)");
 	return isDesktop ? (
 		<Dialog
@@ -106,45 +126,52 @@ function ResponsiveMenu({
 					event.preventDefault();
 				}}
 			>
-				<DialogHeader>
-					<DialogTitle>{menuTitle}</DialogTitle>
-					<DialogDescription>{menuDescription}</DialogDescription>
+				<DialogHeader className={headerClassName}>
+					<DialogTitle className={titleClassName}>{menuTitle}</DialogTitle>
+					<DialogDescription className={descriptionClassName}>{menuDescription}</DialogDescription>
 				</DialogHeader>
 				{stateIsLoading ? (
 					<LoadingComponent />
 				) : stateError ? (
 					<ErrorComponent msg={stateError} />
 				) : (
-					<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex flex-1 flex-col gap-3 overflow-auto px-4 py-2 lg:px-0">
+					<div
+						className={cn(
+							"scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex flex-1 flex-col gap-3 overflow-auto px-4 py-2 lg:px-0",
+							contentClassName,
+						)}
+					>
 						{children}
 					</div>
 				)}
 
-				<DialogFooter className="flex-wrap gap-y-2">
-					<DialogClose asChild>
-						<Button variant="outline" disabled={lockClose}>
-							{menuCancelButtonText}
-						</Button>
-					</DialogClose>
-					{menuSecondaryActionButtonText && secondaryActionFunction && (
+				{props.mode !== "read-only" ? (
+					<DialogFooter className="flex-wrap gap-y-2">
+						<DialogClose asChild>
+							<Button variant="outline" disabled={lockClose}>
+								{props.menuCancelButtonText}
+							</Button>
+						</DialogClose>
+						{props.menuSecondaryActionButtonText && props.secondaryActionFunction ? (
+							<LoadingButton
+								loading={props.actionIsLoading || stateIsLoading}
+								disabled={props.menuSecondaryActionButtonDisabled}
+								onClick={props.secondaryActionFunction}
+								className={props.menuSecondaryActionButtonClassName}
+							>
+								{props.menuSecondaryActionButtonText}
+							</LoadingButton>
+						) : null}
 						<LoadingButton
-							loading={actionIsLoading || stateIsLoading}
-							disabled={menuSecondaryActionButtonDisabled}
-							onClick={() => secondaryActionFunction()}
-							className={menuSecondaryActionButtonClassName}
+							loading={props.actionIsLoading || stateIsLoading}
+							disabled={props.menuActionButtonDisabled}
+							onClick={props.actionFunction}
+							className={props.menuActionButtonClassName}
 						>
-							{menuSecondaryActionButtonText}
+							{props.menuActionButtonText}
 						</LoadingButton>
-					)}
-					<LoadingButton
-						loading={actionIsLoading || stateIsLoading}
-						disabled={menuActionButtonDisabled}
-						onClick={() => actionFunction()}
-						className={menuActionButtonClassName}
-					>
-						{menuActionButtonText}
-					</LoadingButton>
-				</DialogFooter>
+					</DialogFooter>
+				) : null}
 			</DialogContent>
 		</Dialog>
 	) : (
@@ -156,9 +183,9 @@ function ResponsiveMenu({
 			open
 		>
 			<DrawerContent className={cn(drawerVariants({ drawerVariant }), drawerContentClassName)}>
-				<DrawerHeader className="text-left">
-					<DrawerTitle>{menuTitle}</DrawerTitle>
-					<DrawerDescription>{menuDescription}</DrawerDescription>
+				<DrawerHeader className={cn("text-left", headerClassName)}>
+					<DrawerTitle className={titleClassName}>{menuTitle}</DrawerTitle>
+					<DrawerDescription className={descriptionClassName}>{menuDescription}</DrawerDescription>
 				</DrawerHeader>
 
 				{stateIsLoading ? (
@@ -166,36 +193,51 @@ function ResponsiveMenu({
 				) : stateError ? (
 					<ErrorComponent msg={stateError} />
 				) : (
-					<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex flex-1 flex-col gap-3 overflow-auto px-4 py-2 lg:px-0">
+					<div
+						className={cn(
+							"scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex flex-1 flex-col gap-3 overflow-auto px-4 py-2 lg:px-0",
+							contentClassName,
+						)}
+					>
 						{children}
 					</div>
 				)}
 
-				<DrawerFooter>
-					<DrawerClose asChild>
-						<Button variant="outline" disabled={lockClose}>
-							{menuCancelButtonText}
-						</Button>
-					</DrawerClose>
-					{menuSecondaryActionButtonText && secondaryActionFunction && (
+				{props.mode !== "read-only" ? (
+					<DrawerFooter>
+						<DrawerClose asChild>
+							<Button variant="outline" disabled={lockClose}>
+								{props.menuCancelButtonText}
+							</Button>
+						</DrawerClose>
+						{props.menuSecondaryActionButtonText && props.secondaryActionFunction ? (
+							<LoadingButton
+								loading={props.actionIsLoading || stateIsLoading}
+								disabled={props.menuSecondaryActionButtonDisabled}
+								onClick={props.secondaryActionFunction}
+								className={props.menuSecondaryActionButtonClassName}
+							>
+								{props.menuSecondaryActionButtonText}
+							</LoadingButton>
+						) : null}
 						<LoadingButton
-							loading={actionIsLoading || stateIsLoading}
-							disabled={menuSecondaryActionButtonDisabled}
-							onClick={() => secondaryActionFunction()}
-							className={menuSecondaryActionButtonClassName}
+							loading={props.actionIsLoading || stateIsLoading}
+							disabled={props.menuActionButtonDisabled}
+							onClick={props.actionFunction}
+							className={props.menuActionButtonClassName}
 						>
-							{menuSecondaryActionButtonText}
+							{props.menuActionButtonText}
 						</LoadingButton>
-					)}
-					<LoadingButton
-						loading={actionIsLoading || stateIsLoading}
-						disabled={menuActionButtonDisabled}
-						onClick={() => actionFunction()}
-						className={menuActionButtonClassName}
-					>
-						{menuActionButtonText}
-					</LoadingButton>
-				</DrawerFooter>
+					</DrawerFooter>
+				) : (
+					<DrawerFooter>
+						<DrawerClose asChild>
+							<Button variant="outline" className="h-11" disabled={lockClose}>
+								{props.menuCancelButtonText ?? "FECHAR"}
+							</Button>
+						</DrawerClose>
+					</DrawerFooter>
+				)}
 			</DrawerContent>
 		</Drawer>
 	);

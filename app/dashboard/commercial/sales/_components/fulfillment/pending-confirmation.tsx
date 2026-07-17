@@ -1,6 +1,6 @@
 "use client";
 
-import type { TGetSalesFulfillmentOutput } from "@/app/api/sales/fulfillment/route";
+import type { TGetSalesFulfillmentOutputDefault } from "@/app/api/sales/fulfillment/route";
 import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,7 +14,7 @@ import { CircleCheck, CircleUser, Package, Store, Truck, XCircle } from "lucide-
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-type TPendingConfirmationOrder = TGetSalesFulfillmentOutput["data"]["pendingConfirmation"][number];
+type TPendingConfirmationOrder = TGetSalesFulfillmentOutputDefault["pendingConfirmation"][number];
 
 const IFOOD_CONFIRMATION_SLA_MINUTES = 8;
 

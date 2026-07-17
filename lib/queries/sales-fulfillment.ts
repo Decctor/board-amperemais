@@ -7,7 +7,8 @@ export const SALES_FULFILLMENT_QUERY_KEY = ["sales-fulfillment"] as const;
 
 async function fetchSalesFulfillment() {
 	const { data } = await axios.get<TGetSalesFulfillmentOutput>("/api/sales/fulfillment");
-	return data.data;
+	if (!data.data.default) throw new Error("Atendimento de vendas não encontrado.");
+	return data.data.default;
 }
 
 const AUTO_REFRESH_INTERVAL_MS = 30_000;
@@ -27,6 +28,25 @@ export function useSalesFulfillment({ paused = false }: { paused?: boolean } = {
 			refetchOnWindowFocus: paused ? false : true,
 		}),
 		queryKey: SALES_FULFILLMENT_QUERY_KEY,
+	};
+}
+
+async function fetchSalesFulfillmentById(saleId: string) {
+	const searchParams = new URLSearchParams({ id: saleId });
+	const { data } = await axios.get<TGetSalesFulfillmentOutput>(`/api/sales/fulfillment?${searchParams.toString()}`);
+	if (!data.data.byId) throw new Error("Detalhes operacionais da venda não encontrados.");
+	return data.data.byId;
+}
+
+export function useSalesFulfillmentById({ saleId }: { saleId: string | null }) {
+	const queryKey = ["sales-fulfillment-by-id", saleId] as const;
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchSalesFulfillmentById(saleId as string),
+			enabled: Boolean(saleId),
+		}),
+		queryKey,
 	};
 }
 

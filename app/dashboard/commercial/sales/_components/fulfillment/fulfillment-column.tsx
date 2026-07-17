@@ -18,6 +18,7 @@ function DraggableCard({
 	onConfirmDelivery,
 	onDeliverWithoutPayment,
 	onCancelConfirm,
+	onViewDetails,
 }: {
 	card: TSalesFulfillmentCard;
 	organizationConfig: TOrganizationConfiguration;
@@ -28,6 +29,7 @@ function DraggableCard({
 	onConfirmDelivery: (card: TSalesFulfillmentCard) => void;
 	onDeliverWithoutPayment: (card: TSalesFulfillmentCard) => void;
 	onCancelConfirm: () => void;
+	onViewDetails: (saleId: string) => void;
 }) {
 	const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
 		id: card.id,
@@ -48,6 +50,7 @@ function DraggableCard({
 			onConfirmDelivery={() => onConfirmDelivery(card)}
 			onDeliverWithoutPayment={() => onDeliverWithoutPayment(card)}
 			onCancelConfirm={onCancelConfirm}
+			onViewDetails={() => onViewDetails(card.id)}
 			dragAttributes={attributes}
 			dragListeners={listeners}
 			className="animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none"
@@ -66,6 +69,7 @@ export function FulfillmentColumn({
 	onConfirmDelivery,
 	onDeliverWithoutPayment,
 	onCancelConfirm,
+	onViewDetails,
 }: {
 	status: TBoardStatus;
 	cards: TSalesFulfillmentCard[];
@@ -77,6 +81,7 @@ export function FulfillmentColumn({
 	onConfirmDelivery: (card: TSalesFulfillmentCard) => void;
 	onDeliverWithoutPayment: (card: TSalesFulfillmentCard) => void;
 	onCancelConfirm: () => void;
+	onViewDetails: (saleId: string) => void;
 }) {
 	const { setNodeRef, isOver } = useDroppable({ id: status });
 	const meta = ATTENDANCE_COLUMN_META[status];
@@ -116,6 +121,7 @@ export function FulfillmentColumn({
 							onConfirmDelivery={onConfirmDelivery}
 							onDeliverWithoutPayment={onDeliverWithoutPayment}
 							onCancelConfirm={onCancelConfirm}
+							onViewDetails={onViewDetails}
 						/>
 					))
 				)}
