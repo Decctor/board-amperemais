@@ -10,4 +10,3 @@ export function buildFiscalReference(input: Pick<TEmitirDocumentoInput, "organiz
 	// Devolucao referencia a mesma venda/tipo da original; sufixo evita colisao de referencia.
 	return input.documentoOrigemId ? `${base}:dev:${input.documentoOrigemId}` : base;
 }
-

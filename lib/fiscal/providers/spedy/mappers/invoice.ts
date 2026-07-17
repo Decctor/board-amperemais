@@ -1,3 +1,4 @@
+import { buildFiscalPaymentsForManagedSale } from "@/lib/fiscal/managed-sale-payments";
 import { computeSaleTaxation } from "@/lib/fiscal/taxation-context";
 import type { TFiscalSaleContext } from "@/lib/fiscal/types";
 import type { TFiscalDocument } from "@/services/drizzle/schema";
@@ -57,6 +58,12 @@ export function mapSaleContextToSpedyInvoicePayload(context: TFiscalSaleContext,
 	const taxation = computeSaleTaxation(context);
 	const isNfce = documento.tipo === "NFCE";
 	const isReturn = context.operacao.finalidade === "DEVOLUCAO";
+	// Canal gerenciado (fase 5/C2): pagamentos fiscais reconstruídos para somar exatamente o vNF
+	// (transações cruas somam o valor cheio do pedido → vTroco artificial na NFC-e).
+	const integracaoMetadados = context.venda.integracaoMetadados;
+	const fiscalPayments = integracaoMetadados
+		? buildFiscalPaymentsForManagedSale({ payments: context.pagamentos, integracaoMetadados, fiscalTotal: taxation.totais.vNF })
+		: context.pagamentos;
 
 	return {
 		integrationId: buildSpedyIntegrationId(documento.referencia),
@@ -112,7 +119,7 @@ export function mapSaleContextToSpedyInvoicePayload(context: TFiscalSaleContext,
 			icmsStAmount: taxation.totais.vST,
 			fcpAmount: taxation.totais.vFCP,
 			fcpStAmount: taxation.totais.vFCPST,
-			freightAmount: 0,
+			freightAmount: taxation.totais.vFrete,
 			insuranceAmount: 0,
 			othersAmount: 0,
 			ipiAmount: 0,
@@ -120,7 +127,7 @@ export function mapSaleContextToSpedyInvoicePayload(context: TFiscalSaleContext,
 			icmsExemptAmount: 0,
 		},
 		payments: mapSalePaymentsToSpedy({
-			payments: context.pagamentos,
+			payments: fiscalPayments,
 			saleTotal: taxation.totais.vNF,
 			isReturn,
 		}),

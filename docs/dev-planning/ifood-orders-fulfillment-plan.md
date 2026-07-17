@@ -213,16 +213,140 @@ Decisões fechadas na implementação:
 - Rollout: política default desligada; ligar por organização piloto e validar com pedidos de
   teste antes de habilitar `estoque` (depende do matching externalCode→produto do catálogo).
 
-### Fase 4 — Financeiro de repasse (planejada)
+### Fase 4 — Financeiro por pedido, conciliação manual (implementada)
 
-- Provisionar conta `CARTEIRA_DIGITAL` "iFood"; ENTRADA pendente na confirmação;
-  conciliação/efetivação via módulo Financial + transferência do líquido; taxas agregadas por
-  ciclo (depois por pedido).
+Decisões fechadas: contas first-party identificadas por `financialAccounts.chave_sistema`
+(índice único por organização; contas do usuário ficam null); conta contábil reaproveitada de
+`defaults.contabilidade.lancamentosPadrao.vendas`; **sem** conciliação automática/módulo
+Financial nesta fase — taxas e transferência do líquido do repasse são lançadas manualmente no
+módulo financeiro (a conta iFood funciona como clearing com conciliação manual pelo saldo).
 
-### Fase 5 — Fiscal (planejada)
+- `ensureFirstPartyFinancialAccount` (`lib/finances/first-party-accounts.ts`): provisiona a
+  conta `CARTEIRA_DIGITAL` "iFood" idempotentemente (onConflictDoNothing + relê).
+- `TCanonicalSale.payments`: o mapper do iFood parseia `payments.methods` (método mapeado para
+  o enum da plataforma, online/offline); fallback pelos agregados `prepaid`/`pending`.
+- `processManagedSaleFinancials` (`lib/sales/fulfillment-channels/managed-sale-financials.ts`),
+  disparado no sync em `becameValid` com `policy.financeiro`, savepoint, idempotente por venda
+  (lançamento contábil existente = pula):
+  - lançamento contábil pelo bruto, `dataCompetencia` = data do pedido;
+  - pago online → ENTRADA pendente na conta iFood, `provedorStatus AGUARDANDO_REPASSE`,
+    `dataPrevisao` = D+7, `provedorReferencia` = orderId (âncora da conciliação futura);
+  - pago na entrega → ENTRADA pendente na conta padrão do método (`defaults.pagamentos`),
+    efetivada quando a venda chega a ENTREGUE (`settleManagedSaleOfflinePayments`, idempotente,
+    roda em todo sync de venda entregue — cobre entregas feitas pelo board entre syncs);
+  - cancelamento (`previouslyValid && nowCanceled`) → pendentes viram CANCELADO; efetivadas são
+    logadas para estorno manual.
+- Organização sem contas contábeis padrão: loga e importa a venda sem financeiro (não aborta).
 
-- Ligar `processSaleAutomaticFiscalEmissionIfEligible` na política de canal.
-  `additionalFees` do iFood não entram na NF; `customer.documentNumber` (CPF) quando presente.
+Adiado para a fase 4b (sem retrabalho): connector do módulo Financial (settlements/conciliação),
+efetivação automática no repasse, taxas automáticas por pedido, transferência automática do
+líquido.
+
+### Fase 5 — Fiscal (implementada; trava C5 ativa até validação em homologação)
+
+**Descoberta-chave que molda o desenho**: o payload fiscal (Spedy) é construído inteiramente a
+partir dos **itens** da venda — `vProd`/`vDesc`/`vNF` saem de `computeSaleTaxation`
+(`lib/fiscal/taxation-context.ts`, soma de `valorVendaTotalBruto`/`valorTotalDesconto` por item);
+`freightAmount` é 0 fixo no mapper (`lib/fiscal/providers/spedy/mappers/invoice.ts`); o
+`venda.valorTotal` só aparece no check de readiness (pagamentos ≥ total). Consequência: as
+`additionalFees` do iFood e a taxa de entrega **já ficam naturalmente fora da NF** — o problema
+NÃO é excluí-las, e sim os quatro pontos abaixo.
+
+O que já funciona de graça: CPF do cliente (`documentNumber` → `cliente.cpfCnpj` → snapshot do
+destinatário), `resolveEmissionDocumentType` recebendo `canal` como sinal, pagamentos fiscais
+lidos das transações da fase 4, fila com retry + `FiscalReadinessError` + notificação.
+
+#### A. Elegibilidade para canal gerenciado
+
+`processSaleAutomaticFiscalEmissionIfEligible` exige `isFullyPaid`; recebíveis online da fase 4
+ficam `AGUARDANDO_REPASSE` (não efetivados) até a conciliação manual → a NF de pedido iFood
+nunca dispararia. Correção: para venda de canal gerenciado, `AGUARDANDO_REPASSE` conta como
+"pago pelo cliente" na elegibilidade (o consumidor pagou no app; a pendência é loja↔iFood e não
+muda o fato gerador). Demais gates inalterados (ENTREGUE, sem documento vigente, lançamento
+contábil existente — garantido pela fase 4).
+
+#### B. Disparo na ingestão (pós-commit)
+
+O hook fiscal hoje só roda na transição via board (gate `enableAutomaticFiscalEmission` da fase
+3). Falta o disparo quando a entrega chega pela ingestão (evento CONCLUDED). Restrição: o
+processo de emissão lê via `db` (fora da transação do sync) — dentro do tx da organização ele
+enxergaria o estado pré-commit. Desenho: o sync coleta os ids das vendas gerenciadas entregues
+com `policy.fiscal` e a emissão roda APÓS o commit da organização (junto do `postProcess`).
+Idempotente por natureza (`DOCUMENTO_EXISTENTE`).
+
+#### C. Base fiscal do pedido iFood — problemas reais e abordagens
+
+**C1. Descontos MERCHANT não chegam aos itens (NF superestimada).** Hoje
+`mapIfoodSaleItem.discountValue = bruto − totalPrice` (praticamente sempre 0, pois `totalPrice`
+inclui complementos) e os `benefits` do pedido não são alocados aos itens. Um desconto real da
+loja (sponsorship MERCHANT) não reduz a NF → tributa receita que não existiu.
+Abordagem escolhida: **rateio no mapper do iFood**:
+
+- benefit `target: ITEM`/`PROGRESSIVE_DISCOUNT_ITEM` com parcela MERCHANT → desconto direto no
+  item indicado por `targetId` (= `items.index`);
+- benefit `target: CART` com parcela MERCHANT → rateio proporcional ao valor dos itens (padrão
+  contábil), acumulado em `item.discountValue`;
+- benefit `target: DELIVERY_FEE` → ignorado para a NF (a taxa de entrega não está nos itens);
+- parcelas patrocinadas (IFOOD/EXTERNAL/CHAIN) → **não** viram desconto: a NF sai pelo valor
+  cheio e a diferença é pagamento do patrocinador (ver C2).
+  Efeito colateral desejado: `valorVendaTotalLiquido` dos itens passa a refletir a margem real.
+
+**C2. Pagamentos fiscais ≠ vNF (troco artificial na NFC-e).** As transações da fase 4 somam o
+`orderAmount` (inclui taxa de entrega/additionalFees) e o `loadSalePayments` do snapshot as usa
+cruas → pagamentos > vNF e a diferença viraria `vTroco` numa NFC-e paga com cartão (feio e
+sinalizável). Abordagem: para venda de canal gerenciado, os pagamentos fiscais são
+**reconstruídos do detalhamento do canal** (C4) e ajustados ao vNF: métodos reais do cliente
+(proporcionalmente) + parcela "paga pelo patrocinador" como `giftVoucher`/`other`, com clamp
+para somar exatamente vNF (+ frete próprio quando C3 entrar). O financeiro (fase 4) continua
+usando os valores cheios — só a visão fiscal é ajustada.
+
+**C3. Frete próprio fora da NF (receita subdeclarada).** Entrega própria (`deliveredBy:
+MERCHANT`): a taxa de entrega é receita da loja e deve compor a NF (`vFrete`; hoje
+`freightAmount: 0` fixo). Entrega feita pelo iFood: fica fora (não é receita da loja).
+Abordagem: `computeDocumentTotals`/mapper ganham suporte a frete de canal gerenciado; o valor
+vem do detalhamento (C4). Decisão consciente: é a única parte que ALTERA o motor de totais —
+implementar por último e atrás da trava (C5). Alternativa mínima descartada (frete fora da NF)
+por subdeclarar receita.
+
+**C4. Persistência do detalhamento fiscal do canal.** Os dados (benefits por patrocinador,
+additionalFees, frete e `deliveredBy`) chegam no payload e hoje são descartados. Abordagem
+(decidida): coluna dedicada **`sales.integracaoMetadados`** (jsonb tipado, nullable — mesmo
+padrão do `capiMetadados`), schema `SaleIntegrationMetadataSchema` em `/schemas/sales`:
+`{ versao, canal, entrega: { realizadaPor: LOJA|CANAL, valorFrete }, descontos: { loja,
+patrocinados[] }, taxasCanal[] }`. O canônico carrega o bloco (`integrationMetadata`), o sync
+persiste, o snapshot fiscal lê da própria venda (zero join novo). Alternativas rejeitadas:
+`rascunhoMetadados` (semanticamente é rascunho do PDV), tabela dedicada (join + boilerplate +
+módulo de deleção para dado 1:1), recalcular do `raw` na emissão (o raw não é persistido).
+
+**C5. Trava de segurança no rollout.** Enquanto C1–C3 não forem validados com pedidos reais:
+venda gerenciada cujo pedido tem benefits patrocinados, frete próprio ou divergência
+itens×pagamentos acima da tolerância → emissão automática é PULADA com razão explícita
+(`CANAL_PENDENTE_TRATAMENTO_FISCAL`), caindo para emissão manual. A trava é afrouxada por
+etapa conforme C1→C4→C2→C3 entram e são validados na homologação.
+
+#### D. Toggle + requisitos operacionais
+
+Tirar o "Em breve" do fiscal no modal. Requisitos do piloto (não são código): produtos do
+iFood precisam de perfil fiscal (NCM/grupo tributário) — sem isso a emissão cai na fila com
+`FiscalReadinessError` e notificação (comportamento correto); operação fiscal configurada para
+o canal (`resolveEmissionDocumentType`). Cancelamento de pedido após NF autorizada permanece
+manual (fluxo de cancelamento de NF já existe).
+
+**Ordem de implementação**: A → B → C4 → C1 → C2 → D (com C5 ativa) → C3 → afrouxar C5 conforme
+validação com pedidos reais na homologação.
+
+**Notas da implementação (jul/2026)**:
+
+- Correção adicional descoberta no C1: o bruto do item iFood usava `unitPrice × qty` SEM
+  complementos — NF subdeclarada e violação de `vProd = qCom × vUnCom`. Corrigido: bruto =
+  `totalPrice` (item + complementos), unitário derivado do bruto.
+- Benefit sem `sponsorshipValues` é tratado como patrocinado "DESCONHECIDO" (nunca subdeclara a
+  NF; a trava C5 segura a emissão automática do caso).
+- Trava C5: constante `MANAGED_CHANNEL_STRICT_AUTO_EMISSION` em
+  `process-sale-automatic-fiscal-emission.ts` — pula automático quando patrocinado > 0 ou frete
+  próprio > 0, razão `CANAL_PENDENTE_VALIDACAO_FISCAL`; virar para `false` após validação.
+- Validado com pedido sintético completo (rateio direto+proporcional, metadados, vNF = itens −
+  desconto + frete, pagamentos fiscais fechando exatos sem troco) e parse contra a API real.
 
 ## 6. Referências
 

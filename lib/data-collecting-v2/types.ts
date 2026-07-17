@@ -76,6 +76,12 @@ export type TPersistedSaleForEffects = {
 	 */
 	becameValid: boolean;
 	nowCanceled: boolean;
+	/**
+	 * Venda de canal gerenciado entregue com `policy.fiscal` ligada — candidata à emissão fiscal
+	 * automática. O disparo acontece APÓS o commit da organização (a emissão lê via `db` e não
+	 * enxergaria o estado pré-commit); a elegibilidade completa é re-checada lá (idempotente).
+	 */
+	managedFiscalEmissionCandidate: boolean;
 	newTotalPurchaseCount: number | null;
 	newTotalPurchaseValue: number | null;
 };

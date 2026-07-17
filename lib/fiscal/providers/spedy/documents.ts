@@ -87,14 +87,18 @@ export async function cancelSpedyDocument(
 export async function downloadSpedyXml(documento: TFiscalDocument, organizacao: TFiscalOrganization) {
 	if (!documento.provedorDocumentoId) return null;
 	const client = getSpedyCompanyClient(organizacao);
-	const { data } = await client.get<ArrayBuffer>(`${getInvoiceBasePath(documento)}/${documento.provedorDocumentoId}/xml`, { responseType: "arraybuffer" });
+	const { data } = await client.get<ArrayBuffer>(`${getInvoiceBasePath(documento)}/${documento.provedorDocumentoId}/xml`, {
+		responseType: "arraybuffer",
+	});
 	return data;
 }
 
 export async function downloadSpedyPdf(documento: TFiscalDocument, organizacao: TFiscalOrganization) {
 	if (!documento.provedorDocumentoId) return null;
 	const client = getSpedyCompanyClient(organizacao);
-	const { data } = await client.get<ArrayBuffer>(`${getInvoiceBasePath(documento)}/${documento.provedorDocumentoId}/pdf`, { responseType: "arraybuffer" });
+	const { data } = await client.get<ArrayBuffer>(`${getInvoiceBasePath(documento)}/${documento.provedorDocumentoId}/pdf`, {
+		responseType: "arraybuffer",
+	});
 	return data;
 }
 

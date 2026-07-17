@@ -1,5 +1,6 @@
 import type { TOrganizationIntegrationConfig } from "@/schemas/organizations";
-import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
+import type { TPaymentMethodEnum, TSaleAttendanceStatusEnum } from "@/schemas/enums";
+import type { TSaleIntegrationMetadata } from "@/schemas/sales";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 
 export type TDataConnectorKind = NonNullable<TOrganizationEntity["integracaoTipo"]>;
@@ -91,6 +92,17 @@ export type TCanonicalSaleItemModifier = {
 	unitValue: number;
 };
 
+export type TCanonicalSalePayment = {
+	metodo: TPaymentMethodEnum;
+	valor: number;
+	/**
+	 * true = pago online no canal (o dinheiro fica com o canal até o repasse — entra na conta
+	 * de repasse first-party); false = pago na entrega/retirada (entra direto no caixa).
+	 */
+	pagoOnline: boolean;
+	descricao?: string | null;
+};
+
 export type TCanonicalSaleItem = {
 	productExternalId: string | null;
 	productCode: string;
@@ -139,6 +151,16 @@ export type TCanonicalSale = {
 	 * venda externa chega como histórico concluído).
 	 */
 	attendanceStatus?: TSaleAttendanceStatusEnum | null;
+	/**
+	 * Pagamentos informados pelo canal (ex.: payload do pedido iFood). null/undefined =
+	 * conector sem dados de pagamento — nenhum efeito financeiro é gerado.
+	 */
+	payments?: TCanonicalSalePayment[] | null;
+	/**
+	 * Detalhamento do canal para fiscal/conciliação (frete próprio, descontos por patrocinador,
+	 * taxas do canal). Persistido em `sales.integracaoMetadados`. null = sem detalhamento.
+	 */
+	integrationMetadata?: TSaleIntegrationMetadata | null;
 	raw?: unknown;
 };
 

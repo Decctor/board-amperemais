@@ -2,10 +2,41 @@ import { getErrorMessage } from "@/lib/errors";
 import { enqueueFiscalDocument } from "@/lib/fiscal/documents";
 import { resolveEmissionDocumentType } from "@/lib/fiscal/document-type";
 import { notifyFiscalEmissionFailure } from "@/lib/fiscal/notifications";
+import { isManagedFulfillmentSaleModel } from "@/lib/sales/fulfillment-channels/policy";
 import { db } from "@/services/drizzle";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import createHttpError from "http-errors";
 import { getSaleFinancialState } from "./get-sale-financial-state";
+
+/**
+ * Trava de rollout da fase 5 (C5): enquanto o tratamento fiscal de pedidos com benefits
+ * patrocinados (pagamento VALE reconstruído) e frete próprio (vFrete) não for validado com
+ * pedidos reais na homologação, a emissão AUTOMÁTICA desses casos é pulada — a emissão manual
+ * continua disponível (e já usa o tratamento novo). Vire para false após a validação.
+ */
+const MANAGED_CHANNEL_STRICT_AUTO_EMISSION = true;
+
+/**
+ * Canal gerenciado (ex.: iFood): recebíveis pagos online ficam AGUARDANDO_REPASSE (a pendência é
+ * loja↔canal, não do consumidor) — para o fato gerador fiscal contam como pagos pelo cliente.
+ */
+function isManagedSaleCustomerPaid({
+	financialState,
+	saleTotal,
+}: {
+	financialState: Awaited<ReturnType<typeof getSaleFinancialState>>;
+	saleTotal: number;
+}) {
+	const customerPaidTotal = financialState.transactions
+		.filter(
+			(transaction) =>
+				transaction.tipo === "ENTRADA" &&
+				!["CANCELADO", "ESTORNADO"].includes(transaction.provedorStatus ?? "") &&
+				(transaction.dataEfetivacao != null || transaction.provedorStatus === "AGUARDANDO_REPASSE"),
+		)
+		.reduce((sum, transaction) => sum + transaction.valor, 0);
+	return customerPaidTotal + 0.01 >= saleTotal;
+}
 
 export async function processSaleAutomaticFiscalEmissionIfEligible({
 	organization,
@@ -34,11 +65,25 @@ export async function processSaleAutomaticFiscalEmissionIfEligible({
 	const emissaoAutomaticaEfetiva = sale.emissaoFiscalAutomatica ?? organization.fiscalEmissaoAutomatica;
 	if (!emissaoAutomaticaEfetiva) return { status: "NAO_SOLICITADO" as const, reason: "EMISSAO_AUTOMATICA_DESATIVADA" as const };
 
-	if (sale.statusVenda !== "CONFIRMADA" || sale.statusAtendimento !== "ENTREGUE" || !financialState.isFullyPaid) {
+	const isManagedSale = sale.processamentoOrigem === "EXTERNO" && isManagedFulfillmentSaleModel(sale.modelo);
+	const isPaidForFiscal = financialState.isFullyPaid || (isManagedSale && isManagedSaleCustomerPaid({ financialState, saleTotal: sale.valorTotal }));
+	if (sale.statusVenda !== "CONFIRMADA" || sale.statusAtendimento !== "ENTREGUE" || !isPaidForFiscal) {
 		return { status: "NAO_SOLICITADO" as const, reason: "VENDA_NAO_ELEGIVEL" as const };
 	}
 	if (sale.documentosFiscais.some((document) => !["CANCELADO", "INUTILIZADO"].includes(document.statusInterno ?? ""))) {
 		return { status: "NAO_SOLICITADO" as const, reason: "DOCUMENTO_EXISTENTE" as const };
+	}
+
+	if (isManagedSale && MANAGED_CHANNEL_STRICT_AUTO_EMISSION) {
+		const integracaoMetadados = sale.integracaoMetadados;
+		const sponsoredTotal = integracaoMetadados?.descontos.patrocinados.reduce((sum, sponsored) => sum + sponsored.valor, 0) ?? 0;
+		const ownFreight = integracaoMetadados?.entrega.realizadaPor === "LOJA" ? integracaoMetadados.entrega.valorFrete : 0;
+		if (sponsoredTotal > 0 || ownFreight > 0) {
+			console.log(
+				`[PROCESS_SALE_AUTOMATIC_FISCAL_EMISSION] Emissão automática pulada para venda gerenciada ${saleId} (patrocinado=${sponsoredTotal.toFixed(2)}, frete próprio=${ownFreight.toFixed(2)}) — emitir manualmente até a validação do tratamento.`,
+			);
+			return { status: "NAO_SOLICITADO" as const, reason: "CANAL_PENDENTE_VALIDACAO_FISCAL" as const };
+		}
 	}
 
 	const accountingEntryId = sale.lancamentosContabeis[0]?.id;

@@ -32,7 +32,29 @@ export const UF_TO_IBGE_CODE: Record<string, number> = {
 };
 
 // Regioes usadas para a regra de aliquota interestadual.
-export const REGIAO_NORTE_NORDESTE_CENTRO_OESTE_ES = new Set(["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MS", "MT", "PA", "PB", "PE", "PI", "RN", "RO", "RR", "SE", "TO"]);
+export const REGIAO_NORTE_NORDESTE_CENTRO_OESTE_ES = new Set([
+	"AC",
+	"AL",
+	"AM",
+	"AP",
+	"BA",
+	"CE",
+	"DF",
+	"ES",
+	"GO",
+	"MA",
+	"MS",
+	"MT",
+	"PA",
+	"PB",
+	"PE",
+	"PI",
+	"RN",
+	"RO",
+	"RR",
+	"SE",
+	"TO",
+]);
 
 // Mapeia o enum de origem da mercadoria para o codigo numerico (orig) usado no XML / JSON da Nuvem Fiscal.
 const ORIGEM_TO_CODIGO: Record<TFiscalProductOriginEnum, number> = {

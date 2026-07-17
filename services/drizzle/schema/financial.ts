@@ -153,6 +153,10 @@ export const financialAccounts = newTable(
 		nome: varchar("nome", { length: 255 }).notNull(),
 		descricao: varchar("descricao", { length: 500 }),
 		tipo: financialAccountTypeEnum("tipo").notNull(),
+		// Contas "first-party" (criadas/gerenciadas pelo sistema, ex.: conta de repasse do iFood)
+		// carregam uma chave estável ("IFOOD"); contas do usuário ficam null. O índice único
+		// (organizacao, chave) garante idempotência do provisionamento automático.
+		chaveSistema: varchar("chave_sistema", { length: 100 }),
 		moeda: varchar("moeda", { length: 10 }).default("BRL").notNull(),
 		ativo: boolean("ativo").default(true).notNull(),
 		contaContabilId: varchar("conta_contabil_id", { length: 255 }).references(() => accountsCharts.id),
@@ -172,6 +176,8 @@ export const financialAccounts = newTable(
 		organizacaoIdIdx: index("idx_financial_accounts_organizacao_id").on(table.organizacaoId),
 		tipoIdx: index("idx_financial_accounts_tipo").on(table.tipo),
 		ativoIdx: index("idx_financial_accounts_ativo").on(table.ativo),
+		// Uma conta first-party por chave por organização (NULLs não colidem — contas do usuário livres).
+		chaveSistemaUq: uniqueIndex("uq_financial_accounts_organizacao_chave_sistema").on(table.organizacaoId, table.chaveSistema),
 	}),
 );
 
@@ -305,7 +311,9 @@ export const fiscalOutboundDocuments = newTable(
 		dataAutorizacao: timestamp("data_autorizacao"),
 		dataCancelamento: timestamp("data_cancelamento"),
 		// Document chaining (cancellation/return references)
-		documentoOrigemId: varchar("documento_origem_id", { length: 255 }).references((): AnyPgColumn => fiscalOutboundDocuments.id, { onDelete: "set null" }),
+		documentoOrigemId: varchar("documento_origem_id", { length: 255 }).references((): AnyPgColumn => fiscalOutboundDocuments.id, {
+			onDelete: "set null",
+		}),
 		chaveAcessoReferencia: varchar("chave_acesso_referencia", { length: 44 }),
 		dataEmissao: timestamp("data_emissao"),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),

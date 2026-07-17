@@ -19,7 +19,15 @@ function round2(value: number): number {
 	return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-export function mapSalePaymentsToSpedy({ payments, saleTotal, isReturn = false }: { payments: TFiscalSalePayment[]; saleTotal: number; isReturn?: boolean }) {
+export function mapSalePaymentsToSpedy({
+	payments,
+	saleTotal,
+	isReturn = false,
+}: {
+	payments: TFiscalSalePayment[];
+	saleTotal: number;
+	isReturn?: boolean;
+}) {
 	if (isReturn) return [{ method: "noPayment", amount: 0 }];
 	if (payments.length === 0) return [{ method: "other", amount: saleTotal }];
 	return payments.map((payment) => ({

@@ -2,7 +2,15 @@
 // Para adicionar/editar entradas, basta alterar este mapa.
 // Fonte dos codigos: Manual de Orientacao do Contribuinte (MOC) / Notas Tecnicas NF-e.
 
-export type TFiscalRejectionCategory = "CADASTRO" | "TRIBUTARIO" | "CERTIFICADO" | "NUMERACAO" | "SCHEMA" | "DUPLICIDADE" | "INFRAESTRUTURA" | "OUTRO";
+export type TFiscalRejectionCategory =
+	| "CADASTRO"
+	| "TRIBUTARIO"
+	| "CERTIFICADO"
+	| "NUMERACAO"
+	| "SCHEMA"
+	| "DUPLICIDADE"
+	| "INFRAESTRUTURA"
+	| "OUTRO";
 
 export type TFiscalRejectionInfo = {
 	descricao: string;

@@ -496,8 +496,7 @@ async function prepareFiscalDocumentForSend({
 	// o mesmo numero repetiria a mesma rejeicao indefinidamente.
 	const rejectionInfo = getFiscalRejectionInfo(documento.codigoRejeicao);
 	const mustAdvanceNumber = !!documento.numero && !!rejectionInfo && !rejectionInfo.reenviavel;
-	const reservedNumber =
-		documento.numero && !mustAdvanceNumber ? Number(documento.numero) : await reserveFiscalSeriesNumber(context.serie.id);
+	const reservedNumber = documento.numero && !mustAdvanceNumber ? Number(documento.numero) : await reserveFiscalSeriesNumber(context.serie.id);
 
 	await patchFiscalDocument(documento.id, {
 		codigoRejeicao: null,

@@ -26,7 +26,10 @@ async function resolveOrCreateSupplier(organizacaoId: string, cpfCnpj?: string |
 		where: (fields, operators) => operators.and(operators.eq(fields.organizacaoId, organizacaoId), operators.eq(fields.cpfCnpj, digits)),
 	});
 	if (existing) return existing.id;
-	const [created] = await db.insert(suppliers).values({ organizacaoId, nome: nome?.trim() || "Fornecedor sem nome", cpfCnpj: digits }).returning({ id: suppliers.id });
+	const [created] = await db
+		.insert(suppliers)
+		.values({ organizacaoId, nome: nome?.trim() || "Fornecedor sem nome", cpfCnpj: digits })
+		.returning({ id: suppliers.id });
 	return created?.id ?? null;
 }
 
@@ -100,7 +103,10 @@ export async function pollInboundDocuments({ organizationId }: { organizationId:
 			if (await upsertInboundDocument(organizationId, doc)) novos++;
 		}
 		ultNSU = result.ultNSU;
-		await db.update(fiscalInboundCursors).set({ ultNSU: result.ultNSU, maxNSU: result.maxNSU, dataAtualizacao: new Date() }).where(eq(fiscalInboundCursors.id, cursor.id));
+		await db
+			.update(fiscalInboundCursors)
+			.set({ ultNSU: result.ultNSU, maxNSU: result.maxNSU, dataAtualizacao: new Date() })
+			.where(eq(fiscalInboundCursors.id, cursor.id));
 		if (result.documentos.length === 0) break;
 		try {
 			if (BigInt(result.ultNSU) >= BigInt(result.maxNSU)) break;
@@ -172,7 +178,10 @@ export async function listInboundDocuments({ organizationId, page = 1 }: { organ
 			offset,
 			limit: PAGE_SIZE,
 		}),
-		db.select({ count: sql<number>`count(*)::int` }).from(fiscalInboundDocuments).where(whereClause),
+		db
+			.select({ count: sql<number>`count(*)::int` })
+			.from(fiscalInboundDocuments)
+			.where(whereClause),
 	]);
 
 	return { documents, documentsMatched: count ?? 0, totalPages: Math.ceil((count ?? 0) / PAGE_SIZE) };

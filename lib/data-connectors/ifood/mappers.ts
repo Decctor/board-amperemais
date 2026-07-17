@@ -1,5 +1,6 @@
 import { formatPhoneAsBase, formatToCEP, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
-import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
+import type { TPaymentMethodEnum, TSaleAttendanceStatusEnum } from "@/schemas/enums";
+import type { TSaleIntegrationMetadata } from "@/schemas/sales";
 import dayjs from "dayjs";
 import type {
 	TCanonicalClient,
@@ -9,8 +10,9 @@ import type {
 	TCanonicalProduct,
 	TCanonicalSale,
 	TCanonicalSaleItem,
+	TCanonicalSalePayment,
 } from "../types";
-import type { TIfoodEvent, TIfoodOrder, TIfoodOrderItem } from "./types";
+import type { TIfoodEvent, TIfoodOrder, TIfoodOrderBenefit, TIfoodOrderItem } from "./types";
 
 type TIfoodOrderEventState = {
 	statusText: string | null;
@@ -164,9 +166,11 @@ export function mapIfoodProduct(item: TIfoodOrderItem): TCanonicalProduct {
 
 export function mapIfoodSaleItem(item: TIfoodOrderItem): TCanonicalSaleItem {
 	const quantity = item.quantity;
-	const unitSaleValue = item.unitPrice;
-	const grossSaleValue = unitSaleValue * quantity;
-	const netSaleValue = item.totalPrice || grossSaleValue;
+	// Bruto = totalPrice (item + complementos): complementos são receita e compõem a base fiscal.
+	// Unitário derivado do bruto para manter a regra da NF (vProd = qCom × vUnCom).
+	const grossSaleValue = item.totalPrice || item.unitPrice * quantity;
+	const unitSaleValue = quantity > 0 ? grossSaleValue / quantity : grossSaleValue;
+	const netSaleValue = grossSaleValue;
 
 	return {
 		productExternalId: item.id || item.uniqueId,
@@ -175,7 +179,8 @@ export function mapIfoodSaleItem(item: TIfoodOrderItem): TCanonicalSaleItem {
 		unitSaleValue,
 		unitCostValue: 0,
 		grossSaleValue,
-		discountValue: Math.max(grossSaleValue - netSaleValue, 0),
+		// Descontos reais da loja (benefits MERCHANT) são rateados depois em allocateMerchantDiscountsToItems.
+		discountValue: 0,
 		netSaleValue,
 		totalCostValue: 0,
 		notes: item.observations,
@@ -222,6 +227,169 @@ function isValidSale(order: TIfoodOrder, eventState: TIfoodOrderEventState) {
 	);
 }
 
+function round2(value: number): number {
+	return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Divide um benefit entre a parcela da loja (sponsorship MERCHANT — desconto real, reduz a NF)
+ * e as parcelas patrocinadas (IFOOD/EXTERNAL/CHAIN — NF cheia, viram pagamento do patrocinador).
+ * Benefit sem detalhamento de patrocínio é tratado como patrocinado DESCONHECIDO: nunca
+ * subdeclara a NF, e a trava de rollout segura a emissão automática nesses casos.
+ */
+function getBenefitSponsorshipSplit(benefit: TIfoodOrderBenefit): { merchant: number; sponsoredByName: Map<string, number> } {
+	const sponsorshipValues = benefit.sponsorshipValues ?? [];
+	if (sponsorshipValues.length === 0) {
+		return {
+			merchant: 0,
+			sponsoredByName: benefit.value > 0 ? new Map([["DESCONHECIDO", benefit.value]]) : new Map(),
+		};
+	}
+
+	let merchant = 0;
+	const sponsoredByName = new Map<string, number>();
+	for (const sponsorship of sponsorshipValues) {
+		if (sponsorship.value <= 0) continue;
+		const name = sponsorship.name?.toUpperCase() || "DESCONHECIDO";
+		if (name === "MERCHANT") merchant += sponsorship.value;
+		else sponsoredByName.set(name, (sponsoredByName.get(name) ?? 0) + sponsorship.value);
+	}
+	return { merchant, sponsoredByName };
+}
+
+function applyDiscountToCanonicalItem(item: TCanonicalSaleItem, discount: number): number {
+	const applied = Math.min(round2(discount), item.netSaleValue);
+	if (applied <= 0) return 0;
+	item.discountValue = round2(item.discountValue + applied);
+	item.netSaleValue = round2(item.netSaleValue - applied);
+	return applied;
+}
+
+/**
+ * Rateia os descontos MERCHANT nos itens (C1 da fase 5): benefit de item vai direto no item
+ * indicado por `targetId` (= items.index); benefit de carrinho (ou item não localizado) rateia
+ * proporcionalmente ao valor dos itens; benefits de taxa de entrega ficam fora (tratados no
+ * frete dos metadados de integração).
+ */
+function allocateMerchantDiscountsToItems(order: TIfoodOrder, items: TCanonicalSaleItem[]) {
+	if (items.length === 0) return;
+	let cartLevelDiscount = 0;
+
+	for (const benefit of order.benefits) {
+		const target = benefit.target?.toUpperCase();
+		if (target === "DELIVERY_FEE") continue;
+		const { merchant } = getBenefitSponsorshipSplit(benefit);
+		if (merchant <= 0) continue;
+
+		if ((target === "ITEM" || target === "PROGRESSIVE_DISCOUNT_ITEM") && benefit.targetId != null) {
+			const orderItemPosition = order.items.findIndex((item) => item.index != null && String(item.index) === String(benefit.targetId));
+			const canonicalItem = orderItemPosition >= 0 ? items[orderItemPosition] : undefined;
+			if (canonicalItem) {
+				const applied = applyDiscountToCanonicalItem(canonicalItem, merchant);
+				const remainder = round2(merchant - applied);
+				if (remainder > 0) cartLevelDiscount += remainder;
+				continue;
+			}
+		}
+		cartLevelDiscount += merchant;
+	}
+
+	if (cartLevelDiscount <= 0) return;
+	const prorationBase = items.reduce((sum, item) => sum + item.netSaleValue, 0);
+	if (prorationBase <= 0) return;
+	const totalToAllocate = Math.min(round2(cartLevelDiscount), prorationBase);
+
+	let allocated = 0;
+	items.forEach((item, index) => {
+		const share = index === items.length - 1 ? round2(totalToAllocate - allocated) : round2((totalToAllocate * item.netSaleValue) / prorationBase);
+		allocated = round2(allocated + applyDiscountToCanonicalItem(item, share));
+	});
+}
+
+/**
+ * Detalhamento do canal para fiscal/conciliação (C4 da fase 5), persistido em
+ * `sales.integracaoMetadados`. Frete: benefits MERCHANT de taxa de entrega reduzem o frete
+ * cobrado (a loja abriu mão); benefits patrocinados mantêm o frete cheio (o canal paga).
+ */
+function buildIfoodIntegrationMetadata(order: TIfoodOrder): TSaleIntegrationMetadata {
+	const deliveredBy = order.delivery?.deliveredBy?.toUpperCase() ?? null;
+
+	let merchantItemAndCartDiscount = 0;
+	let merchantDeliveryFeeDiscount = 0;
+	const sponsoredTotals = new Map<string, number>();
+	for (const benefit of order.benefits) {
+		const isDeliveryFee = benefit.target?.toUpperCase() === "DELIVERY_FEE";
+		const { merchant, sponsoredByName } = getBenefitSponsorshipSplit(benefit);
+		if (isDeliveryFee) merchantDeliveryFeeDiscount += merchant;
+		else merchantItemAndCartDiscount += merchant;
+		for (const [name, value] of sponsoredByName) {
+			sponsoredTotals.set(name, (sponsoredTotals.get(name) ?? 0) + value);
+		}
+	}
+
+	const taxasCanal =
+		order.additionalFees.length > 0
+			? order.additionalFees.map((fee) => ({ tipo: fee.type ?? "ADDITIONAL_FEE", valor: round2(fee.value) }))
+			: order.total.additionalFees > 0
+				? [{ tipo: "ADDITIONAL_FEES", valor: round2(order.total.additionalFees) }]
+				: [];
+
+	return {
+		versao: 1,
+		canal: "IFOOD",
+		entrega: {
+			realizadaPor: deliveredBy === "MERCHANT" ? "LOJA" : deliveredBy ? "CANAL" : null,
+			valorFrete: round2(Math.max(order.total.deliveryFee - merchantDeliveryFeeDiscount, 0)),
+		},
+		descontos: {
+			loja: round2(merchantItemAndCartDiscount + merchantDeliveryFeeDiscount),
+			patrocinados: [...sponsoredTotals.entries()].map(([patrocinador, valor]) => ({ patrocinador, valor: round2(valor) })),
+		},
+		taxasCanal,
+	};
+}
+
+// Métodos de pagamento do iFood → enum de métodos da plataforma. Desconhecido cai em OUTRO.
+const IFOOD_PAYMENT_METHOD_MAP: Record<string, TPaymentMethodEnum> = {
+	CREDIT: "CARTAO_CREDITO",
+	DEBIT: "CARTAO_DEBITO",
+	PIX: "PIX",
+	CASH: "DINHEIRO",
+	MEAL_VOUCHER: "VALE",
+	FOOD_VOUCHER: "VALE",
+	GIFT_CARD: "VALE",
+	BANK_TRANSFER: "TRANSFERENCIA",
+};
+
+/**
+ * Pagamentos do pedido: cada entrada de `payments.methods` vira um pagamento canônico com a
+ * distinção online (dinheiro fica com o iFood até o repasse) vs. offline (pago na entrega).
+ * Sem `methods` no payload, cai no fallback pelos agregados `prepaid`/`pending`.
+ */
+function mapIfoodSalePayments(order: TIfoodOrder): TCanonicalSalePayment[] | null {
+	const payments = order.payments;
+	if (!payments) return null;
+
+	const methods = payments.methods.filter((method) => method.value > 0);
+	if (methods.length > 0) {
+		return methods.map((method) => {
+			const methodKey = method.method?.toUpperCase() ?? "";
+			const description = [method.method, method.card?.brand].filter(Boolean).join(" ");
+			return {
+				metodo: IFOOD_PAYMENT_METHOD_MAP[methodKey] ?? "OUTRO",
+				valor: method.value,
+				pagoOnline: method.type?.toUpperCase() === "ONLINE" || method.prepaid === true,
+				descricao: description || null,
+			};
+		});
+	}
+
+	const fallback: TCanonicalSalePayment[] = [];
+	if (payments.prepaid > 0) fallback.push({ metodo: "OUTRO", valor: payments.prepaid, pagoOnline: true, descricao: "iFood (pago online)" });
+	if (payments.pending > 0) fallback.push({ metodo: "OUTRO", valor: payments.pending, pagoOnline: false, descricao: "iFood (pago na entrega)" });
+	return fallback.length > 0 ? fallback : null;
+}
+
 export function mapIfoodSale(order: TIfoodOrder, events: TIfoodEvent[] = []): TCanonicalSale {
 	const eventState = getOrderEventState(events);
 	const validSale = isValidSale(order, eventState);
@@ -229,6 +397,9 @@ export function mapIfoodSale(order: TIfoodOrder, events: TIfoodEvent[] = []): TC
 	const totalDiscount = order.total.benefits || order.benefits.reduce((acc, benefit) => acc + benefit.value, 0);
 	const merchantName = order.merchant?.name || "IFOOD";
 	const statusText = order.status || eventState.statusText || "N/A";
+	const items = order.items.map(mapIfoodSaleItem);
+	// C1 (fase 5): descontos reais da loja (sponsorship MERCHANT) reduzem os itens — e a NF.
+	allocateMerchantDiscountsToItems(order, items);
 
 	return {
 		sourceSaleId: order.id,
@@ -253,10 +424,12 @@ export function mapIfoodSale(order: TIfoodOrder, events: TIfoodEvent[] = []): TC
 		client: mapIfoodClient(order),
 		seller: null,
 		partner: null,
-		items: order.items.map(mapIfoodSaleItem),
+		items,
 		isValidSale: validSale,
 		isCanceled: canceled,
 		attendanceStatus: mapIfoodAttendanceStatus(statusText),
+		payments: mapIfoodSalePayments(order),
+		integrationMetadata: buildIfoodIntegrationMetadata(order),
 		raw: order,
 	};
 }

@@ -261,7 +261,9 @@ export async function findDefaultOperationProfileForType({
 	organizacaoId: string;
 	tipoDocumento: typeof fiscalOperationProfiles.$inferSelect.tipoDocumento;
 	profileId?: string | null;
-	presencaConsumidor?: typeof fiscalOperationProfiles.$inferSelect.presencaConsumidor | Array<typeof fiscalOperationProfiles.$inferSelect.presencaConsumidor>;
+	presencaConsumidor?:
+		| typeof fiscalOperationProfiles.$inferSelect.presencaConsumidor
+		| Array<typeof fiscalOperationProfiles.$inferSelect.presencaConsumidor>;
 	finalidade?: typeof fiscalOperationProfiles.$inferSelect.finalidade;
 }) {
 	if (profileId) return findFiscalOperationProfileById({ fiscalOperationProfileId: profileId, organizationId: organizacaoId });

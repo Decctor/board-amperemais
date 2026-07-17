@@ -1,5 +1,6 @@
 import { fetchConnectorImportBatch, type TCanonicalImportWindow } from "@/lib/data-connectors";
 import { getChannelErpPolicy } from "@/lib/sales/fulfillment-channels/policy";
+import { processSaleAutomaticFiscalEmissionIfEligible } from "@/lib/sales/sale-processing/process-sale-automatic-fiscal-emission";
 import { processOrganizationInteractionsBatch, type ImmediateProcessingData } from "@/lib/interactions";
 import { db } from "@/services/drizzle";
 import { campaigns, organizations } from "@/services/drizzle/schema";
@@ -154,14 +155,17 @@ async function processOrganization({
 	const erp: TSyncSalesErpOptions = {
 		policy: getChannelErpPolicy(organizationConfiguration),
 		stockTrackingEnabled: organizationConfiguration?.preferencias?.rastreamentoEstoque ?? false,
+		organizationConfiguration,
 	};
 	const batch = await fetchConnectorImportBatch({ organizationId, config, window });
 	const campaignsForOrganization = effects.processCampaigns ? await loadCampaigns(organizationId) : [];
 	let immediateProcessingDataList: ImmediateProcessingData[] = [];
+	let fiscalEmissionCandidateSaleIds: string[] = [];
 
 	const summary = await db.transaction(async (tx): Promise<TDataCollectingV2RunSummary> => {
 		const auxiliaryContext = await syncAuxiliaryEntities({ tx, batch });
 		const persistedSales = await syncSales({ tx, batch, context: auxiliaryContext, erp });
+		fiscalEmissionCandidateSaleIds = persistedSales.filter((sale) => sale.managedFiscalEmissionCandidate).map((sale) => sale.id);
 		// Audiences are resolved once from the post-sync state. Keep audience filters independent
 		// from client metrics mutated by this batch; per-sale trigger counters live in persistedSales.
 		const audiencesByCampaignId = effects.processCampaigns
@@ -203,6 +207,31 @@ async function processOrganization({
 	});
 
 	await batch.postProcess?.();
+
+	// Emissão fiscal de vendas gerenciadas entregues (policy.fiscal): roda APÓS o commit — o
+	// processo de emissão lê via `db` e dentro da transação enxergaria o estado pré-commit.
+	// A elegibilidade completa (entregue, pago, sem documento vigente) é re-checada; idempotente.
+	if (fiscalEmissionCandidateSaleIds.length > 0) {
+		const organizationEntity = await db.query.organizations.findFirst({
+			where: eq(organizations.id, organizationId),
+		});
+		if (organizationEntity) {
+			for (const saleId of fiscalEmissionCandidateSaleIds) {
+				try {
+					const emission = await processSaleAutomaticFiscalEmissionIfEligible({
+						organization: organizationEntity,
+						saleId,
+						authorId: null,
+					});
+					if (emission.status === "SOLICITADO") {
+						console.log(`[DATA_COLLECTING_V2] [ORG: ${organizationId}] Emissão fiscal solicitada para venda gerenciada ${saleId}.`);
+					}
+				} catch (error) {
+					console.error(`[DATA_COLLECTING_V2] [ORG: ${organizationId}] Falha na emissão fiscal da venda gerenciada ${saleId}.`, error);
+				}
+			}
+		}
+	}
 
 	return {
 		summary,

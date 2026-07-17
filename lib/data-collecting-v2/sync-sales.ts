@@ -1,8 +1,15 @@
 import type { TCanonicalImportBatch, TCanonicalSale, TCanonicalSaleItem } from "@/lib/data-connectors";
 import { mapCanonicalSaleAttendanceStatus, mapCanonicalSaleCommercialStatus } from "@/lib/data-connectors";
 import { attendanceStatusRequiresPhysicalOut, isValidAttendanceTransition } from "@/lib/sales/sale-processing/attendance";
+import {
+	cancelManagedSaleFinancials,
+	processManagedSaleFinancials,
+	settleManagedSaleOfflinePayments,
+} from "@/lib/sales/fulfillment-channels/managed-sale-financials";
 import { isManagedFulfillmentSaleModel, type TChannelErpPolicy } from "@/lib/sales/fulfillment-channels/policy";
 import { processStockDeductionIfNotDeducted } from "@/lib/sales/sale-processing/process-stock-deduction";
+import { FIRST_PARTY_ACCOUNT_KEYS } from "@/lib/finances/first-party-accounts";
+import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import { clients, saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { getCanonicalClientResolutionKey, resolveClientForCanonicalSale } from "./sync-auxiliary-entities";
@@ -11,43 +18,62 @@ import type { TDataCollectingV2Executor, TPersistedSaleForEffects, TResolvedAuxi
 export type TSyncSalesErpOptions = {
 	policy: TChannelErpPolicy;
 	stockTrackingEnabled: boolean;
+	organizationConfiguration: TOrganizationConfiguration | null;
 };
 
 /**
- * Baixa de estoque + registro de quantidade entregue para uma venda de canal gerenciado que
- * atingiu a entrega via ingestão. Roda num savepoint: falha de estoque (produto sem lote, sem
- * saldo etc.) não pode abortar a importação da organização inteira.
+ * Efeitos de entrega de uma venda de canal gerenciado: baixa de estoque (guardada), registro de
+ * quantidade entregue e efetivação dos pagamentos "na entrega". Cada efeito roda num savepoint:
+ * falha (produto sem lote, sem saldo etc.) não pode abortar a importação da organização inteira.
+ * Idempotente — pode rodar em todo sync de venda entregue.
  */
 async function applyManagedSaleDeliveryEffects({
 	tx,
 	organizationId,
 	saleId,
+	deductStock,
+	settleOfflinePayments,
 }: {
 	tx: TDataCollectingV2Executor;
 	organizationId: string;
 	saleId: string;
+	deductStock: boolean;
+	settleOfflinePayments: boolean;
 }) {
 	const itemsForStock = await tx.query.saleItems.findMany({
 		where: and(eq(saleItems.vendaId, saleId), eq(saleItems.organizacaoId, organizationId)),
 		with: { adicionais: true },
 	});
 
-	try {
-		await tx.transaction(async (nested) => {
-			await processStockDeductionIfNotDeducted(nested, {
-				organizationId,
-				saleId,
-				saleItems: itemsForStock,
-				saleAuthorId: null,
+	if (deductStock) {
+		try {
+			await tx.transaction(async (nested) => {
+				await processStockDeductionIfNotDeducted(nested, {
+					organizationId,
+					saleId,
+					saleItems: itemsForStock,
+					saleAuthorId: null,
+				});
 			});
-		});
-	} catch (error) {
-		console.error(`[SYNC_SALES] Falha na baixa de estoque da venda gerenciada ${saleId} — venda importada sem baixa.`, error);
-		return;
+		} catch (error) {
+			console.error(`[SYNC_SALES] Falha na baixa de estoque da venda gerenciada ${saleId} — venda importada sem baixa.`, error);
+		}
 	}
 
 	for (const item of itemsForStock) {
-		await tx.update(saleItems).set({ quantidadeEntregue: item.quantidade }).where(eq(saleItems.id, item.id));
+		if (item.quantidadeEntregue !== item.quantidade) {
+			await tx.update(saleItems).set({ quantidadeEntregue: item.quantidade }).where(eq(saleItems.id, item.id));
+		}
+	}
+
+	if (settleOfflinePayments) {
+		try {
+			await tx.transaction(async (nested) => {
+				await settleManagedSaleOfflinePayments(nested, { organizationId, saleId });
+			});
+		} catch (error) {
+			console.error(`[SYNC_SALES] Falha ao efetivar pagamentos na entrega da venda gerenciada ${saleId}.`, error);
+		}
 	}
 }
 
@@ -114,6 +140,8 @@ function buildSaleValues({
 		// (isValidSale/isCanceled). Vendas externas NAO geram efeitos de ERP na plataforma.
 		statusVenda: mapCanonicalSaleCommercialStatus(sale),
 		statusAtendimento: mapCanonicalSaleAttendanceStatus(sale),
+		// Detalhamento do canal (fiscal/conciliação). null em conectores sem detalhamento.
+		integracaoMetadados: sale.integrationMetadata ?? null,
 	};
 }
 
@@ -275,7 +303,10 @@ export async function syncSales({
 		// ligada — a ingestão passa a respeitar transições e a disparar os efeitos de entrega.
 		const saleIsManaged = !!erp?.policy.fulfillment && isManagedFulfillmentSaleModel(sale.model) && sale.attendanceStatus != null;
 		const deductStockOnDelivery = saleIsManaged && !!erp && erp.policy.estoque && erp.stockTrackingEnabled;
-		let reachedDeliveryThisSync = false;
+		const financeEnabled = saleIsManaged && !!erp && erp.policy.financeiro;
+		// Status operacional efetivo pós-sync (para disparar os efeitos de entrega de forma
+		// idempotente em todo sync, cobrindo também entregas feitas pelo board entre syncs).
+		let effectiveAttendanceStatus = saleValues.statusAtendimento;
 
 		if (!existingSale) {
 			isNewSale = true;
@@ -283,8 +314,6 @@ export async function syncSales({
 			const inserted = await tx.insert(sales).values(saleValues).returning({ id: sales.id });
 			saleId = inserted[0].id;
 			await insertSaleItems({ tx, batch, context, saleId, clientId, items: sale.items });
-			// Fast-forward: venda gerenciada que já nasce entregue executa os efeitos de entrega.
-			reachedDeliveryThisSync = saleIsManaged && attendanceStatusRequiresPhysicalOut(saleValues.statusAtendimento);
 		} else {
 			saleId = existingSale.id;
 			console.log(`[SYNC_SALES] Updating existing sale of ${sale.sourceSaleId} (${sale.occurredAt.toISOString()})...`);
@@ -297,16 +326,13 @@ export async function syncSales({
 				// Eixo operacional só avança por transições válidas; evento fora de ordem é ignorado.
 				const currentAttendance = existingSale.statusAtendimento;
 				const targetAttendance = saleValues.statusAtendimento;
-				if (currentAttendance === targetAttendance) {
-					updateValues.statusAtendimento = currentAttendance;
-				} else if (isValidAttendanceTransition(currentAttendance, targetAttendance)) {
-					reachedDeliveryThisSync = attendanceStatusRequiresPhysicalOut(targetAttendance);
-				} else {
+				if (currentAttendance !== targetAttendance && !isValidAttendanceTransition(currentAttendance, targetAttendance)) {
 					console.log(
 						`[SYNC_SALES] Transição de atendimento ignorada para ${sale.sourceSaleId}: ${currentAttendance} -> ${targetAttendance} (evento fora de ordem).`,
 					);
 					updateValues.statusAtendimento = currentAttendance;
 				}
+				effectiveAttendanceStatus = updateValues.statusAtendimento;
 			}
 
 			await tx.update(sales).set(updateValues).where(eq(sales.id, existingSale.id));
@@ -316,8 +342,42 @@ export async function syncSales({
 			}
 		}
 
-		if (reachedDeliveryThisSync && deductStockOnDelivery) {
-			await applyManagedSaleDeliveryEffects({ tx, organizationId: batch.organizationId, saleId });
+		// Financeiro do canal gerenciado: lançamento + transações quando a venda torna-se válida;
+		// cancelamento das pendentes quando vira cancelada. Savepoints: falha não aborta o import.
+		if (financeEnabled && becameValid) {
+			try {
+				await tx.transaction(async (nested) => {
+					await processManagedSaleFinancials(nested, {
+						organizationId: batch.organizationId,
+						saleId,
+						sale,
+						channelAccountKey: FIRST_PARTY_ACCOUNT_KEYS.IFOOD,
+						organizationConfiguration: erp?.organizationConfiguration ?? null,
+					});
+				});
+			} catch (error) {
+				console.error(`[SYNC_SALES] Falha no financeiro da venda gerenciada ${sale.sourceSaleId} — venda importada sem financeiro.`, error);
+			}
+		}
+		if (financeEnabled && previouslyValid && nowCanceled) {
+			try {
+				await tx.transaction(async (nested) => {
+					await cancelManagedSaleFinancials(nested, { organizationId: batch.organizationId, saleId });
+				});
+			} catch (error) {
+				console.error(`[SYNC_SALES] Falha ao cancelar financeiro da venda gerenciada ${sale.sourceSaleId}.`, error);
+			}
+		}
+
+		const saleIsDelivered = saleIsManaged && attendanceStatusRequiresPhysicalOut(effectiveAttendanceStatus);
+		if (saleIsDelivered && (deductStockOnDelivery || financeEnabled)) {
+			await applyManagedSaleDeliveryEffects({
+				tx,
+				organizationId: batch.organizationId,
+				saleId,
+				deductStock: deductStockOnDelivery,
+				settleOfflinePayments: financeEnabled,
+			});
 		}
 
 		const isFirstPurchase =
@@ -339,6 +399,7 @@ export async function syncSales({
 			previouslyValid,
 			becameValid,
 			nowCanceled,
+			managedFiscalEmissionCandidate: saleIsDelivered && !!erp && erp.policy.fiscal,
 			newTotalPurchaseCount: totals.totalPurchaseCount,
 			newTotalPurchaseValue: totals.totalPurchaseValue,
 		});

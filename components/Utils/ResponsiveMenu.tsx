@@ -13,7 +13,7 @@ import { Button } from "../ui/button";
 const responsiveMenuVariants = cva("flex flex-col", {
 	variants: {
 		dialogVariant: {
-			fit: "h-fit w-fit max-w-fit min-h-fit",
+			fit: "h-fit w-fit max-w-fit min-h-fit max-h-[90%]",
 			sm: "max-h-[90%]",
 			md: "h-[70%] min-h-[70%] max-h-[70%] lg:max-h-[70%] w-[60%] min-w-[60%] max-w-[60%] lg:max-w-[60%]",
 			lg: "h-[90%] min-h-[90%] max-h-[90%] lg:max-h-[90%] w-[80%] min-w-[80%] max-w-[80%] lg:max-w-[80%]",

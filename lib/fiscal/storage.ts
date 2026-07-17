@@ -3,15 +3,7 @@ import { FISCAL_STORAGE_PREFIX } from "./constants";
 
 export type TFiscalAssetType = "xml" | "pdf";
 
-export function buildFiscalAssetPath({
-	documentoId,
-	tipo,
-	asset,
-}: {
-	documentoId: string;
-	tipo: string;
-	asset: TFiscalAssetType;
-}) {
+export function buildFiscalAssetPath({ documentoId, tipo, asset }: { documentoId: string; tipo: string; asset: TFiscalAssetType }) {
 	const extension = asset === "xml" ? "xml" : "pdf";
 	return `${FISCAL_STORAGE_PREFIX}/${documentoId}-${tipo.toLowerCase()}.${extension}`;
 }
@@ -46,4 +38,3 @@ export async function downloadStoredFiscalAsset(path: string) {
 	if (error) throw error;
 	return data.arrayBuffer();
 }
-

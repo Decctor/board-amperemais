@@ -1,4 +1,4 @@
-import type { TSaleCapiMetadata } from "@/schemas/sales";
+import type { TSaleCapiMetadata, TSaleIntegrationMetadata } from "@/schemas/sales";
 import { relations } from "drizzle-orm";
 import { boolean, doublePrecision, index, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { campaignConversions } from "./campaign-conversions";
@@ -79,6 +79,10 @@ export const sales = newTable(
 		// Estado do envio de conversão (Purchase) ao Conversions API da Meta (dedup/observabilidade/
 		// retry). null = ainda não processada pelo cron de CAPI. Sem PII crua — só resumo do envio.
 		capiMetadados: jsonb("capi_metadados").$type<TSaleCapiMetadata>(),
+		// Detalhamento de venda de canal de integração (frete próprio, descontos por patrocinador,
+		// taxas do canal) — insumo do fiscal (fase 5) e da conciliação de repasse (fase 4b).
+		// null em vendas internas/conectores sem detalhamento.
+		integracaoMetadados: jsonb("integracao_metadados").$type<TSaleIntegrationMetadata>(),
 	},
 	(table) => ({
 		clientIdIdx: index("idx_sales_client_id").on(table.clienteId),

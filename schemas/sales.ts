@@ -87,3 +87,37 @@ export const SaleCapiMetadataSchema = z.object({
 	dataEnvio: z.string({ invalid_type_error: "Tipo não válido para a data de envio." }).datetime().optional(),
 });
 export type TSaleCapiMetadata = z.infer<typeof SaleCapiMetadataSchema>;
+
+/**
+ * Metadados de venda de canal de integração (ex.: iFood) — detalhamento que não cabe nas colunas
+ * da venda mas é necessário para o fiscal (frete próprio, descontos por patrocinador) e para a
+ * conciliação do repasse (taxas do canal). Escrito uma vez pela ingestão; null em vendas internas.
+ */
+export const SaleIntegrationMetadataSchema = z.object({
+	versao: z.literal(1),
+	canal: z.string({ required_error: "Canal dos metadados de integração não informado." }),
+	entrega: z.object({
+		/** LOJA = entrega própria (frete é receita da loja, entra na NF); CANAL = entregador do canal. */
+		realizadaPor: z.enum(["LOJA", "CANAL"], { invalid_type_error: "Tipo não válido para o responsável pela entrega." }).nullable(),
+		valorFrete: z.number({ invalid_type_error: "Tipo não válido para o valor do frete." }),
+	}),
+	descontos: z.object({
+		/** Desconto bancado pela loja (sponsorship MERCHANT) — reduz a NF (rateado nos itens). */
+		loja: z.number({ invalid_type_error: "Tipo não válido para o desconto da loja." }),
+		/** Descontos bancados por terceiros (IFOOD/EXTERNAL/CHAIN) — NF cheia; entram como pagamento. */
+		patrocinados: z.array(
+			z.object({
+				patrocinador: z.string({ required_error: "Patrocinador do desconto não informado." }),
+				valor: z.number({ invalid_type_error: "Tipo não válido para o valor patrocinado." }),
+			}),
+		),
+	}),
+	/** Taxas do canal (ex.: additionalFees do iFood) — receita do canal, fora da NF; material da conciliação. */
+	taxasCanal: z.array(
+		z.object({
+			tipo: z.string({ required_error: "Tipo da taxa do canal não informado." }),
+			valor: z.number({ invalid_type_error: "Tipo não válido para o valor da taxa do canal." }),
+		}),
+	),
+});
+export type TSaleIntegrationMetadata = z.infer<typeof SaleIntegrationMetadataSchema>;

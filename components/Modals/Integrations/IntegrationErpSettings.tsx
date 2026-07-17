@@ -46,16 +46,16 @@ const FLAG_METADATA: FlagMeta[] = [
 	{
 		key: "financeiro",
 		label: "Financeiro",
-		description: "Gera lançamentos financeiros das vendas das integrações. Em breve.",
+		description:
+			"Gera os recebíveis das vendas das integrações: pagos online entram na conta de repasse do canal (ex.: iFood) e pagos na entrega caem no caixa. Taxas e repasse são conciliados manualmente no módulo financeiro.",
 		icon: Wallet,
-		comingSoon: true,
 	},
 	{
 		key: "fiscal",
 		label: "Emissão fiscal",
-		description: "Emite nota automaticamente para as vendas das integrações. Em breve.",
+		description:
+			"Emite a nota automaticamente quando o pedido da integração é entregue. Requer emissão automática habilitada, perfis fiscais nos produtos e operação fiscal configurada.",
 		icon: FileText,
-		comingSoon: true,
 	},
 ];
 
@@ -111,8 +111,6 @@ export default function IntegrationErpSettings({ canManage, closeMenu }: Integra
 			closeMenu={closeMenu}
 			dialogVariant="fit"
 			drawerVariant="md"
-			dialogContentClassName="w-[min(100vw-2rem,34rem)] max-w-[min(100vw-2rem,34rem)]"
-			drawerContentClassName="max-h-[90dvh]"
 		>
 			<div className="flex flex-col gap-4 px-1">
 				<div

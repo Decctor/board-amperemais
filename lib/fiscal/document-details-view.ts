@@ -159,8 +159,7 @@ type SaleSnapshotInput = {
 export function buildFiscalDocumentSaleSummary(input: SaleSnapshotInput): TFiscalDocumentSaleSummaryView | null {
 	const snapshot = parseStoredJson(input.snapshotOrigemVenda);
 	const snapshotVenda = snapshot?.venda && typeof snapshot.venda === "object" ? (snapshot.venda as JsonRecord) : null;
-	const snapshotDestinatario =
-		snapshot?.destinatario && typeof snapshot.destinatario === "object" ? (snapshot.destinatario as JsonRecord) : null;
+	const snapshotDestinatario = snapshot?.destinatario && typeof snapshot.destinatario === "object" ? (snapshot.destinatario as JsonRecord) : null;
 
 	const venda = input.venda;
 	const vendaId = venda?.id ?? input.vendaId ?? readString(snapshotVenda?.id);

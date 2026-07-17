@@ -138,8 +138,14 @@ export function computeSaleTaxation(context: TFiscalSaleContext): TSaleTaxation 
 		return { item, result };
 	});
 
+	// Frete de canal gerenciado (fase 5/C3): entrega própria (LOJA) é receita da loja e compõe a
+	// NF como vFrete; entrega feita pelo canal fica fora. Vendas internas não têm o bloco (0).
+	const integracaoMetadados = context.venda.integracaoMetadados;
+	const vFrete = integracaoMetadados?.entrega.realizadaPor === "LOJA" ? Math.max(integracaoMetadados.entrega.valorFrete, 0) : 0;
+
 	const totais = computeDocumentTotals(
 		itens.map(({ result, item }) => ({ result, valorBruto: item.valorVendaTotalBruto, valorDesconto: item.valorTotalDesconto })),
+		{ vFrete },
 	);
 	const erros = [...extraErrors, ...aggregateItemErrors(itens.map(({ result }) => result))];
 

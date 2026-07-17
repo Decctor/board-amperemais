@@ -1,4 +1,11 @@
-import type { TFiscalClientTaxIndicatorEnum, TFiscalIcmsCsosnEnum, TFiscalOperationFinalityEnum, TFiscalPisCofinsCstEnum, TFiscalProductOriginEnum, TFiscalTaxRuleScopeEnum } from "@/schemas/enums";
+import type {
+	TFiscalClientTaxIndicatorEnum,
+	TFiscalIcmsCsosnEnum,
+	TFiscalOperationFinalityEnum,
+	TFiscalPisCofinsCstEnum,
+	TFiscalProductOriginEnum,
+	TFiscalTaxRuleScopeEnum,
+} from "@/schemas/enums";
 import type { TFiscalTaxGroupEntity, TFiscalTaxGroupRuleEntity } from "@/services/drizzle/schema";
 
 export type TFiscalTaxGroupWithRules = TFiscalTaxGroupEntity & {
@@ -96,5 +103,7 @@ export type TDocumentTaxTotals = {
 	vPIS: number;
 	vCOFINS: number;
 	vTotTrib: number;
+	/** Frete cobrado do destinatário (entrega própria de canal gerenciado). Compõe o vNF. */
+	vFrete: number;
 	vNF: number;
 };

@@ -81,12 +81,14 @@ function compareIbptRates(a: TIbptRate, b: TIbptRate, targetExTipi?: string | nu
 	const byMunicipal = compareNumbersAsc(a.aliqMunicipal, b.aliqMunicipal);
 	if (byMunicipal !== 0) return byMunicipal;
 
-	return [
-		normalizeText(a.descricao).localeCompare(normalizeText(b.descricao)),
-		normalizeText(a.chave).localeCompare(normalizeText(b.chave)),
-		normalizeText(a.versao).localeCompare(normalizeText(b.versao)),
-		normalizeText(a.fonte).localeCompare(normalizeText(b.fonte)),
-	].find((result) => result !== 0) ?? 0;
+	return (
+		[
+			normalizeText(a.descricao).localeCompare(normalizeText(b.descricao)),
+			normalizeText(a.chave).localeCompare(normalizeText(b.chave)),
+			normalizeText(a.versao).localeCompare(normalizeText(b.versao)),
+			normalizeText(a.fonte).localeCompare(normalizeText(b.fonte)),
+		].find((result) => result !== 0) ?? 0
+	);
 }
 
 // Seleciona a taxa IBPT por NCM + UF. Tenta correspondencia exata e, em seguida, o prefixo mais
@@ -125,5 +127,5 @@ export function computeVTotTrib({
 	if (!rate) return 0;
 	const federal = isOrigemImportada(origem) ? rate.aliqImportadosFederal : rate.aliqNacionalFederal;
 	const total = federal + rate.aliqEstadual + rate.aliqMunicipal;
-	return Math.round((((baseValue * total) / 100) + Number.EPSILON) * 100) / 100;
+	return Math.round(((baseValue * total) / 100 + Number.EPSILON) * 100) / 100;
 }

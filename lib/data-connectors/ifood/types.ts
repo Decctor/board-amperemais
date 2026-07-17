@@ -195,6 +195,8 @@ export const IfoodOrderItemOptionSchema = z
 
 export const IfoodOrderItemSchema = z
 	.object({
+		// Posição do item no pedido — referenciada por benefits com target ITEM (targetId = index).
+		index: NullableStringSchema,
 		id: NullableStringSchema,
 		uniqueId: NullableStringSchema,
 		name: NullableStringSchema,
@@ -208,14 +210,39 @@ export const IfoodOrderItemSchema = z
 	.passthrough();
 export type TIfoodOrderItem = z.infer<typeof IfoodOrderItemSchema>;
 
+const IfoodBenefitSponsorshipValueSchema = z
+	.object({
+		/** IFOOD | MERCHANT | EXTERNAL | CHAIN */
+		name: NullableStringSchema,
+		value: MoneySchema,
+		description: NullableStringSchema,
+	})
+	.passthrough();
+
 export const IfoodOrderBenefitSchema = z
 	.object({
 		value: MoneySchema,
+		/** CART | DELIVERY_FEE | ITEM | PROGRESSIVE_DISCOUNT_ITEM */
 		target: NullableStringSchema,
 		targetId: NullableStringSchema,
-		sponsorshipValues: z.record(z.unknown()).optional().nullable(),
+		// `.catch(null)`: payloads antigos/inesperados não derrubam o parse do pedido inteiro.
+		sponsorshipValues: z.array(IfoodBenefitSponsorshipValueSchema).optional().nullable().catch(null),
 	})
 	.passthrough();
+export type TIfoodOrderBenefit = z.infer<typeof IfoodOrderBenefitSchema>;
+
+export const IfoodOrderAdditionalFeeSchema = z
+	.object({
+		type: NullableStringSchema,
+		value: MoneySchema,
+		liabilities: z
+			.array(z.object({ name: NullableStringSchema, percentage: MoneySchema }).passthrough())
+			.optional()
+			.nullable()
+			.catch(null),
+	})
+	.passthrough();
+export type TIfoodOrderAdditionalFee = z.infer<typeof IfoodOrderAdditionalFeeSchema>;
 
 export const IfoodOrderTotalSchema = z
 	.object({
@@ -227,9 +254,29 @@ export const IfoodOrderTotalSchema = z
 	})
 	.passthrough();
 
+export const IfoodOrderPaymentMethodSchema = z
+	.object({
+		value: MoneySchema,
+		currency: NullableStringSchema,
+		/** CREDIT, DEBIT, PIX, CASH, MEAL_VOUCHER, FOOD_VOUCHER, DIGITAL_WALLET, ... */
+		method: NullableStringSchema,
+		/** ONLINE (pago no app) | OFFLINE (pago na entrega/retirada) */
+		type: NullableStringSchema,
+		prepaid: z.boolean().optional().nullable(),
+		card: z
+			.object({
+				brand: NullableStringSchema,
+			})
+			.passthrough()
+			.optional()
+			.nullable(),
+	})
+	.passthrough();
+export type TIfoodOrderPaymentMethod = z.infer<typeof IfoodOrderPaymentMethodSchema>;
+
 export const IfoodOrderPaymentsSchema = z
 	.object({
-		methods: z.array(z.unknown()).optional().default([]),
+		methods: z.array(IfoodOrderPaymentMethodSchema).optional().default([]),
 		pending: MoneySchema,
 		prepaid: MoneySchema,
 	})
@@ -261,6 +308,7 @@ export const IfoodOrderSchema = z
 		items: z.array(IfoodOrderItemSchema).optional().default([]),
 		total: IfoodOrderTotalSchema.optional().default({ subTotal: 0, deliveryFee: 0, benefits: 0, orderAmount: 0, additionalFees: 0 }),
 		benefits: z.array(IfoodOrderBenefitSchema).optional().default([]),
+		additionalFees: z.array(IfoodOrderAdditionalFeeSchema).optional().default([]),
 		payments: IfoodOrderPaymentsSchema.optional().nullable(),
 	})
 	.passthrough();

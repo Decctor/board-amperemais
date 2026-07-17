@@ -215,7 +215,14 @@ export function computeItemTaxation({ scenario, item, group, vTotTrib }: TComput
 		cest: item.cest ?? null,
 		erros,
 	});
-	const pis = computeContribuicao({ tributo: "PIS", cst: config.cstPis, aliquota: config.aliquotaPis, base: baseLiquida, produtoId: item.produtoId, erros });
+	const pis = computeContribuicao({
+		tributo: "PIS",
+		cst: config.cstPis,
+		aliquota: config.aliquotaPis,
+		base: baseLiquida,
+		produtoId: item.produtoId,
+		erros,
+	});
 	const cofins = computeContribuicao({
 		tributo: "COFINS",
 		cst: config.cstCofins,
@@ -236,7 +243,10 @@ export function computeItemTaxation({ scenario, item, group, vTotTrib }: TComput
 	};
 }
 
-export function computeDocumentTotals(items: { result: TItemTaxResult; valorBruto: number; valorDesconto: number }[]): TDocumentTaxTotals {
+export function computeDocumentTotals(
+	items: { result: TItemTaxResult; valorBruto: number; valorDesconto: number }[],
+	extras?: { vFrete?: number },
+): TDocumentTaxTotals {
 	const totals: TDocumentTaxTotals = {
 		vBC: 0,
 		vICMS: 0,
@@ -249,6 +259,7 @@ export function computeDocumentTotals(items: { result: TItemTaxResult; valorBrut
 		vPIS: 0,
 		vCOFINS: 0,
 		vTotTrib: 0,
+		vFrete: 0,
 		vNF: 0,
 	};
 
@@ -277,8 +288,9 @@ export function computeDocumentTotals(items: { result: TItemTaxResult; valorBrut
 	totals.vPIS = round2(totals.vPIS);
 	totals.vCOFINS = round2(totals.vCOFINS);
 	totals.vTotTrib = round2(totals.vTotTrib);
-	// vNF = produtos - desconto + ST + FCP-ST (regra W16 / NT 2016.002; frete/seguro/outros fora de escopo nesta fase)
-	totals.vNF = round2(totals.vProd - totals.vDesc + totals.vST + totals.vFCPST);
+	totals.vFrete = round2(extras?.vFrete ?? 0);
+	// vNF = produtos - desconto + frete + ST + FCP-ST (regra W16 / NT 2016.002; seguro/outros fora de escopo)
+	totals.vNF = round2(totals.vProd - totals.vDesc + totals.vFrete + totals.vST + totals.vFCPST);
 
 	return totals;
 }
