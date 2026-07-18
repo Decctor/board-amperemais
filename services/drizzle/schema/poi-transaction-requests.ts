@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { index, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { index, jsonb, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { clients } from "./clients";
 import { newTable } from "./common";
 import { poiTransactionRequestStatusEnum, poiTransactionRequestTypeEnum } from "./enums";
@@ -85,3 +85,33 @@ export const poiTransactionRequestsRelations = relations(poiTransactionRequests,
 
 export type TPoiTransactionRequestEntity = typeof poiTransactionRequests.$inferSelect;
 export type TNewPoiTransactionRequestEntity = typeof poiTransactionRequests.$inferInsert;
+
+// Idempotência de new-transaction (plano §11): a chave nasce no dispositivo antes da primeira
+// tentativa; repetição com a mesma chave devolve a resposta original em vez de criar outra venda.
+// Mesmo padrão de shop_order_requests: unicidade por constraint, hash do payload, semântica de
+// concorrência via status PROCESSANDO.
+export const poiTransactionIdempotencyRequests = newTable(
+	"poi_transaction_idempotency_requests",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		// Nullable: chamadas legadas do POI web podem adotar idempotência sem principal.
+		principalId: varchar("principal_id", { length: 255 }),
+		idempotencyKey: varchar("idempotency_key", { length: 255 }).notNull(),
+		payloadHash: varchar("payload_hash", { length: 255 }).notNull(),
+		status: varchar("status", { length: 30 }).$type<"PROCESSANDO" | "CONCLUIDO" | "ERRO">().notNull().default("PROCESSANDO"),
+		resposta: jsonb("resposta"),
+		erro: text("erro"),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+		dataAtualizacao: timestamp("data_atualizacao").$onUpdate(() => new Date()),
+	},
+	(table) => ({
+		organizacaoIdempotencyKeyUnique: uniqueIndex("idx_poi_transaction_idempotency_org_key_unique").on(table.organizacaoId, table.idempotencyKey),
+	}),
+);
+
+export type TPoiTransactionIdempotencyRequestEntity = typeof poiTransactionIdempotencyRequests.$inferSelect;

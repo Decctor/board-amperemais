@@ -1,3 +1,4 @@
+import { resolvePoiActorContext } from "@/lib/access/poi-actor";
 import { appApiHandler } from "@/lib/app-api";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { ClientSchema } from "@/schemas/clients";
@@ -92,6 +93,9 @@ async function createClientViaPointOfInteractionRoute(request: NextRequest) {
 	console.log("[INFO] [CREATE CLIENT VIA POINT OF INTERACTION] Request body:", body);
 	const input = CreateClientViaPointOfInteractionInputSchema.parse(body);
 	console.log("[INFO] [CREATE CLIENT VIA POINT OF INTERACTION] Input:", input);
+	// Dual-mode (plano §9.10): dispositivo autenticado deriva a organização do principal.
+	const resolution = await resolvePoiActorContext({ request, requiredScope: "poi:clients:create", payloadOrgId: input.orgId });
+	input.orgId = resolution.organizationId;
 	const result = await createClientViaPointOfInteraction({ input });
 	console.log("[INFO] [CREATE CLIENT VIA POINT OF INTERACTION] Result:", result);
 	return NextResponse.json(result, {

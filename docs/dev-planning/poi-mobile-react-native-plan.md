@@ -764,13 +764,13 @@ Logs não devem conter tokens, documentos completos, saldos sensíveis ou payloa
 ### Fase 3 — vertical slice da transação
 
 - [ ] Criar client HTTP e camada de erros.
-- [ ] Adaptar as rotas POI para receber `ExternalActorContext` e exigir scopes.
-- [ ] Remover `orgId` como fonte de autoridade nas chamadas autenticadas do app.
+- [x] Adaptar as rotas POI para receber `ExternalActorContext` e exigir scopes (new-transaction, clients/lookup, new-client, coupons/available; novas rotas configuration e transactions/result).
+- [x] Remover `orgId` como fonte de autoridade nas chamadas autenticadas do app (organização deriva do principal; payload divergente é rejeitado).
 - [ ] Implementar identificação/consulta do cliente.
 - [ ] Implementar entrada do valor da venda.
 - [ ] Implementar confirmação simples.
-- [ ] Adicionar idempotency key no app e backend.
-- [ ] Persistir e consultar o resultado da submissão incerta.
+- [x] Adicionar idempotency key no backend (`Idempotency-Key` em new-transaction; app pendente no repositório mobile).
+- [x] Persistir e consultar o resultado da submissão incerta (backend: resposta persistida + `GET /api/point-of-interaction/transactions/result`; app pendente).
 - [ ] Validar o fluxo completo no tablet.
 
 **Saída:** uma transação simples real concluída pelo APK sem duplicação.
@@ -815,8 +815,8 @@ Logs não devem conter tokens, documentos completos, saldos sensíveis ou payloa
 Pode iniciar em paralelo à Fase 4, pois depende apenas da Fase 2.
 
 - [ ] Cadastrar o cliente `RECOMPRA_POI_WEB` (`NATIVO_WEB_KIOSK`) com teto mínimo de scopes.
-- [ ] Adaptar rotas POI para dual-mode: credencial externa ou modo legado com `orgId`.
-- [ ] Registrar `access_events` de chamadas legadas por organização.
+- [x] Adaptar rotas POI para dual-mode: credencial externa ou modo legado com `orgId`.
+- [x] Registrar `access_events` de chamadas legadas por organização (`CHAMADA_POI_LEGADO`).
 - [ ] Implementar ativação no navegador (banner + tela de ativação no kiosk web).
 - [ ] Listar kiosks ativados e uso legado no painel administrativo.
 - [ ] Criar flag `poi_exigir_dispositivo_autenticado` com degradação para fluxo de aprovação.

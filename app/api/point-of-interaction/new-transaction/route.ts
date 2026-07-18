@@ -11,7 +11,9 @@ import { type ImmediateProcessingData, processOrganizationInteractionsBatch, pro
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import { evaluateCouponAgainstSaleValue } from "@/lib/coupons/engine";
 import { processCouponRedemption } from "@/lib/coupons/redemption";
+import { resolvePoiActorContext } from "@/lib/access/poi-actor";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
+import { runPoiTransactionWithIdempotency } from "@/lib/point-of-interaction/idempotency";
 import {
 	getPoiSaleValueForConfirmation,
 	poiSaleRequiresValueConfirmation,
@@ -1011,7 +1013,23 @@ export type TProcessPointOfInteractionTransactionOutput = Awaited<ReturnType<typ
 async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCreatePointOfInteractionTransactionOutput>> {
 	const body = await req.json();
 	const input = CreatePointOfInteractionTransactionInputSchema.parse(body);
-	const result = await processPointOfInteractionTransaction({ input });
+
+	// Dual-mode (plano §9.10): dispositivo autenticado deriva a organização do principal e exige
+	// scope; modo legado segue aceitando o orgId do payload, com telemetria em access_events.
+	const resolution = await resolvePoiActorContext({ request: req, requiredScope: "poi:transactions:create", payloadOrgId: input.orgId });
+	input.orgId = resolution.organizationId;
+
+	// Idempotência (plano §11): com a chave presente, repetições devolvem a resposta original.
+	const idempotencyKey = req.headers.get("idempotency-key");
+	const result = idempotencyKey
+		? await runPoiTransactionWithIdempotency({
+				organizacaoId: resolution.organizationId,
+				principalId: resolution.actor?.principalId ?? null,
+				idempotencyKey,
+				payload: input,
+				execute: () => processPointOfInteractionTransaction({ input }),
+			})
+		: await processPointOfInteractionTransaction({ input });
 
 	return NextResponse.json(result, { status: 201 });
 }
