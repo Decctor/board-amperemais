@@ -391,3 +391,30 @@ export const dealStatusEnum = pgEnum("deal_status", ["PENDENTE", "ATIVO", "INADI
 export const dealIntervaloEnum = pgEnum("deal_intervalo", ["MENSAL", "ANUAL"]);
 
 export const actionApprovalDecisionMethodEnum = pgEnum("action_approval_decision_method", ["PLATAFORMA", "SENHA_OPERADOR"]);
+
+// ============================================================================
+// ACCESS (fundação de acesso externo — docs/dev-planning/poi-mobile-react-native-plan.md §9)
+// ============================================================================
+
+// Categoria da aplicação cliente conhecida pela plataforma (não é a instalação concreta).
+export const accessClientCategoryEnum = pgEnum("access_client_category", [
+	"NATIVO_MOBILE",
+	"NATIVO_WEB_KIOSK",
+	"NATIVO_DESKTOP",
+	"TERMINAL_PAGAMENTO",
+	"SERVIDOR_EXTERNO",
+	"APLICACAO_PARCEIRA",
+]);
+
+export const accessClientStatusEnum = pgEnum("access_client_status", ["ATIVO", "INATIVO"]);
+
+// O principal é o ator concreto autorizado a chamar a plataforma: um tablet, um agente ou uma conta de serviço.
+export const accessPrincipalTypeEnum = pgEnum("access_principal_type", ["DISPOSITIVO", "AGENTE_DESKTOP", "CONTA_SERVICO"]);
+
+export const accessPrincipalStatusEnum = pgEnum("access_principal_status", ["ATIVO", "INATIVO", "REVOGADO"]);
+
+// Tipos futuros (OAUTH_CLIENT_SECRET, MTLS_CERTIFICATE…) entram aqui sem alterar a identidade do principal.
+export const accessCredentialTypeEnum = pgEnum("access_credential_type", ["TOKEN_DISPOSITIVO", "CHAVE_API"]);
+
+// O `tipo` de access_events NÃO é pgEnum de propósito (mesmo racional de action approvals):
+// é varchar + z.enum no app para que novos eventos não custem migração de enum no Postgres.

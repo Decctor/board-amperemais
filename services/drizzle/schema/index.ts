@@ -36,3 +36,4 @@ export * from "./productions";
 export * from "./integrations";
 export * from "./audiences";
 export * from "./deals";
+export * from "./access";

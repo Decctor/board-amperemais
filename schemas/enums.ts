@@ -432,3 +432,56 @@ export type TDealStatusEnum = z.infer<typeof DealStatusEnum>;
 // Espelha o pgEnum dealIntervaloEnum.
 export const DealIntervaloEnum = z.enum(["MENSAL", "ANUAL"]);
 export type TDealIntervaloEnum = z.infer<typeof DealIntervaloEnum>;
+
+// ============================================================================
+// ACCESS (fundação de acesso externo — docs/dev-planning/poi-mobile-react-native-plan.md §9)
+// ============================================================================
+
+export const AccessClientCategoryEnum = z.enum([
+	"NATIVO_MOBILE",
+	"NATIVO_WEB_KIOSK",
+	"NATIVO_DESKTOP",
+	"TERMINAL_PAGAMENTO",
+	"SERVIDOR_EXTERNO",
+	"APLICACAO_PARCEIRA",
+]);
+export type TAccessClientCategoryEnum = z.infer<typeof AccessClientCategoryEnum>;
+
+export const AccessClientStatusEnum = z.enum(["ATIVO", "INATIVO"]);
+export type TAccessClientStatusEnum = z.infer<typeof AccessClientStatusEnum>;
+
+export const AccessPrincipalTypeEnum = z.enum(["DISPOSITIVO", "AGENTE_DESKTOP", "CONTA_SERVICO"]);
+export type TAccessPrincipalTypeEnum = z.infer<typeof AccessPrincipalTypeEnum>;
+
+export const AccessPrincipalStatusEnum = z.enum(["ATIVO", "INATIVO", "REVOGADO"]);
+export type TAccessPrincipalStatusEnum = z.infer<typeof AccessPrincipalStatusEnum>;
+
+export const AccessCredentialTypeEnum = z.enum(["TOKEN_DISPOSITIVO", "CHAVE_API"]);
+export type TAccessCredentialTypeEnum = z.infer<typeof AccessCredentialTypeEnum>;
+
+// Scopes existentes na plataforma. Correspondência sempre por igualdade exata — sem wildcards (§9.4 do plano).
+export const AccessScopeEnum = z.enum([
+	"poi:configuration:read",
+	"poi:clients:read",
+	"poi:clients:create",
+	"poi:transactions:create",
+	"poi:coupons:read",
+	"poi:prizes:read",
+]);
+export type TAccessScopeEnum = z.infer<typeof AccessScopeEnum>;
+
+// `tipo` de access_events é varchar no banco; este enum é a fonte de verdade no app
+// (novos eventos não custam migração de enum no Postgres).
+export const AccessEventTypeEnum = z.enum([
+	"ENROLLMENT_CONCLUIDO",
+	"ENROLLMENT_FALHA",
+	"AUTENTICACAO_FALHA",
+	"CREDENCIAL_CRIADA",
+	"CREDENCIAL_ROTACIONADA",
+	"CREDENCIAL_REVOGADA",
+	"SCOPE_CONCEDIDO",
+	"SCOPE_REMOVIDO",
+	"PRINCIPAL_REVOGADO",
+	"CHAMADA_POI_LEGADO",
+]);
+export type TAccessEventTypeEnum = z.infer<typeof AccessEventTypeEnum>;

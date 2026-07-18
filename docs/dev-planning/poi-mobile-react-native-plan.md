@@ -227,7 +227,7 @@ access_clients
 ├── codigo
 ├── nome
 ├── categoria
-├── primeira_parte
+├── nativo
 ├── escopos_permitidos
 ├── status
 ├── configuracao
@@ -239,15 +239,15 @@ Categorias iniciais:
 
 ```ts
 type AccessClientCategory =
-  | "FIRST_PARTY_MOBILE"
-  | "FIRST_PARTY_WEB_KIOSK"
-  | "FIRST_PARTY_DESKTOP"
-  | "PAYMENT_TERMINAL"
-  | "EXTERNAL_SERVER"
-  | "PARTNER_APPLICATION";
+  | "NATIVO_MOBILE"
+  | "NATIVO_WEB_KIOSK"
+  | "NATIVO_DESKTOP"
+  | "TERMINAL_PAGAMENTO"
+  | "SERVIDOR_EXTERNO"
+  | "APLICACAO_PARCEIRA";
 ```
 
-**Teto de escopos por cliente:** `escopos_permitidos` define o conjunto máximo de scopes que qualquer principal daquele cliente pode receber. Nenhum grant pode exceder esse teto, independentemente do fluxo administrativo que o conceda. Isso protege contra má configuração (um tablet POI jamais poderá receber `sales:*`, mesmo por erro de um administrador) e é o que tornará o self-checkout seguro no futuro: `RECOMPRA_SELF_CHECKOUT` terá um teto diferente de `RECOMPRA_POI_MOBILE`, ainda que ambos usem principals `DEVICE`. O teto é uma coluna própria — e não parte de `configuracao` — justamente por ser informação usada em decisão de autorização.
+**Teto de escopos por cliente:** `escopos_permitidos` define o conjunto máximo de scopes que qualquer principal daquele cliente pode receber. Nenhum grant pode exceder esse teto, independentemente do fluxo administrativo que o conceda. Isso protege contra má configuração (um tablet POI jamais poderá receber `sales:*`, mesmo por erro de um administrador) e é o que tornará o self-checkout seguro no futuro: `RECOMPRA_SELF_CHECKOUT` terá um teto diferente de `RECOMPRA_POI_MOBILE`, ainda que ambos usem principals `DISPOSITIVO`. O teto é uma coluna própria — e não parte de `configuracao` — justamente por ser informação usada em decisão de autorização.
 
 ### 9.2 Principais técnicos
 
@@ -271,10 +271,10 @@ access_principals
 ```
 
 ```ts
-type AccessPrincipalType = "DEVICE" | "DESKTOP_AGENT" | "SERVICE_ACCOUNT";
+type AccessPrincipalType = "DISPOSITIVO" | "AGENTE_DESKTOP" | "CONTA_SERVICO";
 ```
 
-Para o mobile, cada tablet será um principal `DEVICE` associado ao cliente `RECOMPRA_POI_MOBILE`. `metadados` poderá guardar informações não essenciais à autorização, como fabricante, modelo, versão do Android e versão do aplicativo. Informações usadas em constraints, joins ou políticas devem ganhar colunas próprias em vez de permanecer no JSON.
+Para o mobile, cada tablet será um principal `DISPOSITIVO` associado ao cliente `RECOMPRA_POI_MOBILE`. `metadados` poderá guardar informações não essenciais à autorização, como fabricante, modelo, versão do Android e versão do aplicativo. Informações usadas em constraints, joins ou políticas devem ganhar colunas próprias em vez de permanecer no JSON.
 
 **Um principal por organização (modelo de instalação):** `organizacao_id` é `NOT NULL` e essa rigidez é deliberada. Um cliente autorizado por N organizações gera N principals — o mesmo modelo de GitHub App e suas installations. Todo `ExternalActorContext` é, portanto, inequivocamente single-tenant, o que é a base da segurança de `requireExternalScope` e da derivação de organização pelo principal. Essa coluna **não deve** se tornar nullable para acomodar parceiros multi-organização; o futuro OAuth (§9.9) adicionará registros de consentimento que *produzem* principals por organização, sem alterar o modelo de tenancy.
 
@@ -303,7 +303,7 @@ access_credentials
 Tipos iniciais:
 
 ```ts
-type AccessCredentialType = "DEVICE_TOKEN" | "API_KEY";
+type AccessCredentialType = "TOKEN_DISPOSITIVO" | "CHAVE_API";
 ```
 
 O modelo deverá aceitar futuramente `OAUTH_CLIENT_SECRET`, `MTLS_CERTIFICATE` ou chaves de assinatura sem alterar a identidade do principal.
@@ -364,7 +364,7 @@ type ExternalActorContext = {
   principalId: string;
   clientId: string;
   organizationId: string;
-  principalType: "DEVICE" | "DESKTOP_AGENT" | "SERVICE_ACCOUNT";
+  principalType: "DISPOSITIVO" | "AGENTE_DESKTOP" | "CONTA_SERVICO";
   clientCode: string;
   scopes: ReadonlySet<string>;
 };
@@ -407,7 +407,7 @@ Código de ativação será um desafio temporário, e não uma credencial perman
 - **TTL curto:** expiração em minutos, não dias. O administrador gera o desafio já na frente do dispositivo.
 - **`maximo_usos` padrão 1.** Valores maiores são exceção justificada (ativação em lote), nunca o default.
 - **Rate limiting obrigatório:** por IP e por organização no endpoint de consumo, com bloqueio progressivo e evento de auditoria em falhas repetidas. **Não existe infraestrutura de rate limiting no backend hoje — construí-la é pré-requisito da Fase 2, não um caso de teste.**
-- **Lookup por hash determinístico:** o código apresentado é hasheado (SHA-256) e localizado por igualdade exata em `code_hash` — sem varredura e sem necessidade de prefixo público para um segredo de vida curta.
+- **Lookup por hash determinístico:** o código apresentado é hasheado (SHA-256) e localizado por igualdade exata em `hash_codigo` — sem varredura e sem necessidade de prefixo público para um segredo de vida curta.
 
 Estrutura:
 
@@ -416,9 +416,9 @@ access_enrollment_challenges
 ├── id
 ├── access_client_id
 ├── organizacao_id
-├── code_hash
+├── hash_codigo
 ├── nome_sugerido
-├── scopes_solicitados
+├── escopos_solicitados
 ├── expira_em
 ├── maximo_usos
 ├── quantidade_usos
@@ -432,9 +432,9 @@ Fluxo do mobile:
 1. Um administrador gera um desafio para `RECOMPRA_POI_MOBILE`.
 2. O operador informa o código no tablet.
 3. O backend valida organização, cliente, expiração e usos.
-4. O backend cria um principal `DEVICE`.
+4. O backend cria um principal `DISPOSITIVO`.
 5. O backend concede a interseção entre os scopes solicitados no desafio e `escopos_permitidos` do cliente (§9.1) — nunca além do teto.
-6. O backend cria uma credencial `DEVICE_TOKEN`.
+6. O backend cria uma credencial `TOKEN_DISPOSITIVO`.
 7. O segredo é devolvido uma única vez e armazenado no SecureStore.
 
 Chamadas posteriores usam Bearer token e metadados da versão:
@@ -447,7 +447,7 @@ X-POI-Platform: android
 
 Service accounts para a API pública serão criadas por outro fluxo administrativo, mas terminarão nas mesmas tabelas de principal, credencial e grants.
 
-O mesmo fluxo de desafio funcionará em navegador para o kiosk web (cliente `FIRST_PARTY_WEB_KIOSK`), com o token guardado no armazenamento do navegador — ver §9.10.
+O mesmo fluxo de desafio funcionará em navegador para o kiosk web (cliente `NATIVO_WEB_KIOSK`), com o token guardado no armazenamento do navegador — ver §9.10.
 
 ### 9.7 Relação com integrações existentes
 
@@ -491,7 +491,7 @@ API keys são suficientes para o mobile, agentes próprios e integrações serve
 
 Os dois modos do POI web exigem tratamentos diferentes:
 
-- **Modo kiosk** (tablet/computador da loja com o navegador aberto): é um dispositivo da organização — enquadra-se naturalmente como principal `DEVICE` do cliente `RECOMPRA_POI_WEB` (categoria `FIRST_PARTY_WEB_KIOSK`), ativado pelo mesmo fluxo de desafio do §9.6, com o token no armazenamento do navegador.
+- **Modo kiosk** (tablet/computador da loja com o navegador aberto): é um dispositivo da organização — enquadra-se naturalmente como principal `DISPOSITIVO` do cliente `RECOMPRA_POI_WEB` (categoria `NATIVO_WEB_KIOSK`), ativado pelo mesmo fluxo de desafio do §9.6, com o token no armazenamento do navegador.
 - **Modo mobile do cliente final** (celular do próprio consumidor que escaneia o QR): **não é enrolável** — são aparelhos anônimos e efêmeros. Esse modo já passa por `poi_transaction_requests` com aprovação da equipe, e é essa aprovação humana que permanece como fronteira de segurança. O endurecimento aqui é rate limiting, escopo mínimo de dados retornados e jamais permitir que esse modo chame `new-transaction` diretamente.
 
 **Princípios da migração:**
@@ -748,13 +748,13 @@ Logs não devem conter tokens, documentos completos, saldos sensíveis ou payloa
 
 ### Fase 2 — fundação de acesso externo e identidade do dispositivo
 
-- [ ] Criar catálogo e schema de `access_clients` (incluindo `escopos_permitidos`).
-- [ ] Criar schemas e migrations de principals, credentials, grants, enrollment challenges e `access_events`.
-- [ ] Cadastrar o cliente first-party `RECOMPRA_POI_MOBILE`.
-- [ ] Implementar rate limiting para o endpoint público de consumo de enrollment (pré-requisito — não existe infraestrutura de rate limiting hoje).
-- [ ] Criar o módulo `authenticateExternalRequest` e autorização por scope (igualdade exata, sem wildcards).
-- [ ] Criar serviços e rotas App Router de enrollment e heartbeat.
-- [ ] Criar rotação e revogação de credenciais.
+- [x] Criar catálogo e schema de `access_clients` (incluindo `escopos_permitidos`).
+- [x] Criar schemas e migrations de principals, credentials, grants, enrollment challenges e `access_events` (`drizzle/0042_access_foundation.sql`).
+- [x] Cadastrar os clientes nativos `RECOMPRA_POI_MOBILE` e `RECOMPRA_POI_WEB` (seed idempotente: `npm run seed:access-clients`).
+- [x] Implementar rate limiting para o endpoint público de consumo de enrollment (contagem de falhas recentes por IP em `access_events`).
+- [x] Criar o módulo `authenticateExternalRequest` e autorização por scope (igualdade exata, sem wildcards) — `lib/access/`.
+- [x] Criar serviços e rotas App Router de enrollment e heartbeat (`/api/access/enrollments`, `/api/access/enrollments/consume`, `/api/access/heartbeat`).
+- [x] Criar rotação e revogação de credenciais (`/api/access/credentials/rotate`, `/api/access/credentials/revoke`, `/api/access/principals` GET/PATCH).
 - [ ] Criar tela administrativa mínima para gerar desafio, listar principals e revogar tablet/credencial.
 - [ ] Implementar ativação e SecureStore no aplicativo.
 - [ ] Implementar tela de diagnóstico.
@@ -814,7 +814,7 @@ Logs não devem conter tokens, documentos completos, saldos sensíveis ou payloa
 
 Pode iniciar em paralelo à Fase 4, pois depende apenas da Fase 2.
 
-- [ ] Cadastrar o cliente `RECOMPRA_POI_WEB` (`FIRST_PARTY_WEB_KIOSK`) com teto mínimo de scopes.
+- [ ] Cadastrar o cliente `RECOMPRA_POI_WEB` (`NATIVO_WEB_KIOSK`) com teto mínimo de scopes.
 - [ ] Adaptar rotas POI para dual-mode: credencial externa ou modo legado com `orgId`.
 - [ ] Registrar `access_events` de chamadas legadas por organização.
 - [ ] Implementar ativação no navegador (banner + tela de ativação no kiosk web).
@@ -830,7 +830,7 @@ Pode iniciar em paralelo à Fase 4, pois depende apenas da Fase 2.
 
 - O APK release instala diretamente no tablet homologado.
 - O tablet pode ser ativado e revogado sem credenciais de usuário comum.
-- A instalação é representada como principal `DEVICE` do cliente `RECOMPRA_POI_MOBILE`, sem tabela específica `poi_devices`.
+- A instalação é representada como principal `DISPOSITIVO` do cliente `RECOMPRA_POI_MOBILE`, sem tabela específica `poi_devices`.
 - Credencial e principal possuem ciclos de vida independentes e permitem rotação.
 - Cada rota operacional exige scopes explícitos.
 - A organização efetiva é derivada do principal autenticado, não do payload.
@@ -851,7 +851,7 @@ Pode iniciar em paralelo à Fase 4, pois depende apenas da Fase 2.
 
 | Risco | Mitigação |
 | --- | --- |
-| POI web atual aceita `orgId` do payload sem autenticação | Migração gradual para principals `DEVICE` com dual-mode, telemetria e enforcement por organização (§9.10) |
+| POI web atual aceita `orgId` do payload sem autenticação | Migração gradual para principals `DISPOSITIVO` com dual-mode, telemetria e enforcement por organização (§9.10) |
 | Kiosks em operação bloqueados abruptamente pela migração | URL e QR codes inalterados; enforcement opt-in; kiosk não ativado degrada para fluxo de aprovação em vez de ser barrado |
 | Token do kiosk web exposto por XSS (localStorage) | Teto mínimo de scopes para `RECOMPRA_POI_WEB`, revogação imediata por lookup por requisição, auditoria de eventos |
 | Duplicação de vendas após timeout | Idempotency key persistida antes do envio e garantida por constraint única no banco, com hash de payload e semântica de concorrência definida |

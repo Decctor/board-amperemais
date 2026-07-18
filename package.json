@@ -22,6 +22,7 @@
 		"backfill:poi-conversion-attribution": "tsx ./scripts/backfill-poi-conversion-attribution.ts",
 		"backfill:poi-sales-processing-source": "tsx ./scripts/backfill-poi-sales-processing-source.ts",
 		"backfill:stripe-control-metadata": "tsx ./scripts/backfill-stripe-control-metadata.ts",
+		"seed:access-clients": "tsx ./scripts/seed-access-clients.ts",
 		"backfill:interactions-relationship": "tsx ./scripts/backfill-interactions-relationship-fields.ts",
 		"knip": "knip",
 		"test:weekly-quota-recurrent": "tsx ./utils/scripts/test-recurrent-campaign-weekly-quota.ts",
