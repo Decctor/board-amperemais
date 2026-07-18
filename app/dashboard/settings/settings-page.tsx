@@ -1,4 +1,5 @@
 "use client";
+import SettingsDevices from "@/components/Settings/SettingsDevices";
 import SettingsIntegration from "@/components/Settings/SettingsIntegration";
 import SettingsOrg from "@/components/Settings/SettingsOrg";
 import SettingsProfile from "@/components/Settings/SettingsProfile";
@@ -10,7 +11,7 @@ import UnauthorizedPage from "@/components/Utils/UnauthorizedPage";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { copyToClipboard } from "@/lib/utils";
-import { Building2, Grid3x3, Key, MessageCircleIcon, Plug, Presentation, User, UsersRound } from "lucide-react";
+import { Building2, Grid3x3, Key, MessageCircleIcon, Plug, Presentation, TabletSmartphone, User, UsersRound } from "lucide-react";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 type SettingsPageProps = {
 	user: TAuthUserSession["user"];
@@ -19,7 +20,7 @@ type SettingsPageProps = {
 export default function SettingsPage({ user, membership }: SettingsPageProps) {
 	const [view, setView] = useQueryState(
 		"view",
-		parseAsStringEnum(["profile", "users", "meta-oauth", "message-templates", "segments", "organization", "integration"]),
+		parseAsStringEnum(["profile", "users", "meta-oauth", "message-templates", "segments", "organization", "integration", "devices"]),
 	);
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
@@ -75,6 +76,15 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 						USUÁRIOS
 					</Button>
 					<Button
+						variant={view === "devices" ? "secondary" : "ghost"}
+						className="flex items-center gap-2 whitespace-nowrap"
+						size="sm"
+						onClick={() => setView("devices")}
+					>
+						<TabletSmartphone className="w-4 h-4 min-w-4 min-h-4" />
+						DISPOSITIVOS
+					</Button>
+					<Button
 						variant={view === "meta-oauth" ? "secondary" : "ghost"}
 						className="flex items-center gap-2 whitespace-nowrap"
 						size="sm"
@@ -107,6 +117,13 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 			{view === "users" ? (
 				membership.permissoes.usuarios.visualizar ? (
 					<SettingsUsers user={user} membership={membership} />
+				) : (
+					<UnauthorizedPage />
+				)
+			) : null}
+			{view === "devices" ? (
+				membership.permissoes.empresa.visualizar ? (
+					<SettingsDevices user={user} membership={membership} />
 				) : (
 					<UnauthorizedPage />
 				)

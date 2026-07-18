@@ -135,7 +135,7 @@ export async function consumeEnrollmentChallenge(params: TConsumeEnrollmentChall
 				accessClientId: challenge.accessClientId,
 				organizacaoId: challenge.organizacaoId,
 				tipo: CLIENT_CATEGORY_PRINCIPAL_TYPES[challenge.cliente.categoria],
-				nome: params.nome ?? challenge.nomeSugerido ?? `${challenge.cliente.nome} — novo dispositivo`,
+				nome: params.nome ?? challenge.nomeSugerido ?? `${challenge.cliente.nome} (novo dispositivo)`,
 				metadados: params.metadados ?? null,
 			})
 			.returning({ id: accessPrincipals.id, tipo: accessPrincipals.tipo, nome: accessPrincipals.nome });
