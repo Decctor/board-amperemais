@@ -130,7 +130,7 @@ export async function updateInteractionDeliveryState({
 			: currentInteraction.erroEnvio;
 		const writesDeliveryDates = nextStatus === "ENVIADO" || nextStatus === "ENTREGUE" || nextStatus === "LIDO";
 
-		await tx
+		const [updatedInteraction] = await tx
 			.update(interactions)
 			.set({
 				statusEnvio: nextStatus,
@@ -139,7 +139,17 @@ export async function updateInteractionDeliveryState({
 				dataEnvio: writesDeliveryDates ? (currentInteraction.dataEnvio ?? transitionDate) : currentInteraction.dataEnvio,
 				metadados: { ...asMetadataRecord(currentInteraction.metadados), ...metadataPatch },
 			})
-			.where(eq(interactions.id, interactionId));
+			.where(eq(interactions.id, interactionId))
+			.returning({ statusEnvio: interactions.statusEnvio });
+
+		if (!updatedInteraction) {
+			throw new Error(`A interação ${interactionId} deixou de existir durante a atualização do estado de entrega.`);
+		}
+		if (updatedInteraction.statusEnvio !== nextStatus) {
+			throw new Error(
+				`Status persistido inesperado para a interação ${interactionId}: esperado ${nextStatus}, recebido ${updatedInteraction.statusEnvio}.`,
+			);
+		}
 
 		return { previousStatus, nextStatus, statusChanged };
 	});
