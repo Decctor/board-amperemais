@@ -755,7 +755,7 @@ Logs não devem conter tokens, documentos completos, saldos sensíveis ou payloa
 - [x] Criar o módulo `authenticateExternalRequest` e autorização por scope (igualdade exata, sem wildcards) — `lib/access/`.
 - [x] Criar serviços e rotas App Router de enrollment e heartbeat (`/api/access/enrollments`, `/api/access/enrollments/consume`, `/api/access/heartbeat`).
 - [x] Criar rotação e revogação de credenciais (`/api/access/credentials/rotate`, `/api/access/credentials/revoke`, `/api/access/principals` GET/PATCH).
-- [ ] Criar tela administrativa mínima para gerar desafio, listar principals e revogar tablet/credencial.
+- [x] Criar tela administrativa mínima para gerar desafio, listar principals e revogar tablet/credencial (aba DISPOSITIVOS em Configurações).
 - [ ] Implementar ativação e SecureStore no aplicativo.
 - [ ] Implementar tela de diagnóstico.
 
