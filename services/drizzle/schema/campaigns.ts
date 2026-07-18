@@ -137,3 +137,27 @@ export const campaignSegmentationRelations = relations(campaignSegmentations, ({
 }));
 export type TCampaignSegmentationEntity = typeof campaignSegmentations.$inferSelect;
 export type TNewCampaignSegmentationEntity = typeof campaignSegmentations.$inferInsert;
+
+// Ledger O(1) de quota semanal de envios (substitui COUNT(*) sobre interactions na reserva).
+// campanha_id NULL = contador agregado da organização; preenchido = contador da campanha.
+// A reserva incrementa `usados` atomicamente; falhas terminais decrementam (liberação explícita).
+export const weeklySendCounters = newTable(
+	"weekly_send_counters",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		campanhaId: varchar("campanha_id", { length: 255 }).references(() => campaigns.id, { onDelete: "cascade" }),
+		semanaChave: varchar("semana_chave", { length: 10 }).notNull(), // ex.: '2026-W29' (timezone do cron de interações)
+		usados: integer("usados").notNull().default(0),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+	},
+	// NULLS NOT DISTINCT (PG15+): garante um único contador de organização (campanha_id NULL) por semana,
+	// viabilizando upsert idempotente via ON CONFLICT.
+	(table) => [unique("uq_weekly_send_counters_org_campanha_semana").on(table.organizacaoId, table.campanhaId, table.semanaChave).nullsNotDistinct()],
+);
+export type TWeeklySendCounterEntity = typeof weeklySendCounters.$inferSelect;
+export type TNewWeeklySendCounterEntity = typeof weeklySendCounters.$inferInsert;

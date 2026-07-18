@@ -1,7 +1,8 @@
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
 import { db } from "@/services/drizzle";
 import { interactions } from "@/services/drizzle/schema";
-import { sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { adjustWeeklySendQuota } from "./weekly-send-counters";
 
 const PROGRESSIVE_DELIVERY_STATUS_RANK: Partial<Record<TInteractionsStatusEnum, number>> = {
 	PENDENTE: 0,
@@ -9,6 +10,33 @@ const PROGRESSIVE_DELIVERY_STATUS_RANK: Partial<Record<TInteractionsStatusEnum, 
 	ENTREGUE: 2,
 	LIDO: 3,
 };
+
+const QUOTA_CONSUMING_STATUSES: TInteractionsStatusEnum[] = ["PENDENTE", "ENVIADO", "ENTREGUE", "LIDO"];
+const QUOTA_RELEASING_STATUSES: TInteractionsStatusEnum[] = ["FALHOU", "BLOQUEADA"];
+
+function resolveNextDeliveryStatus({
+	current,
+	incoming,
+	preventStatusDowngrade,
+}: {
+	current: TInteractionsStatusEnum | null;
+	incoming: TInteractionsStatusEnum;
+	preventStatusDowngrade: boolean;
+}) {
+	if (!preventStatusDowngrade || current == null) return incoming;
+	if (current === "BLOQUEADA" && incoming !== "BLOQUEADA") return current;
+
+	const currentRank = PROGRESSIVE_DELIVERY_STATUS_RANK[current];
+	const incomingRank = PROGRESSIVE_DELIVERY_STATUS_RANK[incoming];
+	if (incomingRank != null && currentRank != null && currentRank > incomingRank) return current;
+	if ((current === "ENTREGUE" || current === "LIDO") && incoming === "FALHOU") return current;
+
+	return incoming;
+}
+
+function asMetadataRecord(value: unknown): Record<string, unknown> {
+	return value != null && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
 
 type TUpdateInteractionDeliveryStateInput = {
 	interactionId: string;
@@ -28,9 +56,9 @@ type TUpdateInteractionDeliveryStateOutput = {
 	statusChanged: boolean;
 };
 
-// Atualiza o estado de entrega em um único UPDATE condicional (1 round-trip, sem transação explícita
-// nem lock prolongado). A atomicidade do statement garante read-modify-write seguro contra escritas
-// concorrentes (ex.: webhook de entrega correndo com o path de envio).
+// Serializa transições concorrentes da mesma interação com FOR UPDATE. A mudança de status e o
+// eventual delta de quota são confirmados na mesma transação, evitando liberação duplicada por
+// webhooks repetidos ou concorrentes.
 //
 // A regra de status espelha a antiga resolveNextStatus() quando preventStatusDowngrade está ativo:
 //   - status atual nulo OU prevenção desligada  -> aplica o incoming
@@ -48,56 +76,75 @@ export async function updateInteractionDeliveryState({
 	preventStatusDowngrade = true,
 }: TUpdateInteractionDeliveryStateInput): Promise<TUpdateInteractionDeliveryStateOutput> {
 	const incoming = statusEnvio;
-	const incomingRank = PROGRESSIVE_DELIVERY_STATUS_RANK[incoming] ?? null;
-	// ISO-8601 + cast explícito (convenção do repo, ex.: cron enrich-clients) para evitar ambiguidade
-	// de codificação de Date no driver ao escrever em colunas `timestamp`.
-	const timestampIso = (occurredAt ?? new Date()).toISOString();
-	const patchJson = JSON.stringify(metadataPatch ?? {});
+	const transitionDate = occurredAt ?? new Date();
 
-	// Próximo status considerando a prevenção de downgrade. Referencia i.status_envio (valor ANTIGO da
-	// linha, conforme semântica do UPDATE no Postgres). A ramificação em JS evita interpolar booleano
-	// JS diretamente no WHEN (SQL inválido ou ambíguo dependendo do driver).
-	const nextStatusSql = preventStatusDowngrade
-		? sql`CASE
-			WHEN i.status_envio IS NULL THEN ${incoming}
-			WHEN i.status_envio = 'BLOQUEADA' AND ${incoming} <> 'BLOQUEADA' THEN i.status_envio
-			WHEN ${incomingRank}::int IS NOT NULL
-				AND (CASE i.status_envio WHEN 'PENDENTE' THEN 0 WHEN 'ENVIADO' THEN 1 WHEN 'ENTREGUE' THEN 2 WHEN 'LIDO' THEN 3 ELSE NULL END) > ${incomingRank}::int
-				THEN i.status_envio
-			WHEN i.status_envio IN ('ENTREGUE', 'LIDO') AND ${incoming} = 'FALHOU' THEN i.status_envio
-			ELSE ${incoming}
-		END`
-		: sql`${incoming}`;
+	const result = await db.transaction(async (tx) => {
+		const [currentInteraction] = await tx
+			.select({
+				statusEnvio: interactions.statusEnvio,
+				organizacaoId: interactions.organizacaoId,
+				campanhaId: interactions.campanhaId,
+				tipo: interactions.tipo,
+				dataExecucao: interactions.dataExecucao,
+				dataEnvio: interactions.dataEnvio,
+				metadados: interactions.metadados,
+				erroEnvio: interactions.erroEnvio,
+			})
+			.from(interactions)
+			.where(
+				organizationId ? and(eq(interactions.id, interactionId), eq(interactions.organizacaoId, organizationId)) : eq(interactions.id, interactionId),
+			)
+			.for("update");
 
-	// erro_envio só muda quando o status incoming foi de fato aplicado. Quando o caller não passa
-	// erroEnvio (undefined), limpamos o erro apenas em status não-falha/não-bloqueio.
-	const erroEnvioSql =
-		erroEnvio !== undefined
-			? sql`CASE WHEN (${nextStatusSql}) = ${incoming} THEN ${erroEnvio} ELSE i.erro_envio END`
-			: sql`CASE WHEN (${nextStatusSql}) = ${incoming} AND (${nextStatusSql}) NOT IN ('FALHOU', 'BLOQUEADA') THEN NULL ELSE i.erro_envio END`;
+		if (!currentInteraction) return null;
 
-	const selectWhereSql = organizationId
-		? sql`id = ${interactionId} AND organizacao_id = ${organizationId}`
-		: sql`id = ${interactionId}`;
+		const previousStatus = currentInteraction.statusEnvio;
+		const nextStatus = resolveNextDeliveryStatus({ current: previousStatus, incoming, preventStatusDowngrade });
+		const statusChanged = previousStatus !== nextStatus;
+		const previouslyConsumedQuota = previousStatus != null && QUOTA_CONSUMING_STATUSES.includes(previousStatus);
+		const nextConsumesQuota = QUOTA_CONSUMING_STATUSES.includes(nextStatus);
 
-	const result = await db.execute(sql`
-		WITH prev AS (
-			SELECT id, status_envio FROM ${interactions} WHERE ${selectWhereSql}
-		)
-		UPDATE ${interactions} AS i SET
-			status_envio = (${nextStatusSql}),
-			erro_envio = (${erroEnvioSql}),
-			data_execucao = CASE WHEN (${nextStatusSql}) IN ('ENVIADO', 'ENTREGUE', 'LIDO') THEN COALESCE(i.data_execucao, ${timestampIso}::timestamp) ELSE i.data_execucao END,
-			data_envio = CASE WHEN (${nextStatusSql}) IN ('ENVIADO', 'ENTREGUE', 'LIDO') THEN COALESCE(i.data_envio, ${timestampIso}::timestamp) ELSE i.data_envio END,
-			metadados = COALESCE(i.metadados, '{}'::jsonb) || ${patchJson}::jsonb
-		FROM prev
-		WHERE i.id = prev.id
-		RETURNING prev.status_envio AS previous_status, i.status_envio AS next_status
-	`);
+		if (
+			statusChanged &&
+			previouslyConsumedQuota !== nextConsumesQuota &&
+			currentInteraction.tipo === "ENVIO-MENSAGEM" &&
+			currentInteraction.campanhaId != null &&
+			currentInteraction.organizacaoId != null
+		) {
+			await adjustWeeklySendQuota({
+				tx,
+				organizationId: currentInteraction.organizacaoId,
+				campaignId: currentInteraction.campanhaId,
+				claimedAt: currentInteraction.dataExecucao ?? transitionDate,
+				delta: nextConsumesQuota ? 1 : -1,
+			});
+		}
 
-	const row = result[0] as { previous_status: TInteractionsStatusEnum | null; next_status: TInteractionsStatusEnum } | undefined;
+		const incomingWasApplied = nextStatus === incoming;
+		const nextError = incomingWasApplied
+			? erroEnvio !== undefined
+				? erroEnvio
+				: QUOTA_RELEASING_STATUSES.includes(nextStatus)
+					? currentInteraction.erroEnvio
+					: null
+			: currentInteraction.erroEnvio;
+		const writesDeliveryDates = nextStatus === "ENVIADO" || nextStatus === "ENTREGUE" || nextStatus === "LIDO";
 
-	if (!row) {
+		await tx
+			.update(interactions)
+			.set({
+				statusEnvio: nextStatus,
+				erroEnvio: nextError,
+				dataExecucao: writesDeliveryDates ? (currentInteraction.dataExecucao ?? transitionDate) : currentInteraction.dataExecucao,
+				dataEnvio: writesDeliveryDates ? (currentInteraction.dataEnvio ?? transitionDate) : currentInteraction.dataEnvio,
+				metadados: { ...asMetadataRecord(currentInteraction.metadados), ...metadataPatch },
+			})
+			.where(eq(interactions.id, interactionId));
+
+		return { previousStatus, nextStatus, statusChanged };
+	});
+
+	if (!result) {
 		return {
 			updated: false,
 			interactionId,
@@ -107,13 +154,10 @@ export async function updateInteractionDeliveryState({
 		};
 	}
 
-	const previousStatus = row.previous_status ?? null;
 	return {
 		updated: true,
 		interactionId,
-		previousStatus,
-		nextStatus: row.next_status,
-		statusChanged: previousStatus !== row.next_status,
+		...result,
 	};
 }
 
