@@ -206,8 +206,9 @@ export type TCreatePointOfInteractionTransactionOutput = {
 
 type TProcessPointOfInteractionTransactionInput = TCreatePointOfInteractionTransactionInput | TCreatePointOfInteractionTransactionRequestInput;
 
-type TProcessPointOfInteractionTransactionParams = {
+type TPreparePointOfInteractionTransactionParams = {
 	input: TProcessPointOfInteractionTransactionInput;
+	tx: DBTransaction;
 	operatorContext?: {
 		operatorIdentifier?: string;
 		operatorConfirmedSaleValue?: number | null;
@@ -218,9 +219,9 @@ type TProcessPointOfInteractionTransactionParams = {
 	};
 };
 
-export async function processPointOfInteractionTransaction({ input, operatorContext }: TProcessPointOfInteractionTransactionParams) {
+async function preparePointOfInteractionTransaction({ input, operatorContext, tx }: TPreparePointOfInteractionTransactionParams) {
 	console.log(`[POI ${input.orgId}] [NEW_TRANSACTION]`, input);
-	const result = await db.transaction(async (tx) => {
+	const result = await (async () => {
 		const program = await tx.query.cashbackPrograms.findFirst({
 			where: eq(cashbackPrograms.organizacaoId, input.orgId),
 			with: {
@@ -253,8 +254,7 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 		const prizeRedemption = input.sale.prizeRedemption;
 		const isPrizeRedemption = !!prizeRedemption;
 		// Prize redemptions do not generate cashback, even when accumulation via POI is enabled.
-		const transactionRequiresAccumulationProcessing =
-			cashbackProgramIsActive && program.acumuloPermitirViaPontoIntegracao && !isPrizeRedemption;
+		const transactionRequiresAccumulationProcessing = cashbackProgramIsActive && program.acumuloPermitirViaPontoIntegracao && !isPrizeRedemption;
 		// Transactions only require sale processing when organization has no defined integration
 		const transactionRequiresSaleProcessing = !program.organizacao.integracaoTipo;
 		// Transactions only require redemption processing when cashback is applied and has a positive value
@@ -955,45 +955,47 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 			visualClientNewOverallAvailableBalance,
 			immediateProcessingDataList,
 		};
-	});
+	})();
 
-	if (result.immediateProcessingDataList && result.immediateProcessingDataList.length > 0) {
-		const weeklyLimitCache = createCampaignWeeklyLimitCache();
+	const afterCommit = () => {
+		if (result.immediateProcessingDataList && result.immediateProcessingDataList.length > 0) {
+			const weeklyLimitCache = createCampaignWeeklyLimitCache();
 
-		const processingPromises =
-			result.immediateProcessingDataList.length === 1
-				? result.immediateProcessingDataList.map(async (processingData) => {
-						try {
-							await processSingleInteractionImmediately({
-								...processingData,
-								weeklyLimitCache,
-							});
-						} catch (err) {
-							console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err);
-						}
-					})
-				: [
-						processOrganizationInteractionsBatch({
-							organizationId: input.orgId,
-							interactions: result.immediateProcessingDataList,
-							weeklyLimitCache,
-						}).then((batchResult) => {
-							if (batchResult.failed > 0) {
-								for (const failedResult of batchResult.results.filter((itemResult) => !itemResult.success)) {
-									console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${failedResult.interactionId}:`, failedResult.error);
-								}
+			const processingPromises =
+				result.immediateProcessingDataList.length === 1
+					? result.immediateProcessingDataList.map(async (processingData) => {
+							try {
+								await processSingleInteractionImmediately({
+									...processingData,
+									weeklyLimitCache,
+								});
+							} catch (err) {
+								console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${processingData.interactionId}:`, err);
 							}
-						}),
-					];
+						})
+					: [
+							processOrganizationInteractionsBatch({
+								organizationId: input.orgId,
+								interactions: result.immediateProcessingDataList,
+								weeklyLimitCache,
+							}).then((batchResult) => {
+								if (batchResult.failed > 0) {
+									for (const failedResult of batchResult.results.filter((itemResult) => !itemResult.success)) {
+										console.error(`[IMMEDIATE_PROCESS] Failed to process interaction ${failedResult.interactionId}:`, failedResult.error);
+									}
+								}
+							}),
+						];
 
-		// Use waitUntil to keep the function alive until all processing is complete
-		// This allows us to return the response immediately while ensuring the background work finishes
-		waitUntil(Promise.all(processingPromises));
-	} else {
-		console.log("[POI] [IMMEDIATE_PROCESS] Nenhuma interação para processar imediatamente");
-	}
+			// Use waitUntil to keep the function alive until all processing is complete
+			// This allows us to return the response immediately while ensuring the background work finishes
+			waitUntil(Promise.all(processingPromises));
+		} else {
+			console.log("[POI] [IMMEDIATE_PROCESS] Nenhuma interação para processar imediatamente");
+		}
+	};
 
-	return {
+	const response = {
 		data: {
 			saleId: result.transactionSaleId,
 			transactionAccumulationId: result.transactionAccumulationId,
@@ -1006,6 +1008,16 @@ export async function processPointOfInteractionTransaction({ input, operatorCont
 		},
 		message: "Transação processada com sucesso.",
 	};
+
+	return { result: response, afterCommit };
+}
+
+type TProcessPointOfInteractionTransactionParams = Omit<TPreparePointOfInteractionTransactionParams, "tx">;
+
+export async function processPointOfInteractionTransaction(params: TProcessPointOfInteractionTransactionParams) {
+	const execution = await db.transaction((tx) => preparePointOfInteractionTransaction({ ...params, tx }));
+	await execution.afterCommit();
+	return execution.result;
 }
 
 export type TProcessPointOfInteractionTransactionOutput = Awaited<ReturnType<typeof processPointOfInteractionTransaction>>;
@@ -1027,7 +1039,7 @@ async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCre
 				principalId: resolution.actor?.principalId ?? null,
 				idempotencyKey,
 				payload: input,
-				execute: () => processPointOfInteractionTransaction({ input }),
+				execute: (tx) => preparePointOfInteractionTransaction({ input, tx }),
 			})
 		: await processPointOfInteractionTransaction({ input });
 

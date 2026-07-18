@@ -4,16 +4,16 @@ Registro do que já está implementado neste repositório a partir do plano `poi
 
 ## Visão geral
 
-| Área | Estado |
-| --- | --- |
-| Schema + migrations (`access_*`, idempotência POI) | Implementado (`drizzle/0042`, `drizzle/0043`) |
-| Autenticação externa e scopes (`lib/access/`) | Implementado |
-| Enrollment, rotação, revogação, heartbeat (`/api/access/*`) | Implementado |
-| Tela administrativa (aba DISPOSITIVOS em Configurações) | Implementado |
-| Rotas POI em dual-mode + telemetria de chamadas legadas | Implementado |
-| Idempotência de new-transaction + consulta de resultado | Implementado |
-| Aplicativo mobile (ativação, SecureStore, diagnóstico, fluxo) | Pendente — repositório `recompracrm-poi-mobile` |
-| Enforcement por organização e sunset do modo legado (Fase 7, etapas 3–5) | Pendente |
+| Área                                                                     | Estado                                          |
+| ------------------------------------------------------------------------ | ----------------------------------------------- |
+| Schema + migrations (`access_*`, idempotência POI)                       | Implementado (`drizzle/0042`, `drizzle/0043`)   |
+| Autenticação externa e scopes (`lib/access/`)                            | Implementado                                    |
+| Enrollment, rotação, revogação, heartbeat (`/api/access/*`)              | Implementado                                    |
+| Tela administrativa (aba DISPOSITIVOS em Configurações)                  | Implementado                                    |
+| Rotas POI em dual-mode + telemetria de chamadas legadas                  | Implementado                                    |
+| Idempotência de new-transaction + consulta de resultado                  | Implementado                                    |
+| Aplicativo mobile (ativação, SecureStore, diagnóstico, fluxo)            | Pendente — repositório `recompracrm-poi-mobile` |
+| Enforcement por organização e sunset do modo legado (Fase 7, etapas 3–5) | Pendente                                        |
 
 ## Passos de deploy
 
@@ -31,7 +31,7 @@ Em `services/drizzle/schema/access.ts` (tabelas prefixadas com `ampmais_`):
 - `access_enrollment_challenges` — desafio temporário de ativação (hash do código, TTL, usos limitados).
 - `access_events` — auditoria: enrollment (conclusão/falha), falhas de autenticação, criação/rotação/revogação de credencial, chamadas POI em modo legado (`CHAMADA_POI_LEGADO`).
 
-Idempotência POI em `services/drizzle/schema/poi-transaction-requests.ts`: `poi_transaction_idempotency_requests`, única por `(organizacao_id, idempotency_key)`, com `payload_hash`, `status` (`PROCESSANDO`/`CONCLUIDO`/`ERRO`) e `resposta` persistida para replay.
+Idempotência POI em `services/drizzle/schema/poi-transaction-requests.ts`: `poi_transaction_idempotency_requests`, única por `(organizacao_id, idempotency_key)`, com `payload_hash`, lease por tentativa, `status` (`PROCESSANDO`/`CONCLUIDO`/`ERRO_REPETIVEL`) e `resposta` persistida para replay. A venda e a resposta idempotente são confirmadas na mesma transação de banco; leases vencidas permitem retomar invocações serverless interrompidas.
 
 ## Credenciais
 
@@ -74,14 +74,14 @@ Gestão do vínculo (qualquer principal autenticado):
 
 Operação POI (exigem o scope indicado; a organização deriva do principal — não enviar `orgId`):
 
-| Endpoint | Scope |
-| --- | --- |
-| `GET /api/point-of-interaction/configuration` | `poi:configuration:read` |
-| `GET /api/clients/lookup?phone=...` (ou `clientId=...`) | `poi:clients:read` |
-| `POST /api/point-of-interaction/new-client` | `poi:clients:create` |
-| `GET /api/point-of-interaction/coupons/available?clienteId=...&valorVenda=...` | `poi:coupons:read` |
-| `POST /api/point-of-interaction/new-transaction` | `poi:transactions:create` |
-| `GET /api/point-of-interaction/transactions/result?idempotencyKey=...` | `poi:transactions:create` |
+| Endpoint                                                                       | Scope                     |
+| ------------------------------------------------------------------------------ | ------------------------- |
+| `GET /api/point-of-interaction/configuration`                                  | `poi:configuration:read`  |
+| `GET /api/clients/lookup?phone=...` (ou `clientId=...`)                        | `poi:clients:read`        |
+| `POST /api/point-of-interaction/new-client`                                    | `poi:clients:create`      |
+| `GET /api/point-of-interaction/coupons/available?clienteId=...&valorVenda=...` | `poi:coupons:read`        |
+| `POST /api/point-of-interaction/new-transaction`                               | `poi:transactions:create` |
+| `GET /api/point-of-interaction/transactions/result?idempotencyKey=...`         | `poi:transactions:create` |
 
 `GET /api/point-of-interaction/configuration` retorna a identidade visual da organização (nome, logo, cores, `poiConfirmacaoValorObrigatoria`) e o programa de cashback com os prêmios ativos — o bootstrap do app após a ativação.
 
