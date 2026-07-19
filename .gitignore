@@ -37,3 +37,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Extratos de teste gerados por scripts/generate-test-bank-statement.ts
+scripts/output/

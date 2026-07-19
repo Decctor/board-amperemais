@@ -28,6 +28,7 @@
 		"test:nuvemshop-fetch": "tsx ./utils/scripts/test-nuvemshop-fetch.ts",
 		"test:ifood-import": "tsx ./scripts/test-ifood-import.ts",
 		"ifood:homologation-polling": "tsx ./scripts/ifood-homologation-polling.ts",
+		"test:bank-statement": "tsx ./scripts/generate-test-bank-statement.ts",
 		"test:bling-fetch": "tsx ./scripts/test-bling-fetch.ts",
 		"sync:bling-collecting": "tsx ./scripts/sync-bling-collecting.ts",
 		"simulate:sale-taxes": "tsx ./scripts/simulate-todays-sale-taxes.ts",
