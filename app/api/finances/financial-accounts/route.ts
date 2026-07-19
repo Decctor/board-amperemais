@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
+import { canViewFinances } from "@/lib/permissions/finances";
 import { db } from "@/services/drizzle";
 import { financialAccounts, financialTransactions } from "@/services/drizzle/schema";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
@@ -117,6 +118,8 @@ export type TGetFinancialAccountsOutputDefault = Exclude<TGetFinancialAccountsOu
 async function getFinancialAccountsRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	if (!canViewFinances(session.membership?.permissoes))
+		throw new createHttpError.Forbidden("Você não possui permissão para acessar o módulo financeiro.");
 	const searchParams = request.nextUrl.searchParams;
 	const input = GetFinancialAccountsInputSchema.parse({
 		activeOnly: searchParams.get("activeOnly") ?? "true",

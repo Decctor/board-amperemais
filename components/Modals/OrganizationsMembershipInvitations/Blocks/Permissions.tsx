@@ -32,6 +32,7 @@ export default function OrganizationsMembershipInvitationsPermissionsBlock({
 					<SalesDiscountsPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
 					<PurchasesPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
 					<FiscalPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
+					<FinancesPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
 				</>
 			) : null}
 		</ResponsiveMenuSection>
@@ -383,6 +384,51 @@ function FiscalPermissions({ permissions, updateInvitationPermissions }: FiscalP
 					labelFalse="APTO A CANCELAR DOCUMENTOS FISCAIS"
 					checked={permissions.fiscal.cancelar}
 					handleChange={(value) => updateInvitationPermissions({ fiscal: { ...permissions.fiscal, cancelar: value } })}
+				/>
+			</div>
+		</div>
+	);
+}
+
+type FinancesPermissionsProps = {
+	permissions: TUseOrganizationMembershipInvitationState["state"]["invitation"]["permissoes"];
+	updateInvitationPermissions: TUseOrganizationMembershipInvitationState["updateInvitationPermissions"];
+};
+function FinancesPermissions({ permissions, updateInvitationPermissions }: FinancesPermissionsProps) {
+	// A ausência da chave `financeiro` (JSONB antigo) cai para as permissões de empresa, mesma regra de lib/permissions/finances.ts
+	const financeiro = {
+		visualizar: permissions.financeiro?.visualizar ?? permissions.empresa.visualizar,
+		criar: permissions.financeiro?.criar ?? permissions.empresa.editar,
+		editar: permissions.financeiro?.editar ?? permissions.empresa.editar,
+		conciliar: permissions.financeiro?.conciliar ?? permissions.empresa.editar,
+	};
+	return (
+		<div className="w-full flex flex-col gap-2">
+			<h2 className="text-xs tracking-tight font-medium text-start w-fit">PERMISSÕES DO FINANCEIRO</h2>
+			<div className="w-full flex flex-col gap-2">
+				<CheckboxInput
+					labelTrue="APTO A VISUALIZAR O FINANCEIRO"
+					labelFalse="APTO A VISUALIZAR O FINANCEIRO"
+					checked={financeiro.visualizar}
+					handleChange={(value) => updateInvitationPermissions({ financeiro: { ...financeiro, visualizar: value } })}
+				/>
+				<CheckboxInput
+					labelTrue="APTO A CRIAR LANÇAMENTOS FINANCEIROS"
+					labelFalse="APTO A CRIAR LANÇAMENTOS FINANCEIROS"
+					checked={financeiro.criar}
+					handleChange={(value) => updateInvitationPermissions({ financeiro: { ...financeiro, criar: value } })}
+				/>
+				<CheckboxInput
+					labelTrue="APTO A EDITAR LANÇAMENTOS FINANCEIROS"
+					labelFalse="APTO A EDITAR LANÇAMENTOS FINANCEIROS"
+					checked={financeiro.editar}
+					handleChange={(value) => updateInvitationPermissions({ financeiro: { ...financeiro, editar: value } })}
+				/>
+				<CheckboxInput
+					labelTrue="APTO A REALIZAR CONCILIAÇÃO BANCÁRIA"
+					labelFalse="APTO A REALIZAR CONCILIAÇÃO BANCÁRIA"
+					checked={financeiro.conciliar}
+					handleChange={(value) => updateInvitationPermissions({ financeiro: { ...financeiro, conciliar: value } })}
 				/>
 			</div>
 		</div>

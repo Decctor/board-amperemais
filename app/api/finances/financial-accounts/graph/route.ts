@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getBestNumberOfPointsBetweenDates, getDateBuckets, getEvenlySpacedDates } from "@/lib/dates";
+import { canViewFinances } from "@/lib/permissions/finances";
 import { db } from "@/services/drizzle";
 import { financialTransactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -159,6 +160,8 @@ export type TGetFinancialAccountGraphOutput = Awaited<ReturnType<typeof getFinan
 const getFinancialAccountGraphRoute = async (request: NextRequest) => {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	if (!canViewFinances(session.membership?.permissoes))
+		throw new createHttpError.Forbidden("Você não possui permissão para acessar o módulo financeiro.");
 
 	const searchParams = request.nextUrl.searchParams;
 	const input = GetFinancialAccountGraphInputSchema.parse({

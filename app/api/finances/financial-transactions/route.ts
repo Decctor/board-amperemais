@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
+import { canEditFinances, canViewFinances } from "@/lib/permissions/finances";
 import { db } from "@/services/drizzle";
 import { financialTransactions } from "@/services/drizzle/schema";
 import { and, count, eq, gte, ilike, inArray, isNotNull, isNull, lte, or, type SQL } from "drizzle-orm";
@@ -136,6 +137,8 @@ export type TGetFinancialTransactionsOutputDefault = Exclude<TGetFinancialTransa
 async function getFinancialTransactionsRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	if (!canViewFinances(session.membership?.permissoes))
+		throw new createHttpError.Forbidden("Você não possui permissão para acessar o módulo financeiro.");
 	const searchParams = request.nextUrl.searchParams;
 	const input = GetFinancialTransactionsInputSchema.parse({
 		id: searchParams.get("id") ?? undefined,
@@ -209,6 +212,8 @@ export type TUpdateFinancialTransactionOutput = Awaited<ReturnType<typeof update
 async function updateFinancialTransactionRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session?.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
+	if (!canEditFinances(session.membership.permissoes))
+		throw new createHttpError.Forbidden("Você não possui permissão para editar lançamentos financeiros.");
 
 	const body = await request.json();
 	const input = UpdateFinancialTransactionInputSchema.parse(body);

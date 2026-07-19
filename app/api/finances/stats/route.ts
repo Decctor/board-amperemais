@@ -1,5 +1,6 @@
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { getDayStringsBetweenDates, isDateOverdue } from "@/lib/dates";
+import { canViewFinances } from "@/lib/permissions/finances";
 import { getAccountChartIdsByNatureza } from "@/lib/finances";
 import { db } from "@/services/drizzle";
 import { accountingEntries, financialTransactions } from "@/services/drizzle/schema";
@@ -323,6 +324,8 @@ export type TGetFinancesOverallStatsOutput = Awaited<ReturnType<typeof getFinanc
 async function getFinancesOverallStatsRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	if (!canViewFinances(session.membership?.permissoes))
+		throw new createHttpError.Forbidden("Você não possui permissão para acessar o módulo financeiro.");
 	const searchParams = request.nextUrl.searchParams;
 	const input = GetFinancesOverallStatsInputSchema.parse({
 		periodAfter: searchParams.get("periodAfter") ?? null,

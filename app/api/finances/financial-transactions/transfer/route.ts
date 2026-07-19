@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { canCreateFinances } from "@/lib/permissions/finances";
 import { db } from "@/services/drizzle";
 import { accountingEntries, accountsCharts, financialAccounts, financialTransactions } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
@@ -185,6 +186,8 @@ export type TCreateFinancialTransferOutput = Awaited<ReturnType<typeof createFin
 async function createFinancialTransferRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
+	if (!canCreateFinances(session.membership?.permissoes))
+		throw new createHttpError.Forbidden("Você não possui permissão para criar lançamentos financeiros.");
 	const input = CreateFinancialTransferInputSchema.parse(await request.json());
 	const result = await createFinancialTransfer({ input, session });
 	return NextResponse.json(result, { status: 201 });

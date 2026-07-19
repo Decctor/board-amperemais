@@ -536,6 +536,30 @@ export const OrganizationMemberPermissionsSchema = z.object({
 			invalid_type_error: "Tipo não válido para a permissão de cancelamento de documentos fiscais.",
 		}),
 	}),
+	// Módulo financeiro (lançamentos, transações, conciliação bancária). Opcional para não quebrar a
+	// validação de membros já existentes cujo JSONB de permissões ainda não tem a chave; a ausência
+	// cai para empresa.visualizar/editar — resolvida em lib/permissions/finances.ts, não leia direto.
+	financeiro: z
+		.object({
+			visualizar: z.boolean({
+				required_error: "Permissão de visualização do financeiro não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de visualização do financeiro.",
+			}),
+			criar: z.boolean({
+				required_error: "Permissão de criação de lançamentos financeiros não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de criação de lançamentos financeiros.",
+			}),
+			editar: z.boolean({
+				required_error: "Permissão de edição de lançamentos financeiros não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de edição de lançamentos financeiros.",
+			}),
+			conciliar: z.boolean({
+				required_error: "Permissão de conciliação bancária não informada.",
+				invalid_type_error: "Tipo não válido para a permissão de conciliação bancária.",
+			}),
+		})
+		.optional()
+		.nullable(),
 	atendimentos: z.object({
 		visualizar: z.boolean({
 			required_error: "Permissão de visualização de atendimentos não informada.",

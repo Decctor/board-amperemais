@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
+import { canCreateFinances, canEditFinances, canViewFinances } from "@/lib/permissions/finances";
 import { db, type DBTransaction } from "@/services/drizzle";
 import { accountingEntries, accountsCharts, financialAccounts, financialTransactions } from "@/services/drizzle/schema";
 import { AccountingEntrySchema, FinancialTransactionSchema } from "@/schemas/financial";
@@ -126,6 +127,8 @@ export type TGetAccountingEntriesOutputById = Exclude<TGetAccountingEntriesOutpu
 async function getAccountingEntriesRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	if (!canViewFinances(session.membership?.permissoes))
+		throw new createHttpError.Forbidden("Você não possui permissão para acessar o módulo financeiro.");
 	const searchParams = request.nextUrl.searchParams;
 	const input = GetAccountingEntriesInputSchema.parse({
 		id: searchParams.get("id") ?? undefined,
@@ -376,6 +379,8 @@ export type TCreateAccountingEntryOutput = Awaited<ReturnType<typeof createAccou
 async function createAccountingEntryRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	if (!canCreateFinances(session.membership?.permissoes))
+		throw new createHttpError.Forbidden("Você não possui permissão para criar lançamentos financeiros.");
 	const input = CreateAccountingEntryInputSchema.parse(await request.json());
 	const result = await createAccountingEntry({ input, session });
 	return NextResponse.json(result, { status: 201 });
@@ -495,6 +500,8 @@ export type TUpdateAccountingEntryOutput = Awaited<ReturnType<typeof updateAccou
 async function updateAccountingEntryRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	if (!canEditFinances(session.membership?.permissoes))
+		throw new createHttpError.Forbidden("Você não possui permissão para editar lançamentos financeiros.");
 	const input = UpdateAccountingEntryInputSchema.parse(await request.json());
 	const result = await updateAccountingEntry({ input, session });
 	return NextResponse.json(result);

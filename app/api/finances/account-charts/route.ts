@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
+import { canViewFinances } from "@/lib/permissions/finances";
 import { createSimplifiedSearchCondition } from "@/lib/search";
 import { db } from "@/services/drizzle";
 import { accountsCharts } from "@/services/drizzle/schema";
@@ -71,6 +72,8 @@ export type TGetAccountChartsOutputById = Exclude<TGetAccountChartsOutput["data"
 async function getAccountChartsRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
+	if (!canViewFinances(session.membership?.permissoes))
+		throw new createHttpError.Forbidden("Você não possui permissão para acessar o módulo financeiro.");
 	const searchParams = request.nextUrl.searchParams;
 	const input = GetAccountChartsInputSchema.parse({
 		id: searchParams.get("id") ?? undefined,
