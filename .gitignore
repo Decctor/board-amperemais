@@ -31,6 +31,9 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+
+# local, reproducible analysis artifacts (never committed)
+/.local-analysis/
 # vercel
 .vercel
 
