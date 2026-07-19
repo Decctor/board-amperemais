@@ -189,7 +189,32 @@ export const bankAccountTypeEnum = pgEnum("bank_account_type", ["CORRENTE", "POU
 
 export const financialTransactionTypeEnum = pgEnum("financial_transaction_type", ["ENTRADA", "SAIDA"]);
 
-export const accountingEntryOriginTypeEnum = pgEnum("accounting_entry_origin_type", ["VENDA", "MANUAL", "ESTORNO", "TRANSFERENCIA"]);
+export const accountingEntryOriginTypeEnum = pgEnum("accounting_entry_origin_type", ["VENDA", "MANUAL", "ESTORNO", "TRANSFERENCIA", "CONCILIACAO"]);
+
+// ============================================================================
+// CONCILIAÇÃO BANCÁRIA (docs/bank-reconciliation-design.md)
+// ============================================================================
+
+export const financialStatementOriginEnum = pgEnum("financial_statement_origin", ["ARQUIVO", "OPEN_FINANCE"]);
+
+export const financialStatementImportStatusEnum = pgEnum("financial_statement_import_status", ["PROCESSANDO", "PROCESSADO", "ERRO"]);
+
+export const financialStatementTransactionStatusEnum = pgEnum("financial_statement_transaction_status", ["PENDENTE", "CONCILIADA", "IGNORADA"]);
+
+export const financialReconciliationMatchTypeEnum = pgEnum("financial_reconciliation_match_type", ["AUTOMATICO", "HEURISTICO", "IA", "MANUAL"]);
+
+export const financialReconciliationMatchStatusEnum = pgEnum("financial_reconciliation_match_status", ["SUGERIDO", "CONFIRMADO", "REJEITADO"]);
+
+export const financialReconciliationActionEnum = pgEnum("financial_reconciliation_action", ["VINCULADO", "EFETIVADO", "LANCAMENTO_CRIADO"]);
+
+// Conexões OpenFinance: o `provedor` NÃO é pgEnum de propósito (varchar + z.enum no app),
+// para que novos agregadores não custem migração de enum no Postgres.
+export const financialOpenFinanceConnectionStatusEnum = pgEnum("financial_openfinance_connection_status", [
+	"CONECTADO",
+	"EXPIRADO",
+	"ERRO",
+	"DESATIVADO",
+]);
 
 export const fiscalDocumentTypeEnum = pgEnum("fiscal_document_type", ["NFCE", "NFE", "NFSE"]);
 

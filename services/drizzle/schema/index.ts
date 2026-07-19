@@ -19,6 +19,7 @@ export * from "./message-templates";
 export * from "./whatsapp-templates";
 export * from "./cashback-programs";
 export * from "./financial";
+export * from "./financial-reconciliation";
 export * from "./fiscal";
 export * from "./organizations";
 export * from "./whatsapp-connections";

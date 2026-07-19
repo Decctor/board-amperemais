@@ -28,6 +28,11 @@ import {
 	couponTargets,
 	coupons,
 	financialAccounts,
+	financialOpenFinanceConnections,
+	financialReconciliationMatches,
+	financialReconciliationRules,
+	financialStatementImports,
+	financialStatementTransactions,
 	financialTransactions,
 	fiscalDocumentEvents,
 	fiscalInboundCursors,
@@ -207,6 +212,13 @@ export async function deleteAllOrganizationData({
 	// --- Compras (itens referenciam produtos; compras referenciam lançamentos/fornecedores) ---
 	await trx.delete(purchaseItems).where(eq(purchaseItems.organizacaoId, organizationId));
 	await trx.delete(purchases).where(eq(purchases.organizacaoId, organizationId));
+
+	// --- Conciliação bancária (matches → linhas de extrato → importações → conexões/regras) ---
+	await trx.delete(financialReconciliationMatches).where(eq(financialReconciliationMatches.organizacaoId, organizationId));
+	await trx.delete(financialStatementTransactions).where(eq(financialStatementTransactions.organizacaoId, organizationId));
+	await trx.delete(financialStatementImports).where(eq(financialStatementImports.organizacaoId, organizationId));
+	await trx.delete(financialOpenFinanceConnections).where(eq(financialOpenFinanceConnections.organizacaoId, organizationId));
+	await trx.delete(financialReconciliationRules).where(eq(financialReconciliationRules.organizacaoId, organizationId));
 
 	// --- Financeiro (transações → lançamentos → contas → plano de contas) ---
 	await trx.delete(financialTransactions).where(eq(financialTransactions.organizacaoId, organizationId));
