@@ -3,11 +3,12 @@
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { Banknote, DollarSign, List, TrendingUp } from "lucide-react";
+import { Banknote, DollarSign, FileCheck2, List, TrendingUp } from "lucide-react";
 import FinancesStatsView from "./finances-page-stats";
 import FinancesAccountingEntriesView from "./finances-page-accounting-entries";
 import FinancesTransactionsView from "./finances-page-transactions";
 import FinancesAccountsView from "./finances-page-financial-accounts";
+import FinancesReconciliationView from "./finances-page-reconciliation";
 
 type FinancesPageProps = {
 	user: TAuthUserSession["user"];
@@ -17,7 +18,7 @@ type FinancesPageProps = {
 export default function FinancesPage(_props: FinancesPageProps) {
 	const [viewMode, setViewMode] = useQueryState(
 		"view",
-		parseAsStringEnum(["stats", "accounting-entries", "financial-transactions", "financial-accounts"]),
+		parseAsStringEnum(["stats", "accounting-entries", "financial-transactions", "financial-accounts", "reconciliation"]),
 	);
 
 	return (
@@ -40,6 +41,10 @@ export default function FinancesPage(_props: FinancesPageProps) {
 						<Banknote className="w-4 h-4 min-w-4 min-h-4" />
 						Contas Financeiras
 					</TabsTrigger>
+					<TabsTrigger value="reconciliation">
+						<FileCheck2 className="w-4 h-4 min-w-4 min-h-4" />
+						Conciliação
+					</TabsTrigger>
 				</TabsList>
 				<TabsContent value="stats" className="flex flex-col gap-3">
 					<FinancesStatsView />
@@ -52,6 +57,9 @@ export default function FinancesPage(_props: FinancesPageProps) {
 				</TabsContent>
 				<TabsContent value="financial-accounts" className="flex flex-col gap-3">
 					<FinancesAccountsView />
+				</TabsContent>
+				<TabsContent value="reconciliation" className="flex flex-col gap-3">
+					<FinancesReconciliationView />
 				</TabsContent>
 			</Tabs>
 		</div>
