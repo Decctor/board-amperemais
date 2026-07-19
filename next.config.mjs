@@ -31,7 +31,16 @@ const nextConfig = {
 			"sua-rede-de-lojas": "rede-de-lojas",
 		};
 
+		const legacyFeatureSlugs = ["programa-de-cashback", "campanhas-whatsapp", "ponto-de-interacao", "business-intelligence"];
+
 		return [
+			// Consolidate every route on the canonical www host.
+			{
+				source: "/:path*",
+				has: [{ type: "host", value: "recompracrm.com.br" }],
+				destination: "https://www.recompracrm.com.br/:path*",
+				permanent: true,
+			},
 			// A página de lotes foi movida para dentro do módulo de Estoque.
 			{
 				source: "/dashboard/operational/stock-lots",
@@ -48,6 +57,11 @@ const nextConfig = {
 				destination: "/segmentos",
 				permanent: true,
 			},
+			...legacyFeatureSlugs.map((slug) => ({
+				source: `/funcionalidades/${slug}`,
+				destination: `/features/${slug}`,
+				permanent: true,
+			})),
 			...Object.entries(blogCasePostToSegment).map(([blogSuffix, segmentSlug]) => ({
 				source: `/blog/como-recompracrm-pode-ajudar-${blogSuffix}`,
 				destination: `/segmentos/${segmentSlug}`,

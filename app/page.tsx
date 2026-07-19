@@ -11,6 +11,11 @@ import { LedgerIntegrations } from "./_components/ledger/Integrations";
 import { LedgerNavbar } from "./_components/ledger/Navbar";
 import { LedgerPartnershipProgram } from "./_components/ledger/PartnershipProgram";
 import { LedgerPricing } from "./_components/ledger/Pricing";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+	alternates: { canonical: "/" },
+};
 
 export default function LandingPage() {
 	const faqJsonLd = buildFAQPageJsonLd(LANDING_FAQS);

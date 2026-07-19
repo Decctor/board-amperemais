@@ -60,6 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	];
 
 	const staticRoutes: MetadataRoute.Sitemap = [
+		{ url: BASE_URL, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
 		{ url: `${BASE_URL}/presentation`, lastModified: new Date(), changeFrequency: "monthly", priority: 1 },
 		{ url: `${BASE_URL}/community`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
 		{ url: `${BASE_URL}/community/courses`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
@@ -89,5 +90,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 		priority: 0.6,
 	}));
 
-	return [...segmentRoutes, ...blogRoutes, ...featureRoutes, ...integrationRoutes, ...staticRoutes, ...courseRoutes, ...ebookRoutes, ...documentRoutes];
+	return [
+		...segmentRoutes,
+		...blogRoutes,
+		...featureRoutes,
+		...integrationRoutes,
+		...staticRoutes,
+		...courseRoutes,
+		...ebookRoutes,
+		...documentRoutes,
+	];
 }
