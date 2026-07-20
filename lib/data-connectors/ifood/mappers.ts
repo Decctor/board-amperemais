@@ -66,6 +66,49 @@ function mapIfoodAttendanceStatus(statusText: string | null): TSaleAttendanceSta
 	return IFOOD_ATTENDANCE_STATUS_BY_ORDER_STATUS[statusText.toUpperCase()] ?? null;
 }
 
+// Avanco do ciclo de pedido: usado para escolher o estagio MAIS AVANCADO entre o derivado dos
+// eventos e o derivado dos timestamps do pedido. Cancelamento e terminal.
+const IFOOD_ORDER_STATUS_RANK: Record<string, number> = {
+	PLACED: 1,
+	CONFIRMED: 2,
+	PREPARATION_STARTED: 3,
+	SEPARATION_STARTED: 3,
+	SEPARATION_ENDED: 4,
+	READY_TO_PICKUP: 4,
+	DISPATCHED: 5,
+	COLLECTED: 5,
+	CONCLUDED: 6,
+	CANCELLED: 7,
+	CANCELED: 7,
+};
+
+/**
+ * Estagio derivado dos timestamps do proprio pedido. O `GET /orders/{id}` do iFood nao devolve
+ * `status`, e os eventos sao entregues uma unica vez (apos o ACK nao retornam) — sem isto, um
+ * evento perdido congelaria a venda no ultimo estagio conhecido para sempre.
+ */
+function getOrderTimestampStatus(order: TIfoodOrder): string | null {
+	if (order.cancelledAt) return "CANCELLED";
+	if (order.concludedAt) return "CONCLUDED";
+	if (order.confirmedAt) return "CONFIRMED";
+	return null;
+}
+
+function pickMostAdvancedStatus(...candidates: (string | null | undefined)[]): string | null {
+	let best: string | null = null;
+	let bestRank = -1;
+	for (const candidate of candidates) {
+		if (!candidate) continue;
+		const normalized = candidate.toUpperCase();
+		const rank = IFOOD_ORDER_STATUS_RANK[normalized] ?? 0;
+		if (rank > bestRank) {
+			best = normalized;
+			bestRank = rank;
+		}
+	}
+	return best;
+}
+
 function getEventStatus(event: TIfoodEvent) {
 	const code = event.code.toUpperCase();
 	const fullCode = event.fullCode?.toUpperCase();
@@ -396,7 +439,9 @@ export function mapIfoodSale(order: TIfoodOrder, events: TIfoodEvent[] = []): TC
 	const canceled = isCanceled(order, eventState);
 	const totalDiscount = order.total.benefits || order.benefits.reduce((acc, benefit) => acc + benefit.value, 0);
 	const merchantName = order.merchant?.name || "IFOOD";
-	const statusText = order.status || eventState.statusText || "N/A";
+	// Estagio efetivo = o mais avancado entre o status do payload, os timestamps do pedido e os
+	// eventos deste lote. Resiliente a evento perdido/ja ACKado e a evento atrasado fora de ordem.
+	const statusText = pickMostAdvancedStatus(order.status, getOrderTimestampStatus(order), eventState.statusText) ?? "N/A";
 	const items = order.items.map(mapIfoodSaleItem);
 	// C1 (fase 5): descontos reais da loja (sponsorship MERCHANT) reduzem os itens — e a NF.
 	allocateMerchantDiscountsToItems(order, items);
