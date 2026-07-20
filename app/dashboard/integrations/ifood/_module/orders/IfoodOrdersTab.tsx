@@ -129,6 +129,7 @@ export function IfoodOrdersTab({ canManage }: IfoodOrdersTabProps) {
 				<ControlIfoodOrder
 					orderId={selectedOrderId}
 					canManage={canManage}
+					fallbackStatus={orders.find((order) => order.orderId === selectedOrderId)?.situacao ?? null}
 					closeModal={() => setSelectedOrderId(null)}
 					callbacks={{
 						onSuccess: () => {

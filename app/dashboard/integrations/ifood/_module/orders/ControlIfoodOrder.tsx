@@ -1,10 +1,10 @@
 "use client";
 
 import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
-import type { TIfoodOrderActionEnum } from "@/lib/integrations/ifood/order-types";
 import { postIfoodOrderAction } from "@/lib/mutations/ifood";
 import { useIfoodOrderDetails } from "@/lib/queries/ifood";
 import { useMutation } from "@tanstack/react-query";
@@ -16,6 +16,11 @@ import { cn } from "@/lib/utils";
 type ControlIfoodOrderProps = {
 	orderId: string;
 	canManage: boolean;
+	/**
+	 * Status do pedido no nosso banco (derivado dos eventos). O `GET /orders/{id}` do iFood nem
+	 * sempre traz `status` no payload — nesses casos este valor é a fonte confiável do estágio.
+	 */
+	fallbackStatus?: string | null;
 	closeModal: () => void;
 	callbacks?: {
 		onSuccess?: () => void;
@@ -30,7 +35,7 @@ const ORDER_TYPE_LABELS: Record<string, string> = {
 };
 
 /** Modal de detalhes do pedido iFood com as ações do ciclo de vida (confirmar, preparo, pronto, despachar, cancelar). */
-export function ControlIfoodOrder({ orderId, canManage, closeModal, callbacks }: ControlIfoodOrderProps) {
+export function ControlIfoodOrder({ orderId, canManage, fallbackStatus, closeModal, callbacks }: ControlIfoodOrderProps) {
 	const detailsQuery = useIfoodOrderDetails({ orderId });
 	const [cancellationCode, setCancellationCode] = useState<string | null>(null);
 
@@ -49,15 +54,13 @@ export function ControlIfoodOrder({ orderId, canManage, closeModal, callbacks }:
 
 	const pedido = detailsQuery.data?.pedido;
 	const motivosCancelamento = detailsQuery.data?.motivosCancelamento ?? [];
-	const availableActions = getAvailableIfoodOrderActions(pedido?.status);
-	const primaryAction: TIfoodOrderActionEnum | null = availableActions.find((action) => action !== "requestCancellation") ?? null;
+	const effectiveStatus = pedido?.status ?? fallbackStatus ?? null;
+	const availableActions = getAvailableIfoodOrderActions(effectiveStatus);
+	// Cada etapa do ciclo é um botão próprio: com status desconhecido (o iFood nem sempre devolve
+	// `status` nos detalhes) todas ficam disponíveis e o próprio iFood valida a sequência.
+	const lifecycleActions = availableActions.filter((action) => action !== "requestCancellation");
 	const canCancel = canManage && availableActions.includes("requestCancellation");
-	const statusConfig = getIfoodOrderStatusConfig(pedido?.status);
-
-	function handlePrimaryAction() {
-		if (!canManage || !primaryAction) return closeModal();
-		mutate({ orderId, action: primaryAction, cancellationCode: null });
-	}
+	const statusConfig = getIfoodOrderStatusConfig(effectiveStatus);
 
 	function handleCancellation() {
 		if (!cancellationCode) return toast.error("Selecione o motivo de cancelamento do pedido.");
@@ -68,10 +71,10 @@ export function ControlIfoodOrder({ orderId, canManage, closeModal, callbacks }:
 		<ResponsiveMenuV2
 			menuTitle={pedido?.displayId ? `PEDIDO #${pedido.displayId}` : "PEDIDO IFOOD"}
 			menuDescription="Detalhes do pedido no iFood. As ações são enviadas para a API do iFood e o status definitivo chega pelos eventos."
-			menuActionButtonText={canManage && primaryAction ? IFOOD_ORDER_ACTION_BUTTON_LABELS[primaryAction] : "FECHAR"}
+			menuActionButtonText="FECHAR"
 			menuCancelButtonText="VOLTAR"
 			closeMenu={closeModal}
-			actionFunction={handlePrimaryAction}
+			actionFunction={closeModal}
 			actionIsLoading={isPending}
 			stateIsLoading={detailsQuery.isLoading}
 		>
@@ -143,6 +146,25 @@ export function ControlIfoodOrder({ orderId, canManage, closeModal, callbacks }:
 							) : null}
 						</div>
 					</div>
+
+					{canManage && lifecycleActions.length > 0 ? (
+						<div className="flex flex-col gap-2 rounded-xl border border-border bg-card px-3 py-3">
+							<h3 className="text-[0.65rem] font-medium tracking-tight uppercase text-muted-foreground">Ações do pedido</h3>
+							<div className="flex flex-wrap gap-2">
+								{lifecycleActions.map((action) => (
+									<Button key={action} size="sm" variant="outline" disabled={isPending} onClick={() => mutate({ orderId, action, cancellationCode: null })}>
+										{IFOOD_ORDER_ACTION_BUTTON_LABELS[action]}
+									</Button>
+								))}
+							</div>
+							{!effectiveStatus ? (
+								<p className="text-[0.65rem] leading-relaxed text-muted-foreground">
+									O iFood não informou o estágio deste pedido. Todas as etapas estão liberadas — o próprio iFood valida a sequência e recusa ações fora de
+									ordem.
+								</p>
+							) : null}
+						</div>
+					) : null}
 
 					{canCancel ? (
 						<div className="flex flex-col gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-3">
