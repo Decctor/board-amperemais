@@ -80,10 +80,17 @@ export async function getOrganizationWhatsappPhones(organizationId: string): Pro
 	);
 }
 
+/**
+ * Sobe a mídia do cabeçalho para a Meta e devolve o conteúdo com o handle injetado.
+ *
+ * O handle é efêmero e vinculado ao token/app da conexão que fez o upload: ele não é
+ * reaproveitável entre telefones (WABAs distintos) nem entre submissões. Por isso o
+ * upload é sempre refeito e o resultado nunca é persistido — vive apenas no escopo da
+ * submissão de um telefone.
+ */
 async function resolveMediaHeaderHandle(content: TMessageTemplateContent, accessToken: string): Promise<TMessageTemplateContent> {
 	const header = content.cabecalho;
 	if (!header || header.tipo === "NENHUM" || header.tipo === "TEXTO" || header.tipo === "LOCALIZAÇÃO") return content;
-	if (header.conteudoMidiaHandle) return content;
 	if (header.tipo === "IMAGEM_DINAMICA") {
 		throw new createHttpError.BadRequest("Cabeçalho dinâmico ainda precisa de renderer backend antes da submissão para a Meta.");
 	}
@@ -119,7 +126,7 @@ export async function submitMessageTemplateToWhatsappPhone({
 	organizationId: string;
 	origin?: string;
 	mode: "create" | "upsert";
-}): Promise<{ phoneId: string; success: boolean; idExterno: string | null; message?: string; content?: TMessageTemplateContent }> {
+}): Promise<{ phoneId: string; success: boolean; idExterno: string | null; message?: string }> {
 	if (phone.conexao.tipoConexao !== "META_CLOUD_API") {
 		return { phoneId: phone.id, success: true, idExterno: null, message: "Telefone não usa Meta Cloud API." };
 	}
@@ -144,7 +151,7 @@ export async function submitMessageTemplateToWhatsappPhone({
 				components: payload.components,
 			},
 		});
-		return { phoneId: phone.id, success: true, idExterno: currentMetadata.idExterno, message: "Template atualizado na Meta.", content };
+		return { phoneId: phone.id, success: true, idExterno: currentMetadata.idExterno, message: "Template atualizado na Meta." };
 	}
 
 	const response = await createMetaWhatsappTemplate({
@@ -152,7 +159,7 @@ export async function submitMessageTemplateToWhatsappPhone({
 		whatsappBusinessAccountId: phone.whatsappBusinessAccountId,
 		payload,
 	});
-	return { phoneId: phone.id, success: true, idExterno: response.id, message: "Template criado na Meta.", content };
+	return { phoneId: phone.id, success: true, idExterno: response.id, message: "Template criado na Meta." };
 }
 
 export function applyWhatsappSubmissionResultToMetadata({

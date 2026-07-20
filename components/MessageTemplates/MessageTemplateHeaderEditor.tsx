@@ -89,8 +89,8 @@ export function MessageTemplateHeaderEditor({
 			headerType={header.tipo}
 			currentUrl={header.conteudoMidiaUrl || ""}
 			organizationId={organizationId}
-			onUploaded={(url) => updateTemplateContentHeader({ conteudoMidiaUrl: url })}
-			onRemoved={() => updateTemplateContentHeader({ conteudoMidiaUrl: "" })}
+			onUploaded={(url) => updateTemplateContentHeader({ conteudoMidiaUrl: url, conteudoMidiaHandle: null })}
+			onRemoved={() => updateTemplateContentHeader({ conteudoMidiaUrl: "", conteudoMidiaHandle: null })}
 		/>
 	);
 }

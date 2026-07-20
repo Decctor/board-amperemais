@@ -288,13 +288,12 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 
 	for (const template of organizationTemplates) {
 		let nextMetadata = template.metadados;
-		let nextContent = template.conteudo;
 
 		for (const phone of phonesToSync) {
 			try {
 				if (nextMetadata.porNumeroTelefone[phone.id]?.idExterno) continue;
 				const result = await submitMessageTemplateToWhatsappPhone({
-					template: { ...template, metadados: nextMetadata, conteudo: nextContent },
+					template: { ...template, metadados: nextMetadata },
 					phone,
 					organizationId: userOrgId,
 					origin: "whatsapp_auth_callback",
@@ -305,19 +304,17 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 					phoneId: phone.id,
 					idExterno: result.idExterno,
 				});
-				if (result.content) nextContent = result.content;
 				console.log(`[INFO] [WHATSAPP_CONNECT_CALLBACK] Message template ${template.id} submitted for phone ${phone.id}`);
 			} catch (error) {
 				console.error(`[ERROR] [WHATSAPP_CONNECT_CALLBACK] Failed to submit message template ${template.id} for phone ${phone.id}:`, error);
 			}
 		}
 
-		if (nextMetadata !== template.metadados || nextContent !== template.conteudo) {
+		if (nextMetadata !== template.metadados) {
 			await db
 				.update(messageTemplates)
 				.set({
 					metadados: nextMetadata,
-					conteudo: nextContent,
 					dataAtualizacao: new Date(),
 				})
 				.where(eq(messageTemplates.id, template.id));

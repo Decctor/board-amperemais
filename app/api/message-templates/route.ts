@@ -61,13 +61,12 @@ async function createMessageTemplate({ input, session }: { input: TCreateMessage
 	// if (phones.length === 0) throw new createHttpError.NotFound("Nenhum telefone cadastrado na conexão WhatsApp.");
 
 	let nextMetadata = insertedTemplate.metadados;
-	let nextContent = insertedTemplate.conteudo;
 	const phoneResults = [];
 
 	for (const phone of phones) {
 		try {
 			const result = await submitMessageTemplateToWhatsappPhone({
-				template: { ...insertedTemplate, metadados: nextMetadata, conteudo: nextContent },
+				template: { ...insertedTemplate, metadados: nextMetadata },
 				phone,
 				organizationId,
 				mode: "create",
@@ -77,7 +76,6 @@ async function createMessageTemplate({ input, session }: { input: TCreateMessage
 				phoneId: phone.id,
 				idExterno: result.idExterno,
 			});
-			if (result.content) nextContent = result.content;
 			phoneResults.push(result);
 		} catch (error) {
 			phoneResults.push({ phoneId: phone.id, success: false, idExterno: null, message: error instanceof Error ? error.message : "Erro desconhecido" });
@@ -88,7 +86,6 @@ async function createMessageTemplate({ input, session }: { input: TCreateMessage
 		.update(messageTemplates)
 		.set({
 			metadados: nextMetadata,
-			conteudo: nextContent,
 			dataAtualizacao: new Date(),
 		})
 		.where(eq(messageTemplates.id, insertedTemplate.id));
@@ -161,19 +158,17 @@ async function updateMessageTemplate({ input, session }: { input: TUpdateMessage
 
 	const phones = await getOrganizationWhatsappPhones(organizationId);
 	let nextMetadata = updatedLocal.metadados;
-	let nextContent = updatedLocal.conteudo;
 	const phoneResults = [];
 
 	for (const phone of phones) {
 		try {
 			const result = await submitMessageTemplateToWhatsappPhone({
-				template: { ...updatedLocal, metadados: nextMetadata, conteudo: nextContent },
+				template: { ...updatedLocal, metadados: nextMetadata },
 				phone,
 				organizationId,
 				mode: "upsert",
 			});
 			nextMetadata = applyWhatsappSubmissionResultToMetadata({ metadata: nextMetadata, phoneId: phone.id, idExterno: result.idExterno });
-			if (result.content) nextContent = result.content;
 			phoneResults.push(result);
 		} catch (error) {
 			phoneResults.push({ phoneId: phone.id, success: false, idExterno: null, message: error instanceof Error ? error.message : "Erro desconhecido" });
@@ -182,7 +177,7 @@ async function updateMessageTemplate({ input, session }: { input: TUpdateMessage
 
 	await db
 		.update(messageTemplates)
-		.set({ metadados: nextMetadata, conteudo: nextContent, dataAtualizacao: new Date() })
+		.set({ metadados: nextMetadata, dataAtualizacao: new Date() })
 		.where(eq(messageTemplates.id, existingTemplate.id));
 
 	const successful = phoneResults.filter((result) => result.success).length;

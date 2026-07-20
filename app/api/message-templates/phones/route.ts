@@ -65,7 +65,6 @@ async function createMessageTemplatePhone({ input, session }: { input: TCreateMe
 		.update(messageTemplates)
 		.set({
 			metadados: nextMetadata,
-			conteudo: result.content ?? template.conteudo,
 			dataAtualizacao: new Date(),
 		})
 		.where(eq(messageTemplates.id, template.id));

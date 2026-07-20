@@ -111,13 +111,12 @@ async function createTemplateRegistry({
 
 	const phones = await getOrganizationWhatsappPhones(organizationId);
 	let nextMetadata = insertedTemplate.metadados;
-	let nextContent = insertedTemplate.conteudo;
 	const phoneResults: Array<{ telefoneId: string; whatsappTemplateId: string | null; error?: string }> = [];
 
 	for (const phone of phones) {
 		try {
 			const result = await submitMessageTemplateToWhatsappPhone({
-				template: { ...insertedTemplate, metadados: nextMetadata, conteudo: nextContent },
+				template: { ...insertedTemplate, metadados: nextMetadata },
 				phone,
 				organizationId,
 				origin: "ai_hint",
@@ -128,7 +127,6 @@ async function createTemplateRegistry({
 				phoneId: phone.id,
 				idExterno: result.idExterno,
 			});
-			if (result.content) nextContent = result.content;
 			phoneResults.push({
 				telefoneId: phone.id,
 				whatsappTemplateId: result.idExterno,
@@ -148,7 +146,6 @@ async function createTemplateRegistry({
 		.update(messageTemplates)
 		.set({
 			metadados: nextMetadata,
-			conteudo: nextContent,
 			dataAtualizacao: new Date(),
 		})
 		.where(eq(messageTemplates.id, insertedTemplate.id));

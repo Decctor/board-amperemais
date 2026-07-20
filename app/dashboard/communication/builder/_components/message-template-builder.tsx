@@ -234,6 +234,8 @@ export default function MessageTemplateBuilder({
 									updateTemplateContentHeader({
 										tipo: value as Exclude<TUseMessageTemplateState["state"]["messageTemplate"]["conteudo"]["cabecalho"], null | undefined>["tipo"],
 										conteudoMidiaUrl: value === "IMAGEM_DINAMICA" ? "" : state.messageTemplate.conteudo.cabecalho?.conteudoMidiaUrl || "",
+										// O handle da Meta é vinculado ao formato do cabeçalho, então trocar de tipo invalida o handle existente.
+										conteudoMidiaHandle: null,
 										imagemDinamicaPreset: state.messageTemplate.conteudo.cabecalho?.imagemDinamicaPreset || "CASHBACK_AVAILABLE_BALANCE",
 									})
 								}
@@ -372,8 +374,8 @@ function MessageTemplateBuilderHeader({ organizationId, header, updateTemplateCo
 			headerType={header.tipo}
 			currentUrl={header.conteudoMidiaUrl || ""}
 			organizationId={organizationId}
-			onUploaded={(url) => updateTemplateContentHeader({ conteudoMidiaUrl: url })}
-			onRemoved={() => updateTemplateContentHeader({ conteudoMidiaUrl: "" })}
+			onUploaded={(url) => updateTemplateContentHeader({ conteudoMidiaUrl: url, conteudoMidiaHandle: null })}
+			onRemoved={() => updateTemplateContentHeader({ conteudoMidiaUrl: "", conteudoMidiaHandle: null })}
 		/>
 	);
 }
