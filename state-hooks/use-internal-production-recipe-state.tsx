@@ -63,6 +63,7 @@ type UseInternalProductionRecipeStateProps = {
 const DEFAULT_RECIPE: TProductionRecipeState["productionRecipe"] = {
 	titulo: "",
 	descricao: null,
+	modoPreparo: null,
 	previsaoTempoMedida: null,
 	previsaoTempoValor: null,
 	ativo: true,

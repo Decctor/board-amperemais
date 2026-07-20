@@ -32,6 +32,16 @@ export const ProductionRecipeBaseSchema = z.object({
 			const trimmed = value?.trim();
 			return trimmed ? trimmed : null;
 		}),
+	modoPreparo: z
+		.string({
+			invalid_type_error: "Tipo não válido para modo de preparo da receita.",
+		})
+		.optional()
+		.nullable()
+		.transform((value) => {
+			const trimmed = value?.trim();
+			return trimmed ? trimmed : null;
+		}),
 	previsaoTempoMedida: ProductionDurationUnitEnum.optional().nullable(),
 	previsaoTempoValor: z
 		.number({

@@ -18,6 +18,8 @@ export const productionRecipes = newTable(
 			.references(() => organizations.id, { onDelete: "cascade" }),
 		titulo: text("titulo").notNull(),
 		descricao: text("descricao"),
+		/** Modo de preparo em Markdown (listas, ênfase, títulos) — renderizado na tela de produção. */
+		modoPreparo: text("modo_preparo"),
 		previsaoTempoMedida: timeDurationUnitsEnum("previsao_tempo_medida"),
 		previsaoTempoValor: doublePrecision("previsao_tempo_valor"),
 		ativo: boolean("ativo").default(true).notNull(),

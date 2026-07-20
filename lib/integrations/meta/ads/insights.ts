@@ -4,6 +4,7 @@ import { metaGraphGet, metaGraphGetByFullUrl } from "./client";
 import type {
 	TMetaAdsAccountDailySpendPoint,
 	TMetaAdsAccountResults,
+	TMetaAdsActionStat,
 	TMetaAdsAdDailyMetrics,
 	TMetaAdsAdDetailResult,
 	TMetaAdsAdLevelInsightsRow,
@@ -78,6 +79,56 @@ function isPurchaseAction(actionType: string) {
 	return actionType.toLowerCase().includes("purchase");
 }
 
+// A Meta retorna a MESMA conversão em vários `action_type` sobrepostos (ex.: uma venda aparece como
+// `omni_purchase` + `offsite_conversion.fb_pixel_purchase` + `purchase` + ...). Somar todos multiplica a
+// receita. Escolhemos UM tipo canônico por ordem de prioridade. `omni_purchase` é o total consolidado
+// cross-canal — bate exatamente com o `purchase_roas` nativo da Meta.
+const PURCHASE_ACTION_PRIORITY = ["omni_purchase", "offsite_conversion.fb_pixel_purchase", "purchase"] as const;
+// Idem para leads: `lead` é o total deduplicado. Os `*_add_meta_leads` (content view, search, registration)
+// NÃO são leads — são breakdowns de campanhas de lead e inflam a contagem se somados.
+const LEAD_ACTION_PRIORITY = ["lead", "onsite_conversion.lead_grouped", "onsite_conversion.lead", "onsite_web_lead"] as const;
+
+/** Retorna o valor do primeiro `action_type` presente na ordem de prioridade (dedupe), ou 0. */
+function pickCanonicalActionValue(stats: TMetaAdsActionStat[] | undefined, priority: readonly string[]): number {
+	if (!stats || stats.length === 0) return 0;
+	for (const type of priority) {
+		const match = stats.find((stat) => (stat.action_type ?? "") === type);
+		if (match) return toNumber(match.value);
+	}
+	return 0;
+}
+
+/**
+ * DIAGNÓSTICO (temporário): loga a decomposição bruta de compras/leads que a Meta retornou,
+ * para identificar sobreposição de `action_type` (ex.: `omni_purchase` + `offsite_conversion.fb_pixel_purchase`
+ * + `purchase` representando a MESMA venda). Ative com META_ADS_DEBUG_INSIGHTS=true.
+ * Remover após definir a política de dedupe.
+ */
+const DEBUG_INSIGHTS = process.env.META_ADS_DEBUG_INSIGHTS === "true";
+
+function logInsightActionBreakdown(context: string, row: TMetaAdsInsightRow) {
+	if (!DEBUG_INSIGHTS) return;
+
+	const purchaseCounts = (row.actions ?? []).filter((a) => isPurchaseAction(a.action_type ?? ""));
+	const purchaseValues = (row.action_values ?? []).filter((a) => isPurchaseAction(a.action_type ?? ""));
+	const leadCounts = (row.actions ?? []).filter((a) => isLeadAction(a.action_type ?? ""));
+
+	console.log(`[DEBUG] [META_ADS] Action breakdown (${context}):`, {
+		spend: toNumber(row.spend),
+		purchaseValueTypes: purchaseValues.map((a) => ({ type: a.action_type, value: toNumber(a.value) })),
+		purchaseValueSumOld: sumActionValues(row.action_values, isPurchaseAction),
+		purchaseValueCanonical: pickCanonicalActionValue(row.action_values, PURCHASE_ACTION_PRIORITY),
+		purchaseCountTypes: purchaseCounts.map((a) => ({ type: a.action_type, value: toNumber(a.value) })),
+		purchaseCountSumOld: sumActionValues(row.actions, isPurchaseAction),
+		purchaseCountCanonical: pickCanonicalActionValue(row.actions, PURCHASE_ACTION_PRIORITY),
+		leadTypes: leadCounts.map((a) => ({ type: a.action_type, value: toNumber(a.value) })),
+		leadSumOld: sumActionValues(row.actions, isLeadAction),
+		leadCanonical: pickCanonicalActionValue(row.actions, LEAD_ACTION_PRIORITY),
+		purchaseRoas: row.purchase_roas?.map((r) => ({ type: r.action_type, value: toNullableNumber(r.value) })),
+		allActionValueTypes: (row.action_values ?? []).map((a) => a.action_type),
+	});
+}
+
 function sumActionValues(actions: { action_type?: string; value?: string }[] | undefined, predicate: (actionType: string) => boolean) {
 	if (!actions) return 0;
 	return actions.reduce((total, action) => {
@@ -104,9 +155,9 @@ export function normalizeMetaAdsInsight(row: TMetaAdsInsightRow): TNormalizedMet
 		cpm: toNullableNumber(row.cpm),
 		ctr: toNullableNumber(row.ctr),
 		frequency: toNullableNumber(row.frequency),
-		leads: sumActionValues(row.actions, isLeadAction),
-		purchases: sumActionValues(row.actions, isPurchaseAction),
-		purchaseValue: sumActionValues(row.action_values, isPurchaseAction),
+		leads: pickCanonicalActionValue(row.actions, LEAD_ACTION_PRIORITY),
+		purchases: pickCanonicalActionValue(row.actions, PURCHASE_ACTION_PRIORITY),
+		purchaseValue: pickCanonicalActionValue(row.action_values, PURCHASE_ACTION_PRIORITY),
 		purchaseRoas: getPurchaseRoas(row.purchase_roas),
 	};
 }
@@ -176,6 +227,7 @@ export async function fetchMetaAdsAccountInsights(params: {
 	);
 
 	const row = response.data?.[0] ?? {};
+	logInsightActionBreakdown(`account ${params.config.adAccountName} [${params.since}→${params.until}]`, row);
 	return {
 		integrationId: params.integrationId,
 		adAccountId: params.config.adAccountId,
@@ -211,7 +263,9 @@ export async function fetchMetaAdsCampaignInsights(params: {
 		params.config.accessToken,
 	);
 
-	return (response.data ?? []).map((row) => ({
+	return (response.data ?? []).map((row) => {
+		logInsightActionBreakdown(`campaign ${row.campaign_name ?? row.campaign_id}`, row);
+		return {
 		integrationId: params.integrationId,
 		adAccountId: params.config.adAccountId,
 		adAccountName: params.config.adAccountName,
@@ -225,7 +279,8 @@ export async function fetchMetaAdsCampaignInsights(params: {
 			action_values: row.action_values,
 			purchase_roas: row.purchase_roas,
 		},
-	}));
+		};
+	});
 }
 
 /** Uma linha por anúncio no intervalo (métricas agregadas no período). Usa paginação automática. */
@@ -251,6 +306,7 @@ export async function fetchMetaAdsAdLevelInsights(params: {
 	for (const row of rows) {
 		const adId = row.ad_id ?? "";
 		if (!adId) continue;
+		logInsightActionBreakdown(`ad ${row.ad_name ?? adId}`, row);
 		result.push({
 			integrationId: params.integrationId,
 			adAccountId: params.config.adAccountId,

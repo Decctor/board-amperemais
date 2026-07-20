@@ -31,7 +31,7 @@ export type TGetMetaAdsInsightsInput = z.infer<typeof MetaAdsInsightsInputSchema
 async function getMetaAdsInsights({ input, organizacaoId }: { input: TGetMetaAdsInsightsInput; organizacaoId: string }) {
 	const { integrationId, config } = await resolveMetaAdsIntegration({ organizacaoId, integrationId: input.integrationId });
 	const base = { config, integrationId, since: input.since, until: input.until };
-
+	console.log("[getMetaAdsInsights] input", input);
 	if (input.level === "campaign") {
 		const campaigns = await fetchMetaAdsCampaignInsights(base);
 		return { data: { account: null, campaigns, ads: null }, message: "Métricas por campanha buscadas com sucesso." };

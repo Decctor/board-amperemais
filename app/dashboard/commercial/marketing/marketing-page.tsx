@@ -20,6 +20,7 @@ import { Area, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
 import { MetaAdDetailModal } from "./_components/MetaAdDetailModal";
 import { MetaCapiSettingsModal } from "./_components/MetaCapiSettingsModal";
 import { getMetaAdEffectiveStatusConfig } from "./_components/meta-ad-status";
+import dayjs from "dayjs";
 
 const PERIOD_OPTIONS = [
 	{ value: "7", label: "Últimos 7 dias" },
@@ -63,7 +64,11 @@ export default function MarketingPage({ user: _user }: MarketingPageProps) {
 		if (!selectedIntegrationId && metaAccounts.length > 0) setSelectedIntegrationId(metaAccounts[0].id);
 	}, [metaAccounts, selectedIntegrationId]);
 
-	const { since, until } = useMemo(() => ({ since: dayjsSubtract(Number(periodDays)), until: today() }), [periodDays]);
+	const { since, until } = useMemo(
+		// Janela inclusiva nas duas pontas na Meta: "Últimos N dias" = [hoje-(N-1) … hoje], somando N dias.
+		() => ({ since: dayjs().subtract(Number(periodDays) - 1, "day").format("YYYY-MM-DD"), until: dayjs().format("YYYY-MM-DD") }),
+		[periodDays],
+	);
 
 	if (isLoading) return <LoadingComponent />;
 	if (isError) return <ErrorComponent msg={error instanceof Error ? error.message : "Erro ao carregar integrações."} />;

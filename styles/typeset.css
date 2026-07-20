@@ -1,0 +1,154 @@
+.typeset {
+	--typeset-size: 0.9375rem;
+	--typeset-leading: 1.7;
+	--typeset-flow: 1em;
+	color: var(--color-foreground);
+	font-size: var(--typeset-size);
+	line-height: var(--typeset-leading);
+	overflow-wrap: anywhere;
+}
+
+.typeset > :first-child {
+	margin-top: 0;
+}
+
+.typeset > :last-child {
+	margin-bottom: 0;
+}
+
+.typeset :where(p, ul, ol, blockquote, pre, table, hr) {
+	margin-block: var(--typeset-flow);
+}
+
+.typeset :where(h1, h2, h3, h4) {
+	color: var(--color-foreground);
+	font-weight: 700;
+	line-height: 1.25;
+	margin-block: 1.5em 0.55em;
+	text-wrap: balance;
+}
+
+.typeset h1 {
+	font-size: 1.65em;
+	letter-spacing: -0.025em;
+}
+
+.typeset h2 {
+	font-size: 1.35em;
+	letter-spacing: -0.015em;
+}
+
+.typeset h3 {
+	font-size: 1.15em;
+}
+
+.typeset h4 {
+	font-size: 1em;
+}
+
+.typeset :where(ul, ol) {
+	padding-inline-start: 1.5rem;
+}
+
+.typeset ul {
+	list-style: disc;
+}
+
+.typeset ol {
+	list-style: decimal;
+}
+
+.typeset li + li {
+	margin-top: 0.3em;
+}
+
+.typeset :where(li > ul, li > ol) {
+	margin-block: 0.35em;
+}
+
+.typeset ul[data-type="taskList"] {
+	list-style: none;
+	padding-inline-start: 0;
+}
+
+.typeset ul[data-type="taskList"] li {
+	align-items: flex-start;
+	display: flex;
+	gap: 0.55rem;
+}
+
+.typeset ul[data-type="taskList"] li > div {
+	flex: 1;
+}
+
+.typeset blockquote {
+	border-inline-start: 3px solid var(--color-primary);
+	color: var(--color-muted-foreground);
+	padding-inline-start: 1rem;
+}
+
+.typeset a {
+	color: var(--color-primary);
+	font-weight: 600;
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.18em;
+}
+
+.typeset code {
+	background: var(--color-muted);
+	border-radius: 0.3rem;
+	color: var(--color-foreground);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 0.88em;
+	padding: 0.15em 0.35em;
+}
+
+.typeset pre {
+	background: var(--color-muted);
+	border: 1px solid var(--color-border);
+	border-radius: 0.6rem;
+	overflow-x: auto;
+	padding: 0.9rem 1rem;
+}
+
+.typeset pre code {
+	background: transparent;
+	border-radius: 0;
+	padding: 0;
+}
+
+.typeset table {
+	border-collapse: collapse;
+	display: block;
+	max-width: 100%;
+	overflow-x: auto;
+	width: max-content;
+}
+
+.typeset :where(th, td) {
+	border: 1px solid var(--color-border);
+	min-width: 7rem;
+	padding: 0.5rem 0.7rem;
+	text-align: start;
+	vertical-align: top;
+}
+
+.typeset th {
+	background: var(--color-muted);
+	font-weight: 650;
+}
+
+.typeset hr {
+	border: 0;
+	border-top: 1px solid var(--color-border);
+}
+
+.typeset strong {
+	font-weight: 700;
+}
+
+.typeset .ProseMirror-selectednode {
+	outline: 2px solid var(--color-ring);
+	outline-offset: 2px;
+}

@@ -8,6 +8,7 @@ import ControlProduction from "@/components/Modals/Internal/Productions/ControlP
 import ControlProductionRecipe from "@/components/Modals/Internal/Productions/ControlProductionRecipe";
 import NewProduction from "@/components/Modals/Internal/Productions/NewProduction";
 import NewProductionRecipe from "@/components/Modals/Internal/Productions/NewProductionRecipe";
+import ProductionRecipePreparationMethodViewer from "@/components/Modals/Internal/Productions/ProductionRecipePreparationMethodViewer";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -436,10 +437,13 @@ function ProductionRecipeCard({ recipe, onEdit }: ProductionRecipeCardProps) {
 						</span>
 					</div>
 				</div>
-				<Button variant="ghost" size="xs" onClick={onEdit}>
-					<Pencil className="h-4 w-4" />
-					EDITAR
-				</Button>
+				<div className="flex items-center gap-1">
+					<ProductionRecipePreparationMethodViewer recipeId={recipe.id} recipeTitle={recipe.titulo} />
+					<Button variant="ghost" size="xs" onClick={onEdit}>
+						<Pencil className="h-4 w-4" />
+						EDITAR
+					</Button>
+				</div>
 			</div>
 		</div>
 	);

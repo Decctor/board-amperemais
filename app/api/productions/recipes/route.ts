@@ -220,19 +220,20 @@ async function getProductionRecipes({ input, session }: { input: TGetProductionR
 			.where(and(...conditions)),
 		db.query.productionRecipes.findMany({
 			where: and(...conditions),
+			// Projeção enxuta: o card da listagem usa apenas estes campos. Detalhes completos
+			// (modoPreparo, itens com produtos/variantes) são carregados sob demanda via byId.
+			columns: {
+				id: true,
+				titulo: true,
+				descricao: true,
+				previsaoTempoMedida: true,
+				previsaoTempoValor: true,
+				dataInsercao: true,
+			},
 			with: {
-				insumos: {
-					with: {
-						produto: { columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true } },
-						produtoVariante: { columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true } },
-					},
-				},
-				saidas: {
-					with: {
-						produto: { columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true } },
-						produtoVariante: { columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true } },
-					},
-				},
+				// Somente o id é necessário — o card exibe apenas a contagem de insumos/saídas.
+				insumos: { columns: { id: true } },
+				saidas: { columns: { id: true } },
 			},
 			orderBy: (fields, { desc }) => desc(fields.dataInsercao),
 			limit: PAGE_SIZE,

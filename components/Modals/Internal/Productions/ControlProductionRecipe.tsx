@@ -7,6 +7,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import ProductionRecipeGeneralBlock from "./Blocks/General";
+import ProductionRecipePreparationMethodBlock from "./Blocks/PreparationMethod";
 import { ProductionRecipeInputsBlock, ProductionRecipeOutputsBlock } from "./Blocks/RecipeItems";
 
 type ControlProductionRecipeProps = {
@@ -41,6 +42,7 @@ export default function ControlProductionRecipe({ productionRecipeId, closeModal
 			productionRecipe: {
 				titulo: productionRecipe.titulo,
 				descricao: productionRecipe.descricao,
+				modoPreparo: productionRecipe.modoPreparo,
 				previsaoTempoMedida: productionRecipe.previsaoTempoMedida,
 				previsaoTempoValor: productionRecipe.previsaoTempoValor,
 				ativo: productionRecipe.ativo,
@@ -82,7 +84,6 @@ export default function ControlProductionRecipe({ productionRecipeId, closeModal
 		},
 		onSettled: () => callbacks?.onSettled?.(),
 	});
-
 	return (
 		<ResponsiveMenu
 			menuTitle="ATUALIZAR RECEITA"
@@ -97,6 +98,7 @@ export default function ControlProductionRecipe({ productionRecipeId, closeModal
 			dialogVariant="md"
 		>
 			<ProductionRecipeGeneralBlock productionRecipe={state.productionRecipe} updateProductionRecipe={updateRecipeState} />
+			<ProductionRecipePreparationMethodBlock productionRecipe={state.productionRecipe} updateProductionRecipe={updateRecipeState} />
 			<ProductionRecipeInputsBlock
 				productionRecipeInputs={state.productionRecipeInputs}
 				addProductionRecipeInput={addProductionRecipeInput}
