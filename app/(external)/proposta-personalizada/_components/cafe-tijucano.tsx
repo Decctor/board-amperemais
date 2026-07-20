@@ -1,6 +1,7 @@
 // Proposta comercial de uso único — Café Tijucano (Indústrias Brunelli).
 // Renderizada dentro do shell de impressão em ../page.tsx (A4). Não faz parte do produto.
-// A marca é RecompraCRM (azul + dourado). Fase 1: B2B + distribuição.
+// Usa a identidade visual do Café Tijucano (vermelho + dourado); "Powered by
+// RecompraCRM" no rodapé. Fase 1: B2B + distribuição.
 
 import { ARTHUR_WHATSAPP_NUMBER, LUCAS_WHATSAPP_NUMBER } from "@/config/internal-coms";
 import LogoVerticalWhite from "@/utils/svgs/logos/RECOMPRA - COMPLETE - VERTICAL - WHITE.svg";
@@ -33,7 +34,38 @@ import {
 import Image from "next/image";
 import { Fragment, type ReactNode } from "react";
 import { FaWhatsapp } from "react-icons/fa6";
-import { BRAND, heroGradient, Kicker, Sheet, SheetFooter } from "./_shared";
+import { Sheet, SheetFooter } from "./_shared";
+
+/* -------------------------------------------------------------------------- */
+/*  Paleta Café Tijucano (extraída da marca — vermelho + dourado sobre preto)  */
+/* -------------------------------------------------------------------------- */
+
+const BRAND = {
+	red: "#D42121",
+	redDeep: "#951414",
+	gold: "#F2B01E",
+	goldDark: "#D19412",
+	// Dourado escurecido — legível como texto sobre fundos claros (~4.6:1)
+	goldText: "#8A5E14",
+	ink: "#1A1412",
+	muted: "#737373",
+	border: "#E5E5E5",
+	surface: "#F6F3F0",
+} as const;
+
+const heroGradient = {
+	backgroundImage: `linear-gradient(135deg, ${BRAND.red} 0%, ${BRAND.redDeep} 100%)`,
+};
+
+/* Rótulo eyebrow — vermelho da marca por padrão. */
+function Kicker({ children, tone = "red" }: { children: ReactNode; tone?: "red" | "gold" | "white" }) {
+	const color = tone === "gold" ? BRAND.goldText : tone === "white" ? "rgba(255,255,255,0.8)" : BRAND.red;
+	return (
+		<span className="text-[0.68rem] font-extrabold uppercase tracking-[0.28em]" style={{ color }}>
+			{children}
+		</span>
+	);
+}
 
 /* -------------------------------------------------------------------------- */
 /*  Dados da proposta                                                          */
@@ -75,7 +107,7 @@ export function CafeTijucanoProposal() {
 function CoverSheet() {
 	return (
 		<Sheet className="text-white">
-			<div className="relative flex h-full flex-1 flex-col justify-between px-14 py-16" style={{ backgroundColor: BRAND.blue }}>
+			<div className="relative flex h-full flex-1 flex-col justify-between px-14 py-16" style={{ backgroundColor: BRAND.red }}>
 				{/* textura de pontos */}
 				<div
 					className="pointer-events-none absolute inset-0 opacity-[0.12]"
@@ -88,7 +120,7 @@ function CoverSheet() {
 				/>
 				<div
 					className="pointer-events-none absolute -bottom-56 -left-36 h-[500px] w-[500px] rounded-full opacity-35"
-					style={{ background: `radial-gradient(circle, ${BRAND.blueDeep} 0%, transparent 62%)` }}
+					style={{ background: `radial-gradient(circle, ${BRAND.redDeep} 0%, transparent 62%)` }}
 				/>
 
 				{/* topo */}
@@ -171,7 +203,7 @@ function OpportunitySheet() {
 				<h2 className="mt-4 max-w-3xl text-[2.9rem] font-black leading-[1.02] tracking-tight text-balance">
 					Café é recompra por natureza.
 					<br />
-					<span style={{ color: BRAND.blue }}>Hoje, ela depende de quem lembra.</span>
+					<span style={{ color: BRAND.red }}>Hoje, ela depende de quem lembra.</span>
 				</h2>
 				<p className="mt-5 max-w-2xl text-[1.05rem] leading-relaxed text-neutral-600">
 					O Café Tijucano vende por três canais — distribuição no varejo, B2B direto (padarias, hotéis, escritórios) e D2C no e-commerce. O problema não é
@@ -182,7 +214,7 @@ function OpportunitySheet() {
 				<div className="mt-9 grid grid-cols-3 gap-5">
 					{OPPORTUNITY_STATS.map((stat) => (
 						<div key={stat.label} className="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-6">
-							<div className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: "rgba(36,84,156,0.10)", color: BRAND.blue }}>
+							<div className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: "rgba(212,33,33,0.10)", color: BRAND.red }}>
 								<stat.icon className="h-5 w-5" />
 							</div>
 							<span className="text-4xl font-black tracking-tight" style={{ color: BRAND.ink }}>
@@ -202,12 +234,12 @@ function OpportunitySheet() {
 								A venda acontece, o vendedor segue para a próxima e a recompra depende de ele lembrar.
 							</p>
 						</div>
-						<div className="flex items-center justify-center px-2" style={{ backgroundColor: "rgba(36,84,156,0.06)" }}>
-							<div className="flex h-11 w-11 items-center justify-center rounded-full text-white" style={{ backgroundColor: BRAND.blue }}>
+						<div className="flex items-center justify-center px-2" style={{ backgroundColor: "rgba(212,33,33,0.06)" }}>
+							<div className="flex h-11 w-11 items-center justify-center rounded-full text-white" style={{ backgroundColor: BRAND.red }}>
 								<ArrowRight className="h-5 w-5" />
 							</div>
 						</div>
-						<div className="flex flex-col justify-center gap-2 p-7" style={{ backgroundColor: "rgba(255,185,0,0.10)" }}>
+						<div className="flex flex-col justify-center gap-2 p-7" style={{ backgroundColor: "rgba(242,176,30,0.10)" }}>
 							<span className="text-[0.7rem] font-extrabold uppercase tracking-[0.2em]" style={{ color: BRAND.goldText }}>
 								Com o RecompraCRM
 							</span>
@@ -224,7 +256,7 @@ function OpportunitySheet() {
 					<div className="grid grid-cols-2 gap-x-8 gap-y-2.5">
 						{PAINS.map((pain) => (
 							<div key={pain} className="flex items-start gap-2.5">
-								<span className="mt-1.5 h-2 w-2 flex-shrink-0 rotate-45 rounded-[2px]" style={{ backgroundColor: BRAND.blue }} />
+								<span className="mt-1.5 h-2 w-2 flex-shrink-0 rotate-45 rounded-[2px]" style={{ backgroundColor: BRAND.red }} />
 								<span className="text-[0.9rem] leading-snug text-neutral-600">{pain}</span>
 							</div>
 						))}
@@ -245,7 +277,7 @@ function PillarHeader({ n, icon: Icon, title, lead }: { n: string; icon: LucideI
 		<div className="flex items-start gap-5">
 			<div
 				className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl text-white shadow-lg"
-				style={{ backgroundColor: BRAND.blue, boxShadow: "0 12px 28px -10px rgba(36,84,156,0.5)" }}
+				style={{ backgroundColor: BRAND.red, boxShadow: "0 12px 28px -10px rgba(212,33,33,0.5)" }}
 			>
 				<Icon className="h-8 w-8" />
 			</div>
@@ -265,7 +297,7 @@ function BenefitRow({ children }: { children: ReactNode }) {
 		<li className="flex items-start gap-2.5">
 			<span
 				className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full"
-				style={{ backgroundColor: "rgba(36,84,156,0.10)", color: BRAND.blue }}
+				style={{ backgroundColor: "rgba(212,33,33,0.10)", color: BRAND.red }}
 			>
 				<Check className="h-3 w-3" strokeWidth={3.5} />
 			</span>
@@ -276,7 +308,7 @@ function BenefitRow({ children }: { children: ReactNode }) {
 
 function AssetCallout({ title, children }: { title: string; children: ReactNode }) {
 	return (
-		<div className="rounded-2xl border border-dashed p-5" style={{ borderColor: "rgba(255,185,0,0.55)", backgroundColor: "rgba(255,185,0,0.07)" }}>
+		<div className="rounded-2xl border border-dashed p-5" style={{ borderColor: "rgba(242,176,30,0.55)", backgroundColor: "rgba(242,176,30,0.07)" }}>
 			<div className="mb-1.5 flex items-center gap-2">
 				<Gift className="h-4 w-4" style={{ color: BRAND.goldText }} />
 				<span className="text-[0.7rem] font-black uppercase tracking-wider" style={{ color: BRAND.goldText }}>
@@ -290,8 +322,8 @@ function AssetCallout({ title, children }: { title: string; children: ReactNode 
 
 function TakeawayStrip({ children }: { children: ReactNode }) {
 	return (
-		<div className="mt-8 flex items-center gap-3.5 rounded-2xl px-6 py-4" style={{ backgroundColor: "rgba(36,84,156,0.06)" }}>
-			<span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-white" style={{ backgroundColor: BRAND.blue }}>
+		<div className="mt-8 flex items-center gap-3.5 rounded-2xl px-6 py-4" style={{ backgroundColor: "rgba(212,33,33,0.06)" }}>
+			<span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-white" style={{ backgroundColor: BRAND.red }}>
 				<ArrowRight className="h-5 w-5" />
 			</span>
 			<p className="text-[0.98rem] leading-snug text-neutral-700">
@@ -320,7 +352,7 @@ function PortfolioSheet() {
 				<div className="mt-8 rounded-3xl border border-neutral-200 bg-neutral-50/60 p-6">
 					<div className="mb-4 flex items-center justify-between">
 						<div className="flex items-center gap-2">
-							<span className="flex h-7 w-7 items-center justify-center rounded-lg text-white" style={{ backgroundColor: BRAND.blue }}>
+							<span className="flex h-7 w-7 items-center justify-center rounded-lg text-white" style={{ backgroundColor: BRAND.red }}>
 								<CalendarCheck className="h-4 w-4" />
 							</span>
 							<span className="text-sm font-black tracking-tight text-neutral-900">Meu dia</span>
@@ -339,7 +371,7 @@ function PortfolioSheet() {
 					</div>
 
 					<div className="mt-4 flex items-center gap-2">
-						<ListChecks className="h-4 w-4" style={{ color: BRAND.blue }} />
+						<ListChecks className="h-4 w-4" style={{ color: BRAND.red }} />
 						<span className="text-[0.72rem] font-black uppercase tracking-wide text-neutral-700">Fila de abordagens</span>
 						<span className="ml-1 rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-bold text-neutral-500 ring-1 ring-neutral-200">9 prioritários</span>
 					</div>
@@ -408,7 +440,7 @@ function StatMock({
 	return (
 		<div
 			className="flex flex-col gap-2 rounded-xl border bg-white p-3.5"
-			style={highlight ? { borderColor: "rgba(255,185,0,0.5)", backgroundColor: "rgba(255,185,0,0.06)" } : { borderColor: BRAND.border }}
+			style={highlight ? { borderColor: "rgba(242,176,30,0.5)", backgroundColor: "rgba(242,176,30,0.06)" } : { borderColor: BRAND.border }}
 		>
 			<div className="flex items-center gap-1.5 text-neutral-500">
 				<Icon className="h-3.5 w-3.5" />
@@ -417,7 +449,7 @@ function StatMock({
 			<span className="text-xl font-black tabular-nums leading-none text-neutral-900">{value}</span>
 			{typeof progress === "number" ? (
 				<div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
-					<div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: BRAND.blue }} />
+					<div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: BRAND.red }} />
 				</div>
 			) : null}
 			<span className="text-[0.62rem] leading-tight text-neutral-500">{sub}</span>
@@ -451,7 +483,7 @@ function QueueCardMock({
 			<div className="flex items-center gap-2.5">
 				<span
 					className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold"
-					style={{ backgroundColor: "rgba(36,84,156,0.10)", color: BRAND.blue }}
+					style={{ backgroundColor: "rgba(212,33,33,0.10)", color: BRAND.red }}
 				>
 					{initials}
 				</span>
@@ -477,8 +509,8 @@ function QueueCardMock({
 				</div>
 			</div>
 
-			<div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5" style={{ backgroundColor: "rgba(36,84,156,0.05)" }}>
-				<Sparkles className="h-3 w-3 flex-shrink-0" style={{ color: BRAND.blue }} />
+			<div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5" style={{ backgroundColor: "rgba(212,33,33,0.05)" }}>
+				<Sparkles className="h-3 w-3 flex-shrink-0" style={{ color: BRAND.red }} />
 				<span className="truncate text-[0.68rem] font-semibold text-neutral-600">{offer}</span>
 			</div>
 
@@ -587,7 +619,7 @@ function CreditCardMock() {
 		>
 			<div className="overflow-hidden rounded-[18px] bg-white">
 				{/* barra da marca */}
-				<div className="flex items-center justify-between px-5 py-3.5 text-white" style={{ backgroundColor: BRAND.blue }}>
+				<div className="flex items-center justify-between px-5 py-3.5 text-white" style={{ backgroundColor: BRAND.red }}>
 					<div className="flex items-center gap-2">
 						<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-[0.7rem] font-black">PP</div>
 						<div className="flex flex-col leading-none">
@@ -605,7 +637,7 @@ function CreditCardMock() {
 
 				<div className="flex flex-col gap-4 px-5 py-5">
 					{/* crédito liberado */}
-					<div className="rounded-2xl px-5 py-4 text-center" style={{ backgroundColor: "rgba(255,185,0,0.12)" }}>
+					<div className="rounded-2xl px-5 py-4 text-center" style={{ backgroundColor: "rgba(242,176,30,0.12)" }}>
 						<span className="text-[0.62rem] font-black uppercase tracking-[0.2em]" style={{ color: BRAND.goldText }}>
 							Crédito de Recompra liberado
 						</span>
@@ -617,7 +649,7 @@ function CreditCardMock() {
 
 					{/* upsell */}
 					<div className="flex items-start gap-2 rounded-xl border border-dashed border-neutral-300 px-4 py-3">
-						<TrendingUp className="mt-0.5 h-4 w-4 flex-shrink-0" style={{ color: BRAND.blue }} />
+						<TrendingUp className="mt-0.5 h-4 w-4 flex-shrink-0" style={{ color: BRAND.red }} />
 						<p className="text-[0.72rem] leading-snug text-neutral-600">
 							<strong className="font-bold text-neutral-800">Sugestão de upsell:</strong> incluir Cápsulas Tijucano — cliente ainda não experimentou a linha.
 						</p>
@@ -626,7 +658,7 @@ function CreditCardMock() {
 					{/* botão resgate */}
 					<div
 						className="flex items-center justify-center gap-1.5 rounded-xl py-3 text-[0.78rem] font-extrabold uppercase text-white"
-						style={{ backgroundColor: BRAND.blue }}
+						style={{ backgroundColor: BRAND.red }}
 					>
 						<Gift className="h-4 w-4" /> Quero resgatar meu crédito
 					</div>
@@ -694,7 +726,7 @@ function HubPanelMock() {
 	return (
 		<div className="rounded-2xl border border-neutral-200 bg-neutral-50/60 p-4">
 			<div className="mb-3 flex items-center gap-2">
-				<span className="flex h-6 w-6 items-center justify-center rounded-md text-white" style={{ backgroundColor: BRAND.blue }}>
+				<span className="flex h-6 w-6 items-center justify-center rounded-md text-white" style={{ backgroundColor: BRAND.red }}>
 					<MessagesSquare className="h-3.5 w-3.5" />
 				</span>
 				<span className="text-[0.72rem] font-black uppercase tracking-wide text-neutral-700">WhatsApp Hub · visão do gestor</span>
@@ -706,11 +738,11 @@ function HubPanelMock() {
 				<span className="text-center font-bold uppercase tracking-wide text-neutral-400">Ganhas</span>
 				{HUB_ROWS.map((row) => (
 					<Fragment key={row.seller}>
-						<div className="flex items-center gap-1.5 rounded-md px-1.5 py-1" style={row.ai ? { backgroundColor: "rgba(255,185,0,0.14)" } : undefined}>
+						<div className="flex items-center gap-1.5 rounded-md px-1.5 py-1" style={row.ai ? { backgroundColor: "rgba(242,176,30,0.14)" } : undefined}>
 							{row.ai ? (
 								<Bot className="h-3.5 w-3.5 flex-shrink-0" style={{ color: BRAND.goldText }} />
 							) : (
-								<span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ backgroundColor: BRAND.blue }} />
+								<span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ backgroundColor: BRAND.red }} />
 							)}
 							<span className="truncate text-[0.68rem] font-extrabold text-neutral-800">{row.seller}</span>
 						</div>
@@ -753,7 +785,7 @@ function WhatsappTijucaninhoMock() {
 						<p className="mt-2 text-[0.82rem] leading-snug text-neutral-800">
 							Separamos <strong>R$ 90 de crédito</strong> para a próxima compra — válido por 20 dias! 🎁
 						</p>
-						<div className="mt-2 rounded-lg py-1.5 text-center text-[0.72rem] font-bold text-white" style={{ backgroundColor: BRAND.blue }}>
+						<div className="mt-2 rounded-lg py-1.5 text-center text-[0.72rem] font-bold text-white" style={{ backgroundColor: BRAND.red }}>
 							Quero resgatar meu bônus
 						</div>
 						<span className="mt-1.5 block text-right text-[0.58rem] text-neutral-500">09:13 ✓✓</span>
@@ -782,7 +814,7 @@ function WhatsappTijucaninhoMock() {
 
 					<div
 						className="mt-1 self-center rounded-full px-3 py-1 text-[0.6rem] font-black uppercase tracking-wide text-white shadow"
-						style={{ backgroundColor: BRAND.blue }}
+						style={{ backgroundColor: BRAND.red }}
 					>
 						Convertido · pedido de R$ 640,00 · pela IA
 					</div>
@@ -830,7 +862,7 @@ function RoadmapSheet() {
 			<div className="flex flex-1 flex-col px-14 pt-16">
 				<Kicker>O caminho que se abre</Kicker>
 				<h2 className="mt-4 max-w-2xl text-[2.9rem] font-black leading-[1.02] tracking-tight text-balance">
-					Nada se refaz. <span style={{ color: BRAND.blue }}>Tudo se soma.</span>
+					Nada se refaz. <span style={{ color: BRAND.red }}>Tudo se soma.</span>
 				</h2>
 				<p className="mt-5 max-w-2xl text-[1.05rem] leading-relaxed text-neutral-600">
 					O CRM de agora é o <strong className="font-bold text-neutral-900">alicerce técnico e de dados</strong> do clube de fidelidade de depois. Cada
@@ -844,7 +876,7 @@ function RoadmapSheet() {
 							className="relative flex flex-col gap-2.5 rounded-2xl bg-white p-5"
 							style={{
 								border: step.now ? `2px solid ${BRAND.gold}` : "1px solid #e5e5e5",
-								boxShadow: step.now ? "0 12px 30px -12px rgba(36,84,156,0.4)" : undefined,
+								boxShadow: step.now ? "0 12px 30px -12px rgba(212,33,33,0.4)" : undefined,
 							}}
 						>
 							{step.now ? (
@@ -857,7 +889,7 @@ function RoadmapSheet() {
 							) : null}
 							<span
 								className="flex h-8 w-8 items-center justify-center rounded-full text-[0.8rem] font-black text-white"
-								style={{ backgroundColor: BRAND.blue }}
+								style={{ backgroundColor: BRAND.red }}
 							>
 								{i + 1}
 							</span>
@@ -869,8 +901,8 @@ function RoadmapSheet() {
 					))}
 				</div>
 
-				<div className="mt-9 flex items-start gap-4 rounded-2xl px-6 py-5" style={{ backgroundColor: "rgba(36,84,156,0.06)" }}>
-					<span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-white" style={{ backgroundColor: BRAND.blue }}>
+				<div className="mt-9 flex items-start gap-4 rounded-2xl px-6 py-5" style={{ backgroundColor: "rgba(212,33,33,0.06)" }}>
+					<span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-white" style={{ backgroundColor: BRAND.red }}>
 						<QrCode className="h-5 w-5" />
 					</span>
 					<p className="text-[0.92rem] leading-relaxed text-neutral-700">
@@ -910,14 +942,14 @@ function PricingSheet() {
 				<div>
 					<Kicker>Investimento</Kicker>
 					<h2 className="mt-3 max-w-2xl text-[2.6rem] font-black leading-[1.02] tracking-tight text-balance">
-						Uma fundação agora. <span style={{ color: BRAND.blue }}>Toda a recompra conectada.</span>
+						Uma fundação agora. <span style={{ color: BRAND.red }}>Toda a recompra conectada.</span>
 					</h2>
 				</div>
 
 				{/* Implementação */}
 				<div
 					className="relative flex items-center justify-between gap-6 overflow-hidden rounded-3xl px-8 py-6 text-white"
-					style={{ backgroundColor: BRAND.blue }}
+					style={{ backgroundColor: BRAND.red }}
 				>
 					<div
 						className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-35"
@@ -968,9 +1000,9 @@ function PricingSheet() {
 				{/* Nota */}
 				<div
 					className="flex items-start gap-3 rounded-xl px-5 py-3"
-					style={{ backgroundColor: "rgba(36,84,156,0.05)", border: "1px dashed rgba(36,84,156,0.3)" }}
+					style={{ backgroundColor: "rgba(212,33,33,0.05)", border: "1px dashed rgba(212,33,33,0.3)" }}
 				>
-					<Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0" style={{ color: BRAND.blue }} />
+					<Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0" style={{ color: BRAND.red }} />
 					<p className="text-[0.74rem] leading-snug text-neutral-700">
 						<strong>Sem fidelidade — cancele quando quiser.</strong> O Plano Growth existe para quem quer a RecompraCRM como <strong>time</strong>, não só
 						como software: a gente opera as campanhas junto, não entrega a ferramenta e some.
@@ -1036,7 +1068,7 @@ function PlanCard({
 			className="relative flex flex-col gap-3.5 rounded-2xl bg-white p-6"
 			style={{
 				border: highlight ? `2px solid ${BRAND.gold}` : "1px solid #e5e5e5",
-				boxShadow: highlight ? "0 12px 30px -12px rgba(36,84,156,0.45)" : undefined,
+				boxShadow: highlight ? "0 12px 30px -12px rgba(212,33,33,0.45)" : undefined,
 			}}
 		>
 			{highlight ? (
@@ -1056,7 +1088,7 @@ function PlanCard({
 
 			<div className="flex items-end gap-1">
 				<span className="text-lg font-bold text-neutral-400">R$</span>
-				<span className="text-4xl font-black leading-none tracking-tight" style={{ color: BRAND.blue }}>
+				<span className="text-4xl font-black leading-none tracking-tight" style={{ color: BRAND.red }}>
 					{price}
 				</span>
 				<span className="mb-1 text-[0.75rem] font-semibold text-neutral-400">/mês</span>
@@ -1067,7 +1099,7 @@ function PlanCard({
 			<ul className="flex flex-col gap-2">
 				{features.map((feature) => (
 					<li key={feature} className="flex items-start gap-2">
-						<Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" style={{ color: highlight ? BRAND.goldText : BRAND.blue }} strokeWidth={3} />
+						<Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" style={{ color: highlight ? BRAND.goldText : BRAND.red }} strokeWidth={3} />
 						<span className="text-[0.74rem] leading-snug text-neutral-700">{feature}</span>
 					</li>
 				))}
