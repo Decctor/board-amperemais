@@ -12,6 +12,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { IFOOD_ORDER_ACTION_BUTTON_LABELS, getAvailableIfoodOrderActions, getIfoodOrderStatusConfig } from "./ifood-order-status-config";
 import { cn } from "@/lib/utils";
+import SelectInput from "@/components/Inputs/SelectInput";
 
 type ControlIfoodOrderProps = {
 	orderId: string;
@@ -66,7 +67,7 @@ export function ControlIfoodOrder({ orderId, canManage, fallbackStatus, closeMod
 		if (!cancellationCode) return toast.error("Selecione o motivo de cancelamento do pedido.");
 		mutate({ orderId, action: "requestCancellation", cancellationCode });
 	}
-
+	console.log(detailsQuery.data);
 	return (
 		<ResponsiveMenuV2
 			menuTitle={pedido?.displayId ? `PEDIDO #${pedido.displayId}` : "PEDIDO IFOOD"}
@@ -168,19 +169,15 @@ export function ControlIfoodOrder({ orderId, canManage, fallbackStatus, closeMod
 
 					{canCancel ? (
 						<div className="flex flex-col gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-3">
-							<h3 className="text-[0.65rem] font-medium tracking-tight uppercase text-destructive">Cancelar pedido</h3>
-							<Select value={cancellationCode ?? undefined} onValueChange={(value) => setCancellationCode(value)}>
-								<SelectTrigger className="w-full">
-									<SelectValue placeholder="Selecione o motivo do cancelamento..." />
-								</SelectTrigger>
-								<SelectContent>
-									{motivosCancelamento.map((motivo) => (
-										<SelectItem key={motivo.codigo} value={motivo.codigo}>
-											{motivo.descricao}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+							<SelectInput
+								options={motivosCancelamento.map((motivo) => ({ label: motivo.descricao, value: motivo.codigo, id: motivo.codigo }))}
+								value={cancellationCode ?? undefined}
+								handleChange={(value) => setCancellationCode(value)}
+								label="Motivo do cancelamento"
+								resetOptionLabel="Selecione o motivo do cancelamento..."
+								onReset={() => setCancellationCode(null)}
+							/>
+
 							<button
 								type="button"
 								disabled={isPending || !cancellationCode}

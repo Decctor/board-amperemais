@@ -21,7 +21,10 @@ const NullableString = z
 
 const IfoodCancellationReasonResponseSchema = z
 	.object({
+		/** Order API v1.0 (doc) */
 		code: NullableString,
+		/** Formato retornado na prática pelo GET /cancellationReasons */
+		cancelCodeId: NullableString,
 		description: NullableString,
 	})
 	.passthrough();
@@ -38,12 +41,11 @@ export type TIfoodCancellationReasonDTO = {
 
 export function mapIfoodCancellationReasons(parsed: z.infer<typeof IfoodCancellationReasonsResponseSchema>): TIfoodCancellationReasonDTO[] {
 	const reasons = Array.isArray(parsed) ? parsed : parsed.reasons;
-	return reasons
-		.filter((reason) => !!reason.code)
-		.map((reason) => ({
-			codigo: reason.code as string,
-			descricao: reason.description ?? (reason.code as string),
-		}));
+	return reasons.flatMap((reason) => {
+		const codigo = reason.code ?? reason.cancelCodeId;
+		if (!codigo) return [];
+		return [{ codigo, descricao: reason.description ?? codigo }];
+	});
 }
 
 // ---------------------------------------------------------------------------
