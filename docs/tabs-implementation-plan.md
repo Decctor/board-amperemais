@@ -1,9 +1,13 @@
 # Tabs Implementation Plan
 
-Plano de implementacao detalhado do modelo definido em `interaction-points-and-tabs-design.md` (pontos de interacao + contas de atendimento), incorporando duas decisoes tomadas apos o design:
+Plano de implementacao detalhado do modelo definido em `interaction-points-and-tabs-design.md` (pontos de atendimento + contas de atendimento), incorporando as decisoes do refinamento focado em food-service:
 
 1. **Baixa fisica de estoque no evento fisico** — a entrega de cada pedido (`tabOrder`) baixa os itens daquele pedido, nao o fechamento da conta. Isso alinha a comanda com o comportamento que a plataforma ja tem para vendas confirmadas: `processSaleAttendanceStatusChange` ja baixa estoque na transicao que exige saida fisica (`attendanceStatusRequiresPhysicalOut`), e a confirmacao so baixa quando a venda nasce `ENTREGUE` (balcao).
 2. **Itens com producao (pratos)** baixam estoque **por composicao** (explosao da ficha tecnica), sem criar ordem de producao por prato. Ver secao "Producao".
+3. **Ponto de atendimento e opcional** — `servicePoints` nao e pre-requisito para comanda ou balcao. No preset "Somente mesas", a tab existe internamente, mas sua identificacao e automatica e fica oculta na UI.
+4. **`shop` nao e o checkout do salao** — reutilizar catalogo, product builder e validacao de precos; manter adapters de submissao separados para shop, operador e cliente via QR.
+
+Antes do schema, criar `serviceSettings` 1:1 por organizacao, com JSON tipado para as politicas `pontos.habilitados`, `contas.habilitadas`, `contas.identificacao`, `contas.pontoObrigatorio`, `contas.maxAbertasPorPonto`, `aberturaPublica` e `pedidosCliente`. A UI expoe presets; a implementacao persiste as politicas.
 
 ## Visao geral do fluxo
 
@@ -43,11 +47,11 @@ Espelhos Zod em `schemas/enums.ts` (`TabStatusEnum`/`TTabStatusEnum` etc.), com 
 
 Pedidos (`tabOrders`) **reusam** `saleAttendanceStatusEnum` e os helpers de `lib/sales/sale-processing/attendance.ts` (`isValidAttendanceTransition`, `attendanceStatusRequiresPhysicalOut`) — mesmas transicoes ja validadas.
 
-### 1.2 `services/drizzle/schema/interaction-points.ts`
+### 1.2 `services/drizzle/schema/service-points.ts`
 
 ```ts
-export const interactionPoints = newTable(
-  "interaction_points",
+export const servicePoints = newTable(
+  "service_points",
   {
     id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
     organizacaoId: varchar("organizacao_id", { length: 255 })
@@ -55,21 +59,21 @@ export const interactionPoints = newTable(
       .notNull(),
     rotulo: text("rotulo").notNull(),                    // "Mesa 12"
     grupo: text("grupo"),                                // "Salao", "Varanda"
-    categoria: text("categoria"),                        // "MESA", "QUARTO"... texto livre normalizado
+    tipo: servicePointTypeEnum("tipo").notNull(),        // MESA, BALCAO, QUIOSQUE, OUTRO
     capacidade: doublePrecision("capacidade"),
-    tokenPublico: varchar("token_publico", { length: 255 }).notNull(),
+    tokenPublicoHash: varchar("token_publico_hash", { length: 255 }).notNull(),
     ativo: boolean("ativo").default(true).notNull(),
     metadados: jsonb("metadados"),
     dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
   },
   (table) => ({
-    organizacaoAtivoIdx: index("idx_interaction_points_org_ativo").on(table.organizacaoId, table.ativo),
-    tokenPublicoIdx: uniqueIndex("idx_interaction_points_token_publico").on(table.tokenPublico),
+    organizacaoAtivoIdx: index("idx_service_points_org_ativo").on(table.organizacaoId, table.ativo),
+    tokenPublicoHashIdx: uniqueIndex("idx_service_points_token_publico_hash").on(table.tokenPublicoHash),
   }),
 );
 ```
 
-Relations: `organizacao`, `tabs: many(tabs)`. Exportar `TInteractionPointEntity`/`TNewInteractionPointEntity` e barrel-export em `schema/index.ts`.
+Relations: `organizacao`, `tabs: many(tabs)`. Exportar `TServicePointEntity`/`TNewServicePointEntity` e barrel-export em `schema/index.ts`.
 
 ### 1.3 `services/drizzle/schema/tabs.ts`
 
@@ -81,11 +85,11 @@ export const tabs = newTable(
     organizacaoId: varchar("organizacao_id", { length: 255 })
       .references(() => organizations.id, { onDelete: "cascade" })
       .notNull(),
-    pontoInteracaoId: varchar("ponto_interacao_id", { length: 255 }).references(() => interactionPoints.id, { onDelete: "set null" }),
-    codigo: text("codigo").notNull(),                    // numero da comanda fisica/pulseira
+    servicePointId: varchar("service_point_id", { length: 255 }).references(() => servicePoints.id, { onDelete: "set null" }),
+    codigo: text("codigo"),                              // nullable em mesa; obrigatorio quando houver comanda
     clienteId: varchar("cliente_id", { length: 255 }).references(() => clients.id, { onDelete: "set null" }),
     status: tabStatusEnum("status").notNull().default("ABERTA"),
-    tokenPublico: varchar("token_publico", { length: 255 }).notNull(),
+    tokenPublicoHash: varchar("token_publico_hash", { length: 255 }).notNull(),
     responsavelVendedorId: varchar("responsavel_vendedor_id", { length: 255 }).references(() => sellers.id, { onDelete: "set null" }),
     abertaPorUsuarioId: varchar("aberta_por_usuario_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
     fechadaPorUsuarioId: varchar("fechada_por_usuario_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
@@ -98,12 +102,12 @@ export const tabs = newTable(
   },
   (table) => ({
     orgStatusIdx: index("idx_tabs_org_status").on(table.organizacaoId, table.status),
-    pontoIdx: index("idx_tabs_ponto").on(table.pontoInteracaoId),
-    tokenPublicoIdx: uniqueIndex("idx_tabs_token_publico").on(table.tokenPublico),
+    pontoIdx: index("idx_tabs_service_point").on(table.servicePointId),
+    tokenPublicoHashIdx: uniqueIndex("idx_tabs_token_publico_hash").on(table.tokenPublicoHash),
     // Impede duas comandas fisicas com o mesmo codigo abertas ao mesmo tempo; libera reuso apos fechar.
     codigoAbertaIdx: uniqueIndex("idx_tabs_org_codigo_aberta")
       .on(table.organizacaoId, table.codigo)
-      .where(sql`status = 'ABERTA'`),
+      .where(sql`status = 'ABERTA' AND codigo IS NOT NULL`),
   }),
 );
 
@@ -127,11 +131,12 @@ export const tabOrders = newTable(
   (table) => ({
     tabIdx: index("idx_tab_orders_tab").on(table.tabId),
     orgStatusIdx: index("idx_tab_orders_org_status").on(table.organizacaoId, table.status),
+    tabNumeroIdx: uniqueIndex("idx_tab_orders_tab_numero").on(table.tabId, table.numero),
   }),
 );
 ```
 
-Relations: `tabs` -> `pontoInteracao`, `cliente`, `responsavelVendedor`, `abertaPorUsuario`/`fechadaPorUsuario` (com `relationName`, padrao `salesSessions`), `vendas: many(sales)`, `pedidos: many(tabOrders)`. `tabOrders` -> `tab`, `itens: many(saleItems)`.
+Relations: `tabs` -> `servicePoint`, `cliente`, `responsavelVendedor`, `abertaPorUsuario`/`fechadaPorUsuario` (com `relationName`, padrao `salesSessions`), `vendas: many(sales)`, `pedidos: many(tabOrders)`. `tabOrders` -> `tab`, `itens: many(saleItems)`.
 
 ### 1.4 Alteracoes em `sales.ts`
 
@@ -149,7 +154,7 @@ tabOrderId: varchar("tab_order_id", { length: 255 }).references(() => tabOrders.
 // index: idx_sale_items_tab_order (tabOrderId)
 ```
 
-Ao vincular uma venda a uma tab, denormalizar `tab.codigo` em `sales.comandaNumero` (snapshot legado, relatorios existentes continuam funcionando).
+Ao vincular uma venda a uma tab, denormalizar `tab.codigo ?? servicePoint.rotulo` em `sales.comandaNumero` (snapshot legado, relatorios existentes continuam funcionando).
 
 ### 1.5 Alteracoes em `products.ts`
 
@@ -161,16 +166,32 @@ fichaTecnicaReceitaId: varchar("ficha_tecnica_receita_id", { length: 255 }), // 
 
 Atencao a ciclo de import: `productions.ts` ja importa `products.ts`. Declarar a coluna sem `.references()` no Drizzle e criar a FK na migracao SQL (ou mover a relation para `productionsRelations`), evitando import circular.
 
-### 1.6 Alteracoes em `poi-transaction-requests.ts`
+### 1.6 `tab-order-requests.ts` (fase de QR)
 
 ```ts
-pontoInteracaoId: varchar("ponto_interacao_id", { length: 255 }).references(() => interactionPoints.id, { onDelete: "set null" }),
-tabId: varchar("tab_id", { length: 255 }).references(() => tabs.id, { onDelete: "set null" }),
+tabOrderRequests {
+  id
+  organizacaoId
+  servicePointId           // nullable
+  tabId                    // nullable ate a aprovacao
+  tabOrderId               // preenchido na conclusao
+  idempotencyKey
+  payloadHash
+  payloadSolicitacao
+  status                   // PENDENTE | APROVADA | REJEITADA | PROCESSANDO | CONCLUIDA | ERRO
+  operadorAprovadorId
+  motivoRejeicao
+  erroProcessamento
+  dataInsercao
+  dataAtualizacao
+}
 ```
+
+Nao adicionar tipos de pedido ao `poiTransactionRequestTypeEnum`. O workflow POI existente permanece focado em fidelidade/transacao.
 
 ### 1.7 Migracao
 
-Uma migracao Drizzle com: os dois enums novos + valor novo no enum de POI request; tabelas `interaction_points`, `tabs`, `tab_orders`; colunas novas em `sales`, `sale_items`, `products`, `poi_transaction_requests`; indexes (incluindo os parciais via SQL). Sem backfill — contas passam a existir apenas para operacoes novas.
+Migracao da fase 1: enums novos; tabelas `service_settings`, `service_points`, `tabs`, `tab_orders`; colunas novas em `sales`, `sale_items` e `products`; indices (incluindo os parciais via SQL). Sem backfill — contas passam a existir apenas para operacoes novas. `tab_order_requests` entra na migracao da fase de QR.
 
 ## 2. Services (`lib/tabs/`)
 
@@ -178,8 +199,10 @@ Todos os services seguem o padrao existente: funcao pura recebendo `input` tipad
 
 ### 2.1 `open-tab.ts`
 
-- valida codigo nao vazio; o partial unique de `codigo` aberto garante unicidade (traduzir violacao para erro amigavel);
-- gera `tokenPublico` (mesmo gerador usado em `poiTransactionRequests`);
+- resolve `serviceSettings` e valida as politicas: ponto obrigatorio, codigo manual e limite de tabs abertas por ponto;
+- no preset "Somente mesas", abre ou retorna a tab implicita do ponto sem exigir codigo do operador;
+- o partial unique de `codigo` aberto garante unicidade somente quando o codigo estiver presente;
+- gera o token publico, persiste apenas seu hash e retorna o valor bruto somente para montar/regenerar o QR;
 - nao cria venda — a venda rascunho e lazy no primeiro pedido.
 
 ### 2.2 `launch-tab-order.ts`
@@ -188,8 +211,8 @@ Em transacao:
 
 1. carrega a tab com lock logico (`status = "ABERTA"`, senao 400 "Conta nao esta aberta.");
 2. resolve a venda rascunho da tab (`sales WHERE tabId = X AND statusVenda = 'ORCAMENTO'`); se nao existe, cria com `statusVenda = "ORCAMENTO"`, `entregaModalidade = "COMANDA"`, `comandaNumero = tab.codigo`, `clienteId = tab.clienteId`, vendedor = responsavel da tab;
-3. cria o `tabOrder` com `numero = max(numero) + 1` da conta e `status = "EM_PREPARO"` (ou `NAO_INICIADO`, decisao de UI);
-4. insere os `saleItems` (com `adicionais`) apontando `vendaId` (rascunho) e `tabOrderId`, reusando a logica de precificacao/validacao do fluxo de venda atual;
+3. aloca o numero do `tabOrder` sob lock da tab (ou contador atomico) e protege com unique `(tabId, numero)`; nao usar `max(numero) + 1` sem lock;
+4. insere os `saleItems` (com `adicionais`) apontando `vendaId` (rascunho) e `tabOrderId`, aprofundando `lib/sales/sale-pricing-validation.ts` como Interface autoritativa compartilhada com POS e shop;
 5. recalcula `valorTotal`/`custoTotal`/`descontosTotal` da venda rascunho.
 
 ### 2.3 `process-tab-order-status-change.ts`
@@ -226,7 +249,7 @@ Em transacao (+ pos-commit):
 5. atualiza a tab: `status = "FECHADA"`, `valorTotal` congelado, `fechadaPorUsuarioId`, `dataFechamento`;
 6. pos-commit: `processSaleConfirmationPostCommit` (emissao fiscal automatica conforme configuracao). Cashback segue o fluxo existente de venda nascida `ENTREGUE`.
 
-Concorrencia: o update da tab usa `WHERE status = 'ABERTA'` como guarda otimista — dois fechamentos simultaneos, um falha.
+Concorrencia: adquirir lock da tab/venda ou executar uma transicao compare-and-set no inicio do fechamento. A guarda nao pode ficar somente no update final, pois dois callers poderiam criar contabilidade e pagamentos antes de um deles falhar.
 
 ### 2.6 `cancel-tab-order.ts` / `cancel-tab.ts`
 
@@ -273,8 +296,8 @@ Todas seguindo o padrao quatro partes (schema de input, service, handler, `appAp
 
 | Rota | Metodos | Observacoes |
 | --- | --- | --- |
-| `app/api/interaction-points/route.ts` | GET (multi-mode `byId`/`default`), POST, PUT | CRUD de pontos; DELETE logico via `ativo` |
-| `app/api/tabs/route.ts` | GET (multi-mode: `byId` com pedidos+itens+totais derivados; `default` = board de contas abertas com filtros `status`, `pontoInteracaoId`), POST (abrir conta) | `TGetTabsInput`, `TCreateTabInput`... |
+| `app/api/service-points/route.ts` | GET (multi-mode `byId`/`default`), POST, PUT | CRUD de pontos; DELETE logico via `ativo` |
+| `app/api/tabs/route.ts` | GET (multi-mode: `byId` com pedidos+itens+totais derivados; `default` = board de contas abertas com filtros `status`, `servicePointId`), POST (abrir/resolver conta) | `TGetTabsInput`, `TCreateTabInput`... |
 | `app/api/tabs/orders/route.ts` | POST (lancar pedido: itens + observacoes) | payload aninhado, padrao create/update existente |
 | `app/api/tabs/orders/status/route.ts` | POST (transicao de status do pedido) | espelha `app/api/pos/sales/attendance-status` |
 | `app/api/tabs/close/route.ts` | POST (fechar conta: `salePayments`, `sessaoVendaId` resolvido como no POS) | |
@@ -294,25 +317,29 @@ Para o operador de cozinha os tickets sao homogeneos (itens, status, tempo decor
 
 Evolucao futura, se surgir demanda de KDS dedicado (roteamento por praca/estacao, tempos por item): generalizar `tab_orders` em tickets de cozinha com `vendaId` e `tabId` nullable, criados na confirmacao para modalidades com preparo, e derivar `statusAtendimento` dos tickets. Como `tabOrders` ja reusa o enum e as transicoes das vendas, essa generalizacao e aditiva e nao exige migracao dolorosa. Fora do escopo atual.
 
-Paginas externas (QR), seguindo o padrao do playbook de POI (`tokenPublico` opaco, sem autenticacao, acao sensivel via `poiTransactionRequest`):
+Paginas externas de QR:
 
-- `app/(external)/poi/[token]/` — resolve ponto: mostra conta(s) aberta(s) ou CTA "abrir conta" (cria request `ABERTURA_TAB` pendente de aprovacao);
-- `app/(external)/tab/[token]/` — resolve tab: extrato da conta em andamento (pedidos, itens, total parcial).
+- `app/(external)/service-point/[token]/` resolve o contexto do ponto e abre o cardapio, mas nao expoe automaticamente itens/totais de tabs abertas;
+- `app/(external)/tab/[token]/` resolve uma tab especifica e pode mostrar seu extrato;
+- `tabOrderRequests` recebe carrinho, idempotencia e contexto. Aprovacao chama o mesmo `launchTabOrder`; no modo com varias comandas por mesa, o ponto sozinho nunca escolhe uma tab silenciosamente;
+- armazenar hash dos tokens, permitir rotacao/revogacao e aplicar rate limit nas rotas publicas.
 
 ## 5. Client (queries, mutations, state, UI)
 
-- `lib/queries/tabs.ts` — `useTabs` (board, com `params`/`debouncedParams`), `useTabById`, `useInteractionPoints`;
+- `lib/queries/tabs.ts` — `useTabs` (board, com `params`/`debouncedParams`), `useTabById`, `useServicePoints`;
 - `lib/mutations/tabs.ts` — `createTab`, `createTabOrder`, `updateTabOrderStatus`, `closeTab`, `cancelTab`, wrappers Axios finos tipados pelos outputs das rotas;
-- `state-hooks/use-internal-interaction-point-state.tsx` e `use-internal-tab-state.tsx` — padrao existente (`updateX`, `redefineState`, soft-delete de filhos);
-- Modais em `components/Modals/Internal/Tabs/` e `.../InteractionPoints/` — `NewInteractionPoint`/`ControlInteractionPoint`, `NewTab` (abrir conta: codigo, ponto, cliente, responsavel);
+- `state-hooks/use-internal-service-point-state.tsx` e `use-internal-tab-state.tsx` — padrao existente (`updateX`, `redefineState`, soft-delete de filhos);
+- Modais em `components/Modals/Internal/Tabs/` e `.../ServicePoints/` — `NewServicePoint`/`ControlServicePoint`, `NewTab` (campos variam conforme as politicas);
 - Board operacional em `app/dashboard/commercial/tabs/` — dois eixos: contas abertas (cards com ponto, codigo, total parcial derivado, idade) e ocupacao de pontos (pontos ativos com LEFT JOIN em contas abertas, livre/ocupado). Acoes: abrir conta, lancar pedido (reusa o fluxo de itens do POS apontando para a conta), fechar (checkout com pagamentos), cancelar;
 - Fulfillment board existente: cards de `tabOrders` com quick actions de transicao (analogos a `CardQuickActions`), etiquetados com `tab.codigo` + ponto.
+- Tela autenticada responsiva para garcom: resolve ponto/tab e usa o cardapio compartilhado com adapter direto para `launchTabOrder`.
+- Tela publica: reutiliza a composicao visual do cardapio, mas possui estado e adapter de submissao proprios; nao usa `CreateShopOrderInput` nem o POST atual de shop.
 
 ## 6. Invariantes e casos de borda
 
 1. Uma unica venda `ORCAMENTO` por tab (partial unique). Fechamento parcial futuro cria nova venda na mesma tab — estrutura 1:N ja permite;
 2. `quantidadeEntregue` e a fonte da deduplicacao de baixa. Toda baixa fisica atualiza o campo na mesma transacao; todo calculo de baixa usa delta. Fechamento e re-tentativas sao idempotentes;
-3. Pedido so em conta `ABERTA`; fechamento so sem pedidos ativos; guarda otimista `WHERE status = 'ABERTA'` no fechamento/cancelamento;
+3. Pedido so em conta `ABERTA`; fechamento so sem pedidos ativos; lock ou compare-and-set acontece antes de qualquer efeito financeiro no fechamento/cancelamento;
 4. Rounds de comanda nao passam por `processSaleAttendanceStatusChange` (que exige venda confirmada e pagamento antes da entrega) — usam o service proprio de `tabOrders`;
 5. Fiscal e cashback disparam exatamente uma vez, no fechamento (confirmacao da venda nascendo `ENTREGUE`);
 6. Conta atravessando turnos de caixa: valido — as transacoes financeiras nascem efetivadas no fechamento, vinculadas a sessao de quem fecha;
@@ -322,14 +349,14 @@ Paginas externas (QR), seguindo o padrao do playbook de POI (`tokenPublico` opac
 
 ## 7. Fases de entrega
 
-**Fase 1 — fundacao (comanda operavel):**
-enums + schema + migracao; services `open-tab`, `launch-tab-order`, `process-tab-order-status-change`, `close-tab`, `cancel-*`; refactor de `processStockDeduction` para delta por item (modo `ESTOQUE_PROPRIO` apenas); APIs de tabs; board de contas + integracao do fulfillment board; modais e fluxo de lancamento de pedido.
+**Fase 1 — fundacao (salao operavel pelo operador):**
+`serviceSettings` + presets; enums + schema + migracao; services `open-tab`, `transfer-tab`, `launch-tab-order`, `process-tab-order-status-change`, `close-tab`, `cancel-*`; refactor de `processStockDeduction` para delta por item; aprofundamento da validacao de precos; APIs; board e fluxo responsivo de lancamento pelo operador; integracao do fulfillment board.
 
 **Fase 2 — composicao (pratos):**
 `baixaEstoqueModo` + `fichaTecnicaReceitaId` em produtos; explosao de ficha tecnica na baixa; UI de ficha tecnica no produto (vincular receita existente do modulo de producao); custo derivado como evolucao.
 
-**Fase 3 — QR externo:**
-paginas publicas de ponto e tab; tipo `ABERTURA_TAB` em `poiTransactionRequests` + aprovacao no fluxo de operador existente; geracao/impressao dos QR codes no dashboard.
+**Fase 3 — pedido via QR com aprovacao:**
+`tabOrderRequests`; paginas publicas de ponto e tab; cardapio reutilizado com adapter proprio; aprovacao no board do operador; tokens com hash, rotacao e rate limit; geracao/impressao dos QRs.
 
 **Fase 4 (futuro, fora deste escopo):**
-producao sob demanda (`origem = "PEDIDO"`) para encomendas; fechamento parcial/divisao por pessoa; self-order via QR; rotulo do primitivo configuravel por segmento.
+producao sob demanda (`origem = "PEDIDO"`) para encomendas; fechamento parcial/divisao por pessoa; aceite automatico de pedido via QR; mesclar tabs; rotulo do primitivo configuravel por segmento.

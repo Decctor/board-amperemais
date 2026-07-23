@@ -15,7 +15,13 @@ O campo de texto e suficiente apenas para etiquetar uma venda avulsa. Ele nao su
 
 ## Restricao de design
 
-Nao criar tabelas especificas de "mesa" ou "comanda". O primitivo deve ter nome generico e servir outros segmentos em outros formatos (pousada, salao, oficina, bar com pulseira, conta mensal B2B).
+O modelo deve ser excelente para food-service antes de tentar ser universal. A generalidade desejavel e a que aparece naturalmente ao separar:
+
+- uma ancora operacional duravel (mesa, balcao, quarto);
+- uma conta de consumo efemera;
+- uma rodada operacional de itens.
+
+Nao criar uma tabela especifica de `mesas`, mas tambem nao esconder regras essenciais do salao em `metadados` genericos. Outros segmentos podem reutilizar os primitivos quando seus ciclos de vida forem realmente equivalentes.
 
 ## Decisao
 
@@ -24,15 +30,58 @@ A demanda "mesas e comandas" esconde dois primitivos com ciclos de vida diferent
 - a "mesa" e uma ancora fisica/logica **duravel** da organizacao. Um QR impresso e colado na mesa precisa apontar para algo estavel, que sobrevive a abertura e fechamento de contas;
 - a "comanda" e uma conta de consumo **efemera**, com ciclo de vida (abre, acumula, fecha), que pode existir sem mesa (comanda avulsa, pulseira, delivery de balcao).
 
-Portanto, dois primitivos genericos:
+Portanto, dois primitivos de dados, ambos opcionais conforme o modo de operacao, e uma politica explicita que os coordena.
 
-### 1. Pontos de Interacao (`pointsOfInteraction`)
+### Modos de operacao nao sao entidades
 
-Formaliza como tabela o conceito que o codebase ja usa por nome (`poi_transaction_requests`, pagina externa `point-of-interaction-playbook`). E a ancora duravel onde a organizacao interage com clientes.
+Uma organizacao pode operar mais de um fluxo ao mesmo tempo: por exemplo, balcao rapido e salao com mesas. Por isso, a existencia de um ponto ou de uma tab nao deve habilitar implicitamente um comportamento.
+
+Persistir uma configuracao tipada de atendimento separada das entidades. A Interface recomendada e composta por capacidades e politicas:
+
+```ts
+serviceSettings {
+  pontos: {
+    habilitados: boolean
+  }
+  contas: {
+    habilitadas: boolean
+    identificacao: "AUTOMATICA" | "CODIGO_MANUAL"
+    pontoObrigatorio: boolean
+    maxAbertasPorPonto: number | null
+  }
+  aberturaPublica: "DESABILITADA" | "SOLICITACAO" | "AUTOMATICA"
+  pedidosCliente: "DESABILITADO" | "SOLICITACAO" | "DIRETO"
+}
+```
+
+A UI oferece presets, mas persiste as politicas:
+
+| Preset | Politicas principais | Experiencia |
+| --- | --- | --- |
+| Balcao | pontos e contas desabilitados | venda/pedido avulso pelo fluxo normal |
+| Somente mesas | ponto obrigatorio, identificacao automatica, maximo 1 conta por ponto | operador escolhe a mesa; a tab e aberta/reusada sem expor "comanda" |
+| Somente comandas | pontos desabilitados, codigo manual | operador informa ou le o codigo da comanda |
+| Mesas + comandas | ponto obrigatorio, codigo manual, varias contas por ponto | varias comandas podem estar vinculadas a mesma mesa |
+
+Presets nao sao mutuamente exclusivos no nivel da operacao. Uma hamburgueria pode manter balcao no fluxo normal e usar "Somente mesas" no salao. Persistir politicas, em vez de um mega-enum `MESA | COMANDA | HIBRIDO`, evita combinacoes artificiais e concentra as invariantes no modulo de atendimento.
+
+As regras nao devem ser inferidas apenas pela nulabilidade das FKs:
+
+- mesa: exige ponto; `codigo` pode ser gerado/oculto; no maximo uma tab aberta por ponto;
+- comanda: exige `codigo`; nao exige ponto;
+- mesa + comanda: exige ponto e `codigo`; permite varias tabs abertas no mesmo ponto.
+
+A exclusividade por ponto deve ser garantida pelo modulo de abertura com guarda transacional. Um indice global de unicidade por ponto impediria legitimamente o fluxo de varias comandas na mesma mesa.
+
+### 1. Pontos de Atendimento (`servicePoints`)
+
+E a ancora duravel em que o atendimento ocorre. `pointOfInteraction` e generico demais e ja possui outro significado no codebase: o playbook de fidelidade e suas `poiTransactionRequests`. Usar o mesmo nome para mesa/quarto criaria uma Interface conceitual ambigua.
+
+O nome de dominio recomendado e `servicePoints` (UI: "Pontos de atendimento"). O vinculo com o POI publico e um adapter: um QR de ponto pode originar uma solicitacao, mas o ponto nao e uma `poiTransactionRequest`.
 
 Exemplos por segmento:
 
-| Segmento | Ponto de interacao |
+| Segmento | Ponto de atendimento |
 | --- | --- |
 | Restaurante/bar | Mesa, balcao, quiosque |
 | Pousada/hotel | Quarto |
@@ -44,25 +93,26 @@ Exemplos por segmento:
 Campos principais:
 
 ```ts
-pointsOfInteraction {
+servicePoints {
   id
   organizacaoId            // FK organizations, cascade
   rotulo                   // "Mesa 12", "Quarto 3", "Box 2"
   grupo                    // texto livre opcional: "Salao", "Varanda", "Terreo"
-  categoria                // texto livre normalizado: "MESA", "QUARTO", "CADEIRA"...
+  tipo                     // MESA | BALCAO | QUIOSQUE | OUTRO
   capacidade               // int opcional (lugares/ocupacao)
-  tokenPublico             // unique — QR duravel impresso no ponto
+  tokenPublicoHash         // unique; token bruto aparece apenas na criacao/regeneracao
   ativo                    // boolean, default true
-  metadados                // jsonb
+  metadados                // extensoes; nao guarda regras centrais de food-service
   dataInsercao
 }
 ```
 
 Notas:
 
-- `categoria` deve ser texto livre (com sugestoes por segmento na UI), nao `pgEnum`. Enum de banco engessaria a generalidade que e o objetivo do primitivo;
-- indices: `(organizacaoId, ativo)` para listagem, unique em `tokenPublico`;
-- `poiTransactionRequests` ganha `pontoInteracaoId` nullable, para que solicitacoes carreguem a origem fisica (hoje o playbook e um QR unico por organizacao; com pontos, cada mesa/quarto tem o seu).
+- para a primeira versao focada em food-service, `tipo` deve ser um enum pequeno (`MESA`, `BALCAO`, `QUIOSQUE`, `OUTRO`). `OUTRO` preserva extensibilidade sem sacrificar validacao e filtros do caso principal;
+- indices: `(organizacaoId, ativo)` para listagem, unique em `tokenPublicoHash`;
+- organizacoes de balcao ou somente comandas nao precisam cadastrar pontos;
+- `poiTransactionRequests` pode ganhar `servicePointId` nullable apenas para solicitacoes do playbook que precisem registrar origem fisica.
 
 ### 2. Contas de Atendimento (`tabs`)
 
@@ -84,11 +134,11 @@ Campos principais:
 tabs {
   id
   organizacaoId            // FK organizations, cascade
-  pontoInteracaoId         // FK pointsOfInteraction, set null — NULLABLE (tab avulsa existe sem ponto)
-  codigo                   // identificador humano: numero da comanda fisica, pulseira, quarto
+  servicePointId           // FK servicePoints, set null; nullable
+  codigo                   // nullable em mesa; obrigatorio quando houver comanda fisica
   clienteId                // FK clients, set null — nullable, identificacao progressiva
   status                   // tabStatusEnum: ABERTA | FECHADA | CANCELADA
-  tokenPublico             // unique — QR proprio da tab (papel/pulseira)
+  tokenPublicoHash         // unique; QR proprio da tab (papel/pulseira)
   responsavelVendedorId    // FK sellers, set null (garcom/atendente responsavel)
   abertaPorUsuarioId       // FK users, set null (auditoria, padrao salesSessions)
   fechadaPorUsuarioId      // FK users, set null
@@ -103,10 +153,12 @@ tabs {
 
 Notas:
 
-- indices: `(organizacaoId, status)` para o board de contas abertas, `pontoInteracaoId`, unique em `tokenPublico`;
-- unicidade de `codigo`: partial unique index em `(organizacaoId, codigo) WHERE status = 'ABERTA'` — impede duas comandas fisicas "42" abertas ao mesmo tempo, mas permite reuso do numero apos fechamento;
+- indices: `(organizacaoId, status)` para o board de contas abertas, `servicePointId`, unique em `tokenPublicoHash`;
+- unicidade de `codigo`: partial unique index em `(organizacaoId, codigo) WHERE status = 'ABERTA' AND codigo IS NOT NULL`;
 - **nao** forcar unicidade de tab aberta por ponto. Varias comandas na mesma mesa (uma por pessoa) e caso real de restaurante. Se algum segmento precisar de exclusividade (quarto de pousada), isso vira validacao de servico configuravel, nao constraint;
 - enum `tabStatusEnum` em `services/drizzle/schema/enums.ts` e Zod equivalente em `schemas/enums.ts`, seguindo a convencao.
+
+No preset "Somente mesas", a tab continua existindo no banco porque ela e a conta que agrega pedidos e viabiliza o fechamento. Ela e apenas escondida na Interface do operador: selecionar "Mesa 12" resolve ou abre automaticamente sua tab. Assim, "trabalhar somente com mesas" nao cria um segundo modelo comercial.
 
 ## Relacao com vendas
 
@@ -187,23 +239,54 @@ O unico ponto forte desse modelo — pipeline de cozinha por rodada via `statusA
 - vendas em rascunho de contas abertas nao aparecem em relatorios de venda ate o fechamento. Comercialmente correto (a venda ainda nao aconteceu); o board de contas abertas expoe o "consumo em aberto" como metrica derivada para quem precisar do numero intra-dia;
 - contas abandonadas: o board mostra a idade da conta; cancelar a tab cancela a venda em rascunho (`CANCELADA`) e os pedidos.
 
-## QR Codes
+## Celular no salao e relacao com `shop`
 
-Dois QRs, dois tokens, duas ancoras — ambos seguindo o padrao de seguranca ja existente em `poiTransactionRequests` (`tokenPublico` opaco, pagina externa, acao sensivel exige aprovacao de operador):
+Existem dois callers diferentes, embora ambos precisem de uma experiencia de cardapio:
 
-### QR do ponto (duravel, impresso na mesa/quarto/box)
+1. **operador autenticado no celular**: escolhe ponto/tab, monta itens e chama `launchTabOrder` diretamente;
+2. **cliente via QR**: monta itens em contexto publico e cria uma solicitacao de pedido, aprovada por operador conforme `serviceSettings.pedidosCliente`.
 
-Pagina publica em `app/(external)/` resolve o token do ponto:
+Nao reutilizar o checkout atual de `app/shop/[orgId]` como fluxo de salao. Hoje sua Interface exige telefone, retirada/entrega, intencao de pagamento e horario da loja; o POST cria e confirma uma venda propria. Em uma mesa isso transformaria cada rodada em uma venda comercial e quebraria a decisao de uma venda rascunho por tab.
 
-- se ha tab(s) aberta(s) no ponto: exibe a conta atual (pedidos, itens, total parcial);
-- se nao ha: CTA "abrir conta", que cria uma `poiTransactionRequest` com novo tipo (ex.: `ABERTURA_TAB`) pendente de aprovacao do operador — mesmo fluxo de aprovacao do POI atual. Auto-abertura sem aprovacao pode virar configuracao da organizacao depois;
-- `poiTransactionRequestTypeEnum` ganha o(s) novo(s) tipo(s); `poiTransactionRequests` ganha `pontoInteracaoId` e `tabId` nullable.
+O reaproveitamento correto acontece em um Seam anterior ao checkout:
+
+```txt
+catalogo + product builder + carrinho + validacao autoritativa de precos
+  -> adapter SHOP: cria e confirma uma venda avulsa
+  -> adapter OPERADOR: cria tabOrder diretamente
+  -> adapter CLIENTE_QR: cria tabOrderRequest para aprovacao
+```
+
+Aprofundar `lib/sales/sale-pricing-validation.ts` como Interface compartilhada para validar produto, variante, modificadores e precos. O calculo local hoje existente na rota de `shop` deve convergir gradualmente para essa Interface. Parametrizar o checkout atual com muitos booleanos reduziria a Locality; orquestradores separados preservam as invariantes de cada fluxo.
+
+A pagina do operador deve ser uma tela autenticada e responsiva do modulo de salao. A pagina publica pode reutilizar a composicao visual do cardapio, mas usa outro estado de checkout e outro endpoint.
+
+### Solicitacoes de pedido do cliente
+
+Criar `tabOrderRequests` em vez de encaixar o carrinho em `poiTransactionRequests`. O modulo POI atual possui Interface e resumo especificos de cashback/transacao; reutiliza-lo como inbox generico espalharia condicionais.
+
+`tabOrderRequests` guarda idempotencia, contexto (`servicePointId`/`tabId`), payload de itens, status (`PENDENTE | APROVADA | REJEITADA | PROCESSANDO | CONCLUIDA | ERRO`), operador e `tabOrderId` resultante. Aprovar executa atomicamente a mesma validacao autoritativa de precos e o mesmo `launchTabOrder` usado pelo operador.
+
+No preset "Somente mesas", a aprovacao pode abrir a tab implicita se ainda nao houver uma. Em "Mesas + comandas", o QR do ponto nao pode escolher silenciosamente uma entre varias tabs: o cliente precisa apresentar/selecionar sua comanda ou a solicitacao fica para o operador resolver.
+
+## QR Codes e privacidade
+
+Os QRs concedem contextos diferentes:
+
+### QR do ponto (duravel, impresso na mesa)
+
+- identifica o `servicePoint`;
+- abre cardapio e permite solicitar abertura/pedido conforme configuracao;
+- **nao exibe automaticamente itens ou total de tabs abertas**. Uma foto antiga do QR da mesa nao deve dar acesso ao consumo atual;
+- em modo com varias comandas por mesa, exige identificacao adicional da tab.
 
 ### QR da tab (efemero, papel/pulseira/cartao)
 
-Pagina publica resolve o `tokenPublico` da tab e mostra a conta em andamento. Serve o caso "comanda fisica com QR" e "pulseira de evento", sem depender de ponto.
+- identifica uma conta especifica e pode mostrar seu extrato;
+- pode iniciar uma solicitacao de nova rodada;
+- deve poder ser revogado/rotacionado ao fechar ou reabrir uma conta.
 
-Fora de escopo nesta fase: self-order completo pelo QR (cliente montando pedido sozinho). A primeira versao entrega visualizacao da conta + solicitacao de abertura. Pedido pelo cliente pode reusar o cardapio do shop depois, sempre passando pelo fluxo de aprovacao.
+Persistir hashes dos tokens, nao o token bruto, seguindo a pratica ja usada por `shopOrderRequests`. O token e mostrado somente na criacao/regeneracao. Prever rate limit para rotas publicas e uma operacao explicita de regeneracao do QR duravel do ponto.
 
 ## Board operacional
 
@@ -212,7 +295,17 @@ Visao de operacao dia a dia, complementar ao fulfillment board existente:
 - **eixo conta**: tabs com `status = "ABERTA"` da organizacao, com ponto, cliente, responsavel, total parcial derivado e idade da conta;
 - **eixo ponto**: pontos ativos LEFT JOIN tabs abertas — ponto sem tab aberta aparece como "livre", com tab(s) como "ocupado". Isso da o "mapa de mesas" sem precisar de tabela de mesa;
 - **eixo cozinha**: o fulfillment board existente ganha cards de `tabOrders` ativos alem dos cards de venda;
-- indices ja previstos cobrem as queries (`tabs (organizacaoId, status)`, `pointsOfInteraction (organizacaoId, ativo)`, `tabOrders (tabId)` + `(organizacaoId, status)`).
+- indices ja previstos cobrem as queries (`tabs (organizacaoId, status)`, `servicePoints (organizacaoId, ativo)`, `tabOrders (tabId)` + `(organizacaoId, status)`).
+
+## Invariantes transacionais
+
+- `tabOrders.numero` deve ter unique `(tabId, numero)`. O proximo numero e alocado com lock da tab ou contador atomico; `max(numero) + 1` sem lock tem race;
+- lancar pedido, criar/reusar a venda rascunho, inserir itens e recalcular totais acontece em uma transacao;
+- fechar usa lock da tab e da venda, ou uma transicao compare-and-set no inicio. A guarda nao pode acontecer somente no fim, depois de criar contabilidade e pagamentos;
+- a confirmacao comum de POS rejeita venda rascunho com `tabId`; o fechamento da tab e a unica Interface autorizada a confirma-la;
+- a baixa de estoque usa delta por `saleItem` (`quantidade - quantidadeEntregue`) e atualiza a quantidade entregue na mesma transacao;
+- `tabOrders` possui transicao operacional propria: nao pode reutilizar diretamente `processSaleAttendanceStatusChange`, que exige venda confirmada e pagamento;
+- transferir uma tab entre pontos preserva pedidos e venda. E uma operacao explicita e auditada; mesclar tabs e dividir itens continuam fora de escopo.
 
 ## Migracao e compatibilidade
 
@@ -226,25 +319,29 @@ Visao de operacao dia a dia, complementar ao fulfillment board existente:
 - reserva de mesa/agenda de pontos;
 - mapa visual de salao com posicionamento (coordenadas em `metadados` do ponto se um dia precisar);
 - fechamento parcial e divisao de conta item a item (a estrutura 1:N de `sales.tabId` ja suporta a evolucao; dividir por metodo de pagamento no fechamento ja atende o caso comum);
-- self-order completo via QR;
+- aceite automatico de pedido publico; a primeira entrega recebe solicitacoes para aprovacao do operador;
+- mesclar tabs; transferencia simples entre pontos entra na primeira versao;
 - impressao termica de comanda.
 
 ## Pontos de decisao em aberto
 
 1. **Nome do primitivo de conta**: `tabs` (recomendado — curto, termo consagrado de POS) vs. algo como `serviceAccounts`. `accounts` puro colide com `financialAccounts`.
-2. **Momento da baixa fisica de estoque** — decidido: na entrega de cada pedido (`tabOrders.status -> ENTREGUE`), o evento fisico real, mesmo com a venda ainda em rascunho. Alinha a comanda com o comportamento ja existente para vendas confirmadas (`processSaleAttendanceStatusChange` baixa na transicao com saida fisica). Deduplicacao por item via delta `quantidade - quantidadeEntregue`, tornando o fechamento idempotente. Detalhes — incluindo itens com producao (baixa por composicao de ficha tecnica) — em `tabs-implementation-plan.md`.
-3. **Abertura via QR**: sempre com aprovacao de operador (recomendado como default, igual ao POI atual) vs. auto-abertura configuravel.
-4. **Criacao da venda em rascunho**: lazy no primeiro pedido (recomendado — abrir conta nao cria venda vazia) vs. na abertura da tab.
-5. **Rotulo por segmento**: configuracao da organizacao para exibir "Comanda"/"Conta"/"Ficha" na UI — fica para quando outro segmento usar o primitivo.
+2. **Nome da ancora duravel**: decidido por este refinamento como `servicePoints`, evitando colisao com o POI de fidelidade.
+3. **Momento da baixa fisica de estoque** — decidido: na entrega de cada pedido (`tabOrders.status -> ENTREGUE`), com deduplicacao por delta `quantidade - quantidadeEntregue`.
+4. **Abertura e pedido via QR**: default `SOLICITACAO`; `AUTOMATICA`/`DIRETO` somente apos controles de abuso e experiencia operacional validados.
+5. **Criacao da venda em rascunho**: lazy no primeiro pedido (recomendado — abrir conta nao cria venda vazia) vs. na abertura da tab.
+6. **Rotulo por segmento**: configuracao da organizacao para exibir "Comanda"/"Conta"/"Ficha" na UI — fica para quando outro segmento usar o primitivo.
 
 ## Plano de implementacao sugerido
 
-1. Criar `tabStatusEnum` (Drizzle + Zod) em `enums.ts` — pedidos reusam `saleAttendanceStatusEnum`.
-2. Criar `services/drizzle/schema/points-of-interaction.ts` e `services/drizzle/schema/tabs.ts` (tabs + tabOrders), com relations e barrel-export.
-3. Adicionar `sales.tabId` (com partial unique de rascunho) e `saleItems.tabOrderId`; manter `comandaNumero` como snapshot.
-4. Adicionar `pontoInteracaoId`/`tabId` em `poiTransactionRequests` e novo(s) tipo(s) em `poiTransactionRequestTypeEnum`.
-5. APIs App Router: CRUD de pontos; abrir conta; lancar pedido (append de itens na venda em rascunho + criacao do `tabOrder`, em transacao); consultar conta; cancelar conta.
-6. Fechamento da conta: service de checkout que recebe os metodos de pagamento, confirma a venda em rascunho (efeitos de ERP unicos, transacoes vinculadas ao turno de caixa aberto) e fecha a tab com snapshot.
-7. Fulfillment board: segunda fonte de cards a partir de `tabOrders` ativos, com quick actions de transicao de status.
-8. Paginas externas de QR (ponto e tab), seguindo o padrao do playbook de POI.
-9. UI do board de contas/pontos e integracao com o fluxo de nova venda (lancar pedido em conta aberta).
+1. Criar `serviceSettings` e presets de configuracao; definir as invariantes de mesa, comanda e hibrido.
+2. Criar `tabStatusEnum` e `servicePointTypeEnum` (Drizzle + Zod); pedidos reusam `saleAttendanceStatusEnum`.
+3. Criar `services/drizzle/schema/service-points.ts` e `services/drizzle/schema/tabs.ts` (tabs + tabOrders), com relations e indices de concorrencia.
+4. Adicionar `sales.tabId` e `saleItems.tabOrderId`; manter `comandaNumero` como snapshot.
+5. Aprofundar `lib/sales/sale-pricing-validation.ts` para que POS, shop e salao usem a mesma validacao autoritativa de itens.
+6. Criar o modulo de atendimento: resolver contexto/politicas; abrir e transferir tab; lancar pedido; alterar status; fechar/cancelar.
+7. APIs App Router e UI autenticada responsiva: board por contas/pontos e fluxo rapido de cardapio no celular do operador.
+8. Fechamento confirma a venda rascunho uma unica vez, com pagamentos reais e sessao de caixa de quem fecha.
+9. Fulfillment board recebe `tabOrders` por adapter para o card comum.
+10. Criar `tabOrderRequests` e paginas publicas de QR; v1 usa aprovacao do operador.
+11. Extrair a composicao visual reutilizavel do cardapio de `shop`, mantendo adapters de submissao separados.
