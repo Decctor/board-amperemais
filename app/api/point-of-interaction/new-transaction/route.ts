@@ -80,11 +80,11 @@ async function canScheduleCampaignForClient(
 }
 
 export const CreatePointOfInteractionTransactionInputSchema = z.object({
+	// Opcional para dispositivos autenticados (a organização deriva do principal); obrigatório no modo legado.
 	orgId: z
-		.string({
-			required_error: "ID da organização não informado.",
-			invalid_type_error: "Tipo não válido para ID da organização.",
-		})
+		.string({ invalid_type_error: "Tipo não válido para ID da organização." })
+		.optional()
+		.nullable()
 		.describe("A organização a partir da qual a transação foi requisitada."),
 	client: z
 		.object({
@@ -184,9 +184,18 @@ export const CreatePointOfInteractionTransactionInputSchema = z.object({
 });
 export type TCreatePointOfInteractionTransactionInput = z.infer<typeof CreatePointOfInteractionTransactionInputSchema>;
 
+// O fluxo de solicitação (cliente final anônimo) não tem principal para derivar a organização:
+// aqui o orgId volta a ser obrigatório, e o payload persistido sempre o carrega.
 export const CreatePointOfInteractionTransactionRequestInputSchema = CreatePointOfInteractionTransactionInputSchema.omit({
 	operatorIdentifier: true,
 	operatorConfirmedSaleValue: true,
+}).extend({
+	orgId: z
+		.string({
+			required_error: "ID da organização não informado.",
+			invalid_type_error: "Tipo não válido para ID da organização.",
+		})
+		.describe("A organização a partir da qual a transação foi requisitada."),
 });
 export type TCreatePointOfInteractionTransactionRequestInput = z.infer<typeof CreatePointOfInteractionTransactionRequestInputSchema>;
 
@@ -204,7 +213,10 @@ export type TCreatePointOfInteractionTransactionOutput = {
 	message: string;
 };
 
-type TProcessPointOfInteractionTransactionInput = TCreatePointOfInteractionTransactionInput | TCreatePointOfInteractionTransactionRequestInput;
+// Internamente o orgId chega sempre resolvido (pelo principal autenticado ou pelo payload legado).
+type TProcessPointOfInteractionTransactionInput =
+	| (Omit<TCreatePointOfInteractionTransactionInput, "orgId"> & { orgId: string })
+	| TCreatePointOfInteractionTransactionRequestInput;
 
 type TPreparePointOfInteractionTransactionParams = {
 	input: TProcessPointOfInteractionTransactionInput;
@@ -1024,12 +1036,12 @@ export type TProcessPointOfInteractionTransactionOutput = Awaited<ReturnType<typ
 
 async function handleNewTransaction(req: NextRequest): Promise<NextResponse<TCreatePointOfInteractionTransactionOutput>> {
 	const body = await req.json();
-	const input = CreatePointOfInteractionTransactionInputSchema.parse(body);
+	const parsedInput = CreatePointOfInteractionTransactionInputSchema.parse(body);
 
 	// Dual-mode (plano §9.10): dispositivo autenticado deriva a organização do principal e exige
 	// scope; modo legado segue aceitando o orgId do payload, com telemetria em access_events.
-	const resolution = await resolvePoiActorContext({ request: req, requiredScope: "poi:transactions:create", payloadOrgId: input.orgId });
-	input.orgId = resolution.organizationId;
+	const resolution = await resolvePoiActorContext({ request: req, requiredScope: "poi:transactions:create", payloadOrgId: parsedInput.orgId });
+	const input = { ...parsedInput, orgId: resolution.organizationId };
 
 	// Idempotência (plano §11): com a chave presente, repetições devolvem a resposta original.
 	const idempotencyKey = req.headers.get("idempotency-key");

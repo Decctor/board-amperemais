@@ -10,10 +10,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
 const CreateClientViaPointOfInteractionInputSchema = z.object({
-	orgId: z.string({
-		required_error: "ID da organização não informado.",
-		invalid_type_error: "Tipo não válido para ID da organização.",
-	}),
+	// Opcional para dispositivos autenticados (a organização deriva do principal); obrigatório no modo legado.
+	orgId: z
+		.string({ invalid_type_error: "Tipo não válido para ID da organização." })
+		.optional()
+		.nullable(),
 	client: ClientSchema.pick({
 		nome: true,
 		telefone: true,
@@ -23,7 +24,7 @@ const CreateClientViaPointOfInteractionInputSchema = z.object({
 });
 export type TCreateClientViaPointOfInteractionInput = z.infer<typeof CreateClientViaPointOfInteractionInputSchema>;
 
-async function createClientViaPointOfInteraction({ input }: { input: TCreateClientViaPointOfInteractionInput }) {
+async function createClientViaPointOfInteraction({ input }: { input: Omit<TCreateClientViaPointOfInteractionInput, "orgId"> & { orgId: string } }) {
 	const { orgId, client } = input;
 
 	return await db.transaction(async (tx) => {
@@ -91,12 +92,11 @@ export type TCreateClientViaPointOfInteractionOutput = Awaited<ReturnType<typeof
 async function createClientViaPointOfInteractionRoute(request: NextRequest) {
 	const body = await request.json();
 	console.log("[INFO] [CREATE CLIENT VIA POINT OF INTERACTION] Request body:", body);
-	const input = CreateClientViaPointOfInteractionInputSchema.parse(body);
-	console.log("[INFO] [CREATE CLIENT VIA POINT OF INTERACTION] Input:", input);
+	const parsedInput = CreateClientViaPointOfInteractionInputSchema.parse(body);
+	console.log("[INFO] [CREATE CLIENT VIA POINT OF INTERACTION] Input:", parsedInput);
 	// Dual-mode (plano §9.10): dispositivo autenticado deriva a organização do principal.
-	const resolution = await resolvePoiActorContext({ request, requiredScope: "poi:clients:create", payloadOrgId: input.orgId });
-	input.orgId = resolution.organizationId;
-	const result = await createClientViaPointOfInteraction({ input });
+	const resolution = await resolvePoiActorContext({ request, requiredScope: "poi:clients:create", payloadOrgId: parsedInput.orgId });
+	const result = await createClientViaPointOfInteraction({ input: { ...parsedInput, orgId: resolution.organizationId } });
 	console.log("[INFO] [CREATE CLIENT VIA POINT OF INTERACTION] Result:", result);
 	return NextResponse.json(result, {
 		status: 201,
