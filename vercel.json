@@ -79,6 +79,10 @@
 		{
 			"path": "/api/cron/client-seller-references",
 			"schedule": "45 2 * * *"
+		},
+		{
+			"path": "/api/cron/access-cleanup",
+			"schedule": "0 6 * * 0"
 		}
 	]
 }
