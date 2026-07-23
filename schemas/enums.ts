@@ -470,10 +470,33 @@ export const AccessScopeEnum = z.enum([
 	"poi:coupons:read",
 	"poi:prizes:read",
 	"desktop-agent:configuration:read",
+	"desktop-agent:printers:sync",
 	"desktop-agent:print-jobs:read",
 	"desktop-agent:print-jobs:update",
 ]);
 export type TAccessScopeEnum = z.infer<typeof AccessScopeEnum>;
+
+// ============================================================================
+// DESKTOP AGENT — impressão (docs/dev-planning/desktop-agent-printing-plan.md)
+// Todos varchar no banco + z.enum no app (mesmo racional de access_events):
+// novos valores não custam migração de enum no Postgres.
+// ============================================================================
+
+export const AgentPrinterDriverEnum = z.enum(["DRIVER_SO", "ZPL_REDE"]);
+export type TAgentPrinterDriverEnum = z.infer<typeof AgentPrinterDriverEnum>;
+
+// Roteamento por finalidade: a impressora declara o que atende; o job nasce com uma finalidade.
+export const PrintJobFinalidadeEnum = z.enum(["CUPOM_VENDA", "ETIQUETA_LOTE", "DANFE_NFCE", "DANFE_NFE"]);
+export type TPrintJobFinalidadeEnum = z.infer<typeof PrintJobFinalidadeEnum>;
+
+export const PrintJobFormatoEnum = z.enum(["HTML", "PDF_URL", "ZPL"]);
+export type TPrintJobFormatoEnum = z.infer<typeof PrintJobFormatoEnum>;
+
+export const PrintJobStatusEnum = z.enum(["PENDENTE", "PROCESSANDO", "IMPRESSO", "ERRO", "CANCELADO", "EXPIRADO"]);
+export type TPrintJobStatusEnum = z.infer<typeof PrintJobStatusEnum>;
+
+export const PrintJobOrigemTipoEnum = z.enum(["VENDA", "LOTE", "NOTA_FISCAL", "MANUAL"]);
+export type TPrintJobOrigemTipoEnum = z.infer<typeof PrintJobOrigemTipoEnum>;
 
 // `tipo` de access_events é varchar no banco; este enum é a fonte de verdade no app
 // (novos eventos não custam migração de enum no Postgres).

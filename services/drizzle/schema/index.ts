@@ -37,3 +37,4 @@ export * from "./integrations";
 export * from "./audiences";
 export * from "./deals";
 export * from "./access";
+export * from "./desktop-agent";

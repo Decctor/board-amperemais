@@ -15,6 +15,7 @@ export const POI_ACCESS_SCOPES: TAccessScopeEnum[] = [
 // Scopes do agente desktop local (recompra-local-agent) — controle de periféricos da loja.
 export const DESKTOP_AGENT_ACCESS_SCOPES: TAccessScopeEnum[] = [
 	"desktop-agent:configuration:read",
+	"desktop-agent:printers:sync",
 	"desktop-agent:print-jobs:read",
 	"desktop-agent:print-jobs:update",
 ];
