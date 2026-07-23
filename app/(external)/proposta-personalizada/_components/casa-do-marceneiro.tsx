@@ -1,8 +1,8 @@
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 // Proposta comercial de uso único — Casa do Marceneiro.
 // Renderizada dentro do shell de impressão em ../page.tsx (A4). Não faz parte do produto.
 
 import { ARTHUR_WHATSAPP_NUMBER, LUCAS_WHATSAPP_NUMBER } from "@/config/internal-coms";
-import LogoVerticalWhite from "@/utils/svgs/logos/RECOMPRA - COMPLETE - VERTICAL - WHITE.svg";
 import {
 	AlarmClock,
 	ArrowRight,
@@ -22,7 +22,6 @@ import {
 	Users,
 	Wallet,
 } from "lucide-react";
-import Image from "next/image";
 import type { ReactNode } from "react";
 import { FaWhatsapp } from "react-icons/fa6";
 import { BRAND, heroGradient, Kicker, Sheet, SheetFooter } from "./_shared";
@@ -85,7 +84,7 @@ function CoverSheet() {
 				{/* topo */}
 				<div className="relative z-10 flex items-center justify-between">
 					<div className="relative h-14 w-40">
-						<Image src={LogoVerticalWhite} alt="RecompraCRM" fill className="object-contain object-left" />
+						<BrandLogo lockup="stacked" tone="white" alt="RecompraCRM" fill className="object-contain object-left" />
 					</div>
 					<div className="flex flex-col items-end gap-1">
 						<span className="rounded-full bg-white/10 px-4 py-1.5 text-[0.65rem] font-extrabold uppercase tracking-[0.22em] ring-1 ring-white/20">
@@ -816,7 +815,8 @@ function PricingSheet() {
 							<div className="flex flex-nowrap items-baseline justify-between gap-2">
 								<span className="text-[0.7rem] font-black uppercase tracking-[0.22em] text-white/60">Recorrência</span>
 								<span className="whitespace-nowrap text-[1.6rem] font-black leading-none tracking-tight text-white">
-									R$ {TOTAL_MONTHLY}<span className="text-sm font-semibold text-white/60">/mês</span>
+									R$ {TOTAL_MONTHLY}
+									<span className="text-sm font-semibold text-white/60">/mês</span>
 								</span>
 							</div>
 							<p className="mt-2 text-[0.8rem] text-white/60">Após a implementação, só a mensalidade. Sem fidelidade — cancele quando quiser.</p>
@@ -855,7 +855,8 @@ function PricingSheet() {
 							<h2 className="text-xl font-black uppercase leading-tight tracking-tight">Vamos colocar as 5 lojas para vender mais</h2>
 						</div>
 						<p className="max-w-xl text-[0.82rem] leading-relaxed opacity-90">
-							Cuidamos da implementação, migração de dados e treinamento — colocamos as {STORES} lojas no ar em poucos dias. É só chamar um de nós no WhatsApp para começar.
+							Cuidamos da implementação, migração de dados e treinamento — colocamos as {STORES} lojas no ar em poucos dias. É só chamar um de nós no
+							WhatsApp para começar.
 						</p>
 						<div className="mt-1 flex flex-wrap gap-3">
 							{SUPPORT_CONTACTS.map((contact) => (

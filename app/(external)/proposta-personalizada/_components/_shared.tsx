@@ -1,8 +1,7 @@
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 // Primitivos compartilhados entre as propostas comerciais personalizadas.
 // A marca é sempre RecompraCRM — a proposta é nossa; o que muda é o cliente.
 
-import LogoHorizontalRecompraCRM from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL - COLORFUL ICON-BADGE TEXT-BLACK.svg";
-import Image from "next/image";
 import type { ReactNode } from "react";
 
 /* -------------------------------------------------------------------------- */
@@ -48,7 +47,7 @@ export function SheetFooter({ index, label }: { index: string; label: string }) 
 				<div className="flex items-center gap-1.5">
 					<span className="text-[0.6rem] font-medium text-neutral-400">Powered by</span>
 					<div className="relative h-6 w-24">
-						<Image src={LogoHorizontalRecompraCRM} alt="RecompraCRM" fill className="object-contain object-left" />
+						<BrandLogo lockup="horizontal-badge" tone="color-on-light" alt="RecompraCRM" fill className="object-contain object-left" />
 					</div>
 				</div>
 				<span className="text-[0.6rem] font-bold tabular-nums text-neutral-300">· {index}</span>

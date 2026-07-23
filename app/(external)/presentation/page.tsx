@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,8 +8,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 import CardapioWebLogo from "@/utils/images/integrations/cardapio-web.png";
 import OnlineSoftwareLogo from "@/utils/images/integrations/online-software-logo.png";
-import LogoCompleteHorizontalColorful from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.svg";
-import LogoCompleteVerticalColorful from "@/utils/svgs/logos/RECOMPRA - COMPLETE - VERTICAL - COLORFUL.svg";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	BadgeDollarSign,
@@ -264,7 +263,7 @@ const SLIDES: SlideData[] = [
 					className="relative"
 				>
 					<div className="absolute inset-0 bg-blue-500/20 blur-[80px] rounded-full" />
-					<Image src={LogoCompleteVerticalColorful} alt="RecompraCRM" width={180} height={180} className="relative z-10 drop-shadow-2xl" />
+					<BrandLogo lockup="stacked" tone="color-on-dark" alt="RecompraCRM" width={180} height={180} className="relative z-10 drop-shadow-2xl" />
 				</motion.div>
 
 				<div className="text-center space-y-6">
@@ -1023,7 +1022,7 @@ export default function PresentationPage() {
 			{/* Header / Nav */}
 			<div className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-20">
 				<div className="flex items-center gap-2 opacity-0 animate-in fade-in duration-1000 slide-in-from-top-4 fill-mode-forwards">
-					<Image src={LogoCompleteHorizontalColorful} alt="Logo" width={140} height={40} className="w-auto h-8" />
+					<BrandLogo lockup="horizontal" tone="color-on-dark" alt="Logo" width={140} height={40} className="w-auto h-8" />
 					<div className="h-6 w-px bg-white/20 mx-2" />
 					<span className="text-xs font-bold text-white/30 tracking-[0.2em] uppercase">Investor Deck</span>
 				</div>

@@ -1,7 +1,7 @@
 "use client";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import type { TUtilsSalesPromoCampaignConfig } from "@/schemas/utils";
-import LogoPrime from "@/utils/images/vertical-complete-logo.png";
+import LogoPrime from "@/utils/images/ampere/logo-stacked.png";
 import { BadgePercent } from "lucide-react";
 import Image from "next/image";
 type CampaignItem = TUtilsSalesPromoCampaignConfig["valor"]["dados"]["itens"][number];

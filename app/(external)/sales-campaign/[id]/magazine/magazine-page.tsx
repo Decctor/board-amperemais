@@ -1,7 +1,7 @@
 "use client";
 
 import type { TUtilsSalesPromoCampaignConfig } from "@/schemas/utils";
-import LogoPrime from "@/utils/images/vertical-complete-logo.png"; // Use the same logo reference
+import LogoPrime from "@/utils/images/ampere/logo-stacked.png"; // Use the same logo reference
 import { MapPin, Phone } from "lucide-react";
 // We use a regular img tag for print consistency often, or Next Image.
 // Given the reference used img with src, we'll stick to that or Next Image with objectFit.
@@ -41,14 +41,14 @@ export default function SalesCampaignMagazine({ campaign, campaignItems }: Sales
 					}
 					.page-break-after {
 						page-break-after: always;
-                        box-shadow: none !important;
+						box-shadow: none !important;
 					}
 					.page-break-after:last-child {
 						page-break-after: auto;
 					}
-                    .no-print {
-                        display: none !important;
-                    }
+					.no-print {
+						display: none !important;
+					}
 				}
 			`}</style>
 

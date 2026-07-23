@@ -310,6 +310,40 @@ export function NewFoo({ closeModal, callbacks }: NewFooProps) {
 - `components/Layouts/` — Layout utilities (LoadingComponent, ErrorComponent, HeaderApp)
 - `components/Utils/` — Utilities (ResponsiveMenu, ResponsiveMenuSection)
 - `components/Sidebar/` — Sidebar components (AppSidebar, AdminSidebar)
+- `components/Brand/` — Brand assets (BrandLogo)
+
+---
+
+## Brand Logo Conventions
+
+**Never import a logo file directly.** Use `<BrandLogo>` from `components/Brand/BrandLogo.tsx`:
+
+```tsx
+<BrandLogo lockup="horizontal" tone="color-on-dark" fill className="object-contain" />
+```
+
+Two axes, named after the industry standard (`utils/svgs/logos/{lockup}-{tone}.svg`):
+
+| `lockup`           | What it shows            | Available `tone`s                       |
+| ------------------ | ------------------------ | --------------------------------------- |
+| `icon`             | bare symbol              | `color-on-dark`, `black`, `white`, `blue` |
+| `icon-badge`       | symbol in blue capsule   | `color`                                 |
+| `wordmark`         | text only                | `black`, `white`, `blue`                |
+| `horizontal`       | symbol + text, side by side | `color-on-dark`, `black`, `white`, `blue` |
+| `horizontal-badge` | capsule + text           | `color-on-light`, `color-on-dark`       |
+| `stacked`          | symbol above text        | `color-on-dark`, `black`, `white`, `blue` |
+
+Valid `lockup`/`tone` pairs are enforced by the type — `<BrandLogo lockup="icon-badge" tone="black" />` won't compile.
+
+**The trap the naming exists to prevent:** two of the symbol's five bars are white, so every `color-on-dark` variant partially disappears on a light background. On light backgrounds use a `*-badge` lockup (the blue capsule restores contrast) or a monochrome tone.
+
+The `on-dark`/`on-light` qualifier appears exactly when the asset contains an element whose contrast depends on the background. `*-badge` lockups carry their own background, which is why `icon-badge` is plain `color` — it works on any surface. **Never rebuild a badge by wrapping `icon` in a colored `div`; use `icon-badge` so the radius and blue stay consistent.**
+
+For a dynamic `src` (e.g. `org.logoUrl ?? …`), a raw `<img>` in a satori template (needs `.src`), or passing the asset to another component, use `brandLogoSource(lockup, tone)` instead.
+
+Server-side templates in `lib/brand/` use the parallel `BRAND_LOGOS` registry in `lib/brand/assets.ts` — same axes, same files. Keep the two in sync.
+
+PNG exports exist only where a raster is genuinely required; `public/logo.png` is referenced by absolute URL in JSON-LD, so it must keep that path.
 
 ---
 

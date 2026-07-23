@@ -1,10 +1,9 @@
 "use client";
 
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { cn } from "@/lib/utils";
-import LogoHorizontalTextBlack from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL - COLORFUL ICON-BADGE TEXT-BLACK.svg";
 import { Menu, X } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -62,7 +61,7 @@ export function LedgerNavbar() {
 				)}
 			>
 				<Link href="/" className={cn("relative shrink-0 transition-all duration-300 ease-out", scrolled ? "h-7 w-[185px]" : "h-8 w-[214px]")}>
-					<Image src={LogoHorizontalTextBlack} alt="RecompraCRM" fill className="object-contain object-left" priority />
+					<BrandLogo lockup="horizontal-badge" tone="color-on-light" alt="RecompraCRM" fill className="object-contain object-left" priority />
 				</Link>
 				<nav className="hidden md:flex items-center gap-7">
 					{ANCHOR_LINKS.map((link) =>

@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { CommunityThemeToggle } from "@/components/Community/CommunityThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -13,9 +14,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatNameAsInitials } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
-import RecompraCRMLogo from "@/utils/svgs/logos/RECOMPRA - ICON - COLORFUL.svg";
 import { BookOpen, BookText, Home, LogOut, UserPlus } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -155,7 +154,7 @@ export function CommunityDock({ user }: CommunityDockProps) {
 									aria-label="RecompraCRM"
 								>
 									<div className="relative flex size-7 items-center justify-center overflow-hidden rounded-lg bg-[#24549C]">
-										<Image src={RecompraCRMLogo} alt="" fill className="object-cover" aria-hidden />
+										<BrandLogo lockup="icon" tone="color-on-dark" alt="" fill className="object-cover" aria-hidden />
 									</div>
 								</Link>
 							</TooltipTrigger>

@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import RecompraIconColorful from "@/utils/svgs/logos/RECOMPRA - ICON - COLORFUL.svg";
+import { brandLogoSource } from "@/components/Brand/BrandLogo";
 
 export const RECOMPRA_BRAND_BLUE = "#24549C";
 export const RECOMPRA_BRAND_YELLOW = "#FFB900";
@@ -59,7 +59,7 @@ export default function OrganizationBrandWatermark({
 
 				<div style={{ ...circleBaseStyle, background: RECOMPRA_BRAND_BLUE, zIndex: 1, marginLeft: -overlap }}>
 					<img
-						src={RecompraIconColorful.src}
+						src={brandLogoSource("icon", "color-on-dark").src}
 						alt="Recompra"
 						crossOrigin="anonymous"
 						style={{ width: "86%", height: "86%", objectFit: "contain", display: "block" }}

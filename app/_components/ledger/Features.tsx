@@ -1,8 +1,7 @@
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { CheckCircle2, Delete, MapPin, Phone, Search } from "lucide-react";
 import { Reveal } from "./_primitives/Reveal";
 import { Stamp } from "./_primitives/Stamp";
-import RecompraCRMLogoIcon from "@/utils/svgs/logos/RECOMPRA - ICON - COLORFUL.svg";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 type FeatureEntry = {
@@ -237,7 +236,7 @@ function WhatsAppMockup() {
 			{/* Header */}
 			<div className="bg-[#075e54] text-white px-4 py-3 flex items-center gap-3">
 				<div className="w-8 h-8 relative rounded-full bg-[#24549c] border border-white flex items-center justify-center">
-					<Image src={RecompraCRMLogoIcon} alt="RecompraCRM" fill />
+					<BrandLogo lockup="icon" tone="color-on-dark" alt="RecompraCRM" fill />
 				</div>
 				<div className="flex-1">
 					<p className="text-[13px] font-extrabold leading-tight">Loja Exemplo</p>

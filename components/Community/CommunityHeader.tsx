@@ -1,11 +1,10 @@
 "use client";
 
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { CommunityThemeToggle } from "@/components/Community/CommunityThemeToggle";
 import { ChevronRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { Fragment } from "react";
-import RecompraCRMLogo from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.svg";
 
 export type TCommunityBreadcrumbItem = {
 	label: string;
@@ -23,7 +22,7 @@ export function CommunityHeader({ breadcrumbs, showThemeToggle = true }: Communi
 			<div className="flex min-w-0 items-center gap-3">
 				<Link href="/community" className="flex shrink-0 items-center rounded-full bg-primary px-3 py-1.5 transition-opacity hover:opacity-90">
 					<div className="relative h-8 w-20 min-h-8 min-w-20">
-						<Image src={RecompraCRMLogo} alt="RecompraCRM" fill className="object-contain" />
+						<BrandLogo lockup="horizontal" tone="color-on-dark" alt="RecompraCRM" fill className="object-contain" />
 					</div>
 				</Link>
 

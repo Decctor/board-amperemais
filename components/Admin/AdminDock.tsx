@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -13,9 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatNameAsInitials } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
-import LogoIcon from "@/utils/images/logo-icon.png";
 import { ArrowRightLeft, Handshake, LogOut, Palette, Shield, VideoIcon } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -154,7 +153,7 @@ export function AdminDock({ user }: AdminDockProps) {
 									aria-label="Painel Admin RecompraCRM"
 								>
 									<div className="relative size-7 overflow-hidden rounded-lg">
-										<Image src={LogoIcon} alt="" fill className="object-cover" aria-hidden />
+										<BrandLogo lockup="icon" tone="color-on-dark" alt="" fill className="object-cover" aria-hidden />
 									</div>
 								</Link>
 							</TooltipTrigger>

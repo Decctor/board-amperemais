@@ -1,8 +1,8 @@
 "use client";
 
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { ARTHUR_WHATSAPP_NUMBER, LUCAS_WHATSAPP_NUMBER } from "@/config/internal-coms";
-import LogoHorizontalRecompraCRM from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL - COLORFUL ICON-BADGE TEXT-BLACK.svg";
 import {
 	BadgeCheck,
 	BarChart3,
@@ -402,7 +402,7 @@ function Sheet({ children, pageNumber, totalPages }: { children: ReactNode; page
 					<div className="flex items-center gap-1.5">
 						<span className="text-[0.6rem] font-medium text-neutral-400">Powered by</span>
 						<div className="relative h-4 w-20">
-							<Image src={LogoHorizontalRecompraCRM} alt="RecompraCRM" fill className="object-contain" />
+							<BrandLogo lockup="horizontal-badge" tone="color-on-light" alt="RecompraCRM" fill className="object-contain" />
 						</div>
 					</div>
 					<span className="text-[0.6rem] font-medium text-neutral-400">

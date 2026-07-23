@@ -1,13 +1,12 @@
 "use client";
 
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { login } from "@/lib/authentication/actions";
-import RecompraCRMLogo from "@/utils/svgs/logos/RECOMPRA - COMPLETE - VERTICAL - COLORFUL.svg";
-import Image from "next/image";
 import Link from "next/link";
 import { useActionState } from "react";
 import { FaGoogle } from "react-icons/fa6";
@@ -69,7 +68,7 @@ function SignInPage({ redirectTo }: { redirectTo?: string }) {
 								</FieldGroup>
 							</form>
 							<div className="bg-[#24549C] relative hidden md:block">
-								<Image src={RecompraCRMLogo} alt="Logo da RecompraCRM" fill className="p-12" />
+								<BrandLogo lockup="stacked" tone="color-on-dark" alt="Logo da RecompraCRM" fill className="p-12" />
 							</div>
 						</CardContent>
 					</Card>

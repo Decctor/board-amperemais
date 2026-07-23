@@ -1,8 +1,8 @@
 "use client";
 
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import Image from "next/image";
 import { useState } from "react";
-import LogoHorizontalRecompraCRM from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL - COLORFUL.svg";
 import { Button } from "@/components/ui/button";
 import { TCashbackProgramEntity, TOrganizationEntity } from "@/services/drizzle/schema";
 import { hexToRgba, useOrgColors } from "@/components/Providers/OrgColorsProvider";
@@ -300,7 +300,7 @@ export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: 
 					<div className={`w-full flex items-center justify-center bg-[#24549C] text-white ${displayConfig.footerClassName}`}>
 						<p className={`font-medium tracking-tight ${mode === "A6" ? "text-[8px]" : "text-[11px]"}`}>Powered by</p>
 						<div className={`relative ${displayConfig.poweredByLogoClassName}`}>
-							<Image src={LogoHorizontalRecompraCRM} alt="RecompraCRM" fill className="object-contain" />
+							<BrandLogo lockup="horizontal" tone="color-on-dark" alt="RecompraCRM" fill className="object-contain" />
 						</div>
 					</div>
 				</div>

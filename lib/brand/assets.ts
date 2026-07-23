@@ -6,19 +6,32 @@ const INTEGRATION_LOGOS_DIR = path.join(process.cwd(), "utils", "images", "integ
 
 /**
  * Registry dos logos oficiais disponíveis para templates de brand assets.
- * As chaves descrevem orientação + esquema de cor; os arquivos vivem em
- * `utils/svgs/logos/`.
+ * Espelha `BRAND_LOGO_SOURCES` de `components/Brand/BrandLogo.tsx` — mesmos
+ * eixos (lockup + tom), mesmos arquivos em `utils/svgs/logos/`. Se um lado
+ * mudar, mude o outro.
+ *
+ * Lembre que `colorOnDark` traz duas barras brancas no símbolo: em fundo claro
+ * use `badgeColorOnLight` ou uma variante monocromática.
  */
 export const BRAND_LOGOS = {
-	horizontalColorful: "RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.svg",
-	horizontalColorfulTextBlack: "RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL TEXT-BLACK.svg",
-	horizontalColorfulBadgeTextBlack: "RECOMPRA - COMPLETE - HORIZONTAL - COLORFUL ICON-BADGE TEXT-BLACK.svg",
-	horizontalBlack: "RECOMPRA - COMPLETE - HORIZONTAL- BLACK.svg",
-	horizontalWhite: "RECOMPRA - COMPLETE - HORIZONTAL- WHITE.svg",
-	verticalColorful: "RECOMPRA - COMPLETE - VERTICAL - COLORFUL.svg",
-	verticalBlack: "RECOMPRA - COMPLETE - VERTICAL - BLACK.svg",
-	verticalWhite: "RECOMPRA - COMPLETE - VERTICAL - WHITE.svg",
-	iconColorful: "RECOMPRA - ICON - COLORFUL.svg",
+	iconColorOnDark: "icon-color-on-dark.svg",
+	iconBadgeColor: "icon-badge-color.svg",
+	iconBlack: "icon-black.svg",
+	iconWhite: "icon-white.svg",
+	iconBlue: "icon-blue.svg",
+	wordmarkBlack: "wordmark-black.svg",
+	wordmarkWhite: "wordmark-white.svg",
+	wordmarkBlue: "wordmark-blue.svg",
+	horizontalColorOnDark: "horizontal-color-on-dark.svg",
+	horizontalBlack: "horizontal-black.svg",
+	horizontalWhite: "horizontal-white.svg",
+	horizontalBlue: "horizontal-blue.svg",
+	horizontalBadgeColorOnLight: "horizontal-badge-color-on-light.svg",
+	horizontalBadgeColorOnDark: "horizontal-badge-color-on-dark.svg",
+	stackedColorOnDark: "stacked-color-on-dark.svg",
+	stackedBlack: "stacked-black.svg",
+	stackedWhite: "stacked-white.svg",
+	stackedBlue: "stacked-blue.svg",
 } as const;
 
 export type TBrandLogoKey = keyof typeof BRAND_LOGOS;
@@ -52,10 +65,12 @@ export type TIntegrationLogoAsset = {
 	dataUrl: string;
 };
 
+// Aceita origem diferente de zero — `viewBox="minX minY w h"` é SVG válido, e
+// assumir "0 0" já quebrou silenciosamente ao adicionar um asset recortado.
 function parseSvgViewBox(svg: string) {
-	const match = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+	const match = svg.match(/viewBox="\s*(-?[\d.]+)\s+(-?[\d.]+)\s+([\d.]+)\s+([\d.]+)\s*"/);
 	if (!match) return null;
-	return { width: Number(match[1]), height: Number(match[2]) };
+	return { width: Number(match[3]), height: Number(match[4]) };
 }
 
 /**

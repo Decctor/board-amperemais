@@ -1,8 +1,7 @@
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { cn } from "@/lib/utils";
 import type { TOnboardingStage } from "@/app/onboarding/_lib/stages";
-import RecompraCRMLogo from "@/utils/svgs/logos/RECOMPRA - COMPLETE - VERTICAL - COLORFUL.svg";
 import { BadgePercent, BuildingIcon, Check, Database, Megaphone, MessageCircle, PartyPopper } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -65,7 +64,7 @@ export function OnboardingSidebar({ currentStage }: OnboardingSidebarProps) {
 				<div className="flex items-center justify-between gap-3">
 					{/* Logo */}
 					<div className="relative w-16 h-16 filter drop-shadow-lg shrink-0">
-						<Image src={RecompraCRMLogo} alt="RecompraCRM Logo" fill={true} className="object-contain" />
+						<BrandLogo lockup="stacked" tone="color-on-dark" alt="RecompraCRM Logo" fill={true} className="object-contain" />
 					</div>
 
 					{/* Horizontal Steps */}
@@ -112,7 +111,7 @@ export function OnboardingSidebar({ currentStage }: OnboardingSidebarProps) {
 				<div className="flex flex-col gap-6 lg:gap-8 xl:gap-12">
 					<div className="flex items-center justify-center">
 						<div className="relative w-28 h-28 lg:w-32 lg:h-32 xl:w-36 xl:h-36 filter drop-shadow-lg">
-							<Image src={RecompraCRMLogo} alt="RecompraCRM Logo" fill={true} className="object-contain" />
+							<BrandLogo lockup="stacked" tone="color-on-dark" alt="RecompraCRM Logo" fill={true} className="object-contain" />
 						</div>
 					</div>
 					<div className="flex flex-col gap-6 lg:gap-10 xl:gap-14 px-2 lg:px-4">

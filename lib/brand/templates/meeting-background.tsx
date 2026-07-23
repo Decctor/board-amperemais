@@ -7,7 +7,7 @@ const WIDTH = 1920;
 const HEIGHT = 1080;
 const SAFE_MARGIN = 96;
 
-// Geometria das 5 barras do ícone (extraída de RECOMPRA - ICON - COLORFUL.svg,
+// Geometria das 5 barras do ícone (extraída de icon-color-on-dark.svg,
 // normalizada pela barra mais alta) para desenhar a marca d'água em qualquer cor.
 const ICON_BAR_HEIGHTS = [0.4286, 1, 0.5714, 1, 0.4286] as const;
 const ICON_BAR_WIDTH_RATIO = 0.2857;
@@ -47,7 +47,7 @@ const VARIANTS: Record<string, TMeetingBackgroundVariantConfig> = {
 	dark: {
 		backgroundImage: "linear-gradient(135deg, #1c3f73 0%, #102849 55%, #081328 100%)",
 		glow: "radial-gradient(circle at 78% 22%, rgba(36, 84, 156, 0.45) 0%, rgba(36, 84, 156, 0) 60%)",
-		logoKey: "horizontalColorful",
+		logoKey: "horizontalColorOnDark",
 		watermarkColor: BRAND_COLORS.white,
 		watermarkOpacity: 0.05,
 		accentGradient: `linear-gradient(90deg, ${BRAND_COLORS.red} 0%, ${BRAND_COLORS.amber} 100%)`,
@@ -55,7 +55,7 @@ const VARIANTS: Record<string, TMeetingBackgroundVariantConfig> = {
 	light: {
 		backgroundImage: "linear-gradient(135deg, #ffffff 0%, #f4f5f7 60%, #e9ecf1 100%)",
 		glow: "radial-gradient(circle at 78% 22%, rgba(36, 84, 156, 0.08) 0%, rgba(36, 84, 156, 0) 60%)",
-		logoKey: "horizontalColorfulBadgeTextBlack",
+		logoKey: "horizontalBadgeColorOnLight",
 		watermarkColor: BRAND_COLORS.blue,
 		watermarkOpacity: 0.06,
 		accentGradient: `linear-gradient(90deg, ${BRAND_COLORS.red} 0%, ${BRAND_COLORS.amber} 100%)`,

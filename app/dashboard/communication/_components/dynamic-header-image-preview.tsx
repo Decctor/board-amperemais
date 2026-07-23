@@ -1,10 +1,9 @@
 "use client";
 
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import type { CSSProperties } from "react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { hexToHsl, hexToRgba } from "@/components/Providers/OrgColorsProvider";
-import LogoRecompraHorizontalColorful from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL - COLORFUL.svg";
 import { type TMessageTemplateDynamicHeaderPresetId } from "@/lib/message-templates/headers/dynamic-presets";
 import { getDefaultMessageTemplateVariableExample } from "@/lib/message-templates/variables";
 
@@ -158,7 +157,7 @@ function CardFooter({ expirationLabel, palette }: { expirationLabel: string; pal
 			</span>
 			<div className="flex shrink-0 items-center">
 				<div className="relative h-[clamp(1rem,2.75cqw,0.92rem)] w-[clamp(4rem,15cqw,4.2rem)]">
-					<Image src={LogoRecompraHorizontalColorful} alt="RecompraCRM" fill className="object-contain object-center" sizes="96px" />
+					<BrandLogo lockup="horizontal" tone="color-on-dark" alt="RecompraCRM" fill className="object-contain object-center" sizes="96px" />
 				</div>
 			</div>
 		</div>

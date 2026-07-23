@@ -2,10 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { BrandLogo, brandLogoSource } from "@/components/Brand/BrandLogo";
 import { BRAND_COLORS } from "@/lib/brand/tokens";
-import LogoHorizontal from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.svg";
-import LogoIcon from "@/utils/svgs/logos/RECOMPRA - ICON - COLORFUL.svg";
-import LogoVertical from "@/utils/svgs/logos/RECOMPRA - COMPLETE - VERTICAL - COLORFUL.svg";
 import { toJpeg, toPng } from "html-to-image";
 import {
 	BriefcaseBusiness,
@@ -42,10 +40,28 @@ const BACKGROUNDS = [
 	{ key: "black", label: "Preto", color: BRAND_COLORS.black },
 ] as const;
 
+// Catálogo completo — espelha `BRAND_LOGO_SOURCES`. `color-on-dark` traz duas
+// barras brancas no símbolo, então só rende em fundo escuro; os lockups
+// `*-badge` trazem a própria cápsula azul e servem em qualquer fundo.
 const LOGOS = [
-	{ name: "Logo horizontal", slug: "horizontal", src: LogoHorizontal },
-	{ name: "Logo vertical", slug: "vertical", src: LogoVertical },
-	{ name: "Ícone", slug: "icone", src: LogoIcon },
+	{ name: "Horizontal · colorida (fundo escuro)", slug: "horizontal-color-on-dark", src: brandLogoSource("horizontal", "color-on-dark") },
+	{ name: "Horizontal · preta", slug: "horizontal-black", src: brandLogoSource("horizontal", "black") },
+	{ name: "Horizontal · branca", slug: "horizontal-white", src: brandLogoSource("horizontal", "white") },
+	{ name: "Horizontal · azul", slug: "horizontal-blue", src: brandLogoSource("horizontal", "blue") },
+	{ name: "Cápsula + texto · fundo claro", slug: "horizontal-badge-color-on-light", src: brandLogoSource("horizontal-badge", "color-on-light") },
+	{ name: "Cápsula + texto · fundo escuro", slug: "horizontal-badge-color-on-dark", src: brandLogoSource("horizontal-badge", "color-on-dark") },
+	{ name: "Empilhada · colorida (fundo escuro)", slug: "stacked-color-on-dark", src: brandLogoSource("stacked", "color-on-dark") },
+	{ name: "Empilhada · preta", slug: "stacked-black", src: brandLogoSource("stacked", "black") },
+	{ name: "Empilhada · branca", slug: "stacked-white", src: brandLogoSource("stacked", "white") },
+	{ name: "Empilhada · azul", slug: "stacked-blue", src: brandLogoSource("stacked", "blue") },
+	{ name: "Ícone · colorido (fundo escuro)", slug: "icon-color-on-dark", src: brandLogoSource("icon", "color-on-dark") },
+	{ name: "Ícone na cápsula · qualquer fundo", slug: "icon-badge-color", src: brandLogoSource("icon-badge", "color") },
+	{ name: "Ícone · preto", slug: "icon-black", src: brandLogoSource("icon", "black") },
+	{ name: "Ícone · branco", slug: "icon-white", src: brandLogoSource("icon", "white") },
+	{ name: "Ícone · azul", slug: "icon-blue", src: brandLogoSource("icon", "blue") },
+	{ name: "Wordmark · preto", slug: "wordmark-black", src: brandLogoSource("wordmark", "black") },
+	{ name: "Wordmark · branco", slug: "wordmark-white", src: brandLogoSource("wordmark", "white") },
+	{ name: "Wordmark · azul", slug: "wordmark-blue", src: brandLogoSource("wordmark", "blue") },
 ] as const;
 
 const SYMBOLS: { key: string; label: string; icon: LucideIcon }[] = [
@@ -154,7 +170,7 @@ function BrandedBadge({ icon: SymbolIcon }: { icon: LucideIcon }) {
 				<SymbolIcon className="size-20 text-black" strokeWidth={2.2} />
 			</div>
 			<div className="-ml-6 flex size-40 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#24549c] shadow-xl">
-				<Image src={LogoIcon} alt="Recompra" className="size-[86%] object-contain" />
+				<BrandLogo lockup="icon" tone="color-on-dark" alt="Recompra" className="size-[86%] object-contain" />
 			</div>
 		</div>
 	);

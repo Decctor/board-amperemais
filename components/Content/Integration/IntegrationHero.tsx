@@ -1,5 +1,5 @@
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import type { IntegrationPage } from "@/app/_content/integration-pages";
-import RecompraLogo from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL - COLORFUL ICON-BADGE TEXT-BLACK.svg";
 import { ArrowRight, Calendar, Plug } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -89,7 +89,7 @@ export function IntegrationHero({ page }: IntegrationHeroProps) {
 							</div>
 
 							<div className="relative h-7 w-40">
-								<Image src={RecompraLogo} alt="RecompraCRM" fill className="object-contain" />
+								<BrandLogo lockup="horizontal-badge" tone="color-on-light" alt="RecompraCRM" fill className="object-contain" />
 							</div>
 						</div>
 						<p className="mt-4 text-center text-xs font-medium text-slate-400">{page.connectionSummary}</p>

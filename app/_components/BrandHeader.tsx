@@ -1,7 +1,7 @@
 "use client";
 
+import { brandLogoSource } from "@/components/Brand/BrandLogo";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
-import LogoHorizontalTextBlack from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL - COLORFUL ICON-BADGE TEXT-BLACK.svg";
 import type { NavLinkProps } from "./SiteHeader";
 import { SiteHeader } from "./SiteHeader";
 
@@ -38,7 +38,7 @@ export default function BrandHeader({ links = BRAND_NAV_LINKS }: BrandHeaderProp
 	return (
 		<SiteHeader.Root>
 			<SiteHeader.Bar>
-				<SiteHeader.Logo src={LogoHorizontalTextBlack} />
+				<SiteHeader.Logo src={brandLogoSource("horizontal-badge", "color-on-light")} />
 
 				<SiteHeader.Nav>
 					{links.map((link) => (

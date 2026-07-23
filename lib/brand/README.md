@@ -23,7 +23,7 @@ Saída em `exports/brand/` (gitignored — os arquivos são regeneráveis).
 | Arquivo                | Responsabilidade                                                 |
 | ---------------------- | ---------------------------------------------------------------- |
 | `tokens.ts`            | Cores da marca (espelham `styles/globals.css` e os logos)        |
-| `assets.ts`            | Registry dos logos de `utils/svgs/logos/` + loader como data URL |
+| `assets.ts`            | Registry dos logos de `utils/svgs/logos/` (espelha `components/Brand/BrandLogo.tsx`) + loader como data URL |
 | `render.tsx`           | Renderizador genérico satori → resvg (SVG/PNG)                   |
 | `templates/types.ts`   | Contrato `TBrandTemplate`                                        |
 | `templates/<nome>.tsx` | Um template por arquivo, com suas variantes                      |

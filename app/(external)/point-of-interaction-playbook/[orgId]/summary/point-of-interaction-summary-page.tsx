@@ -1,10 +1,10 @@
 "use client";
 
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { hexToRgba, useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { Button } from "@/components/ui/button";
 import { ARTHUR_WHATSAPP_NUMBER, LUCAS_WHATSAPP_NUMBER } from "@/config/internal-coms";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
-import LogoHorizontalRecompraCRM from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL - COLORFUL.svg";
 import { Building2, Check, Database, Headphones, MessageSquareQuote, Phone, Printer, ShieldCheck, Smartphone, Sparkles, Tablet } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode } from "react";
@@ -37,11 +37,9 @@ const MOBILE_STEPS = [
 	"No painel da loja, o operador aprova com a senha do vendedor.",
 ];
 
-const KIOSK_COUNTER_PHRASE =
-	"Oi, aproveita que estou passando sua venda e coloca seu telefone pra pontuar e ganhar cashback :)";
+const KIOSK_COUNTER_PHRASE = "Oi, aproveita que estou passando sua venda e coloca seu telefone pra pontuar e ganhar cashback :)";
 
-const MOBILE_COUNTER_PHRASE =
-	"Oi, aproveita que estou passando sua venda e scaneia o código com seu telefone para pontuar e ganhar cashback :)";
+const MOBILE_COUNTER_PHRASE = "Oi, aproveita que estou passando sua venda e scaneia o código com seu telefone para pontuar e ganhar cashback :)";
 
 const SUPPORT_CONTACTS = [
 	{ name: "Lucas Fernandes", phone: "34 99662-6855", whatsapp: LUCAS_WHATSAPP_NUMBER },
@@ -207,7 +205,7 @@ export default function PointOfInteractionSummaryPage({ org }: PointOfInteractio
 					<div className="flex items-center gap-1.5">
 						<span className="text-[0.6rem] font-medium">Powered by</span>
 						<div className="relative h-4 w-20">
-							<Image src={LogoHorizontalRecompraCRM} alt="RecompraCRM" fill className="object-contain" />
+							<BrandLogo lockup="horizontal" tone="color-on-dark" alt="RecompraCRM" fill className="object-contain" />
 						</div>
 					</div>
 				</div>

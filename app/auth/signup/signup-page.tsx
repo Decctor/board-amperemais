@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,8 +8,6 @@ import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from 
 import { Input } from "@/components/ui/input";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { signUpWithEmail } from "@/lib/authentication/actions";
-import RecompraCRMLogo from "@/utils/svgs/logos/RECOMPRA - COMPLETE - VERTICAL - COLORFUL.svg";
-import Image from "next/image";
 import Link from "next/link";
 import { useActionState } from "react";
 import { FaGoogle } from "react-icons/fa6";
@@ -22,7 +21,7 @@ function SignUpPage() {
 					<Card className="overflow-hidden p-0">
 						<CardContent className="grid p-0 md:grid-cols-2">
 							<div className="bg-[#24549C] relative hidden md:block">
-								<Image src={RecompraCRMLogo} alt="Logo da RecompraCRM" fill={true} />
+								<BrandLogo lockup="stacked" tone="color-on-dark" alt="Logo da RecompraCRM" fill={true} />
 							</div>
 							<form
 								action={async (formData) => {

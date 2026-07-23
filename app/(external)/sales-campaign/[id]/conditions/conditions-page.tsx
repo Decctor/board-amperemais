@@ -3,7 +3,7 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
 import type { TUtilsSalesPromoCampaignConfig } from "@/schemas/utils";
-import LogoPrime from "@/utils/images/vertical-complete-logo.png";
+import LogoPrime from "@/utils/images/ampere/logo-stacked.png";
 import dayjs from "dayjs";
 import { toPng } from "html-to-image";
 import { BadgePercent, Download } from "lucide-react";
@@ -109,7 +109,7 @@ function SalesCampaignConditionItem({
 
 	return (
 		<div className="flex flex-col gap-3 p-3 rounded-lg shadow-lg bg-card">
-			{/* IMPORTANT: The content inside this ref needs to use standard HTML tags 
+			{/* IMPORTANT: The content inside this ref needs to use standard HTML tags
                where possible to avoid canvas generation issues.
             */}
 			<div ref={ref} className="w-[500px] h-[500px] shrink-0">

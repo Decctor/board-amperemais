@@ -128,8 +128,8 @@ async function renderIntegracao(variant: TVariant) {
 	const config = VARIANT_CONFIG[variant];
 	const [partnerLogo, brandBadgeLogo, brandLogo] = await Promise.all([
 		loadIntegrationLogo(config.logoKey),
-		loadBrandLogo("horizontalColorfulBadgeTextBlack"),
-		loadBrandLogo("horizontalColorful"),
+		loadBrandLogo("horizontalBadgeColorOnLight"),
+		loadBrandLogo("horizontalColorOnDark"),
 	]);
 
 	const partnerLogoSize = fitLogo(partnerLogo, config.logoHeight);

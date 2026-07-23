@@ -16,12 +16,15 @@ import { switchOrganization } from "@/lib/mutations/organizations";
 import { useOrganizationSubscriptionStatus, useUserMemberships } from "@/lib/queries/organizations";
 import { useUserSession } from "@/lib/queries/session";
 import { cn } from "@/lib/utils";
-import LogoIcon from "@/utils/images/logo-icon.png";
+import { brandLogoSource } from "@/components/Brand/BrandLogo";
 import { useMutation } from "@tanstack/react-query";
 import { Check, ChevronsUpDown, LayoutGrid, Loader2, Plus, Rocket, Shield, ShieldAlert } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+
+/** Fallback quando a organização não tem logo próprio. */
+const LogoIcon = brandLogoSource("icon", "color-on-dark");
 
 export default function SubscriptionPaywall() {
 	const { data, isLoading } = useOrganizationSubscriptionStatus();

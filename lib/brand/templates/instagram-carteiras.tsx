@@ -85,7 +85,7 @@ function SlideDots({ active }: { active: TSlide }) {
 }
 
 async function SlideFooter({ active }: { active: TSlide }) {
-	const logo = await loadBrandLogo("horizontalColorful");
+	const logo = await loadBrandLogo("horizontalColorOnDark");
 	const logoWidth = 260;
 	const logoHeight = Math.round(logoWidth * (logo.height / logo.width));
 
@@ -609,7 +609,7 @@ async function renderAbordagem() {
 }
 
 async function renderFechamento() {
-	const logo = await loadBrandLogo("horizontalColorful");
+	const logo = await loadBrandLogo("horizontalColorOnDark");
 	const logoWidth = 340;
 	const logoHeight = Math.round(logoWidth * (logo.height / logo.width));
 

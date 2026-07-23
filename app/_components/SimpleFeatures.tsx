@@ -1,7 +1,5 @@
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import type { ReactNode } from "react";
-import RecompraCRMLogoIcon from "@/utils/svgs/logos/RECOMPRA - ICON - COLORFUL.svg";
-import RecompraCRMLogo from "@/utils/svgs/logos/RECOMPRA - COMPLETE - VERTICAL - COLORFUL.svg";
-import Image from "next/image";
 import {
 	BadgePercent,
 	Building2,
@@ -134,7 +132,7 @@ function POIMockup() {
 			<div className="bg-brand text-brand-foreground px-6 py-7 md:px-8 md:py-10 flex flex-col items-center gap-5 rounded-t">
 				<div className="flex items-center gap-5">
 					<div className="w-16 h-16 md:w-20 md:h-20 flex-shrink-0 flex items-center justify-center relative rounded-2xl overflow-hidden bg-brand-secondary shadow-lg ring-2 ring-white">
-						<Image src={RecompraCRMLogoIcon} alt="RecompraCRM" fill className="object-contain p-1.5 rounded-2xl" />
+						<BrandLogo lockup="icon" tone="color-on-dark" alt="RecompraCRM" fill className="object-contain p-1.5 rounded-2xl" />
 					</div>
 					<div className="flex flex-col gap-0.5 min-w-0">
 						<h1 className="text-xl md:text-2xl font-black tracking-tight leading-tight truncate">RecompraCRM</h1>
@@ -364,7 +362,7 @@ function WhatsAppMockup() {
 			{/* WhatsApp header */}
 			<div className="bg-[#075E54] px-4 py-3 flex items-center gap-3">
 				<div className="w-9 h-9 rounded-full relative bg-brand-secondary border border-white">
-					<Image src={RecompraCRMLogoIcon} alt="WhatsApp" width={36} height={36} className="absolute top-0 left-0" />
+					<BrandLogo lockup="icon" tone="color-on-dark" alt="WhatsApp" width={36} height={36} className="absolute top-0 left-0" />
 				</div>
 				<div>
 					<p className="text-white font-semibold text-sm leading-tight">RecompraCRM</p>

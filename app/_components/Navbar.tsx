@@ -1,11 +1,10 @@
 "use client";
 
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { cn } from "@/lib/utils";
-import LogoCompleteHorizontalColorful from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.svg";
 import { motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -53,7 +52,7 @@ export default function NavbarV2() {
 		<header className={cn("fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-brand-secondary rounded-bl-lg rounded-br-lg")}>
 			<div className="container mx-auto max-w-7xl px-6 lg:px-8 h-16 flex items-center justify-between">
 				<Link href="/" className="relative w-36 h-10">
-					<Image src={LogoCompleteHorizontalColorful} alt="RecompraCRM" fill className="object-contain" priority />
+					<BrandLogo lockup="horizontal" tone="color-on-dark" alt="RecompraCRM" fill className="object-contain" priority />
 				</Link>
 
 				<nav className="hidden md:flex items-center gap-8">

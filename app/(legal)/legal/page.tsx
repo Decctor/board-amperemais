@@ -22,7 +22,7 @@ import {
 import Link from "next/link";
 import React from "react";
 import Image from "next/image";
-import RecompraCRMLogo from "@/utils/images/logos/RECOMPRA - COMPLETE - HORIZONTAL- COLORFUL.png";
+import RecompraCRMLogo from "@/utils/images/logos/horizontal-color-on-dark.png";
 export default function LegalPage() {
 	const lastUpdateDate = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 

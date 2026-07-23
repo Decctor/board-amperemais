@@ -1,8 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { TUserSession } from "@/schemas/users";
-import LogoIcon from "@/utils/images/logo-icon.png";
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { Settings } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React from "react";
@@ -22,7 +21,7 @@ function Header({ session }: HeaderProps) {
 					<Link href="/">
 						<div className="p-2 flex items-center justify-center rounded-full bg-white">
 							<div className="min-w-[25px] w-[25px] min-h-[25px] h-[25px] relative">
-								<Image src={LogoIcon} alt="Logo Ampère+" fill={true} />
+								<BrandLogo lockup="icon" tone="color-on-dark" fill={true} />
 							</div>
 						</div>
 					</Link>

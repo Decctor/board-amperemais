@@ -1,10 +1,10 @@
 "use client";
 
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { hexToRgba, useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { TCashbackProgramEntity, TOrganizationEntity } from "@/services/drizzle/schema";
-import LogoHorizontalRecompraCRM from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL - COLORFUL.svg";
 import {
 	ArrowRight,
 	Building2,
@@ -90,7 +90,19 @@ function SectionTitle({ icon: Icon, eyebrow, title }: { icon: typeof Gift; eyebr
 	);
 }
 
-function FlowStep({ n, title, children, mockup, last = false }: { n: number; title: string; children: ReactNode; mockup: ReactNode; last?: boolean }) {
+function FlowStep({
+	n,
+	title,
+	children,
+	mockup,
+	last = false,
+}: {
+	n: number;
+	title: string;
+	children: ReactNode;
+	mockup: ReactNode;
+	last?: boolean;
+}) {
 	const { colors } = useOrgColors();
 	return (
 		<div className="flex items-start gap-4 break-inside-avoid">
@@ -560,7 +572,7 @@ export default function PointOfInteractionPlaybookPage({ org }: PointOfInteracti
 					<div className="mt-auto flex items-center justify-center gap-2 px-2 py-4 bg-[#24549C] text-white">
 						<p className="text-[0.65rem] font-medium">Powered by</p>
 						<div className="relative h-5 w-24">
-							<Image src={LogoHorizontalRecompraCRM} alt="RecompraCRM" fill className="object-contain" />
+							<BrandLogo lockup="horizontal" tone="color-on-dark" alt="RecompraCRM" fill className="object-contain" />
 						</div>
 					</div>
 				</Sheet>

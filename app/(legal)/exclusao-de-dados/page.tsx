@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DataExclusionRequestForm } from "./data-exclusion-request-form";
 import Image from "next/image";
-import RecompraCRMLogo from "@/utils/images/logos/RECOMPRA - ICON - COLORFUL.png";
+import RecompraCRMLogo from "@/utils/images/logos/icon-color-on-dark.png";
 
 export const metadata: Metadata = {
 	title: "Exclusão de dados",
@@ -33,11 +33,13 @@ export default function DataExclusionPage() {
 					<div className="space-y-4">
 						<div className="w-8 h-0.5 bg-brand" />
 						<h1 className="text-3xl font-bold tracking-tight leading-tight">
-							Solicitação de<br />exclusão de dados
+							Solicitação de
+							<br />
+							exclusão de dados
 						</h1>
 						<p className="text-sm leading-relaxed text-white/65 max-w-sm">
-							Use esta página para solicitar a exclusão de dados pessoais tratados pelo RecompraCRM, incluindo dados
-							associados a integrações com produtos da Meta, como WhatsApp e Facebook.
+							Use esta página para solicitar a exclusão de dados pessoais tratados pelo RecompraCRM, incluindo dados associados a integrações com produtos da
+							Meta, como WhatsApp e Facebook.
 						</p>
 					</div>
 

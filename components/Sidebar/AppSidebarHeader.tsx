@@ -12,11 +12,14 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/c
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { switchOrganization } from "@/lib/mutations/organizations";
 import { useUserMemberships } from "@/lib/queries/organizations";
-import LogoIcon from "@/utils/images/logo-icon.png";
+import { BrandLogo, brandLogoSource } from "@/components/Brand/BrandLogo";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowRightLeft, Check, ChevronsUpDown, Loader2, Plus, Shield } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+
+/** Fallback quando a organização não tem logo próprio. */
+const LogoIcon = brandLogoSource("icon", "color-on-dark");
 
 type AppSidebarHeaderProps = {
 	sessionUserOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"] | null;
@@ -53,7 +56,7 @@ export default function AppSidebarHeader({ sessionUserOrg, user, mode = "app" }:
 					{isAdminMode ? (
 						<div className="flex w-full items-center gap-2 self-center group-data-[collapsible=icon]:justify-center">
 							<div className="relative h-8 w-8 shrink-0 self-center overflow-hidden rounded-lg">
-								<Image src={LogoIcon} alt="RecompraCRM Admin" fill className="object-cover" />
+								<BrandLogo lockup="icon" tone="color-on-dark" alt="RecompraCRM Admin" fill className="object-cover" />
 							</div>
 							<div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
 								<span className="truncate font-medium">ADMIN</span>
@@ -71,7 +74,7 @@ export default function AppSidebarHeader({ sessionUserOrg, user, mode = "app" }:
 					) : (
 						<div className="flex w-full items-center gap-2 self-center group-data-[collapsible=icon]:justify-center">
 							<div className="relative h-8 w-8 shrink-0 self-center overflow-hidden rounded-lg">
-								<Image src={LogoIcon} alt="Logo Ampère Mais" fill className="object-cover" />
+								<BrandLogo lockup="icon" tone="color-on-dark" fill className="object-cover" />
 							</div>
 							<div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
 								<span className="truncate font-medium">RecompraCRM</span>
