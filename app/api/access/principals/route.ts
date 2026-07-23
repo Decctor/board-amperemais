@@ -35,7 +35,8 @@ async function getAccessPrincipals({ input, organizacaoId }: TGetAccessPrincipal
 		dataRevogacao: true,
 	} as const;
 	const principalWith = {
-		cliente: { columns: { codigo: true, nome: true, categoria: true } },
+		// escoposPermitidos alimenta a UI de gestão de permissões (teto do cliente).
+		cliente: { columns: { codigo: true, nome: true, categoria: true, escoposPermitidos: true } },
 		grants: { columns: { scope: true, dataRevogacao: true } },
 		// Nunca expõe hash ou segredo — apenas identificação e ciclo de vida.
 		credenciais: {

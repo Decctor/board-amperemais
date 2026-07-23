@@ -1,4 +1,5 @@
 import type { TRevokeAccessCredentialInput, TRevokeAccessCredentialOutput } from "@/app/api/access/credentials/revoke/route";
+import type { TUpdateAccessGrantInput, TUpdateAccessGrantOutput } from "@/app/api/access/grants/route";
 import type { TRotateAccessCredentialInput, TRotateAccessCredentialOutput } from "@/app/api/access/credentials/rotate/route";
 import type { TCreateEnrollmentChallengeInput, TCreateEnrollmentChallengeOutput } from "@/app/api/access/enrollments/route";
 import type { TUpdateAccessPrincipalInput, TUpdateAccessPrincipalOutput } from "@/app/api/access/principals/route";
@@ -21,5 +22,10 @@ export async function rotateAccessCredential(input: TRotateAccessCredentialInput
 
 export async function revokeAccessCredential(input: TRevokeAccessCredentialInput) {
 	const { data } = await axios.post<TRevokeAccessCredentialOutput>("/api/access/credentials/revoke", input);
+	return data;
+}
+
+export async function updateAccessGrant(input: TUpdateAccessGrantInput) {
+	const { data } = await axios.patch<TUpdateAccessGrantOutput>("/api/access/grants", input);
 	return data;
 }

@@ -4,7 +4,8 @@ import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
-import { revokeAccessCredential, rotateAccessCredential, updateAccessPrincipal } from "@/lib/mutations/access";
+import { revokeAccessCredential, rotateAccessCredential, updateAccessGrant, updateAccessPrincipal } from "@/lib/mutations/access";
+import type { TAccessScopeEnum } from "@/schemas/enums";
 import { useAccessPrincipalById } from "@/lib/queries/access";
 import { cn, copyToClipboard } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -95,8 +96,21 @@ export function ControlAccessPrincipal({ principalId, canManage, closeModal, cal
 		onError: (mutationError) => toast.error(getErrorMessage(mutationError)),
 	});
 
+	const { mutate: mutateGrant, isPending: isUpdatingGrant } = useMutation({
+		mutationKey: ["update-access-grant", principalId],
+		mutationFn: updateAccessGrant,
+		onSuccess: async (data) => {
+			toast.success(data.message);
+			await refetchPrincipal();
+		},
+		onError: (mutationError) => toast.error(getErrorMessage(mutationError)),
+	});
+
 	const isRevoked = principal?.status === "REVOGADO" || !!principal?.dataRevogacao;
 	const activeScopes = principal?.grants.filter((grant) => !grant.dataRevogacao) ?? [];
+	const activeScopeSet = new Set(activeScopes.map((grant) => grant.scope));
+	// Teto do cliente + grants ativos fora do teto (teto pode ter encolhido — ainda precisam ser revogáveis).
+	const manageableScopes = Array.from(new Set([...(principal?.cliente.escoposPermitidos ?? []), ...activeScopeSet]));
 	const metadados = (principal?.metadados ?? {}) as { plataforma?: string; versaoApp?: string; modelo?: string; fabricante?: string };
 	const nameChanged = !!principal && nome.trim().length > 0 && nome.trim() !== principal.nome;
 
@@ -248,18 +262,42 @@ export function ControlAccessPrincipal({ principalId, canManage, closeModal, cal
 					</ResponsiveMenuSection>
 
 					<ResponsiveMenuSection title="PERMISSÕES" icon={<ShieldCheck className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />}>
-						{activeScopes.length === 0 ? (
-							<p className="text-sm text-muted-foreground">Nenhuma permissão ativa.</p>
+						{manageableScopes.length === 0 ? (
+							<p className="text-sm text-muted-foreground">Nenhuma permissão disponível para este tipo de dispositivo.</p>
 						) : (
-							<div className="flex flex-wrap items-center gap-1.5">
-								{activeScopes.map((grant) => (
-									<span
-										key={grant.scope}
-										className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[0.65rem] font-bold text-primary"
-									>
-										{grant.scope}
-									</span>
-								))}
+							<div className="flex w-full flex-col gap-1.5">
+								{manageableScopes.map((scope) => {
+									const isActive = activeScopeSet.has(scope);
+									return (
+										<div key={scope} className="flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-card p-2.5">
+											<span
+												className={cn(
+													"rounded-full border px-2.5 py-1 text-[0.65rem] font-bold",
+													isActive ? "border-primary/20 bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground",
+												)}
+											>
+												{scope}
+											</span>
+											{!readOnly ? (
+												<Button
+													variant="ghost"
+													size="sm"
+													disabled={isUpdatingGrant}
+													className={cn(
+														isActive
+															? "text-destructive hover:bg-destructive/10 hover:text-destructive"
+															: "text-primary hover:bg-primary/10 hover:text-primary",
+													)}
+													onClick={() =>
+														mutateGrant({ principalId, scope: scope as TAccessScopeEnum, acao: isActive ? "REVOGAR" : "CONCEDER" })
+													}
+												>
+													{isActive ? "REVOGAR" : "CONCEDER"}
+												</Button>
+											) : null}
+										</div>
+									);
+								})}
 							</div>
 						)}
 					</ResponsiveMenuSection>
