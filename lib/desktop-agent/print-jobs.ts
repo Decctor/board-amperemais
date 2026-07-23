@@ -32,6 +32,16 @@ const FORMATO_DRIVERS_COMPATIVEIS: Record<TPrintJobFormatoEnum, TAgentPrinterEnt
 	ZPL: ["ZPL_REDE"],
 };
 
+// Condição de "há trabalho claimável" — compartilhada entre o claim e o sweep de nudge do canal WS:
+// PENDENTE (ou lease vencida), dentro das tentativas e do TTL.
+export function claimablePrintJobsCondition(now: Date) {
+	return and(
+		or(eq(printJobs.status, "PENDENTE"), and(eq(printJobs.status, "PROCESSANDO"), lt(printJobs.leaseExpiraEm, now))),
+		lt(printJobs.numeroTentativas, PRINT_JOB_MAX_TENTATIVAS),
+		gt(printJobs.expiraEm, now),
+	);
+}
+
 const DanfeDadosSchema = z.object({
 	pdfUrl: z
 		.string({ required_error: "URL do PDF da DANFE não informada.", invalid_type_error: "Tipo não válido para a URL do PDF da DANFE." })
@@ -172,9 +182,7 @@ export async function claimPrintJobs({ actor, limite }: TClaimPrintJobsParams) {
 	const candidates = await db.query.printJobs.findMany({
 		where: and(
 			eq(printJobs.organizacaoId, actor.organizationId),
-			or(eq(printJobs.status, "PENDENTE"), and(eq(printJobs.status, "PROCESSANDO"), lt(printJobs.leaseExpiraEm, now))),
-			lt(printJobs.numeroTentativas, PRINT_JOB_MAX_TENTATIVAS),
-			gt(printJobs.expiraEm, now),
+			claimablePrintJobsCondition(now),
 			finalidadeCondition,
 			// Job de loja específica só sai no agent daquela loja.
 			principal?.lojaId ? or(isNull(printJobs.lojaId), eq(printJobs.lojaId, principal.lojaId)) : isNull(printJobs.lojaId),
