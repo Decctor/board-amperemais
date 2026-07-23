@@ -30,6 +30,9 @@ export async function recordAccessEvent(params: TRecordAccessEventParams) {
 	}
 }
 
+// PREMISSA DE DEPLOY: o primeiro item do x-forwarded-for só é confiável porque a Vercel
+// sobrescreve o header com o IP real do cliente. Atrás de outro proxy/provedor, este valor
+// passa a ser forjável — e o rate limiting por IP do enrollment precisa ser revisto.
 export function getRequestClientInfo(request: NextRequest) {
 	const forwardedFor = request.headers.get("x-forwarded-for");
 	const enderecoIp = forwardedFor ? forwardedFor.split(",")[0].trim() : (request.headers.get("x-real-ip") ?? null);

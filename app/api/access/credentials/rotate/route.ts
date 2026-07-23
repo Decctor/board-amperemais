@@ -38,8 +38,10 @@ export type TRotateAccessCredentialOutput = Awaited<ReturnType<typeof rotateAcce
 async function rotateAccessCredentialRoute(request: NextRequest) {
 	const { enderecoIp, userAgent } = getRequestClientInfo(request);
 
+	// Prefixo rcm_ (mesmo critério de poi-actor): qualquer outro Bearer não é credencial nossa
+	// e deve cair no caminho de sessão em vez de falhar a autenticação externa.
 	const authorizationHeader = request.headers.get("authorization");
-	if (authorizationHeader?.startsWith("Bearer ")) {
+	if (authorizationHeader?.startsWith("Bearer rcm_")) {
 		const actor = await authenticateExternalRequest(request);
 		const result = await rotateAccessCredential({
 			principalId: actor.principalId,

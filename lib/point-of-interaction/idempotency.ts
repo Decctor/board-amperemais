@@ -56,6 +56,8 @@ export async function runPoiTransactionWithIdempotency<TResult>({
 		if (existing.payloadHash !== payloadHash) {
 			throw new createHttpError.Conflict("A chave de idempotência já foi usada com outra transação.");
 		}
+		// Replay vem do jsonb: o TResult de `execute` deve permanecer JSON-serializável
+		// (Date vira string, Map/Set/undefined se perdem) — vale para todos os retornos de `resposta`.
 		if (existing.status === "CONCLUIDO") return existing.resposta as TResult;
 
 		const [claimedReservation] = await db
@@ -84,6 +86,7 @@ export async function runPoiTransactionWithIdempotency<TResult>({
 				where: eq(poiTransactionIdempotencyRequests.id, existing.id),
 				columns: { status: true, resposta: true },
 			});
+			// Mesmo replay do jsonb do caminho acima — mesma restrição de serialização.
 			if (latest?.status === "CONCLUIDO") return latest.resposta as TResult;
 			throw new createHttpError.Conflict(POI_IDEMPOTENCY_PROCESSING_MESSAGE);
 		}

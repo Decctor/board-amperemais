@@ -89,6 +89,7 @@ export async function revokePrincipal(params: TRevokePrincipalParams) {
 		where: and(eq(accessPrincipals.id, params.principalId), eq(accessPrincipals.organizacaoId, params.organizacaoId)),
 	});
 	if (!principal) throw new createHttpError.NotFound("Dispositivo não encontrado.");
+	if (principal.dataRevogacao) throw new createHttpError.BadRequest("Dispositivo já revogado.");
 
 	const now = new Date();
 	await db.transaction(async (tx) => {
