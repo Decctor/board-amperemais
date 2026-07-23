@@ -5,21 +5,20 @@
 // importe outro componente e aponte `ActiveProposal` para ele — o resto não muda.
 
 import { Printer } from "lucide-react";
-import { PraticoSupermercadosProposal } from "./_components/pratico-supermercados";
 import { BRAND } from "./_components/_shared";
+import { RecompraCrmVarejoPlanoAnual } from "./_components/recompracrm-varejo-plano-anual";
 
 /* -------------------------------------------------------------------------- */
 /*  Proposta ativa — troque aqui                                              */
 /* -------------------------------------------------------------------------- */
 
-const ActiveProposal = PraticoSupermercadosProposal;
+const ActiveProposal = RecompraCrmVarejoPlanoAnual;
 
 /* -------------------------------------------------------------------------- */
 /*  Shell                                                                      */
 /* -------------------------------------------------------------------------- */
 
 export default function PropostaPersonalizadaPage() {
-	return <div className="h-screen w-screen bg-red-500"></div>;
 	function handlePrint() {
 		window.print();
 	}
