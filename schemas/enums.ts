@@ -486,7 +486,8 @@ export const AgentPrinterDriverEnum = z.enum(["DRIVER_SO", "ZPL_REDE"]);
 export type TAgentPrinterDriverEnum = z.infer<typeof AgentPrinterDriverEnum>;
 
 // Roteamento por finalidade: a impressora declara o que atende; o job nasce com uma finalidade.
-export const PrintJobFinalidadeEnum = z.enum(["CUPOM_VENDA", "ETIQUETA_LOTE", "DANFE_NFCE", "DANFE_NFE"]);
+// TESTE sempre carrega impressoraId fixado (bypassa o roteamento) — valida o pipeline fim-a-fim.
+export const PrintJobFinalidadeEnum = z.enum(["CUPOM_VENDA", "ETIQUETA_LOTE", "DANFE_NFCE", "DANFE_NFE", "TESTE"]);
 export type TPrintJobFinalidadeEnum = z.infer<typeof PrintJobFinalidadeEnum>;
 
 export const PrintJobFormatoEnum = z.enum(["HTML", "PDF_URL", "ZPL"]);

@@ -8,6 +8,7 @@ import createHttpError from "http-errors";
 import { z } from "zod";
 import { CupomVendaDadosSchema, renderCupomVendaHtml } from "./templates/cupom-venda";
 import { EtiquetaLoteDadosSchema, renderEtiquetaLoteHtml, renderEtiquetaLoteZpl } from "./templates/etiqueta-lote";
+import { TesteImpressaoDadosSchema, renderTesteImpressaoHtml, renderTesteImpressaoZpl } from "./templates/teste-impressao";
 
 // Fila durável de jobs de impressão do agente desktop (plano: docs/dev-planning/desktop-agent-printing-plan.md).
 // Enqueue renderiza no servidor; claim é atômico com lease; report exige posse da tentativa.
@@ -18,6 +19,8 @@ const FINALIDADE_TTL_MINUTES: Record<TPrintJobFinalidadeEnum, number> = {
 	ETIQUETA_LOTE: 24 * 60,
 	DANFE_NFCE: 24 * 60,
 	DANFE_NFE: 24 * 60,
+	// Teste atrasado não serve pra nada: quem clicou já desistiu de esperar.
+	TESTE: 15,
 };
 
 const CLAIM_LEASE_MINUTES = 2;
@@ -78,6 +81,11 @@ function renderPrintJobContent({
 		case "DANFE_NFE": {
 			const parsed = DanfeDadosSchema.parse(dados);
 			return { formato: "PDF_URL", conteudo: null, conteudoUrl: parsed.pdfUrl };
+		}
+		case "TESTE": {
+			const parsed = TesteImpressaoDadosSchema.parse(dados);
+			if (formatoPreferido === "ZPL") return { formato: "ZPL", conteudo: renderTesteImpressaoZpl(parsed), conteudoUrl: null };
+			return { formato: "HTML", conteudo: renderTesteImpressaoHtml(parsed), conteudoUrl: null };
 		}
 	}
 }

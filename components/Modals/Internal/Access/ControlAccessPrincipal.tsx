@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { revokeAccessCredential, rotateAccessCredential, updateAccessGrant, updateAccessPrincipal } from "@/lib/mutations/access";
-import type { TAccessScopeEnum } from "@/schemas/enums";
+import { createManualPrintJob, updateAgentPrinter } from "@/lib/mutations/desktop-agent";
+import { type TAgentPrinterListItem, useAgentPrinters } from "@/lib/queries/desktop-agent";
+import type { TAccessScopeEnum, TPrintJobFinalidadeEnum } from "@/schemas/enums";
 import { useAccessPrincipalById } from "@/lib/queries/access";
 import { cn, copyToClipboard } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { Copy, Info, KeyRound, RefreshCw, ShieldCheck, TriangleAlert } from "lucide-react";
+import { Copy, Info, KeyRound, Printer, RefreshCw, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import AccessStatusBadge from "./AccessStatusBadge";
@@ -105,6 +107,11 @@ export function ControlAccessPrincipal({ principalId, canManage, closeModal, cal
 		},
 		onError: (mutationError) => toast.error(getErrorMessage(mutationError)),
 	});
+
+	// Impressoras sincronizadas por este agente (só relevante para principals AGENTE_DESKTOP).
+	const { data: printers, queryKey: printersQueryKey } = useAgentPrinters();
+	const principalPrinters = printers?.filter((printer) => printer.principalId === principalId) ?? [];
+	const refetchPrinters = async () => await queryClient.invalidateQueries({ queryKey: printersQueryKey });
 
 	const isRevoked = principal?.status === "REVOGADO" || !!principal?.dataRevogacao;
 	const activeScopes = principal?.grants.filter((grant) => !grant.dataRevogacao) ?? [];
@@ -302,6 +309,22 @@ export function ControlAccessPrincipal({ principalId, canManage, closeModal, cal
 						)}
 					</ResponsiveMenuSection>
 
+					{principal.tipo === "AGENTE_DESKTOP" ? (
+						<ResponsiveMenuSection title="IMPRESSORAS" icon={<Printer className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />}>
+							{principalPrinters.length === 0 ? (
+								<p className="text-sm text-muted-foreground">
+									Nenhuma impressora sincronizada ainda. O agente reporta as impressoras da máquina automaticamente após a ativação.
+								</p>
+							) : (
+								<div className="flex w-full flex-col gap-1.5">
+									{principalPrinters.map((printer) => (
+										<AgentPrinterRow key={printer.id} printer={printer} readOnly={readOnly} onChanged={refetchPrinters} />
+									))}
+								</div>
+							)}
+						</ResponsiveMenuSection>
+					) : null}
+
 					{isRevoked ? (
 						<p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
 							<TriangleAlert className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />
@@ -317,6 +340,133 @@ export function ControlAccessPrincipal({ principalId, canManage, closeModal, cal
 
 function MetadataPill({ label }: { label: string }) {
 	return <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[0.65rem] font-semibold text-muted-foreground">{label}</span>;
+}
+
+// Finalidades roteáveis (TESTE fica de fora: sempre carrega impressoraId fixado).
+const PRINTER_FINALIDADE_OPTIONS: Array<{ value: TPrintJobFinalidadeEnum; label: string }> = [
+	{ value: "CUPOM_VENDA", label: "CUPONS" },
+	{ value: "ETIQUETA_LOTE", label: "ETIQUETAS" },
+	{ value: "DANFE_NFCE", label: "NFC-e" },
+	{ value: "DANFE_NFE", label: "NF-e" },
+];
+
+type AgentPrinterRowProps = {
+	printer: TAgentPrinterListItem;
+	readOnly: boolean;
+	onChanged: () => Promise<unknown>;
+};
+function AgentPrinterRow({ printer, readOnly, onChanged }: AgentPrinterRowProps) {
+	const [apelido, setApelido] = useState(printer.apelido ?? "");
+	const apelidoChanged = (printer.apelido ?? "") !== apelido.trim();
+
+	const { mutate: mutatePrinter, isPending: isUpdatingPrinter } = useMutation({
+		mutationKey: ["update-agent-printer", printer.id],
+		mutationFn: updateAgentPrinter,
+		onSuccess: async (data) => {
+			toast.success(data.message);
+			await onChanged();
+		},
+		onError: (mutationError) => toast.error(getErrorMessage(mutationError)),
+	});
+
+	const { mutate: mutateTestPrint, isPending: isTesting } = useMutation({
+		mutationKey: ["test-agent-printer", printer.id],
+		mutationFn: createManualPrintJob,
+		onSuccess: (data) => toast.success(data.message),
+		onError: (mutationError) => toast.error(getErrorMessage(mutationError)),
+	});
+
+	const toggleFinalidade = (finalidade: TPrintJobFinalidadeEnum) => {
+		const current = printer.finalidades as TPrintJobFinalidadeEnum[];
+		const next = current.includes(finalidade) ? current.filter((item) => item !== finalidade) : [...current, finalidade];
+		mutatePrinter({ id: printer.id, finalidades: next });
+	};
+
+	return (
+		<div className={cn("flex w-full flex-col gap-2 rounded-xl border border-border bg-card p-3", !printer.ativa && "opacity-70")}>
+			<div className="flex w-full items-center justify-between gap-2">
+				<div className="flex min-w-0 flex-col gap-0.5">
+					<span className="truncate text-sm font-semibold">{printer.apelido || printer.nomeSistema}</span>
+					<span className="truncate text-xs text-muted-foreground">
+						{printer.nomeSistema} · {printer.driver === "ZPL_REDE" ? "Térmica de rede (ZPL)" : "Driver do sistema"} · Sync:{" "}
+						{printer.ultimaSincronizacao ? formatDateAsLocale(printer.ultimaSincronizacao, true) : "nunca"}
+					</span>
+				</div>
+				<div className="flex shrink-0 items-center gap-2">
+					<span
+						className={cn(
+							"rounded-full border px-2 py-1 text-[0.6rem] font-bold tracking-widest",
+							printer.disponivel ? "bg-green-100 text-green-800 border-green-200" : "bg-yellow-100 text-yellow-800 border-yellow-200",
+						)}
+					>
+						{printer.disponivel ? "DISPONÍVEL" : "AUSENTE"}
+					</span>
+					<Button
+						variant="outline"
+						size="sm"
+						className="flex items-center gap-1.5"
+						disabled={isTesting || !printer.ativa || !printer.disponivel}
+						onClick={() => mutateTestPrint({ finalidade: "TESTE", impressoraId: printer.id })}
+					>
+						<Printer className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />
+						TESTAR
+					</Button>
+				</div>
+			</div>
+			{!readOnly ? (
+				<>
+					<div className="flex w-full items-end gap-2">
+						<div className="grow">
+							<TextInput label="APELIDO" value={apelido} placeholder={printer.nomeSistema} handleChange={(value) => setApelido(value)} />
+						</div>
+						{apelidoChanged ? (
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={isUpdatingPrinter}
+								onClick={() => mutatePrinter({ id: printer.id, apelido: apelido.trim() || null })}
+							>
+								SALVAR
+							</Button>
+						) : null}
+					</div>
+					<div className="flex w-full flex-wrap items-center justify-between gap-2">
+						<div className="flex flex-wrap items-center gap-1.5">
+							{PRINTER_FINALIDADE_OPTIONS.map((option) => {
+								const isAssigned = printer.finalidades.includes(option.value);
+								return (
+									<button
+										key={option.value}
+										type="button"
+										aria-pressed={isAssigned}
+										disabled={isUpdatingPrinter}
+										onClick={() => toggleFinalidade(option.value)}
+										className={cn(
+											"rounded-full border px-2.5 py-1 text-[0.65rem] font-bold transition-colors",
+											isAssigned
+												? "border-primary/20 bg-primary/10 text-primary"
+												: "border-border bg-muted text-muted-foreground hover:bg-accent",
+										)}
+									>
+										{option.label}
+									</button>
+								);
+							})}
+						</div>
+						<Button
+							variant="ghost"
+							size="sm"
+							disabled={isUpdatingPrinter}
+							className={cn(printer.ativa ? "text-destructive hover:bg-destructive/10 hover:text-destructive" : "text-primary")}
+							onClick={() => mutatePrinter({ id: printer.id, ativa: !printer.ativa })}
+						>
+							{printer.ativa ? "DESATIVAR" : "ATIVAR"}
+						</Button>
+					</div>
+				</>
+			) : null}
+		</div>
+	);
 }
 
 export default ControlAccessPrincipal;

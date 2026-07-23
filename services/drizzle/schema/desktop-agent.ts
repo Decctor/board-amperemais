@@ -59,7 +59,7 @@ export const printJobs = newTable(
 		// Sem FK enquanto lojas não forem entidade do schema (mesmo racional de access_principals.loja_id).
 		// Agent só claima jobs da sua loja ou sem loja.
 		lojaId: varchar("loja_id", { length: 255 }),
-		finalidade: varchar("finalidade", { length: 30 }).$type<"CUPOM_VENDA" | "ETIQUETA_LOTE" | "DANFE_NFCE" | "DANFE_NFE">().notNull(),
+		finalidade: varchar("finalidade", { length: 30 }).$type<"CUPOM_VENDA" | "ETIQUETA_LOTE" | "DANFE_NFCE" | "DANFE_NFE" | "TESTE">().notNull(),
 		formato: varchar("formato", { length: 30 }).$type<"HTML" | "PDF_URL" | "ZPL">().notNull(),
 		// Conteúdo renderizado no servidor — o agent é burro (plano, decisão 2).
 		conteudo: text("conteudo"),

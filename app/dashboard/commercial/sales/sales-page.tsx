@@ -9,6 +9,14 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger, tabsPageToolbarActionsClassName, tabsPageToolbarClassName } from "@/components/ui/tabs";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ActionApprovalsQueue } from "@/components/ActionApprovals/ActionApprovalsQueue";
 import { SaleFulfillmentDetailsMenu } from "@/components/Modals/Sales/SaleFulfillmentDetailsMenu";
 import FulfillmentBoard from "./_components/fulfillment/fulfillment-board";
@@ -16,8 +24,12 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
 import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary } from "@/components/ui/interactive-filter-formatting";
+import { organizationHasPrinterForFinalidade, useAgentPrinters } from "@/lib/queries/desktop-agent";
+import { createManualPrintJob } from "@/lib/mutations/desktop-agent";
 import { useSales } from "@/lib/queries/sales";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { TGetSalesInput, TGetSalesOutputDefault } from "@/app/api/sales/route";
 import {
@@ -33,8 +45,10 @@ import {
 	LayoutGrid,
 	ListFilter,
 	Megaphone,
+	MoreHorizontal,
 	Package,
 	Plus,
+	Printer,
 	ReceiptText,
 	Tag,
 	TrendingDown,
@@ -482,15 +496,76 @@ function SaleCard({ sale }: { sale: TGetSalesOutputDefault["sales"][number] }) {
 					)}
 				</div>
 			)}
-			<div className="w-full flex items-center justify-end">
+			<div className="w-full flex items-center justify-end gap-1">
 				<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
 					<Link href={`/dashboard/commercial/sales/${sale.id}`}>
 						<Info className="w-3 min-w-3 h-3 min-h-3" />
 						DETALHES
 					</Link>
 				</Button>
+				<SaleCardActionsMenu sale={sale} />
 			</div>
 		</div>
+	);
+}
+
+// Menu de ações rápidas da venda (mesmo padrão do módulo fiscal): atalhos + impressão de cupom
+// via agente desktop. O botão de impressão fica desabilitado enquanto nenhuma impressora ativa
+// atender à finalidade CUPOM_VENDA.
+function SaleCardActionsMenu({ sale }: { sale: TGetSalesOutputDefault["sales"][number] }) {
+	const { data: printers } = useAgentPrinters();
+	const canPrintCupom = organizationHasPrinterForFinalidade(printers, "CUPOM_VENDA");
+
+	const { mutate: printCupom, isPending: printIsPending } = useMutation({
+		mutationKey: ["print-sale-cupom", sale.id],
+		mutationFn: createManualPrintJob,
+		onSuccess: (data) => toast.success(data.message),
+		onError: (mutationError) => toast.error(getErrorMessage(mutationError)),
+	});
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button variant="ghost" size="icon" aria-label="Mais ações da venda">
+					<MoreHorizontal className="h-4 w-4" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-56">
+				<DropdownMenuLabel>Ações rápidas</DropdownMenuLabel>
+				<DropdownMenuItem asChild>
+					<Link href={`/dashboard/commercial/sales/${sale.id}`}>
+						<Info className="h-4 w-4" />
+						VER DETALHES
+					</Link>
+				</DropdownMenuItem>
+				{sale.cliente ? (
+					<DropdownMenuItem asChild>
+						<Link href={`/dashboard/commercial/clients/id/${sale.cliente.id}`}>
+							<CircleUser className="h-4 w-4" />
+							VER CLIENTE
+						</Link>
+					</DropdownMenuItem>
+				) : (
+					<DropdownMenuItem disabled>
+						<CircleUser className="h-4 w-4" />
+						VER CLIENTE
+					</DropdownMenuItem>
+				)}
+				<DropdownMenuSeparator />
+				<DropdownMenuItem
+					disabled={!canPrintCupom || printIsPending}
+					onClick={() => printCupom({ finalidade: "CUPOM_VENDA", vendaId: sale.id })}
+				>
+					<Printer className="h-4 w-4" />
+					IMPRIMIR CUPOM
+				</DropdownMenuItem>
+				{!canPrintCupom ? (
+					<p className="px-2 pb-1.5 pt-0.5 text-[0.65rem] leading-tight text-muted-foreground">
+						Nenhuma impressora ativa atende a cupons. Configure em Configurações → Dispositivos.
+					</p>
+				) : null}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }
 
