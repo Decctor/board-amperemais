@@ -460,6 +460,8 @@ export const AccessCredentialTypeEnum = z.enum(["TOKEN_DISPOSITIVO", "CHAVE_API"
 export type TAccessCredentialTypeEnum = z.infer<typeof AccessCredentialTypeEnum>;
 
 // Scopes existentes na plataforma. Correspondência sempre por igualdade exata — sem wildcards (§9.4 do plano).
+// Prefixo "desktop-agent:" (e não "agent:") de propósito: "agent" puro fica reservado para um
+// eventual agente de IA/MCP da plataforma.
 export const AccessScopeEnum = z.enum([
 	"poi:configuration:read",
 	"poi:clients:read",
@@ -467,6 +469,9 @@ export const AccessScopeEnum = z.enum([
 	"poi:transactions:create",
 	"poi:coupons:read",
 	"poi:prizes:read",
+	"desktop-agent:configuration:read",
+	"desktop-agent:print-jobs:read",
+	"desktop-agent:print-jobs:update",
 ]);
 export type TAccessScopeEnum = z.infer<typeof AccessScopeEnum>;
 

@@ -7,7 +7,7 @@ import { copyToClipboard } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { AppWindow, Check, Copy, TabletSmartphone, TriangleAlert } from "lucide-react";
+import { AppWindow, Check, Copy, Monitor, TabletSmartphone, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,22 @@ const ENROLLABLE_CLIENTS = [
 		codigo: "RECOMPRA_POI_MOBILE",
 		titulo: "Aplicativo no tablet",
 		descricao: "Tablet Android com o aplicativo POI instalado via APK.",
+		permissoesDescricao: "apenas as permissões do fluxo de Ponto de Interação",
 		icon: TabletSmartphone,
 	},
 	{
 		codigo: "RECOMPRA_POI_WEB",
 		titulo: "Kiosk no navegador",
 		descricao: "Computador ou tablet operando o POI direto no navegador.",
+		permissoesDescricao: "apenas as permissões do fluxo de Ponto de Interação",
 		icon: AppWindow,
+	},
+	{
+		codigo: "RECOMPRA_LOCAL_AGENT",
+		titulo: "Agente desktop",
+		descricao: "Aplicativo desktop para controle de periféricos da loja (impressoras etc.).",
+		permissoesDescricao: "apenas as permissões do agente desktop (periféricos)",
+		icon: Monitor,
 	},
 ] as const;
 
@@ -147,8 +156,10 @@ export function NewAccessEnrollment({ closeModal, callbacks }: NewAccessEnrollme
 					handleChange={(value) => setNomeSugerido(value)}
 				/>
 				<p className="text-xs text-muted-foreground">
-					O código expira em 15 minutos e vale para uma única ativação. O dispositivo receberá apenas as permissões do fluxo de Ponto de
-					Interação.
+					O código expira em 15 minutos e vale para uma única ativação. O dispositivo receberá{" "}
+					{ENROLLABLE_CLIENTS.find((client) => client.codigo === accessClientCodigo)?.permissoesDescricao ??
+						"apenas as permissões previstas para este tipo de dispositivo"}
+					.
 				</p>
 			</div>
 		</ResponsiveMenu>

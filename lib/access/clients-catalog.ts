@@ -12,6 +12,13 @@ export const POI_ACCESS_SCOPES: TAccessScopeEnum[] = [
 	"poi:prizes:read",
 ];
 
+// Scopes do agente desktop local (recompra-local-agent) — controle de periféricos da loja.
+export const DESKTOP_AGENT_ACCESS_SCOPES: TAccessScopeEnum[] = [
+	"desktop-agent:configuration:read",
+	"desktop-agent:print-jobs:read",
+	"desktop-agent:print-jobs:update",
+];
+
 type TNativeAccessClientDefinition = {
 	codigo: string;
 	nome: string;
@@ -32,6 +39,12 @@ export const NATIVE_ACCESS_CLIENTS: TNativeAccessClientDefinition[] = [
 		nome: "POI web (kiosk no navegador)",
 		categoria: "NATIVO_WEB_KIOSK",
 		escoposPermitidos: POI_ACCESS_SCOPES,
+	},
+	{
+		codigo: "RECOMPRA_LOCAL_AGENT",
+		nome: "Agente desktop local (periféricos)",
+		categoria: "NATIVO_DESKTOP",
+		escoposPermitidos: DESKTOP_AGENT_ACCESS_SCOPES,
 	},
 ];
 
