@@ -223,6 +223,14 @@ export const OrganizationConfigurationSchema = z.object({
 				conferenciaCega: false,
 				bloquearFechamentoComPendenciaFiscal: false,
 			}),
+		// Toggle do módulo de mesas & comandas. Gate de navegação/rota; as POLÍTICAS de
+		// operação (presets, pedidos via QR) vivem em serviceSettings, configuradas no
+		// próprio módulo — mesma separação de sessoesVenda x sessões abertas.
+		mesasComandas: z
+			.object({
+				habilitado: z.boolean({ invalid_type_error: "Tipo não válido para a habilitação de mesas e comandas." }),
+			})
+			.default({ habilitado: false }),
 	}),
 	defaults: OrganizationDefaultsSchema,
 });

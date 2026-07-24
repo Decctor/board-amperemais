@@ -349,8 +349,8 @@ async function createOrganization({
 					configuracao: {
 						recursos: freeTrialConfig,
 						preferencias: {
+							...DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES,
 							rastreamentoEstoque: freeTrialConfig.erp.acesso === true,
-							limiteMensagensSemanaisViaCampanhas: null,
 						},
 						defaults: organizationDefaults,
 					},
@@ -436,8 +436,8 @@ async function createOrganization({
 				configuracao: {
 					recursos: plan.capabilities,
 					preferencias: {
+						...DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES,
 						rastreamentoEstoque: plan.capabilities.erp.acesso === true,
-						limiteMensagensSemanaisViaCampanhas: null,
 					},
 					defaults: organizationDefaults,
 				},

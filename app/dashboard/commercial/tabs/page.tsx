@@ -9,6 +9,8 @@ export default async function Tabs() {
 	const membership = sessionUser.membership;
 	if (!membership) redirect("/onboarding");
 	if (!membership.organizacao.configuracao.recursos.erp.acesso) redirect("/dashboard/commercial/sales");
+	// Módulo desabilitado na organização: rota inacessível (mesmo gate da sidebar).
+	if (!membership.organizacao.configuracao.preferencias.mesasComandas?.habilitado) redirect("/dashboard/commercial/sales");
 
 	return <TabsBoardPage />;
 }

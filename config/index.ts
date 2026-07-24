@@ -188,6 +188,9 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES: TOrganizationConfig
 		conferenciaCega: false,
 		bloquearFechamentoComPendenciaFiscal: false,
 	},
+	mesasComandas: {
+		habilitado: false,
+	},
 };
 
 const DEFAULT_PAYMENT_METHOD_CONFIGURATION: TOrganizationConfiguration["defaults"]["pagamentos"]["metodos"]["DINHEIRO"] = {

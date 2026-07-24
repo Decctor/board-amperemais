@@ -422,6 +422,7 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 	}
 
 	const lancamentosPadrao = state.organization.configuracao.defaults.contabilidade.lancamentosPadrao;
+	const mesasComandasConfig = state.organization.configuracao.preferencias.mesasComandas ?? { habilitado: false };
 	const sessoesVendaConfig = state.organization.configuracao.preferencias.sessoesVenda ?? {
 		habilitado: false,
 		obrigatorio: false,
@@ -705,6 +706,21 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 										</div>
 									</div>
 								) : null}
+							</div>
+
+							<div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3">
+								<div className="flex flex-col gap-0.5">
+									<span className="text-sm font-medium tracking-tight">MESAS & COMANDAS</span>
+									<span className="text-xs text-muted-foreground">
+										Habilita contas de atendimento (mesas, comandas) com pedidos acumulados e fechamento único. O modo de operação e os pedidos via QR
+										Code são configurados dentro do módulo.
+									</span>
+								</div>
+								<Switch
+									checked={mesasComandasConfig.habilitado}
+									onCheckedChange={(checked) => userHasEditPermissions && updatePreferencias({ mesasComandas: { habilitado: checked } })}
+									disabled={!userHasEditPermissions}
+								/>
 							</div>
 						</>
 					)}

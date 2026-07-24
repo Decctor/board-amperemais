@@ -97,7 +97,7 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				url: "/dashboard/commercial/tabs",
 				icon: <UtensilsCrossed className="w-4 h-4" />,
 				items: null,
-				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
+				checkAccess: (org) => org.configuracao.recursos.erp.acesso && (org.configuracao.preferencias.mesasComandas?.habilitado ?? false),
 			},
 			{
 				title: "Matriz RFM",

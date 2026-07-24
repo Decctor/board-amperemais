@@ -11,21 +11,21 @@ export const ServiceSettingsConfigurationSchema = z
 		pontos: z
 			.object({
 				habilitados: z.boolean({
-					required_error: "Habilitacao de pontos de atendimento nao informada.",
-					invalid_type_error: "Tipo nao valido para habilitacao de pontos de atendimento.",
+					required_error: "Habilitacao de pontos de atendimento não informada.",
+					invalid_type_error: "Tipo não valido para habilitacao de pontos de atendimento.",
 				}),
 			})
 			.default({ habilitados: false }),
 		contas: z
 			.object({
 				habilitadas: z.boolean({
-					required_error: "Habilitacao de contas nao informada.",
-					invalid_type_error: "Tipo nao valido para habilitacao de contas.",
+					required_error: "Habilitacao de contas não informada.",
+					invalid_type_error: "Tipo não valido para habilitacao de contas.",
 				}),
 				identificacao: TabIdentificationModeEnum.default("AUTOMATICA"),
-				pontoObrigatorio: z.boolean({ invalid_type_error: "Tipo nao valido para obrigatoriedade de ponto." }).default(false),
+				pontoObrigatorio: z.boolean({ invalid_type_error: "Tipo não valido para obrigatoriedade de ponto." }).default(false),
 				maxAbertasPorPonto: z
-					.number({ invalid_type_error: "Tipo nao valido para o limite de contas abertas por ponto." })
+					.number({ invalid_type_error: "Tipo não valido para o limite de contas abertas por ponto." })
 					.int()
 					.positive()
 					.nullable()
