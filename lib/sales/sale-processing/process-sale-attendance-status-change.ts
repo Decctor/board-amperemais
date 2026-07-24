@@ -8,7 +8,7 @@ import { attendanceStatusRequiresPhysicalOut, isValidAttendanceTransition } from
 import { getSaleFinancialState } from "./get-sale-financial-state";
 import { processSaleAutomaticFiscalEmissionIfEligible } from "./process-sale-automatic-fiscal-emission";
 import { processSaleCashbackAccumulationIfEligible } from "./process-sale-cashback-accumulation";
-import { processStockDeductionIfNotDeducted } from "./process-stock-deduction";
+import { processStockDeduction } from "./process-stock-deduction";
 
 type ProcessSaleAttendanceStatusChangeInput = {
 	organization: TOrganizationEntity;
@@ -104,7 +104,8 @@ export async function processSaleAttendanceStatusChange(input: ProcessSaleAttend
 		}
 
 		if (requiresPhysicalOut && input.organization.configuracao.preferencias.rastreamentoEstoque && (input.enableStockDeduction ?? true)) {
-			await processStockDeductionIfNotDeducted(tx, {
+			// A deduplicacao (item ja com saida / delta por item) vive dentro de processStockDeduction.
+			await processStockDeduction(tx, {
 				organizationId: input.organization.id,
 				saleId: input.saleId,
 				saleItems: sale.itens,

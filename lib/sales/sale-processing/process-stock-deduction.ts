@@ -23,31 +23,32 @@ type ProcessStockDeductionParams = {
 };
 
 /**
- * Baixa de estoque guardada por idempotência: só executa se a venda ainda não tem SAÍDA de
- * estoque registrada. Retorna true quando a baixa foi executada nesta chamada. É o ponto único
- * usado pelo serviço de transição de atendimento e pela ingestão de canais gerenciados —
- * eventos duplicados/replays de webhook nunca baixam duas vezes.
- */
-export async function processStockDeductionIfNotDeducted(tx: DBTransaction, params: ProcessStockDeductionParams): Promise<boolean> {
-	const existingDeduction = await tx.query.productStockTransactions.findFirst({
-		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, params.organizationId), eq(fields.vendaId, params.saleId), eq(fields.tipo, "SAIDA")),
-		columns: { id: true },
-	});
-	if (existingDeduction) return false;
-
-	await processStockDeduction(tx, params);
-	return true;
-}
-
-/**
- * Baixa fisica de estoque por DELTA de item: `quantidade - quantidadeCancelada - quantidadeEntregue`.
- * Atualiza `quantidadeEntregue` na mesma transacao — o campo e a fonte da deduplicacao, entao
- * a funcao e idempotente: itens ja entregues tem delta zero e nao geram nova movimentacao.
- * Isso permite baixar por pedido (tabOrders de comanda) e depois baixar so o remanescente
- * no fechamento da conta, sem duplicar saidas para vendas comuns.
+ * Baixa fisica de estoque da venda. Ponto UNICO de baixa e de deduplicacao — chamado pela
+ * confirmacao, pela transicao de atendimento, pela ingestao de canais gerenciados e pelo
+ * fechamento de conta. A dedup e no grao do ITEM, combinando duas defesas:
+ *
+ * 1. item que ja possui SAIDA registrada e pulado. Cobre o dado legado, em que a baixa
+ *    acontecia sem preencher `quantidadeEntregue` (venda nascida ENTREGUE nunca passava pela
+ *    transicao de atendimento) — sem isso, um replay de webhook baixaria de novo;
+ * 2. itens sem SAIDA baixam o DELTA `quantidade - quantidadeCancelada - quantidadeEntregue`,
+ *    e `quantidadeEntregue` e atualizada na mesma transacao.
+ *
+ * O grao de item (e nao de venda) e o que permite a conta de atendimento baixar por pedido
+ * entregue e, no fechamento, baixar somente os itens que nunca sairam — uma guarda por venda
+ * pularia a venda inteira por ja existir SAIDA de um pedido anterior.
+ *
+ * Retorna a quantidade de itens que geraram baixa nesta chamada.
  */
 export async function processStockDeduction(tx: DBTransaction, params: ProcessStockDeductionParams) {
 	const reason = params.reason ?? "Venda confirmada";
+
+	// Itens desta venda que ja possuem saida registrada (uma query para todos).
+	const existingOutbound = await tx.query.productStockTransactions.findMany({
+		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, params.organizationId), eq(fields.vendaId, params.saleId), eq(fields.tipo, "SAIDA")),
+		columns: { vendaItemId: true },
+	});
+	const alreadyDeductedItemIds = new Set(existingOutbound.map((transaction) => transaction.vendaItemId).filter((id): id is string => !!id));
+	let deductedItemsCount = 0;
 
 	const optionIds = [
 		...new Set(
@@ -171,7 +172,11 @@ export async function processStockDeduction(tx: DBTransaction, params: ProcessSt
 	}
 
 	for (const item of params.saleItems) {
-		// Delta por item: o que ainda falta entregar. Itens cancelados nao baixam;
+		// Defesa 1 (dado legado): item com saida ja registrada nao baixa de novo, mesmo que
+		// `quantidadeEntregue` esteja zerada — a baixa antiga nao preenchia o campo.
+		if (alreadyDeductedItemIds.has(item.id)) continue;
+
+		// Defesa 2 (delta por item): o que ainda falta entregar. Itens cancelados nao baixam;
 		// itens ja entregues (por pedido de comanda ou baixa anterior) tem delta zero.
 		const deliverableQuantity = Math.max(0, item.quantidade - (item.quantidadeCancelada ?? 0));
 		const deltaQuantity = Math.max(0, deliverableQuantity - (item.quantidadeEntregue ?? 0));
@@ -252,7 +257,8 @@ export async function processStockDeduction(tx: DBTransaction, params: ProcessSt
 			.update(saleItems)
 			.set({ quantidadeEntregue: (item.quantidadeEntregue ?? 0) + deltaQuantity })
 			.where(eq(saleItems.id, item.id));
+		deductedItemsCount += 1;
 	}
 
-	return { success: true };
+	return { success: true, deductedItemsCount };
 }

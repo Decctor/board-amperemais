@@ -7,7 +7,7 @@ import {
 	settleManagedSaleOfflinePayments,
 } from "@/lib/sales/fulfillment-channels/managed-sale-financials";
 import { isManagedFulfillmentSaleModel, type TChannelErpPolicy } from "@/lib/sales/fulfillment-channels/policy";
-import { processStockDeductionIfNotDeducted } from "@/lib/sales/sale-processing/process-stock-deduction";
+import { processStockDeduction } from "@/lib/sales/sale-processing/process-stock-deduction";
 import { FIRST_PARTY_ACCOUNT_KEYS } from "@/lib/finances/first-party-accounts";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import { clients, saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
@@ -48,7 +48,8 @@ async function applyManagedSaleDeliveryEffects({
 	if (deductStock) {
 		try {
 			await tx.transaction(async (nested) => {
-				await processStockDeductionIfNotDeducted(nested, {
+				// Replay de webhook e seguro: a deduplicacao por item vive dentro de processStockDeduction.
+				await processStockDeduction(nested, {
 					organizationId,
 					saleId,
 					saleItems: itemsForStock,
