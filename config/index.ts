@@ -188,7 +188,7 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES: TOrganizationConfig
 		conferenciaCega: false,
 		bloquearFechamentoComPendenciaFiscal: false,
 	},
-	mesasComandas: {
+	contasAtendimento: {
 		habilitado: false,
 	},
 };
