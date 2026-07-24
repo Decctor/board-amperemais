@@ -33,3 +33,7 @@ export * from "./platform-partnerships";
 export * from "./productions";
 export * from "./integrations";
 export * from "./audiences";
+export * from "./service-points";
+export * from "./service-settings";
+export * from "./tabs";
+export * from "./tab-order-requests";

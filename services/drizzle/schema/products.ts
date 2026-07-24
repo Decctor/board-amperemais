@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { boolean, doublePrecision, index, integer, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
-import { productClientReferenceWindowEnum, stockLotStatusEnum, stockMovementTypeEnum, variantOptionTypeEnum } from "./enums";
+import { productClientReferenceWindowEnum, productStockDeductionModeEnum, stockLotStatusEnum, stockMovementTypeEnum, variantOptionTypeEnum } from "./enums";
 import { organizations } from "./organizations";
 import { saleItems, sales } from "./sales";
 import { users } from "./users";
@@ -32,6 +32,11 @@ export const products = newTable(
 		tipo: text("tipo").notNull(),
 		grupo: text("grupo").notNull(),
 		rastreamentoEstoqueAtivo: boolean("rastreamento_estoque_ativo").default(false),
+		// Como a venda baixa estoque: ESTOQUE_PROPRIO (saldo do produto) ou COMPOSICAO
+		// (explosao da ficha tecnica — pratos). Explosao e fiada na Fase 2 de tabs.
+		baixaEstoqueModo: productStockDeductionModeEnum("baixa_estoque_modo").default("ESTOQUE_PROPRIO").notNull(),
+		// FK para productionRecipes criada apenas na migracao SQL (evita import circular com productions.ts).
+		fichaTecnicaReceitaId: varchar("ficha_tecnica_receita_id", { length: 255 }),
 		dataUltimaSincronizacao: timestamp("data_ultima_sincronizacao"),
 		// valorUnitario: doublePrecision("valor_unitario").notNull(),
 	},

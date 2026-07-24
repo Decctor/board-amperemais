@@ -416,3 +416,34 @@ export type TActionApprovalDecisionMethodEnum = z.infer<typeof ActionApprovalDec
 // cenários de aprovação não custem migração de enum no Postgres (padrão ai-hints).
 export const ActionApprovalTypeEnum = z.enum(["VENDA_DESCONTO"]);
 export type TActionApprovalTypeEnum = z.infer<typeof ActionApprovalTypeEnum>;
+
+// ============================================================================
+// TABS / PONTOS DE ATENDIMENTO (docs/tabs/implementation-plan.md)
+// ============================================================================
+
+// Espelha o pgEnum tabStatusEnum.
+export const TabStatusEnum = z.enum(["ABERTA", "FECHADA", "CANCELADA"]);
+export type TTabStatusEnum = z.infer<typeof TabStatusEnum>;
+
+// Espelha o pgEnum servicePointTypeEnum.
+export const ServicePointTypeEnum = z.enum(["MESA", "BALCAO", "QUIOSQUE", "OUTRO"]);
+export type TServicePointTypeEnum = z.infer<typeof ServicePointTypeEnum>;
+
+// Espelha o pgEnum productStockDeductionModeEnum.
+export const ProductStockDeductionModeEnum = z.enum(["ESTOQUE_PROPRIO", "COMPOSICAO"]);
+export type TProductStockDeductionModeEnum = z.infer<typeof ProductStockDeductionModeEnum>;
+
+// Politicas de serviceSettings (apenas app-level, nao sao pgEnum: vivem no jsonb de configuracoes).
+export const TabIdentificationModeEnum = z.enum(["AUTOMATICA", "CODIGO_MANUAL"]);
+export type TTabIdentificationModeEnum = z.infer<typeof TabIdentificationModeEnum>;
+
+export const PublicTabOpeningModeEnum = z.enum(["DESABILITADA", "SOLICITACAO", "AUTOMATICA"]);
+export type TPublicTabOpeningModeEnum = z.infer<typeof PublicTabOpeningModeEnum>;
+
+export const TabCustomerOrderingModeEnum = z.enum(["DESABILITADO", "SOLICITACAO", "DIRETO"]);
+export type TTabCustomerOrderingModeEnum = z.infer<typeof TabCustomerOrderingModeEnum>;
+
+// Status da solicitacao publica de pedido (QR). Deliberadamente NAO e pgEnum:
+// a coluna e varchar para novos estados nao custarem migracao (padrao shopOrderRequests).
+export const TabOrderRequestStatusEnum = z.enum(["PENDENTE", "APROVADA", "REJEITADA", "PROCESSANDO", "CONCLUIDA", "ERRO"]);
+export type TTabOrderRequestStatusEnum = z.infer<typeof TabOrderRequestStatusEnum>;

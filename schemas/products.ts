@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { StockMovementTypeEnum, VariantOptionTypeEnum } from "./enums";
+import { ProductStockDeductionModeEnum, StockMovementTypeEnum, VariantOptionTypeEnum } from "./enums";
 
 export const ProductSchema = z.object({
 	organizacaoId: z.string({
@@ -53,6 +53,17 @@ export const ProductSchema = z.object({
 			invalid_type_error: "Tipo não válido para status do rastreamento de estoque.",
 		})
 		.default(false),
+	// Como a venda baixa estoque: ESTOQUE_PROPRIO (saldo do próprio produto) ou
+	// COMPOSICAO (explosão da ficha técnica — pratos, drinks, lanches).
+	// Opcional SEM default: payload sem o campo não altera o valor persistido
+	// (clients antigos não resetam o modo em edições não relacionadas).
+	baixaEstoqueModo: ProductStockDeductionModeEnum.optional(),
+	fichaTecnicaReceitaId: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID da ficha técnica.",
+		})
+		.optional()
+		.nullable(),
 	quantidade: z
 		.number({
 			invalid_type_error: "Tipo não válido para quantidade do produto.",
