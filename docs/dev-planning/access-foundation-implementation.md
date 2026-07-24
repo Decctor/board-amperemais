@@ -55,7 +55,9 @@ Content-Type: application/json
 { "code": "ABCDE-FGHJK", "nome": "Tablet do balcão", "metadados": { "plataforma": "android", "versaoApp": "1.0.0", "modelo": "...", "fabricante": "..." } }
 ```
 
-Resposta (`data`): `{ token, principal: { id, nome, organizacaoId }, scopes }`. O `token` é retornado uma única vez — guardar no SecureStore. O endpoint é protegido por rate limiting (falhas por IP) e as falhas geram `access_events`.
+Resposta (`data`): `{ token, principal: { id, nome, organizacaoId, organizacaoNome }, scopes }`. O `token` é retornado uma única vez — guardar no SecureStore. O endpoint é protegido por rate limiting (falhas por IP) e as falhas geram `access_events`.
+
+Atenção ao shape de ERRO: respostas de falha do `appApiHandler` são `{ error: { message } }` (não `{ message }` no topo) — clientes devem ler `error.message` para exibir a mensagem autoral.
 
 3. Chamadas seguintes:
 

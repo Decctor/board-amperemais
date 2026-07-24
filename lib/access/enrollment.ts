@@ -110,7 +110,9 @@ export async function consumeEnrollmentChallenge(params: TConsumeEnrollmentChall
 
 	const challenge = await db.query.accessEnrollmentChallenges.findFirst({
 		where: eq(accessEnrollmentChallenges.hashCodigo, hashAccessSecret(normalizeEnrollmentCode(params.code))),
-		with: { cliente: true },
+		// organizacao.nome viaja na resposta: o dispositivo exibe a organização vinculada sem
+		// precisar de uma segunda chamada (configuration) logo após o pareamento.
+		with: { cliente: true, organizacao: { columns: { nome: true } } },
 	});
 	if (!challenge) return await failEnrollment("CODIGO_NAO_ENCONTRADO");
 	if (dayjs(challenge.expiraEm).isBefore(dayjs())) return await failEnrollment("CODIGO_EXPIRADO", challenge.organizacaoId);
@@ -187,6 +189,7 @@ export async function consumeEnrollmentChallenge(params: TConsumeEnrollmentChall
 			id: result.principal.id,
 			nome: result.principal.nome,
 			organizacaoId: challenge.organizacaoId,
+			organizacaoNome: challenge.organizacao.nome,
 		},
 		scopes: result.grantedScopes,
 	};
