@@ -66,7 +66,10 @@ function RequestCard({ request, onDecided }: { request: TTabOrderRequestListItem
 				<SelectInput
 					label="CONTA DE DESTINO"
 					value={selectedTabId}
-					options={(openTabs ?? []).map((tab) => ({
+					options={(openTabs ?? [])
+						// Solicitacao de QR de ponto: somente contas DESSE ponto (o server tambem valida).
+						.filter((tab) => !request.servicePointId || tab.servicePointId === request.servicePointId)
+						.map((tab) => ({
 						id: tab.id,
 						value: tab.id,
 						label: tab.servicePoint?.rotulo ? `${tab.servicePoint.rotulo}${tab.codigo ? ` · ${tab.codigo}` : ""}` : (tab.codigo ?? tab.id.slice(0, 6)),

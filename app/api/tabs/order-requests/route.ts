@@ -1,4 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
+import { requireERPSession } from "@/lib/authentication/erp-session";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { launchTabOrder, openTab, resolveServiceSettings } from "@/lib/tabs";
@@ -76,15 +77,30 @@ async function decideTabOrderRequest({ input, session }: { input: TDecideTabOrde
 		return { data: { requestId: request.id, status: "REJEITADA" as const, tabOrderId: null }, message: "Solicitacao rejeitada." };
 	}
 
-	// APROVAR — CAS PENDENTE/ERRO -> PROCESSANDO impede aprovacao dupla concorrente.
+	// APROVAR — CAS -> PROCESSANDO serializa aprovacoes. PROCESSANDO tambem e reivindicavel:
+	// se o processo cair no meio, a solicitacao nao fica presa — o retry e seguro porque o
+	// launchTabOrder dedupa pelo id da solicitacao (o pedido nunca duplica).
 	const claimed = await db
 		.update(tabOrderRequests)
 		.set({ status: "PROCESSANDO", operadorAprovadorId: session.user.id })
-		.where(and(eq(tabOrderRequests.id, request.id), inArray(tabOrderRequests.status, ["PENDENTE", "ERRO"])))
+		.where(and(eq(tabOrderRequests.id, request.id), inArray(tabOrderRequests.status, ["PENDENTE", "ERRO", "PROCESSANDO"])))
 		.returning({ id: tabOrderRequests.id });
 	if (claimed.length === 0) throw new createHttpError.Conflict("A solicitacao ja foi processada por outra operacao.");
 
 	try {
+		// Conta escolhida pelo operador precisa pertencer ao PONTO da solicitacao — o pedido
+		// da Mesa 12 nao pode ser aprovado por engano na comanda da Mesa 7.
+		if (input.tabId && !request.tabId) {
+			const targetTab = await db.query.tabs.findFirst({
+				where: (fields, { and, eq }) => and(eq(fields.id, input.tabId as string), eq(fields.organizacaoId, orgId)),
+				columns: { id: true, status: true, servicePointId: true },
+			});
+			if (!targetTab || targetTab.status !== "ABERTA") throw new createHttpError.BadRequest("A conta selecionada nao esta aberta.");
+			if (request.servicePointId && targetTab.servicePointId !== request.servicePointId) {
+				throw new createHttpError.BadRequest("A conta selecionada nao pertence ao ponto de atendimento da solicitacao.");
+			}
+		}
+
 		// Resolve a conta: da solicitacao, do operador, ou implicita do ponto (Somente mesas).
 		let tabId = request.tabId ?? input.tabId ?? null;
 		if (!tabId && request.servicePointId) {
@@ -104,12 +120,12 @@ async function decideTabOrderRequest({ input, session }: { input: TDecideTabOrde
 		const variantIds = payload.itens.map((item) => item.produtoVarianteId).filter((id): id is string => !!id);
 		const [produtos, variantes] = await Promise.all([
 			db.query.products.findMany({
-				where: (fields, { and, eq, inArray }) => and(inArray(fields.id, productIds), eq(fields.organizacaoId, orgId)),
+				where: (fields, { and, eq, inArray }) => and(inArray(fields.id, productIds), eq(fields.organizacaoId, orgId), eq(fields.ativo, true)),
 				columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true, precoVenda: true },
 			}),
 			variantIds.length > 0
 				? db.query.productVariants.findMany({
-						where: (fields, { and, eq, inArray }) => and(inArray(fields.id, variantIds), eq(fields.organizacaoId, orgId)),
+						where: (fields, { and, eq, inArray }) => and(inArray(fields.id, variantIds), eq(fields.organizacaoId, orgId), eq(fields.ativo, true)),
 						columns: { id: true, produtoId: true, nome: true, codigo: true, precoVenda: true },
 					})
 				: [],
@@ -175,17 +191,9 @@ export type TDecideTabOrderRequestOutput = Awaited<ReturnType<typeof decideTabOr
 // HANDLERS
 // ============================================================================
 
-function getSessionWithERP(session: TAuthUserSession | null) {
-	if (!session) throw new createHttpError.Unauthorized("Voce nao esta autenticado.");
-	if (!session.membership) throw new createHttpError.Unauthorized("Voce precisa estar vinculado a uma organizacao.");
-	if (!session.membership.organizacao.configuracao.recursos.erp.acesso) {
-		throw new createHttpError.Forbidden("Sua organizacao nao possui acesso ao modulo de ERP.");
-	}
-	return session;
-}
 
 async function getTabOrderRequestsRoute(request: NextRequest) {
-	const session = getSessionWithERP(await getCurrentSessionUncached());
+	const session = requireERPSession(await getCurrentSessionUncached());
 	const { searchParams } = new URL(request.url);
 	const input = GetTabOrderRequestsInputSchema.parse({ status: searchParams.get("status") });
 	const result = await getTabOrderRequests({ input, orgId: session.membership!.organizacao.id });
@@ -193,7 +201,7 @@ async function getTabOrderRequestsRoute(request: NextRequest) {
 }
 
 async function decideTabOrderRequestRoute(request: NextRequest) {
-	const session = getSessionWithERP(await getCurrentSessionUncached());
+	const session = requireERPSession(await getCurrentSessionUncached());
 	const body = await request.json();
 	const input = DecideTabOrderRequestInputSchema.parse(body);
 	const result = await decideTabOrderRequest({ input, session });

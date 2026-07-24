@@ -1,6 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
+import { requireERPSession } from "@/lib/authentication/erp-session";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import type { TAuthUserSession } from "@/lib/authentication/types";
 import { generatePublicToken, hashPublicToken } from "@/lib/tabs";
 import { ServicePointTypeEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
@@ -127,17 +127,9 @@ export type TUpdateServicePointOutput = Awaited<ReturnType<typeof updateServiceP
 // HANDLERS
 // ============================================================================
 
-function getSessionWithERP(session: TAuthUserSession | null) {
-	if (!session) throw new createHttpError.Unauthorized("Voce nao esta autenticado.");
-	if (!session.membership) throw new createHttpError.Unauthorized("Voce precisa estar vinculado a uma organizacao.");
-	if (!session.membership.organizacao.configuracao.recursos.erp.acesso) {
-		throw new createHttpError.Forbidden("Sua organizacao nao possui acesso ao modulo de ERP.");
-	}
-	return session;
-}
 
 async function getServicePointsRoute(request: NextRequest) {
-	const session = getSessionWithERP(await getCurrentSessionUncached());
+	const session = requireERPSession(await getCurrentSessionUncached());
 	const { searchParams } = new URL(request.url);
 	const input = GetServicePointsInputSchema.parse({
 		id: searchParams.get("id"),
@@ -148,7 +140,7 @@ async function getServicePointsRoute(request: NextRequest) {
 }
 
 async function createServicePointRoute(request: NextRequest) {
-	const session = getSessionWithERP(await getCurrentSessionUncached());
+	const session = requireERPSession(await getCurrentSessionUncached());
 	const body = await request.json();
 	const input = CreateServicePointInputSchema.parse(body);
 	const result = await createServicePoint({ input, orgId: session.membership!.organizacao.id });
@@ -156,7 +148,7 @@ async function createServicePointRoute(request: NextRequest) {
 }
 
 async function updateServicePointRoute(request: NextRequest) {
-	const session = getSessionWithERP(await getCurrentSessionUncached());
+	const session = requireERPSession(await getCurrentSessionUncached());
 	const { searchParams } = new URL(request.url);
 	const body = await request.json();
 	const input = UpdateServicePointInputSchema.parse({ ...body, id: searchParams.get("id") ?? body.id });

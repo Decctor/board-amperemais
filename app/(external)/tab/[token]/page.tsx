@@ -3,8 +3,9 @@ import { hashPublicToken, resolveServiceSettings } from "@/lib/tabs";
 import { db } from "@/services/drizzle";
 import { sales } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
-import { MapPin, ReceiptText, UtensilsCrossed } from "lucide-react";
+import { ReceiptText } from "lucide-react";
 import { PublicOrderMenu, type TPublicMenuProduct } from "../../_components/PublicOrderMenu";
+import { PublicShell } from "../../_components/PublicShell";
 
 // ============================================================================
 // QR da TAB (efemero — papel/pulseira/cartao): identifica uma conta especifica,
@@ -38,6 +39,16 @@ export default async function TabPublicPage({ params }: { params: Promise<{ toke
 		return (
 			<PublicShell title="QR Code inválido">
 				<p className="text-center text-sm text-muted-foreground">Este QR Code não é válido. Chame um atendente.</p>
+			</PublicShell>
+		);
+	}
+
+	// QR efemero: fechar/cancelar a conta revoga a LEITURA do extrato — uma foto
+	// do QR nao pode dar acesso permanente ao consumo (privacidade do design doc).
+	if (tab.status !== "ABERTA") {
+		return (
+			<PublicShell title={tab.organizacao?.nome ?? "Conta"}>
+				<p className="py-8 text-center text-sm text-muted-foreground">Esta conta ja foi encerrada. Obrigado pela visita!</p>
 			</PublicShell>
 		);
 	}
@@ -117,23 +128,5 @@ export default async function TabPublicPage({ params }: { params: Promise<{ toke
 				</section>
 			) : null}
 		</PublicShell>
-	);
-}
-
-function PublicShell({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
-	return (
-		<main className="mx-auto flex min-h-screen w-full max-w-xl flex-col gap-4 px-4 py-6">
-			<header className="flex flex-col items-center gap-1 text-center">
-				<UtensilsCrossed className="h-6 w-6" />
-				<h1 className="text-lg font-bold tracking-tight">{title}</h1>
-				{subtitle ? (
-					<p className="flex items-center gap-1 text-xs font-medium uppercase text-muted-foreground">
-						<MapPin className="h-3 w-3" />
-						{subtitle}
-					</p>
-				) : null}
-			</header>
-			{children}
-		</main>
 	);
 }

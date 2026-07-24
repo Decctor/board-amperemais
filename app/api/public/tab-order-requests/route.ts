@@ -106,12 +106,13 @@ async function createPublicTabOrderRequest({ input, clientIp }: { input: TCreate
 		.returning({ id: tabOrderRequests.id, status: tabOrderRequests.status });
 
 	if (!created) {
-		// Corrida com outra requisicao identica: reconsulta a existente.
+		// Corrida com outra requisicao de mesma chave: reconsulta e reaplica a regra de payload.
 		const raced = await db.query.tabOrderRequests.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.organizacaoId, orgId), eq(fields.idempotencyKey, input.idempotencyKey)),
-			columns: { id: true, status: true },
+			columns: { id: true, status: true, payloadHash: true },
 		});
 		if (!raced) throw new createHttpError.InternalServerError("Erro ao registrar a solicitacao.");
+		if (raced.payloadHash !== payloadHash) throw new createHttpError.Conflict("A chave de idempotencia ja foi usada com outro pedido.");
 		return { data: { requestId: raced.id, status: raced.status }, message: "Solicitacao ja registrada. Aguarde a aprovacao do atendente." };
 	}
 

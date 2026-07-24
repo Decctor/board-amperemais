@@ -1,8 +1,8 @@
 import { appApiHandler } from "@/lib/app-api";
+import { requireERPSession } from "@/lib/authentication/erp-session";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { launchTabOrder } from "@/lib/tabs";
-import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
@@ -36,8 +36,9 @@ const TabOrderItemInputSchema = z.object({
 
 const CreateTabOrderInputSchema = z.object({
 	tabId: z.string({ required_error: "ID da conta nao informado." }),
-	// UUID gerado no client: duplo toque/retry reenvia o mesmo id e o pedido nao duplica.
-	tabOrderId: z.string({ invalid_type_error: "Tipo nao valido para ID do pedido." }).uuid({ message: "ID do pedido invalido." }).optional().nullable(),
+	// UUID gerado no client, OBRIGATORIO: duplo toque/retry reenvia o mesmo id e o pedido nao
+	// duplica. Invariante 6 do plano — a idempotencia nao pode ser opcional na superficie autoritativa.
+	tabOrderId: z.string({ required_error: "ID do pedido nao informado." }).uuid({ message: "ID do pedido invalido." }),
 	observacoes: z.string({ invalid_type_error: "Tipo nao valido para observacoes." }).optional().nullable(),
 	itens: z.array(TabOrderItemInputSchema).min(1, { message: "Pelo menos um item e obrigatorio." }),
 });
@@ -63,12 +64,7 @@ export type TCreateTabOrderOutput = Awaited<ReturnType<typeof createTabOrder>>;
 // ============================================================================
 
 async function createTabOrderRoute(request: NextRequest) {
-	const session = await getCurrentSessionUncached();
-	if (!session) throw new createHttpError.Unauthorized("Voce nao esta autenticado.");
-	if (!session.membership) throw new createHttpError.Unauthorized("Voce precisa estar vinculado a uma organizacao.");
-	if (!session.membership.organizacao.configuracao.recursos.erp.acesso) {
-		throw new createHttpError.Forbidden("Sua organizacao nao possui acesso ao modulo de ERP.");
-	}
+	const session = requireERPSession(await getCurrentSessionUncached());
 
 	const body = await request.json();
 	const input = CreateTabOrderInputSchema.parse(body);

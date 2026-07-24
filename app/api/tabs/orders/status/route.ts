@@ -1,4 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
+import { requireERPSession } from "@/lib/authentication/erp-session";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { processTabOrderStatusChange } from "@/lib/tabs";
@@ -37,12 +38,7 @@ async function updateTabOrderStatus({ input, session }: { input: TUpdateTabOrder
 export type TUpdateTabOrderStatusOutput = Awaited<ReturnType<typeof updateTabOrderStatus>>;
 
 async function updateTabOrderStatusRoute(request: NextRequest) {
-	const session = await getCurrentSessionUncached();
-	if (!session) throw new createHttpError.Unauthorized("Voce nao esta autenticado.");
-	if (!session.membership) throw new createHttpError.Unauthorized("Voce precisa estar vinculado a uma organizacao.");
-	if (!session.membership.organizacao.configuracao.recursos.erp.acesso) {
-		throw new createHttpError.Forbidden("Sua organizacao nao possui acesso ao modulo de ERP.");
-	}
+	const session = requireERPSession(await getCurrentSessionUncached());
 
 	const body = await request.json();
 	const input = UpdateTabOrderStatusInputSchema.parse(body);

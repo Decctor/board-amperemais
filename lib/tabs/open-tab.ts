@@ -48,6 +48,23 @@ export async function openTab({ orgId, userId, input }: { orgId: string; userId:
 		if (!servicePoint.ativo) throw new createHttpError.BadRequest("Ponto de atendimento inativo.");
 	}
 
+	// Isolamento multi-tenant: as FKs sao globais por id — referencias recebidas do
+	// request precisam pertencer a organizacao da sessao antes de serem persistidas.
+	if (input.clienteId) {
+		const client = await db.query.clients.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.id, input.clienteId as string), eq(fields.organizacaoId, orgId)),
+			columns: { id: true },
+		});
+		if (!client) throw new createHttpError.NotFound("Cliente nao encontrado.");
+	}
+	if (input.responsavelVendedorId) {
+		const seller = await db.query.sellers.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.id, input.responsavelVendedorId as string), eq(fields.organizacaoId, orgId)),
+			columns: { id: true },
+		});
+		if (!seller) throw new createHttpError.NotFound("Vendedor nao encontrado.");
+	}
+
 	return db.transaction(async (tx) => {
 		if (servicePointId) {
 			await acquireTabOpeningLock(tx, { orgId, servicePointId });

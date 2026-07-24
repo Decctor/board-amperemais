@@ -1,10 +1,10 @@
 import { appApiHandler } from "@/lib/app-api";
+import { requireERPSession } from "@/lib/authentication/erp-session";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { sales, tabOrders } from "@/services/drizzle/schema";
 import { and, eq, inArray } from "drizzle-orm";
-import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 
 // ============================================================================
@@ -168,14 +168,9 @@ async function getPreparationTickets({ orgId }: { orgId: string }) {
 export type TGetPreparationOutput = Awaited<ReturnType<typeof getPreparationTickets>>;
 
 async function getPreparationRoute(_request: NextRequest) {
-	const session = await getCurrentSessionUncached();
-	if (!session) throw new createHttpError.Unauthorized("Voce nao esta autenticado.");
-	if (!session.membership) throw new createHttpError.Unauthorized("Voce precisa estar vinculado a uma organizacao.");
-	if (!session.membership.organizacao.configuracao.recursos.erp.acesso) {
-		throw new createHttpError.Forbidden("Sua organizacao nao possui acesso ao modulo de ERP.");
-	}
+	const session = requireERPSession(await getCurrentSessionUncached());
 
-	const result = await getPreparationTickets({ orgId: session.membership.organizacao.id });
+	const result = await getPreparationTickets({ orgId: session.membership!.organizacao.id });
 	return NextResponse.json(result);
 }
 

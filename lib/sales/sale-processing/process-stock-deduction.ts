@@ -72,7 +72,7 @@ export async function processStockDeduction(tx: DBTransaction, params: ProcessSt
 	const itemProducts =
 		itemProductIds.length > 0
 			? await tx.query.products.findMany({
-					where: (fields, { inArray }) => inArray(fields.id, itemProductIds),
+					where: (fields, { and, eq, inArray }) => and(inArray(fields.id, itemProductIds), eq(fields.organizacaoId, params.organizationId)),
 					columns: { id: true, baixaEstoqueModo: true, fichaTecnicaReceitaId: true },
 				})
 			: [];

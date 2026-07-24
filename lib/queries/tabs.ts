@@ -108,7 +108,8 @@ export function useTabById({ tabId }: { tabId: string | null }) {
 // ============================================================================
 
 async function fetchTabOrderRequests() {
-	const { data } = await axios.get<TGetTabOrderRequestsOutput>("/api/tabs/order-requests?status=PENDENTE,ERRO");
+	// PROCESSANDO incluido: solicitacao presa por queda de processo continua visivel e reprocessavel.
+	const { data } = await axios.get<TGetTabOrderRequestsOutput>("/api/tabs/order-requests?status=PENDENTE,ERRO,PROCESSANDO");
 	return data.data.requests;
 }
 

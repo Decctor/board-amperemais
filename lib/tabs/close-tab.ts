@@ -60,6 +60,25 @@ export async function closeTab({
 		throw new createHttpError.InternalServerError("A organizacao nao possui contas padrao de vendas configuradas.");
 	}
 
+	// Isolamento multi-tenant: contas informadas no request precisam pertencer a organizacao
+	// (a FK de accountingEntries e global por id).
+	const accountIds = [...new Set([accountingEntryDebitAccountId, accountingEntryCreditAccountId])];
+	const accounts = await db.query.accountsCharts.findMany({
+		where: (fields, { and, eq, inArray }) => and(inArray(fields.id, accountIds), eq(fields.organizacaoId, organization.id)),
+		columns: { id: true },
+	});
+	if (accounts.length !== accountIds.length) {
+		throw new createHttpError.BadRequest("Conta contabil invalida para esta organizacao.");
+	}
+
+	// Pagamentos: valores positivos e finitos. A igualdade com o total da conta e
+	// validada dentro da transacao, contra o total autoritativo da venda rascunho.
+	for (const pagamento of input.pagamentos) {
+		if (!Number.isFinite(pagamento.valor) || pagamento.valor <= 0) {
+			throw new createHttpError.BadRequest("Valor de pagamento invalido.");
+		}
+	}
+
 	const organizationPaymentMethodDefaults = getOrganizationPaymentMethodsConfig(organization.configuracao);
 	const salePayments = input.pagamentos.map((pagamento) => {
 		const methodDefaults = organizationPaymentMethodDefaults[pagamento.metodo];
@@ -98,12 +117,30 @@ export async function closeTab({
 		}
 
 		const [draftSale] = await tx
-			.select({ id: sales.id })
+			.select({ id: sales.id, valorTotal: sales.valorTotal })
 			.from(sales)
 			.where(and(eq(sales.tabId, tab.id), eq(sales.statusVenda, "ORCAMENTO")))
 			.for("update");
 		if (!draftSale) {
 			throw new createHttpError.BadRequest("Conta sem consumo lancado. Cancele a conta em vez de fechar.");
+		}
+
+		// Soma dos pagamentos precisa cobrir exatamente o total autoritativo da conta
+		// (tolerancia de centavos de serializacao). O client tambem valida, mas a guarda e aqui.
+		const paymentsTotal = salePayments.reduce((sum, payment) => sum + payment.valor, 0);
+		if (Math.abs(paymentsTotal - draftSale.valorTotal) > 0.01) {
+			throw new createHttpError.BadRequest("A soma dos pagamentos nao confere com o total da conta. Atualize e tente novamente.");
+		}
+
+		// Invariante 3 do plano: a transicao ABERTA -> FECHADA (compare-and-set) acontece
+		// ANTES de qualquer efeito financeiro. O snapshot de valorTotal e preenchido depois.
+		const closedRows = await tx
+			.update(tabs)
+			.set({ status: "FECHADA", fechadaPorUsuarioId: userId, dataFechamento: new Date() })
+			.where(and(eq(tabs.id, tab.id), eq(tabs.status, "ABERTA")))
+			.returning({ id: tabs.id });
+		if (closedRows.length === 0) {
+			throw new createHttpError.Conflict("A conta foi alterada por outra operacao. Atualize e tente novamente.");
 		}
 
 		confirmationInput = {
@@ -122,24 +159,14 @@ export async function closeTab({
 
 		const confirmation = await processSaleConfirmationInTransaction({ tx, input: confirmationInput });
 
+		// Snapshot congelado do total, preenchido sob o mesmo estado reservado pelo CAS acima.
 		const [confirmedSale] = await tx.select({ valorTotal: sales.valorTotal }).from(sales).where(eq(sales.id, draftSale.id));
-
-		// Segunda guarda (o lock ja serializa): so fecha se ainda estiver ABERTA.
-		const closedRows = await tx
+		await tx
 			.update(tabs)
-			.set({
-				status: "FECHADA",
-				valorTotal: confirmedSale?.valorTotal ?? tab.valorTotal,
-				fechadaPorUsuarioId: userId,
-				dataFechamento: new Date(),
-			})
-			.where(and(eq(tabs.id, tab.id), eq(tabs.status, "ABERTA")))
-			.returning({ id: tabs.id });
-		if (closedRows.length === 0) {
-			throw new createHttpError.Conflict("A conta foi alterada por outra operacao. Atualize e tente novamente.");
-		}
+			.set({ valorTotal: confirmedSale?.valorTotal ?? draftSale.valorTotal })
+			.where(eq(tabs.id, tab.id));
 
-		return { tabId: tab.id, saleId: draftSale.id, confirmation, valorTotal: confirmedSale?.valorTotal ?? 0 };
+		return { tabId: tab.id, saleId: draftSale.id, confirmation, valorTotal: confirmedSale?.valorTotal ?? draftSale.valorTotal };
 	});
 
 	// Efeitos externos fora da transacao (emissao fiscal automatica conforme configuracao).

@@ -58,63 +58,30 @@ export async function cancelTabOrder({
 			throw new createHttpError.Conflict("O pedido foi alterado por outra operacao. Atualize e tente novamente.");
 		}
 
-		// Devolucao fisica dos itens ja entregues, quando solicitada.
+		// Devolucao fisica dos itens ja entregues, quando solicitada. O estorno reverte
+		// as SAIDAS realmente registradas para cada item (mesmos produtos, variantes e
+		// quantidades da baixa original) — isso cobre composicao (insumos da ficha
+		// tecnica), adicionais e splits de FEFO sem recalcular nada.
 		if (input.devolverEstoque === true && deliveredItems.length > 0 && organization.configuracao.preferencias.rastreamentoEstoque) {
-			const optionIds = [
-				...new Set(
-					deliveredItems
-						.flatMap((item) => item.adicionais ?? [])
-						.map((modifier) => modifier.opcaoId)
-						.filter((id): id is string => !!id),
-				),
-			];
-			const addOnOptions =
-				optionIds.length > 0
-					? await tx.query.productAddOnOptions.findMany({
-							where: (fields, { and, eq, inArray }) => and(inArray(fields.id, optionIds), eq(fields.organizacaoId, organization.id)),
-							columns: { id: true, nome: true, produtoId: true, produtoVarianteId: true, quantidadeConsumo: true },
-							with: { produtoVariante: { columns: { id: true, produtoId: true } } },
-						})
-					: [];
-			const optionMap = new Map(addOnOptions.map((option) => [option.id, option]));
+			const deliveredItemIds = deliveredItems.map((item) => item.id);
+			const outboundTransactions = await tx.query.productStockTransactions.findMany({
+				where: (fields, { and, eq, inArray }) =>
+					and(inArray(fields.vendaItemId, deliveredItemIds), eq(fields.organizacaoId, organization.id), eq(fields.tipo, "SAIDA")),
+				columns: { id: true, produtoId: true, produtoVarianteId: true, quantidade: true, vendaId: true, vendaItemId: true },
+			});
 
-			for (const item of deliveredItems) {
-				const deliveredQuantity = item.quantidadeEntregue ?? 0;
-				if (deliveredQuantity <= 0) continue;
-
+			for (const transaction of outboundTransactions) {
 				await applyStockMovement({
 					trx: tx,
 					organizationId: organization.id,
 					userId,
-					produtoId: item.produtoId,
-					produtoVarianteId: item.produtoVarianteId,
-					signedQuantity: deliveredQuantity,
+					produtoId: transaction.produtoId,
+					produtoVarianteId: transaction.produtoVarianteId,
+					signedQuantity: transaction.quantidade,
 					movementType: "ENTRADA_DEVOLUCAO",
 					reason: `Pedido ${order.numero} cancelado (devolucao)`,
-					links: { vendaId: item.vendaId, vendaItemId: item.id },
+					links: { vendaId: transaction.vendaId, vendaItemId: transaction.vendaItemId },
 				});
-
-				for (const modifier of item.adicionais ?? []) {
-					if (!modifier.opcaoId) continue;
-					const option = optionMap.get(modifier.opcaoId);
-					if (!option) continue;
-					const quantity = deliveredQuantity * modifier.quantidade * option.quantidadeConsumo;
-					if (quantity <= 0) continue;
-					const optionProductId = option.produtoVariante?.produtoId ?? option.produtoId;
-					if (!optionProductId) continue;
-
-					await applyStockMovement({
-						trx: tx,
-						organizationId: organization.id,
-						userId,
-						produtoId: optionProductId,
-						produtoVarianteId: option.produtoVarianteId,
-						signedQuantity: quantity,
-						movementType: "ENTRADA_DEVOLUCAO",
-						reason: `Adicional devolvido: ${option.nome}`,
-						links: { vendaId: item.vendaId, vendaItemId: item.id },
-					});
-				}
 			}
 		}
 

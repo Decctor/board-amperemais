@@ -31,8 +31,8 @@ export type TTabOrderItemInput = {
 
 export type TLaunchTabOrderInput = {
 	tabId: string;
-	// Gerado no CLIENT: duplo toque/retry reenvia o mesmo id e o conflito de PK dedupa.
-	tabOrderId?: string | null;
+	// Gerado no CALLER (client/solicitacao), obrigatorio: retry reenvia o mesmo id e dedupa.
+	tabOrderId: string;
 	observacoes?: string | null;
 	itens: TTabOrderItemInput[];
 };
@@ -58,13 +58,13 @@ export async function launchTabOrder({ orgId, userId, input }: { orgId: string; 
 	const [produtosResult, variantesResult] = await Promise.all([
 		productIds.length > 0
 			? db.query.products.findMany({
-					where: (fields, { inArray }) => inArray(fields.id, productIds),
+					where: (fields, { and, eq, inArray }) => and(inArray(fields.id, productIds), eq(fields.organizacaoId, orgId)),
 					columns: { id: true, precoCusto: true },
 				})
 			: [],
 		variantIds.length > 0
 			? db.query.productVariants.findMany({
-					where: (fields, { inArray }) => inArray(fields.id, variantIds),
+					where: (fields, { and, eq, inArray }) => and(inArray(fields.id, variantIds), eq(fields.organizacaoId, orgId)),
 					columns: { id: true, precoCusto: true },
 				})
 			: [],
@@ -83,26 +83,24 @@ export async function launchTabOrder({ orgId, userId, input }: { orgId: string; 
 		if (!tab) throw new createHttpError.NotFound("Conta nao encontrada.");
 		if (tab.status !== "ABERTA") throw new createHttpError.BadRequest("Conta nao esta aberta.");
 
-		// Idempotencia leve: id do tabOrder gerado no client. Retry do mesmo pedido retorna o existente.
-		if (input.tabOrderId) {
-			const existingOrder = await tx.query.tabOrders.findFirst({
-				where: (fields, { and, eq }) => and(eq(fields.id, input.tabOrderId as string), eq(fields.organizacaoId, orgId)),
+		// Idempotencia: id do tabOrder gerado no caller. Retry do mesmo pedido retorna o existente.
+		const existingOrder = await tx.query.tabOrders.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.id, input.tabOrderId), eq(fields.organizacaoId, orgId)),
+		});
+		if (existingOrder) {
+			if (existingOrder.tabId !== tab.id) throw new createHttpError.Conflict("O ID do pedido ja foi usado em outra conta.");
+			const existingDraftSale = await tx.query.sales.findFirst({
+				where: (fields, { and, eq }) => and(eq(fields.tabId, tab.id), eq(fields.statusVenda, "ORCAMENTO")),
+				columns: { id: true, valorTotal: true },
 			});
-			if (existingOrder) {
-				if (existingOrder.tabId !== tab.id) throw new createHttpError.Conflict("O ID do pedido ja foi usado em outra conta.");
-				const draftSale = await tx.query.sales.findFirst({
-					where: (fields, { and, eq }) => and(eq(fields.tabId, tab.id), eq(fields.statusVenda, "ORCAMENTO")),
-					columns: { id: true, valorTotal: true },
-				});
-				return {
-					tabId: tab.id,
-					tabOrderId: existingOrder.id,
-					tabOrderNumero: existingOrder.numero,
-					saleId: draftSale?.id ?? null,
-					valorTotalConta: draftSale?.valorTotal ?? 0,
-					deduplicated: true as const,
-				};
-			}
+			return {
+				tabId: tab.id,
+				tabOrderId: existingOrder.id,
+				tabOrderNumero: existingOrder.numero,
+				saleId: existingDraftSale?.id ?? null,
+				valorTotalConta: existingDraftSale?.valorTotal ?? 0,
+				deduplicated: true as const,
+			};
 		}
 
 		// Venda rascunho lazy: criada no primeiro pedido da conta.
@@ -163,7 +161,7 @@ export async function launchTabOrder({ orgId, userId, input }: { orgId: string; 
 		const [createdOrder] = await tx
 			.insert(tabOrders)
 			.values({
-				...(input.tabOrderId ? { id: input.tabOrderId } : {}),
+				id: input.tabOrderId,
 				organizacaoId: orgId,
 				tabId: tab.id,
 				numero,

@@ -36,6 +36,13 @@ export async function processTabOrderStatusChange(input: TProcessTabOrderStatusC
 		throw new createHttpError.BadRequest(`Transicao de pedido invalida: ${order.status} -> ${input.targetStatus}.`);
 	}
 
+	// Entrega parcial exige quantidades POR ITEM, que a API do pedido nao recebe —
+	// sem elas, a baixa marcaria a quantidade inteira como entregue. Bloqueado ate
+	// existir suporte granular (registrado em docs/tabs/future-improvements.md).
+	if (input.targetStatus === "PARCIALMENTE_ENTREGUE") {
+		throw new createHttpError.BadRequest("Entrega parcial de pedido nao e suportada. Entregue o pedido inteiro ou cancele os itens nao servidos.");
+	}
+
 	const requiresPhysicalOut = attendanceStatusRequiresPhysicalOut(input.targetStatus);
 
 	await db.transaction(async (tx) => {

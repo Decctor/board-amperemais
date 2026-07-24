@@ -1,11 +1,10 @@
 import { appApiHandler } from "@/lib/app-api";
+import { requireERPSession } from "@/lib/authentication/erp-session";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import type { TAuthUserSession } from "@/lib/authentication/types";
 import { resolveServiceSettings } from "@/lib/tabs";
 import { ServiceSettingsConfigurationSchema } from "@/schemas/service-settings";
 import { db } from "@/services/drizzle";
 import { serviceSettings } from "@/services/drizzle/schema";
-import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
@@ -51,23 +50,15 @@ export type TUpdateServiceSettingsOutput = Awaited<ReturnType<typeof updateServi
 // HANDLERS
 // ============================================================================
 
-function getSessionWithERP(session: TAuthUserSession | null) {
-	if (!session) throw new createHttpError.Unauthorized("Voce nao esta autenticado.");
-	if (!session.membership) throw new createHttpError.Unauthorized("Voce precisa estar vinculado a uma organizacao.");
-	if (!session.membership.organizacao.configuracao.recursos.erp.acesso) {
-		throw new createHttpError.Forbidden("Sua organizacao nao possui acesso ao modulo de ERP.");
-	}
-	return session;
-}
 
 async function getServiceSettingsRoute(_request: NextRequest) {
-	const session = getSessionWithERP(await getCurrentSessionUncached());
+	const session = requireERPSession(await getCurrentSessionUncached());
 	const result = await getServiceSettings({ orgId: session.membership!.organizacao.id });
 	return NextResponse.json(result);
 }
 
 async function updateServiceSettingsRoute(request: NextRequest) {
-	const session = getSessionWithERP(await getCurrentSessionUncached());
+	const session = requireERPSession(await getCurrentSessionUncached());
 	const body = await request.json();
 	const input = UpdateServiceSettingsInputSchema.parse(body);
 	const result = await updateServiceSettings({ input, orgId: session.membership!.organizacao.id });

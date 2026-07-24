@@ -1,4 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
+import { requireERPSession } from "@/lib/authentication/erp-session";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema } from "@/lib/payments";
@@ -58,12 +59,7 @@ async function closeTabService({ input, session }: { input: TCloseTabRouteInput;
 export type TCloseTabOutput = Awaited<ReturnType<typeof closeTabService>>;
 
 async function closeTabRoute(request: NextRequest) {
-	const session = await getCurrentSessionUncached();
-	if (!session) throw new createHttpError.Unauthorized("Voce nao esta autenticado.");
-	if (!session.membership) throw new createHttpError.Unauthorized("Voce precisa estar vinculado a uma organizacao.");
-	if (!session.membership.organizacao.configuracao.recursos.erp.acesso) {
-		throw new createHttpError.Forbidden("Sua organizacao nao possui acesso ao modulo de ERP.");
-	}
+	const session = requireERPSession(await getCurrentSessionUncached());
 
 	const body = await request.json();
 	const input = CloseTabInputSchema.parse(body);
