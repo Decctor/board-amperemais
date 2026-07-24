@@ -1,7 +1,6 @@
 "use client";
 
-import LogoHorizontal from "@/utils/svgs/logos/RECOMPRA - COMPLETE - HORIZONTAL - COLORFUL ICON-BADGE TEXT-BLACK.svg";
-import LogoVerticalWhite from "@/utils/svgs/logos/RECOMPRA - COMPLETE - VERTICAL - WHITE.svg";
+import { BrandLogo } from "@/components/Brand/BrandLogo";
 import {
 	ArrowRight,
 	BadgeDollarSign,
@@ -38,7 +37,6 @@ import {
 	WalletCards,
 	type LucideIcon,
 } from "lucide-react";
-import Image from "next/image";
 import type { ReactNode } from "react";
 import { BRAND, heroGradient, Kicker, Sheet, SheetFooter } from "./_shared";
 
@@ -224,7 +222,7 @@ function CoverSheet() {
 
 				<div className="relative z-10 flex items-center justify-between">
 					<div className="relative h-14 w-44">
-						<Image src={LogoVerticalWhite} alt="RecompraCRM" fill className="object-contain object-left" priority />
+						<BrandLogo lockup="stacked" tone="white" fill className="object-contain object-left" priority />
 					</div>
 					<div className="text-right">
 						<p className="text-[0.65rem] font-extrabold uppercase tracking-[0.28em] text-white/65">Visão comercial 2026–2027</p>
@@ -870,7 +868,7 @@ function ClosingSheet() {
 				/>
 				<div className="relative z-10 flex items-center justify-between">
 					<div className="relative h-12 w-40">
-						<Image src={LogoVerticalWhite} alt="RecompraCRM" fill className="object-contain object-left" />
+						<BrandLogo lockup="stacked" tone="white" fill className="object-contain object-left" />
 					</div>
 					<span className="text-[0.64rem] font-black uppercase tracking-[0.24em] text-white/45">14 / 14</span>
 				</div>
@@ -908,7 +906,7 @@ function ClosingSheet() {
 					</div>
 					<div className="rounded-2xl bg-white p-4">
 						<div className="relative h-10 w-40">
-							<Image src={LogoHorizontal} alt="RecompraCRM" fill className="object-contain" />
+							<BrandLogo lockup="horizontal-badge" tone="color-on-light" fill className="object-contain" />
 						</div>
 						<p className="mt-2 text-center text-[0.65rem] font-bold text-neutral-500">recompracrm.com.br</p>
 					</div>
