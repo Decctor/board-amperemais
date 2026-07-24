@@ -1,0 +1,139 @@
+import { formatToMoney } from "@/lib/formatting";
+import { hashPublicToken, resolveServiceSettings } from "@/lib/tabs";
+import { db } from "@/services/drizzle";
+import { sales } from "@/services/drizzle/schema";
+import { and, eq } from "drizzle-orm";
+import { MapPin, ReceiptText, UtensilsCrossed } from "lucide-react";
+import { PublicOrderMenu, type TPublicMenuProduct } from "../../_components/PublicOrderMenu";
+
+// ============================================================================
+// QR da TAB (efemero — papel/pulseira/cartao): identifica uma conta especifica,
+// mostra o extrato do consumo e pode iniciar uma solicitacao de nova rodada.
+// Revogado naturalmente ao fechar a conta (status != ABERTA).
+// ============================================================================
+
+export default async function TabPublicPage({ params }: { params: Promise<{ token: string }> }) {
+	const { token } = await params;
+	const tokenHash = hashPublicToken(token);
+
+	const tab = await db.query.tabs.findFirst({
+		where: (fields, { eq }) => eq(fields.tokenPublicoHash, tokenHash),
+		columns: { id: true, codigo: true, status: true, organizacaoId: true, dataAbertura: true },
+		with: {
+			organizacao: { columns: { id: true, nome: true } },
+			servicePoint: { columns: { rotulo: true } },
+			pedidos: {
+				orderBy: (fields, { asc }) => asc(fields.numero),
+				columns: { id: true, numero: true, status: true, observacoes: true },
+				with: {
+					itens: {
+						columns: { id: true, quantidade: true, quantidadeCancelada: true, valorVendaTotalLiquido: true, metadados: true },
+					},
+				},
+			},
+		},
+	});
+
+	if (!tab) {
+		return (
+			<PublicShell title="QR Code inválido">
+				<p className="text-center text-sm text-muted-foreground">Este QR Code não é válido. Chame um atendente.</p>
+			</PublicShell>
+		);
+	}
+
+	const [draftSale, settings] = await Promise.all([
+		db.query.sales.findFirst({
+			where: and(eq(sales.tabId, tab.id), eq(sales.statusVenda, "ORCAMENTO")),
+			columns: { valorTotal: true },
+		}),
+		resolveServiceSettings({ orgId: tab.organizacaoId }),
+	]);
+
+	const isOpen = tab.status === "ABERTA";
+	const orderingEnabled = isOpen && settings.pedidosCliente !== "DESABILITADO";
+
+	const products = orderingEnabled
+		? await db.query.products.findMany({
+				where: (fields, { and, eq }) => and(eq(fields.organizacaoId, tab.organizacaoId), eq(fields.ativo, true)),
+				columns: { id: true, nome: true, grupo: true, precoVenda: true, imagemCapaUrl: true },
+				with: {
+					variantes: {
+						where: (fields, { eq }) => eq(fields.ativo, true),
+						columns: { id: true, nome: true, precoVenda: true },
+					},
+				},
+				orderBy: (fields, { asc }) => asc(fields.nome),
+			})
+		: [];
+
+	const etiqueta = tab.servicePoint?.rotulo ?? (tab.codigo ? `Comanda ${tab.codigo}` : "Conta");
+	const activeOrders = tab.pedidos.filter((order) => order.status !== "CANCELADO");
+
+	return (
+		<PublicShell title={tab.organizacao?.nome ?? "Sua conta"} subtitle={etiqueta}>
+			<section className="flex flex-col gap-2 rounded-2xl border border-border bg-card px-4 py-3">
+				<div className="flex items-center justify-between">
+					<span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+						<ReceiptText className="h-3.5 w-3.5" />
+						Extrato da conta
+					</span>
+					<span className={isOpen ? "text-xs font-semibold text-green-600" : "text-xs font-semibold text-muted-foreground"}>
+						{isOpen ? "ABERTA" : tab.status}
+					</span>
+				</div>
+
+				{activeOrders.length === 0 ? <p className="py-2 text-center text-xs text-muted-foreground">Nenhum pedido lançado ainda.</p> : null}
+				{activeOrders.map((order) => (
+					<div key={order.id} className="flex flex-col gap-0.5 border-t border-border/50 pt-2">
+						<span className="text-xs font-bold">Pedido {order.numero}</span>
+						{order.itens
+							.filter((item) => item.quantidadeCancelada < item.quantidade)
+							.map((item) => {
+								const metadata = (item.metadados ?? {}) as { nome?: string };
+								return (
+									<div key={item.id} className="flex items-center justify-between text-xs">
+										<span>
+											{item.quantidade}x {metadata.nome ?? "Item"}
+										</span>
+										<span className="font-medium">{formatToMoney(item.valorVendaTotalLiquido)}</span>
+									</div>
+								);
+							})}
+					</div>
+				))}
+
+				<div className="flex items-center justify-between border-t border-border pt-2">
+					<span className="text-sm font-bold uppercase">Total parcial</span>
+					<span className="text-base font-bold">{formatToMoney(draftSale?.valorTotal ?? 0)}</span>
+				</div>
+				<p className="text-[0.65rem] text-muted-foreground">O pagamento acontece no fechamento da conta com o atendente.</p>
+			</section>
+
+			{orderingEnabled ? (
+				<section className="flex flex-col gap-2">
+					<h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Pedir mais</h2>
+					<PublicOrderMenu token={token} contexto="TAB" products={products as TPublicMenuProduct[]} />
+				</section>
+			) : null}
+		</PublicShell>
+	);
+}
+
+function PublicShell({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+	return (
+		<main className="mx-auto flex min-h-screen w-full max-w-xl flex-col gap-4 px-4 py-6">
+			<header className="flex flex-col items-center gap-1 text-center">
+				<UtensilsCrossed className="h-6 w-6" />
+				<h1 className="text-lg font-bold tracking-tight">{title}</h1>
+				{subtitle ? (
+					<p className="flex items-center gap-1 text-xs font-medium uppercase text-muted-foreground">
+						<MapPin className="h-3 w-3" />
+						{subtitle}
+					</p>
+				) : null}
+			</header>
+			{children}
+		</main>
+	);
+}

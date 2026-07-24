@@ -12,6 +12,7 @@ import { useProductStockLots } from "@/lib/queries/product-stock-lots";
 import { useProductStockTransactions } from "@/lib/queries/product-stock-transactions";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, ArrowLeftRight, Boxes, CalendarClock, CheckCheck, History, Layers, PackageX } from "lucide-react";
+import StockDeductionModeSection from "./_components/StockDeductionModeSection";
 
 type Product = NonNullable<TGetProductsOutput["data"]["byId"]>;
 
@@ -34,17 +35,24 @@ export default function ProductStockTab({ product, enabled = true }: ProductStoc
 
 	if (!rastreamentoAtivo) {
 		return (
-			<Empty>
-				<EmptyHeader>
-					<EmptyMedia variant="icon">
-						<Boxes />
-					</EmptyMedia>
-					<EmptyTitle>Rastreamento de estoque desativado</EmptyTitle>
-					<EmptyDescription>
-						Ative o rastreamento de estoque no cadastro deste produto para acompanhar saldo, lotes e o histórico de movimentações.
-					</EmptyDescription>
-				</EmptyHeader>
-			</Empty>
+			<div className="flex w-full flex-col gap-4">
+				<StockDeductionModeSection
+					productId={product.id}
+					baixaEstoqueModo={product.baixaEstoqueModo}
+					fichaTecnicaReceitaId={product.fichaTecnicaReceitaId}
+				/>
+				<Empty>
+					<EmptyHeader>
+						<EmptyMedia variant="icon">
+							<Boxes />
+						</EmptyMedia>
+						<EmptyTitle>Rastreamento de estoque desativado</EmptyTitle>
+						<EmptyDescription>
+							Ative o rastreamento de estoque no cadastro deste produto para acompanhar saldo, lotes e o histórico de movimentações.
+						</EmptyDescription>
+					</EmptyHeader>
+				</Empty>
+			</div>
 		);
 	}
 
@@ -52,6 +60,7 @@ export default function ProductStockTab({ product, enabled = true }: ProductStoc
 
 	return (
 		<div className="flex w-full flex-col gap-4">
+			<StockDeductionModeSection productId={product.id} baixaEstoqueModo={product.baixaEstoqueModo} fichaTecnicaReceitaId={product.fichaTecnicaReceitaId} />
 			{/* Saldo atual — produto e, quando houver, cada variante rastreada */}
 			<div className="flex items-center justify-start gap-3">
 				<div className="flex items-center gap-1.5">
