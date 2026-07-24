@@ -69,7 +69,10 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 	// Status operacional inicial conforme a modalidade de entrega.
 	const initialAttendanceStatus = input.initialAttendanceStatus ?? resolveInitialAttendanceStatus(sale.entregaModalidade);
 
-	await tx
+	// Compare-and-set: o update condicionado ao status e a guarda autoritativa contra confirmacao
+	// concorrente (a checagem acima e apenas mensagem amigavel). Zero linhas = outra transacao
+	// confirmou/cancelou primeiro; abortar antes de criar contabilidade e pagamentos.
+	const confirmedRows = await tx
 		.update(sales)
 		.set({
 			statusVenda: "CONFIRMADA",
@@ -78,7 +81,12 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 			dataVenda: new Date(),
 			sessaoVendaId: input.sessaoVendaId ?? null,
 		})
-		.where(eq(sales.id, input.saleId));
+		.where(and(eq(sales.id, input.saleId), eq(sales.statusVenda, "ORCAMENTO")))
+		.returning({ id: sales.id });
+
+	if (confirmedRows.length === 0) {
+		throw new createHttpError.Conflict("A venda ja foi confirmada ou alterada por outra operacao. Atualize e tente novamente.");
+	}
 
 	const entry = await createAccountingEntry(tx, {
 		organizacaoId: input.organization.id,
