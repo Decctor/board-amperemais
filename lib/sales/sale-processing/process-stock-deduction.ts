@@ -1,7 +1,9 @@
 import { applyStockMovement } from "@/lib/stock/apply-stock-movement";
 import { consumeStockLotsByFefo } from "@/lib/stock/consume-stock-lots-fefo";
 import { DBTransaction } from "@/services/drizzle";
+import { saleItems } from "@/services/drizzle/schema";
 import type { TSaleItemEntity } from "@/services/drizzle/schema/sales";
+import { eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 
 type SaleItemForStock = TSaleItemEntity & {
@@ -17,6 +19,7 @@ type ProcessStockDeductionParams = {
 	saleId: string;
 	saleItems: SaleItemForStock[];
 	saleAuthorId: string | null;
+	reason?: string;
 };
 
 /**
@@ -36,7 +39,16 @@ export async function processStockDeductionIfNotDeducted(tx: DBTransaction, para
 	return true;
 }
 
+/**
+ * Baixa fisica de estoque por DELTA de item: `quantidade - quantidadeCancelada - quantidadeEntregue`.
+ * Atualiza `quantidadeEntregue` na mesma transacao — o campo e a fonte da deduplicacao, entao
+ * a funcao e idempotente: itens ja entregues tem delta zero e nao geram nova movimentacao.
+ * Isso permite baixar por pedido (tabOrders de comanda) e depois baixar so o remanescente
+ * no fechamento da conta, sem duplicar saidas para vendas comuns.
+ */
 export async function processStockDeduction(tx: DBTransaction, params: ProcessStockDeductionParams) {
+	const reason = params.reason ?? "Venda confirmada";
+
 	const optionIds = [
 		...new Set(
 			params.saleItems
@@ -70,6 +82,39 @@ export async function processStockDeduction(tx: DBTransaction, params: ProcessSt
 			: [];
 
 	const optionMap = new Map(addOnOptions.map((option) => [option.id, option]));
+
+	// Modo de baixa por produto: ESTOQUE_PROPRIO baixa o saldo do proprio produto;
+	// COMPOSICAO explode a ficha tecnica e baixa os INSUMOS (o prato nunca tem saldo).
+	const itemProductIds = [...new Set(params.saleItems.map((item) => item.produtoId))];
+	const itemProducts =
+		itemProductIds.length > 0
+			? await tx.query.products.findMany({
+					where: (fields, { and, eq, inArray }) => and(inArray(fields.id, itemProductIds), eq(fields.organizacaoId, params.organizationId)),
+					columns: { id: true, baixaEstoqueModo: true, fichaTecnicaReceitaId: true },
+				})
+			: [];
+	const productDeductionModeMap = new Map(itemProducts.map((product) => [product.id, product]));
+
+	const recipeIds = [
+		...new Set(
+			itemProducts
+				.filter((product) => product.baixaEstoqueModo === "COMPOSICAO" && product.fichaTecnicaReceitaId)
+				.map((product) => product.fichaTecnicaReceitaId as string),
+		),
+	];
+	const recipes =
+		recipeIds.length > 0
+			? await tx.query.productionRecipes.findMany({
+					where: (fields, { and, eq, inArray }) => and(inArray(fields.id, recipeIds), eq(fields.organizacaoId, params.organizationId), eq(fields.ativo, true)),
+					columns: { id: true },
+					with: {
+						insumos: {
+							columns: { produtoId: true, produtoVarianteId: true, quantidade: true },
+						},
+					},
+				})
+			: [];
+	const recipeMap = new Map(recipes.map((recipe) => [recipe.id, recipe]));
 
 	async function deductStock({
 		productId,
@@ -126,20 +171,47 @@ export async function processStockDeduction(tx: DBTransaction, params: ProcessSt
 	}
 
 	for (const item of params.saleItems) {
-		if (item.produtoVarianteId) {
+		// Delta por item: o que ainda falta entregar. Itens cancelados nao baixam;
+		// itens ja entregues (por pedido de comanda ou baixa anterior) tem delta zero.
+		const deliverableQuantity = Math.max(0, item.quantidade - (item.quantidadeCancelada ?? 0));
+		const deltaQuantity = Math.max(0, deliverableQuantity - (item.quantidadeEntregue ?? 0));
+		if (deltaQuantity <= 0) continue;
+
+		const productMode = productDeductionModeMap.get(item.produtoId);
+		const recipe = productMode?.baixaEstoqueModo === "COMPOSICAO" && productMode.fichaTecnicaReceitaId ? recipeMap.get(productMode.fichaTecnicaReceitaId) : null;
+
+		if (productMode?.baixaEstoqueModo === "COMPOSICAO") {
+			// Explosao da ficha tecnica: baixa cada insumo em delta * quantidade do insumo,
+			// com FEFO (consome inclusive lotes do pre-preparo). O produto composto em si
+			// nao gera movimentacao. Sem receita ativa: nao baixa nada e nao bloqueia a
+			// venda (progressive disclosure — consistente com o restante do ERP).
+			if (recipe) {
+				for (const insumo of recipe.insumos) {
+					await deductStock({
+						productId: insumo.produtoId,
+						variantId: insumo.produtoVarianteId,
+						quantity: deltaQuantity * insumo.quantidade,
+						saleItemId: item.id,
+						reason: `${reason} (composicao)`,
+					});
+				}
+			} else {
+				console.warn(`processStockDeduction: produto ${item.produtoId} em modo COMPOSICAO sem ficha tecnica ativa — baixa ignorada.`);
+			}
+		} else if (item.produtoVarianteId) {
 			await deductStock({
 				productId: item.produtoId,
 				variantId: item.produtoVarianteId,
-				quantity: item.quantidade,
+				quantity: deltaQuantity,
 				saleItemId: item.id,
-				reason: "Venda confirmada",
+				reason,
 			});
 		} else {
 			await deductStock({
 				productId: item.produtoId,
-				quantity: item.quantidade,
+				quantity: deltaQuantity,
 				saleItemId: item.id,
-				reason: "Venda confirmada",
+				reason,
 			});
 		}
 
@@ -148,7 +220,7 @@ export async function processStockDeduction(tx: DBTransaction, params: ProcessSt
 			const option = optionMap.get(modifier.opcaoId);
 			if (!option) continue;
 
-			const quantity = item.quantidade * modifier.quantidade * option.quantidadeConsumo;
+			const quantity = deltaQuantity * modifier.quantidade * option.quantidadeConsumo;
 			if (quantity <= 0) continue;
 
 			if (option.produtoVarianteId) {
@@ -174,6 +246,12 @@ export async function processStockDeduction(tx: DBTransaction, params: ProcessSt
 				});
 			}
 		}
+
+		// A quantidade entregue e a fonte da deduplicacao: atualizada junto com a baixa, na mesma transacao.
+		await tx
+			.update(saleItems)
+			.set({ quantidadeEntregue: (item.quantidadeEntregue ?? 0) + deltaQuantity })
+			.where(eq(saleItems.id, item.id));
 	}
 
 	return { success: true };

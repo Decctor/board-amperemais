@@ -285,6 +285,9 @@ async function getSaleDraft({ input, session }: { input: { id: string }; session
 	});
 
 	if (!sale) throw new createHttpError.NotFound("Venda não encontrada.");
+	// Rascunho de conta de atendimento não passa pelo fluxo comum de orçamento (invariante 11):
+	// os totais são recalculados pelo módulo de tabs e o fechamento é a única confirmação.
+	if (sale.tabId) throw new createHttpError.BadRequest("Esta venda pertence a uma conta de atendimento. Gerencie-a pelo board de Mesas & Comandas.");
 
 	return {
 		data: { sale },
@@ -303,7 +306,7 @@ async function updateSaleDraft({ input, session }: { input: TUpdateSaleDraftInpu
 	// Verify the sale exists and belongs to the org
 	const existing = await db.query.sales.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, input.id), eq(fields.organizacaoId, orgId)),
-		columns: { id: true, statusVenda: true },
+		columns: { id: true, statusVenda: true, tabId: true },
 		with: {
 			itens: {
 				columns: { valorVendaTotalLiquido: true },
@@ -315,6 +318,8 @@ async function updateSaleDraft({ input, session }: { input: TUpdateSaleDraftInpu
 	if (existing.statusVenda !== "ORCAMENTO") {
 		throw new createHttpError.BadRequest("Somente rascunhos (orçamentos) podem ser editados.");
 	}
+	// Rascunho de conta de atendimento não é editável pelo fluxo comum (invariante 11).
+	if (existing.tabId) throw new createHttpError.BadRequest("Esta venda pertence a uma conta de atendimento. Gerencie-a pelo board de Mesas & Comandas.");
 
 	// Campo ausente => não altera; presente (boolean|null) => resolve override com gate de permissão.
 	const emissaoFiscalAutomatica =

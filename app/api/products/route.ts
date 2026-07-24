@@ -1320,6 +1320,8 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 				precoCusto: input.product.precoCusto,
 				quantidade: input.product.quantidade,
 				rastreamentoEstoqueAtivo: input.product.rastreamentoEstoqueAtivo,
+				baixaEstoqueModo: input.product.baixaEstoqueModo,
+				fichaTecnicaReceitaId: input.product.fichaTecnicaReceitaId,
 			})
 			.where(and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)))
 			.returning({ updatedId: products.id });
@@ -1533,6 +1535,8 @@ async function createProduct({ session, input }: { session: TAuthUserSession; in
 				precoCusto: input.product.precoCusto,
 				quantidade: input.product.quantidade,
 				rastreamentoEstoqueAtivo: input.product.rastreamentoEstoqueAtivo,
+				baixaEstoqueModo: input.product.baixaEstoqueModo,
+				fichaTecnicaReceitaId: input.product.fichaTecnicaReceitaId,
 			})
 			.returning({ id: products.id });
 

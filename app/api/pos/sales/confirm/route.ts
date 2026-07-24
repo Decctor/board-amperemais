@@ -41,7 +41,7 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		}),
 		db.query.sales.findFirst({
 			where: and(eq(sales.id, input.id), eq(sales.organizacaoId, orgId)),
-			columns: { id: true, rascunhoMetadados: true, vendedorId: true, descontosTotal: true },
+			columns: { id: true, rascunhoMetadados: true, vendedorId: true, descontosTotal: true, tabId: true },
 			with: {
 				itens: { columns: { valorVendaTotalBruto: true, valorTotalDesconto: true } },
 			},
@@ -50,6 +50,9 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 
 	if (!organization) throw new createHttpError.NotFound("Organizacao nao encontrada.");
 	if (!saleDraft) throw new createHttpError.NotFound("Venda nao encontrada.");
+	// Venda de conta de atendimento so e confirmada pelo fechamento da tab (lib/tabs/close-tab),
+	// que garante lock, pedidos resolvidos, delta de estoque e sessao de caixa de quem fecha.
+	if (saleDraft.tabId) throw new createHttpError.BadRequest("Esta venda pertence a uma conta de atendimento. Feche a conta para confirma-la.");
 
 	// Sessões de venda (caixa): enforcement opcional/obrigatório + validação da sessão informada pelo cliente.
 	const sessaoObrigatoria = organization.configuracao.preferencias.sessoesVenda?.obrigatorio ?? false;
@@ -68,6 +71,15 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 	const accountingEntryCreditAccountId = input.contaCreditoId ?? organizationSaleDefaults.creditoContaId;
 	if (!accountingEntryDebitAccountId || !accountingEntryCreditAccountId) {
 		throw new createHttpError.InternalServerError("A organizacao nao possui contas padrao de vendas configuradas.");
+	}
+	// Contas informadas no request precisam pertencer a organizacao (FK de accountingEntries e global por id).
+	const accountIds = [...new Set([accountingEntryDebitAccountId, accountingEntryCreditAccountId])];
+	const validAccounts = await db.query.accountsCharts.findMany({
+		where: (fields, { and, eq, inArray }) => and(inArray(fields.id, accountIds), eq(fields.organizacaoId, orgId)),
+		columns: { id: true },
+	});
+	if (validAccounts.length !== accountIds.length) {
+		throw new createHttpError.BadRequest("Conta contabil invalida para esta organizacao.");
 	}
 
 	const organizationPaymentMethodDefaults = getOrganizationPaymentMethodsConfig(organization.configuracao);

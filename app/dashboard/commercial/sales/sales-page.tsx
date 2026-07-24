@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger, tabsPageToolbarActionsClassNa
 import { ActionApprovalsQueue } from "@/components/ActionApprovals/ActionApprovalsQueue";
 import { SaleFulfillmentDetailsMenu } from "@/components/Modals/Sales/SaleFulfillmentDetailsMenu";
 import FulfillmentBoard from "./_components/fulfillment/fulfillment-board";
+import PreparationBoard from "./_components/preparation/preparation-board";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
@@ -25,6 +26,7 @@ import {
 	BadgeDollarSign,
 	BadgePercent,
 	Calendar,
+	ChefHat,
 	CircleUser,
 	Clock,
 	FileSpreadsheet,
@@ -88,6 +90,10 @@ export default function SalesPage({ user: _user, organization, canApproveActionR
 							<LayoutGrid className="h-4 w-4 min-h-4 min-w-4" />
 							Atendimento
 						</TabsTrigger>
+						<TabsTrigger value="preparo">
+							<ChefHat className="h-4 w-4 min-h-4 min-w-4" />
+							Preparo
+						</TabsTrigger>
 						<TabsTrigger value="aprovacoes">
 							<GitPullRequestArrow className="h-4 w-4 min-h-4 min-w-4" />
 							Aprovações
@@ -105,6 +111,9 @@ export default function SalesPage({ user: _user, organization, canApproveActionR
 						organizationConfig={organization.configuracao}
 						onViewDetails={(saleId) => void setSelectedSaleId(saleId, { history: "push" })}
 					/>
+				</TabsContent>
+				<TabsContent value="preparo" className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden">
+					<PreparationBoard />
 				</TabsContent>
 				<TabsContent value="aprovacoes" className="mt-3 flex flex-col gap-3">
 					<ActionApprovalsQueue orgId={organization.id} canApprove={canApproveActionRequests} />

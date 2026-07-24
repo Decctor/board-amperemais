@@ -416,3 +416,16 @@ export const dealStatusEnum = pgEnum("deal_status", ["PENDENTE", "ATIVO", "INADI
 export const dealIntervaloEnum = pgEnum("deal_intervalo", ["MENSAL", "ANUAL"]);
 
 export const actionApprovalDecisionMethodEnum = pgEnum("action_approval_decision_method", ["PLATAFORMA", "SENHA_OPERADOR"]);
+
+// ============================================================================
+// TABS / PONTOS DE ATENDIMENTO (docs/tabs/implementation-plan.md)
+// ============================================================================
+
+export const tabStatusEnum = pgEnum("tab_status", ["ABERTA", "FECHADA", "CANCELADA"]);
+
+export const servicePointTypeEnum = pgEnum("service_point_type", ["MESA", "BALCAO", "QUIOSQUE", "OUTRO"]);
+
+// Como a venda de um produto baixa estoque:
+// ESTOQUE_PROPRIO — baixa o saldo do proprio produto/variante (comportamento atual);
+// COMPOSICAO — explode a ficha tecnica e baixa os insumos (pratos, drinks, lanches).
+export const productStockDeductionModeEnum = pgEnum("product_stock_deduction_mode", ["ESTOQUE_PROPRIO", "COMPOSICAO"]);

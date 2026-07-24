@@ -429,6 +429,7 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 	}
 
 	const lancamentosPadrao = state.organization.configuracao.defaults.contabilidade.lancamentosPadrao;
+	const contasAtendimentoConfig = state.organization.configuracao.preferencias.contasAtendimento ?? { habilitado: false };
 	const sessoesVendaConfig = state.organization.configuracao.preferencias.sessoesVenda ?? {
 		habilitado: false,
 		obrigatorio: false,
@@ -729,6 +730,21 @@ function SettingsOrgContent({ userHasEditPermissions }: SettingsOrgContentProps)
 										</div>
 									</div>
 								) : null}
+							</div>
+
+							<div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3">
+								<div className="flex flex-col gap-0.5">
+									<span className="text-sm font-medium tracking-tight">CONTAS DE ATENDIMENTO</span>
+									<span className="text-xs text-muted-foreground">
+										Habilita pontos de atendimento e contas de consumo (mesas, comandas, quartos) com pedidos acumulados e fechamento único. O modo de
+										operação e os pedidos via QR Code são configurados dentro do módulo.
+									</span>
+								</div>
+								<Switch
+									checked={contasAtendimentoConfig.habilitado}
+									onCheckedChange={(checked) => userHasEditPermissions && updatePreferencias({ contasAtendimento: { habilitado: checked } })}
+									disabled={!userHasEditPermissions}
+								/>
 							</div>
 						</>
 					)}

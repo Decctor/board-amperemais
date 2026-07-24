@@ -23,6 +23,7 @@ import {
 	Ticket,
 	UserRound,
 	UsersRound,
+	UtensilsCrossed,
 	Wallet,
 } from "lucide-react";
 import AppSidebarContentGroup from "./AppSidebarContentGroup";
@@ -106,6 +107,13 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				icon: <Banknote className="w-4 h-4" />,
 				items: null,
 				checkAccess: (org) => org.configuracao.preferencias.sessoesVenda?.habilitado ?? false,
+			},
+			{
+				title: "Mesas & Comandas",
+				url: "/dashboard/commercial/tabs",
+				icon: <UtensilsCrossed className="w-4 h-4" />,
+				items: null,
+				checkAccess: (org) => org.configuracao.recursos.erp.acesso && (org.configuracao.preferencias.contasAtendimento?.habilitado ?? false),
 			},
 			{
 				title: "Matriz RFM",

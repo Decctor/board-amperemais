@@ -197,6 +197,9 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES: TOrganizationConfig
 		financeiro: false,
 		fiscal: false,
 	},
+	contasAtendimento: {
+		habilitado: false,
+	},
 };
 
 const DEFAULT_PAYMENT_METHOD_CONFIGURATION: TOrganizationConfiguration["defaults"]["pagamentos"]["metodos"]["DINHEIRO"] = {

@@ -1,0 +1,49 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Copy } from "lucide-react";
+import QRCode from "qrcode";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+type ServicePointQrDisplayProps = {
+	// Token bruto — disponivel SOMENTE na criacao/regeneracao (persistimos apenas o hash).
+	tokenPublico: string;
+	rotulo: string;
+};
+
+/**
+ * QR duravel do ponto: aponta para /service-point/<token>. Exibido uma unica vez
+ * na criacao/regeneracao — imprima ou copie o link antes de fechar.
+ */
+export function ServicePointQrDisplay({ tokenPublico, rotulo }: ServicePointQrDisplayProps) {
+	const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+	const url = typeof window !== "undefined" ? `${window.location.origin}/service-point/${tokenPublico}` : `/service-point/${tokenPublico}`;
+
+	useEffect(() => {
+		QRCode.toDataURL(url, { width: 320, margin: 1 })
+			.then(setQrDataUrl)
+			.catch(() => setQrDataUrl(null));
+	}, [url]);
+
+	return (
+		<div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-secondary/30 p-3">
+			<p className="text-xs font-bold uppercase tracking-tight">{rotulo} — QR do ponto</p>
+			{qrDataUrl ? <img src={qrDataUrl} alt={`QR Code de ${rotulo}`} className="h-44 w-44 rounded-lg bg-white p-1.5" /> : null}
+			<p className="max-w-full truncate text-[0.65rem] text-muted-foreground">{url}</p>
+			<Button
+				size="sm"
+				variant="outline"
+				className="flex items-center gap-1.5"
+				onClick={() => {
+					navigator.clipboard.writeText(url);
+					toast.success("Link copiado.");
+				}}
+			>
+				<Copy className="h-3.5 w-3.5" />
+				COPIAR LINK
+			</Button>
+			<p className="text-center text-[0.65rem] text-destructive">Este link aparece somente agora. Imprima ou copie antes de fechar.</p>
+		</div>
+	);
+}

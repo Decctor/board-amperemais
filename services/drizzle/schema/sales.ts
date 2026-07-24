@@ -1,6 +1,6 @@
 import type { TSaleCapiMetadata, TSaleIntegrationMetadata } from "@/schemas/sales";
-import { relations } from "drizzle-orm";
-import { boolean, doublePrecision, index, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { boolean, doublePrecision, index, jsonb, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { campaignConversions } from "./campaign-conversions";
 import { campaigns } from "./campaigns";
 import { cashbackProgramTransactions } from "./cashback-programs";
@@ -14,6 +14,7 @@ import { partners } from "./partners";
 import { productAddOnOptions, productStockTransactions, productVariants, products } from "./products";
 import { salesSessions } from "./sales-sessions";
 import { sellers } from "./sellers";
+import { tabOrders, tabs } from "./tabs";
 
 export const sales = newTable(
 	"sales",
@@ -51,6 +52,9 @@ export const sales = newTable(
 		// Delivery
 		entregaModalidade: deliveryModeEnum("entrega_modalidade"),
 		entregaLocalizacaoId: varchar("entrega_localizacao_id", { length: 255 }).references(() => clientLocations.id, { onDelete: "set null" }),
+		// Conta de atendimento (tab) que agrega esta venda. Uma unica venda ORCAMENTO por tab
+		// (partial unique idx_sales_tab_rascunho); 1:N estrutural p/ fechamento parcial futuro.
+		tabId: varchar("tab_id", { length: 255 }).references(() => tabs.id, { onDelete: "set null" }),
 		comandaNumero: text("comanda_numero"),
 		observacoes: text("observacoes"),
 		rascunhoMetadados: jsonb("rascunho_metadados"),
@@ -94,6 +98,11 @@ export const sales = newTable(
 		sessaoVendaIdx: index("idx_sales_sessao").on(table.sessaoVendaId),
 		// Listagem do histórico e stats sempre filtram por organização e ordenam/filtram por data.
 		orgDataVendaIdx: index("idx_sales_org_data_venda").on(table.organizacaoId, table.dataVenda),
+		tabIdx: index("idx_sales_tab").on(table.tabId),
+		// Uma unica venda em rascunho por conta de atendimento.
+		tabRascunhoIdx: uniqueIndex("idx_sales_tab_rascunho")
+			.on(table.tabId)
+			.where(sql`status_venda = 'ORCAMENTO' AND tab_id IS NOT NULL`),
 	}),
 );
 export type TSaleEntity = typeof sales.$inferSelect;
@@ -134,6 +143,10 @@ export const salesRelations = relations(sales, ({ one, many }) => ({
 		fields: [sales.sessaoVendaId],
 		references: [salesSessions.id],
 	}),
+	tab: one(tabs, {
+		fields: [sales.tabId],
+		references: [tabs.id],
+	}),
 	// ERP back-relations
 	lancamentosContabeis: many(accountingEntries),
 	documentosFiscais: many(fiscalOutboundDocuments),
@@ -168,10 +181,13 @@ export const saleItems = newTable(
 		quantidadeSeparada: doublePrecision("quantidade_separada").notNull().default(0), // quantidade separada para entrega/retirada
 		quantidadeEntregue: doublePrecision("quantidade_entregue").notNull().default(0), // quantidade efetivamente entregue (baixa fisica)
 		quantidadeCancelada: doublePrecision("quantidade_cancelada").notNull().default(0), // quantidade cancelada do item
+		// Pedido/rodada da conta de atendimento ao qual o item pertence (nullable — vendas comuns nao tem rodada).
+		tabOrderId: varchar("tab_order_id", { length: 255 }).references(() => tabOrders.id, { onDelete: "set null" }),
 		metadados: jsonb("metadados"), // metadados do produto (JSONB)
 	},
 	(table) => ({
 		vendaIdIdx: index("idx_sale_items_venda_id").on(table.vendaId),
+		tabOrderIdx: index("idx_sale_items_tab_order").on(table.tabOrderId),
 		produtoIdIdx: index("idx_sale_items_produto_id").on(table.produtoId),
 		clienteIdIdx: index("idx_sale_items_cliente_id").on(table.clienteId),
 		valoresIdx: index("idx_sale_items_valores").on(table.valorVendaTotalLiquido, table.valorCustoTotal),
@@ -181,6 +197,10 @@ export const saleItemsRelations = relations(saleItems, ({ one, many }) => ({
 	produto: one(products, {
 		fields: [saleItems.produtoId],
 		references: [products.id],
+	}),
+	tabOrder: one(tabOrders, {
+		fields: [saleItems.tabOrderId],
+		references: [tabOrders.id],
 	}),
 	produtoVariante: one(productVariants, {
 		fields: [saleItems.produtoVarianteId],

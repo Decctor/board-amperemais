@@ -246,6 +246,17 @@ export const OrganizationConfigurationSchema = z.object({
 				financeiro: false,
 				fiscal: false,
 			}),
+		// FEATURE GATE do módulo de contas de atendimento (servicePoints + tabs): decide se
+		// o módulo existe para a organização (navegação e rota). NÃO confundir com a POLÍTICA
+		// operacional `serviceSettings.contas.habilitadas`, que define como a organização opera
+		// (preset balcão/mesas/comandas) e vive na tabela própria do módulo — a sidebar só
+		// enxerga a configuração da organização, por isso o gate precisa estar aqui.
+		// UI pode rotular com o jargão do segmento ("Mesas & Comandas"); a chave é neutra.
+		contasAtendimento: z
+			.object({
+				habilitado: z.boolean({ invalid_type_error: "Tipo não válido para a habilitação de contas de atendimento." }),
+			})
+			.default({ habilitado: false }),
 	}),
 	defaults: OrganizationDefaultsSchema,
 });
