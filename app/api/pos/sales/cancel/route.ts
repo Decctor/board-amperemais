@@ -44,10 +44,14 @@ async function cancelSale(request: NextRequest) {
 	// Verify the sale exists, belongs to the org, and is in ORCAMENTO status
 	const existing = await db.query.sales.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, input.id), eq(fields.organizacaoId, orgId)),
-		columns: { id: true, statusVenda: true },
+		columns: { id: true, statusVenda: true, tabId: true },
 	});
 
 	if (!existing) throw new createHttpError.NotFound("Venda não encontrada.");
+	// Venda de conta de atendimento: cancelar somente pelo fluxo da tab (cancela pedidos e a conta juntos).
+	if (existing.tabId && existing.statusVenda === "ORCAMENTO") {
+		throw new createHttpError.BadRequest("Esta venda pertence a uma conta de atendimento. Cancele a conta para cancelá-la.");
+	}
 	if (existing.statusVenda === "CONFIRMADA") {
 		if (!session.membership.permissoes.vendas.excluir)
 			throw new createHttpError.Forbidden("Você não possui permissão para cancelar vendas confirmadas.");
