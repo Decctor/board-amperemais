@@ -96,6 +96,8 @@ export default function NewPurchase({ user, closeModal, callbacks }: NewPurchase
 				updatePurchaseItem={updatePurchaseItem}
 				removePurchaseItem={removePurchaseItem}
 				updatePurchase={updatePurchase}
+				accountingEntry={state.lancamentoContabil}
+				updateAccountingEntry={updateAccountingEntry}
 				fornecedorId={state.purchase.fornecedorId}
 			/>
 			<PurchaseAccountingEntryBlock

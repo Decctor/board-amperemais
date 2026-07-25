@@ -1,5 +1,5 @@
-import { relations } from "drizzle-orm";
-import { boolean, index, timestamp, varchar } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { boolean, doublePrecision, index, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import { organizations } from "./organizations";
 import { products, productVariants } from "./products";
@@ -49,12 +49,26 @@ export const supplierProductMappings = newTable(
 			.references(() => products.id, { onDelete: "cascade" })
 			.notNull(),
 		produtoVarianteId: varchar("produto_variante_id", { length: 255 }).references(() => productVariants.id, { onDelete: "cascade" }),
+		// Unidade comercial do fornecedor e o fator para converter a unidade interna do produto.
+		// Aprendidos junto do de-para: a proxima nota do mesmo fornecedor ja chega convertida.
+		unidadeExterna: varchar("unidade_externa", { length: 25 }),
+		fatorConversao: doublePrecision("fator_conversao"),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+		dataAtualizacao: timestamp("data_atualizacao").defaultNow().notNull(),
 	},
 	(table) => ({
 		organizacaoIdIdx: index("idx_supplier_product_mappings_organizacao_id").on(table.organizacaoId),
 		fornecedorCodigoIdx: index("idx_supplier_product_mappings_fornecedor_codigo").on(table.fornecedorId, table.codigoFornecedor),
 		fornecedorEanIdx: index("idx_supplier_product_mappings_fornecedor_ean").on(table.fornecedorId, table.ean),
+		// Um codigo (ou EAN) do fornecedor aponta para um unico produto. Sem isso o de-para aceita
+		// duplicatas e o Estagio A do matching passa a escolher um vencedor arbitrario entre elas.
+		// Parciais porque cada linha pode ser chaveada por codigo, por EAN, ou por ambos.
+		fornecedorCodigoUnq: uniqueIndex("unq_supplier_product_mappings_fornecedor_codigo")
+			.on(table.fornecedorId, table.codigoFornecedor)
+			.where(sql`${table.codigoFornecedor} IS NOT NULL`),
+		fornecedorEanUnq: uniqueIndex("unq_supplier_product_mappings_fornecedor_ean")
+			.on(table.fornecedorId, table.ean)
+			.where(sql`${table.ean} IS NOT NULL`),
 	}),
 );
 

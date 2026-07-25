@@ -1,7 +1,13 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { boolean, doublePrecision, index, integer, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
-import { productClientReferenceWindowEnum, productStockDeductionModeEnum, stockLotStatusEnum, stockMovementTypeEnum, variantOptionTypeEnum } from "./enums";
+import {
+	productClientReferenceWindowEnum,
+	productStockDeductionModeEnum,
+	stockLotStatusEnum,
+	stockMovementTypeEnum,
+	variantOptionTypeEnum,
+} from "./enums";
 import { organizations } from "./organizations";
 import { saleItems, sales } from "./sales";
 import { users } from "./users";
@@ -45,6 +51,9 @@ export const products = newTable(
 		grupoIdx: index("idx_products_grupo").on(table.grupo),
 		organizacaoIdx: index("idx_products_organizacao").on(table.organizacaoId),
 		codigoIdx: index("idx_products_codigo").on(table.codigo),
+		// Shortlist por similaridade na conciliação de itens de nota fiscal: a descrição impressa
+		// raramente bate o nome do catálogo palavra por palavra. Mesmo padrão de `idx_clients_nome`.
+		nomeIdx: index("idx_products_nome").using("gist", sql`unaccent_immutable(lower(${table.nome})) gist_trgm_ops`),
 	}),
 );
 export const productsRelations = relations(products, ({ many }) => ({
