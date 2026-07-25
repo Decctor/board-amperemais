@@ -8,6 +8,7 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { distributeTotalEqually } from "@/lib/finances/accounting-entry-balance";
 import { formatDateAsLocale, formatDateForInputValue, formatDateOnInputChange, formatToMoney } from "@/lib/formatting";
 import { useFinancesAccounts } from "@/lib/queries/finances";
 import { cn } from "@/lib/utils";
@@ -312,13 +313,6 @@ type AddMultiFinancialTransactionsMenuProps = {
 	onCommit: (transactions: TAccountingEntryFinancialTransactionState[]) => void;
 	closeMenu: () => void;
 };
-
-function distributeTotalEqually(total: number, count: number) {
-	const cents = Math.round(total * 100);
-	const base = Math.floor(cents / count);
-	const remainder = cents - base * count;
-	return Array.from({ length: count }, (_, index) => (base + (index < remainder ? 1 : 0)) / 100);
-}
 
 function AddMultiFinancialTransactionsMenu({ entryTotalValue, onCommit, closeMenu }: AddMultiFinancialTransactionsMenuProps) {
 	const [installmentCount, setInstallmentCount] = useState(2);

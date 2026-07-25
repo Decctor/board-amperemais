@@ -1,6 +1,8 @@
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
+import { getAccountingEntryBalanceError } from "@/lib/finances/accounting-entry-balance";
+import { formatToMoney } from "@/lib/formatting";
 import { createPurchase } from "@/lib/mutations/purchases";
 import { usePurchaseState } from "@/state-hooks/use-purchase-state";
 import { useMutation } from "@tanstack/react-query";
@@ -39,6 +41,13 @@ export default function NewPurchase({ user, closeModal, callbacks }: NewPurchase
 		initialState: {},
 	});
 
+	const balanceError = getAccountingEntryBalanceError({
+		entryValue: state.lancamentoContabil.valor,
+		transactions: state.lancamentoContabil.transacoes,
+	});
+	const balanceDelta =
+		state.lancamentoContabil.valor - state.lancamentoContabil.transacoes.filter((t) => !t.deletar).reduce((acc, t) => acc + (t.valor || 0), 0);
+
 	const { mutate: handleCreatePurchaseMutation, isPending } = useMutation({
 		mutationKey: ["create-purchase"],
 		mutationFn: createPurchase,
@@ -66,9 +75,14 @@ export default function NewPurchase({ user, closeModal, callbacks }: NewPurchase
 		<ResponsiveMenu
 			menuTitle="NOVA COMPRA"
 			menuDescription="Preencha os campos abaixo para criar uma nova compra..."
-			menuActionButtonText="CRIAR COMPRA"
 			menuCancelButtonText="CANCELAR"
-			actionFunction={() => handleCreatePurchaseMutation(state)}
+			actionFunction={() => {
+				// O servidor rejeita um lançamento desbalanceado; a tela já sabe o delta, então não faz
+				// sentido gastar um round-trip para descobrir.
+				if (balanceError) return toast.error(balanceError);
+				handleCreatePurchaseMutation(state);
+			}}
+			menuActionButtonText={balanceError ? `FALTAM ${formatToMoney(Math.abs(balanceDelta))}` : "CRIAR COMPRA"}
 			actionIsLoading={isPending}
 			stateIsLoading={false}
 			stateError={null}

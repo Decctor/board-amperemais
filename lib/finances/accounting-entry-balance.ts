@@ -9,6 +9,17 @@ export function getActiveTransactionsTotal(transactions: TBalanceableTransaction
 }
 
 /**
+ * Distribui um total em N parcelas sem perder centavos: o resto e espalhado uma unidade por vez nas
+ * primeiras parcelas, entao a soma fecha exatamente com o total.
+ */
+export function distributeTotalEqually(total: number, count: number) {
+	const cents = Math.round(total * 100);
+	const base = Math.floor(cents / count);
+	const remainder = cents - base * count;
+	return Array.from({ length: count }, (_, index) => (base + (index < remainder ? 1 : 0)) / 100);
+}
+
+/**
  * Um lancamento pode nao ter nenhuma transacao (pagamento ainda nao programado), mas quando tem, a soma
  * delas precisa fechar com o valor do lancamento. Retorna a mensagem de erro ou `null` quando esta valido.
  */

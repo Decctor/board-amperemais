@@ -1,7 +1,7 @@
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown } from "lucide-react";
-import React, { type ReactNode, useId, useState } from "react";
+import React, { type ComponentProps, type ReactNode, useId, useState } from "react";
 import { Button } from "../ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "../ui/command";
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
@@ -18,6 +18,7 @@ type SelectInputProps = {
 	label: string;
 	labelClassName?: string;
 	holderClassName?: string;
+	triggerProps?: ComponentProps<typeof Button>;
 	showLabel?: boolean;
 	value: string | null | undefined;
 	editable?: boolean;
@@ -33,6 +34,7 @@ function SelectInput({
 	label,
 	labelClassName,
 	holderClassName,
+	triggerProps,
 	showLabel = true,
 	value,
 	editable = true,
@@ -67,6 +69,7 @@ function SelectInput({
 							aria-haspopup="listbox"
 							aria-expanded={isOpen}
 							className={cn("w-full justify-between truncate border border-border", holderClassName)}
+							{...triggerProps}
 						>
 							<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
 							<ChevronsUpDown className="w-4 h-4 min-w-4 min-h-4" />
@@ -96,6 +99,7 @@ function SelectInput({
 							aria-haspopup="listbox"
 							aria-expanded={isOpen}
 							className={cn("w-full justify-between border border-border", holderClassName)}
+							{...triggerProps}
 						>
 							<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
 							<ChevronsUpDown className="w-3 h-3 min-w-3 min-h-3" />

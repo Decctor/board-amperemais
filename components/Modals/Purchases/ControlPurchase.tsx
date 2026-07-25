@@ -1,6 +1,8 @@
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
+import { getAccountingEntryBalanceError } from "@/lib/finances/accounting-entry-balance";
+import { formatToMoney } from "@/lib/formatting";
 import { updatePurchase as updatePurchaseMutation } from "@/lib/mutations/purchases";
 import { usePurchaseState } from "@/state-hooks/use-purchase-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -54,6 +56,13 @@ export default function ControlPurchase({ purchaseId, user, closeModal, callback
 	} = usePurchaseState({
 		initialState: {},
 	});
+
+	const balanceError = getAccountingEntryBalanceError({
+		entryValue: state.lancamentoContabil.valor,
+		transactions: state.lancamentoContabil.transacoes,
+	});
+	const balanceDelta =
+		state.lancamentoContabil.valor - state.lancamentoContabil.transacoes.filter((t) => !t.deletar).reduce((acc, t) => acc + (t.valor || 0), 0);
 
 	const { mutate: handleUpdatePurchaseMutation, isPending } = useMutation({
 		mutationKey: ["update-purchase", purchaseId],
@@ -120,16 +129,18 @@ export default function ControlPurchase({ purchaseId, user, closeModal, callback
 		<ResponsiveMenu
 			menuTitle="ATUALIZAR COMPRA"
 			menuDescription="Preencha os campos abaixo para atualizar a compra..."
-			menuActionButtonText="ATUALIZAR COMPRA"
+			menuActionButtonText={balanceError ? `FALTAM ${formatToMoney(Math.abs(balanceDelta))}` : "ATUALIZAR COMPRA"}
 			menuCancelButtonText="CANCELAR"
-				actionFunction={() =>
+			actionFunction={() => {
+				// O servidor rejeita um lançamento desbalanceado; a tela já sabe o delta.
+				if (balanceError) return toast.error(balanceError);
 				handleUpdatePurchaseMutation({
 					purchaseId,
 					purchase: state.purchase,
 					purchaseItems: state.purchaseItems,
 					lancamentoContabil: state.lancamentoContabil,
-				})
-			}
+				});
+			}}
 			actionIsLoading={isPending}
 			stateIsLoading={isLoading}
 			stateError={isError ? getErrorMessage(error) : null}

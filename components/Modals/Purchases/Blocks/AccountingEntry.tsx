@@ -53,21 +53,25 @@ export default function PurchaseAccountingEntryBlock({
 			<div className="flex w-full flex-col items-center gap-2 lg:flex-row">
 				<div className="w-full lg:w-1/2">
 					<NumberInput
-						label="VALOR PREVISTO"
-						placeholder="Preencha o valor previsto para o lançamento contábil..."
+						label="VALOR PREVISTO (ORÇADO)"
+						placeholder="Quanto se esperava gastar..."
 						value={accountingEntry.valorPrevisto ?? 0}
 						handleChange={(value) => updateAccountingEntry({ valorPrevisto: value })}
 					/>
 				</div>
 				<div className="w-full lg:w-1/2">
 					<NumberInput
-						label="VALOR EFETIVO"
-						placeholder="Preencha o valor efetivo para o lançamento contábil..."
+						label="VALOR EFETIVO (A PAGAR)"
+						placeholder="Quanto será efetivamente pago..."
 						value={accountingEntry.valor}
 						handleChange={(value) => updateAccountingEntry({ valor: value })}
 					/>
 				</div>
 			</div>
+			{/* Dois campos de dinheiro com a mesma forma, e só um governa a programação de pagamento. */}
+			<p className="text-xs text-muted-foreground">
+				As transações financeiras abaixo precisam somar o <strong className="font-semibold text-foreground/80">VALOR EFETIVO</strong>.
+			</p>
 			<div className="flex w-full flex-col gap-1.5">
 				<p className="text-start text-sm font-medium tracking-tight text-foreground/80">TRANSAÇÕES FINANCEIRAS</p>
 				<PurchaseTransactionsTable
