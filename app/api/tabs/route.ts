@@ -89,7 +89,8 @@ async function getTabs({ input, orgId }: { input: TGetTabsInput; orgId: string }
 		where: and(...conditions),
 		with: {
 			...TAB_LIST_WITH,
-			pedidos: { columns: { id: true, numero: true, status: true } },
+			// dataEnvio/dataInsercao alimentam o calculo de atraso das rodadas no board.
+			pedidos: { columns: { id: true, numero: true, status: true, dataEnvio: true, dataInsercao: true } },
 			vendas: {
 				where: (fields, { eq }) => eq(fields.statusVenda, "ORCAMENTO"),
 				columns: { id: true, valorTotal: true },

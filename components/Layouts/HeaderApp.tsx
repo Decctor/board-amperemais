@@ -1,4 +1,5 @@
 "use client";
+import { getAppRouteIcon } from "@/config/app-route-icons";
 import { getAppRouteDescription, getAppRouteTitle } from "@/config";
 import SubscriptionStatusBanner from "@/components/Sidebar/SubscriptionStatusBanner";
 import { AIHintsBadge } from "@/components/AIHints/AIHintsBadge";
@@ -17,6 +18,7 @@ export default function AppHeader({ showSidebarTrigger = true }: AppHeaderProps)
 	const searchParams = useSearchParams();
 	const title = getAppRouteTitle(pathname || "");
 	const description = getAppRouteDescription(pathname || "");
+	const RouteIcon = getAppRouteIcon(pathname || "");
 	const redirectBackTo = searchParams?.get("redirectBackTo");
 	return (
 		<header className="flex flex-col gap-0.5">
@@ -31,6 +33,8 @@ export default function AppHeader({ showSidebarTrigger = true }: AppHeaderProps)
 							</Link>
 						</Button>
 					) : null}
+					{/* Decorativo: o título ao lado já nomeia a rota. */}
+					{RouteIcon ? <RouteIcon aria-hidden className="size-5 shrink-0 text-foreground md:size-6" /> : null}
 					<h1 className="text-xl font-black leading-none tracking-tight md:text-2xl text-foreground">{title}</h1>
 				</div>
 				<div className="flex items-center gap-2">
