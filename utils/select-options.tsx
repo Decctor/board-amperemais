@@ -581,6 +581,16 @@ export const AccountingEntryOriginTypeOptions: {
 			background: "bg-blue-200",
 		},
 	},
+	{
+		id: 5,
+		label: "COMPRA",
+		value: "COMPRA",
+		icon: <ShoppingBag className="w-4 h-4" />,
+		colors: {
+			text: "text-purple-600",
+			background: "bg-purple-200",
+		},
+	},
 ];
 
 export const FinancialTransactionTypeOptions: {

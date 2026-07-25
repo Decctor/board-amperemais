@@ -189,7 +189,14 @@ export const bankAccountTypeEnum = pgEnum("bank_account_type", ["CORRENTE", "POU
 
 export const financialTransactionTypeEnum = pgEnum("financial_transaction_type", ["ENTRADA", "SAIDA"]);
 
-export const accountingEntryOriginTypeEnum = pgEnum("accounting_entry_origin_type", ["VENDA", "MANUAL", "ESTORNO", "TRANSFERENCIA", "CONCILIACAO"]);
+export const accountingEntryOriginTypeEnum = pgEnum("accounting_entry_origin_type", [
+	"VENDA",
+	"COMPRA",
+	"MANUAL",
+	"ESTORNO",
+	"TRANSFERENCIA",
+	"CONCILIACAO",
+]);
 
 // ============================================================================
 // CONCILIAÇÃO BANCÁRIA (docs/bank-reconciliation-design.md)

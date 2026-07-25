@@ -1,12 +1,16 @@
+import { getDefaultAccountChartCodeByKey, RecompraCRMDefaultAccountingDefaults } from "@/config/onboarding";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
+import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
+import { getAccountingEntryBalanceError } from "@/lib/finances/accounting-entry-balance";
 import { handlePurchaseItemStockProcessing, type TPurchaseItemStockOperation } from "@/lib/purchase-processing/process-purchase-item-stock";
 import { createSimplifiedSearchCondition } from "@/lib/search";
 import { PurchaseStatusEnum, TPurchaseStatusEnum } from "@/schemas/enums";
+import { AccountingEntrySchema, FinancialTransactionSchema } from "@/schemas/financial";
 import { PurchaseItemSchema, PurchaseSchema, refinePurchaseStatusAndDeliveryDate } from "@/schemas/purchases";
 import { db, type DBTransaction } from "@/services/drizzle";
-import { productStockLots, purchases } from "@/services/drizzle/schema";
+import { accountingEntries, financialTransactions, productStockLots, purchases } from "@/services/drizzle/schema";
 import { and, count, eq, inArray, or } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { NextResponse, type NextRequest } from "next/server";
@@ -107,6 +111,30 @@ async function getPurchases({ input, session }: { input: TGetPurchasesInput; ses
 						id: true,
 						nome: true,
 						avatarUrl: true,
+					},
+				},
+				lancamentoContabil: {
+					columns: {
+						id: true,
+						titulo: true,
+						anotacoes: true,
+						valor: true,
+						valorPrevisto: true,
+						dataCompetencia: true,
+						origemTipo: true,
+					},
+					with: {
+						transacoesFinanceiras: {
+							orderBy: (fields, { asc }) => asc(fields.dataPrevisao),
+							with: {
+								contaFinanceira: {
+									columns: {
+										id: true,
+										nome: true,
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -218,11 +246,93 @@ const PurchaseHeaderInputSchema = PurchaseSchema.omit({
 	dataUltimaAtualizacao: true,
 }).superRefine(refinePurchaseStatusAndDeliveryDate);
 
+// Transações financeiras que quitam o lançamento contábil da compra. Organização, lançamento e autor são
+// derivados no servidor a partir da própria compra.
+const PurchaseAccountingEntryTransactionInputSchema = FinancialTransactionSchema.omit({
+	organizacaoId: true,
+	lancamentoContabilId: true,
+	autorId: true,
+	dataInsercao: true,
+});
+// Contas de débito/crédito, origem e autor são resolvidos no servidor a partir dos padrões da organização.
+const PurchaseAccountingEntryFieldsSchema = AccountingEntrySchema.omit({
+	organizacaoId: true,
+	vendaId: true,
+	origemTipo: true,
+	idContaDebito: true,
+	idContaCredito: true,
+	autorId: true,
+	dataInsercao: true,
+});
+
 const CreatePurchaseInputSchema = z.object({
 	purchase: PurchaseHeaderInputSchema,
 	purchaseItems: z.array(PurchaseItemSchema.omit({ organizacaoId: true, compraId: true, dataInsercao: true })),
+	lancamentoContabil: PurchaseAccountingEntryFieldsSchema.extend({
+		transacoes: z.array(PurchaseAccountingEntryTransactionInputSchema),
+	}),
 });
 export type TCreatePurchaseInput = z.infer<typeof CreatePurchaseInputSchema>;
+
+/**
+ * Resolve as contas contábeis de débito/crédito de uma compra a partir dos padrões da organização.
+ * Mesmo padrão de `resolveTransferAccountingAccountIds` em finances/financial-transactions/transfer:
+ * prefere os IDs e, para organizações onboardadas antes das chaves serem semeadas, resolve pela chave.
+ */
+async function resolvePurchaseAccountingAccountIds({
+	trx,
+	orgId,
+}: {
+	trx: DBTransaction;
+	orgId: string;
+}): Promise<{ debitAccountId: string; creditAccountId: string }> {
+	const organization = await trx.query.organizations.findFirst({
+		where: (fields, { eq }) => eq(fields.id, orgId),
+		columns: { configuracao: true },
+	});
+	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
+
+	const purchaseDefaults = organization.configuracao.defaults.contabilidade.lancamentosPadrao.compras;
+	let debitAccountId = purchaseDefaults?.debitoContaId ?? null;
+	let creditAccountId = purchaseDefaults?.creditoContaId ?? null;
+
+	// Organizações onboardadas antes dos defaults de compras não têm os IDs gravados; resolvemos pelo
+	// código da conta no plano de contas padrão (a `key` do seed não é persistida).
+	if (!debitAccountId || !creditAccountId) {
+		const debitCode = getDefaultAccountChartCodeByKey(purchaseDefaults?.debitoContaKey ?? RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoKey);
+		const creditCode = getDefaultAccountChartCodeByKey(
+			purchaseDefaults?.creditoContaKey ?? RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.creditoKey,
+		);
+		const wantedCodes = [!debitAccountId ? debitCode : null, !creditAccountId ? creditCode : null].filter((code): code is string => !!code);
+
+		if (wantedCodes.length > 0) {
+			const accountsByCode = await trx.query.accountsCharts.findMany({
+				where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, orgId), inArray(fields.codigo, wantedCodes)),
+				columns: { id: true, codigo: true },
+			});
+			if (!debitAccountId && debitCode) debitAccountId = accountsByCode.find((account) => account.codigo === debitCode)?.id ?? null;
+			if (!creditAccountId && creditCode) creditAccountId = accountsByCode.find((account) => account.codigo === creditCode)?.id ?? null;
+		}
+	}
+
+	if (!debitAccountId || !creditAccountId)
+		throw new createHttpError.BadRequest(
+			"Contas contábeis padrão de compras não configuradas. Defina-as nas configurações da organização antes de registrar compras.",
+		);
+
+	return { debitAccountId, creditAccountId };
+}
+
+function assertAccountingEntryIsBalanced({
+	entryValue,
+	transactions,
+}: {
+	entryValue: number;
+	transactions: { valor: number; deletar?: boolean | null }[];
+}) {
+	const balanceError = getAccountingEntryBalanceError({ entryValue, transactions });
+	if (balanceError) throw new createHttpError.BadRequest(balanceError);
+}
 
 function isPurchaseConsideredReceived(purchase: { status: TPurchaseStatusEnum; entregaDataRecebimentoEfetivacao?: Date | null }) {
 	return purchase.status === "RECEBIDA" && !!purchase.entregaDataRecebimentoEfetivacao;
@@ -234,13 +344,34 @@ async function createPurchase({ input, session }: { input: TCreatePurchaseInput;
 
 	if (!session.membership?.permissoes.compras.criar) throw new createHttpError.Unauthorized("Você não possui permissão para acessar esse recurso.");
 
-	const { purchase: payloadPurchase, purchaseItems: payloadPurchaseItems } = input;
+	const { purchase: payloadPurchase, purchaseItems: payloadPurchaseItems, lancamentoContabil: payloadAccountingEntry } = input;
+	const { transacoes: payloadAccountingEntryTransactions, ...accountingEntryFields } = payloadAccountingEntry;
+
+	assertAccountingEntryIsBalanced({ entryValue: accountingEntryFields.valor, transactions: payloadAccountingEntryTransactions });
 
 	return await db.transaction(async (tx) => {
+		// Primeiro o lançamento contábil, já que a compra referencia ele
+		const { debitAccountId, creditAccountId } = await resolvePurchaseAccountingAccountIds({ trx: tx, orgId: userOrgId });
+		const insertedAccountingEntry = await tx
+			.insert(accountingEntries)
+			.values({
+				...accountingEntryFields,
+				organizacaoId: userOrgId,
+				origemTipo: "COMPRA",
+				idContaDebito: debitAccountId,
+				idContaCredito: creditAccountId,
+				autorId: session.user.id,
+			})
+			.returning({ id: accountingEntries.id });
+
+		const insertedAccountingEntryId = insertedAccountingEntry[0]?.id;
+		if (!insertedAccountingEntryId) throw new createHttpError.InternalServerError("Erro ao criar lançamento contábil da compra.");
+
 		const insertedPurchase = await tx
 			.insert(purchases)
 			.values({
 				...payloadPurchase,
+				lancamentoContabilId: insertedAccountingEntryId,
 				organizacaoId: userOrgId,
 				autorId: session.user.id,
 			})
@@ -248,6 +379,17 @@ async function createPurchase({ input, session }: { input: TCreatePurchaseInput;
 
 		const insertedPurchaseId = insertedPurchase[0]?.id;
 		if (!insertedPurchaseId) throw new createHttpError.InternalServerError("Erro ao criar compra.");
+
+		// Então as transações financeiras que quitam o lançamento
+		if (payloadAccountingEntryTransactions.length > 0)
+			await tx.insert(financialTransactions).values(
+				payloadAccountingEntryTransactions.map((transaction) => ({
+					...transaction,
+					lancamentoContabilId: insertedAccountingEntryId,
+					organizacaoId: userOrgId,
+					autorId: session.user.id,
+				})),
+			);
 
 		const operation: TPurchaseItemStockOperation = isPurchaseConsideredReceived(payloadPurchase) ? "RECEIVING" : "UPDATING_UNRECEIVED";
 
@@ -302,6 +444,15 @@ const UpdatePurchaseInputSchema = z.object({
 				.optional(),
 		}),
 	),
+	lancamentoContabil: PurchaseAccountingEntryFieldsSchema.extend({
+		id: z.string({ invalid_type_error: "Tipo não válido para o ID do lançamento contábil." }).optional(),
+		transacoes: z.array(
+			PurchaseAccountingEntryTransactionInputSchema.extend({
+				id: z.string({ invalid_type_error: "Tipo não válido para o ID da transação financeira da compra." }).optional(),
+				deletar: z.boolean({ invalid_type_error: "Tipo não válido para deletar transação financeira da compra." }).optional(),
+			}),
+		),
+	}),
 });
 export type TUpdatePurchaseInput = z.infer<typeof UpdatePurchaseInputSchema>;
 
@@ -361,13 +512,78 @@ async function assertPurchaseLotsArePristine({ tx, organizationId, purchaseId }:
 		);
 }
 
+/**
+ * Sincroniza o lançamento contábil da compra e as transações financeiras que o quitam.
+ * Compras criadas antes do módulo contábil não possuem lançamento — nesse caso ele é criado agora e a
+ * referência é gravada na compra.
+ */
+async function syncPurchaseAccountingEntry({
+	tx,
+	orgId,
+	userId,
+	purchaseId,
+	previousAccountingEntryId,
+	payload,
+}: {
+	tx: DBTransaction;
+	orgId: string;
+	userId: string;
+	purchaseId: string;
+	previousAccountingEntryId: string | null;
+	payload: TUpdatePurchaseInput["lancamentoContabil"];
+}) {
+	const { id: _payloadEntryId, transacoes: payloadTransactions, ...entryFields } = payload;
+
+	let accountingEntryId = previousAccountingEntryId;
+
+	if (accountingEntryId) {
+		await tx
+			.update(accountingEntries)
+			.set(entryFields)
+			.where(and(eq(accountingEntries.id, accountingEntryId), eq(accountingEntries.organizacaoId, orgId)));
+	} else {
+		const { debitAccountId, creditAccountId } = await resolvePurchaseAccountingAccountIds({ trx: tx, orgId });
+		const insertedAccountingEntry = await tx
+			.insert(accountingEntries)
+			.values({
+				...entryFields,
+				organizacaoId: orgId,
+				origemTipo: "COMPRA",
+				idContaDebito: debitAccountId,
+				idContaCredito: creditAccountId,
+				autorId: userId,
+			})
+			.returning({ id: accountingEntries.id });
+
+		accountingEntryId = insertedAccountingEntry[0]?.id ?? null;
+		if (!accountingEntryId) throw new createHttpError.InternalServerError("Erro ao criar lançamento contábil da compra.");
+
+		await tx
+			.update(purchases)
+			.set({ lancamentoContabilId: accountingEntryId })
+			.where(and(eq(purchases.id, purchaseId), eq(purchases.organizacaoId, orgId)));
+	}
+
+	await handleSimpleChildRowsProcessing({
+		trx: tx,
+		table: financialTransactions,
+		// `autorId` só é atribuído nas transações novas — atualizar não muda quem criou a transação.
+		entities: payloadTransactions.map((transaction) => ({ ...transaction, ...(transaction.id ? {} : { autorId: userId }) })),
+		fatherEntityKey: "lancamentoContabilId",
+		fatherEntityId: accountingEntryId,
+		organizacaoId: orgId,
+	});
+}
+
 async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput; session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	if (!session.membership?.permissoes.compras.editar) throw new createHttpError.Unauthorized("Você não possui permissão para editar essa compra.");
 
-	const { purchaseId, purchase: payloadPurchase, purchaseItems: payloadPurchaseItems } = input;
+	const { purchaseId, purchase: payloadPurchase, purchaseItems: payloadPurchaseItems, lancamentoContabil: payloadAccountingEntry } = input;
+
+	assertAccountingEntryIsBalanced({ entryValue: payloadAccountingEntry.valor, transactions: payloadAccountingEntry.transacoes });
 
 	return await db.transaction(async (tx) => {
 		const lockedRows = await tx
@@ -451,6 +667,16 @@ async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput;
 				.update(purchases)
 				.set({ ...payloadPurchase, dataUltimaAtualizacao: new Date() })
 				.where(and(eq(purchases.id, purchaseId), eq(purchases.organizacaoId, userOrgId)));
+			// O congelamento vale para os itens (que geraram lotes), não para a programação de pagamento:
+			// reprogramar um pagamento após o recebimento é o caso de uso principal.
+			await syncPurchaseAccountingEntry({
+				tx,
+				orgId: userOrgId,
+				userId: session.user.id,
+				purchaseId,
+				previousAccountingEntryId: previousPurchase.lancamentoContabilId,
+				payload: payloadAccountingEntry,
+			});
 			return {
 				data: { updatedPurchaseId: purchaseId },
 				message: "Compra atualizada com sucesso.",
@@ -470,6 +696,15 @@ async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput;
 				dataUltimaAtualizacao: new Date(),
 			})
 			.where(and(eq(purchases.id, purchaseId), eq(purchases.organizacaoId, userOrgId)));
+
+		await syncPurchaseAccountingEntry({
+			tx,
+			orgId: userOrgId,
+			userId: session.user.id,
+			purchaseId,
+			previousAccountingEntryId: previousPurchase.lancamentoContabilId,
+			payload: payloadAccountingEntry,
+		});
 
 		for (const item of payloadPurchaseItems) {
 			await handlePurchaseItemStockProcessing({

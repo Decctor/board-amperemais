@@ -152,6 +152,20 @@ export function handleSpreadsheetNavigationKeyDown(
 		return false;
 	}
 
+	// Um destino declarado nos bounds mas sem celula registrada (coluna que ainda nao virou celula do grid)
+	// nao pode engolir a tecla: sem isso o Tab morre na celula atual. Deixamos o navegador seguir e o
+	// commit acontece no blur da propria celula.
+	const nextCell = getSpreadsheetCellElement(container, nextCoords);
+	const nextFocusTarget = nextCell ? getSpreadsheetCellFocusTarget(nextCell) : null;
+	if (!nextFocusTarget) {
+		if (event.key === "Tab") return false;
+		if (options.isEditing && event.key === "Enter") {
+			event.preventDefault();
+			return options.onCommit?.() ?? true;
+		}
+		return false;
+	}
+
 	event.preventDefault();
 
 	if (options.isEditing && (event.key === "Tab" || event.key === "Enter")) {
