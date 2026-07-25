@@ -145,7 +145,7 @@ export default function TabWorkspacePage({ tabId }: TabWorkspacePageProps) {
 							<div className="sticky bottom-4 z-20 mt-5 flex gap-2 lg:hidden">
 								<Button
 									variant="brand"
-									className="h-12 flex-1 rounded-2xl text-sm font-extrabold shadow-[0_10px_22px_-6px_rgba(255,185,0,0.45),0_3px_6px_rgba(0,0,0,0.08)]"
+									className="h-12 flex-1 rounded-2xl text-sm font-extrabold"
 									disabled={(tab.consumoParcial ?? 0) <= 0}
 									onClick={() => setActiveModal("fechar")}
 								>
