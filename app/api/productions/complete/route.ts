@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { getItemUnitCost, getItemUnitPrice, getProductPricingMap } from "@/lib/productions/valuation";
+import { getItemUnitCost, getItemSalePrice, getProductPricingMap } from "@/lib/productions/valuation";
 import { applyStockMovement, isStockTrackingActive } from "@/lib/stock/apply-stock-movement";
 import { consumeStockLotsByFefo } from "@/lib/stock/consume-stock-lots-fefo";
 import { db } from "@/services/drizzle";
@@ -51,9 +51,9 @@ async function completeProduction({ input, session }: { input: TCompleteProducti
 			trx: tx,
 			organizationId,
 			items: [...production.entradas, ...production.saidas].map((item) => ({
-				produtoId: item.produtoId,
-				produtoVarianteId: item.produtoVarianteId,
-				quantidade: item.quantidadeReal ?? 0,
+				productId: item.produtoId,
+				productVariantId: item.produtoVarianteId,
+				quantity: item.quantidadeReal ?? 0,
 			})),
 		});
 
@@ -145,7 +145,7 @@ async function completeProduction({ input, session }: { input: TCompleteProducti
 					value: outputItem.prazoValidadeValor,
 				});
 
-			const unitSalePrice = getItemUnitPrice({ item: outputItem, pricingMap });
+			const unitSalePrice = getItemSalePrice({ item: outputItem, pricingMap });
 			if (unitSalePrice != null) expectedReturnTotal += unitSalePrice * realQuantity;
 
 			await tx

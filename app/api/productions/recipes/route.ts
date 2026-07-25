@@ -177,9 +177,9 @@ async function validateRecipeItemsOrganization({
 
 function toRecipeValuationItem(item: { produtoId: string; produtoVarianteId: string | null; quantidade: number }): TValuationItem {
 	return {
-		produtoId: item.produtoId,
-		produtoVarianteId: item.produtoVarianteId,
-		quantidade: item.quantidade,
+		productId: item.produtoId,
+		productVariantId: item.produtoVarianteId,
+		quantity: item.quantidade,
 	};
 }
 
@@ -219,7 +219,7 @@ async function getProductionRecipes({ input, session }: { input: TGetProductionR
 			data: {
 				byId: {
 					...recipe,
-					valores: calculateValuation({
+					valuation: calculateValuation({
 						inputs: recipe.insumos.map(toRecipeValuationItem),
 						outputs: recipe.saidas.map(toRecipeValuationItem),
 						pricingMap,
@@ -273,7 +273,7 @@ async function getProductionRecipes({ input, session }: { input: TGetProductionR
 	});
 	const recipesWithValuation = recipesResult.map((recipe) => ({
 		...recipe,
-		valores: calculateValuation({
+		valuation: calculateValuation({
 			inputs: recipe.insumos.map(toRecipeValuationItem),
 			outputs: recipe.saidas.map(toRecipeValuationItem),
 			pricingMap,

@@ -13,37 +13,37 @@ import { and, eq, inArray } from "drizzle-orm";
  */
 
 export type TProductPricing = {
-	precoCusto: number | null;
-	precoVenda: number | null;
+	unitCost: number | null;
+	salePrice: number | null;
 };
 
 export type TValuationItem = {
-	produtoId: string;
-	produtoVarianteId?: string | null;
-	quantidade: number;
+	productId: string;
+	productVariantId?: string | null;
+	quantity: number;
 };
 
 export type TValuation = {
-	custoTotal: number;
-	retornoEsperado: number;
-	margem: number;
+	totalCost: number;
+	expectedReturn: number;
+	margin: number;
 	/** Margem sobre o retorno esperado, em pontos percentuais. Nulo quando não há retorno para dividir. */
-	margemPercentual: number | null;
+	marginPercentage: number | null;
 	/** Falso quando algum insumo não tem custo cadastrado — o custo total está subestimado. */
-	custoCompleto: boolean;
+	costIsComplete: boolean;
 	/** Falso quando alguma saída não tem preço de venda cadastrado — o retorno está subestimado. */
-	retornoCompleto: boolean;
+	returnIsComplete: boolean;
 };
 
 export type TProductionValuation = TValuation & {
 	/** Verdadeiro quando os valores vêm do snapshot da conclusão, falso quando são projeção do catálogo atual. */
-	ehSnapshot: boolean;
-	dataSnapshotValores: Date | null;
+	isSnapshot: boolean;
+	snapshotDate: Date | null;
 };
 
 /** Chave de preço por produto + variante. A variante manda quando existe. */
-export function buildPricingKey(produtoId: string, produtoVarianteId?: string | null) {
-	return `${produtoId}::${produtoVarianteId ?? ""}`;
+export function buildPricingKey(productId: string, productVariantId?: string | null) {
+	return `${productId}::${productVariantId ?? ""}`;
 }
 
 export type TProductPricingMap = Map<string, TProductPricing>;
@@ -65,8 +65,8 @@ export async function getProductPricingMap({
 	const pricingMap: TProductPricingMap = new Map();
 	if (items.length === 0) return pricingMap;
 
-	const productIds = [...new Set(items.map((item) => item.produtoId))];
-	const variantIds = [...new Set(items.map((item) => item.produtoVarianteId).filter((id): id is string => !!id))];
+	const productIds = [...new Set(items.map((item) => item.productId))];
+	const variantIds = [...new Set(items.map((item) => item.productVariantId).filter((id): id is string => !!id))];
 
 	const [productsResult, variantsResult] = await Promise.all([
 		productIds.length > 0
@@ -86,8 +86,8 @@ export async function getProductPricingMap({
 	const productsById = new Map(productsResult.map((product) => [product.id, product]));
 	for (const product of productsResult) {
 		pricingMap.set(buildPricingKey(product.id, null), {
-			precoCusto: product.precoCusto ?? null,
-			precoVenda: product.precoVenda ?? null,
+			unitCost: product.precoCusto ?? null,
+			salePrice: product.precoVenda ?? null,
 		});
 	}
 
@@ -95,44 +95,45 @@ export async function getProductPricingMap({
 		const product = productsById.get(variant.produtoId);
 		pricingMap.set(buildPricingKey(variant.produtoId, variant.id), {
 			// A variante pode não ter custo próprio cadastrado; nesse caso herda o do produto pai.
-			precoCusto: variant.precoCusto ?? product?.precoCusto ?? null,
-			precoVenda: variant.precoVenda ?? product?.precoVenda ?? null,
+			unitCost: variant.precoCusto ?? product?.precoCusto ?? null,
+			salePrice: variant.precoVenda ?? product?.precoVenda ?? null,
 		});
 	}
 
 	return pricingMap;
 }
 
-type PricedItem = Pick<TValuationItem, "produtoId" | "produtoVarianteId">;
+/** Itens de entidade (colunas em português) aceitos pelas buscas de preço. */
+type PricedEntityItem = { produtoId: string; produtoVarianteId?: string | null };
 
-export function getItemUnitCost({ item, pricingMap }: { item: PricedItem; pricingMap: TProductPricingMap }) {
-	return pricingMap.get(buildPricingKey(item.produtoId, item.produtoVarianteId))?.precoCusto ?? null;
+export function getItemUnitCost({ item, pricingMap }: { item: PricedEntityItem; pricingMap: TProductPricingMap }) {
+	return pricingMap.get(buildPricingKey(item.produtoId, item.produtoVarianteId))?.unitCost ?? null;
 }
 
-export function getItemUnitPrice({ item, pricingMap }: { item: PricedItem; pricingMap: TProductPricingMap }) {
-	return pricingMap.get(buildPricingKey(item.produtoId, item.produtoVarianteId))?.precoVenda ?? null;
+export function getItemSalePrice({ item, pricingMap }: { item: PricedEntityItem; pricingMap: TProductPricingMap }) {
+	return pricingMap.get(buildPricingKey(item.produtoId, item.produtoVarianteId))?.salePrice ?? null;
 }
 
 /** Fecha os totais a partir de custo e retorno já apurados (usado tanto pelo cálculo ao vivo quanto pelo snapshot). */
 export function buildValuation({
-	custoTotal,
-	retornoEsperado,
-	custoCompleto = true,
-	retornoCompleto = true,
+	totalCost,
+	expectedReturn,
+	costIsComplete = true,
+	returnIsComplete = true,
 }: {
-	custoTotal: number;
-	retornoEsperado: number;
-	custoCompleto?: boolean;
-	retornoCompleto?: boolean;
+	totalCost: number;
+	expectedReturn: number;
+	costIsComplete?: boolean;
+	returnIsComplete?: boolean;
 }): TValuation {
-	const margem = retornoEsperado - custoTotal;
+	const margin = expectedReturn - totalCost;
 	return {
-		custoTotal,
-		retornoEsperado,
-		margem,
-		margemPercentual: retornoEsperado > 0 ? (margem / retornoEsperado) * 100 : null,
-		custoCompleto,
-		retornoCompleto,
+		totalCost,
+		expectedReturn,
+		margin,
+		marginPercentage: expectedReturn > 0 ? (margin / expectedReturn) * 100 : null,
+		costIsComplete,
+		returnIsComplete,
 	};
 }
 
@@ -146,32 +147,33 @@ export function calculateValuation({
 	outputs: TValuationItem[];
 	pricingMap: TProductPricingMap;
 }): TValuation {
-	let custoTotal = 0;
-	let custoCompleto = true;
+	let totalCost = 0;
+	let costIsComplete = true;
 	for (const input of inputs) {
-		const unitCost = getItemUnitCost({ item: input, pricingMap });
+		const unitCost = pricingMap.get(buildPricingKey(input.productId, input.productVariantId))?.unitCost ?? null;
 		if (unitCost == null) {
 			// Só conta como lacuna se a linha realmente movimenta quantidade.
-			if (input.quantidade > 0) custoCompleto = false;
+			if (input.quantity > 0) costIsComplete = false;
 			continue;
 		}
-		custoTotal += unitCost * input.quantidade;
+		totalCost += unitCost * input.quantity;
 	}
 
-	let retornoEsperado = 0;
-	let retornoCompleto = true;
+	let expectedReturn = 0;
+	let returnIsComplete = true;
 	for (const output of outputs) {
-		const unitPrice = getItemUnitPrice({ item: output, pricingMap });
-		if (unitPrice == null) {
-			if (output.quantidade > 0) retornoCompleto = false;
+		const salePrice = pricingMap.get(buildPricingKey(output.productId, output.productVariantId))?.salePrice ?? null;
+		if (salePrice == null) {
+			if (output.quantity > 0) returnIsComplete = false;
 			continue;
 		}
-		retornoEsperado += unitPrice * output.quantidade;
+		expectedReturn += salePrice * output.quantity;
 	}
 
-	return buildValuation({ custoTotal, retornoEsperado, custoCompleto, retornoCompleto });
+	return buildValuation({ totalCost, expectedReturn, costIsComplete, returnIsComplete });
 }
 
+/** Forma estrutural da entidade `productions` com seus itens — colunas em português, como no banco. */
 type ProductionValuationSource = {
 	custoTotal: number | null;
 	retornoEsperado: number | null;
@@ -188,11 +190,15 @@ export function getProductionItemQuantity(item: { quantidadePrevista: number | n
 /** Itens de produção normalizados para `getProductPricingMap` — só faz sentido para produções sem snapshot. */
 export function getProductionValuationItems(production: ProductionValuationSource): TValuationItem[] {
 	if (production.dataSnapshotValores) return [];
-	return [...production.entradas, ...production.saidas].map((item) => ({
-		produtoId: item.produtoId,
-		produtoVarianteId: item.produtoVarianteId,
-		quantidade: getProductionItemQuantity(item),
-	}));
+	return [...production.entradas, ...production.saidas].map(toProductionValuationItem);
+}
+
+function toProductionValuationItem(item: ProductionValuationSource["entradas"][number]): TValuationItem {
+	return {
+		productId: item.produtoId,
+		productVariantId: item.produtoVarianteId,
+		quantity: getProductionItemQuantity(item),
+	};
 }
 
 /**
@@ -209,27 +215,21 @@ export function resolveProductionValuation({
 	if (production.dataSnapshotValores) {
 		return {
 			...buildValuation({
-				custoTotal: production.custoTotal ?? 0,
-				retornoEsperado: production.retornoEsperado ?? 0,
+				totalCost: production.custoTotal ?? 0,
+				expectedReturn: production.retornoEsperado ?? 0,
 			}),
-			ehSnapshot: true,
-			dataSnapshotValores: production.dataSnapshotValores,
+			isSnapshot: true,
+			snapshotDate: production.dataSnapshotValores,
 		};
 	}
 
-	const toItem = (item: ProductionValuationSource["entradas"][number]) => ({
-		produtoId: item.produtoId,
-		produtoVarianteId: item.produtoVarianteId,
-		quantidade: getProductionItemQuantity(item),
-	});
-
 	return {
 		...calculateValuation({
-			inputs: production.entradas.map(toItem),
-			outputs: production.saidas.map(toItem),
+			inputs: production.entradas.map(toProductionValuationItem),
+			outputs: production.saidas.map(toProductionValuationItem),
 			pricingMap,
 		}),
-		ehSnapshot: false,
-		dataSnapshotValores: null,
+		isSnapshot: false,
+		snapshotDate: null,
 	};
 }

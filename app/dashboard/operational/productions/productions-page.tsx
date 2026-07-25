@@ -339,7 +339,7 @@ function ProductionCard({ production, onEdit, onComplete, completionIsPending }:
 
 			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
 				<div className="flex flex-wrap items-center gap-2">
-					<ValuationChips valores={production.valores} />
+					<ValuationChips valuation={production.valuation} />
 					<div className="flex items-center gap-1">
 						<Package className="h-4 w-4 min-h-4 min-w-4" />
 						<span className="text-[0.65rem] font-medium uppercase tracking-tight text-muted-foreground">
@@ -409,7 +409,7 @@ function ProductionRecipeCard({ recipe, onEdit }: ProductionRecipeCardProps) {
 
 			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
 				<div className="flex flex-wrap items-center gap-2">
-					<ValuationChips valores={recipe.valores} />
+					<ValuationChips valuation={recipe.valuation} />
 					<div className="flex items-center gap-1">
 						<Package className="h-4 w-4 min-h-4 min-w-4" />
 						<span className="text-[0.65rem] font-medium uppercase tracking-tight text-muted-foreground">

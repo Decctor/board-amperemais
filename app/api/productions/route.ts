@@ -259,7 +259,7 @@ async function getProductions({ input, session }: { input: TGetProductionsInput;
 			data: {
 				byId: {
 					...production,
-					valores: resolveProductionValuation({ production, pricingMap }),
+					valuation: resolveProductionValuation({ production, pricingMap }),
 				},
 				default: undefined,
 			},
@@ -302,7 +302,7 @@ async function getProductions({ input, session }: { input: TGetProductionsInput;
 	});
 	const productionsWithValuation = productionsResult.map((production) => ({
 		...production,
-		valores: resolveProductionValuation({ production, pricingMap }),
+		valuation: resolveProductionValuation({ production, pricingMap }),
 	}));
 
 	return {

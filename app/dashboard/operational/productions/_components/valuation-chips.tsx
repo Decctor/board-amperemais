@@ -8,12 +8,12 @@ import { AlertTriangle, Coins, TrendingDown, TrendingUp } from "lucide-react";
 import type { ReactNode } from "react";
 
 type ValuationTotals = {
-	custoTotal: number;
-	retornoEsperado: number;
-	margem: number;
-	margemPercentual: number | null;
-	custoCompleto: boolean;
-	retornoCompleto: boolean;
+	totalCost: number;
+	expectedReturn: number;
+	margin: number;
+	marginPercentage: number | null;
+	costIsComplete: boolean;
+	returnIsComplete: boolean;
 };
 
 /**
@@ -21,33 +21,33 @@ type ValuationTotals = {
  * catálogo vigente — o correto para um molde.
  */
 type ProductionValuationSnapshot = {
-	ehSnapshot: boolean;
-	dataSnapshotValores: string | Date | null;
+	isSnapshot: boolean;
+	snapshotDate: string | Date | null;
 };
 
 type ValuationChipsProps = {
-	valores: ValuationTotals & Partial<ProductionValuationSnapshot>;
+	valuation: ValuationTotals & Partial<ProductionValuationSnapshot>;
 };
 
 /**
  * Pills de custo, retorno esperado e margem — mesma geometria da linha de metadados dos cards; o que
  * varia é a cor da margem e o tracejado, que marca produções ainda não concluídas (valores projetados).
  */
-export function ValuationChips({ valores }: ValuationChipsProps) {
-	// Receita não carrega `ehSnapshot`; produção sempre carrega, e `false` significa ainda não concluída.
-	const isProjection = valores.ehSnapshot === false;
-	const marginIsNegative = valores.margem < 0;
-	const originHint = buildOriginHint(valores);
+export function ValuationChips({ valuation }: ValuationChipsProps) {
+	// Receita não carrega `isSnapshot`; produção sempre carrega, e `false` significa ainda não concluída.
+	const isProjection = valuation.isSnapshot === false;
+	const marginIsNegative = valuation.margin < 0;
+	const originHint = buildOriginHint(valuation);
 
 	return (
 		<>
 			<ValuationChip
 				variant="muted"
 				isProjection={isProjection}
-				icon={valores.custoCompleto ? <Coins /> : <AlertTriangle />}
-				label={`CUSTO: ${formatToMoney(valores.custoTotal)}`}
+				icon={valuation.costIsComplete ? <Coins /> : <AlertTriangle />}
+				label={`CUSTO: ${formatToMoney(valuation.totalCost)}`}
 				tooltip={
-					valores.custoCompleto
+					valuation.costIsComplete
 						? `Custo dos insumos. ${originHint}`
 						: `Custo dos insumos, subestimado: há insumo sem preço de custo cadastrado. ${originHint}`
 				}
@@ -55,10 +55,10 @@ export function ValuationChips({ valores }: ValuationChipsProps) {
 			<ValuationChip
 				variant="muted"
 				isProjection={isProjection}
-				icon={valores.retornoCompleto ? <TrendingUp /> : <AlertTriangle />}
-				label={`RETORNO: ${formatToMoney(valores.retornoEsperado)}`}
+				icon={valuation.returnIsComplete ? <TrendingUp /> : <AlertTriangle />}
+				label={`RETORNO: ${formatToMoney(valuation.expectedReturn)}`}
 				tooltip={
-					valores.retornoCompleto
+					valuation.returnIsComplete
 						? `Retorno esperado das saídas. ${originHint}`
 						: `Retorno esperado das saídas, subestimado: há saída sem preço de venda cadastrado. ${originHint}`
 				}
@@ -67,8 +67,8 @@ export function ValuationChips({ valores }: ValuationChipsProps) {
 				variant={marginIsNegative ? "destructive" : "success"}
 				isProjection={isProjection}
 				icon={marginIsNegative ? <TrendingDown /> : <TrendingUp />}
-				label={`MARGEM: ${formatToMoney(valores.margem)}${
-					valores.margemPercentual !== null ? ` (${formatDecimalPlaces(valores.margemPercentual, 0, 1)}%)` : ""
+				label={`MARGEM: ${formatToMoney(valuation.margin)}${
+					valuation.marginPercentage !== null ? ` (${formatDecimalPlaces(valuation.marginPercentage, 0, 1)}%)` : ""
 				}`}
 				tooltip={`Retorno esperado menos custo dos insumos. ${originHint}`}
 			/>
@@ -76,11 +76,11 @@ export function ValuationChips({ valores }: ValuationChipsProps) {
 	);
 }
 
-function buildOriginHint(valores: ValuationChipsProps["valores"]) {
-	if (valores.ehSnapshot === undefined) return "Calculado com os preços atuais do catálogo.";
-	if (!valores.ehSnapshot) return "Estimativa pelos preços atuais do catálogo — a valoração definitiva é congelada na conclusão da produção.";
+function buildOriginHint(valuation: ValuationChipsProps["valuation"]) {
+	if (valuation.isSnapshot === undefined) return "Calculado com os preços atuais do catálogo.";
+	if (!valuation.isSnapshot) return "Estimativa pelos preços atuais do catálogo — a valoração definitiva é congelada na conclusão da produção.";
 
-	const snapshotDate = formatDateAsLocale(valores.dataSnapshotValores, true);
+	const snapshotDate = formatDateAsLocale(valuation.snapshotDate, true);
 	return snapshotDate ? `Valores congelados na conclusão, em ${snapshotDate}.` : "Valores congelados na conclusão da produção.";
 }
 
