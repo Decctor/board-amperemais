@@ -6,6 +6,7 @@ import { usePurchaseState } from "@/state-hooks/use-purchase-state";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import PurchaseAccountingEntryBlock from "./Blocks/AccountingEntry";
 import PurchaseGeneralBlock from "./Blocks/General";
 import PurchaseOrderBlock from "./Blocks/Order";
 import PurchaseItemsBlock from "./Blocks/Items";
@@ -23,7 +24,18 @@ type NewPurchaseProps = {
 	};
 };
 export default function NewPurchase({ user, closeModal, callbacks }: NewPurchaseProps) {
-	const { state, updatePurchase, addPurchaseItem, updatePurchaseItem, removePurchaseItem, resetState, redefineState } = usePurchaseState({
+	const {
+		state,
+		updatePurchase,
+		addPurchaseItem,
+		updatePurchaseItem,
+		removePurchaseItem,
+		updateAccountingEntry,
+		addAccountingEntryTransaction,
+		updateAccountingEntryTransaction,
+		removeAccountingEntryTransaction,
+		resetState,
+	} = usePurchaseState({
 		initialState: {},
 	});
 
@@ -71,6 +83,13 @@ export default function NewPurchase({ user, closeModal, callbacks }: NewPurchase
 				removePurchaseItem={removePurchaseItem}
 				updatePurchase={updatePurchase}
 				fornecedorId={state.purchase.fornecedorId}
+			/>
+			<PurchaseAccountingEntryBlock
+				accountingEntry={state.lancamentoContabil}
+				updateAccountingEntry={updateAccountingEntry}
+				addAccountingEntryTransaction={addAccountingEntryTransaction}
+				updateAccountingEntryTransaction={updateAccountingEntryTransaction}
+				removeAccountingEntryTransaction={removeAccountingEntryTransaction}
 			/>
 			<PurchaseOrderBlock purchase={state.purchase} updatePurchase={updatePurchase} />
 			<PurchaseTransportBlock purchase={state.purchase} updatePurchase={updatePurchase} />

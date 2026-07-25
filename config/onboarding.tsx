@@ -266,6 +266,24 @@ export const RecompraCRMDefaultPaymentMethodDefaults: Record<TPaymentMethodEnum,
 	},
 };
 
+/**
+ * `accountsCharts` não persiste a `key` do seed, só o `codigo`. Organizações onboardadas antes de um
+ * default ser semeado não têm o ID gravado na configuração, então a resolução de fallback precisa
+ * traduzir a chave para o código do plano de contas padrão.
+ */
+export function getDefaultAccountChartCodeByKey(key: string): string | null {
+	function findInNodes(nodes: TOnboardingAccountChartNode[]): string | null {
+		for (const node of nodes) {
+			if (node.key === key) return node.codigo;
+			const foundInChildren = node.children ? findInNodes(node.children) : null;
+			if (foundInChildren) return foundInChildren;
+		}
+		return null;
+	}
+
+	return findInNodes(RecompraCRMDefaultAccountCharts);
+}
+
 export function buildOrganizationAccountingDefaults(accountIdsByKey: Map<string, string>): TOrganizationDefaults["contabilidade"] {
 	return {
 		lancamentosPadrao: {

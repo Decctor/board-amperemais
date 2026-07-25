@@ -397,7 +397,10 @@ async function updateAccountingEntry({ input, session }: { input: TUpdateAccount
 	if (!existingEntry) throw new createHttpError.NotFound("Lançamento contábil não encontrado.");
 
 	const canUpdateAccountingFields = existingEntry.origemTipo === "MANUAL";
-	const canUpdateTransactions = existingEntry.origemTipo === "MANUAL" || existingEntry.origemTipo === "VENDA";
+	// Lançamentos de venda e de compra têm os dados contábeis controlados pela origem, mas a programação
+	// de pagamento pode ser ajustada aqui — é onde o time financeiro trabalha.
+	const canUpdateTransactions =
+		existingEntry.origemTipo === "MANUAL" || existingEntry.origemTipo === "VENDA" || existingEntry.origemTipo === "COMPRA";
 
 	if (canUpdateAccountingFields) {
 		validateTransactionTotal({ entryValue: input.entry.valor, transactions: input.entryFinancialTransactions });
