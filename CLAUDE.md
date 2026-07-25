@@ -360,6 +360,83 @@ PNG exports exist only where a raster is genuinely required; `public/logo.png` i
 
 ---
 
+## Portuguese vs. English
+
+English is the language of the code. Portuguese is the language of the data and of everything the
+user reads. One question decides every case:
+
+> **Does this name travel as data, or does it only exist inside the code?**
+
+If the name shows up in a `SELECT`, in `console.log(response.data)`, or in a form's state object, it
+is **Portuguese**. If it only exists in the implementation, it is **English**.
+
+### 1. Data is Portuguese
+
+DB columns, Drizzle fields, Zod entity schemas, request/response bodies, form state.
+
+```typescript
+custoTotal: doublePrecision("custo_total"),            // Drizzle
+custoTotal: z.number({ ... }).optional().nullable(),   // Zod entity schema
+{ data: { producoes: [{ titulo, entradas, saidas }] } } // API payload
+```
+
+### 2. Code is English
+
+Function, component, hook, and type **names**; variables, parameters, files, folders.
+
+```typescript
+export function getProductPricingMap({ organizationId, items }) { ... }
+const pricingMap = await getProductPricingMap({ ... });
+let costedQuantity = 0;
+export function ValuationChips({ valores }: ValuationChipsProps) { ... }  // valuation-chips.tsx
+```
+
+### 3. Whatever extends the entity is data too
+
+A computed block that the API attaches to an entity does not open a new namespace — it extends the
+entity, and travels beside `titulo`, `entradas`, `saidas`. Name it in Portuguese.
+
+```typescript
+// Correct — extends the returned production
+valores: resolveProductionValuation({ production, pricingMap });
+// { custoTotal, retornoEsperado, margem, margemPercentual, origemValores }
+
+// Wrong — an English island inside a Portuguese payload
+valuation: { totalCost, expectedReturn, margin, marginPercentage, valuationOrigin }
+```
+
+### 4. Do not translate a field just because it entered a signature
+
+When a parameter, prop, or internal type carries entity fields, it keeps the entity's names. The
+**type name** is English; its **fields** follow the data. Translating buys nothing and forces a
+mapping layer that exists only to rename things.
+
+```typescript
+// Correct — English type name, Portuguese fields; entity rows go straight in
+export type TPricedItem = { produtoId: string; produtoVarianteId?: string | null };
+const pricingMap = await getProductPricingMap({ organizationId, items: recipe.insumos });
+
+// Wrong — forces a mapper whose only job is renaming
+export type TPricedItem = { productId: string; productVariantId?: string | null };
+const items = recipe.insumos.map((i) => ({ productId: i.produtoId, productVariantId: i.produtoVarianteId }));
+```
+
+A mapper is only justified when it computes something. `toValuationItem` in
+`/lib/productions/valuation.ts` earns its place because it collapses `quantidadeReal ??
+quantidadePrevista` into a single `quantidade` — it is not a translation.
+
+### Enum values
+
+Enum values travel as data, so they are Portuguese and SCREAMING_CASE, matching the existing
+`pgEnum`/`z.enum` sets: `"RASCUNHO"`, `"CONCLUIDA"`, `"MANUAL"`, `"SNAPSHOT" | "PROJECAO" | "CATALOGO"`.
+
+### Reference implementation
+
+`/lib/productions/valuation.ts` plus `/app/api/productions/route.ts` show all four rules together:
+English functions and type names, Portuguese fields and payload, no renaming mappers.
+
+---
+
 ## Git Conventions
 
 - Commit messages: `feat:`, `fix:`, `refactor:` prefixes

@@ -50,11 +50,7 @@ async function completeProduction({ input, session }: { input: TCompleteProducti
 		const pricingMap = await getProductPricingMap({
 			trx: tx,
 			organizationId,
-			items: [...production.entradas, ...production.saidas].map((item) => ({
-				productId: item.produtoId,
-				productVariantId: item.produtoVarianteId,
-				quantity: item.quantidadeReal ?? 0,
-			})),
+			items: [...production.entradas, ...production.saidas],
 		});
 
 		let consumedCostTotal = 0;

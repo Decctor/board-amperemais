@@ -2,7 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
-import { getProductionValuationItems, getProductPricingMap, resolveProductionValuation } from "@/lib/productions/valuation";
+import { getProductionPricingItems, getProductPricingMap, resolveProductionValuation } from "@/lib/productions/valuation";
 import { ProductionBaseSchema, ProductionInputSchema, ProductionOutputBaseSchema } from "@/schemas/productions";
 import { db } from "@/services/drizzle";
 import { productionInputs, productionOutputs, productionRecipes, productions, productVariants, products } from "@/services/drizzle/schema";
@@ -251,15 +251,15 @@ async function getProductions({ input, session }: { input: TGetProductionsInput;
 		});
 		if (!production) throw new createHttpError.NotFound("Produção não encontrada.");
 
-		// Produção concluída já traz o snapshot — `getProductionValuationItems` devolve lista vazia
+		// Produção concluída já traz o snapshot — `getProductionPricingItems` devolve lista vazia
 		// nesse caso e a consulta de preços é dispensada.
-		const pricingMap = await getProductPricingMap({ organizationId, items: getProductionValuationItems(production) });
+		const pricingMap = await getProductPricingMap({ organizationId, items: getProductionPricingItems(production) });
 
 		return {
 			data: {
 				byId: {
 					...production,
-					valuation: resolveProductionValuation({ production, pricingMap }),
+					valores: resolveProductionValuation({ production, pricingMap }),
 				},
 				default: undefined,
 			},
@@ -298,11 +298,11 @@ async function getProductions({ input, session }: { input: TGetProductionsInput;
 	// Uma única leitura de preços para toda a página, e só para as produções ainda sem snapshot.
 	const pricingMap = await getProductPricingMap({
 		organizationId,
-		items: productionsResult.flatMap(getProductionValuationItems),
+		items: productionsResult.flatMap(getProductionPricingItems),
 	});
 	const productionsWithValuation = productionsResult.map((production) => ({
 		...production,
-		valuation: resolveProductionValuation({ production, pricingMap }),
+		valores: resolveProductionValuation({ production, pricingMap }),
 	}));
 
 	return {

@@ -2,7 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
-import { calculateValuation, getProductPricingMap, type TValuationItem } from "@/lib/productions/valuation";
+import { calculateValuation, getProductPricingMap } from "@/lib/productions/valuation";
 import { ProductionRecipeBaseSchema, ProductionRecipeInputSchema, ProductionRecipeOutputBaseSchema } from "@/schemas/productions";
 import { db } from "@/services/drizzle";
 import { productionRecipeInputs, productionRecipeOutputs, productionRecipes, productVariants, products } from "@/services/drizzle/schema";
@@ -175,14 +175,6 @@ async function validateRecipeItemsOrganization({
 	}
 }
 
-function toRecipeValuationItem(item: { produtoId: string; produtoVarianteId: string | null; quantidade: number }): TValuationItem {
-	return {
-		productId: item.produtoId,
-		productVariantId: item.produtoVarianteId,
-		quantity: item.quantidade,
-	};
-}
-
 async function getProductionRecipes({ input, session }: { input: TGetProductionRecipesInput; session: TAuthUserSession }) {
 	const organizationId = session.membership?.organizacao.id;
 	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
@@ -210,20 +202,13 @@ async function getProductionRecipes({ input, session }: { input: TGetProductionR
 		if (!recipe) throw new createHttpError.NotFound("Receita não encontrada.");
 
 		// Receita é molde, não fato consumado: a valoração é sempre pelos preços vigentes no catálogo.
-		const pricingMap = await getProductPricingMap({
-			organizationId,
-			items: [...recipe.insumos, ...recipe.saidas].map(toRecipeValuationItem),
-		});
+		const pricingMap = await getProductPricingMap({ organizationId, items: [...recipe.insumos, ...recipe.saidas] });
 
 		return {
 			data: {
 				byId: {
 					...recipe,
-					valuation: calculateValuation({
-						inputs: recipe.insumos.map(toRecipeValuationItem),
-						outputs: recipe.saidas.map(toRecipeValuationItem),
-						pricingMap,
-					}),
+					valores: calculateValuation({ inputs: recipe.insumos, outputs: recipe.saidas, pricingMap }),
 				},
 				default: undefined,
 			},
@@ -269,15 +254,11 @@ async function getProductionRecipes({ input, session }: { input: TGetProductionR
 	// Uma única leitura de preços para todos os itens da página, em vez de uma por receita.
 	const pricingMap = await getProductPricingMap({
 		organizationId,
-		items: recipesResult.flatMap((recipe) => [...recipe.insumos, ...recipe.saidas].map(toRecipeValuationItem)),
+		items: recipesResult.flatMap((recipe) => [...recipe.insumos, ...recipe.saidas]),
 	});
 	const recipesWithValuation = recipesResult.map((recipe) => ({
 		...recipe,
-		valuation: calculateValuation({
-			inputs: recipe.insumos.map(toRecipeValuationItem),
-			outputs: recipe.saidas.map(toRecipeValuationItem),
-			pricingMap,
-		}),
+		valores: calculateValuation({ inputs: recipe.insumos, outputs: recipe.saidas, pricingMap }),
 	}));
 
 	return {
