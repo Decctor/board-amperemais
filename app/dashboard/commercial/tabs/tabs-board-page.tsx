@@ -3,7 +3,6 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { ControlServicePoint } from "@/components/Modals/Internal/ServicePoints/ControlServicePoint";
 import { NewServicePoint } from "@/components/Modals/Internal/ServicePoints/NewServicePoint";
-import { ControlTab } from "@/components/Modals/Internal/Tabs/ControlTab";
 import { NewTab } from "@/components/Modals/Internal/Tabs/NewTab";
 import { ServiceSettings } from "@/components/Modals/Internal/Tabs/ServiceSettings";
 import OrderRequestsSection from "./_components/OrderRequestsSection";
@@ -15,6 +14,7 @@ import { useServicePoints, useServiceSettings, useTabs } from "@/lib/queries/tab
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { CircleUser, Clock, LayoutGrid, MapPin, Pencil, Plus, Settings2, UtensilsCrossed } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 // ============================================================================
@@ -34,13 +34,13 @@ function formatTabAge(from: Date | string) {
 
 type TActiveModal =
 	| { type: "nova-conta"; servicePointId?: string | null }
-	| { type: "conta"; tabId: string }
 	| { type: "novo-ponto" }
 	| { type: "editar-ponto"; pointId: string }
 	| { type: "configuracoes" }
 	| null;
 
 export default function TabsBoardPage() {
+	const router = useRouter();
 	const queryClient = useQueryClient();
 	const { data: settings } = useServiceSettings();
 	const { data: servicePoints, isLoading: pointsLoading, queryKey: pointsQueryKey } = useServicePoints();
@@ -122,8 +122,8 @@ export default function TabsBoardPage() {
 										occupied ? "border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10" : "border-border bg-card hover:bg-secondary/40",
 									)}
 									onClick={() => {
-										// Ocupado com 1 conta -> abre a conta; livre -> abre/resolve conforme o modo.
-										if (occupied && pointTabs.length === 1) return setActiveModal({ type: "conta", tabId: pointTabs[0].id });
+										// Ocupado com 1 conta -> abre o workspace da conta; livre -> abre/resolve conforme o modo.
+										if (occupied && pointTabs.length === 1) return router.push(`/dashboard/commercial/tabs/${pointTabs[0].id}`);
 										if (resolveOnPointClick || !occupied) return setActiveModal({ type: "nova-conta", servicePointId: point.id });
 									}}
 								>
@@ -182,7 +182,7 @@ export default function TabsBoardPage() {
 								<div
 									key={tab.id}
 									className="flex cursor-pointer flex-col gap-2 rounded-xl border border-border bg-card px-3.5 py-3 shadow-2xs hover:shadow-sm hover:border-border transition-all"
-									onClick={() => setActiveModal({ type: "conta", tabId: tab.id })}
+									onClick={() => router.push(`/dashboard/commercial/tabs/${tab.id}`)}
 								>
 									<div className="flex items-center justify-between">
 										<span className="flex items-center gap-1.5 text-sm font-bold tracking-tight uppercase">
@@ -222,13 +222,13 @@ export default function TabsBoardPage() {
 					callbacks={{
 						onSuccess: (data) => {
 							refresh();
-							// Abrir/resolver ja leva o operador direto para a conta.
-							setActiveModal({ type: "conta", tabId: data.data.tab.id });
+							// Abrir/resolver ja leva o operador direto para o workspace da conta.
+							setActiveModal(null);
+							router.push(`/dashboard/commercial/tabs/${data.data.tab.id}`);
 						},
 					}}
 				/>
 			) : null}
-			{activeModal?.type === "conta" ? <ControlTab tabId={activeModal.tabId} closeModal={() => setActiveModal(null)} callbacks={{ onSuccess: refresh }} /> : null}
 			{activeModal?.type === "novo-ponto" ? <NewServicePoint closeModal={() => setActiveModal(null)} callbacks={{ onSuccess: refresh }} /> : null}
 			{activeModal?.type === "editar-ponto" && editingPoint ? (
 				<ControlServicePoint servicePoint={editingPoint} closeModal={() => setActiveModal(null)} callbacks={{ onSuccess: refresh }} />
