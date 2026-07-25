@@ -710,6 +710,8 @@ export function getOrganizationAccessToRoute({ organizationPlan, path }: { organ
 	if (!route.accessible) return { access: false, redirectTo: route.redirectTo || "/" };
 	return { access: true, redirectTo: null };
 }
+// `as const` deriva TAppRoutePath, que faz o mapa de ícones (config/app-route-icons)
+// ser verificado pelo compilador: rota nova sem ícone não compila.
 export const AppRoutes = [
 	{
 		path: "/dashboard",
@@ -730,6 +732,16 @@ export const AppRoutes = [
 		path: "/dashboard/commercial/sales/new-sale",
 		title: "Nova Venda",
 		description: "Cadastro de nova venda.",
+	},
+	{
+		path: "/dashboard/commercial/tabs",
+		title: "Mesas & Comandas",
+		description: "Contas abertas por mesa ou comanda, com as rodadas em andamento.",
+	},
+	{
+		path: "/dashboard/commercial/cash-sessions",
+		title: "Caixa",
+		description: "Abertura, conferência e fechamento das sessões de caixa.",
 	},
 	{
 		path: "/dashboard/commercial/segments",
@@ -762,6 +774,11 @@ export const AppRoutes = [
 		description: "Painel de acompanhamento e gestão do seu programa de cashback.",
 	},
 	{
+		path: "/dashboard/commercial/coupons",
+		title: "Cupons",
+		description: "Painel de acompanhamento e gestão dos cupons de desconto.",
+	},
+	{
 		path: "/dashboard/commercial/shop",
 		title: "Loja Digital",
 		description: "Painel de acompanhamento e gestão da sua loja digital.",
@@ -775,6 +792,11 @@ export const AppRoutes = [
 		path: "/dashboard/commercial/marketing",
 		title: "Marketing",
 		description: "Painel de acompanhamento e gestão de marketing.",
+	},
+	{
+		path: "/dashboard/integrations",
+		title: "Integrações",
+		description: "Conexões com ERPs e canais de venda do seu negócio.",
 	},
 	{
 		path: "/dashboard/team/client-portfolios",
@@ -846,7 +868,10 @@ export const AppRoutes = [
 		title: "Comunidade",
 		description: "Painel de acompanhamento e gestão da comunidade RecompraCRM.",
 	},
-];
+] as const;
+
+export type TAppRoutePath = (typeof AppRoutes)[number]["path"];
+
 export function getAppRouteTitle(path: string) {
 	const route = AppRoutes.find((route) => route.path === path);
 	return route?.title || "";

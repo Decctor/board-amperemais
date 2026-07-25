@@ -7,7 +7,7 @@ import { ServiceSettings } from "@/components/Modals/Internal/Tabs/ServiceSettin
 import { ActionToolbar } from "@/components/ui/action-toolbar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger, tabsPageToolbarActionsClassName, tabsPageToolbarClassName } from "@/components/ui/tabs";
 import { getErrorMessage } from "@/lib/errors";
 import { useServicePoints, useServiceSettings, useTabs } from "@/lib/queries/tabs";
 import { useQueryClient } from "@tanstack/react-query";
@@ -86,22 +86,12 @@ export default function TabsBoardPage() {
 
 	return (
 		<div className="flex h-full w-full flex-col gap-3">
-			<div className="flex flex-wrap items-center justify-between gap-2">
-				<h1 className="flex items-center gap-2 text-lg font-bold tracking-tight">
-					<UtensilsCrossed className="size-5" />
-					Mesas & Comandas
-				</h1>
-				<ActionToolbar>
-					<ActionToolbar.Action icon={Settings2} onClick={() => setActiveModal({ type: "configuracoes" })}>
-						MODO DE ATENDIMENTO
-					</ActionToolbar.Action>
-					{contasHabilitadas ? (
-						<ActionToolbar.Primary icon={Plus} onClick={() => setActiveModal({ type: "nova-conta" })}>
-							NOVA CONTA
-						</ActionToolbar.Primary>
-					) : null}
-				</ActionToolbar>
-			</div>
+			{/* Titulo e icone vem do AppHeader (config/AppRoutes) — a pagina so traz as acoes. */}
+			{!contasHabilitadas ? (
+				<div className="flex justify-end">
+					<ModuleActions contasHabilitadas={contasHabilitadas} onOpenSettings={() => setActiveModal({ type: "configuracoes" })} onCreateTab={() => setActiveModal({ type: "nova-conta" })} />
+				</div>
+			) : null}
 
 			{!contasHabilitadas ? (
 				<div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border py-10 text-center">
@@ -120,46 +110,49 @@ export default function TabsBoardPage() {
 
 			{contasHabilitadas ? (
 				<Tabs value={effectiveMode} onValueChange={(value) => setMode(value as typeof mode)} className="flex w-full flex-col">
-					{/* Abas nao encolhem: com a faixa de pills expandida, o seletor de modo
-					    precisa continuar acessivel (o wrapper padrao e shrink-0 e espremeria
-					    as abas ate sumirem). As pills ficam com o espaco restante e quebram. */}
-					<div className="flex w-full flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-						<div className="shrink-0">
-							<TabsList variant="page">
-								<TabsTrigger value="por-conta">
-									<ReceiptText className="size-4" />
-									Por conta ({openTabs.length})
+					{/* Abas + acoes do modulo na mesma linha, como nas demais paginas. */}
+					<div className={tabsPageToolbarClassName}>
+						<TabsList variant="page">
+							<TabsTrigger value="por-conta">
+								<ReceiptText className="size-4" />
+								Por conta ({openTabs.length})
+							</TabsTrigger>
+							{pontosHabilitados ? (
+								<TabsTrigger value="por-mesa">
+									<LayoutGrid className="size-4" />
+									Por mesa ({activePoints.length})
 								</TabsTrigger>
-								{pontosHabilitados ? (
-									<TabsTrigger value="por-mesa">
-										<LayoutGrid className="size-4" />
-										Por mesa ({activePoints.length})
-									</TabsTrigger>
-								) : null}
-							</TabsList>
+							) : null}
+						</TabsList>
+						<div className={tabsPageToolbarActionsClassName}>
+							<ModuleActions
+								contasHabilitadas={contasHabilitadas}
+								onOpenSettings={() => setActiveModal({ type: "configuracoes" })}
+								onCreateTab={() => setActiveModal({ type: "nova-conta" })}
+							/>
 						</div>
-
-						{pontosHabilitados ? (
-							<div className="min-w-0 lg:flex-1">
-								{pointsLoading ? (
-									<div className="flex items-center gap-2 lg:justify-end">
-										{Array.from({ length: 4 }).map((_, index) => (
-											// biome-ignore lint/suspicious/noArrayIndexKey: skeletons estáticos
-											<Skeleton key={index} className="h-9 w-24 rounded-lg" />
-										))}
-									</div>
-								) : (
-									<ServicePointPills
-										points={activePoints}
-										tabsByPoint={openTabsByPoint}
-										now={now}
-										onSelectPoint={(point) => handlePointSelect(point.id)}
-										onCreatePoint={() => setActiveModal({ type: "novo-ponto" })}
-									/>
-								)}
-							</div>
-						) : null}
 					</div>
+
+					{/* Pontos ganham a propria faixa: sao um seletor, nao uma acao de pagina,
+					    e assim sobra largura para a faixa expandida sem espremer as abas. */}
+					{pontosHabilitados ? (
+						pointsLoading ? (
+							<div className="flex items-center gap-2">
+								{Array.from({ length: 4 }).map((_, index) => (
+									// biome-ignore lint/suspicious/noArrayIndexKey: skeletons estáticos
+									<Skeleton key={index} className="h-9 w-24 rounded-lg" />
+								))}
+							</div>
+						) : (
+							<ServicePointPills
+								points={activePoints}
+								tabsByPoint={openTabsByPoint}
+								now={now}
+								onSelectPoint={(point) => handlePointSelect(point.id)}
+								onCreatePoint={() => setActiveModal({ type: "novo-ponto" })}
+							/>
+						)
+					) : null}
 
 					{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 
@@ -254,6 +247,29 @@ export default function TabsBoardPage() {
 			) : null}
 			{activeModal?.type === "configuracoes" ? <ServiceSettings closeModal={() => setActiveModal(null)} /> : null}
 		</div>
+	);
+}
+
+function ModuleActions({
+	contasHabilitadas,
+	onOpenSettings,
+	onCreateTab,
+}: {
+	contasHabilitadas: boolean;
+	onOpenSettings: () => void;
+	onCreateTab: () => void;
+}) {
+	return (
+		<ActionToolbar>
+			<ActionToolbar.Action icon={Settings2} onClick={onOpenSettings}>
+				MODO DE ATENDIMENTO
+			</ActionToolbar.Action>
+			{contasHabilitadas ? (
+				<ActionToolbar.Primary icon={Plus} onClick={onCreateTab}>
+					NOVA CONTA
+				</ActionToolbar.Primary>
+			) : null}
+		</ActionToolbar>
 	);
 }
 

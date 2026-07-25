@@ -56,7 +56,7 @@ export function ServicePointPills({ points, tabsByPoint, now, onSelectPoint, onC
 	const hiddenHasLate = hidden.some((entry) => entry.urgencia === "atrasado");
 
 	return (
-		<div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+		<div className="flex w-full min-w-0 flex-wrap items-center gap-2">
 			{visible.map((entry) => (
 				<PointPill
 					key={entry.point.id}
