@@ -48,40 +48,69 @@ async function createSupplierProductMappings({ input, session }: { input: TCreat
 	if (usefulMappings.some((mapping) => !orgProductIds.has(mapping.produtoId)))
 		throw new createHttpError.BadRequest("Um ou mais produtos informados não pertencem à sua organização.");
 
+	// Upsert, não "pular se já existe": um de-para errado precisa ser corrigível pela própria
+	// revisão. Se um código já apontasse para o produto errado, ignorar o novo vínculo faria o
+	// Estágio A do matching devolver o produto errado com confiança 1.0 indefinidamente.
 	const existingMappings = await db.query.supplierProductMappings.findMany({
 		where: (fields, { and, eq }) => and(eq(fields.fornecedorId, input.fornecedorId), eq(fields.organizacaoId, userOrgId)),
-		columns: { codigoFornecedor: true, ean: true },
+		columns: { id: true, codigoFornecedor: true, ean: true, produtoId: true, produtoVarianteId: true },
 	});
-	const existingCodigos = new Set(existingMappings.map((mapping) => mapping.codigoFornecedor).filter(Boolean));
-	const existingEans = new Set(existingMappings.map((mapping) => mapping.ean).filter(Boolean));
+	const existingByCodigo = new Map(
+		existingMappings.filter((mapping) => mapping.codigoFornecedor).map((mapping) => [mapping.codigoFornecedor as string, mapping]),
+	);
+	const existingByEan = new Map(existingMappings.filter((mapping) => mapping.ean).map((mapping) => [mapping.ean as string, mapping]));
 
-	const mappingsToInsert = usefulMappings.filter((mapping) => {
-		const codigo = mapping.codigoFornecedor?.trim();
-		const ean = mapping.ean?.trim();
-		if (codigo && existingCodigos.has(codigo)) return false;
-		if (ean && existingEans.has(ean)) return false;
-		return true;
+	let insertedCount = 0;
+	let updatedCount = 0;
+	let unchangedCount = 0;
+
+	await db.transaction(async (trx) => {
+		for (const mapping of usefulMappings) {
+			const codigoFornecedor = mapping.codigoFornecedor?.trim() || null;
+			const ean = mapping.ean?.trim() || null;
+			const existing = (codigoFornecedor && existingByCodigo.get(codigoFornecedor)) || (ean && existingByEan.get(ean)) || null;
+
+			if (!existing) {
+				await trx.insert(supplierProductMappings).values({
+					organizacaoId: userOrgId,
+					fornecedorId: input.fornecedorId,
+					codigoFornecedor,
+					ean,
+					produtoId: mapping.produtoId,
+					produtoVarianteId: mapping.produtoVarianteId ?? null,
+					unidadeExterna: mapping.unidadeExterna ?? null,
+					fatorConversao: mapping.fatorConversao ?? null,
+				});
+				insertedCount++;
+				continue;
+			}
+
+			const pointsElsewhere = existing.produtoId !== mapping.produtoId || (existing.produtoVarianteId ?? null) !== (mapping.produtoVarianteId ?? null);
+			await trx
+				.update(supplierProductMappings)
+				.set({
+					codigoFornecedor,
+					ean,
+					produtoId: mapping.produtoId,
+					produtoVarianteId: mapping.produtoVarianteId ?? null,
+					unidadeExterna: mapping.unidadeExterna ?? null,
+					fatorConversao: mapping.fatorConversao ?? null,
+					dataAtualizacao: new Date(),
+				})
+				.where(and(eq(supplierProductMappings.id, existing.id), eq(supplierProductMappings.organizacaoId, userOrgId)));
+
+			if (pointsElsewhere) updatedCount++;
+			else unchangedCount++;
+		}
 	});
 
-	if (mappingsToInsert.length > 0) {
-		await db.insert(supplierProductMappings).values(
-			mappingsToInsert.map((mapping) => ({
-				organizacaoId: userOrgId,
-				fornecedorId: input.fornecedorId,
-				codigoFornecedor: mapping.codigoFornecedor?.trim() || null,
-				ean: mapping.ean?.trim() || null,
-				produtoId: mapping.produtoId,
-				produtoVarianteId: mapping.produtoVarianteId ?? null,
-			})),
-		);
-	}
-
+	const touchedCount = insertedCount + updatedCount;
 	return {
-		data: { insertedCount: mappingsToInsert.length },
+		data: { insertedCount, updatedCount, unchangedCount },
 		message:
-			mappingsToInsert.length > 0
-				? "Mapeamentos de produto do fornecedor registrados com sucesso."
-				: "Mapeamentos já existiam para este fornecedor.",
+			touchedCount > 0
+				? `${touchedCount} ${touchedCount === 1 ? "vínculo de produto registrado" : "vínculos de produto registrados"} para este fornecedor.`
+				: "Os vínculos já estavam registrados para este fornecedor.",
 	};
 }
 export type TCreateSupplierProductMappingsOutput = Awaited<ReturnType<typeof createSupplierProductMappings>>;

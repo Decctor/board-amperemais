@@ -40,6 +40,16 @@ export const SupplierProductMappingSchema = z.object({
 		invalid_type_error: "Tipo não válido para o ID do produto.",
 	}),
 	produtoVarianteId: z.string({ invalid_type_error: "Tipo não válido para o ID da variante do produto." }).optional().nullable(),
+	unidadeExterna: z
+		.string({ invalid_type_error: "Tipo não válido para a unidade usada pelo fornecedor." })
+		.max(25, "A unidade do fornecedor deve conter no máximo 25 caracteres.")
+		.optional()
+		.nullable(),
+	fatorConversao: z
+		.number({ invalid_type_error: "Tipo não válido para o fator de conversão de unidade." })
+		.positive("O fator de conversão deve ser maior que zero.")
+		.optional()
+		.nullable(),
 	dataInsercao: z
 		.string({ invalid_type_error: "Tipo não válido para a data de inserção." })
 		.datetime({ message: "Tipo não válido para a data de inserção." })

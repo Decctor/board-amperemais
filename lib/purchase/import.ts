@@ -23,6 +23,13 @@ export const ExtractedCompositionSchema = z.object({
 			cnpj: z.string({ invalid_type_error: "Tipo não válido para o CNPJ do fornecedor extraído." }).nullable(),
 		})
 		.nullable(),
+	// Cabeçalho do documento: alimenta o lançamento contábil da compra (valor efetivo, competência
+	// e título) e permite conferir se a soma das linhas lidas explica o total impresso.
+	numeroDocumento: z.string({ invalid_type_error: "Tipo não válido para o número do documento extraído." }).nullable(),
+	dataEmissao: z.string({ invalid_type_error: "Tipo não válido para a data de emissão extraída." }).nullable(),
+	valorTotalDocumento: z.number({ invalid_type_error: "Tipo não válido para o valor total do documento extraído." }).nullable(),
+	valorFrete: z.number({ invalid_type_error: "Tipo não válido para o valor do frete extraído." }).nullable(),
+	valorDesconto: z.number({ invalid_type_error: "Tipo não válido para o valor de desconto extraído." }).nullable(),
 	itens: z.array(ExtractedCompositionItemSchema),
 });
 export type TExtractedComposition = z.infer<typeof ExtractedCompositionSchema>;
@@ -40,6 +47,14 @@ Regras:
 - Valores monetários em número decimal (ponto como separador). Ex: "1.234,56" vira 1234.56.
 - "desconto" é o desconto da linha quando destacado; senão null.
 - "fornecedor" é o EMITENTE do documento (quem vendeu), nunca o destinatário. CNPJ apenas com dígitos. Se ilegível, use null nos campos.
+
+Cabeçalho do documento:
+- "numeroDocumento" é o número da nota/cupom/pedido quando impresso; senão null.
+- "dataEmissao" no formato ISO "AAAA-MM-DD". Se só houver dia/mês, deduza o ano pelo restante do documento. Se ilegível, null.
+- "valorTotalDocumento" é o VALOR TOTAL DA NOTA (total geral a pagar, já com frete e descontos quando o documento assim declarar).
+- "valorFrete" e "valorDesconto" apenas quando destacados em campo próprio; senão null.
+- Nunca estime nem calcule esses valores: se não estiverem impressos, use null.
+
 - Se o documento não for uma nota/cupom de compra ou estiver ilegível, retorne itens: [].`;
 
 // Sonnet for document vision quality; the cheaper mapping step (match-products) uses Haiku.

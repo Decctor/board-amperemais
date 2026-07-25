@@ -9,14 +9,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { getErrorMessage } from "@/lib/errors";
-import { formatToCNPJ, formatToMoney } from "@/lib/formatting";
+import { formatDateAsLocale, formatToCNPJ, formatToMoney } from "@/lib/formatting";
 import { importPurchaseComposition } from "@/lib/mutations/purchases";
 import { createSupplier, createSupplierProductMappings } from "@/lib/mutations/suppliers";
 import { cn } from "@/lib/utils";
 import type { TUsePurchaseState } from "@/state-hooks/use-purchase-state";
-import { Building2, CircleAlert, CircleCheck, FileText, ImageIcon, Loader2, Sparkles, Upload, X } from "lucide-react";
+import { ArrowRight, Building2, CircleAlert, CircleCheck, FileText, ImageIcon, Info, Loader2, Sparkles, Upload, X } from "lucide-react";
 import { useMemo, useRef, useState, type DragEvent } from "react";
 import { toast } from "sonner";
+import { convertLineToProductUnit } from "@/lib/purchase/units";
 import { createEmptyPurchaseItem, normalizeItemValues } from "../Items";
 
 const ACCEPTED_MIME_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
@@ -24,6 +25,7 @@ const MAX_FILE_BASE64_LENGTH = 4_200_000;
 const IMAGE_MAX_DIMENSION = 2000;
 
 type TImportFornecedor = TImportPurchaseCompositionOutput["data"]["fornecedor"];
+type TImportDocumento = TImportPurchaseCompositionOutput["data"]["documento"];
 type TImportedLine = TImportPurchaseCompositionOutput["data"]["itens"][number];
 
 type TReviewLine = TImportedLine & {
@@ -33,6 +35,27 @@ type TReviewLine = TImportedLine & {
 	extraidoValorUnitario: number;
 	produtoVariante: { nome: string; codigo: string; imagemCapaUrl: string | null } | null;
 	manualOverride: boolean;
+	/** Quantas unidades internas cabem em 1 unidade da nota. Null quando as unidades batem. */
+	fatorConversao: number | null;
+};
+
+/**
+ * Campos do lançamento contábil que a leitura propõe. Campo vazio entra marcado; campo já
+ * preenchido com valor diferente entra como conflito e DESMARCADO, para que a importação nunca
+ * sobrescreva em silêncio o que o operador digitou.
+ *
+ * `valorPrevisto` (orçado) nunca é proposto: a nota é o valor efetivo, não a previsão, e preenchê-lo
+ * a partir dela faria o orçado bater sempre com o realizado.
+ */
+type TAccountingProposalKey = "valor" | "dataCompetencia" | "titulo";
+
+type TAccountingProposal = {
+	key: TAccountingProposalKey;
+	label: string;
+	atual: string | null;
+	proposto: string;
+	conflito: boolean;
+	patch: Partial<TUsePurchaseState["state"]["lancamentoContabil"]>;
 };
 
 type TFileEntry = {
@@ -95,7 +118,83 @@ async function prepareFilePayload(file: File) {
 }
 
 function getLineTotal(line: TReviewLine) {
+	// O fator de conversão não entra: ele redistribui quantidade e valor unitário entre as unidades,
+	// preservando o total da linha impresso na nota.
 	return line.quantidade * line.valorUnitario - (line.desconto ?? 0);
+}
+
+function isBlank(value: unknown) {
+	if (value === null || value === undefined) return true;
+	if (typeof value === "string") return value.trim().length === 0;
+	if (typeof value === "number") return value === 0;
+	return false;
+}
+
+function sameDay(a?: Date | null, b?: Date | null) {
+	if (!a || !b) return false;
+	return new Date(a).toISOString().slice(0, 10) === new Date(b).toISOString().slice(0, 10);
+}
+
+function buildAccountingProposals({
+	documento,
+	fornecedor,
+	accountingEntry,
+}: {
+	documento: TImportDocumento;
+	fornecedor: TImportFornecedor | null;
+	accountingEntry: TUsePurchaseState["state"]["lancamentoContabil"];
+}): TAccountingProposal[] {
+	const proposals: TAccountingProposal[] = [];
+
+	// O total do documento manda; sem total declarado, a soma das linhas lidas.
+	const valorProposto = documento.valorTotal ?? documento.somaItens;
+	if (valorProposto > 0) {
+		const atual = accountingEntry.valor ?? 0;
+		proposals.push({
+			key: "valor",
+			label: "Valor efetivo (a pagar)",
+			atual: isBlank(atual) ? null : formatToMoney(atual),
+			proposto: formatToMoney(valorProposto),
+			conflito: !isBlank(atual) && Math.abs(atual - valorProposto) > 0.01,
+			patch: { valor: valorProposto },
+		});
+	}
+
+	if (documento.dataEmissao) {
+		const emissao = new Date(documento.dataEmissao);
+		const atual = accountingEntry.dataCompetencia ? new Date(accountingEntry.dataCompetencia) : null;
+		proposals.push({
+			key: "dataCompetencia",
+			label: "Data de competência",
+			atual: atual ? (formatDateAsLocale(atual) ?? null) : null,
+			proposto: formatDateAsLocale(emissao) ?? "",
+			// A competência nasce com a data de hoje, então quase toda importação é tecnicamente um
+			// conflito. Só tratamos como tal se o operador tiver escolhido outra data que não hoje.
+			conflito: !!atual && !sameDay(atual, emissao) && !sameDay(atual, new Date()),
+			patch: { dataCompetencia: emissao },
+		});
+	}
+
+	const fornecedorNome = fornecedor?.existente?.nome ?? fornecedor?.extraido?.nome ?? null;
+	const tituloProposto = fornecedorNome
+		? documento.numero
+			? `Compra ${fornecedorNome} - Doc. ${documento.numero}`
+			: `Compra ${fornecedorNome}`
+		: documento.numero
+			? `Compra - Doc. ${documento.numero}`
+			: null;
+	if (tituloProposto && isBlank(accountingEntry.titulo)) {
+		proposals.push({
+			key: "titulo",
+			label: "Título do lançamento",
+			atual: null,
+			proposto: tituloProposto,
+			conflito: false,
+			patch: { titulo: tituloProposto },
+		});
+	}
+
+	return proposals;
 }
 
 type ImportCompositionWithAIProps = {
@@ -103,22 +202,44 @@ type ImportCompositionWithAIProps = {
 	onOpenChange: (open: boolean) => void;
 	addPurchaseItem: TUsePurchaseState["addPurchaseItem"];
 	updatePurchase: TUsePurchaseState["updatePurchase"];
+	/** Lançamento contábil da compra: é ele que carrega o valor efetivo lido do documento. */
+	accountingEntry: TUsePurchaseState["state"]["lancamentoContabil"];
+	updateAccountingEntry: TUsePurchaseState["updateAccountingEntry"];
 	currentFornecedorId: string | null;
 };
 
-export default function ImportCompositionWithAI({ open, onOpenChange, addPurchaseItem, updatePurchase, currentFornecedorId }: ImportCompositionWithAIProps) {
+export default function ImportCompositionWithAI({
+	open,
+	onOpenChange,
+	addPurchaseItem,
+	updatePurchase,
+	accountingEntry,
+	updateAccountingEntry,
+	currentFornecedorId,
+}: ImportCompositionWithAIProps) {
 	const [phase, setPhase] = useState<TPhase>("UPLOAD");
 	const [fileEntries, setFileEntries] = useState<TFileEntry[]>([]);
 	const [isDragging, setIsDragging] = useState(false);
 	const [lines, setLines] = useState<TReviewLine[]>([]);
 	const [fornecedor, setFornecedor] = useState<TImportFornecedor | null>(null);
+	const [documento, setDocumento] = useState<TImportDocumento | null>(null);
+	const [warnings, setWarnings] = useState<string[]>([]);
+	const [rejectedProposals, setRejectedProposals] = useState<Set<TAccountingProposalKey>>(new Set());
 	const [vincularFornecedor, setVincularFornecedor] = useState(true);
 	const [isConfirming, setIsConfirming] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const includedLines = useMemo(() => lines.filter((line) => line.incluir && line.produto), [lines]);
 	const unresolvedCount = useMemo(() => lines.filter((line) => !line.produto).length, [lines]);
+	const pendingUnitCount = useMemo(
+		() => lines.filter((line) => line.incluir && line.produto && line.divergenciaUnidade && !line.fatorConversao).length,
+		[lines],
+	);
 	const includedTotal = useMemo(() => includedLines.reduce((acc, line) => acc + getLineTotal(line), 0), [includedLines]);
+	const accountingProposals = useMemo(
+		() => (documento ? buildAccountingProposals({ documento, fornecedor, accountingEntry }) : []),
+		[documento, fornecedor, accountingEntry],
+	);
 
 	function resetAndClose(nextOpen: boolean) {
 		onOpenChange(nextOpen);
@@ -127,6 +248,9 @@ export default function ImportCompositionWithAI({ open, onOpenChange, addPurchas
 			setFileEntries([]);
 			setLines([]);
 			setFornecedor(null);
+			setDocumento(null);
+			setWarnings([]);
+			setRejectedProposals(new Set());
 			setVincularFornecedor(true);
 			setIsDragging(false);
 		}
@@ -163,7 +287,9 @@ export default function ImportCompositionWithAI({ open, onOpenChange, addPurchas
 		setPhase("PROCESSANDO");
 
 		const mergedLines: TReviewLine[] = [];
+		const mergedWarnings: string[] = [];
 		let mergedFornecedor: TImportFornecedor | null = null;
+		let mergedDocumento: TImportDocumento | null = null;
 
 		for (let index = 0; index < fileEntries.length; index++) {
 			updateFileEntry(index, { status: "PROCESSANDO" });
@@ -178,9 +304,13 @@ export default function ImportCompositionWithAI({ open, onOpenChange, addPurchas
 						extraidoValorUnitario: item.valorUnitario,
 						produtoVariante: null,
 						manualOverride: false,
+						fatorConversao: item.fatorConversaoSugerido,
 					})),
 				);
+				mergedWarnings.push(...result.data.avisos);
 				if (!mergedFornecedor && (result.data.fornecedor.existente || result.data.fornecedor.extraido)) mergedFornecedor = result.data.fornecedor;
+				// O primeiro documento define o cabeçalho da compra; os seguintes só somam itens.
+				if (!mergedDocumento) mergedDocumento = result.data.documento;
 				updateFileEntry(index, { status: "CONCLUIDO", itemCount: result.data.itens.length });
 			} catch (error) {
 				updateFileEntry(index, { status: "ERRO", errorMessage: getErrorMessage(error) });
@@ -195,11 +325,35 @@ export default function ImportCompositionWithAI({ open, onOpenChange, addPurchas
 
 		setLines(mergedLines);
 		setFornecedor(mergedFornecedor);
+		setDocumento(mergedDocumento);
+		setWarnings([...new Set(mergedWarnings)]);
+		setRejectedProposals(
+			mergedDocumento
+				? new Set(
+						buildAccountingProposals({ documento: mergedDocumento, fornecedor: mergedFornecedor, accountingEntry })
+							.filter((proposal) => proposal.conflito)
+							.map((proposal) => proposal.key),
+					)
+				: new Set(),
+		);
 		setPhase("REVISAO");
+	}
+
+	function toggleProposal(key: TAccountingProposalKey) {
+		setRejectedProposals((previous) => {
+			const next = new Set(previous);
+			if (next.has(key)) next.delete(key);
+			else next.add(key);
+			return next;
+		});
 	}
 
 	async function handleConfirm() {
 		if (includedLines.length === 0) return;
+		if (pendingUnitCount > 0) {
+			toast.error(`Informe o fator de conversão dos ${pendingUnitCount} itens com unidade divergente antes de adicionar.`);
+			return;
+		}
 		setIsConfirming(true);
 		try {
 			// 1. Supplier: link the existing one or create it now (idempotent by CNPJ on the server).
@@ -228,9 +382,15 @@ export default function ImportCompositionWithAI({ open, onOpenChange, addPurchas
 				}
 			}
 
-			// 2. Inject reviewed lines into the purchase draft.
+			// 2. Inject reviewed lines into the purchase draft, already converted to the product unit.
+			//    Os valores lidos da nota seguem gravados em externo*, independentemente do ajuste.
 			for (const line of includedLines) {
 				if (!line.produto) continue;
+				const convertido = convertLineToProductUnit({
+					quantidade: line.quantidade,
+					valorUnitario: line.valorUnitario,
+					fatorConversao: line.fatorConversao,
+				});
 				addPurchaseItem(
 					normalizeItemValues({
 						...createEmptyPurchaseItem(),
@@ -245,19 +405,29 @@ export default function ImportCompositionWithAI({ open, onOpenChange, addPurchas
 							imagemCapaUrl: line.produto.imagemCapaUrl,
 						},
 						produtoVariante: line.produtoVariante ?? undefined,
-						quantidade: line.quantidade,
-						valorUnitarioBruto: line.valorUnitario,
+						quantidade: convertido.quantidade,
+						valorUnitarioBruto: convertido.valorUnitario,
 						descontosTotal: line.desconto ?? 0,
 						externoQtde: line.extraidoQuantidade,
 						externoValor: line.extraidoValorUnitario,
 						externoUnidade: line.unidade,
+						externoFatorConversao: line.fatorConversao,
 						anotacoes: `Importado via IA: ${line.descricao}`,
 					}),
 				);
 			}
 
-			// 3. Learning: persist confirmed de-paras so the next invoice of this supplier matches deterministically.
-			const learnableLines = includedLines.filter((line) => line.produto && line.matchTipo !== "MAPEADO" && (line.codigoFornecedor?.trim() || line.ean?.trim()));
+			// 3. Campos aceitos do lançamento contábil. `valorPrevisto` nunca entra: a nota é o valor
+			//    efetivo, e preenchê-lo faria o orçado bater sempre com o realizado.
+			const acceptedPatch = accountingProposals
+				.filter((proposal) => !rejectedProposals.has(proposal.key))
+				.reduce<Partial<TUsePurchaseState["state"]["lancamentoContabil"]>>((patch, proposal) => ({ ...patch, ...proposal.patch }), {});
+			if (Object.keys(acceptedPatch).length > 0) updateAccountingEntry(acceptedPatch);
+
+			// 4. Learning: persist confirmed de-paras so the next invoice of this supplier matches deterministically.
+			const learnableLines = includedLines.filter(
+				(line) => line.produto && line.matchTipo !== "MAPEADO" && (line.codigoFornecedor?.trim() || line.ean?.trim()),
+			);
 			if (supplierId && learnableLines.length > 0) {
 				createSupplierProductMappings({
 					fornecedorId: supplierId,
@@ -266,6 +436,8 @@ export default function ImportCompositionWithAI({ open, onOpenChange, addPurchas
 						ean: line.ean,
 						produtoId: line.produto!.id,
 						produtoVarianteId: line.produtoVarianteId,
+						unidadeExterna: line.unidade,
+						fatorConversao: line.fatorConversao,
 					})),
 				}).catch((error) => toast.error(`Itens adicionados, mas houve um erro ao registrar os mapeamentos do fornecedor: ${getErrorMessage(error)}`));
 			}
@@ -410,6 +582,62 @@ export default function ImportCompositionWithAI({ open, onOpenChange, addPurchas
 							) : null}
 						</div>
 
+						{warnings.length > 0 ? (
+							<ul className="flex w-full flex-col gap-1">
+								{warnings.map((warning) => (
+									<li key={warning} className="flex items-start gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1.5">
+										<Info className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+										<p className="text-[0.68rem] leading-relaxed text-muted-foreground">{warning}</p>
+									</li>
+								))}
+							</ul>
+						) : null}
+
+						{accountingProposals.length > 0 ? (
+							<section className="flex w-full flex-col overflow-hidden rounded-md border border-border">
+								<header className="flex items-center justify-between gap-2 border-b border-border bg-muted/50 px-3 py-1.5">
+									<h3 className="text-[0.68rem] font-medium uppercase text-muted-foreground">Lançamento contábil</h3>
+									<span className="text-[0.65rem] text-muted-foreground">Desmarque o que não quiser aplicar</span>
+								</header>
+								<ul className="flex w-full flex-col">
+									{accountingProposals.map((proposal) => {
+										const aceito = !rejectedProposals.has(proposal.key);
+										const inputId = `proposta-contabil-${proposal.key}`;
+										return (
+											<li
+												key={proposal.key}
+												className={cn(
+													"flex w-full items-start gap-2.5 border-t border-border px-3 py-2 first:border-t-0",
+													proposal.conflito && aceito && "bg-destructive/5",
+													!aceito && "opacity-55",
+												)}
+											>
+												<Checkbox id={inputId} checked={aceito} onCheckedChange={() => toggleProposal(proposal.key)} className="mt-0.5" />
+												<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+													<label htmlFor={inputId} className="cursor-pointer text-xs font-medium leading-tight">
+														{proposal.label}
+													</label>
+													<div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[0.68rem]">
+														{proposal.atual ? (
+															<>
+																<span className="truncate text-muted-foreground line-through">{proposal.atual}</span>
+																<ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+															</>
+														) : (
+															<span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[0.6rem] text-muted-foreground">vazio</span>
+														)}
+														<span className={cn("min-w-0 break-words font-medium", proposal.conflito ? "text-destructive" : "text-foreground")}>
+															{proposal.proposto}
+														</span>
+													</div>
+												</div>
+											</li>
+										);
+									})}
+								</ul>
+							</section>
+						) : null}
+
 						{unresolvedCount > 0 ? (
 							<div className="flex w-full items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
 								<CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -513,6 +741,37 @@ export default function ImportCompositionWithAI({ open, onOpenChange, addPurchas
 												</div>
 											</div>
 										</div>
+
+										{line.produto && line.divergenciaUnidade ? (
+											<div className="ml-6 flex flex-col gap-1.5 rounded-md border border-destructive/25 bg-destructive/5 px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between">
+												<p className="text-[0.68rem] leading-relaxed text-destructive">
+													A nota fatura em <strong>{line.unidade}</strong> e o produto é estocado em <strong>{line.produto.unidade ?? "UN"}</strong>. Informe
+													quantas {line.produto.unidade ?? "UN"} cabem em 1 {line.unidade}.
+												</p>
+												<div className="flex shrink-0 items-end gap-1.5">
+													<div className="flex flex-col gap-0.5">
+														<label className="text-[0.65rem] font-medium uppercase text-muted-foreground">Fator</label>
+														<Input
+															type="number"
+															min={0}
+															step="any"
+															value={line.fatorConversao ?? ""}
+															placeholder="—"
+															onChange={(event) => updateLine(index, { fatorConversao: Number(event.target.value) || null })}
+															className="h-8 w-20 text-xs tabular-nums"
+														/>
+													</div>
+													<div className="flex flex-col gap-0.5">
+														<span className="text-[0.65rem] font-medium uppercase text-muted-foreground">Entra como</span>
+														<span className="flex h-8 items-center font-mono text-xs font-medium tabular-nums">
+															{line.fatorConversao && line.fatorConversao > 0
+																? `${line.quantidade * line.fatorConversao} ${line.produto.unidade ?? "UN"} × ${formatToMoney(line.valorUnitario / line.fatorConversao)}`
+																: "—"}
+														</span>
+													</div>
+												</div>
+											</div>
+										) : null}
 									</div>
 								);
 							})}

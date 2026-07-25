@@ -38,6 +38,9 @@ type PurchaseItemsBlockProps = {
 	removePurchaseItem: TUsePurchaseState["removePurchaseItem"];
 	/** Enables the AI import flow (needed to link the extracted supplier to the purchase). */
 	updatePurchase?: TUsePurchaseState["updatePurchase"];
+	/** O documento carrega o valor efetivo e a competência, que vivem no lançamento contábil. */
+	accountingEntry?: TUsePurchaseState["state"]["lancamentoContabil"];
+	updateAccountingEntry?: TUsePurchaseState["updateAccountingEntry"];
 	fornecedorId?: string | null;
 	/** When the purchase is already received, items are frozen to preserve the lots they spawned. */
 	locked?: boolean;
@@ -52,6 +55,8 @@ export default function PurchaseItemsBlock({
 	updatePurchaseItem,
 	removePurchaseItem,
 	updatePurchase,
+	accountingEntry,
+	updateAccountingEntry,
 	fornecedorId = null,
 	locked = false,
 }: PurchaseItemsBlockProps) {
@@ -68,7 +73,7 @@ export default function PurchaseItemsBlock({
 
 	return (
 		<ResponsiveMenuSection title="ITENS" icon={<ShoppingCart className="h-4 min-h-4 w-4 min-w-4" />}>
-			{!locked && updatePurchase ? (
+			{!locked && updatePurchase && accountingEntry && updateAccountingEntry ? (
 				<>
 					<div className="flex w-full items-center justify-end">
 						<Button type="button" variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setImportModalIsOpen(true)}>
@@ -81,6 +86,8 @@ export default function PurchaseItemsBlock({
 						onOpenChange={setImportModalIsOpen}
 						addPurchaseItem={addPurchaseItem}
 						updatePurchase={updatePurchase}
+						accountingEntry={accountingEntry}
+						updateAccountingEntry={updateAccountingEntry}
 						currentFornecedorId={fornecedorId}
 					/>
 				</>

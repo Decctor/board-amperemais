@@ -154,6 +154,8 @@ export default function ControlPurchase({ purchaseId, user, closeModal, callback
 				updatePurchaseItem={updatePurchaseItem}
 				removePurchaseItem={removePurchaseItem}
 				updatePurchase={updatePurchase}
+				accountingEntry={state.lancamentoContabil}
+				updateAccountingEntry={updateAccountingEntry}
 				fornecedorId={state.purchase.fornecedorId}
 				locked={purchase?.status === "RECEBIDA"}
 			/>
