@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
+import { calculateValuation, getProductPricingMap, type TValuationItem } from "@/lib/productions/valuation";
 import { ProductionRecipeBaseSchema, ProductionRecipeInputSchema, ProductionRecipeOutputBaseSchema } from "@/schemas/productions";
 import { db } from "@/services/drizzle";
 import { productionRecipeInputs, productionRecipeOutputs, productionRecipes, productVariants, products } from "@/services/drizzle/schema";
@@ -174,6 +175,14 @@ async function validateRecipeItemsOrganization({
 	}
 }
 
+function toRecipeValuationItem(item: { produtoId: string; produtoVarianteId: string | null; quantidade: number }): TValuationItem {
+	return {
+		produtoId: item.produtoId,
+		produtoVarianteId: item.produtoVarianteId,
+		quantidade: item.quantidade,
+	};
+}
+
 async function getProductionRecipes({ input, session }: { input: TGetProductionRecipesInput; session: TAuthUserSession }) {
 	const organizationId = session.membership?.organizacao.id;
 	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
@@ -200,9 +209,22 @@ async function getProductionRecipes({ input, session }: { input: TGetProductionR
 		});
 		if (!recipe) throw new createHttpError.NotFound("Receita não encontrada.");
 
+		// Receita é molde, não fato consumado: a valoração é sempre pelos preços vigentes no catálogo.
+		const pricingMap = await getProductPricingMap({
+			organizationId,
+			items: [...recipe.insumos, ...recipe.saidas].map(toRecipeValuationItem),
+		});
+
 		return {
 			data: {
-				byId: recipe,
+				byId: {
+					...recipe,
+					valores: calculateValuation({
+						inputs: recipe.insumos.map(toRecipeValuationItem),
+						outputs: recipe.saidas.map(toRecipeValuationItem),
+						pricingMap,
+					}),
+				},
 				default: undefined,
 			},
 			message: "Receita encontrada com sucesso.",
@@ -231,9 +253,10 @@ async function getProductionRecipes({ input, session }: { input: TGetProductionR
 				dataInsercao: true,
 			},
 			with: {
-				// Somente o id é necessário — o card exibe apenas a contagem de insumos/saídas.
-				insumos: { columns: { id: true } },
-				saidas: { columns: { id: true } },
+				// Além da contagem, o card exibe custo e retorno esperado — daí produto, variante e
+				// quantidade de cada item. Os preços vêm de uma consulta agregada da página inteira.
+				insumos: { columns: { id: true, produtoId: true, produtoVarianteId: true, quantidade: true } },
+				saidas: { columns: { id: true, produtoId: true, produtoVarianteId: true, quantidade: true } },
 			},
 			orderBy: (fields, { desc }) => desc(fields.dataInsercao),
 			limit: PAGE_SIZE,
@@ -243,11 +266,25 @@ async function getProductionRecipes({ input, session }: { input: TGetProductionR
 
 	const recipesMatched = Number(totalResult[0]?.total ?? 0);
 
+	// Uma única leitura de preços para todos os itens da página, em vez de uma por receita.
+	const pricingMap = await getProductPricingMap({
+		organizationId,
+		items: recipesResult.flatMap((recipe) => [...recipe.insumos, ...recipe.saidas].map(toRecipeValuationItem)),
+	});
+	const recipesWithValuation = recipesResult.map((recipe) => ({
+		...recipe,
+		valores: calculateValuation({
+			inputs: recipe.insumos.map(toRecipeValuationItem),
+			outputs: recipe.saidas.map(toRecipeValuationItem),
+			pricingMap,
+		}),
+	}));
+
 	return {
 		data: {
 			byId: undefined,
 			default: {
-				recipes: recipesResult,
+				recipes: recipesWithValuation,
 				recipesMatched,
 				totalPages: Math.max(1, Math.ceil(recipesMatched / PAGE_SIZE)),
 			},

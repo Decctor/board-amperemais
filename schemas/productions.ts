@@ -216,6 +216,21 @@ export const ProductionBaseSchema = z.object({
 			const trimmed = value?.trim();
 			return trimmed ? trimmed : null;
 		}),
+	// Valoração congelada na conclusão. Preenchida pelo servidor, nunca pelo cliente — as rotas de
+	// criação/atualização removem estes campos via `.omit()`.
+	custoTotal: z
+		.number({
+			invalid_type_error: "Tipo não válido para custo total da produção.",
+		})
+		.optional()
+		.nullable(),
+	retornoEsperado: z
+		.number({
+			invalid_type_error: "Tipo não válido para retorno esperado da produção.",
+		})
+		.optional()
+		.nullable(),
+	dataSnapshotValores: OptionalDateStringSchema,
 	autorId: z
 		.string({
 			invalid_type_error: "Tipo não válido para autor da produção.",
@@ -266,6 +281,13 @@ export const ProductionInputSchema = z.object({
 		.nonnegative({ message: "Quantidade real do insumo não pode ser negativa." })
 		.optional()
 		.nullable(),
+	/** Snapshot preenchido pelo servidor na conclusão — removido via `.omit()` nas rotas de escrita. */
+	custoUnitario: z
+		.number({
+			invalid_type_error: "Tipo não válido para custo unitário do insumo.",
+		})
+		.optional()
+		.nullable(),
 });
 export type TProductionInput = z.infer<typeof ProductionInputSchema>;
 
@@ -311,6 +333,13 @@ export const ProductionOutputBaseSchema = z.object({
 		.optional()
 		.nullable(),
 	dataValidade: OptionalDateStringSchema,
+	/** Snapshot preenchido pelo servidor na conclusão — removido via `.omit()` nas rotas de escrita. */
+	valorUnitarioVenda: z
+		.number({
+			invalid_type_error: "Tipo não válido para valor unitário de venda da saída.",
+		})
+		.optional()
+		.nullable(),
 });
 export const ProductionOutputSchema = ProductionOutputBaseSchema.superRefine((value, ctx) => {
 	if (value.prazoValidadeValor != null && !value.prazoValidadeMedida) {

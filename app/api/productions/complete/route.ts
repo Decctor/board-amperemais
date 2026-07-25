@@ -1,10 +1,11 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { getItemUnitCost, getItemUnitPrice, getProductPricingMap } from "@/lib/productions/valuation";
 import { applyStockMovement, isStockTrackingActive } from "@/lib/stock/apply-stock-movement";
 import { consumeStockLotsByFefo } from "@/lib/stock/consume-stock-lots-fefo";
 import { db } from "@/services/drizzle";
-import { productStockLots, productionOutputs, productions } from "@/services/drizzle/schema";
+import { productStockLots, productionInputs, productionOutputs, productions } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -44,10 +45,27 @@ async function completeProduction({ input, session }: { input: TCompleteProducti
 		const outputsWithRealQuantity = production.saidas.filter((output) => (output.quantidadeReal ?? 0) > 0);
 		if (outputsWithRealQuantity.length === 0) throw new createHttpError.BadRequest("Informe ao menos uma saída real para concluir a produção.");
 
+		// Preços vigentes agora: é este o instante que a produção congela. Servem de fallback do custo
+		// (produtos sem rastreio de estoque não têm lote com custo) e de base do retorno esperado.
+		const pricingMap = await getProductPricingMap({
+			trx: tx,
+			organizationId,
+			items: [...production.entradas, ...production.saidas].map((item) => ({
+				produtoId: item.produtoId,
+				produtoVarianteId: item.produtoVarianteId,
+				quantidade: item.quantidadeReal ?? 0,
+			})),
+		});
+
 		let consumedCostTotal = 0;
 		for (const inputItem of production.entradas) {
 			const realQuantity = inputItem.quantidadeReal ?? 0;
 			if (realQuantity <= 0) continue;
+
+			// Quanto da quantidade consumida teve custo real apurado (lote ou custo médio anterior).
+			// O resto cai no custo de catálogo, senão insumos sem rastreio zerariam o custo da produção.
+			let inputCostTotal = 0;
+			let costedQuantity = 0;
 
 			const consumedLots = await consumeStockLotsByFefo({
 				trx: tx,
@@ -68,7 +86,10 @@ async function completeProduction({ input, session }: { input: TCompleteProducti
 
 			const consumedFromLots = consumedLots.reduce((total, lot) => total + lot.quantidadeConsumida, 0);
 			for (const lot of consumedLots) {
-				if (lot.applied && lot.unitCost != null) consumedCostTotal += lot.quantidadeConsumida * lot.unitCost;
+				if (lot.applied && lot.unitCost != null) {
+					inputCostTotal += lot.quantidadeConsumida * lot.unitCost;
+					costedQuantity += lot.quantidadeConsumida;
+				}
 			}
 
 			const remainingQuantity = realQuantity - consumedFromLots;
@@ -91,14 +112,27 @@ async function completeProduction({ input, session }: { input: TCompleteProducti
 				});
 
 				if (movement.applied && movement.previousUnitCost != null) {
-					consumedCostTotal += remainingQuantity * movement.previousUnitCost;
+					inputCostTotal += remainingQuantity * movement.previousUnitCost;
+					costedQuantity += remainingQuantity;
 				}
 			}
+
+			const uncostedQuantity = realQuantity - costedQuantity;
+			const catalogUnitCost = getItemUnitCost({ item: inputItem, pricingMap });
+			if (uncostedQuantity > 0 && catalogUnitCost != null) inputCostTotal += uncostedQuantity * catalogUnitCost;
+
+			await tx
+				.update(productionInputs)
+				.set({ custoUnitario: inputCostTotal / realQuantity })
+				.where(and(eq(productionInputs.id, inputItem.id), eq(productionInputs.organizacaoId, organizationId)));
+
+			consumedCostTotal += inputCostTotal;
 		}
 
 		const outputQuantityTotal = outputsWithRealQuantity.reduce((total, output) => total + (output.quantidadeReal ?? 0), 0);
 		const producedUnitCost = consumedCostTotal > 0 && outputQuantityTotal > 0 ? consumedCostTotal / outputQuantityTotal : null;
 		const completedAt = new Date();
+		let expectedReturnTotal = 0;
 		const createdStockLots: { id: string; codigoLote: string | null }[] = [];
 
 		for (const [index, outputItem] of outputsWithRealQuantity.entries()) {
@@ -111,9 +145,12 @@ async function completeProduction({ input, session }: { input: TCompleteProducti
 					value: outputItem.prazoValidadeValor,
 				});
 
+			const unitSalePrice = getItemUnitPrice({ item: outputItem, pricingMap });
+			if (unitSalePrice != null) expectedReturnTotal += unitSalePrice * realQuantity;
+
 			await tx
 				.update(productionOutputs)
-				.set({ dataValidade })
+				.set({ dataValidade, valorUnitarioVenda: unitSalePrice })
 				.where(and(eq(productionOutputs.id, outputItem.id), eq(productionOutputs.organizacaoId, organizationId)));
 
 			const shouldCreateLot = await isStockTrackingActive({
@@ -169,6 +206,9 @@ async function completeProduction({ input, session }: { input: TCompleteProducti
 				status: "CONCLUIDA",
 				dataInicio: production.dataInicio ?? completedAt,
 				dataConclusao: completedAt,
+				custoTotal: consumedCostTotal,
+				retornoEsperado: expectedReturnTotal,
+				dataSnapshotValores: completedAt,
 			})
 			.where(and(eq(productions.id, production.id), eq(productions.organizacaoId, organizationId)))
 			.returning({ id: productions.id });
