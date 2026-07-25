@@ -148,6 +148,12 @@ export const productions = newTable(
 		dataPrevisaoConclusao: timestamp("data_previsao_conclusao"),
 		dataConclusao: timestamp("data_conclusao"),
 		observacoes: text("observacoes"),
+		// Snapshot de valoração congelado na conclusão da produção. Custo e preço de venda variam ao
+		// longo do tempo — recalcular a partir do catálogo atual distorceria o histórico. Enquanto a
+		// produção não é concluída estes campos são nulos e a tela mostra uma projeção pelo catálogo.
+		custoTotal: doublePrecision("custo_total"),
+		retornoEsperado: doublePrecision("retorno_esperado"),
+		dataSnapshotValores: timestamp("data_snapshot_valores"),
 		autorId: varchar("autor_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	},
@@ -205,6 +211,8 @@ export const productionInputs = newTable(
 		produtoVarianteId: varchar("produto_variante_id", { length: 255 }).references(() => productVariants.id, { onDelete: "set null" }),
 		quantidadePrevista: doublePrecision("quantidade_prevista"),
 		quantidadeReal: doublePrecision("quantidade_real"),
+		/** Custo unitário congelado na conclusão — lotes consumidos quando há rastreio, catálogo no resto. */
+		custoUnitario: doublePrecision("custo_unitario"),
 	},
 	(table) => ({
 		producaoIdx: index("idx_production_inputs_producao").on(table.producaoId),
@@ -251,6 +259,8 @@ export const productionOutputs = newTable(
 		prazoValidadeMedida: timeDurationUnitsEnum("prazo_validade_medida"),
 		prazoValidadeValor: doublePrecision("prazo_validade_valor"),
 		dataValidade: timestamp("data_validade"),
+		/** Preço de venda unitário congelado na conclusão — base do retorno esperado da produção. */
+		valorUnitarioVenda: doublePrecision("valor_unitario_venda"),
 	},
 	(table) => ({
 		producaoIdx: index("idx_production_outputs_producao").on(table.producaoId),

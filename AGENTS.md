@@ -100,6 +100,7 @@ When building a new admin feature, create files in this order:
 - **Don't skip typing API responses.** Always export `TOutput = Awaited<ReturnType<typeof fn>>`.
 - **Don't import React Query hooks in mutation files.** Mutations are plain async functions; hooks go in components.
 - **Don't write page-level inline editing UIs.** All CRUD goes through modals (`ResponsiveMenu`).
+- **Don't translate entity fields when they enter a function signature or an API payload.** A computed block attached to an entity extends it, so it stays Portuguese: `valores.custoTotal`, not `valuation.totalCost`. Type and function **names** are English; their **fields** follow the data. See *Portuguese vs. English* in CLAUDE.md.
 
 ---
 
@@ -132,6 +133,12 @@ When building a new admin feature, create files in this order:
 ---
 
 ## Language & Messaging
+
+**English is the language of the code; Portuguese is the language of the data.** One question decides
+every name: *does it travel as data, or does it only exist inside the code?* If it shows up in a
+`SELECT`, in `console.log(response.data)`, or in a form's state, it is Portuguese — otherwise it is
+English. Full rules and worked examples in *Portuguese vs. English* (CLAUDE.md); do not restate them
+here, so the two files cannot drift.
 
 - All user-facing text is in **Portuguese (Brazilian)**
 - API success messages: "X criado/atualizado/excluído com sucesso."

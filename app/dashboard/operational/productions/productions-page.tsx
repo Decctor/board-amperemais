@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { getErrorMessage } from "@/lib/errors";
 import { showSuccessActionToast } from "@/lib/toasts/show-action-toast";
 import { formatDateAsLocale } from "@/lib/formatting";
@@ -39,6 +40,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ValuationChips } from "./_components/valuation-chips";
 
 const PRODUCTION_STATUS_CONFIG = {
 	RASCUNHO: {
@@ -107,11 +109,7 @@ export default function ProductionsPage() {
 				message: data.message,
 				actionLabel: "IMPRIMIR ETIQUETAS",
 				onAction: () =>
-					window.open(
-						`/dashboard/operational/stocks/lots/labels/preview?ids=${createdStockLotIds.join(",")}`,
-						"_blank",
-						"noopener,noreferrer",
-					),
+					window.open(`/dashboard/operational/stocks/lots/labels/preview?ids=${createdStockLotIds.join(",")}`, "_blank", "noopener,noreferrer"),
 			});
 		},
 		onError: (error) => toast.error(getErrorMessage(error)),
@@ -119,57 +117,59 @@ export default function ProductionsPage() {
 	});
 
 	return (
-		<Tabs defaultValue="producoes" className="flex w-full flex-col gap-3">
-			<TabsList variant="page">
-				<TabsTrigger value="producoes">
-					<Factory className="h-4 w-4 min-h-4 min-w-4" />
-					PRODUÇÕES
-				</TabsTrigger>
-				<TabsTrigger value="receitas">
-					<ClipboardList className="h-4 w-4 min-h-4 min-w-4" />
-					RECEITAS
-				</TabsTrigger>
-			</TabsList>
-			<TabsContent value="producoes" className="flex w-full flex-col gap-3">
-				<ProductionsTab
-					query={productionsQuery}
-					onCreate={() => setNewProductionModalIsOpen(true)}
-					onEdit={(productionId) => setEditingProductionId(productionId)}
-					onComplete={(productionId) => handleCompleteProductionMutation({ productionId })}
-					completionIsPending={productionCompletionIsPending}
-				/>
-			</TabsContent>
-			<TabsContent value="receitas" className="flex w-full flex-col gap-3">
-				<RecipesTab query={recipesQuery} onCreate={() => setNewRecipeModalIsOpen(true)} onEdit={(recipeId) => setEditingRecipeId(recipeId)} />
-			</TabsContent>
+		<TooltipProvider>
+			<Tabs defaultValue="producoes" className="flex w-full flex-col gap-3">
+				<TabsList variant="page">
+					<TabsTrigger value="producoes">
+						<Factory className="h-4 w-4 min-h-4 min-w-4" />
+						PRODUÇÕES
+					</TabsTrigger>
+					<TabsTrigger value="receitas">
+						<ClipboardList className="h-4 w-4 min-h-4 min-w-4" />
+						RECEITAS
+					</TabsTrigger>
+				</TabsList>
+				<TabsContent value="producoes" className="flex w-full flex-col gap-3">
+					<ProductionsTab
+						query={productionsQuery}
+						onCreate={() => setNewProductionModalIsOpen(true)}
+						onEdit={(productionId) => setEditingProductionId(productionId)}
+						onComplete={(productionId) => handleCompleteProductionMutation({ productionId })}
+						completionIsPending={productionCompletionIsPending}
+					/>
+				</TabsContent>
+				<TabsContent value="receitas" className="flex w-full flex-col gap-3">
+					<RecipesTab query={recipesQuery} onCreate={() => setNewRecipeModalIsOpen(true)} onEdit={(recipeId) => setEditingRecipeId(recipeId)} />
+				</TabsContent>
 
-			{newProductionModalIsOpen ? (
-				<NewProduction
-					closeModal={() => setNewProductionModalIsOpen(false)}
-					callbacks={{ onMutate: handleProductionsOnMutate, onSettled: handleProductionsOnSettled }}
-				/>
-			) : null}
-			{editingProductionId ? (
-				<ControlProduction
-					productionId={editingProductionId}
-					closeModal={() => setEditingProductionId(null)}
-					callbacks={{ onMutate: handleProductionsOnMutate, onSettled: handleProductionsOnSettled }}
-				/>
-			) : null}
-			{newRecipeModalIsOpen ? (
-				<NewProductionRecipe
-					closeModal={() => setNewRecipeModalIsOpen(false)}
-					callbacks={{ onMutate: handleRecipesOnMutate, onSettled: handleRecipesOnSettled }}
-				/>
-			) : null}
-			{editingRecipeId ? (
-				<ControlProductionRecipe
-					productionRecipeId={editingRecipeId}
-					closeModal={() => setEditingRecipeId(null)}
-					callbacks={{ onMutate: handleRecipesOnMutate, onSettled: handleRecipesOnSettled }}
-				/>
-			) : null}
-		</Tabs>
+				{newProductionModalIsOpen ? (
+					<NewProduction
+						closeModal={() => setNewProductionModalIsOpen(false)}
+						callbacks={{ onMutate: handleProductionsOnMutate, onSettled: handleProductionsOnSettled }}
+					/>
+				) : null}
+				{editingProductionId ? (
+					<ControlProduction
+						productionId={editingProductionId}
+						closeModal={() => setEditingProductionId(null)}
+						callbacks={{ onMutate: handleProductionsOnMutate, onSettled: handleProductionsOnSettled }}
+					/>
+				) : null}
+				{newRecipeModalIsOpen ? (
+					<NewProductionRecipe
+						closeModal={() => setNewRecipeModalIsOpen(false)}
+						callbacks={{ onMutate: handleRecipesOnMutate, onSettled: handleRecipesOnSettled }}
+					/>
+				) : null}
+				{editingRecipeId ? (
+					<ControlProductionRecipe
+						productionRecipeId={editingRecipeId}
+						closeModal={() => setEditingRecipeId(null)}
+						callbacks={{ onMutate: handleRecipesOnMutate, onSettled: handleRecipesOnSettled }}
+					/>
+				) : null}
+			</Tabs>
+		</TooltipProvider>
 	);
 }
 
@@ -329,9 +329,7 @@ function ProductionCard({ production, onEdit, onComplete, completionIsPending }:
 			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
 				<div className="min-w-0">
 					<h1 className="text-xs font-bold tracking-tight lg:text-sm">{production.titulo}</h1>
-					{production.receita?.titulo ? (
-						<p className="line-clamp-1 text-[0.65rem] text-muted-foreground">{production.receita.titulo}</p>
-					) : null}
+					{production.receita?.titulo ? <p className="line-clamp-1 text-[0.65rem] text-muted-foreground">{production.receita.titulo}</p> : null}
 				</div>
 				<div className={cn("flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1", statusConfig.className)}>
 					{statusConfig.icon}
@@ -341,6 +339,7 @@ function ProductionCard({ production, onEdit, onComplete, completionIsPending }:
 
 			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
 				<div className="flex flex-wrap items-center gap-2">
+					<ValuationChips valores={production.valores} />
 					<div className="flex items-center gap-1">
 						<Package className="h-4 w-4 min-h-4 min-w-4" />
 						<span className="text-[0.65rem] font-medium uppercase tracking-tight text-muted-foreground">
@@ -410,6 +409,7 @@ function ProductionRecipeCard({ recipe, onEdit }: ProductionRecipeCardProps) {
 
 			<div className="flex w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center">
 				<div className="flex flex-wrap items-center gap-2">
+					<ValuationChips valores={recipe.valores} />
 					<div className="flex items-center gap-1">
 						<Package className="h-4 w-4 min-h-4 min-w-4" />
 						<span className="text-[0.65rem] font-medium uppercase tracking-tight text-muted-foreground">

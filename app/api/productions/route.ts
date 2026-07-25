@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
+import { getProductionPricingItems, getProductPricingMap, resolveProductionValuation } from "@/lib/productions/valuation";
 import { ProductionBaseSchema, ProductionInputSchema, ProductionOutputBaseSchema } from "@/schemas/productions";
 import { db } from "@/services/drizzle";
 import { productionInputs, productionOutputs, productionRecipes, productions, productVariants, products } from "@/services/drizzle/schema";
@@ -49,14 +50,27 @@ export type TGetProductionsInput = z.infer<typeof GetProductionsInputSchema>;
 export type TGetProductionByIdInput = Pick<TGetProductionsInput, "id">;
 export type TGetProductionsDefaultInput = Omit<TGetProductionsInput, "id">;
 
-const ProductionPayloadSchema = ProductionBaseSchema.omit({ organizacaoId: true, autorId: true, dataInsercao: true }).extend({
+// A valoração (custoTotal/retornoEsperado/dataSnapshotValores e os unitários por item) é congelada
+// pelo servidor na conclusão da produção — o cliente nunca a envia.
+const ProductionPayloadSchema = ProductionBaseSchema.omit({
+	organizacaoId: true,
+	autorId: true,
+	dataInsercao: true,
+	custoTotal: true,
+	retornoEsperado: true,
+	dataSnapshotValores: true,
+}).extend({
 	status: ProductionStatusEnum.default("RASCUNHO"),
 	origem: ProductionOriginEnum.default("MANUAL"),
 });
 
-const ProductionInputPayloadSchema = ProductionInputSchema.omit({ organizacaoId: true, producaoId: true });
+const ProductionInputPayloadSchema = ProductionInputSchema.omit({ organizacaoId: true, producaoId: true, custoUnitario: true });
 
-const ProductionOutputPayloadBaseSchema = ProductionOutputBaseSchema.omit({ organizacaoId: true, producaoId: true });
+const ProductionOutputPayloadBaseSchema = ProductionOutputBaseSchema.omit({
+	organizacaoId: true,
+	producaoId: true,
+	valorUnitarioVenda: true,
+});
 
 const ProductionOutputPayloadSchema = ProductionOutputPayloadBaseSchema.superRefine((value, ctx) => {
 	if (value.prazoValidadeValor != null && !value.prazoValidadeMedida) {
@@ -237,9 +251,16 @@ async function getProductions({ input, session }: { input: TGetProductionsInput;
 		});
 		if (!production) throw new createHttpError.NotFound("Produção não encontrada.");
 
+		// Produção concluída já traz o snapshot — `getProductionPricingItems` devolve lista vazia
+		// nesse caso e a consulta de preços é dispensada.
+		const pricingMap = await getProductPricingMap({ organizationId, items: getProductionPricingItems(production) });
+
 		return {
 			data: {
-				byId: production,
+				byId: {
+					...production,
+					valores: resolveProductionValuation({ production, pricingMap }),
+				},
 				default: undefined,
 			},
 			message: "Produção encontrada com sucesso.",
@@ -274,11 +295,21 @@ async function getProductions({ input, session }: { input: TGetProductionsInput;
 
 	const productionsMatched = Number(totalResult[0]?.total ?? 0);
 
+	// Uma única leitura de preços para toda a página, e só para as produções ainda sem snapshot.
+	const pricingMap = await getProductPricingMap({
+		organizationId,
+		items: productionsResult.flatMap(getProductionPricingItems),
+	});
+	const productionsWithValuation = productionsResult.map((production) => ({
+		...production,
+		valores: resolveProductionValuation({ production, pricingMap }),
+	}));
+
 	return {
 		data: {
 			byId: undefined,
 			default: {
-				productions: productionsResult,
+				productions: productionsWithValuation,
 				productionsMatched,
 				totalPages: Math.max(1, Math.ceil(productionsMatched / PAGE_SIZE)),
 			},
