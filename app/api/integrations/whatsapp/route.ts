@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { type TChatDetailsForAgentResponse, getAgentResponse } from "@/lib/ai/ai-agent";
 import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProcessing, handleAIVideoProcessing } from "@/lib/ai/ai-media-processing";
+import { lockConnectedWhatsappPhone, mergeMessageTemplatePhoneMetadataSql } from "@/lib/db-utils";
 import { downloadAndStoreWhatsappMedia } from "@/lib/files-storage/chat-media";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { updateInteractionDeliveryState } from "@/lib/interactions/delivery-state";
@@ -32,7 +33,11 @@ import {
 	type TSmbAppStateSyncEvent,
 	upsertClientsFromSmbAppStateSync,
 } from "@/lib/whatsapp/smb-contacts-sync";
-import { importWhatsappMessageHistoryEvents, parseWhatsappMessageHistoryWebhook, type TWhatsappMessageHistoryEvent } from "@/lib/whatsapp/smb-message-history-sync";
+import {
+	importWhatsappMessageHistoryEvents,
+	parseWhatsappMessageHistoryWebhook,
+	type TWhatsappMessageHistoryEvent,
+} from "@/lib/whatsapp/smb-message-history-sync";
 import { formatPhoneAsWhatsappId } from "@/lib/whatsapp/utils";
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
 import type { TMessageTemplateMetadata } from "@/schemas/message-templates";
@@ -43,7 +48,7 @@ import { interactions } from "@/services/drizzle/schema/interactions";
 import { messageTemplates } from "@/services/drizzle/schema/message-templates";
 import { whatsappConnectionPhones } from "@/services/drizzle/schema/whatsapp-connections";
 import { supabaseClient } from "@/services/supabase";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN;
@@ -235,27 +240,28 @@ async function updateUniversalTemplatePhoneMetadata(
 ): Promise<void> {
 	const templates = await findUniversalTemplatesByMetaTemplateId(messageTemplateId);
 	for (const template of templates) {
-		const nextPhoneMetadata = Object.fromEntries(
-			Object.entries(template.metadados.porNumeroTelefone).map(([phoneId, metadata]) => [
-				phoneId,
-				metadata.idExterno === messageTemplateId
-					? {
-							...metadata,
-							...(update.status ? { status: update.status } : {}),
-							...(update.qualidade ? { qualidade: update.qualidade } : {}),
-						}
-					: metadata,
-			]),
+		// Apenas as entradas do template notificado pela Meta são regravadas; as demais chaves ficam com o
+		// valor que estiver no banco no momento do UPDATE, e o modo `existing-only` impede que um telefone
+		// desconectado em paralelo retorne através do snapshot lido acima.
+		const changedPhoneMetadata = Object.fromEntries(
+			Object.entries(template.metadados.porNumeroTelefone)
+				.filter(([, metadata]) => metadata.idExterno === messageTemplateId)
+				.map(([phoneId, metadata]) => [
+					phoneId,
+					{
+						...metadata,
+						...(update.status ? { status: update.status } : {}),
+						...(update.qualidade ? { qualidade: update.qualidade } : {}),
+					},
+				]),
 		) satisfies TMessageTemplateMetadata["porNumeroTelefone"];
+		if (Object.keys(changedPhoneMetadata).length === 0) continue;
 
 		await db
 			.update(messageTemplates)
 			.set({
-				metadados: {
-					...template.metadados,
-					porNumeroTelefone: nextPhoneMetadata,
-				},
-				alerta: update.rejeicao ?? template.alerta,
+				metadados: mergeMessageTemplatePhoneMetadataSql({ entries: changedPhoneMetadata, mode: "existing-only" }),
+				...(update.rejeicao ? { alerta: update.rejeicao } : {}),
 				dataAtualizacao: new Date(),
 			})
 			.where(eq(messageTemplates.id, template.id));
@@ -302,19 +308,33 @@ async function syncUniversalTemplateComponentsFromMeta(messageTemplateId: string
 					connectionId: phoneId,
 					metaTemplate,
 				});
+				const phoneMetadata = patch.metadados.porNumeroTelefone[phoneId];
+				if (!phoneMetadata) continue;
 
-				await db
-					.update(messageTemplates)
-					.set({
-						nome: patch.nome,
-						categoria: patch.categoria,
-						linguagem: patch.linguagem,
-						conteudo: patch.conteudo,
-						metadados: patch.metadados,
-						alerta: patch.alerta,
-						dataAtualizacao: new Date(),
-					})
-					.where(eq(messageTemplates.id, template.id));
+				// A chamada à Meta acima abre uma janela entre a leitura do template e a gravação: a mescla
+				// dentro do UPDATE e a condição do telefone impedem que uma desconexão ocorrida nesse intervalo
+				// seja desfeita.
+				await db.transaction(async (tx) => {
+					const connected = await lockConnectedWhatsappPhone({
+						trx: tx,
+						organizationId: template.organizacaoId,
+						phoneId,
+					});
+					if (!connected) return;
+
+					await tx
+						.update(messageTemplates)
+						.set({
+							nome: patch.nome,
+							categoria: patch.categoria,
+							linguagem: patch.linguagem,
+							conteudo: patch.conteudo,
+							metadados: mergeMessageTemplatePhoneMetadataSql({ entries: { [phoneId]: phoneMetadata }, mode: "replace" }),
+							alerta: patch.alerta,
+							dataAtualizacao: new Date(),
+						})
+						.where(and(eq(messageTemplates.id, template.id), eq(messageTemplates.organizacaoId, template.organizacaoId)));
+				});
 			} catch (error) {
 				console.error("[WHATSAPP_WEBHOOK] Failed to sync universal template components:", {
 					messageTemplateId,

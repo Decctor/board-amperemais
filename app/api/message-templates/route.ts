@@ -1,10 +1,11 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { MessageTemplateContentSchema, MessageTemplateMetadataSchema, MessageTemplateSchema } from "@/schemas/message-templates";
+import { lockConnectedWhatsappPhone, mergeMessageTemplatePhoneMetadataSql } from "@/lib/db-utils";
+import { MessageTemplateSchema } from "@/schemas/message-templates";
 import { db } from "@/services/drizzle";
 import { messageTemplates } from "@/services/drizzle/schema";
-import { and, count, eq, sql, type SQL } from "drizzle-orm";
+import { and, count, eq, type SQL } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -12,8 +13,10 @@ import z from "zod";
 import {
 	applyWhatsappSubmissionResultToMetadata,
 	assertWhatsappValidation,
+	buildWhatsappSubmissionPhoneMetadata,
 	createEmptyMessageTemplateMetadata,
 	deleteMessageTemplateFromMetaPhones,
+	getOrganizationWhatsappPhoneIds,
 	getOrganizationWhatsappPhones,
 	normalizeContentForStorage,
 	submitMessageTemplateToWhatsappPhone,
@@ -21,11 +24,44 @@ import {
 } from "./_lib";
 import { createSimplifiedSearchCondition } from "@/lib/search";
 
+// `metadados` é derivado das submissões à Meta e dos webhooks, nunca do cliente: aceitá-lo no payload
+// permitiria que uma aba aberta antes de uma desconexão regravasse entradas de telefones já removidos.
 const CreateMessageTemplateInputSchema = z.object({
-	messageTemplate: MessageTemplateSchema.omit({ autorId: true, dataInsercao: true }),
+	messageTemplate: MessageTemplateSchema.omit({ autorId: true, dataInsercao: true, metadados: true }),
 	submitWhatsapp: z.boolean().optional().default(true),
 });
 export type TCreateMessageTemplateInput = z.infer<typeof CreateMessageTemplateInputSchema>;
+
+async function persistWhatsappSubmissionPhoneMetadata({
+	templateId,
+	organizationId,
+	phoneId,
+	idExterno,
+}: {
+	templateId: string;
+	organizationId: string;
+	phoneId: string;
+	idExterno: string | null;
+}) {
+	return db.transaction(async (tx) => {
+		const connected = await lockConnectedWhatsappPhone({ trx: tx, organizationId, phoneId });
+		if (!connected) return false;
+
+		const updatedRows = await tx
+			.update(messageTemplates)
+			.set({
+				metadados: mergeMessageTemplatePhoneMetadataSql({
+					entries: { [phoneId]: buildWhatsappSubmissionPhoneMetadata(idExterno) },
+					mode: "replace",
+				}),
+				dataAtualizacao: new Date(),
+			})
+			.where(and(eq(messageTemplates.id, templateId), eq(messageTemplates.organizacaoId, organizationId)))
+			.returning({ id: messageTemplates.id });
+
+		return updatedRows.length > 0;
+	});
+}
 
 async function createMessageTemplate({ input, session }: { input: TCreateMessageTemplateInput; session: TAuthUserSession }) {
 	const organizationId = session.membership?.organizacao.id;
@@ -42,7 +78,7 @@ async function createMessageTemplate({ input, session }: { input: TCreateMessage
 			nome: input.messageTemplate.nome,
 			status: input.messageTemplate.status,
 			alerta: input.messageTemplate.alerta,
-			metadados: input.messageTemplate.metadados ?? createEmptyMessageTemplateMetadata(),
+			metadados: createEmptyMessageTemplateMetadata(),
 			conteudo: content,
 			linguagem: input.messageTemplate.linguagem,
 			categoria: input.messageTemplate.categoria,
@@ -76,19 +112,25 @@ async function createMessageTemplate({ input, session }: { input: TCreateMessage
 				phoneId: phone.id,
 				idExterno: result.idExterno,
 			});
+			const persisted = await persistWhatsappSubmissionPhoneMetadata({
+				templateId: insertedTemplate.id,
+				organizationId,
+				phoneId: phone.id,
+				idExterno: result.idExterno,
+			});
+			if (!persisted) {
+				phoneResults.push({
+					...result,
+					success: false as const,
+					message: "O telefone foi desconectado durante a criação do template.",
+				});
+				continue;
+			}
 			phoneResults.push(result);
 		} catch (error) {
 			phoneResults.push({ phoneId: phone.id, success: false, idExterno: null, message: error instanceof Error ? error.message : "Erro desconhecido" });
 		}
 	}
-
-	await db
-		.update(messageTemplates)
-		.set({
-			metadados: nextMetadata,
-			dataAtualizacao: new Date(),
-		})
-		.where(eq(messageTemplates.id, insertedTemplate.id));
 
 	const successful = phoneResults.filter((result) => result.success).length;
 	const failed = phoneResults.length - successful;
@@ -115,7 +157,7 @@ async function createMessageTemplateRoute(request: NextRequest) {
 
 const UpdateMessageTemplateInputSchema = z.object({
 	messageTemplateId: z.string({ required_error: "ID do template não informado." }),
-	messageTemplate: MessageTemplateSchema.omit({ autorId: true, dataInsercao: true }).partial(),
+	messageTemplate: MessageTemplateSchema.omit({ autorId: true, dataInsercao: true, metadados: true }).partial(),
 	submitWhatsapp: z.boolean().optional().default(true),
 });
 export type TUpdateMessageTemplateInput = z.infer<typeof UpdateMessageTemplateInputSchema>;
@@ -140,14 +182,16 @@ async function updateMessageTemplate({ input, session }: { input: TUpdateMessage
 		status: input.messageTemplate.status ?? existingTemplate.status,
 		alerta: input.messageTemplate.alerta === undefined ? existingTemplate.alerta : input.messageTemplate.alerta,
 		conteudo: content,
-		metadados: input.messageTemplate.metadados ?? existingTemplate.metadados,
 		linguagem: input.messageTemplate.linguagem ?? existingTemplate.linguagem,
 		categoria: input.messageTemplate.categoria ?? existingTemplate.categoria,
 		dataAtualizacao: new Date(),
 	};
 	const updatedLocal = { ...existingTemplate, ...updateSet };
 
-	await db.update(messageTemplates).set(updateSet).where(eq(messageTemplates.id, existingTemplate.id));
+	await db
+		.update(messageTemplates)
+		.set(updateSet)
+		.where(and(eq(messageTemplates.id, existingTemplate.id), eq(messageTemplates.organizacaoId, organizationId)));
 
 	if (!input.submitWhatsapp || (!input.messageTemplate.conteudo && !input.messageTemplate.categoria)) {
 		return {
@@ -169,16 +213,25 @@ async function updateMessageTemplate({ input, session }: { input: TUpdateMessage
 				mode: "upsert",
 			});
 			nextMetadata = applyWhatsappSubmissionResultToMetadata({ metadata: nextMetadata, phoneId: phone.id, idExterno: result.idExterno });
+			const persisted = await persistWhatsappSubmissionPhoneMetadata({
+				templateId: existingTemplate.id,
+				organizationId,
+				phoneId: phone.id,
+				idExterno: result.idExterno,
+			});
+			if (!persisted) {
+				phoneResults.push({
+					...result,
+					success: false as const,
+					message: "O telefone foi desconectado durante a atualização do template.",
+				});
+				continue;
+			}
 			phoneResults.push(result);
 		} catch (error) {
 			phoneResults.push({ phoneId: phone.id, success: false, idExterno: null, message: error instanceof Error ? error.message : "Erro desconhecido" });
 		}
 	}
-
-	await db
-		.update(messageTemplates)
-		.set({ metadados: nextMetadata, dataAtualizacao: new Date() })
-		.where(eq(messageTemplates.id, existingTemplate.id));
 
 	const successful = phoneResults.filter((result) => result.success).length;
 	const failed = phoneResults.length - successful;
@@ -266,12 +319,18 @@ async function getMessageTemplates({ input, session }: { input: TGetMessageTempl
 	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	if (input.id) {
-		const template = await db.query.messageTemplates.findFirst({
-			where: and(eq(messageTemplates.id, input.id), eq(messageTemplates.organizacaoId, organizationId)),
-			with: { autor: { columns: { id: true, nome: true, avatarUrl: true } } },
-		});
+		const [template, connectedPhoneIds] = await Promise.all([
+			db.query.messageTemplates.findFirst({
+				where: and(eq(messageTemplates.id, input.id), eq(messageTemplates.organizacaoId, organizationId)),
+				with: { autor: { columns: { id: true, nome: true, avatarUrl: true } } },
+			}),
+			getOrganizationWhatsappPhoneIds(organizationId),
+		]);
 		if (!template) throw new createHttpError.NotFound("Template não encontrado.");
-		return { data: { byId: withComputedMessageTemplateStatus(template), default: null }, message: "Template encontrado com sucesso." };
+		return {
+			data: { byId: withComputedMessageTemplateStatus(template, connectedPhoneIds), default: null },
+			message: "Template encontrado com sucesso.",
+		};
 	}
 
 	const PAGE_SIZE = 25;
@@ -281,26 +340,27 @@ async function getMessageTemplates({ input, session }: { input: TGetMessageTempl
 		conditions.push(createSimplifiedSearchCondition(messageTemplates.nome, input.search));
 	}
 
-	const templatesMatchedResult = await db
-		.select({ count: count() })
-		.from(messageTemplates)
-		.where(and(...conditions));
-
+	const [templatesMatchedResult, templates, connectedPhoneIds] = await Promise.all([
+		db
+			.select({ count: count() })
+			.from(messageTemplates)
+			.where(and(...conditions)),
+		db.query.messageTemplates.findMany({
+			where: and(...conditions),
+			with: { autor: { columns: { id: true, nome: true, avatarUrl: true } } },
+			orderBy: (fields, { desc }) => desc(fields.dataInsercao),
+			offset: PAGE_SIZE * (page - 1),
+			limit: PAGE_SIZE,
+		}),
+		getOrganizationWhatsappPhoneIds(organizationId),
+	]);
 	const templatesMatchedCount = templatesMatchedResult[0].count as number;
-
-	const templates = await db.query.messageTemplates.findMany({
-		where: and(...conditions),
-		with: { autor: { columns: { id: true, nome: true, avatarUrl: true } } },
-		orderBy: (fields, { desc }) => desc(fields.dataInsercao),
-		offset: PAGE_SIZE * (page - 1),
-		limit: PAGE_SIZE,
-	});
 
 	return {
 		data: {
 			byId: null,
 			default: {
-				messageTemplates: templates.map(withComputedMessageTemplateStatus),
+				messageTemplates: templates.map((template) => withComputedMessageTemplateStatus(template, connectedPhoneIds)),
 				messageTemplatesMatched: templatesMatchedCount,
 				totalPages: Math.ceil(templatesMatchedCount / PAGE_SIZE),
 			},

@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { lockConnectedWhatsappPhone, mergeMessageTemplatePhoneMetadataSql } from "@/lib/db-utils";
 import { db } from "@/services/drizzle";
 import { messageTemplates } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
@@ -38,6 +39,7 @@ async function syncMessageTemplates({ input, session }: { input: TSyncMessageTem
 		: await db.query.messageTemplates.findMany({
 				where: eq(messageTemplates.organizacaoId, organizationId),
 			});
+	const templateStateById = new Map(templates.map((template) => [template.id, template]));
 
 	if (input.messageTemplateId && templates.length === 0) throw new createHttpError.NotFound("Template não encontrado.");
 
@@ -96,7 +98,8 @@ async function syncMessageTemplates({ input, session }: { input: TSyncMessageTem
 			continue;
 		}
 
-		for (const template of templates) {
+		for (const templateSnapshot of templates) {
+			const template = templateStateById.get(templateSnapshot.id) ?? templateSnapshot;
 			const metadataForPhone = template.metadados.porNumeroTelefone[phone.id];
 			const remote = resolveRemoteTemplate({ indexes: remoteIndexes, template, metadataForPhone });
 
@@ -112,28 +115,56 @@ async function syncMessageTemplates({ input, session }: { input: TSyncMessageTem
 					connectionId: phone.id,
 					metaTemplate: remote,
 				});
+				const phoneMetadata = patch.metadados.porNumeroTelefone[phone.id];
+				if (!phoneMetadata) throw new Error("Patch de sincronização não produziu metadados para o telefone.");
+				const dataAtualizacao = new Date();
 
-				await db
-					.update(messageTemplates)
-					.set({
-						nome: patch.nome,
-						categoria: patch.categoria,
-						linguagem: patch.linguagem,
-						conteudo: patch.conteudo,
-						metadados: patch.metadados,
-						alerta: patch.alerta,
-						dataAtualizacao: new Date(),
-					})
-					.where(eq(messageTemplates.id, template.id));
+				// A mescla dos metadados acontece dentro do UPDATE, sobre o valor atual da linha, e a condição
+				// do telefone descarta a gravação caso ele tenha sido desconectado durante a sincronização.
+				const persisted = await db.transaction(async (tx) => {
+					const connected = await lockConnectedWhatsappPhone({
+						trx: tx,
+						organizationId,
+						phoneId: phone.id,
+					});
+					if (!connected) return false;
+
+					const updatedRows = await tx
+						.update(messageTemplates)
+						.set({
+							nome: patch.nome,
+							categoria: patch.categoria,
+							linguagem: patch.linguagem,
+							conteudo: patch.conteudo,
+							metadados: mergeMessageTemplatePhoneMetadataSql({ entries: { [phone.id]: phoneMetadata }, mode: "replace" }),
+							alerta: patch.alerta,
+							dataAtualizacao,
+						})
+						.where(and(eq(messageTemplates.id, template.id), eq(messageTemplates.organizacaoId, organizationId)))
+						.returning({ id: messageTemplates.id });
+					return updatedRows.length > 0;
+				});
+
+				if (!persisted) {
+					skipped += 1;
+					console.warn(
+						`${SYNC_LOG_PREFIX} Telefone desconectado durante a sincronização; template "${template.nome}" não atualizado para ${formatPhoneForLog(phone)}.`,
+					);
+					details.push({ telefoneId: phone.id, telefoneNumero: phone.numero, templateName: template.nome, action: "skipped" });
+					continue;
+				}
+
+				templateStateById.set(template.id, {
+					...template,
+					...patch,
+					dataAtualizacao,
+				});
 				updated += 1;
 				details.push({ telefoneId: phone.id, telefoneNumero: phone.numero, templateName: template.nome, action: "updated" });
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
 				errors += 1;
-				console.error(
-					`${SYNC_LOG_PREFIX} Falha ao sincronizar template "${template.nome}" para ${formatPhoneForLog(phone)}:`,
-					error,
-				);
+				console.error(`${SYNC_LOG_PREFIX} Falha ao sincronizar template "${template.nome}" para ${formatPhoneForLog(phone)}:`, error);
 				details.push({
 					telefoneId: phone.id,
 					telefoneNumero: phone.numero,

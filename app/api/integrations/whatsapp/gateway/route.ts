@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { type TChatDetailsForAgentResponse, getAgentResponse } from "@/lib/ai/ai-agent";
 import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProcessing, handleAIVideoProcessing } from "@/lib/ai/ai-media-processing";
+import { lockConnectedWhatsappPhone, mergeMessageTemplatePhoneMetadataSql, missingMessageTemplatePhoneMetadataCondition } from "@/lib/db-utils";
 import { uploadChatMedia } from "@/lib/files-storage/chat-media";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { updateInteractionDeliveryState } from "@/lib/interactions/delivery-state";
@@ -15,7 +16,7 @@ import { interactions } from "@/services/drizzle/schema/interactions";
 import { messageTemplates } from "@/services/drizzle/schema/message-templates";
 import { supabaseClient } from "@/services/supabase";
 import { waitUntil } from "@vercel/functions";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 const API_SECRET = process.env.INTERNAL_WHATSAPP_GATEWAY_API_SECRET;
@@ -182,38 +183,31 @@ async function handleConnectionUpdate(body: Extract<WebhookBody, { event: "conne
 	await db.update(whatsappConnections).set(updateData).where(eq(whatsappConnections.id, connection.id));
 
 	if (data.status === "connected") {
-		const orgTemplates = await db.query.messageTemplates.findMany({
-			where: (fields, { eq }) => eq(fields.organizacaoId, connection.organizacaoId),
-		});
+		// Um UPDATE por telefone cobre todos os templates da organização de uma vez, mesclando apenas a chave
+		// daquele telefone sobre o valor atual da linha. As condições restringem a escrita aos templates que
+		// ainda não têm a entrada e aos telefones que continuam conectados, de modo que uma desconexão
+		// concorrente não seja desfeita por este webhook.
+		for (const phone of connection.telefones) {
+			await db.transaction(async (tx) => {
+				const connected = await lockConnectedWhatsappPhone({
+					trx: tx,
+					organizationId: connection.organizacaoId,
+					phoneId: phone.id,
+				});
+				if (!connected) return;
 
-		const syncTemplateTasks = orgTemplates.map(async (template) => {
-			const nextPhoneMetadata = { ...template.metadados.porNumeroTelefone };
-			let changed = false;
-
-			for (const phone of connection.telefones) {
-				if (nextPhoneMetadata[phone.id]) continue;
-				nextPhoneMetadata[phone.id] = {
-					idExterno: "",
-					status: "APROVADO",
-					qualidade: "ALTA",
-				};
-				changed = true;
-			}
-
-			if (!changed) return;
-
-			await db
-				.update(messageTemplates)
-				.set({
-					metadados: {
-						...template.metadados,
-						porNumeroTelefone: nextPhoneMetadata,
-					},
-					dataAtualizacao: new Date(),
-				})
-				.where(eq(messageTemplates.id, template.id));
-		});
-		await Promise.all(syncTemplateTasks);
+				await tx
+					.update(messageTemplates)
+					.set({
+						metadados: mergeMessageTemplatePhoneMetadataSql({
+							entries: { [phone.id]: { idExterno: "", status: "APROVADO", qualidade: "ALTA" } },
+							mode: "keep",
+						}),
+						dataAtualizacao: new Date(),
+					})
+					.where(and(eq(messageTemplates.organizacaoId, connection.organizacaoId), missingMessageTemplatePhoneMetadataCondition(phone.id)));
+			});
+		}
 	}
 	console.log("[INTERNAL_WHATSAPP_WEBHOOK] Connection status updated:", {
 		sessionId,

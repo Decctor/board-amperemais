@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { lockConnectedWhatsappPhone, mergeMessageTemplatePhoneMetadataSql, removeMessageTemplatePhoneMetadataSql } from "@/lib/db-utils";
 import { db } from "@/services/drizzle";
 import { messageTemplates } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
@@ -9,7 +10,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import z from "zod";
 import {
-	applyWhatsappSubmissionResultToMetadata,
+	buildWhatsappSubmissionPhoneMetadata,
 	deleteMessageTemplateFromMetaPhones,
 	getOrganizationWhatsappPhones,
 	submitMessageTemplateToWhatsappPhone,
@@ -56,18 +57,27 @@ async function createMessageTemplatePhone({ input, session }: { input: TCreateMe
 		organizationId,
 		mode: "create",
 	});
-	const nextMetadata = applyWhatsappSubmissionResultToMetadata({
-		metadata: template.metadados,
-		phoneId: phone.id,
-		idExterno: result.idExterno,
+	// A submissão à Meta acima abre uma janela entre a leitura do template e a gravação: mesclar apenas a
+	// chave deste telefone, sobre o valor atual da linha, evita reintroduzir telefones desconectados nesse
+	// intervalo.
+	const persisted = await db.transaction(async (tx) => {
+		const connected = await lockConnectedWhatsappPhone({ trx: tx, organizationId, phoneId: phone.id });
+		if (!connected) return false;
+
+		const updatedRows = await tx
+			.update(messageTemplates)
+			.set({
+				metadados: mergeMessageTemplatePhoneMetadataSql({
+					entries: { [phone.id]: buildWhatsappSubmissionPhoneMetadata(result.idExterno) },
+					mode: "replace",
+				}),
+				dataAtualizacao: new Date(),
+			})
+			.where(and(eq(messageTemplates.id, template.id), eq(messageTemplates.organizacaoId, organizationId)))
+			.returning({ id: messageTemplates.id });
+		return updatedRows.length > 0;
 	});
-	await db
-		.update(messageTemplates)
-		.set({
-			metadados: nextMetadata,
-			dataAtualizacao: new Date(),
-		})
-		.where(eq(messageTemplates.id, template.id));
+	if (!persisted) throw new createHttpError.Conflict("O telefone foi desconectado durante a vinculação do template.");
 
 	return { data: result, message: "Template vinculado ao telefone com sucesso." };
 }
@@ -82,20 +92,31 @@ async function createMessageTemplatePhoneRoute(request: NextRequest) {
 }
 
 async function syncMessageTemplatePhone({ input, session }: { input: TSyncMessageTemplatePhoneInput; session: TAuthUserSession }) {
-	const { template, phone } = await getTemplateAndPhone({ input, session });
+	const { organizationId, template, phone } = await getTemplateAndPhone({ input, session });
 	const patch = await syncMessageTemplateFromMetaForPhone({ template, phone });
-	await db
-		.update(messageTemplates)
-		.set({
-			nome: patch.nome,
-			categoria: patch.categoria,
-			linguagem: patch.linguagem,
-			conteudo: patch.conteudo,
-			metadados: patch.metadados,
-			alerta: patch.alerta,
-			dataAtualizacao: new Date(),
-		})
-		.where(eq(messageTemplates.id, template.id));
+	const phoneMetadata = patch.metadados.porNumeroTelefone[phone.id];
+	if (!phoneMetadata) throw new createHttpError.InternalServerError("Patch de sincronização não produziu metadados para o telefone.");
+
+	const persisted = await db.transaction(async (tx) => {
+		const connected = await lockConnectedWhatsappPhone({ trx: tx, organizationId, phoneId: phone.id });
+		if (!connected) return false;
+
+		const updatedRows = await tx
+			.update(messageTemplates)
+			.set({
+				nome: patch.nome,
+				categoria: patch.categoria,
+				linguagem: patch.linguagem,
+				conteudo: patch.conteudo,
+				metadados: mergeMessageTemplatePhoneMetadataSql({ entries: { [phone.id]: phoneMetadata }, mode: "replace" }),
+				alerta: patch.alerta,
+				dataAtualizacao: new Date(),
+			})
+			.where(and(eq(messageTemplates.id, template.id), eq(messageTemplates.organizacaoId, organizationId)))
+			.returning({ id: messageTemplates.id });
+		return updatedRows.length > 0;
+	});
+	if (!persisted) throw new createHttpError.Conflict("O telefone foi desconectado durante a sincronização.");
 
 	return { data: { synced: true as const, templateName: patch.nome }, message: "Template sincronizado com a Meta." };
 }
@@ -110,19 +131,15 @@ async function syncMessageTemplatePhoneRoute(request: NextRequest) {
 }
 
 async function deleteMessageTemplatePhone({ input, session }: { input: TDeleteMessageTemplatePhoneInput; session: TAuthUserSession }) {
-	const { template, phone } = await getTemplateAndPhone({ input, session });
+	const { organizationId, template, phone } = await getTemplateAndPhone({ input, session });
 	const metaResults = input.deleteFromMeta ? await deleteMessageTemplateFromMetaPhones({ template, phones: [phone] }) : [];
-	const { [phone.id]: _removed, ...remainingMetadata } = template.metadados.porNumeroTelefone;
 	await db
 		.update(messageTemplates)
 		.set({
-			metadados: {
-				...template.metadados,
-				porNumeroTelefone: remainingMetadata,
-			},
+			metadados: removeMessageTemplatePhoneMetadataSql(phone.id),
 			dataAtualizacao: new Date(),
 		})
-		.where(eq(messageTemplates.id, template.id));
+		.where(and(eq(messageTemplates.id, template.id), eq(messageTemplates.organizacaoId, organizationId)));
 
 	return { data: { deleted: true as const, metaResults }, message: "Vínculo do template com o telefone removido." };
 }

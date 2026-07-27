@@ -181,17 +181,25 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks }: Templat
 		},
 	});
 
+	const whatsappConnectionPhonesById = useMemo(
+		() => new Map(whatsappConnectionPhones.map((phone) => [phone.phoneId, phone])),
+		[whatsappConnectionPhones],
+	);
 	const byPhone = useMemo(
 		() =>
-			Object.entries(template.metadados?.porNumeroTelefone ?? {}).map(([phoneId, phoneData]) => {
-				const phoneInfo = whatsappConnectionPhones.find((phone) => phone.phoneId === phoneId);
-				return {
-					id: phoneId,
-					numero: phoneInfo?.phoneNumber ?? "NÃO ENCONTRADO",
-					...phoneData,
-				};
+			Object.entries(template.metadados?.porNumeroTelefone ?? {}).flatMap(([phoneId, phoneData]) => {
+				const phoneInfo = whatsappConnectionPhonesById.get(phoneId);
+				return phoneInfo
+					? [
+							{
+								id: phoneId,
+								numero: phoneInfo.phoneNumber,
+								...phoneData,
+							},
+						]
+					: [];
 			}),
-		[template.metadados?.porNumeroTelefone, whatsappConnectionPhones],
+		[template.metadados?.porNumeroTelefone, whatsappConnectionPhonesById],
 	);
 	const byPhoneApprovedCount = useMemo(() => byPhone.filter((phone) => phone.status === "APROVADO").length, [byPhone]);
 

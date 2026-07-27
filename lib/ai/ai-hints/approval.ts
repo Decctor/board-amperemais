@@ -1,12 +1,14 @@
 import {
 	applyWhatsappSubmissionResultToMetadata,
 	assertWhatsappValidation,
+	buildWhatsappSubmissionPhoneMetadata,
 	createEmptyMessageTemplateMetadata,
 	getOrganizationWhatsappPhones,
 	normalizeContentForStorage,
 	submitMessageTemplateToWhatsappPhone,
 } from "@/app/api/message-templates/_lib";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { lockConnectedWhatsappPhone, mergeMessageTemplatePhoneMetadataSql } from "@/lib/db-utils";
 import {
 	getOrganizationWeeklyCampaignLimit,
 	validateCampaignCashbackGeneration,
@@ -127,6 +129,35 @@ async function createTemplateRegistry({
 				phoneId: phone.id,
 				idExterno: result.idExterno,
 			});
+			const persisted = await db.transaction(async (tx) => {
+				const connected = await lockConnectedWhatsappPhone({
+					trx: tx,
+					organizationId,
+					phoneId: phone.id,
+				});
+				if (!connected) return false;
+
+				const updatedRows = await tx
+					.update(messageTemplates)
+					.set({
+						metadados: mergeMessageTemplatePhoneMetadataSql({
+							entries: { [phone.id]: buildWhatsappSubmissionPhoneMetadata(result.idExterno) },
+							mode: "replace",
+						}),
+						dataAtualizacao: new Date(),
+					})
+					.where(and(eq(messageTemplates.id, insertedTemplate.id), eq(messageTemplates.organizacaoId, organizationId)))
+					.returning({ id: messageTemplates.id });
+				return updatedRows.length > 0;
+			});
+			if (!persisted) {
+				phoneResults.push({
+					telefoneId: phone.id,
+					whatsappTemplateId: result.idExterno,
+					error: "O telefone foi desconectado durante a criação do template.",
+				});
+				continue;
+			}
 			phoneResults.push({
 				telefoneId: phone.id,
 				whatsappTemplateId: result.idExterno,
@@ -141,14 +172,6 @@ async function createTemplateRegistry({
 			});
 		}
 	}
-
-	await db
-		.update(messageTemplates)
-		.set({
-			metadados: nextMetadata,
-			dataAtualizacao: new Date(),
-		})
-		.where(eq(messageTemplates.id, insertedTemplate.id));
 
 	return {
 		templateId: insertedTemplate.id,

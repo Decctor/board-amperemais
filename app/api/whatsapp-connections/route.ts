@@ -1,8 +1,9 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { removeMessageTemplatePhoneMetadata } from "@/lib/db-utils";
 import { db } from "@/services/drizzle";
-import { whatsappConnections } from "@/services/drizzle/schema/whatsapp-connections";
+import { whatsappConnectionPhones, whatsappConnections } from "@/services/drizzle/schema/whatsapp-connections";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -26,7 +27,7 @@ async function getWhatsappConnection({ session }: { session: TAuthUserSession })
 
 export type TGetWhatsappConnectionsOutput = Awaited<ReturnType<typeof getWhatsappConnection>>;
 
-async function getWhatsappConnectionRoute(req: NextRequest) {
+async function getWhatsappConnectionRoute(_req: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para acessar esse recurso.");
 
@@ -38,14 +39,33 @@ async function deleteWhatsappConnection({ input, session }: { input: string; ses
 	const userOrgId = session.membership?.organizacao.id;
 
 	if (!userOrgId) throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização para deletar a conexão do WhatsApp.");
-	const deletedWhatsappConnection = await db
-		.delete(whatsappConnections)
-		.where(and(eq(whatsappConnections.id, input), eq(whatsappConnections.organizacaoId, userOrgId)))
-		.returning({
-			id: whatsappConnections.id,
+	const deletedWhatsappConnectionId = await db.transaction(async (tx) => {
+		const connection = await tx
+			.select({ id: whatsappConnections.id })
+			.from(whatsappConnections)
+			.where(and(eq(whatsappConnections.id, input), eq(whatsappConnections.organizacaoId, userOrgId)))
+			.limit(1);
+		if (!connection[0]) throw new createHttpError.NotFound("Conexão do WhatsApp não encontrada.");
+
+		const phones = await tx
+			.select({ id: whatsappConnectionPhones.id })
+			.from(whatsappConnectionPhones)
+			.where(eq(whatsappConnectionPhones.conexaoId, connection[0].id));
+
+		const deletedWhatsappConnection = await tx
+			.delete(whatsappConnections)
+			.where(and(eq(whatsappConnections.id, connection[0].id), eq(whatsappConnections.organizacaoId, userOrgId)))
+			.returning({ id: whatsappConnections.id });
+		const deletedId = deletedWhatsappConnection[0]?.id;
+		if (!deletedId) throw new createHttpError.NotFound("Conexão do WhatsApp não encontrada.");
+
+		await removeMessageTemplatePhoneMetadata({
+			trx: tx,
+			organizationId: userOrgId,
+			phoneIds: phones.map((phone) => phone.id),
 		});
-	const deletedWhatsappConnectionId = deletedWhatsappConnection[0]?.id;
-	if (!deletedWhatsappConnectionId) throw new createHttpError.NotFound("Conexão do WhatsApp não encontrada.");
+		return deletedId;
+	});
 	return {
 		data: {
 			deletedId: deletedWhatsappConnectionId,

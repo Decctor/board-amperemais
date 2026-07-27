@@ -48,15 +48,48 @@ export function computeWorstMessageTemplateQuality(qualities: TMessageTemplateQu
 	return priority.find((quality) => qualities.includes(quality)) ?? "PENDENTE";
 }
 
-export function withComputedMessageTemplateStatus<T extends { metadados: TMessageTemplateMetadata }>(template: T) {
-	const phoneMetadata = Object.values(template.metadados?.porNumeroTelefone ?? {});
+export function filterMessageTemplateMetadataByPhoneIds({
+	metadata,
+	phoneIds,
+}: {
+	metadata: TMessageTemplateMetadata;
+	phoneIds: ReadonlySet<string>;
+}): TMessageTemplateMetadata {
+	return {
+		...metadata,
+		porNumeroTelefone: Object.fromEntries(Object.entries(metadata.porNumeroTelefone).filter(([phoneId]) => phoneIds.has(phoneId))),
+	};
+}
+
+export function withComputedMessageTemplateStatus<T extends { metadados: TMessageTemplateMetadata }>(
+	template: T,
+	connectedPhoneIds?: ReadonlySet<string>,
+) {
+	const metadados = connectedPhoneIds
+		? filterMessageTemplateMetadataByPhoneIds({ metadata: template.metadados, phoneIds: connectedPhoneIds })
+		: template.metadados;
+	const phoneMetadata = Object.values(metadados.porNumeroTelefone);
 	return {
 		...template,
+		metadados,
 		statusGeral: phoneMetadata.length > 0 ? computeWorstMessageTemplateStatus(phoneMetadata.map((metadata) => metadata.status)) : "RASCUNHO",
 		qualidadeGeral: phoneMetadata.length > 0 ? computeWorstMessageTemplateQuality(phoneMetadata.map((metadata) => metadata.qualidade)) : "PENDENTE",
 		telefonesTotal: phoneMetadata.length,
 		telefonesAprovados: phoneMetadata.filter((metadata) => metadata.status === "APROVADO").length,
 	};
+}
+
+export async function getOrganizationWhatsappPhoneIds(organizationId: string): Promise<Set<string>> {
+	const connections = await db.query.whatsappConnections.findMany({
+		where: eq(whatsappConnections.organizacaoId, organizationId),
+		columns: { id: true },
+		with: {
+			telefones: {
+				columns: { id: true },
+			},
+		},
+	});
+	return new Set(connections.flatMap((connection) => connection.telefones.map((phone) => phone.id)));
 }
 
 export async function getOrganizationWhatsappPhones(organizationId: string): Promise<TMessageTemplateWhatsappPhone[]> {
@@ -162,6 +195,14 @@ export async function submitMessageTemplateToWhatsappPhone({
 	return { phoneId: phone.id, success: true, idExterno: response.id, message: "Template criado na Meta." };
 }
 
+export function buildWhatsappSubmissionPhoneMetadata(idExterno: string | null): TMessageTemplateMetadata["porNumeroTelefone"][string] {
+	return {
+		idExterno: idExterno ?? "",
+		status: idExterno ? "PENDENTE" : "APROVADO",
+		qualidade: idExterno ? "PENDENTE" : "ALTA",
+	};
+}
+
 export function applyWhatsappSubmissionResultToMetadata({
 	metadata,
 	phoneId,
@@ -175,11 +216,7 @@ export function applyWhatsappSubmissionResultToMetadata({
 		...metadata,
 		porNumeroTelefone: {
 			...metadata.porNumeroTelefone,
-			[phoneId]: {
-				idExterno: idExterno ?? "",
-				status: idExterno ? "PENDENTE" : "APROVADO",
-				qualidade: idExterno ? "PENDENTE" : "ALTA",
-			},
+			[phoneId]: buildWhatsappSubmissionPhoneMetadata(idExterno),
 		},
 	};
 }

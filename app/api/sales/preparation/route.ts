@@ -90,7 +90,6 @@ async function getPreparationTickets({ orgId }: { orgId: string }) {
 			where: and(
 				eq(sales.organizacaoId, orgId),
 				eq(sales.statusVenda, "CONFIRMADA"),
-				eq(sales.processamentoOrigem, "INTERNO"),
 				inArray(sales.statusAtendimento, [...PREPARATION_STATUSES]),
 			),
 			columns: {

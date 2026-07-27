@@ -27,6 +27,7 @@
 		"test:weekly-quota-recurrent": "tsx ./utils/scripts/test-recurrent-campaign-weekly-quota.ts",
 		"test:nuvemshop-fetch": "tsx ./utils/scripts/test-nuvemshop-fetch.ts",
 		"test:ifood-import": "tsx ./scripts/test-ifood-import.ts",
+		"test:message-template-metadata-sql": "tsx ./scripts/test-message-template-metadata-sql.ts",
 		"ifood:homologation-polling": "tsx ./scripts/ifood-homologation-polling.ts",
 		"test:bank-statement": "tsx ./scripts/generate-test-bank-statement.ts",
 		"test:bling-fetch": "tsx ./scripts/test-bling-fetch.ts",

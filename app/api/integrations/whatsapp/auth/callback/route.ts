@@ -2,9 +2,11 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import {
 	applyWhatsappSubmissionResultToMetadata,
+	buildWhatsappSubmissionPhoneMetadata,
 	getOrganizationWhatsappPhones,
 	submitMessageTemplateToWhatsappPhone,
 } from "@/app/api/message-templates/_lib";
+import { lockConnectedWhatsappPhone, mergeMessageTemplatePhoneMetadataSql } from "@/lib/db-utils";
 import { consumeOAuthRedirect } from "@/lib/integrations/oauth-redirect";
 import { buildWhatsappPhoneSyncMetadataPatch } from "@/lib/whatsapp/connection-phone-metadata";
 import { triggerSmbAppContactsSync } from "@/lib/whatsapp/smb-contacts-sync";
@@ -304,20 +306,35 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 					phoneId: phone.id,
 					idExterno: result.idExterno,
 				});
+				const persisted = await db.transaction(async (tx) => {
+					const connected = await lockConnectedWhatsappPhone({
+						trx: tx,
+						organizationId: userOrgId,
+						phoneId: phone.id,
+					});
+					if (!connected) return false;
+
+					const updatedRows = await tx
+						.update(messageTemplates)
+						.set({
+							metadados: mergeMessageTemplatePhoneMetadataSql({
+								entries: { [phone.id]: buildWhatsappSubmissionPhoneMetadata(result.idExterno) },
+								mode: "replace",
+							}),
+							dataAtualizacao: new Date(),
+						})
+						.where(and(eq(messageTemplates.id, template.id), eq(messageTemplates.organizacaoId, userOrgId)))
+						.returning({ id: messageTemplates.id });
+					return updatedRows.length > 0;
+				});
+				if (!persisted) {
+					console.warn(`[WARN] [WHATSAPP_CONNECT_CALLBACK] Phone ${phone.id} was disconnected while submitting message template ${template.id}`);
+					continue;
+				}
 				console.log(`[INFO] [WHATSAPP_CONNECT_CALLBACK] Message template ${template.id} submitted for phone ${phone.id}`);
 			} catch (error) {
 				console.error(`[ERROR] [WHATSAPP_CONNECT_CALLBACK] Failed to submit message template ${template.id} for phone ${phone.id}:`, error);
 			}
-		}
-
-		if (nextMetadata !== template.metadados) {
-			await db
-				.update(messageTemplates)
-				.set({
-					metadados: nextMetadata,
-					dataAtualizacao: new Date(),
-				})
-				.where(eq(messageTemplates.id, template.id));
 		}
 	}
 
