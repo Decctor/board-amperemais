@@ -1,17 +1,19 @@
+import { resolvePoiActorContext } from "@/lib/access/poi-actor";
 import { appApiHandler } from "@/lib/app-api";
-import { runPagesRouteHandler, type PagesRouteHandler } from "@/lib/pages-route-compat";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { db } from "@/services/drizzle";
 import { clients } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
+import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
 const ClientByLookupInputSchema = z.object({
-	orgId: z.string({
-		required_error: "ID da organização não informado.",
-		invalid_type_error: "Tipo não válido para ID da organização.",
-	}),
+	// Opcional para dispositivos autenticados (a organização deriva do principal); obrigatório no modo legado.
+	orgId: z
+		.string({ invalid_type_error: "Tipo não válido para ID da organização." })
+		.optional()
+		.nullable(),
 	phone: z.string({
 		required_error: "Telefone não informado.",
 		invalid_type_error: "Tipo não válido para telefone.",
@@ -26,7 +28,7 @@ const ClientByLookupInputSchema = z.object({
 });
 export type TClientByLookupInput = z.infer<typeof ClientByLookupInputSchema>;
 
-async function getClientByLookup(input: TClientByLookupInput) {
+async function getClientByLookup(input: Omit<TClientByLookupInput, "orgId"> & { orgId: string }) {
 	if (input.clientId) {
 		const client = await db.query.clients.findFirst({
 			where: and(eq(clients.id, input.clientId), eq(clients.organizacaoId, input.orgId)),
@@ -120,16 +122,16 @@ async function getClientByLookup(input: TClientByLookupInput) {
 
 export type TClientByLookupOutput = Awaited<ReturnType<typeof getClientByLookup>>;
 
-const clientByLookupRoute: PagesRouteHandler<TClientByLookupOutput> = async (req, res) => {
-	const input = ClientByLookupInputSchema.parse(req.query);
-	const result = await getClientByLookup(input);
-	return res.status(200).json(result);
-};
+async function clientByLookupRoute(request: NextRequest) {
+	const input = ClientByLookupInputSchema.parse({
+		orgId: request.nextUrl.searchParams.get("orgId") ?? undefined,
+		phone: request.nextUrl.searchParams.get("phone") ?? undefined,
+		clientId: request.nextUrl.searchParams.get("clientId") ?? undefined,
+	});
+	// Dual-mode (plano §9.10): dispositivo autenticado com scope poi:clients:read, ou modo legado com orgId.
+	const resolution = await resolvePoiActorContext({ request, requiredScope: "poi:clients:read", payloadOrgId: input.orgId });
+	const result = await getClientByLookup({ ...input, orgId: resolution.organizationId });
+	return NextResponse.json(result, { status: 200 });
+}
 
-const routeHandlers = {
-	GET: clientByLookupRoute,
-} satisfies Partial<Record<"GET" | "POST" | "PUT" | "PATCH" | "DELETE", PagesRouteHandler<any>>>;
-
-export const GET = appApiHandler({
-	GET: (request) => runPagesRouteHandler({ request, handler: routeHandlers.GET! }),
-});
+export const GET = appApiHandler({ GET: clientByLookupRoute });

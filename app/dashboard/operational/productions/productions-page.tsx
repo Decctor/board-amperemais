@@ -11,6 +11,14 @@ import NewProductionRecipe from "@/components/Modals/Internal/Productions/NewPro
 import ProductionRecipePreparationMethodViewer from "@/components/Modals/Internal/Productions/ProductionRecipePreparationMethodViewer";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,8 +26,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { getErrorMessage } from "@/lib/errors";
 import { showSuccessActionToast } from "@/lib/toasts/show-action-toast";
 import { formatDateAsLocale } from "@/lib/formatting";
+import { createManualPrintJob } from "@/lib/mutations/desktop-agent";
 import { completeProduction } from "@/lib/mutations/productions";
 import { cn } from "@/lib/utils";
+import { organizationHasPrinterForFinalidade, useAgentPrinters } from "@/lib/queries/desktop-agent";
 import { useProductionRecipes, useProductions } from "@/lib/queries/productions";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -32,10 +42,12 @@ import {
 	Clock,
 	Factory,
 	FileIcon,
+	MoreHorizontal,
 	Package,
 	PackageCheck,
 	Pencil,
 	Plus,
+	Printer,
 	X,
 } from "lucide-react";
 import { useState } from "react";
@@ -386,9 +398,62 @@ function ProductionCard({ production, onEdit, onComplete, completionIsPending }:
 						<Pencil className="h-4 w-4" />
 						EDITAR
 					</Button>
+					<ProductionCardActionsMenu production={production} onEdit={onEdit} />
 				</div>
 			</div>
 		</div>
+	);
+}
+
+// Menu de ações rápidas da produção (mesmo padrão do módulo fiscal): impressão de etiquetas de
+// lote via agente desktop — uma etiqueta por saída da produção, montada no servidor.
+function ProductionCardActionsMenu({
+	production,
+	onEdit,
+}: {
+	production: TGetProductionsOutputDefault["productions"][number];
+	onEdit: () => void;
+}) {
+	const { data: printers } = useAgentPrinters();
+	const canPrintLabels = organizationHasPrinterForFinalidade(printers, "ETIQUETA_LOTE") && production.saidas.length > 0;
+
+	const { mutate: printLabels, isPending: printIsPending } = useMutation({
+		mutationKey: ["print-production-labels", production.id],
+		mutationFn: createManualPrintJob,
+		onSuccess: (data) => toast.success(data.message),
+		onError: (mutationError) => toast.error(getErrorMessage(mutationError)),
+	});
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button variant="ghost" size="icon" aria-label="Mais ações da produção">
+					<MoreHorizontal className="h-4 w-4" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-56">
+				<DropdownMenuLabel>Ações rápidas</DropdownMenuLabel>
+				<DropdownMenuItem onClick={onEdit}>
+					<Pencil className="h-4 w-4" />
+					EDITAR PRODUÇÃO
+				</DropdownMenuItem>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem
+					disabled={!canPrintLabels || printIsPending}
+					onClick={() => printLabels({ finalidade: "ETIQUETA_LOTE", producaoId: production.id })}
+				>
+					<Printer className="h-4 w-4" />
+					IMPRIMIR ETIQUETAS
+				</DropdownMenuItem>
+				{production.saidas.length === 0 ? (
+					<p className="px-2 pb-1.5 pt-0.5 text-[0.65rem] leading-tight text-muted-foreground">A produção não possui saídas para etiquetar.</p>
+				) : !canPrintLabels ? (
+					<p className="px-2 pb-1.5 pt-0.5 text-[0.65rem] leading-tight text-muted-foreground">
+						Nenhuma impressora ativa atende a etiquetas. Configure em Configurações → Dispositivos.
+					</p>
+				) : null}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }
 

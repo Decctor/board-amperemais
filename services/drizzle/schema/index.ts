@@ -40,3 +40,5 @@ export * from "./service-points";
 export * from "./service-settings";
 export * from "./tabs";
 export * from "./tab-order-requests";
+export * from "./access";
+export * from "./desktop-agent";

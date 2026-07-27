@@ -1,3 +1,4 @@
+import { resolvePoiActorContext } from "@/lib/access/poi-actor";
 import { appApiHandler } from "@/lib/app-api";
 import { getAvailableCouponsForClient } from "@/lib/coupons/availability";
 import { evaluateCouponAgainstSaleValue } from "@/lib/coupons/engine";
@@ -5,10 +6,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
 const GetPoiAvailableCouponsInputSchema = z.object({
-	orgId: z.string({
-		required_error: "ID da organização não informado.",
-		invalid_type_error: "Tipo não válido para o ID da organização.",
-	}),
+	// Opcional para dispositivos autenticados (a organização deriva do principal); obrigatório no modo legado.
+	orgId: z
+		.string({ invalid_type_error: "Tipo não válido para o ID da organização." })
+		.optional()
+		.nullable(),
 	clienteId: z.string({
 		required_error: "ID do cliente não informado.",
 		invalid_type_error: "Tipo não válido para o ID do cliente.",
@@ -21,9 +23,9 @@ const GetPoiAvailableCouponsInputSchema = z.object({
 });
 export type TGetPoiAvailableCouponsInput = z.infer<typeof GetPoiAvailableCouponsInputSchema>;
 
-// Endpoint público (como as demais rotas do ponto de interação): o tablet da loja
-// identifica o cliente pelo telefone e lista os cupons resgatáveis nessa superfície.
-async function getPoiAvailableCoupons({ input }: { input: TGetPoiAvailableCouponsInput }) {
+// Dual-mode (plano §9.10): dispositivo autenticado com scope poi:coupons:read, ou modo
+// legado anônimo com orgId — a organização efetiva chega já resolvida pelo route handler.
+async function getPoiAvailableCoupons({ input }: { input: Omit<TGetPoiAvailableCouponsInput, "orgId"> & { orgId: string } }) {
 	const availableCoupons = await getAvailableCouponsForClient({
 		organizacaoId: input.orgId,
 		clienteId: input.clienteId,
@@ -67,7 +69,8 @@ async function getPoiAvailableCouponsRoute(request: NextRequest) {
 		clienteId: request.nextUrl.searchParams.get("clienteId") ?? undefined,
 		valorVenda: request.nextUrl.searchParams.get("valorVenda") ?? undefined,
 	});
-	const result = await getPoiAvailableCoupons({ input });
+	const resolution = await resolvePoiActorContext({ request, requiredScope: "poi:coupons:read", payloadOrgId: input.orgId });
+	const result = await getPoiAvailableCoupons({ input: { ...input, orgId: resolution.organizationId } });
 	return NextResponse.json(result, { status: 200 });
 }
 

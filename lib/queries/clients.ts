@@ -172,7 +172,7 @@ export function useClientStatsById({ clientId, initialFilters }: UseClientStatsB
 
 export async function fetchClientByLookup(input: TClientByLookupInput) {
 	const searchParams = new URLSearchParams();
-	searchParams.set("orgId", input.orgId);
+	if (input.orgId) searchParams.set("orgId", input.orgId);
 	searchParams.set("phone", input.phone);
 	if (input.clientId) searchParams.set("clientId", input.clientId);
 	const { data } = await axios.get<TClientByLookupOutput>(`/api/clients/lookup?${searchParams.toString()}`);
