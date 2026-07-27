@@ -1,11 +1,14 @@
 import type { TGetPrintJobsManagementOutput } from "@/app/api/desktop-agent/print-jobs/management/route";
 import type { TGetAgentPrintersOutput } from "@/app/api/desktop-agent/printers/route";
+import type { TGetCurrentAgentVersionOutput } from "@/app/api/desktop-agent/versions/current/route";
+import type { TGetAgentVersionsOutput } from "@/app/api/desktop-agent/versions/route";
 import type { TPrintJobFinalidadeEnum, TPrintJobStatusEnum } from "@/schemas/enums";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 export type TAgentPrinterListItem = TGetAgentPrintersOutput["data"]["impressoras"][number];
 export type TPrintJobListItem = TGetPrintJobsManagementOutput["data"]["jobs"][number];
+export type TAgentVersionListItem = TGetAgentVersionsOutput["data"]["versoes"][number];
 
 async function fetchAgentPrinters() {
 	const { data } = await axios.get<TGetAgentPrintersOutput>("/api/desktop-agent/printers");
@@ -40,6 +43,35 @@ export function useAgentPrintJobs({ status }: { status?: TPrintJobStatusEnum | n
 	const queryKey = ["agent-print-jobs", status ?? "all"] as const;
 	return {
 		...useQuery({ queryKey, queryFn: () => fetchAgentPrintJobs(status) }),
+		queryKey,
+	};
+}
+
+async function fetchCurrentAgentVersion() {
+	const { data } = await axios.get<TGetCurrentAgentVersionOutput>("/api/desktop-agent/versions/current");
+	return data.data.versao;
+}
+
+// A versão publicada, para o botão de download em DISPOSITIVOS. Devolve null
+// quando nada foi publicado ainda — estado legítimo, não erro.
+export function useCurrentAgentVersion() {
+	const queryKey = ["agent-version-current"] as const;
+	return {
+		...useQuery({ queryKey, queryFn: fetchCurrentAgentVersion }),
+		queryKey,
+	};
+}
+
+async function fetchAgentVersions() {
+	const { data } = await axios.get<TGetAgentVersionsOutput>("/api/desktop-agent/versions");
+	return data.data.versoes;
+}
+
+// Lista completa, só para superusuário: é a tela de promover versão.
+export function useAgentVersions() {
+	const queryKey = ["agent-versions"] as const;
+	return {
+		...useQuery({ queryKey, queryFn: fetchAgentVersions }),
 		queryKey,
 	};
 }

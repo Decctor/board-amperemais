@@ -14,6 +14,7 @@ import AccessStatusBadge from "../Modals/Internal/Access/AccessStatusBadge";
 import ControlAccessPrincipal from "../Modals/Internal/Access/ControlAccessPrincipal";
 import NewAccessEnrollment from "../Modals/Internal/Access/NewAccessEnrollment";
 import { Button } from "../ui/button";
+import DesktopAgentDownload from "./DesktopAgentDownload";
 
 type SettingsDevicesProps = {
 	user: TAuthUserSession["user"];
@@ -43,6 +44,8 @@ export default function SettingsDevices({ user: _user, membership }: SettingsDev
 					</Button>
 				) : null}
 			</div>
+
+			<DesktopAgentDownload />
 
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}

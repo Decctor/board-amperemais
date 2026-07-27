@@ -100,6 +100,47 @@ export const printJobs = newTable(
 	}),
 );
 
+// Versões distribuíveis do agent. Diferente de tudo acima, NÃO é escopada por
+// organização: o instalador é um artefato da plataforma, e quem publica é o
+// superusuário (session.user.admin), não o admin de uma loja.
+//
+// A linha é criada pelo CI do repo recompra-local-agent
+// (packaging/publish-supabase.ps1), já com o binário no Storage e sempre com
+// `publicada = false` — promover é ato humano na aba do admin-dashboard. O CI
+// garante que o binário publicado é exatamente o que ele construiu; a pessoa
+// decide quando.
+export const agentVersions = newTable(
+	"desktop_agent_versions",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		// Semver sem o "v" (ex.: 0.1.0). Único: o caminho no Storage deriva dele.
+		versao: varchar("versao", { length: 20 }).notNull(),
+		// Mesmo hash que o workflow anexa à Release do GitHub — é o que torna
+		// verificável que o arquivo no Storage e o arquivo arquivado são um só.
+		sha256: varchar("sha256", { length: 64 }).notNull(),
+		tamanhoBytes: integer("tamanho_bytes").notNull(),
+		// Caminho no bucket `files`, imutável por versão: publicar aponta uma
+		// linha e nunca move bytes, então rollback não reconstrói nada.
+		storagePath: text("storage_path").notNull(),
+		notas: text("notas"),
+		publicada: boolean("publicada").notNull().default(false),
+		publicadaPorId: varchar("publicada_por_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+		dataPublicacao: timestamp("data_publicacao"),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+		dataAtualizacao: timestamp("data_atualizacao")
+			.defaultNow()
+			.notNull()
+			.$onUpdate(() => new Date()),
+	},
+	(table) => ({
+		versaoIdx: uniqueIndex("idx_desktop_agent_versions_versao").on(table.versao),
+		// A aba DISPOSITIVOS busca a publicada a cada carga.
+		publicadaIdx: index("idx_desktop_agent_versions_publicada").on(table.publicada),
+	}),
+);
+
 export const agentPrintersRelations = relations(agentPrinters, ({ one, many }) => ({
 	organizacao: one(organizations, {
 		fields: [agentPrinters.organizacaoId],
@@ -131,7 +172,16 @@ export const printJobsRelations = relations(printJobs, ({ one }) => ({
 	}),
 }));
 
+export const agentVersionsRelations = relations(agentVersions, ({ one }) => ({
+	publicadaPor: one(users, {
+		fields: [agentVersions.publicadaPorId],
+		references: [users.id],
+	}),
+}));
+
 export type TAgentPrinterEntity = typeof agentPrinters.$inferSelect;
 export type TNewAgentPrinterEntity = typeof agentPrinters.$inferInsert;
 export type TPrintJobEntity = typeof printJobs.$inferSelect;
 export type TNewPrintJobEntity = typeof printJobs.$inferInsert;
+export type TAgentVersionEntity = typeof agentVersions.$inferSelect;
+export type TNewAgentVersionEntity = typeof agentVersions.$inferInsert;
