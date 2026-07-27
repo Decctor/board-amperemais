@@ -12,16 +12,15 @@ import { NextResponse } from "next/server";
 import z from "zod";
 import {
 	applyWhatsappSubmissionResultToMetadata,
-	assertWhatsappValidation,
+	assertMessageTemplateValidForWhatsapp,
 	buildWhatsappSubmissionPhoneMetadata,
 	createEmptyMessageTemplateMetadata,
 	deleteMessageTemplateFromMetaPhones,
-	getOrganizationWhatsappPhoneIds,
-	getOrganizationWhatsappPhones,
-	normalizeContentForStorage,
+	normalizeMessageTemplateContentParameters,
 	submitMessageTemplateToWhatsappPhone,
 	withComputedMessageTemplateStatus,
-} from "./_lib";
+} from "@/lib/message-templates";
+import { getOrganizationWhatsappPhoneIds, getOrganizationWhatsappPhones } from "@/lib/whatsapp/organization-phones";
 import { createSimplifiedSearchCondition } from "@/lib/search";
 
 // `metadados` é derivado das submissões à Meta e dos webhooks, nunca do cliente: aceitá-lo no payload
@@ -67,8 +66,8 @@ async function createMessageTemplate({ input, session }: { input: TCreateMessage
 	const organizationId = session.membership?.organizacao.id;
 	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const content = normalizeContentForStorage(input.messageTemplate.conteudo);
-	assertWhatsappValidation(content);
+	const content = normalizeMessageTemplateContentParameters(input.messageTemplate.conteudo);
+	assertMessageTemplateValidForWhatsapp(content);
 
 	const [insertedTemplate] = await db
 		.insert(messageTemplates)
@@ -173,8 +172,8 @@ async function updateMessageTemplate({ input, session }: { input: TUpdateMessage
 
 	console.log("[UPDATE_MESSAGE_TEMPLATE] Content pre-normalization:", JSON.stringify(input.messageTemplate.conteudo, null, 2));
 
-	const content = input.messageTemplate.conteudo ? normalizeContentForStorage(input.messageTemplate.conteudo) : existingTemplate.conteudo;
-	assertWhatsappValidation(content);
+	const content = input.messageTemplate.conteudo ? normalizeMessageTemplateContentParameters(input.messageTemplate.conteudo) : existingTemplate.conteudo;
+	assertMessageTemplateValidForWhatsapp(content);
 	console.log("[UPDATE_MESSAGE_TEMPLATE] Content post-normalization:", JSON.stringify(content, null, 2));
 
 	const updateSet = {

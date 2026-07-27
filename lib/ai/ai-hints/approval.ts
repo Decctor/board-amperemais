@@ -1,12 +1,13 @@
 import {
 	applyWhatsappSubmissionResultToMetadata,
-	assertWhatsappValidation,
+	assertMessageTemplateValidForWhatsapp,
 	buildWhatsappSubmissionPhoneMetadata,
 	createEmptyMessageTemplateMetadata,
-	getOrganizationWhatsappPhones,
-	normalizeContentForStorage,
+	extractUnknownMessageTemplateVariables,
+	normalizeMessageTemplateContentParameters,
 	submitMessageTemplateToWhatsappPhone,
-} from "@/app/api/message-templates/_lib";
+} from "@/lib/message-templates";
+import { getOrganizationWhatsappPhones } from "@/lib/whatsapp/organization-phones";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { lockConnectedWhatsappPhone, mergeMessageTemplatePhoneMetadataSql } from "@/lib/db-utils";
 import {
@@ -21,7 +22,6 @@ import {
 	validateSingleUseCampaign,
 } from "@/lib/campaigns/validation";
 import { formatMessageTemplateName } from "@/lib/formatting";
-import { extractUnknownMessageTemplateVariables, normalizeMessageTemplateContentParameters } from "@/lib/message-templates";
 import { AIHintSchema, ApproveHintOutputSchema, type TAIHint, type TApproveHintInput, type TApproveHintOutput } from "@/schemas/ai-hints";
 import { CampaignSchema } from "@/schemas/campaigns";
 import type { TMessageTemplateContent } from "@/schemas/message-templates";
@@ -91,8 +91,8 @@ async function createTemplateRegistry({
 	userId: string;
 	template: TMessageTemplatePayload;
 }) {
-	const content = normalizeContentForStorage(template.conteudo);
-	assertWhatsappValidation(content);
+	const content = normalizeMessageTemplateContentParameters(template.conteudo);
+	assertMessageTemplateValidForWhatsapp(content);
 
 	const [insertedTemplate] = await db
 		.insert(messageTemplates)

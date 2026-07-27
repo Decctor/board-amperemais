@@ -12,10 +12,10 @@ import z from "zod";
 import {
 	buildWhatsappSubmissionPhoneMetadata,
 	deleteMessageTemplateFromMetaPhones,
-	getOrganizationWhatsappPhones,
 	submitMessageTemplateToWhatsappPhone,
 	syncMessageTemplateFromMetaForPhone,
-} from "../_lib";
+} from "@/lib/message-templates";
+import { getOrganizationWhatsappPhones } from "@/lib/whatsapp/organization-phones";
 
 const MessageTemplatePhoneInputSchema = z.object({
 	messageTemplateId: z.string({ required_error: "ID do template não informado." }),

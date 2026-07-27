@@ -9,12 +9,12 @@ import createHttpError from "http-errors";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import z from "zod";
-import { buildRemoteTemplateIndexes, buildWhatsappTemplateSyncPatch, resolveRemoteTemplate } from "@/lib/message-templates";
-import { getOrganizationWhatsappPhones, listMetaTemplatesForPhone, type TMessageTemplateWhatsappPhone } from "../_lib";
+import { buildRemoteTemplateIndexes, buildWhatsappTemplateSyncPatch, listMetaTemplatesForPhone, resolveRemoteTemplate } from "@/lib/message-templates";
+import { getOrganizationWhatsappPhones, type TOrganizationWhatsappPhone } from "@/lib/whatsapp/organization-phones";
 
 const SYNC_LOG_PREFIX = "[MESSAGE_TEMPLATES_SYNC]";
 
-function formatPhoneForLog(phone: TMessageTemplateWhatsappPhone) {
+function formatPhoneForLog(phone: TOrganizationWhatsappPhone) {
 	return `${phone.nome} (${phone.numero}) [id=${phone.id}, waba=${phone.whatsappBusinessAccountId ?? "n/a"}]`;
 }
 

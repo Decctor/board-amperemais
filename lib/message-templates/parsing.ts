@@ -1,4 +1,4 @@
-import type { TMessageTemplateContent, TMessageTemplateMetadata } from "@/schemas/message-templates";
+import type { TMessageTemplateContent } from "@/schemas/message-templates";
 import type { TMessageTemplateParameter, TMessageTemplateRuntimeValues } from "./types";
 import { getDefaultMessageTemplateVariableExample, isAllowedMessageTemplateVariable, MessageTemplateNativeVariables } from "./variables";
 
@@ -214,8 +214,4 @@ export function convertInternalVariablesToPositional(text: string, parameters: T
 		const position = positionByInternalId.get(identifier);
 		return position ? `{{${position}}}` : match;
 	});
-}
-
-export function createEmptyMessageTemplateMetadata(): TMessageTemplateMetadata {
-	return { porNumeroTelefone: {} };
 }

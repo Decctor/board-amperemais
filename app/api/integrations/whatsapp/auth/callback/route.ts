@@ -3,9 +3,9 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import {
 	applyWhatsappSubmissionResultToMetadata,
 	buildWhatsappSubmissionPhoneMetadata,
-	getOrganizationWhatsappPhones,
 	submitMessageTemplateToWhatsappPhone,
-} from "@/app/api/message-templates/_lib";
+} from "@/lib/message-templates";
+import { getOrganizationWhatsappPhones } from "@/lib/whatsapp/organization-phones";
 import { lockConnectedWhatsappPhone, mergeMessageTemplatePhoneMetadataSql } from "@/lib/db-utils";
 import { consumeOAuthRedirect } from "@/lib/integrations/oauth-redirect";
 import { buildWhatsappPhoneSyncMetadataPatch } from "@/lib/whatsapp/connection-phone-metadata";

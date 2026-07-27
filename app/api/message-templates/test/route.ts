@@ -16,7 +16,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
-import { getOrganizationWhatsappPhones } from "../_lib";
+import { getOrganizationWhatsappPhones } from "@/lib/whatsapp/organization-phones";
 
 const TestMessageTemplateInputSchema = z.object({
 	messageTemplateId: z.string({

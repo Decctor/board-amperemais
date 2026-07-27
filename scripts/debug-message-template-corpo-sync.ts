@@ -11,7 +11,8 @@
 import "dotenv/config";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { getOrganizationWhatsappPhones, listMetaTemplatesForPhone } from "@/app/api/message-templates/_lib";
+import { listMetaTemplatesForPhone } from "@/lib/message-templates";
+import { getOrganizationWhatsappPhones } from "@/lib/whatsapp/organization-phones";
 import { buildRemoteTemplateIndexes, resolveRemoteTemplate } from "@/lib/message-templates";
 import { extractWhatsappContentFromMetaWithLocalContext } from "@/lib/message-templates/channels/whatsapp/meta-status";
 import type { TMetaTemplateComponent } from "@/lib/message-templates/channels/whatsapp/types";
