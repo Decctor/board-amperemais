@@ -2,7 +2,7 @@
 
 import type { TGetMessageTemplatesOutputDefault } from "@/app/api/message-templates/route";
 import SelectMultipleClientsInput from "@/components/Inputs/SelectMultipleClientsInput";
-import TemplatePreview from "@/components/Modals/WhatsappTemplates/Blocks/TemplatePreview";
+import TemplatePreview from "@/components/MessageTemplates/TemplatePreview";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";

@@ -86,8 +86,6 @@ import {
 	utils,
 	whatsappConnectionPhones,
 	whatsappConnections,
-	whatsappTemplatePhones,
-	whatsappTemplates,
 } from "@/services/drizzle/schema";
 import { eq, inArray } from "drizzle-orm";
 
@@ -145,14 +143,6 @@ export async function deleteAllOrganizationData({
 	await trx
 		.delete(aiHintFeedback)
 		.where(inArray(aiHintFeedback.hintId, trx.select({ id: aiHints.id }).from(aiHints).where(eq(aiHints.organizacaoId, organizationId))));
-	await trx
-		.delete(whatsappTemplatePhones)
-		.where(
-			inArray(
-				whatsappTemplatePhones.templateId,
-				trx.select({ id: whatsappTemplates.id }).from(whatsappTemplates).where(eq(whatsappTemplates.organizacaoId, organizationId)),
-			),
-		);
 	await trx
 		.delete(productAddOnReferences)
 		.where(
@@ -247,7 +237,6 @@ export async function deleteAllOrganizationData({
 
 	// --- Templates / WhatsApp / integrações ---
 	await trx.delete(messageTemplates).where(eq(messageTemplates.organizacaoId, organizationId));
-	await trx.delete(whatsappTemplates).where(eq(whatsappTemplates.organizacaoId, organizationId));
 	await trx
 		.delete(whatsappConnectionPhones)
 		.where(

@@ -58,18 +58,6 @@ export const interactionsCronJobTimeBlocksEnum = pgEnum("interactions_cron_time_
 	"23:00",
 ]);
 
-export const whatsappTemplateCategoryEnum = pgEnum("whatsapp_template_category", ["AUTENTICAÇÃO", "MARKETING", "UTILIDADE"]);
-export const whatsappTemplateParametersTypeEnum = pgEnum("whatsapp_template_parameters_type", ["NOMEADO", "POSICIONAL"]);
-export const whatsappTemplateStatusEnum = pgEnum("whatsapp_template_status", [
-	"RASCUNHO",
-	"PENDENTE",
-	"APROVADO",
-	"REJEITADO",
-	"PAUSADO",
-	"DESABILITADO",
-]);
-export const whatsappTemplateQualityEnum = pgEnum("whatsapp_template_quality", ["PENDENTE", "ALTA", "MEDIA", "BAIXA"]);
-
 export const messageTemplateStatusEnum = pgEnum("message_template_status", ["RASCUNHO", "ATIVO", "ARQUIVADO"]);
 
 export const messageTemplateCategoryEnum = pgEnum("message_template_category", ["AUTENTICAÇÃO", "MARKETING", "UTILIDADE"]);

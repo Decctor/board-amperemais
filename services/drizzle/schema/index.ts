@@ -16,7 +16,6 @@ export * from "./interactions";
 export * from "./segment-cadences";
 export * from "./client-seller-references";
 export * from "./message-templates";
-export * from "./whatsapp-templates";
 export * from "./cashback-programs";
 export * from "./financial";
 export * from "./financial-reconciliation";

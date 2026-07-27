@@ -293,10 +293,3 @@ export function getMessageTemplateVariable(identifier: string) {
 export function getDefaultMessageTemplateVariableExample(identifier: string) {
 	return MessageTemplateVariableExampleValues[identifier] ?? "Exemplo";
 }
-
-export type TVariableContextGroup = TMessageTemplateVariableContextGroup;
-export const TRIGGER_CONTEXT_MAP = MESSAGE_TEMPLATE_TRIGGER_CONTEXT_MAP;
-export type TWhatsappTemplateVariables = TMessageTemplateVariables;
-export type TWhatsappTemplateVariable = TMessageTemplateVariable;
-export const WhatsappTemplateVariables = MessageTemplateVariables;
-export const VARIABLE_CONTEXT_GROUP_LABELS = MESSAGE_TEMPLATE_VARIABLE_CONTEXT_GROUP_LABELS;
