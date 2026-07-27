@@ -49,11 +49,6 @@ export type TemplatePayload = {
 	};
 };
 
-export type WhatsappTemplatePayloadResult = {
-	content: string;
-	data: TemplatePayload;
-};
-
 const DefaultTemplatePayloadSchema = z.object({
 	toPhoneNumber: z.string({
 		required_error: "Número de telefone não informado.",

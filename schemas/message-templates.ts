@@ -1,4 +1,5 @@
 import z from "zod";
+import { MessageTemplatePhoneQualityEnum, MessageTemplatePhoneStatusEnum } from "./enums";
 
 export const MessageTemplateStatusEnum = z.enum(["RASCUNHO", "ATIVO", "ARQUIVADO"]);
 export const MessageTemplateCategoryEnum = z.enum(["AUTENTICAÇÃO", "MARKETING", "UTILIDADE"]);
@@ -178,14 +179,8 @@ export const MessageTemplateMetadataSchema = z.object({
 				required_error: "ID externo do template não informado.",
 				invalid_type_error: "Tipo não válido para o ID externo do template.",
 			}),
-			status: z.enum(["RASCUNHO", "PENDENTE", "APROVADO", "REJEITADO", "PAUSADO", "DESABILITADO"], {
-				required_error: "Status do template não informado.",
-				invalid_type_error: "Tipo não válido para o status do template.",
-			}),
-			qualidade: z.enum(["PENDENTE", "ALTA", "MEDIA", "BAIXA"], {
-				required_error: "Qualidade do template não informada.",
-				invalid_type_error: "Tipo não válido para a qualidade do template.",
-			}),
+			status: MessageTemplatePhoneStatusEnum,
+			qualidade: MessageTemplatePhoneQualityEnum,
 		}),
 	),
 });

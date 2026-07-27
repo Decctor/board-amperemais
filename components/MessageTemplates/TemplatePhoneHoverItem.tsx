@@ -4,22 +4,22 @@ import type { ReactNode } from "react";
 import { LoadingButton } from "@/components/loading-button";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { TWhatsappTemplateQualityEnum, TWhatsappTemplateStatusEnum } from "@/schemas/enums";
+import type { TMessageTemplatePhoneQualityEnum, TMessageTemplatePhoneStatusEnum } from "@/schemas/enums";
 import { CircleGauge, Eye, Phone, Plus } from "lucide-react";
 
 type TemplatePhoneHoverItemProps = {
 	phoneLabel: string;
 	templatePhone: {
 		id: string;
-		status: TWhatsappTemplateStatusEnum;
-		qualidade: TWhatsappTemplateQualityEnum;
+		status: TMessageTemplatePhoneStatusEnum;
+		qualidade: TMessageTemplatePhoneQualityEnum;
 	} | null;
 	onAdd: () => void;
 	onView: (id: string) => void;
 	isAdding?: boolean;
 };
 
-function statusBadgeClass(status: TWhatsappTemplateStatusEnum) {
+function statusBadgeClass(status: TMessageTemplatePhoneStatusEnum) {
 	return cn("rounded-md px-2 py-0.5 text-[0.65rem] font-bold", {
 		"bg-blue-500 text-white": status === "APROVADO",
 		"bg-primary/20 text-foreground": status === "PENDENTE",

@@ -1,10 +1,11 @@
+import type { TMessageTemplatePhoneQualityEnum, TMessageTemplatePhoneStatusEnum } from "@/schemas/enums";
 import type { TMessageTemplateContent, TMessageTemplateMetadata } from "@/schemas/message-templates";
 
 export type TMessageTemplateChannel = "WHATSAPP" | "EMAIL";
 export type TMessageTemplateStatus = "RASCUNHO" | "ATIVO" | "ARQUIVADO";
 export type TMessageTemplateCategory = "AUTENTICAÇÃO" | "MARKETING" | "UTILIDADE";
-export type TMessageTemplateApprovalStatus = "RASCUNHO" | "PENDENTE" | "APROVADO" | "REJEITADO" | "PAUSADO" | "DESABILITADO";
-export type TMessageTemplateQuality = "PENDENTE" | "ALTA" | "MEDIA" | "BAIXA";
+export type TMessageTemplateApprovalStatus = TMessageTemplatePhoneStatusEnum;
+export type TMessageTemplateQuality = TMessageTemplatePhoneQualityEnum;
 
 export type TMessageTemplateHeaderType = NonNullable<TMessageTemplateContent["cabecalho"]>["tipo"];
 export type TMessageTemplateButton = TMessageTemplateContent["botoes"][number];

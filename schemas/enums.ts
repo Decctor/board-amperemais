@@ -60,14 +60,18 @@ export const InteractionsCronJobTimeBlocksEnum = z.enum([
 	"23:00",
 ]);
 export type TInteractionsCronJobTimeBlocksEnum = z.infer<typeof InteractionsCronJobTimeBlocksEnum>;
-export const WhatsappTemplateCategoryEnum = z.enum(["AUTENTICAÇÃO", "MARKETING", "UTILIDADE"]);
-export type TWhatsappTemplateCategoryEnum = z.infer<typeof WhatsappTemplateCategoryEnum>;
-export const WhatsappTemplateParametersTypeEnum = z.enum(["NOMEADO", "POSICIONAL"]);
-export type TWhatsappTemplateParametersTypeEnum = z.infer<typeof WhatsappTemplateParametersTypeEnum>;
-export const WhatsappTemplateStatusEnum = z.enum(["RASCUNHO", "PENDENTE", "APROVADO", "REJEITADO", "PAUSADO", "DESABILITADO"]);
-export type TWhatsappTemplateStatusEnum = z.infer<typeof WhatsappTemplateStatusEnum>;
-export const WhatsappTemplateQualityEnum = z.enum(["PENDENTE", "ALTA", "MEDIA", "BAIXA"]);
-export type TWhatsappTemplateQualityEnum = z.infer<typeof WhatsappTemplateQualityEnum>;
+// Status e qualidade que a Meta reporta para cada telefone em que o template foi submetido.
+// Vivem em `message_templates.metadados.porNumeroTelefone`, não em coluna própria.
+export const MessageTemplatePhoneStatusEnum = z.enum(["RASCUNHO", "PENDENTE", "APROVADO", "REJEITADO", "PAUSADO", "DESABILITADO"], {
+	required_error: "Status do template não informado.",
+	invalid_type_error: "Tipo não válido para o status do template.",
+});
+export type TMessageTemplatePhoneStatusEnum = z.infer<typeof MessageTemplatePhoneStatusEnum>;
+export const MessageTemplatePhoneQualityEnum = z.enum(["PENDENTE", "ALTA", "MEDIA", "BAIXA"], {
+	required_error: "Qualidade do template não informada.",
+	invalid_type_error: "Tipo não válido para a qualidade do template.",
+});
+export type TMessageTemplatePhoneQualityEnum = z.infer<typeof MessageTemplatePhoneQualityEnum>;
 export const CashbackProgramAccumulationTypeEnum = z.enum(["FIXO", "PERCENTUAL"]);
 export type TCashbackProgramAccumulationTypeEnum = z.infer<typeof CashbackProgramAccumulationTypeEnum>;
 export const CashbackProgramTerminologyEnum = z.enum(["DINHEIRO", "PONTOS"]);

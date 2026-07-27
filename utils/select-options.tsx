@@ -25,7 +25,7 @@ import type {
 	TShopModeEnum,
 	TShopProductsModeEnum,
 	TTimeDurationUnitsEnum,
-	TWhatsappTemplateStatusEnum,
+	TMessageTemplatePhoneStatusEnum,
 } from "@/schemas/enums";
 import { INTERACTIONS_CRON_TIME_BLOCKS } from "@/lib/campaigns/time-blocks";
 import { TInteractionsStatusEnum } from "@/schemas/interactions";
@@ -626,9 +626,9 @@ export const ShopProductsModeOptions: { id: number; label: string; value: TShopP
 	{ id: 3, label: "EXCLUIR", value: "EXCLUIR", icon: <XCircle className="w-4 h-4 min-w-4 min-h-4" /> },
 ];
 
-export const WhatsappTemplateStatusUIDetailsMap: Record<
-	TWhatsappTemplateStatusEnum,
-	{ id: number; label: string; value: TWhatsappTemplateStatusEnum; icon: React.ReactNode; colors: { text: string; background: string } }
+export const MessageTemplatePhoneStatusUIDetailsMap: Record<
+	TMessageTemplatePhoneStatusEnum,
+	{ id: number; label: string; value: TMessageTemplatePhoneStatusEnum; icon: React.ReactNode; colors: { text: string; background: string } }
 > = {
 	RASCUNHO: {
 		id: 1,
@@ -673,8 +673,8 @@ export const WhatsappTemplateStatusUIDetailsMap: Record<
 		colors: { text: "text-green-600", background: "bg-green-200" },
 	},
 };
-export function getWhatsappTemplateStatusUIDetails(status: TWhatsappTemplateStatusEnum) {
-	return WhatsappTemplateStatusUIDetailsMap[status];
+export function getMessageTemplatePhoneStatusUIDetails(status: TMessageTemplatePhoneStatusEnum) {
+	return MessageTemplatePhoneStatusUIDetailsMap[status];
 }
 
 export const TagsColorPalette = [

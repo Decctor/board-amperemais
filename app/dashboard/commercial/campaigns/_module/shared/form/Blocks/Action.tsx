@@ -11,7 +11,7 @@ import { useWhatsappConnections } from "@/lib/queries/whatsapp-connections";
 import { cn } from "@/lib/utils";
 import { validateTemplateForTrigger } from "@/lib/message-templates";
 import type { TUseCampaignState } from "@/state-hooks/use-campaign-state";
-import { getWhatsappTemplateStatusUIDetails } from "@/utils/select-options";
+import { getMessageTemplatePhoneStatusUIDetails } from "@/utils/select-options";
 import { useQueryClient } from "@tanstack/react-query";
 import { Eye, Info, Pencil, Plus, Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -162,7 +162,7 @@ export default function CampaignsActionBlock({
 						value={campaign.whatsappTemplateId}
 						resetOptionLabel="SELECIONE O TEMPLATE"
 						options={compatibleTemplates.map((template) => {
-							const details = getWhatsappTemplateStatusUIDetails(template.statusGeral);
+							const details = getMessageTemplatePhoneStatusUIDetails(template.statusGeral);
 							return {
 								startContent: details ? (
 									<div className={cn("flex items-center gap-1.5 rounded-lg px-2 py-1", details.colors.background)}>
