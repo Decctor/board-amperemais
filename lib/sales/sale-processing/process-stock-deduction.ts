@@ -172,9 +172,11 @@ export async function processStockDeduction(tx: DBTransaction, params: ProcessSt
 	}
 
 	for (const item of params.saleItems) {
-		// Defesa 1 (dado legado): item com saida ja registrada nao baixa de novo, mesmo que
-		// `quantidadeEntregue` esteja zerada — a baixa antiga nao preenchia o campo.
-		if (alreadyDeductedItemIds.has(item.id)) continue;
+		// Defesa 1 (dado legado): item com saida registrada mas `quantidadeEntregue` zerada e uma
+		// baixa antiga que nao preenchia o campo — nao baixa de novo. Quando `quantidadeEntregue`
+		// esta preenchido, a saida existente e pos-legado e o delta da Defesa 2 e confiavel (permite
+		// a edicao de venda re-baixar exatamente o crescimento da quantidade).
+		if (alreadyDeductedItemIds.has(item.id) && (item.quantidadeEntregue ?? 0) <= 0) continue;
 
 		// Defesa 2 (delta por item): o que ainda falta entregar. Itens cancelados nao baixam;
 		// itens ja entregues (por pedido de comanda ou baixa anterior) tem delta zero.

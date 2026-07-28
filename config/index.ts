@@ -269,7 +269,6 @@ export const AppSubscriptionPlans: {
 			};
 		};
 		capabilities: TOrganizationConfiguration["recursos"];
-		stripeProdutoId: string;
 		pricingTableFeatures: {
 			checked: boolean;
 			label: string;
@@ -398,7 +397,6 @@ export const AppSubscriptionPlans: {
 				label: "Ponto de Interação (tablet) para acumulação de cashback",
 			},
 		],
-		stripeProdutoId: process.env.NEXT_PUBLIC_STRIPE_PRODUCT_ID_STARTER as string,
 		pricing: {
 			monthly: {
 				price: 199.9,
@@ -470,7 +468,6 @@ export const AppSubscriptionPlans: {
 				redirectTo: null,
 			},
 		},
-		stripeProdutoId: process.env.NEXT_PUBLIC_STRIPE_PRODUCT_ID_PLUS as string,
 		capabilities: {
 			analytics: {
 				acesso: true,
@@ -606,7 +603,6 @@ export const AppSubscriptionPlans: {
 				redirectTo: null,
 			},
 		},
-		stripeProdutoId: process.env.NEXT_PUBLIC_STRIPE_PRODUCT_ID_PLUS as string,
 		capabilities: {
 			analytics: {
 				acesso: true,
@@ -696,6 +692,12 @@ export const AppSubscriptionPlans: {
 		color: "#FFB900",
 	},
 };
+
+// Plano comercializado hoje. A separação em três tiers está deprecada: o self-serve já vende
+// apenas este plano (ver components/Subscription/PlanSelectionMenu.tsx) e os deals B2B seguem a
+// mesma regra — o admin não escolhe tier ao fechar um deal. Os outros tiers seguem no config
+// porque organizações antigas ainda os têm gravados em `assinaturaPlano` (capabilities/paywall).
+export const DEAL_PLAN_KEY: TAppSubscriptionPlanKey = "CRESCIMENTO";
 
 // Teto do mandato PIX Automático (Stripe), em centavos. Cobre o maior combo mensal
 // possível — plano ESCALA + consultoria (Gestor de Crescimento) — para que upgrade,

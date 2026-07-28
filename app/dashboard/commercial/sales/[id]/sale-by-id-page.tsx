@@ -2,6 +2,7 @@
 
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import { CancelConfirmedSaleDialog } from "@/components/Modals/Sales/CancelConfirmedSaleDialog";
 import { LoadingButton } from "@/components/loading-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ import {
 	BadgePercent,
 	Calendar,
 	CircleUser,
+	CircleX,
 	Clock,
 	Code,
 	Diamond,
@@ -31,6 +33,7 @@ import {
 	MapPin,
 	Megaphone,
 	Package,
+	PencilLine,
 	Phone,
 	Receipt,
 	ShoppingCart,
@@ -52,6 +55,7 @@ type SaleByIdPageProps = {
 	saleId: string;
 	orgHasERPAccess: boolean;
 	userCanDeleteSales: boolean;
+	userCanEditSales: boolean;
 	userFiscalPermissions: {
 		view: boolean;
 		configure: boolean;
@@ -82,7 +86,7 @@ function formatCouponValidationMode(snapshot: TGetSalesOutputById["resgatesCupom
 	return typeof mode === "string" ? mode : null;
 }
 
-export default function SaleByIdPage({ saleId, userCanDeleteSales }: SaleByIdPageProps) {
+export default function SaleByIdPage({ saleId, userCanDeleteSales, userCanEditSales }: SaleByIdPageProps) {
 	const { data: sale, isLoading, isError, error, isSuccess } = useSalesById({ id: saleId });
 
 	if (isLoading) return <LoadingComponent />;
@@ -103,7 +107,11 @@ export default function SaleByIdPage({ saleId, userCanDeleteSales }: SaleByIdPag
 
 					<h1 className="text-lg font-bold tracking-tight">VENDA - {formatDateAsLocale(sale.dataVenda, true)}</h1>
 				</div>
-				<SaleDeleteButton sale={sale} userCanDeleteSales={userCanDeleteSales} />
+				<div className="flex items-center gap-1.5 shrink-0">
+					<SaleEditButton sale={sale} userCanEditSales={userCanEditSales} />
+					<SaleCancelButton sale={sale} userCanDeleteSales={userCanDeleteSales} />
+					<SaleDeleteButton sale={sale} userCanDeleteSales={userCanDeleteSales} />
+				</div>
 			</div>
 
 			{/* Sale Overview Section */}
@@ -675,6 +683,76 @@ function SaleItemCard({ item }: { item: TGetSalesOutputById["itens"][number] }) 
 				)}
 			</div>
 		</div>
+	);
+}
+
+// Edição da venda: habilitada pela política derivada do servidor (`editabilidade`); quando
+// bloqueada, a razão aparece em tooltip — nunca um botão morto sem explicação.
+function SaleEditButton({ sale, userCanEditSales }: { sale: TGetSalesOutputById; userCanEditSales: boolean }) {
+	const editability = sale.editabilidade;
+	if (!userCanEditSales || !editability) return null;
+	if (sale.processamentoOrigem !== "INTERNO") return null;
+
+	const editIsEnabled = editability.nivel === "TOTAL" || editability.rascunho;
+	const editHref = editability.rascunho ? `/dashboard/commercial/sales/checkout/${sale.id}` : `/dashboard/commercial/sales/edit/${sale.id}`;
+
+	if (editIsEnabled) {
+		return (
+			<Button variant="ghost" size="fit" asChild className="rounded-full flex items-center gap-1 px-2 py-2">
+				<Link href={editHref}>
+					<PencilLine className="w-5 h-5" />
+					{editability.rascunho ? "ABRIR CHECKOUT" : "EDITAR VENDA"}
+				</Link>
+			</Button>
+		);
+	}
+
+	return (
+		<TooltipProvider>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<span>
+						<Button variant="ghost" size="fit" disabled className="rounded-full flex items-center gap-1 px-2 py-2">
+							<PencilLine className="w-5 h-5" />
+							EDITAR VENDA
+						</Button>
+					</span>
+				</TooltipTrigger>
+				<TooltipContent>{editability.motivos[0] ?? "Edição indisponível para o estado atual da venda."}</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
+	);
+}
+
+// Cancelamento com estorno: o caminho correto para vendas confirmadas (a copy do delete finalmente
+// aponta para um fluxo que existe).
+function SaleCancelButton({ sale, userCanDeleteSales }: { sale: TGetSalesOutputById; userCanDeleteSales: boolean }) {
+	const [cancelDialogIsOpen, setCancelDialogIsOpen] = useState(false);
+	const editability = sale.editabilidade;
+	if (!userCanDeleteSales || !editability?.cancelamentoDisponivel) return null;
+
+	return (
+		<>
+			<Button
+				variant="ghost-destructive"
+				size="fit"
+				onClick={() => setCancelDialogIsOpen(true)}
+				className="rounded-full flex items-center gap-1 px-2 py-2"
+			>
+				<CircleX className="w-5 h-5" />
+				CANCELAR VENDA
+			</Button>
+			{cancelDialogIsOpen ? (
+				<CancelConfirmedSaleDialog
+					saleId={sale.id}
+					idExterno={sale.idExterno}
+					valorTotal={sale.valorTotal}
+					clienteNome={sale.cliente?.nome}
+					exigeCancelamentoFiscal={editability.cancelamentoExigeFiscal}
+					closeModal={() => setCancelDialogIsOpen(false)}
+				/>
+			) : null}
+		</>
 	);
 }
 

@@ -101,9 +101,12 @@ type SummarySectionProps = {
 	saleState: TUseSaleState;
 	organizationCashbackProgram: TCashbackProgramEntity | null;
 	discountAuthority?: TDiscountAuthority | null;
+	// Modo edição: cupom e resgate de cashback são imutáveis (aplicados na criação da venda);
+	// os blocos interativos somem e permanecem apenas as linhas de leitura abaixo do separador.
+	editMode?: boolean;
 };
 
-export default function SummarySection({ saleState, organizationCashbackProgram, discountAuthority }: SummarySectionProps) {
+export default function SummarySection({ saleState, organizationCashbackProgram, discountAuthority, editMode }: SummarySectionProps) {
 	// Mesmo cômputo do servidor: desconto agregado (geral + itens + cupom MANUAL) sobre o bruto dos itens.
 	const cupomManual = saleState.state.cupomResgate?.validacaoModo === "MANUAL" ? saleState.state.cupomResgate.valorDesconto : 0;
 	const descontoAgregado = saleState.state.descontoGeral + saleState.totalDescontoItens + cupomManual;
@@ -122,8 +125,8 @@ export default function SummarySection({ saleState, organizationCashbackProgram,
 				<span>{formatToMoney(saleState.totalItens)}</span>
 			</div>
 			<div className="flex flex-col gap-1.5">
-				{saleState.state.cliente ? <CouponRedemptionSection saleState={saleState} clientId={saleState.state.cliente.id} /> : null}
-				{saleState.state.cliente ? (
+				{!editMode && saleState.state.cliente ? <CouponRedemptionSection saleState={saleState} clientId={saleState.state.cliente.id} /> : null}
+				{!editMode && saleState.state.cliente ? (
 					<CashbackRedemptionBlock saleState={saleState} clientId={saleState.state.cliente.id} organizationCashbackProgram={organizationCashbackProgram} />
 				) : null}
 				<div className="w-full flex flex-col gap-1 px-2 py-1 rounded-lg bg-red-200">
@@ -172,13 +175,19 @@ export default function SummarySection({ saleState, organizationCashbackProgram,
 			<Separator />
 			{saleState.state.cupomResgate ? (
 				<div className="flex items-center justify-between text-sm text-green-600">
-					<span>Cupom {saleState.state.cupomResgate.codigo ?? ""}</span>
+					<span>
+						Cupom {saleState.state.cupomResgate.codigo ?? ""}
+						{editMode ? <span className="text-[11px] text-muted-foreground"> (aplicado na venda)</span> : null}
+					</span>
 					<span>-{formatToMoney(saleState.state.cupomResgate.valorDesconto)}</span>
 				</div>
 			) : null}
 			{saleState.state.cashbackResgate > 0 ? (
 				<div className="flex items-center justify-between text-sm text-green-600">
-					<span>Desconto em cashback</span>
+					<span>
+						Desconto em cashback
+						{editMode ? <span className="text-[11px] text-muted-foreground"> (aplicado na venda)</span> : null}
+					</span>
 					<span>-{formatToMoney(saleState.state.cashbackResgate)}</span>
 				</div>
 			) : null}
@@ -186,6 +195,12 @@ export default function SummarySection({ saleState, organizationCashbackProgram,
 				<span>TOTAL FINAL</span>
 				<span>{formatToMoney(saleState.valorFinal)}</span>
 			</div>
+			{saleState.state.pagamentosEfetivadosTotal > 0 ? (
+				<div className="flex items-center justify-between text-xs font-semibold text-green-700 dark:text-green-400">
+					<span>JÁ RECEBIDO</span>
+					<span>-{formatToMoney(saleState.state.pagamentosEfetivadosTotal)}</span>
+				</div>
+			) : null}
 			<div className="flex items-center justify-between text-xs text-muted-foreground">
 				<span>PAGAMENTOS</span>
 				<span>{formatToMoney(saleState.totalPagamentos)}</span>

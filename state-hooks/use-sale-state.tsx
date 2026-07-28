@@ -29,6 +29,10 @@ export const CartItemModifierSchema = z.object({
 
 export const CartItemSchema = z.object({
 	tempId: z.string({ required_error: "ID temporário não informado.", invalid_type_error: "Tipo não válido para ID temporário." }),
+	// Presentes apenas no modo edição: id do saleItem persistido e quantidade já entregue (para
+	// avisos de estoque na UI). Ausentes no fluxo de criação.
+	itemId: z.string({ invalid_type_error: "Tipo não válido para ID do item persistido." }).optional().nullable(),
+	quantidadeEntregue: z.number({ invalid_type_error: "Tipo não válido para quantidade entregue." }).optional().nullable(),
 	produtoId: z.string({ required_error: "ID do produto não informado.", invalid_type_error: "Tipo não válido para ID do produto." }),
 	produtoVarianteId: z.string({ invalid_type_error: "Tipo não válido para ID da variante." }).optional().nullable(),
 	nome: z.string({ required_error: "Nome do item não informado.", invalid_type_error: "Tipo não válido para nome do item." }),
@@ -116,6 +120,9 @@ export const SaleStateSchema = z.object({
 	entregaLocalizacaoId: z.string({ invalid_type_error: "Tipo não válido para ID da localização." }).optional().nullable(),
 	comandaNumero: z.string({ invalid_type_error: "Tipo não válido para número da comanda." }).optional().nullable(),
 	pagamentos: z.array(CheckoutPaymentSplitSchema),
+	// Modo edição: total já recebido (transações efetivadas) — abate do restante a cobrir pelos
+	// splits editáveis. Sempre 0 no fluxo de criação.
+	pagamentosEfetivadosTotal: z.number({ invalid_type_error: "Tipo não válido para total de pagamentos efetivados." }).default(0),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
 	cupomResgate: SaleAppliedCouponSchema.optional().nullable(),
 	// Override tri-state da emissão fiscal automática. null = herda a preferência da organização.
@@ -147,6 +154,7 @@ export function getDefaultSaleState(initialState?: Partial<TSaleState>): TSaleSt
 		entregaLocalizacaoId: initialState?.entregaLocalizacaoId ?? null,
 		comandaNumero: initialState?.comandaNumero ?? null,
 		pagamentos: initialState?.pagamentos ?? [],
+		pagamentosEfetivadosTotal: initialState?.pagamentosEfetivadosTotal ?? 0,
 		cashbackResgate: initialState?.cashbackResgate ?? 0,
 		cupomResgate: initialState?.cupomResgate ?? null,
 		emissaoFiscalAutomatica: initialState?.emissaoFiscalAutomatica ?? null,
@@ -350,8 +358,10 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 	const valorAntesCashback = useMemo(() => Math.max(0, valorAntesCupom - cupomDesconto), [valorAntesCupom, cupomDesconto]);
 	const valorFinal = useMemo(() => Math.max(0, valorAntesCashback - state.cashbackResgate), [valorAntesCashback, state.cashbackResgate]);
 	const totalPagamentos = useMemo(() => state.pagamentos.reduce((sum, p) => sum + p.valor, 0), [state.pagamentos]);
-	const valorRestante = useMemo(() => Math.max(0, valorFinal - totalPagamentos), [valorFinal, totalPagamentos]);
-	const troco = useMemo(() => (totalPagamentos > valorFinal ? totalPagamentos - valorFinal : 0), [totalPagamentos, valorFinal]);
+	// Modo edição: os splits editáveis só precisam cobrir o que ainda não foi recebido.
+	const valorAposEfetivados = useMemo(() => Math.max(0, valorFinal - state.pagamentosEfetivadosTotal), [valorFinal, state.pagamentosEfetivadosTotal]);
+	const valorRestante = useMemo(() => Math.max(0, valorAposEfetivados - totalPagamentos), [valorAposEfetivados, totalPagamentos]);
+	const troco = useMemo(() => (totalPagamentos > valorAposEfetivados ? totalPagamentos - valorAposEfetivados : 0), [totalPagamentos, valorAposEfetivados]);
 	const pagamentoCompleto = useMemo(() => valorRestante <= 0.01, [valorRestante]);
 
 	const isReadyForDraft = useMemo(() => {
@@ -365,7 +375,7 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		if (state.entregaModalidade === "ENTREGA" && !state.entregaLocalizacaoId) return false;
 		if (state.entregaModalidade === "COMANDA" && !state.comandaNumero?.trim()) return false;
 		if (!pagamentoCompleto) return false;
-		if (valorFinal > 0.01 && state.pagamentos.length === 0) return false;
+		if (valorAposEfetivados > 0.01 && state.pagamentos.length === 0) return false;
 		if (
 			state.pagamentos.some(
 				(payment) =>
@@ -386,7 +396,7 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		state.pagamentos,
 		state.cliente,
 		pagamentoCompleto,
-		valorFinal,
+		valorAposEfetivados,
 	]);
 
 	const getDraftMetadata = useCallback((): TSaleDraftMetadata => {
@@ -438,6 +448,7 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		valorAntesCashback,
 		valorFinal,
 		totalPagamentos,
+		valorAposEfetivados,
 		valorRestante,
 		troco,
 		pagamentoCompleto,

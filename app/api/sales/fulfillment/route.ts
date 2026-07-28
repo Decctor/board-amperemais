@@ -157,6 +157,7 @@ async function getSalesFulfillment({ input, orgId, policy }: { input: TGetSalesF
 				canal: true,
 				modelo: true,
 				processamentoOrigem: true,
+				tabId: true,
 			},
 			with: SALE_FULFILLMENT_DETAILS_WITH,
 		});
@@ -212,6 +213,7 @@ async function getSalesFulfillment({ input, orgId, policy }: { input: TGetSalesF
 			dataVenda: true,
 			modelo: true,
 			processamentoOrigem: true,
+			tabId: true,
 		},
 		with: SALE_FULFILLMENT_WITH,
 		orderBy: (fields, { asc }) => asc(fields.dataVenda),

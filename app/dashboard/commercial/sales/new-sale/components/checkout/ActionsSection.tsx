@@ -8,9 +8,25 @@ type ActionsSectionProps = {
 	onFinalizeSale: () => void;
 	isCreatingDraft?: boolean;
 	isFinalizingSale?: boolean;
+	// Modo edição: um único CTA de salvar (não existe "orçamento" para uma venda confirmada).
+	editMode?: boolean;
 };
 
-export default function ActionsSection({ saleState, onCreateDraft, onFinalizeSale, isCreatingDraft, isFinalizingSale }: ActionsSectionProps) {
+export default function ActionsSection({ saleState, onCreateDraft, onFinalizeSale, isCreatingDraft, isFinalizingSale, editMode }: ActionsSectionProps) {
+	if (editMode) {
+		return (
+			<div className="grid grid-cols-1 gap-2">
+				<Button
+					className={cn("w-full", !saleState.isReadyForFinalize && "opacity-50")}
+					onClick={onFinalizeSale}
+					disabled={!saleState.isReadyForFinalize || isFinalizingSale}
+				>
+					{isFinalizingSale ? "SALVANDO ALTERAÇÕES..." : "SALVAR ALTERAÇÕES"}
+				</Button>
+			</div>
+		);
+	}
+
 	return (
 		<div className="grid grid-cols-1 gap-2">
 			<Button

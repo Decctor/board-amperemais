@@ -1,9 +1,10 @@
 import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
 import { cancelCouponRedemption } from "@/lib/coupons/redemption";
 import { registerRefundCashMovement, resolveActiveSalesSession } from "@/lib/sales-sessions";
+import { reverseSaleItemStock } from "@/lib/sales/sale-processing/reverse-sale-item-stock";
 import { applyStockMovement } from "@/lib/stock/apply-stock-movement";
 import { db } from "@/services/drizzle";
-import { accountingEntries, couponRedemptions, financialTransactions, productStockLots, sales } from "@/services/drizzle/schema";
+import { accountingEntries, couponRedemptions, financialTransactions, productStockLots, saleItems, sales } from "@/services/drizzle/schema";
 import { and, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 
@@ -99,7 +100,23 @@ export async function processConfirmedSaleCancellation({
 			}
 		}
 
-		for (const movement of sale.movimentacoesEstoque.filter((item) => item.tipo === "SAIDA")) {
+		// Estorno por item (líquido de devoluções anteriores) — também zera `quantidadeEntregue`,
+		// mantendo o dedup de baixa consistente.
+		const saidaMovements = sale.movimentacoesEstoque.filter((item) => item.tipo === "SAIDA");
+		const saleItemIdsWithMovements = [...new Set(saidaMovements.map((movement) => movement.vendaItemId).filter((id): id is string => id != null))];
+		for (const saleItemId of saleItemIdsWithMovements) {
+			await reverseSaleItemStock({
+				tx,
+				organizationId,
+				saleId,
+				saleItemId,
+				authorId,
+				reason: `Estorno de venda cancelada: ${reason}`,
+			});
+		}
+
+		// Movimentos legados sem vínculo ao item: estorno direto, um-para-um.
+		for (const movement of saidaMovements.filter((item) => item.vendaItemId == null)) {
 			await applyStockMovement({
 				trx: tx,
 				organizationId,
@@ -113,7 +130,7 @@ export async function processConfirmedSaleCancellation({
 				links: {
 					loteId: movement.loteId,
 					vendaId: saleId,
-					vendaItemId: movement.vendaItemId,
+					vendaItemId: null,
 				},
 			});
 
@@ -136,6 +153,9 @@ export async function processConfirmedSaleCancellation({
 				}
 			}
 		}
+
+		// Venda terminal: nenhuma quantidade permanece "entregue" para fins de dedup de baixa.
+		await tx.update(saleItems).set({ quantidadeEntregue: 0 }).where(and(eq(saleItems.vendaId, saleId), eq(saleItems.organizacaoId, organizationId)));
 
 		await tx
 			.update(sales)

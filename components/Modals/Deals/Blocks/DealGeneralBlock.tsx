@@ -33,21 +33,8 @@ export default function DealGeneralBlock({ deal, updateDeal, commercialTermsEdit
 				placeholder="Observações internas sobre a negociação..."
 				handleChange={(value) => updateDeal({ descricao: value })}
 			/>
+			{/* Não há seletor de plano: todo deal usa o único plano comercializado (DEAL_PLAN_KEY). */}
 			<div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
-				<SelectInput
-					label="PLANO BASE"
-					value={deal.planoBase}
-					options={[
-						{ id: 1, value: "ESSENCIAL", label: "ESSENCIAL" },
-						{ id: 2, value: "CRESCIMENTO", label: "CRESCIMENTO" },
-						{ id: 3, value: "ESCALA", label: "ESCALA" },
-					]}
-					resetOptionLabel="PLANO BASE"
-					handleChange={(value) => updateDeal({ planoBase: value as typeof deal.planoBase })}
-					onReset={() => updateDeal({ planoBase: "ESSENCIAL" })}
-					editable={commercialTermsEditable}
-					required
-				/>
 				<SelectInput
 					label="CICLO DE COBRANÇA"
 					value={deal.intervalo}

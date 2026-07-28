@@ -1,5 +1,6 @@
 import type { TConfirmSaleInput, TConfirmSaleOutput } from "@/app/api/pos/sales/confirm/route";
 import type { TCreateAndConfirmSaleInput, TCreateAndConfirmSaleOutput } from "@/app/api/pos/sales/create-and-confirm/route";
+import type { TEditConfirmedSaleInput, TEditConfirmedSaleOutput } from "@/app/api/pos/sales/edit/route";
 import type { TCreateSaleDraftInput, TCreateSaleDraftOutput } from "@/app/api/pos/sales/route";
 import type { TUpdateSaleDraftInput, TUpdateSaleDraftOutput } from "@/app/api/pos/sales/route";
 import axios from "axios";
@@ -26,5 +27,19 @@ export async function createAndConfirmSale(input: TCreateAndConfirmSaleInput) {
 
 export async function cancelSaleDraft(saleId: string) {
 	const { data } = await axios.post(`/api/pos/sales/cancel?id=${saleId}`);
+	return data;
+}
+
+export async function editConfirmedSale(input: TEditConfirmedSaleInput) {
+	const { data } = await axios.put<TEditConfirmedSaleOutput>("/api/pos/sales/edit", input);
+	return data;
+}
+
+// Cancelamento com estorno de venda CONFIRMADA (financeiro, estoque, cashback e cupons).
+// A mesma rota trata rascunhos, mas para CONFIRMADA exige permissoes.vendas.excluir no servidor.
+export async function cancelConfirmedSale({ id, reason, sessaoVendaId }: { id: string; reason: string; sessaoVendaId?: string | null }) {
+	const searchParams = new URLSearchParams({ id, reason });
+	if (sessaoVendaId) searchParams.set("sessaoVendaId", sessaoVendaId);
+	const { data } = await axios.post<{ data: { saleId: string }; message: string }>(`/api/pos/sales/cancel?${searchParams.toString()}`);
 	return data;
 }

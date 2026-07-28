@@ -39,6 +39,7 @@ type FulfillmentData = TGetSalesFulfillmentOutputDefault;
 
 type FulfillmentBoardProps = {
 	organizationConfig: TOrganizationConfiguration;
+	canEditSales?: boolean;
 	onViewDetails: (saleId: string) => void;
 };
 
@@ -46,7 +47,7 @@ const screenReaderInstructions: ScreenReaderInstructions = {
 	draggable: "Para mover um pedido pelo teclado, use o botão 'Mover pedido' em cada card e escolha a etapa de destino.",
 };
 
-export default function FulfillmentBoard({ organizationConfig, onViewDetails }: FulfillmentBoardProps) {
+export default function FulfillmentBoard({ organizationConfig, canEditSales, onViewDetails }: FulfillmentBoardProps) {
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const [pendingCardIds, setPendingCardIds] = useState<Set<string>>(new Set());
 	const [confirm, setConfirm] = useState<{ cardId: string; previousStatus: TSaleAttendanceStatusEnum } | null>(null);
@@ -308,6 +309,7 @@ export default function FulfillmentBoard({ organizationConfig, onViewDetails }: 
 								onDeliverWithoutPayment={handleDeliverWithoutPayment}
 								onCancelConfirm={handleCancelConfirm}
 								onViewDetails={onViewDetails}
+								canEditSales={canEditSales}
 							/>
 						))}
 					</div>

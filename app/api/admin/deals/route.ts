@@ -1,4 +1,4 @@
-import { AppSubscriptionPlans } from "@/config";
+import { AppSubscriptionPlans, DEAL_PLAN_KEY } from "@/config";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import {
@@ -158,6 +158,8 @@ async function getDealsRoute(request: NextRequest) {
 
 const CreateDealInputSchema = z.object({
 	deal: DealSchema.omit({
+		// O tier não é negociável pelo admin: o servidor grava DEAL_PLAN_KEY (separação deprecada).
+		planoBase: true,
 		status: true,
 		stripePriceId: true,
 		stripeCustomerId: true,
@@ -174,9 +176,10 @@ export type TCreateDealInput = z.infer<typeof CreateDealInputSchema>;
 async function createDeal({ input, authorId }: { input: TCreateDealInput; authorId: string }) {
 	const { deal: dealInput } = input;
 
-	// Valida o plano base contra a configuração de planos antes de tocar no Stripe.
-	const plan = AppSubscriptionPlans[dealInput.planoBase];
-	if (!plan) throw new createHttpError.BadRequest("Plano base de assinatura inválido.");
+	// Plano fixo (DEAL_PLAN_KEY) — a separação em tiers está deprecada. Valida contra a
+	// configuração antes de tocar no Stripe para falhar cedo se o plano sumir do config.
+	const plan = AppSubscriptionPlans[DEAL_PLAN_KEY];
+	if (!plan) throw new createHttpError.InternalServerError("Plano base de assinatura não configurado.");
 
 	// Se o obtentor não foi selecionado manualmente, tenta o match por email — caso o
 	// comprador ainda não tenha conta, o claim acontece depois, na criação de organização.
@@ -195,6 +198,7 @@ async function createDeal({ input, authorId }: { input: TCreateDealInput; author
 		.insert(deals)
 		.values({
 			...dealInput,
+			planoBase: DEAL_PLAN_KEY,
 			usuarioObtentorId,
 			status: "PENDENTE",
 			autorId: authorId,

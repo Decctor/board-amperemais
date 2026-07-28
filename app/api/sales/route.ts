@@ -8,6 +8,7 @@ import { campaignAudienceHasClient, resolveCampaignAudiencesByCampaignId } from 
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
 import { getValidClientSaleWhere } from "@/lib/sales/valid-sale";
+import { resolveSaleEditability } from "@/lib/sales/sale-editability";
 import { computeSaleFinancialStatus, computeSaleFiscalStatus } from "@/lib/sales/utils";
 import type { TPaymentMethodEnum, TSaleFinancialDerivedStatusEnum, TSaleFiscalDerivedStatusEnum } from "@/schemas/enums";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
@@ -417,12 +418,28 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 			},
 			orderBy: (fields, { desc }) => desc(fields.dataInsercao),
 		});
+		// Transações financeiras da venda (via lançamentos): insumo da política de editabilidade.
+		const lancamentos = await db.query.accountingEntries.findMany({
+			where: (fields, { and, eq }) => and(eq(fields.organizacaoId, userOrgId), eq(fields.vendaId, sale.id)),
+			columns: { id: true },
+			with: { transacoesFinanceiras: { columns: { valor: true, tipo: true, dataEfetivacao: true, provedorStatus: true } } },
+		});
+		const editabilidade = resolveSaleEditability({
+			statusVenda: sale.statusVenda,
+			statusAtendimento: sale.statusAtendimento,
+			processamentoOrigem: sale.processamentoOrigem,
+			tabId: sale.tabId,
+			valorTotal: sale.valorTotal,
+			documentosFiscais: sale.documentosFiscais,
+			transacoes: lancamentos.flatMap((entry) => entry.transacoesFinanceiras),
+		});
 		return {
 			data: {
 				default: null,
 				byId: {
 					...sale,
 					resgatesCupom,
+					editabilidade,
 				},
 				byClientId: null,
 			},

@@ -1,4 +1,5 @@
 import { getOrganizationPaymentMethodsConfig } from "@/lib/payments/defaults";
+import { saleHasLiveFiscalDocument } from "@/lib/sales/sale-editability";
 import {
 	buildPaymentTransactionTitle,
 	classifySalePaymentTransactions,
@@ -51,6 +52,7 @@ async function loadCorrectableSale(organizationId: string, saleId: string) {
 			dataVenda: true,
 			processamentoOrigem: true,
 			entregaLocalizacaoId: true,
+			tabId: true,
 		},
 		with: {
 			cliente: { columns: { id: true, nome: true, telefone: true } },
@@ -138,6 +140,13 @@ async function patchPagamento({
 	pagamento: PatchSaleFulfillmentPagamentoInput;
 }) {
 	const sale = await loadCorrectableSale(organization.id, saleId);
+
+	// Documento fiscal vivo é um snapshot dos valores E do pagamento da venda: trocar o método
+	// depois da emissão dessincronizaria o bloco `pagamento` da nota autorizada.
+	if (saleHasLiveFiscalDocument(sale.documentosFiscais)) {
+		throw new createHttpError.BadRequest("A venda possui documento fiscal emitido. Cancele o documento antes de alterar o pagamento.");
+	}
+
 	const rawTransactions: SalePaymentTransactionInput[] = sale.lancamentosContabeis.flatMap((entry) =>
 		entry.transacoesFinanceiras.map((transaction) => ({
 			...transaction,

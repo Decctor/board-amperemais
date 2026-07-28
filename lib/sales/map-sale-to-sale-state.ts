@@ -1,0 +1,139 @@
+import type { TGetSaleForEditOutput } from "@/app/api/pos/sales/edit/route";
+import type { TCartItem, TCartItemModifier, TSaleState } from "@/state-hooks/use-sale-state";
+import type { TCheckoutPaymentSplit } from "@/lib/payments/schemas";
+
+/**
+ * Hidrata o estado do POS (`useSaleState`) a partir de uma venda persistida (GET /api/pos/sales/edit).
+ *
+ * Itens vêm do snapshot `saleItems.metadados` (mesmo shape do carrinho), com fallback para o
+ * catálogo em linhas legadas. Só as transações PENDENTES viram splits editáveis — as efetivadas
+ * entram como `pagamentosEfetivadosTotal` e são exibidas em bloco read-only ("Já recebido").
+ */
+
+type TSaleForEditData = TGetSaleForEditOutput["data"];
+
+type TItemMetadataSnapshot = {
+	nome?: string;
+	codigo?: string;
+	imagemUrl?: string | null;
+	valorUnitarioBase?: number;
+	valorModificadores?: number;
+	modificadores?: TCartItemModifier[];
+};
+
+function toDateInputValue(value: Date | string | null | undefined): string | null {
+	if (!value) return null;
+	const parsed = value instanceof Date ? value : new Date(value);
+	if (Number.isNaN(parsed.getTime())) return null;
+	return parsed.toISOString().slice(0, 10);
+}
+
+function mapItemToCartItem(item: TSaleForEditData["venda"]["itens"][number]): TCartItem {
+	const snapshot =
+		item.metadados && typeof item.metadados === "object" && !Array.isArray(item.metadados) ? (item.metadados as TItemMetadataSnapshot) : null;
+
+	const modificadores: TCartItemModifier[] =
+		snapshot?.modificadores ??
+		item.adicionais.map((modifier) => ({
+			opcaoId: modifier.opcaoId ?? "",
+			nome: modifier.nome,
+			quantidade: modifier.quantidade,
+			valorUnitario: modifier.valorUnitario,
+			valorTotal: modifier.valorTotal,
+		}));
+	const valorModificadores = snapshot?.valorModificadores ?? modificadores.reduce((sum, modifier) => sum + modifier.valorTotal, 0);
+
+	return {
+		tempId: item.id,
+		itemId: item.id,
+		quantidadeEntregue: item.quantidadeEntregue ?? 0,
+		produtoId: item.produtoId,
+		produtoVarianteId: item.produtoVarianteId ?? null,
+		nome: snapshot?.nome ?? item.produtoVariante?.nome ?? item.produto?.nome ?? "Item",
+		codigo: snapshot?.codigo ?? item.produtoVariante?.codigo ?? item.produto?.codigo ?? "",
+		imagemUrl: snapshot?.imagemUrl ?? item.produto?.imagemCapaUrl ?? null,
+		quantidade: item.quantidade,
+		valorUnitarioBase: snapshot?.valorUnitarioBase ?? Math.max(0, item.valorVendaUnitario - valorModificadores),
+		valorModificadores,
+		valorUnitarioFinal: item.valorVendaUnitario,
+		valorTotalBruto: item.valorVendaTotalBruto,
+		valorDesconto: item.valorTotalDesconto,
+		valorTotalLiquido: item.valorVendaTotalLiquido,
+		modificadores,
+	};
+}
+
+/** Colapsa as transações pendentes (editáveis) em splits do checkout; parcelas do mesmo grupo viram um split só. */
+function mapPendingPaymentsToSplits(pagamentos: TSaleForEditData["pagamentos"]): TCheckoutPaymentSplit[] {
+	const pending = pagamentos.todas.filter((payment) => payment.editavel);
+	const splits: TCheckoutPaymentSplit[] = [];
+	const groupedIds = new Set<string>();
+
+	for (const payment of pending) {
+		if (!payment.grupoParcelasId) continue;
+		if (groupedIds.has(payment.grupoParcelasId)) continue;
+		groupedIds.add(payment.grupoParcelasId);
+		const groupPending = pending.filter((entry) => entry.grupoParcelasId === payment.grupoParcelasId);
+		splits.push({
+			id: crypto.randomUUID(),
+			metodo: payment.metodo,
+			valor: groupPending.reduce((sum, entry) => sum + entry.valor, 0),
+			totalParcelas: groupPending.length,
+			efetivacaoTipo: "PENDENTE",
+			dataPrevisao: toDateInputValue(groupPending[0]?.dataPrevisao),
+			observacoes: null,
+		});
+	}
+
+	for (const payment of pending.filter((entry) => !entry.grupoParcelasId)) {
+		splits.push({
+			id: crypto.randomUUID(),
+			metodo: payment.metodo,
+			valor: payment.valor,
+			totalParcelas: null,
+			efetivacaoTipo: "PENDENTE",
+			dataPrevisao: toDateInputValue(payment.dataPrevisao),
+			observacoes: null,
+		});
+	}
+
+	return splits;
+}
+
+export function mapSaleForEditToSaleState(data: TSaleForEditData): Partial<TSaleState> {
+	const venda = data.venda;
+	const draftMetadata =
+		venda.rascunhoMetadados && typeof venda.rascunhoMetadados === "object" && !Array.isArray(venda.rascunhoMetadados)
+			? (venda.rascunhoMetadados as { descontoGeral?: number })
+			: null;
+
+	const cashbackResgate = data.cashbackResgate;
+	const cupomDesconto = data.cupomResgatado?.valorDesconto ?? 0;
+	const descontoGeral = draftMetadata?.descontoGeral ?? Math.max(0, (venda.descontosTotal ?? 0) - cupomDesconto - cashbackResgate);
+
+	return {
+		modoCliente: venda.cliente ? "VINCULADO" : "CONSUMIDOR",
+		cliente: venda.cliente ? { id: venda.cliente.id, nome: venda.cliente.nome, telefone: venda.cliente.telefone ?? "" } : null,
+		vendedorId: venda.vendedorId ?? null,
+		vendedorNome: venda.vendedorNome ?? null,
+		itens: venda.itens.map(mapItemToCartItem),
+		descontoGeral,
+		acrescimoGeral: venda.acrescimosTotal ?? 0,
+		observacoes: venda.observacoes ?? "",
+		entregaModalidade: (venda.entregaModalidade as TSaleState["entregaModalidade"] | null) ?? "PRESENCIAL",
+		entregaLocalizacaoId: venda.entregaLocalizacaoId ?? null,
+		comandaNumero: venda.comandaNumero ?? null,
+		pagamentos: mapPendingPaymentsToSplits(data.pagamentos),
+		pagamentosEfetivadosTotal: data.editabilidade.valorMinimoEdicao,
+		cashbackResgate,
+		cupomResgate: data.cupomResgatado
+			? {
+					cupomId: data.cupomResgatado.cupomId,
+					valorDesconto: data.cupomResgatado.valorDesconto,
+					codigo: data.cupomResgatado.cupomCodigo,
+					titulo: data.cupomResgatado.cupomTitulo,
+				}
+			: null,
+		emissaoFiscalAutomatica: venda.emissaoFiscalAutomatica ?? null,
+	};
+}

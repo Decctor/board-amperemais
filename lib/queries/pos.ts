@@ -1,3 +1,4 @@
+import type { TGetSaleForEditOutput } from "@/app/api/pos/sales/edit/route";
 import type { TGetSaleDraftOutput } from "@/app/api/pos/sales/route";
 import type { TGetPOSGroupsOutput } from "@/app/api/pos/groups/route";
 import type { TGetPOSProductsInput, TGetPOSProductsOutput } from "@/app/api/pos/products/route";
@@ -113,6 +114,27 @@ export function useSaleDraft({ saleId }: { saleId: string }) {
 		...useQuery({
 			queryKey,
 			queryFn: () => fetchSaleDraft(saleId),
+			enabled: !!saleId,
+		}),
+		queryKey,
+	};
+}
+
+// ============================================================================
+// Venda confirmada para edição (superfície de edição do POS)
+// ============================================================================
+
+async function fetchSaleForEdit(saleId: string) {
+	const { data } = await axios.get<TGetSaleForEditOutput>(`/api/pos/sales/edit?saleId=${saleId}`);
+	return data.data;
+}
+
+export function useSaleForEdit({ saleId }: { saleId: string }) {
+	const queryKey = ["pos-sale-for-edit", saleId];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchSaleForEdit(saleId),
 			enabled: !!saleId,
 		}),
 		queryKey,

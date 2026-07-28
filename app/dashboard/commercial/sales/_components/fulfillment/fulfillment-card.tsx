@@ -18,7 +18,8 @@ import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
 import type { DraggableAttributes, DraggableSyntheticListeners } from "@dnd-kit/core";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CircleUser, Clock, Eye, GripVertical, Loader2, MoveRight } from "lucide-react";
+import { CircleUser, Clock, Eye, GripVertical, Loader2, MoveRight, PencilLine } from "lucide-react";
+import Link from "next/link";
 import { forwardRef, type CSSProperties } from "react";
 import { ATTENDANCE_STATUS_LABEL, FINANCIAL_BADGE_META, getValidBoardTargets } from "./config";
 import {
@@ -52,6 +53,7 @@ function StatusPill({ label, tone, icon }: { label: string; tone: "success" | "m
 type FulfillmentCardProps = {
 	card: TSalesFulfillmentCard;
 	organizationConfig: TOrganizationConfiguration;
+	canEditSales?: boolean;
 	isPending?: boolean;
 	isDragging?: boolean;
 	isOverlay?: boolean;
@@ -72,6 +74,7 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 	{
 		card,
 		organizationConfig,
+		canEditSales,
 		isPending,
 		isDragging,
 		isOverlay,
@@ -146,6 +149,17 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 				</div>
 
 				<div className="flex shrink-0 items-center gap-0.5">
+					{canEditSales && card.editabilidade.nivel === "TOTAL" ? (
+						<Link
+							href={`/dashboard/commercial/sales/edit/${card.id}`}
+							aria-label="Editar venda"
+							onPointerDown={(event) => event.stopPropagation()}
+							onClick={(event) => event.stopPropagation()}
+							className="rounded-md p-1 text-muted-foreground/60 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
+							<PencilLine className="h-4 w-4" />
+						</Link>
+					) : null}
 					{onViewDetails ? (
 						<button
 							id={`sale-details-trigger-${card.id}`}

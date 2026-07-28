@@ -75,7 +75,6 @@ export default function ControlDeal({ dealId, closeModal, callbacks }: ControlDe
 				nomeObtentor: deal.nomeObtentor,
 				emailObtentor: deal.emailObtentor,
 				telefoneObtentor: deal.telefoneObtentor,
-				planoBase: deal.planoBase as "ESSENCIAL" | "CRESCIMENTO" | "ESCALA",
 				quantidadeLicencas: deal.quantidadeLicencas,
 				valorUnitarioCentavos: deal.valorUnitarioCentavos,
 				intervalo: deal.intervalo,

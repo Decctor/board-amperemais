@@ -49,6 +49,7 @@ import {
 	Megaphone,
 	MoreHorizontal,
 	Package,
+	PencilLine,
 	Plus,
 	Printer,
 	ReceiptText,
@@ -65,9 +66,11 @@ type SalesPageProps = {
 	user: TAuthUserSession["user"];
 	organization: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 	canApproveActionRequests: boolean;
+	canEditSales: boolean;
+	canDeleteSales: boolean;
 };
 
-export default function SalesPage({ user: _user, organization, canApproveActionRequests }: SalesPageProps) {
+export default function SalesPage({ user: _user, organization, canApproveActionRequests, canEditSales, canDeleteSales }: SalesPageProps) {
 	const orgHasERPAccess = organization.configuracao.recursos.erp.acesso;
 	const [selectedSaleId, setSelectedSaleId] = useQueryState("saleId", parseAsString.withOptions({ shallow: true }));
 
@@ -86,7 +89,7 @@ export default function SalesPage({ user: _user, organization, canApproveActionR
 				<div className="flex items-center justify-end">
 					<SalesModuleActions orgHasERPAccess={false} />
 				</div>
-				<SalesHistoryView />
+				<SalesHistoryView canEditSales={false} />
 			</div>
 		);
 	}
@@ -118,11 +121,12 @@ export default function SalesPage({ user: _user, organization, canApproveActionR
 					</div>
 				</div>
 				<TabsContent value="historico" className="mt-3 flex flex-col gap-3">
-					<SalesHistoryView />
+					<SalesHistoryView canEditSales={canEditSales} />
 				</TabsContent>
 				<TabsContent value="atendimento" className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden">
 					<FulfillmentBoard
 						organizationConfig={organization.configuracao}
+						canEditSales={canEditSales}
 						onViewDetails={(saleId) => void setSelectedSaleId(saleId, { history: "push" })}
 					/>
 				</TabsContent>
@@ -133,7 +137,9 @@ export default function SalesPage({ user: _user, organization, canApproveActionR
 					<ActionApprovalsQueue orgId={organization.id} canApprove={canApproveActionRequests} />
 				</TabsContent>
 			</Tabs>
-			{selectedSaleId ? <SaleFulfillmentDetailsMenu saleId={selectedSaleId} closeMenu={closeSaleDetails} /> : null}
+			{selectedSaleId ? (
+				<SaleFulfillmentDetailsMenu saleId={selectedSaleId} closeMenu={closeSaleDetails} canEditSales={canEditSales} canDeleteSales={canDeleteSales} />
+			) : null}
 		</div>
 	);
 }
@@ -153,7 +159,7 @@ function SalesModuleActions({ orgHasERPAccess }: { orgHasERPAccess: boolean }) {
 	);
 }
 
-function SalesHistoryView() {
+function SalesHistoryView({ canEditSales }: { canEditSales: boolean }) {
 	const {
 		data: salesResult,
 		isLoading,
@@ -202,7 +208,7 @@ function SalesHistoryView() {
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && sales ? (
 				sales.length > 0 ? (
-					sales.map((sale) => <SaleCard key={sale.id} sale={sale} />)
+					sales.map((sale) => <SaleCard key={sale.id} sale={sale} canEditSales={canEditSales} />)
 				) : (
 					<p className="w-full tracking-tight text-center">Nenhuma venda encontrada.</p>
 				)
@@ -302,7 +308,7 @@ function SaleErpSummaryChips({ sale }: { sale: TGetSalesOutputDefault["sales"][n
 	);
 }
 
-function SaleCard({ sale }: { sale: TGetSalesOutputDefault["sales"][number] }) {
+function SaleCard({ sale, canEditSales }: { sale: TGetSalesOutputDefault["sales"][number]; canEditSales: boolean }) {
 	return (
 		<div className="bg-card border-border flex w-full flex-col gap-2.5 rounded-xl border px-4 py-3 shadow-2xs hover:border-border hover:shadow-sm transition-all cursor-pointer">
 			<div className="flex flex-col md:flex-row md:items-start justify-between gap-2.5">
@@ -485,7 +491,7 @@ function SaleCard({ sale }: { sale: TGetSalesOutputDefault["sales"][number] }) {
 							DETALHES
 						</Link>
 					</Button>
-					<SaleCardActionsMenu sale={sale} />
+					<SaleCardActionsMenu sale={sale} canEditSales={canEditSales} />
 				</div>
 			</div>
 		</div>
@@ -509,9 +515,16 @@ function SaleParticipant({ role, name, avatarUrl }: { role: string; name: string
 // Menu de ações rápidas da venda (mesmo padrão do módulo fiscal): atalhos + impressão de cupom
 // via agente desktop. O botão de impressão fica desabilitado enquanto nenhuma impressora ativa
 // atender à finalidade CUPOM_VENDA.
-function SaleCardActionsMenu({ sale }: { sale: TGetSalesOutputDefault["sales"][number] }) {
+function SaleCardActionsMenu({ sale, canEditSales }: { sale: TGetSalesOutputDefault["sales"][number]; canEditSales: boolean }) {
 	const { data: printers } = useAgentPrinters();
 	const canPrintCupom = organizationHasPrinterForFinalidade(printers, "CUPOM_VENDA");
+
+	// Habilitação otimista: as linhas da lista não carregam transações/documentos, então a página
+	// de edição (GET autoritativo) renderiza a recusa com a razão quando a política não permitir.
+	const saleIsInternal = sale.processamentoOrigem === "INTERNO";
+	const editHref =
+		sale.statusVenda === "ORCAMENTO" ? `/dashboard/commercial/sales/checkout/${sale.id}` : `/dashboard/commercial/sales/edit/${sale.id}`;
+	const canOpenEdit = canEditSales && saleIsInternal && (sale.statusVenda === "CONFIRMADA" || sale.statusVenda === "ORCAMENTO");
 
 	const { mutate: printCupom, isPending: printIsPending } = useMutation({
 		mutationKey: ["print-sale-cupom", sale.id],
@@ -535,6 +548,14 @@ function SaleCardActionsMenu({ sale }: { sale: TGetSalesOutputDefault["sales"][n
 						VER DETALHES
 					</Link>
 				</DropdownMenuItem>
+				{canOpenEdit ? (
+					<DropdownMenuItem asChild>
+						<Link href={editHref}>
+							<PencilLine className="h-4 w-4" />
+							{sale.statusVenda === "ORCAMENTO" ? "ABRIR CHECKOUT" : "EDITAR VENDA"}
+						</Link>
+					</DropdownMenuItem>
+				) : null}
 				{sale.cliente ? (
 					<DropdownMenuItem asChild>
 						<Link href={`/dashboard/commercial/clients/id/${sale.cliente.id}`}>

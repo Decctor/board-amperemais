@@ -29,6 +29,7 @@ import {
 	Package,
 	PackageCheck,
 	PackageOpen,
+	PencilLine,
 	Phone,
 	PhoneCall,
 	ReceiptText,
@@ -38,12 +39,17 @@ import {
 	Truck,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { FaWhatsapp } from "react-icons/fa6";
+import { CancelConfirmedSaleDialog } from "./CancelConfirmedSaleDialog";
 
 type SaleFulfillmentDetailsMenuProps = {
 	saleId: string;
 	closeMenu: () => void;
+	// Permissões do membro (RSC): habilitam os pontos de entrada de edição e cancelamento.
+	canEditSales?: boolean;
+	canDeleteSales?: boolean;
 };
 
 const ATTENDANCE_META: Record<string, { label: string; icon: ReactNode }> = {
@@ -96,7 +102,7 @@ const DELIVERY_META: Record<string, { label: string; icon: ReactNode }> = {
 	COMANDA: { label: "Comanda", icon: <ClipboardList className="size-4" /> },
 };
 
-export function SaleFulfillmentDetailsMenu({ saleId, closeMenu }: SaleFulfillmentDetailsMenuProps) {
+export function SaleFulfillmentDetailsMenu({ saleId, closeMenu, canEditSales, canDeleteSales }: SaleFulfillmentDetailsMenuProps) {
 	const query = useSalesFulfillmentById({ saleId });
 
 	return (
@@ -118,7 +124,9 @@ export function SaleFulfillmentDetailsMenu({ saleId, closeMenu }: SaleFulfillmen
 		>
 			{query.isLoading ? <SaleDetailsSkeleton /> : null}
 			{query.isError ? <SaleDetailsError error={query.error} isFetching={query.isFetching} retry={() => query.refetch()} /> : null}
-			{query.data ? <SaleFulfillmentDetailsContent key={query.data.id} sale={query.data} /> : null}
+			{query.data ? (
+				<SaleFulfillmentDetailsContent key={query.data.id} sale={query.data} canEditSales={canEditSales} canDeleteSales={canDeleteSales} />
+			) : null}
 		</ResponsiveMenu>
 	);
 }
@@ -167,7 +175,15 @@ function SaleDetailsError({ error, isFetching, retry }: { error: unknown; isFetc
 	);
 }
 
-function SaleFulfillmentDetailsContent({ sale }: { sale: TGetSalesFulfillmentOutputById }) {
+function SaleFulfillmentDetailsContent({
+	sale,
+	canEditSales,
+	canDeleteSales,
+}: {
+	sale: TGetSalesFulfillmentOutputById;
+	canEditSales?: boolean;
+	canDeleteSales?: boolean;
+}) {
 	const [itemsExpanded, setItemsExpanded] = useState(false);
 	const visibleItems = itemsExpanded ? sale.itens : sale.itens.slice(0, 3);
 	const hiddenItemsCount = Math.max(0, sale.itens.length - 3);
@@ -280,7 +296,74 @@ function SaleFulfillmentDetailsContent({ sale }: { sale: TGetSalesFulfillmentOut
 					</div>
 				</section>
 			) : null}
+
+			<SaleActionsFooter sale={sale} canEditSales={canEditSales} canDeleteSales={canDeleteSales} />
 		</div>
+	);
+}
+
+// Ações da venda no rodapé do painel operacional: edição (quando a política permite, com a razão
+// do bloqueio em microcopy quando não) e cancelamento com estorno. As razões vêm do backend
+// (bloco `editabilidade`) — nunca duplicadas aqui.
+function SaleActionsFooter({
+	sale,
+	canEditSales,
+	canDeleteSales,
+}: {
+	sale: TGetSalesFulfillmentOutputById;
+	canEditSales?: boolean;
+	canDeleteSales?: boolean;
+}) {
+	const [cancelDialogIsOpen, setCancelDialogIsOpen] = useState(false);
+	const editability = sale.editabilidade;
+	const showEdit = !!canEditSales && (editability.nivel === "TOTAL" || editability.rascunho || editability.motivos.length > 0);
+	const showCancel = !!canDeleteSales && editability.cancelamentoDisponivel;
+	if (!showEdit && !showCancel) return null;
+
+	const editHref = editability.rascunho ? `/dashboard/commercial/sales/checkout/${sale.id}` : `/dashboard/commercial/sales/edit/${sale.id}`;
+	const editIsEnabled = editability.nivel === "TOTAL" || editability.rascunho;
+
+	return (
+		<section className="rounded-2xl border border-border bg-card px-4 py-4 shadow-2xs">
+			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+				<div className="flex flex-col gap-1">
+					{showEdit && !editIsEnabled ? <p className="text-xs text-muted-foreground">{editability.motivos[0]}</p> : null}
+				</div>
+				<div className="flex items-center gap-2">
+					{showCancel ? (
+						<Button variant="ghost-destructive" onClick={() => setCancelDialogIsOpen(true)}>
+							<CircleX className="size-4" />
+							CANCELAR VENDA
+						</Button>
+					) : null}
+					{showEdit ? (
+						editIsEnabled ? (
+							<Button asChild>
+								<Link href={editHref}>
+									<PencilLine className="size-4" />
+									{editability.rascunho ? "ABRIR CHECKOUT" : "EDITAR VENDA"}
+								</Link>
+							</Button>
+						) : (
+							<Button disabled>
+								<PencilLine className="size-4" />
+								EDITAR VENDA
+							</Button>
+						)
+					) : null}
+				</div>
+			</div>
+			{cancelDialogIsOpen ? (
+				<CancelConfirmedSaleDialog
+					saleId={sale.id}
+					idExterno={sale.idExterno}
+					valorTotal={sale.valorTotal}
+					clienteNome={sale.cliente?.nome}
+					exigeCancelamentoFiscal={editability.cancelamentoExigeFiscal}
+					closeModal={() => setCancelDialogIsOpen(false)}
+				/>
+			) : null}
+		</section>
 	);
 }
 

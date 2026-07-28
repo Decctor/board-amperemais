@@ -1,4 +1,5 @@
 import { isManagedFulfillmentSaleModel } from "@/lib/sales/fulfillment-channels/policy";
+import { resolveSaleEditability } from "@/lib/sales/sale-editability";
 import { classifySalePaymentTransactions, extractPaymentObservacoesFromTitle, type SalePaymentTransactionInput } from "@/lib/sales/utils";
 import { computeSaleFinancialStatus, computeSaleFiscalStatus } from "@/lib/sales/utils";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
@@ -16,6 +17,7 @@ type SaleFulfillmentRow = {
 	dataVenda: Date | null;
 	modelo?: string | null;
 	processamentoOrigem?: string | null;
+	tabId?: string | null;
 	cliente: { id: string; nome: string; telefone: string | null } | null;
 	documentosFiscais: { statusInterno: string | null; dataInsercao: Date }[];
 	lancamentosContabeis: {
@@ -78,6 +80,20 @@ export function mapSaleRowToFulfillmentCard(sale: SaleFulfillmentRow) {
 		resumoPagamentos: classification.resumo,
 		pagamentoObservacoes: paymentNotes === sale.observacoes ? null : paymentNotes,
 		fiscal: computeSaleFiscalStatus({ documents: sale.documentosFiscais }),
+		editabilidade: resolveSaleEditability({
+			statusVenda: sale.statusVenda,
+			statusAtendimento: sale.statusAtendimento,
+			processamentoOrigem: sale.processamentoOrigem ?? null,
+			tabId: sale.tabId ?? null,
+			valorTotal: sale.valorTotal,
+			documentosFiscais: sale.documentosFiscais,
+			transacoes: rawTransactions.map((transaction) => ({
+				valor: transaction.valor,
+				tipo: transaction.tipo,
+				dataEfetivacao: transaction.dataEfetivacao ?? null,
+				provedorStatus: transaction.provedorStatus,
+			})),
+		}),
 	};
 }
 

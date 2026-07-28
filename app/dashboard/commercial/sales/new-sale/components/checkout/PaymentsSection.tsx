@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { formatDateAsLocale, formatDateOnInputChange } from "@/lib/formatting";
 import { getPaymentInstallmentsOptions } from "@/lib/payments/defaults";
 import { getTodayDateInputValue } from "@/lib/payments/schemas";
+import { formatToMoney } from "@/lib/formatting";
+import type { ClassifiedPayment } from "@/lib/sales/utils";
 import type { TUseSaleState } from "@/state-hooks/use-sale-state";
 import { SalePaymentMethodsOptions } from "@/utils/select-options";
 import { CalendarClock, Check, CheckCheck, Clock, Plus, Wallet, X } from "lucide-react";
@@ -19,6 +21,8 @@ import { useMemo } from "react";
 
 type PaymentsSectionProps = {
 	saleState: TUseSaleState;
+	// Modo edição: transações já efetivadas, exibidas travadas — nunca entram nos splits editáveis.
+	pagamentosEfetivados?: Pick<ClassifiedPayment, "id" | "metodo" | "valor" | "parcela" | "totalParcelas">[];
 };
 
 type PaymentCardProps = {
@@ -158,9 +162,10 @@ function PaymentCard({ saleState, payment }: PaymentCardProps) {
 	);
 }
 
-export default function PaymentsSection({ saleState }: PaymentsSectionProps) {
-	const missingTotal = useMemo(() => saleState.valorFinal - saleState.totalPagamentos, [saleState.valorFinal, saleState.totalPagamentos]);
+export default function PaymentsSection({ saleState, pagamentosEfetivados }: PaymentsSectionProps) {
+	const missingTotal = useMemo(() => saleState.valorRestante, [saleState.valorRestante]);
 	const supportedMethodOptions = SalePaymentMethodsOptions.filter((method) => saleState.organizationPaymentMethodsConfig[method.value]?.suportado);
+	const hasSettledPayments = (pagamentosEfetivados?.length ?? 0) > 0;
 
 	return (
 		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-3 shadow-2xs">
@@ -180,7 +185,30 @@ export default function PaymentsSection({ saleState }: PaymentsSectionProps) {
 				</Button>
 			</div>
 
-			{saleState.state.pagamentos.length === 0 ? (
+			{hasSettledPayments ? (
+				<div className="flex flex-col gap-1.5">
+					{pagamentosEfetivados?.map((payment) => {
+						const methodLabel = SalePaymentMethodsOptions.find((method) => method.value === payment.metodo)?.label ?? payment.metodo;
+						const installmentLabel = payment.parcela && payment.totalParcelas ? ` ${payment.parcela}/${payment.totalParcelas}` : "";
+						return (
+							<div
+								key={payment.id}
+								className="w-full flex items-center justify-between rounded-lg border border-green-600/25 bg-green-500/10 px-2 py-1.5"
+							>
+								<div className="flex items-center gap-1.5 text-xs font-semibold text-green-700 dark:text-green-400 uppercase">
+									<CheckCheck className="w-3 h-3 min-w-3 min-h-3" />
+									{methodLabel}
+									{installmentLabel} · JÁ RECEBIDO
+								</div>
+								<span className="text-xs font-bold text-green-700 dark:text-green-400">{formatToMoney(payment.valor)}</span>
+							</div>
+						);
+					})}
+					<p className="text-[11px] text-muted-foreground">Pagamentos já recebidos permanecem intactos e não podem ser alterados aqui.</p>
+				</div>
+			) : null}
+
+			{saleState.state.pagamentos.length === 0 && !hasSettledPayments ? (
 				<div className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground flex items-center gap-2">
 					<CalendarClock className="w-4 h-4 min-w-4 min-h-4" />
 					Nenhum pagamento adicionado. Você pode registrar recebimento imediato ou previsto.

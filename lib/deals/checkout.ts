@@ -1,4 +1,4 @@
-import { AppSubscriptionPlans } from "@/config";
+import { AppSubscriptionPlans, type TAppSubscriptionPlanKey } from "@/config";
 import { getDealPlanKey } from "@/lib/deals";
 import { getAppBaseUrl } from "@/lib/organizations/poi-qr-codes";
 import { db } from "@/services/drizzle";
@@ -23,13 +23,32 @@ export function buildDealControlMetadata(deal: Pick<TDealEntity, "id" | "nome" |
 	return metadata;
 }
 
+// O produto do Stripe é derivado do price mensal do plano em vez de vir de configuração
+// própria: é o mesmo produto que o checkout self-serve já cobra, e não há env var para
+// provisionar (e esquecer) em cada ambiente. Cacheado por processo — o produto de um plano
+// não muda em runtime.
+const planProductIdCache = new Map<TAppSubscriptionPlanKey, string>();
+
+async function resolvePlanStripeProductId(planKey: TAppSubscriptionPlanKey) {
+	const cached = planProductIdCache.get(planKey);
+	if (cached) return cached;
+
+	const priceId = AppSubscriptionPlans[planKey].pricing.monthly.stripePriceId;
+	if (!priceId) throw new createHttpError.InternalServerError("Price mensal do Stripe não configurado para o plano base do deal.");
+
+	const price = await stripe.prices.retrieve(priceId);
+	const productId = typeof price.product === "string" ? price.product : price.product.id;
+	if (!productId) throw new createHttpError.InternalServerError("Não foi possível resolver o produto do Stripe do plano base do deal.");
+
+	planProductIdCache.set(planKey, productId);
+	return productId;
+}
+
 // Garante a infraestrutura Stripe do deal (customer + price dedicados) e gera uma sessão
 // de checkout. Idempotente por campo: só cria o que ainda não existe, então serve tanto
 // para a criação do deal quanto para reemitir o link após expiração ou falha parcial.
 export async function ensureDealStripeCheckout(deal: TDealEntity) {
 	const planKey = getDealPlanKey(deal);
-	const plan = AppSubscriptionPlans[planKey];
-	if (!plan.stripeProdutoId) throw new createHttpError.InternalServerError("Produto do Stripe não configurado para o plano base do deal.");
 
 	const controlMetadata = buildDealControlMetadata(deal);
 
@@ -48,8 +67,9 @@ export async function ensureDealStripeCheckout(deal: TDealEntity) {
 	// auditável no dashboard do Stripe, e a fatura sai como "N × plano" numa única assinatura.
 	let stripePriceId = deal.stripePriceId;
 	if (!stripePriceId) {
+		// Resolvido só aqui: reemitir o checkout de um deal que já tem price não toca o Stripe à toa.
 		const price = await stripe.prices.create({
-			product: plan.stripeProdutoId,
+			product: await resolvePlanStripeProductId(planKey),
 			unit_amount: deal.valorUnitarioCentavos,
 			currency: "brl",
 			recurring: { interval: deal.intervalo === "ANUAL" ? "year" : "month" },

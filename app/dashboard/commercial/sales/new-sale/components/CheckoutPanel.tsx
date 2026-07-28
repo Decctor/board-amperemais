@@ -3,10 +3,11 @@ import SelectInput from "@/components/Inputs/SelectInput";
 import { NewClientLocation } from "@/components/Modals/Clients/Locations/NewClientLocation";
 import type { TDiscountAuthority } from "@/lib/permissions/discounts";
 import { useClientLocations } from "@/lib/queries/clients/locations";
+import type { ClassifiedPayment } from "@/lib/sales/utils";
 import { useSellersSimplified } from "@/lib/queries/sellers";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import type { TUseSaleState } from "@/state-hooks/use-sale-state";
-import { ShoppingCart } from "lucide-react";
+import { PencilLine, ShoppingCart } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import ActionsSection from "./checkout/ActionsSection";
 import ClientSection from "./checkout/ClientSection";
@@ -15,6 +16,13 @@ import FiscalEmissionSection from "./checkout/FiscalEmissionSection";
 import ItemsSection from "./checkout/ItemsSection";
 import PaymentsSection from "./checkout/PaymentsSection";
 import SummarySection from "./checkout/SummarySection";
+
+// Modo edição de venda confirmada: mesma superfície do checkout, com o que é imutável travado
+// (cliente, cupom, resgate de cashback, pagamentos recebidos) e o CTA trocado para salvar.
+export type CheckoutPanelEditContext = {
+	idExterno: string;
+	pagamentosEfetivados: Pick<ClassifiedPayment, "id" | "metodo" | "valor" | "parcela" | "totalParcelas">[];
+};
 
 type CheckoutPanelProps = {
 	organizationCashbackProgram: TCashbackProgramEntity | null;
@@ -28,6 +36,7 @@ type CheckoutPanelProps = {
 	isCreatingDraft?: boolean;
 	isFinalizingSale?: boolean;
 	onOpenContext?: () => void;
+	edit?: CheckoutPanelEditContext | null;
 };
 
 export default function CheckoutPanel({
@@ -42,6 +51,7 @@ export default function CheckoutPanel({
 	isCreatingDraft,
 	isFinalizingSale,
 	onOpenContext,
+	edit,
 }: CheckoutPanelProps) {
 	const [isVinculationMenuOpen, setIsVinculationMenuOpen] = useState(false);
 	const [isNewLocationOpen, setIsNewLocationOpen] = useState(false);
@@ -79,10 +89,10 @@ export default function CheckoutPanel({
 			<div className="flex flex-col h-full gap-3">
 				<div className="flex items-center gap-2">
 					<div className="p-2 bg-primary/10 rounded-lg">
-						<ShoppingCart className="w-5 h-5 text-foreground" />
+						{edit ? <PencilLine className="w-5 h-5 text-foreground" /> : <ShoppingCart className="w-5 h-5 text-foreground" />}
 					</div>
 					<div>
-						<h2 className="font-black text-lg">CHECKOUT</h2>
+						<h2 className="font-black text-lg">{edit ? `EDITANDO PEDIDO #${edit.idExterno}` : "CHECKOUT"}</h2>
 						<p className="text-xs text-muted-foreground">
 							{saleState.itemCount} {saleState.itemCount === 1 ? "ITEM" : "ITENS"}
 						</p>
@@ -101,11 +111,16 @@ export default function CheckoutPanel({
 					resetOptionLabel="SELECIONE UM VENDEDOR"
 				/>
 
-				<ClientSection saleState={saleState} onOpenVinculationMenu={() => setIsVinculationMenuOpen(true)} onOpenContext={onOpenContext} />
+				<ClientSection saleState={saleState} onOpenVinculationMenu={() => setIsVinculationMenuOpen(true)} onOpenContext={onOpenContext} locked={!!edit} />
 				<ItemsSection saleState={saleState} />
 				<DeliverySection saleState={saleState} locationOptions={locationOptions} onOpenNewLocation={() => setIsNewLocationOpen(true)} />
-				<PaymentsSection saleState={saleState} />
-				<SummarySection saleState={saleState} organizationCashbackProgram={organizationCashbackProgram} discountAuthority={discountAuthority} />
+				<PaymentsSection saleState={saleState} pagamentosEfetivados={edit?.pagamentosEfetivados} />
+				<SummarySection
+					saleState={saleState}
+					organizationCashbackProgram={organizationCashbackProgram}
+					discountAuthority={discountAuthority}
+					editMode={!!edit}
+				/>
 				<FiscalEmissionSection
 					saleState={saleState}
 					organizationAutoFiscalEmission={organizationAutoFiscalEmission}
@@ -118,6 +133,7 @@ export default function CheckoutPanel({
 					onFinalizeSale={onFinalizeSale}
 					isCreatingDraft={isCreatingDraft}
 					isFinalizingSale={isFinalizingSale}
+					editMode={!!edit}
 				/>
 			</div>
 

@@ -13,4 +13,11 @@ export { getSaleFinancialState } from "./get-sale-financial-state";
 export { processSaleCashbackAccumulationIfEligible } from "./process-sale-cashback-accumulation";
 export { processSaleAutomaticFiscalEmissionIfEligible } from "./process-sale-automatic-fiscal-emission";
 export { processConfirmedSaleCancellation } from "./process-confirmed-sale-cancellation";
+export {
+	processConfirmedSaleEditInTransaction,
+	processConfirmedSaleEditPostCommit,
+	type TEditSaleItemInput,
+	type TProcessConfirmedSaleEditInput,
+} from "./process-confirmed-sale-edit";
+export { reverseSaleItemStock } from "./reverse-sale-item-stock";
 export { resolveInitialAttendanceStatus, isValidAttendanceTransition, attendanceStatusRequiresPhysicalOut } from "./attendance";

@@ -19,6 +19,7 @@ function DraggableCard({
 	onDeliverWithoutPayment,
 	onCancelConfirm,
 	onViewDetails,
+	canEditSales,
 }: {
 	card: TSalesFulfillmentCard;
 	organizationConfig: TOrganizationConfiguration;
@@ -30,6 +31,7 @@ function DraggableCard({
 	onDeliverWithoutPayment: (card: TSalesFulfillmentCard) => void;
 	onCancelConfirm: () => void;
 	onViewDetails: (saleId: string) => void;
+	canEditSales?: boolean;
 }) {
 	const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
 		id: card.id,
@@ -42,6 +44,7 @@ function DraggableCard({
 			ref={setNodeRef}
 			card={card}
 			organizationConfig={organizationConfig}
+			canEditSales={canEditSales}
 			isPending={isPending}
 			isDragging={isDragging}
 			awaitingConfirm={awaitingConfirm}
@@ -70,6 +73,7 @@ export function FulfillmentColumn({
 	onDeliverWithoutPayment,
 	onCancelConfirm,
 	onViewDetails,
+	canEditSales,
 }: {
 	status: TBoardStatus;
 	cards: TSalesFulfillmentCard[];
@@ -82,6 +86,7 @@ export function FulfillmentColumn({
 	onDeliverWithoutPayment: (card: TSalesFulfillmentCard) => void;
 	onCancelConfirm: () => void;
 	onViewDetails: (saleId: string) => void;
+	canEditSales?: boolean;
 }) {
 	const { setNodeRef, isOver } = useDroppable({ id: status });
 	const meta = ATTENDANCE_COLUMN_META[status];
@@ -122,6 +127,7 @@ export function FulfillmentColumn({
 							onDeliverWithoutPayment={onDeliverWithoutPayment}
 							onCancelConfirm={onCancelConfirm}
 							onViewDetails={onViewDetails}
+							canEditSales={canEditSales}
 						/>
 					))
 				)}

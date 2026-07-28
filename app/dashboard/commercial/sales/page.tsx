@@ -32,6 +32,8 @@ export default async function Sales() {
 			user={sessionUser.user}
 			organization={membership.organizacao}
 			canApproveActionRequests={resolveDiscountAuthority(membership.permissoes).aprovar}
+			canEditSales={membership.permissoes.vendas.editar}
+			canDeleteSales={membership.permissoes.vendas.excluir}
 		/>
 	);
 }

@@ -7,9 +7,11 @@ type ClientSectionProps = {
 	saleState: TUseSaleState;
 	onOpenVinculationMenu: () => void;
 	onOpenContext?: () => void;
+	// Modo edição: o cliente da venda é imutável (benefícios, atribuição e acúmulos já apontam para ele).
+	locked?: boolean;
 };
 
-export default function ClientSection({ saleState, onOpenVinculationMenu, onOpenContext }: ClientSectionProps) {
+export default function ClientSection({ saleState, onOpenVinculationMenu, onOpenContext, locked }: ClientSectionProps) {
 	return (
 		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-3 shadow-2xs">
 			<div className="flex items-center justify-between">
@@ -17,29 +19,31 @@ export default function ClientSection({ saleState, onOpenVinculationMenu, onOpen
 					<UserRound className="w-4 h-4 text-foreground" />
 					<h3 className="font-bold text-xs tracking-wide">CLIENTE</h3>
 				</div>
-				<div className="flex items-center gap-1">
-					<Button
-						type="button"
-						size="fit"
-						className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs"
-						variant={saleState.state.modoCliente === "CONSUMIDOR" ? "brand" : "ghost"}
-						onClick={() => saleState.setModoCliente("CONSUMIDOR")}
-					>
-						<HatGlasses className="w-3 h-3" /> AO CONSUMIDOR
-					</Button>
-					<Button
-						type="button"
-						size="fit"
-						className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs"
-						variant={saleState.state.modoCliente === "VINCULADO" ? "brand" : "ghost"}
-						onClick={() => {
-							saleState.setModoCliente("VINCULADO");
-							onOpenVinculationMenu();
-						}}
-					>
-						<User className="w-3 h-3" /> VINCULAR
-					</Button>
-				</div>
+				{!locked ? (
+					<div className="flex items-center gap-1">
+						<Button
+							type="button"
+							size="fit"
+							className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs"
+							variant={saleState.state.modoCliente === "CONSUMIDOR" ? "brand" : "ghost"}
+							onClick={() => saleState.setModoCliente("CONSUMIDOR")}
+						>
+							<HatGlasses className="w-3 h-3" /> AO CONSUMIDOR
+						</Button>
+						<Button
+							type="button"
+							size="fit"
+							className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs"
+							variant={saleState.state.modoCliente === "VINCULADO" ? "brand" : "ghost"}
+							onClick={() => {
+								saleState.setModoCliente("VINCULADO");
+								onOpenVinculationMenu();
+							}}
+						>
+							<User className="w-3 h-3" /> VINCULAR
+						</Button>
+					</div>
+				) : null}
 			</div>
 
 			{saleState.state.modoCliente === "VINCULADO" && saleState.state.cliente ? (
@@ -54,12 +58,18 @@ export default function ClientSection({ saleState, onOpenVinculationMenu, onOpen
 								<PanelRightOpen className="w-3.5 h-3.5" />
 							</Button>
 						) : null}
-						<Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => saleState.clearCliente()}>
-							<X className="w-3 h-3" />
-						</Button>
+						{!locked ? (
+							<Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => saleState.clearCliente()}>
+								<X className="w-3 h-3" />
+							</Button>
+						) : null}
 					</div>
 				</div>
 			) : null}
+			{locked && saleState.state.modoCliente === "CONSUMIDOR" ? (
+				<div className="w-full rounded-lg bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground">Venda ao consumidor.</div>
+			) : null}
+			{locked ? <p className="text-[11px] text-muted-foreground">O cliente não pode ser alterado na edição da venda.</p> : null}
 		</div>
 	);
 }

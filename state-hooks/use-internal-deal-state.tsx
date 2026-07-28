@@ -4,6 +4,8 @@ import z from "zod";
 
 const DealStateSchema = z.object({
 	deal: DealSchema.omit({
+		// planoBase não é escolhido pelo admin: o servidor grava DEAL_PLAN_KEY na criação.
+		planoBase: true,
 		status: true,
 		stripePriceId: true,
 		stripeCustomerId: true,
@@ -26,7 +28,6 @@ export function useInternalDealState({ initialState }: { initialState: Partial<T
 			nomeObtentor: "",
 			emailObtentor: "",
 			telefoneObtentor: null,
-			planoBase: "ESSENCIAL",
 			quantidadeLicencas: 1,
 			valorUnitarioCentavos: 0,
 			intervalo: "MENSAL",
