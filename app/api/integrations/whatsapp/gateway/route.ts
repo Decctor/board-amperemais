@@ -9,8 +9,17 @@ import { downloadMedia, sendMessage as sendInternalGatewayMessage } from "@/lib/
 import { type AppWhatsappStatus, mapWhatsAppStatusToAppStatus } from "@/lib/whatsapp/parsing";
 import { formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
+import { getCurrentChatAttendance, releaseChatAttendance, updateChatAttendanceSummary } from "@/lib/chats/attendance-state";
+import { claimChatForAi, waitAndConfirmAiResponse } from "@/lib/chats/ai-trigger";
+import {
+	applyProviderDeliveryStatus,
+	mapProviderStatusToDeliveryStatus,
+	persistIncomingClientMessage,
+	resolveIncomingChat,
+	persistOutboundNonHubMessage,
+} from "@/lib/chats/incoming-message";
 import { db } from "@/services/drizzle";
-import { chatMessages, chatServices, chats } from "@/services/drizzle/schema/chats";
+import { chatMessages } from "@/services/drizzle/schema/chats";
 import { clients } from "@/services/drizzle/schema/clients";
 import { interactions } from "@/services/drizzle/schema/interactions";
 import { messageTemplates } from "@/services/drizzle/schema/message-templates";
@@ -20,7 +29,6 @@ import { and, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 const API_SECRET = process.env.INTERNAL_WHATSAPP_GATEWAY_API_SECRET;
-const AI_RESPONSE_DELAY_MS = 5000;
 
 type WebhookEventType = "message.received" | "connection.update" | "message.sent" | "message.updated";
 type WebhookMediaType = "image" | "video" | "audio" | "document" | "sticker" | "unknown";
@@ -286,59 +294,15 @@ async function handleIncomingMessage(body: Extract<WebhookBody, { event: "messag
 		return;
 	}
 
-	// Find or create chat
-	let chatId: string | null = null;
-	const existingChat = await db.query.chats.findFirst({
-		where: (fields, { and, eq }) =>
-			and(eq(fields.organizacaoId, organizacaoId), eq(fields.clienteId, clientId), eq(fields.whatsappConexaoId, connection.id)),
+	// No Gateway Interno o sessionId faz o papel do telefone na chave natural do chat.
+	const { chatId, isNew } = await resolveIncomingChat({
+		organizacaoId,
+		clienteId: clientId,
+		whatsappTelefoneId: sessionId,
+		whatsappConexaoId: connection.id,
+		whatsappConexaoTelefoneId: connectionPhone.id,
 	});
-
-	if (existingChat) {
-		chatId = existingChat.id;
-	} else {
-		const [newChat] = await db
-			.insert(chats)
-			.values({
-				organizacaoId,
-				clienteId: clientId,
-				whatsappConexaoId: connection.id,
-				whatsappConexaoTelefoneId: connectionPhone.id,
-				whatsappTelefoneId: sessionId, // Use sessionId as identifier for Internal Gateway
-				mensagensNaoLidas: 0,
-				ultimaMensagemData: new Date(),
-				ultimaMensagemConteudoTipo: "TEXTO",
-				status: "ABERTA",
-			})
-			.returning({ id: chats.id });
-		chatId = newChat.id;
-		console.log("[INTERNAL_WHATSAPP_WEBHOOK] New chat created:", chatId);
-	}
-
-	// Find or create service
-	let serviceId: string | null = null;
-	let serviceResponsibleType: "AI" | "USUÁRIO" | "BUSINESS-APP" | "CLIENTE" = allowsAIService ? "AI" : "USUÁRIO";
-
-	const existingService = await db.query.chatServices.findFirst({
-		where: (fields, { and, eq, or }) => and(eq(fields.chatId, chatId), or(eq(fields.status, "PENDENTE"), eq(fields.status, "EM_ANDAMENTO"))),
-	});
-
-	if (existingService) {
-		serviceId = existingService.id;
-		serviceResponsibleType = existingService.responsavelTipo;
-	} else {
-		const [newService] = await db
-			.insert(chatServices)
-			.values({
-				organizacaoId,
-				chatId,
-				clienteId: clientId,
-				responsavelTipo: serviceResponsibleType,
-				descricao: "NÃO ESPECIFICADO",
-				status: "PENDENTE",
-			})
-			.returning({ id: chatServices.id });
-		serviceId = newService.id;
-	}
+	if (isNew) console.log("[INTERNAL_WHATSAPP_WEBHOOK] New chat created:", chatId);
 
 	// Download and store media if present
 	let mediaData: {
@@ -377,65 +341,45 @@ async function handleIncomingMessage(body: Extract<WebhookBody, { event: "messag
 	else if (data.content.mediaType === "video") midiaTipo = "VIDEO";
 	else if (data.content.mediaType === "audio") midiaTipo = "AUDIO";
 
-	// Insert message
-	const [insertedMessage] = await db
-		.insert(chatMessages)
-		.values({
-			organizacaoId,
-			chatId,
-			autorTipo: "CLIENTE",
-			autorClienteId: clientId,
-			conteudoTexto: data.content.text || "",
-			conteudoMidiaTipo: midiaTipo,
-			conteudoMidiaUrl: mediaData?.publicUrl,
-			conteudoMidiaStorageId: mediaData?.storageId,
-			conteudoMidiaMimeType: mediaData?.mimeType,
-			conteudoMidiaArquivoTamanho: mediaData?.fileSize ?? data.content.mediaSize,
-			conteudoMidiaWhatsappId: data.content.mediaId,
-			status: "RECEBIDO",
-			whatsappMessageId: data.whatsappMessageId,
-			whatsappMessageStatus: "ENTREGUE",
-			servicoId: serviceId,
-		})
-		.returning({ id: chatMessages.id, dataEnvio: chatMessages.dataEnvio });
-
-	// Update chat
-	const aiScheduleTime = new Date(Date.now() + AI_RESPONSE_DELAY_MS);
-	await db
-		.update(chats)
-		.set({
-			ultimaMensagemId: insertedMessage.id,
-			ultimaMensagemData: insertedMessage.dataEnvio,
-			ultimaMensagemConteudoTexto: data.content.text || "",
-			ultimaMensagemConteudoTipo: midiaTipo,
-			mensagensNaoLidas: existingChat ? existingChat.mensagensNaoLidas + 1 : 1,
-			ultimaInteracaoClienteData: new Date(),
-			aiAgendamentoRespostaData: serviceResponsibleType === "AI" ? aiScheduleTime : null,
-			status: "ABERTA",
-		})
-		.where(eq(chats.id, chatId));
+	const insertedMessage = await persistIncomingClientMessage({
+		organizacaoId,
+		chatId,
+		clienteId: clientId,
+		// O Gateway Interno não tem janela de 24h: a sessão do WhatsApp Web é o limite.
+		tipoConexao: "INTERNAL_GATEWAY",
+		whatsappMessageId: data.whatsappMessageId,
+		conteudoTexto: data.content.text || null,
+		conteudoMidiaTipo: midiaTipo,
+		midia: mediaData ? { ...mediaData, fileSize: mediaData.fileSize ?? data.content.mediaSize, whatsappMediaId: data.content.mediaId } : null,
+		metadados: { gatewayInterno: { sessaoId: sessionId } },
+	});
 
 	console.log("[INTERNAL_WHATSAPP_WEBHOOK] Message created from:", data.author.phoneNumber);
 
-	const requiresAiProcessing = serviceResponsibleType === "AI" || (mediaData && midiaTipo !== "TEXTO");
-
-	if (requiresAiProcessing && allowsAIService) {
-		console.log("[INTERNAL_WHATSAPP_WEBHOOK] AI Processing required and allowed. Starting...");
-		await handleAIProcessing({
-			chatId,
-			organizationId: organizacaoId,
-			sessionId,
-			aiMessageResponse: serviceResponsibleType === "AI" ? { scheduleAt: aiScheduleTime } : null,
-			aiMessageMedia: mediaData
-				? {
-						messageId: insertedMessage.id,
-						storageId: mediaData.storageId,
-						mimeType: mediaData.mimeType,
-						mediaType: midiaTipo as "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO",
-					}
-				: null,
-		});
+	if (mediaData && midiaTipo !== "TEXTO") {
+		await handleAIMediaProcessing(insertedMessage.messageId, mediaData.storageId, mediaData.mimeType, midiaTipo);
 	}
+
+	if (!allowsAIService) return;
+
+	const claim = await claimChatForAi({ organizacaoId, chatId });
+	if (!claim.shouldRespond) {
+		console.log("[INTERNAL_WHATSAPP_WEBHOOK] IA não assumiu o atendimento:", claim.reason);
+		return;
+	}
+
+	const confirmation = await waitAndConfirmAiResponse({
+		organizacaoId,
+		chatId,
+		messageId: insertedMessage.messageId,
+		messageDate: insertedMessage.dataEnvio,
+	});
+	if (!confirmation.shouldRespond) {
+		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Resposta da IA abortada:", confirmation.reason);
+		return;
+	}
+
+	await handleAIMessageResponse(chatId, organizacaoId, sessionId);
 }
 
 const INTERACTION_STATUS_MAPPING: Record<AppWhatsappStatus, TInteractionsStatusEnum> = {
@@ -524,7 +468,7 @@ async function handleMessageSent(body: Extract<WebhookBody, { event: "message.se
 		return;
 	}
 
-	const { status, whatsappStatus } = mapWhatsAppStatusToAppStatus(data.status ?? "sent");
+	const { whatsappStatus } = mapWhatsAppStatusToAppStatus(data.status ?? "sent");
 	const targets = await resolveMessageTargets({
 		clientMessageId: data.clientMessageId,
 		whatsappMessageId: data.whatsappMessageId,
@@ -536,14 +480,11 @@ async function handleMessageSent(body: Extract<WebhookBody, { event: "message.se
 	}
 
 	if (targets.chatMessageId) {
-		await db
-			.update(chatMessages)
-			.set({
-				status,
-				whatsappMessageStatus: whatsappStatus,
-				whatsappMessageId: data.whatsappMessageId,
-			})
-			.where(eq(chatMessages.id, targets.chatMessageId));
+		const statusEntrega = mapProviderStatusToDeliveryStatus(data.status ?? "sent");
+		if (data.whatsappMessageId) {
+			await db.update(chatMessages).set({ whatsappMessageId: data.whatsappMessageId }).where(eq(chatMessages.id, targets.chatMessageId));
+		}
+		if (statusEntrega) await applyProviderDeliveryStatus({ statusEntrega, chatMessageId: targets.chatMessageId });
 	}
 
 	if (targets.interactionId) {
@@ -572,7 +513,7 @@ async function handleMessageUpdated(body: Extract<WebhookBody, { event: "message
 		return;
 	}
 
-	const { status, whatsappStatus } = mapWhatsAppStatusToAppStatus(data.status);
+	const { whatsappStatus } = mapWhatsAppStatusToAppStatus(data.status);
 	const targets = await resolveMessageTargets({
 		clientMessageId: data.clientMessageId,
 		whatsappMessageId: data.whatsappMessageId,
@@ -584,14 +525,11 @@ async function handleMessageUpdated(body: Extract<WebhookBody, { event: "message
 	}
 
 	if (targets.chatMessageId) {
-		await db
-			.update(chatMessages)
-			.set({
-				status,
-				whatsappMessageStatus: whatsappStatus,
-				...(data.whatsappMessageId && { whatsappMessageId: data.whatsappMessageId }),
-			})
-			.where(eq(chatMessages.id, targets.chatMessageId));
+		const statusEntrega = mapProviderStatusToDeliveryStatus(data.status);
+		if (data.whatsappMessageId) {
+			await db.update(chatMessages).set({ whatsappMessageId: data.whatsappMessageId }).where(eq(chatMessages.id, targets.chatMessageId));
+		}
+		if (statusEntrega) await applyProviderDeliveryStatus({ statusEntrega, chatMessageId: targets.chatMessageId });
 	}
 
 	if (targets.interactionId) {
@@ -613,47 +551,11 @@ async function handleMessageUpdated(body: Extract<WebhookBody, { event: "message
 	});
 }
 
-type THandleAIProcessingParams = {
-	chatId: string;
-	organizationId: string;
-	sessionId: string;
-	aiMessageResponse: {
-		scheduleAt: Date;
-	} | null;
-	aiMessageMedia: {
-		messageId: string;
-		storageId: string;
-		mimeType: string;
-		mediaType: "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO";
-	} | null;
-};
-
-async function handleAIProcessing({
-	chatId,
-	organizationId,
-	sessionId,
-	aiMessageResponse,
-	aiMessageMedia,
-}: THandleAIProcessingParams): Promise<void> {
-	if (!aiMessageResponse && !aiMessageMedia) return;
-
-	if (aiMessageMedia) {
-		await handleAIMediaProcessing(aiMessageMedia.messageId, aiMessageMedia.storageId, aiMessageMedia.mimeType, aiMessageMedia.mediaType);
-	}
-
-	if (aiMessageResponse) {
-		await handleAIMessageResponse(chatId, organizationId, sessionId, aiMessageResponse.scheduleAt);
-	}
-}
-
-async function handleAIMessageResponse(chatId: string, organizacaoId: string, sessionId: string, scheduledAt: Date) {
-	// Wait for the delay
-	const delayMs = scheduledAt.getTime() - Date.now();
-	if (delayMs > 0) {
-		await new Promise((resolve) => setTimeout(resolve, delayMs));
-	}
-
-	// Check if new messages arrived after scheduling
+/**
+ * Gera e envia a resposta da IA. O debounce e a reconfirmação de posse acontecem antes,
+ * em lib/chats/ai-trigger.ts.
+ */
+async function handleAIMessageResponse(chatId: string, organizacaoId: string, sessionId: string) {
 	const chat = await db.query.chats.findFirst({
 		where: (fields, { eq }) => eq(fields.id, chatId),
 		with: {
@@ -666,21 +568,7 @@ async function handleAIMessageResponse(chatId: string, organizacaoId: string, se
 		return;
 	}
 
-	// If the scheduled time doesn't match, a newer message has reset the timer
-	if (chat.aiAgendamentoRespostaData && chat.aiAgendamentoRespostaData.getTime() !== scheduledAt.getTime()) {
-		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Skipping - newer message arrived:", chatId);
-		return;
-	}
-
-	// Check if service is still AI-handled
-	const service = await db.query.chatServices.findFirst({
-		where: (fields, { and, eq, or }) => and(eq(fields.chatId, chatId), or(eq(fields.status, "PENDENTE"), eq(fields.status, "EM_ANDAMENTO"))),
-	});
-
-	if (!service || service.responsavelTipo !== "AI") {
-		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Skipping - service not AI-handled:", chatId);
-		return;
-	}
+	const atendimento = await getCurrentChatAttendance(db, { organizacaoId, chatId });
 
 	// Get last 100 messages
 	const messages = await db.query.chatMessages.findMany({
@@ -712,13 +600,13 @@ async function handleAIMessageResponse(chatId: string, organizacaoId: string, se
 			conteudoTexto: m.conteudoTexto || `[${m.conteudoMidiaTipo}]: ${m.conteudoMidiaTextoProcessadoResumo || ""}`,
 			conteudoMidiaUrl: m.conteudoMidiaUrl ?? undefined,
 			dataEnvio: m.dataEnvio,
-			atendimentoId: m.servicoId ?? undefined,
+			atendimentoId: atendimento?.id,
 		})),
-		atendimentoAberto: service
+		atendimentoAberto: atendimento
 			? {
-					id: service.id,
-					descricao: service.descricao,
-					status: service.status,
+					id: atendimento.id,
+					descricao: atendimento.resumo ?? "",
+					status: atendimento.status,
 				}
 			: null,
 	};
@@ -751,82 +639,57 @@ async function createAIMessage(
 		},
 	});
 
-	if (!chat || chat.status !== "ABERTA") {
-		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Cannot send - chat closed or not found");
+	if (!chat) {
+		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Cannot send - chat not found");
 		return;
 	}
 
-	// Get or update service
-	const service = await db.query.chatServices.findFirst({
-		where: (fields, { and, eq, or }) => and(eq(fields.chatId, chatId), or(eq(fields.status, "PENDENTE"), eq(fields.status, "EM_ANDAMENTO"))),
-	});
-
-	const serviceId = service?.id;
-
-	if (service && metadata?.serviceDescription) {
-		await db
-			.update(chatServices)
-			.set({
-				descricao: metadata.serviceDescription,
-				...(metadata.escalation?.applicable && { responsavelTipo: "USUÁRIO" as const }),
-			})
-			.where(eq(chatServices.id, service.id));
+	if (metadata?.serviceDescription) {
+		await updateChatAttendanceSummary(db, { organizacaoId, chatId, resumo: metadata.serviceDescription });
 	}
 
-	// Insert AI message
-	const [insertedMessage] = await db
-		.insert(chatMessages)
-		.values({
+	// Escalonamento: devolve o atendimento para a fila do hub, em vez de marcá-lo como
+	// "de um usuário" sem dizer qual — o efeito do código antigo.
+	if (metadata?.escalation?.applicable) {
+		await releaseChatAttendance(db, {
 			organizacaoId,
 			chatId,
-			autorTipo: "AI",
-			conteudoTexto: content,
-			conteudoMidiaTipo: "TEXTO",
-			status: "ENVIADO",
-			whatsappMessageStatus: "PENDENTE",
-			servicoId: serviceId,
-		})
-		.returning({ id: chatMessages.id, dataEnvio: chatMessages.dataEnvio });
+			motivo: `HUMAN_HANDOFF: ${metadata.escalation.reason ?? "Escalonamento solicitado pela IA."}`,
+		});
+	}
 
-	// Update chat
-	await db
-		.update(chats)
-		.set({
-			ultimaMensagemId: insertedMessage.id,
-			ultimaMensagemData: insertedMessage.dataEnvio,
-			ultimaMensagemConteudoTexto: content,
-			ultimaMensagemConteudoTipo: "TEXTO",
-		})
-		.where(eq(chats.id, chatId));
+	// A mensagem nasce PENDENTE e o gateway confirma a entrega por webhook; o
+	// clientMessageId é o próprio id da mensagem, que é como o message.sent a reconcilia.
+	const inserted = await persistOutboundNonHubMessage({
+		organizacaoId,
+		chatId,
+		clienteId: chat.clienteId,
+		origem: "AI",
+		whatsappMessageId: null,
+		conteudoTexto: content,
+		conteudoMidiaTipo: "TEXTO",
+		midia: null,
+		metadados: { gatewayInterno: { sessaoId: sessionId } },
+	});
 
-	// Send via Internal Gateway
-	if (chat.whatsappConexao?.gatewaySessaoId && chat.whatsappConexao?.gatewayStatus === "connected" && chat.cliente?.telefone) {
-		try {
-			const response = await sendInternalGatewayMessage(
-				chat.whatsappConexao.gatewaySessaoId,
-				formatPhoneForInternalGateway(chat.cliente.telefone),
-				{
-					type: "text",
-					text: content,
-				},
-				{ clientMessageId: insertedMessage.id },
-			);
-			if (!response.success) {
-				throw new Error(response.error || "Falha ao enfileirar mensagem AI no Gateway Interno");
-			}
+	if (!chat.whatsappConexao?.gatewaySessaoId || chat.whatsappConexao.gatewayStatus !== "connected" || !chat.cliente?.telefone) {
+		console.warn("[INTERNAL_WHATSAPP_WEBHOOK] Gateway indisponível para enviar resposta da IA:", chatId);
+		await applyProviderDeliveryStatus({ statusEntrega: "FALHA", chatMessageId: inserted.messageId });
+		return;
+	}
 
-			await db
-				.update(chatMessages)
-				.set({
-					whatsappMessageStatus: "PENDENTE",
-				})
-				.where(eq(chatMessages.id, insertedMessage.id));
-
-			console.log("[INTERNAL_WHATSAPP_WEBHOOK] AI message sent:", insertedMessage.id);
-		} catch (error) {
-			console.error("[INTERNAL_WHATSAPP_WEBHOOK] AI message send failed:", error);
-			await db.update(chatMessages).set({ whatsappMessageStatus: "FALHOU" }).where(eq(chatMessages.id, insertedMessage.id));
-		}
+	try {
+		const response = await sendInternalGatewayMessage(
+			chat.whatsappConexao.gatewaySessaoId,
+			formatPhoneForInternalGateway(chat.cliente.telefone),
+			{ type: "text", text: content },
+			{ clientMessageId: inserted.messageId },
+		);
+		if (!response.success) throw new Error(response.error || "Falha ao enfileirar mensagem da IA no Gateway Interno.");
+		console.log("[INTERNAL_WHATSAPP_WEBHOOK] AI message enqueued:", inserted.messageId);
+	} catch (error) {
+		console.error("[INTERNAL_WHATSAPP_WEBHOOK] AI message send failed:", error);
+		await applyProviderDeliveryStatus({ statusEntrega: "FALHA", chatMessageId: inserted.messageId });
 	}
 }
 

@@ -1,4 +1,5 @@
 import { formatPhoneAsBase, formatStringAsOnlyDigits, formatToPhone } from "@/lib/formatting";
+import type { TChatMessageDeliveryStatus } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { chatMessages, chats } from "@/services/drizzle/schema/chats";
 import { clients } from "@/services/drizzle/schema/clients";
@@ -21,8 +22,6 @@ type TMetaGraphError = {
 };
 
 type TWhatsappHistoryContentType = "TEXTO" | "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO";
-type TWhatsappHistoryMessageStatus = "PENDENTE" | "ENVIADO" | "ENTREGUE" | "LIDO" | "FALHOU";
-type TWhatsappHistoryAppMessageStatus = "ENVIADO" | "RECEBIDO" | "LIDO";
 
 type TParsedHistoryMessage = {
 	whatsappPhoneNumberId: string;
@@ -153,19 +152,13 @@ function mapMetaMessageTypeToContentType(messageType: string): TWhatsappHistoryC
 	return "TEXTO";
 }
 
-function mapHistoryStatusToWhatsappStatus(status: string | null): TWhatsappHistoryMessageStatus {
+function mapHistoryStatusToDeliveryStatus(status: string | null): TChatMessageDeliveryStatus {
 	const normalizedStatus = status?.toUpperCase();
-	if (normalizedStatus === "READ" || normalizedStatus === "PLAYED") return "LIDO";
+	if (normalizedStatus === "READ" || normalizedStatus === "PLAYED") return "LIDA";
 	if (normalizedStatus === "DELIVERED") return "ENTREGUE";
-	if (normalizedStatus === "SENT") return "ENVIADO";
-	if (normalizedStatus === "FAILED") return "FALHOU";
-	return "ENVIADO";
-}
-
-function mapHistoryStatusToMessageStatus(status: string | null, isBusinessMessage: boolean): TWhatsappHistoryAppMessageStatus {
-	const normalizedStatus = status?.toUpperCase();
-	if (normalizedStatus === "READ" || normalizedStatus === "PLAYED") return "LIDO";
-	return isBusinessMessage ? "ENVIADO" : "RECEBIDO";
+	if (normalizedStatus === "SENT") return "ENVIADA";
+	if (normalizedStatus === "FAILED") return "FALHA";
+	return "ENVIADA";
 }
 
 function parseHistoryMessage({
@@ -385,8 +378,6 @@ async function findOrCreateHistoryChat({
 			whatsappTelefoneId: whatsappPhoneNumberId,
 			mensagensNaoLidas: 0,
 			ultimaMensagemData: messageDate,
-			ultimaMensagemConteudoTipo: "TEXTO",
-			status: "ABERTA",
 		})
 		.returning();
 
@@ -461,11 +452,11 @@ async function upsertHistoryMessage({
 			conteudoMidiaMimeType: message.mimeType,
 			conteudoMidiaArquivoNome: message.filename,
 			conteudoMidiaWhatsappId: message.mediaId,
-			status: mapHistoryStatusToMessageStatus(message.historyStatus, isBusinessMessage),
+			clienteId: clientId,
 			whatsappMessageId: message.whatsappMessageId,
-			whatsappMessageStatus: mapHistoryStatusToWhatsappStatus(message.historyStatus),
+			statusEntrega: mapHistoryStatusToDeliveryStatus(message.historyStatus),
 			dataEnvio: messageDate,
-			isEcho: isBusinessMessage,
+			whatsappEcho: isBusinessMessage,
 		})
 		.returning({ id: chatMessages.id, dataEnvio: chatMessages.dataEnvio });
 
@@ -476,11 +467,13 @@ async function upsertHistoryMessage({
 			.set({
 				ultimaMensagemId: insertedMessage.id,
 				ultimaMensagemData: insertedMessage.dataEnvio,
-				ultimaMensagemConteudoTexto: getHistoryMessageText(message),
-				ultimaMensagemConteudoTipo: contentType,
+				// Histórico importado alimenta as datas de entrada/saída, mas NÃO cria
+				// atendimento: uma conversa arquivada não é uma pendência do hub.
+				...(isBusinessMessage
+					? { ultimaMensagemSaidaData: insertedMessage.dataEnvio }
+					: { ultimaMensagemEntradaData: insertedMessage.dataEnvio }),
 				whatsappConexaoId: connectionId,
 				whatsappConexaoTelefoneId: connectionPhoneId,
-				aiAgendamentoRespostaData: null,
 			})
 			.where(eq(chats.id, chat.id));
 	}

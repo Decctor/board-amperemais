@@ -1,3 +1,4 @@
+import type { TChatAssignmentStatus } from "@/schemas/enums";
 import type { TChatMessageEntity } from "@/services/drizzle/schema";
 import { Output, ToolLoopAgent, gateway, stepCountIs } from "ai";
 import z from "zod";
@@ -33,7 +34,7 @@ export type TChatDetailsForAgentResponse = {
 	atendimentoAberto: {
 		id: string;
 		descricao: string;
-		status: "PENDENTE" | "EM_ANDAMENTO" | "CONCLUIDO";
+		status: TChatAssignmentStatus;
 	} | null;
 };
 

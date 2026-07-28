@@ -119,7 +119,7 @@ export async function buildClientPortfolioQueue({ organizacaoId, vendedorId }: {
 	const inboundRows = await db
 		.select({
 			clienteId: chats.clienteId,
-			ultimaInteracaoCliente: sql<string | null>`max(${chats.ultimaInteracaoClienteData})`,
+			ultimaInteracaoCliente: sql<string | null>`max(${chats.ultimaMensagemEntradaData})`,
 		})
 		.from(chats)
 		.where(and(eq(chats.organizacaoId, organizacaoId), inArray(chats.clienteId, clientIds)))

@@ -87,6 +87,10 @@
 		{
 			"path": "/api/cron/print-jobs-maintenance",
 			"schedule": "15 6 * * *"
+		},
+		{
+			"path": "/api/cron/invalidate-chat-windows",
+			"schedule": "*/15 * * * *"
 		}
 	]
 }

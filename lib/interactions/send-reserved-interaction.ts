@@ -32,7 +32,7 @@ async function failInteractionSend({
 	insertedChatMessageId?: string | null;
 }) {
 	if (insertedChatMessageId) {
-		await db.update(chatMessages).set({ whatsappMessageStatus: "FALHOU" }).where(eq(chatMessages.id, insertedChatMessageId));
+		await db.update(chatMessages).set({ statusEntrega: "FALHA" }).where(eq(chatMessages.id, insertedChatMessageId));
 	}
 
 	await markInteractionFailed({
@@ -113,12 +113,37 @@ async function getOrCreateChatId({
 	if (cachedChatPromise) return cachedChatPromise;
 
 	const chatIdPromise = (async () => {
+		// Campanhas em massa disparam vários envios ao mesmo cliente em paralelo, e o
+		// find-then-insert criava chats duplicados. O upsert só é possível quando há
+		// telefone: o índice único da chave natural é parcial (NULL nunca conflita).
+		if (whatsappPhoneId) {
+			const [inserted] = await db
+				.insert(chats)
+				.values({
+					organizacaoId: organizationId,
+					clienteId: clientId,
+					whatsappTelefoneId: whatsappPhoneId,
+					whatsappConexaoTelefoneId: whatsappConnectionPhoneId,
+					ultimaMensagemData: new Date(),
+				})
+				.onConflictDoNothing({ target: [chats.organizacaoId, chats.clienteId, chats.whatsappTelefoneId] })
+				.returning({ id: chats.id });
+
+			if (inserted) return inserted.id;
+
+			const existingChat = await db.query.chats.findFirst({
+				where: (fields, { and, eq }) =>
+					and(eq(fields.organizacaoId, organizationId), eq(fields.clienteId, clientId), eq(fields.whatsappTelefoneId, whatsappPhoneId)),
+				columns: { id: true },
+			});
+			return existingChat?.id ?? null;
+		}
+
 		const existingChat = await db.query.chats.findFirst({
 			where: (fields, { and, eq }) =>
 				and(eq(fields.organizacaoId, organizationId), eq(fields.clienteId, clientId), eq(fields.whatsappConexaoTelefoneId, whatsappConnectionPhoneId)),
 			columns: { id: true },
 		});
-
 		if (existingChat) return existingChat.id;
 
 		const [newChat] = await db
@@ -126,13 +151,10 @@ async function getOrCreateChatId({
 			.values({
 				organizacaoId: organizationId,
 				clienteId: clientId,
-				whatsappTelefoneId: whatsappPhoneId,
 				whatsappConexaoTelefoneId: whatsappConnectionPhoneId,
 				ultimaMensagemData: new Date(),
-				ultimaMensagemConteudoTipo: "TEXTO",
 			})
 			.returning({ id: chats.id });
-
 		return newChat?.id ?? null;
 	})();
 
@@ -335,6 +357,8 @@ export async function sendReservedInteraction(
 							autorUsuarioId: campaign.autorId,
 							conteudoTexto: renderedWhatsappContent,
 							conteudoMidiaTipo: "TEXTO",
+							clienteId: client.id,
+							statusEntrega: "PENDENTE",
 						})
 						.returning({ id: chatMessages.id });
 
@@ -383,7 +407,7 @@ export async function sendReservedInteraction(
 			} catch (error) {
 				channelErrors.WHATSAPP = error instanceof Error ? error.message : "Falha desconhecida no WhatsApp.";
 				if (insertedChatMessageId)
-					await db.update(chatMessages).set({ whatsappMessageStatus: "FALHOU" }).where(eq(chatMessages.id, insertedChatMessageId));
+					await db.update(chatMessages).set({ statusEntrega: "FALHA" }).where(eq(chatMessages.id, insertedChatMessageId));
 			}
 		}
 
@@ -392,7 +416,7 @@ export async function sendReservedInteraction(
 				.update(chatMessages)
 				.set({
 					...(whatsappMessageId ? { whatsappMessageId } : {}),
-					whatsappMessageStatus: interactionStatusEnvio === "PENDENTE" ? "PENDENTE" : "ENVIADO",
+					statusEntrega: interactionStatusEnvio === "PENDENTE" ? "PENDENTE" : "ENVIADA",
 				})
 				.where(eq(chatMessages.id, insertedChatMessageId));
 		}

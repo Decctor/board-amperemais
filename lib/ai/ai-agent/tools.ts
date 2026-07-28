@@ -222,9 +222,9 @@ SOLICITAÇÃO DIRETA (sempre transferir):
 			clientId,
 			conversationSummary,
 		});
+		// O cliente vem do próprio chat; passá-lo aqui abria espaço para divergência.
 		await transferServiceToHuman({
 			chatId,
-			clientId,
 			reason,
 			conversationSummary,
 		});

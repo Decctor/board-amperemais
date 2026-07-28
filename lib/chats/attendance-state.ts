@@ -376,6 +376,24 @@ export async function changeChatAttendanceStatus(
 	return updated ?? null;
 }
 
+/**
+ * Grava o resumo do atendimento. É por aqui que a IA registra do que a conversa trata —
+ * o campo que no modelo antigo era a `descricao` do serviço, quase sempre preenchida com
+ * o placeholder "NÃO ESPECIFICADO".
+ */
+export async function updateChatAttendanceSummary(
+	db: TAttendanceDb,
+	input: { organizacaoId: string; chatId: string; resumo: string; now?: Date },
+) {
+	const now = input.now ?? new Date();
+	const current = await ensureCurrentAttendance(db, { ...input, now });
+	if (!current) return null;
+
+	const [updated] = await db.update(chatAssignments).set({ resumo: input.resumo }).where(eq(chatAssignments.id, current.id)).returning();
+
+	return updated ?? null;
+}
+
 export async function changeChatAttendancePriority(
 	db: TAttendanceDb,
 	input: { organizacaoId: string; chatId: string; prioridade: TChatAssignmentPriority | null; now?: Date },

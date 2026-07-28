@@ -16,7 +16,7 @@ import {
 	cashbackProgramTransactions,
 	cashbackPrograms,
 	chatMessages,
-	chatServices,
+	chatAssignments,
 	chats,
 	clientLocations,
 	clientTagReferences,
@@ -154,7 +154,7 @@ export async function deleteAllOrganizationData({
 
 	// --- Atendimento / conversas ---
 	await trx.delete(chatMessages).where(eq(chatMessages.organizacaoId, organizationId));
-	await trx.delete(chatServices).where(eq(chatServices.organizacaoId, organizationId));
+	await trx.delete(chatAssignments).where(eq(chatAssignments.organizacaoId, organizationId));
 
 	// --- Marketing / campanhas (vínculos) ---
 	await trx.delete(campaignConversions).where(eq(campaignConversions.organizacaoId, organizationId));

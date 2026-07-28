@@ -1,5 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { type TChatDetailsForAgentResponse, getAgentResponse } from "@/lib/ai/ai-agent";
+import { getCurrentChatAttendance } from "@/lib/chats/attendance-state";
 import { db } from "@/services/drizzle";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -81,10 +82,7 @@ async function generateAIResponseRoute(req: NextRequest) {
 			limit: 100,
 		});
 
-		// Get open service
-		const openService = await db.query.chatServices.findFirst({
-			where: (fields, { and, eq, or }) => and(eq(fields.chatId, chatId), or(eq(fields.status, "PENDENTE"), eq(fields.status, "EM_ANDAMENTO"))),
-		});
+		const atendimento = await getCurrentChatAttendance(db, { organizacaoId: chat.organizacaoId, chatId });
 
 		// Format chat summary for AI agent
 		const chatSummary = {
@@ -111,13 +109,13 @@ async function generateAIResponseRoute(req: NextRequest) {
 				conteudoTexto: m.conteudoTexto || `[${m.conteudoMidiaTipo}]: ${m.conteudoMidiaTextoProcessadoResumo || ""}`,
 				conteudoMidiaUrl: m.conteudoMidiaUrl,
 				dataEnvio: m.dataEnvio.getTime(),
-				atendimentoId: m.servicoId,
+				atendimentoId: atendimento?.id,
 			})),
-			atendimentoAberto: openService
+			atendimentoAberto: atendimento
 				? {
-						id: openService.id,
-						descricao: openService.descricao,
-						status: openService.status,
+						id: atendimento.id,
+						descricao: atendimento.resumo ?? "",
+						status: atendimento.status,
 					}
 				: null,
 		};
