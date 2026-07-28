@@ -1,25 +1,41 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { getErrorMessage } from "@/lib/errors";
+import { cn } from "@/lib/utils";
 import { updateChatAssignment } from "@/lib/mutations/chats";
 import { useChatTransferTargets, type TChatAttendance } from "@/lib/queries/chats";
 import type { TChatAssignmentPriority, TChatAssignmentStatus } from "@/schemas/enums";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, LogOut, Smartphone, Sparkles, UserPlus } from "lucide-react";
+import { ChevronDown, CircleCheck, CircleCheckBig, CircleDot, CircleSlash, Clock, LogOut, MessageCircle, PauseCircle, Smartphone, Sparkles, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+/**
+ * Cada estado tem cor e forma. A cor dá a leitura periférica (verde = fim, ouro = pede
+ * ação, cinza = em espera); o ícone garante que a distinção sobreviva a daltonismo e a
+ * telas ruins — dois passos de verde lado a lado seriam indistinguíveis só por matiz.
+ * Mapeamento documentado em DESIGN.md §2.
+ */
+const STATUS_META: Record<TChatAssignmentStatus, { label: string; dot: string; icon: typeof CircleDot }> = {
+	ABERTO: { label: "Aberto", dot: "bg-brand", icon: CircleDot },
+	EM_ATENDIMENTO: { label: "Em atendimento", dot: "bg-primary", icon: MessageCircle },
+	AGUARDANDO_CLIENTE: { label: "Aguardando cliente", dot: "bg-muted-foreground/50", icon: Clock },
+	AGUARDANDO_INTERNO: { label: "Aguardando interno", dot: "bg-muted-foreground/50", icon: PauseCircle },
+	RESOLVIDO: { label: "Resolvido", dot: "bg-success", icon: CircleCheck },
+	ENCERRADO: { label: "Encerrado", dot: "bg-success-strong", icon: CircleCheckBig },
+	CANCELADO: { label: "Cancelado", dot: "bg-destructive", icon: CircleSlash },
+};
+
 const STATUS_LABELS: Record<TChatAssignmentStatus, string> = {
-	ABERTO: "Aberto",
-	EM_ATENDIMENTO: "Em atendimento",
-	AGUARDANDO_CLIENTE: "Aguardando cliente",
-	AGUARDANDO_INTERNO: "Aguardando interno",
-	RESOLVIDO: "Resolvido",
-	ENCERRADO: "Encerrado",
-	CANCELADO: "Cancelado",
+	ABERTO: STATUS_META.ABERTO.label,
+	EM_ATENDIMENTO: STATUS_META.EM_ATENDIMENTO.label,
+	AGUARDANDO_CLIENTE: STATUS_META.AGUARDANDO_CLIENTE.label,
+	AGUARDANDO_INTERNO: STATUS_META.AGUARDANDO_INTERNO.label,
+	RESOLVIDO: STATUS_META.RESOLVIDO.label,
+	ENCERRADO: STATUS_META.ENCERRADO.label,
+	CANCELADO: STATUS_META.CANCELADO.label,
 };
 
 const PRIORITY_LABELS: Record<TChatAssignmentPriority, string> = {
@@ -101,11 +117,7 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 				<DropdownMenuContent align="end" className="max-h-64 overflow-y-auto">
 					{(transferTargets ?? []).length === 0 && <DropdownMenuItem disabled>Nenhum usuário disponível</DropdownMenuItem>}
 					{(transferTargets ?? []).map((target) => (
-						<DropdownMenuItem key={target.id} className="gap-2" onClick={() => mutate({ acao: "transferir", chatId, usuarioDestinoId: target.id })}>
-							<Avatar className="h-5 w-5">
-								{target.avatarUrl && <AvatarImage src={target.avatarUrl} />}
-								<AvatarFallback className="text-[10px]">{target.nome.slice(0, 1)}</AvatarFallback>
-							</Avatar>
+						<DropdownMenuItem key={target.id} onClick={() => mutate({ acao: "transferir", chatId, usuarioDestinoId: target.id })}>
 							{target.nome}
 						</DropdownMenuItem>
 					))}
@@ -121,11 +133,15 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
-							{(Object.keys(STATUS_LABELS) as TChatAssignmentStatus[]).map((status) => (
-								<DropdownMenuItem key={status} onClick={() => mutate({ acao: "alterar_status", chatId, status })}>
-									{STATUS_LABELS[status]}
-								</DropdownMenuItem>
-							))}
+							{(Object.keys(STATUS_META) as TChatAssignmentStatus[]).map((status) => {
+								const StatusIcon = STATUS_META[status].icon;
+								return (
+									<DropdownMenuItem key={status} className="gap-2" onClick={() => mutate({ acao: "alterar_status", chatId, status })}>
+										<StatusIcon className={cn("h-3.5 w-3.5", STATUS_META[status].dot.replace("bg-", "text-"))} />
+										{STATUS_META[status].label}
+									</DropdownMenuItem>
+								);
+							})}
 						</DropdownMenuContent>
 				</DropdownMenu>
 			)}

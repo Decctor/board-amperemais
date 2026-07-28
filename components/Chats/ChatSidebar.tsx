@@ -10,7 +10,7 @@ import { mapRealtimeChatRow, type TRealtimeChatRow } from "@/lib/chats/realtime-
 import { getErrorMessage } from "@/lib/errors";
 import { useChats, type TChatInboxItem } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
-import type { TChatInboxView } from "@/schemas/enums";
+import { ChatInboxViewEnum, type TChatInboxView } from "@/schemas/enums";
 import { supabaseClient } from "@/services/supabase";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { ChevronDown, Inbox, Search, Sparkles, User, Users, X } from "lucide-react";
@@ -34,15 +34,56 @@ type ChatSidebarProps = {
 	className?: string;
 };
 
+/**
+ * Filtros persistidos por organização.
+ *
+ * Lidos em efeito, não no inicializador do useState: o servidor não tem localStorage e
+ * ler no primeiro render produziria markup diferente do cliente (erro de hidratação). O
+ * custo é um render com o padrão antes de aplicar o salvo.
+ */
+const FILTERS_STORAGE_PREFIX = "chat-inbox-filters";
+
+type TPersistedFilters = { view: TChatInboxView; selectedPhoneId: string | null };
+
 export function ChatSidebar({ organizationId, selectedChatId, onSelectChat, whatsappConnections, className }: ChatSidebarProps) {
 	const [view, setView] = useState<TChatInboxView>("MINHAS");
 	const [search, setSearch] = useState("");
 	const [selectedPhoneId, setSelectedPhoneId] = useState<string | null>(null);
+	const [filtersLoaded, setFiltersLoaded] = useState(false);
 	const queryClient = useQueryClient();
 	const initialSubscriptionCompleteRef = useRef(false);
 
 	const phones = useMemo(() => whatsappConnections.flatMap((connection) => connection.telefones ?? []), [whatsappConnections]);
 	const selectedPhone = phones.find((phone) => phone.id === selectedPhoneId) ?? null;
+	const storageKey = `${FILTERS_STORAGE_PREFIX}-${organizationId}`;
+
+	useEffect(() => {
+		try {
+			const raw = window.localStorage.getItem(storageKey);
+			if (raw) {
+				const parsed = JSON.parse(raw) as Partial<TPersistedFilters>;
+				const parsedView = ChatInboxViewEnum.safeParse(parsed.view);
+				if (parsedView.success) setView(parsedView.data);
+				// Um telefone salvo pode ter sido removido da organização desde então;
+				// restaurar um filtro inexistente esvaziaria a inbox sem explicação.
+				if (parsed.selectedPhoneId && phones.some((phone) => phone.id === parsed.selectedPhoneId)) {
+					setSelectedPhoneId(parsed.selectedPhoneId);
+				}
+			}
+		} catch {
+			// Storage indisponível ou JSON corrompido: seguir com os padrões.
+		}
+		setFiltersLoaded(true);
+	}, [storageKey, phones]);
+
+	useEffect(() => {
+		if (!filtersLoaded) return;
+		try {
+			window.localStorage.setItem(storageKey, JSON.stringify({ view, selectedPhoneId } satisfies TPersistedFilters));
+		} catch {
+			// Modo privado / quota estourada: o filtro só não persiste.
+		}
+	}, [filtersLoaded, storageKey, view, selectedPhoneId]);
 
 	const { chats, isPending, isError, error, hasNextPage, fetchNextPage, isFetchingNextPage, queryKey } = useChats({
 		whatsappConexaoTelefoneId: selectedPhoneId,
@@ -191,7 +232,14 @@ export function ChatSidebar({ organizationId, selectedChatId, onSelectChat, what
 					<p className="p-6 text-center text-xs text-muted-foreground">Nenhuma conversa nesta visão.</p>
 				)}
 				{chats.map((chat) => (
-					<ChatInboxListItem key={chat.id} chat={chat} isSelected={chat.id === selectedChatId} onSelect={onSelectChat} />
+					<ChatInboxListItem
+						key={chat.id}
+						chat={chat}
+						isSelected={chat.id === selectedChatId}
+						// Com filtro ativo o número é redundante — ele já está no chip acima.
+						showPhoneBadge={!selectedPhoneId && phones.length > 1}
+						onSelect={onSelectChat}
+					/>
 				))}
 				{hasNextPage && (
 					<div className="p-3">

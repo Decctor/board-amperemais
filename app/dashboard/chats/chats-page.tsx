@@ -8,7 +8,7 @@ type ChatsPageProps = {
 };
 export default function ChatsPage({ user, membership }: ChatsPageProps) {
 	return (
-		<div className="flex w-full h-full grow flex-col">
+		<div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
 			<ChatsMain user={user} organizationId={membership.organizacao.id} />
 		</div>
 	);

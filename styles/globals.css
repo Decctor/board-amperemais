@@ -106,6 +106,12 @@
 	--color-sidebar-ring: hsl(var(--sidebar-ring));
 	--color-brand: #ffb900;
 	--color-brand-foreground: #000000;
+	/* Estados de atendimento. Verde não existia na paleta e entra aqui em vez de
+	   `text-green-600` espalhado: são dois passos deliberados — o claro marca "resolvido"
+	   (fim positivo, ainda reaberto por uma resposta) e o escuro marca "encerrado"
+	   (fim definitivo). Ver DESIGN.md §2. */
+	--color-success: #16a34a;
+	--color-success-strong: #15803d;
 	/* Must exist in @theme so bg-brand-secondary / text-brand-secondary-foreground are generated; OrgColorsProvider overwrites --color-brand-secondary* on :root */
 	--color-brand-secondary: #24549c;
 	--color-brand-secondary-foreground: #ffffff;
