@@ -1,4 +1,5 @@
 import type { TGetSaleForEditOutput } from "@/app/api/pos/sales/edit/route";
+import { POS_REWARD_SALE_ITEM_ORIGIN, type TSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-redemption";
 import type { TCartItem, TCartItemModifier, TSaleState } from "@/state-hooks/use-sale-state";
 import type { TCheckoutPaymentSplit } from "@/lib/payments/schemas";
 
@@ -19,6 +20,8 @@ type TItemMetadataSnapshot = {
 	valorUnitarioBase?: number;
 	valorModificadores?: number;
 	modificadores?: TCartItemModifier[];
+	origem?: string;
+	recompensaId?: string;
 };
 
 function toDateInputValue(value: Date | string | null | undefined): string | null {
@@ -47,6 +50,7 @@ function mapItemToCartItem(item: TSaleForEditData["venda"]["itens"][number]): TC
 		tempId: item.id,
 		itemId: item.id,
 		quantidadeEntregue: item.quantidadeEntregue ?? 0,
+		recompensaId: snapshot?.origem === POS_REWARD_SALE_ITEM_ORIGIN ? (snapshot.recompensaId ?? null) : null,
 		produtoId: item.produtoId,
 		produtoVarianteId: item.produtoVarianteId ?? null,
 		nome: snapshot?.nome ?? item.produtoVariante?.nome ?? item.produto?.nome ?? "Item",
@@ -104,19 +108,25 @@ export function mapSaleForEditToSaleState(data: TSaleForEditData): Partial<TSale
 	const venda = data.venda;
 	const draftMetadata =
 		venda.rascunhoMetadados && typeof venda.rascunhoMetadados === "object" && !Array.isArray(venda.rascunhoMetadados)
-			? (venda.rascunhoMetadados as { descontoGeral?: number })
+			? (venda.rascunhoMetadados as { descontoGeral?: number; recompensa?: TSaleRewardDraftSnapshot | null })
 			: null;
 
 	const cashbackResgate = data.cashbackResgate;
 	const cupomDesconto = data.cupomResgatado?.valorDesconto ?? 0;
-	const descontoGeral = draftMetadata?.descontoGeral ?? Math.max(0, (venda.descontosTotal ?? 0) - cupomDesconto - cashbackResgate);
+	const itens = venda.itens.map(mapItemToCartItem);
+	// Recompensa resgatada: reconstruída a partir do item para exibição (imutável na edição).
+	const rewardItem = itens.find((item) => !!item.recompensaId);
+	const recompensaSnapshot = draftMetadata?.recompensa ?? null;
+	const descontoRecompensa = rewardItem?.valorDesconto ?? 0;
+	const descontoGeral =
+		draftMetadata?.descontoGeral ?? Math.max(0, (venda.descontosTotal ?? 0) - cupomDesconto - cashbackResgate - descontoRecompensa);
 
 	return {
 		modoCliente: venda.cliente ? "VINCULADO" : "CONSUMIDOR",
 		cliente: venda.cliente ? { id: venda.cliente.id, nome: venda.cliente.nome, telefone: venda.cliente.telefone ?? "" } : null,
 		vendedorId: venda.vendedorId ?? null,
 		vendedorNome: venda.vendedorNome ?? null,
-		itens: venda.itens.map(mapItemToCartItem),
+		itens,
 		descontoGeral,
 		acrescimoGeral: venda.acrescimosTotal ?? 0,
 		observacoes: venda.observacoes ?? "",
@@ -134,6 +144,17 @@ export function mapSaleForEditToSaleState(data: TSaleForEditData): Partial<TSale
 					titulo: data.cupomResgatado.cupomTitulo,
 				}
 			: null,
+		recompensaResgate:
+			rewardItem && rewardItem.recompensaId
+				? {
+						recompensaId: rewardItem.recompensaId,
+						programaId: recompensaSnapshot?.programaId ?? "",
+						titulo: recompensaSnapshot?.titulo || rewardItem.nome,
+						valor: recompensaSnapshot?.valor ?? 0,
+						valorVenda: rewardItem.valorTotalBruto,
+						imagemCapaUrl: rewardItem.imagemUrl ?? null,
+					}
+				: null,
 		emissaoFiscalAutomatica: venda.emissaoFiscalAutomatica ?? null,
 	};
 }

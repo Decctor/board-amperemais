@@ -9,6 +9,7 @@ import type { TUseSaleState } from "@/state-hooks/use-sale-state";
 import { DollarSign, Minus, Plus, ShieldAlert, Wallet } from "lucide-react";
 import { useEffect } from "react";
 import CouponRedemptionSection from "./CouponRedemptionSection";
+import RewardRedemptionSection from "./RewardRedemptionSection";
 
 type CashbackRedemptionBlockProps = {
 	saleState: TUseSaleState;
@@ -38,11 +39,13 @@ function CashbackRedemptionBlock({ saleState, clientId, organizationCashbackProg
 			? "Programa de cashback inativo."
 			: !organizationCashbackProgram.modalidadeDescontosPermitida
 				? "Este programa não permite resgate por desconto."
-				: cashbackSaldoDisponivel <= 0
-					? "Cliente sem saldo de cashback disponível."
-					: cashbackResgateMaximo <= 0
-						? "Não há valor disponível para resgate nesta venda."
-						: null;
+				: saleState.state.recompensaResgate
+					? "Remova a recompensa para aplicar desconto em cashback."
+					: cashbackSaldoDisponivel <= 0
+						? "Cliente sem saldo de cashback disponível."
+						: cashbackResgateMaximo <= 0
+							? "Não há valor disponível para resgate nesta venda."
+							: null;
 	const isCashbackDisabled = isCashbackBalanceLoading || !!cashbackDisabledReason;
 
 	useEffect(() => {
@@ -109,10 +112,10 @@ type SummarySectionProps = {
 export default function SummarySection({ saleState, organizationCashbackProgram, discountAuthority, editMode }: SummarySectionProps) {
 	// Mesmo cômputo do servidor: desconto agregado (geral + itens + cupom MANUAL) sobre o bruto dos itens.
 	const cupomManual = saleState.state.cupomResgate?.validacaoModo === "MANUAL" ? saleState.state.cupomResgate.valorDesconto : 0;
-	const descontoAgregado = saleState.state.descontoGeral + saleState.totalDescontoItens + cupomManual;
-	const discountCeiling = discountAuthority ? getDiscountCeiling({ authority: discountAuthority, valorBase: saleState.subtotal }) : null;
+	const descontoAgregado = saleState.state.descontoGeral + saleState.totalDescontoItensAvaliavel + cupomManual;
+	const discountCeiling = discountAuthority ? getDiscountCeiling({ authority: discountAuthority, valorBase: saleState.subtotalAvaliavel }) : null;
 	const discountRequiresApproval = discountAuthority
-		? evaluateDiscount({ authority: discountAuthority, valorBase: saleState.subtotal, descontoTotal: descontoAgregado }) === "REQUER_APROVACAO"
+		? evaluateDiscount({ authority: discountAuthority, valorBase: saleState.subtotalAvaliavel, descontoTotal: descontoAgregado }) === "REQUER_APROVACAO"
 		: false;
 	return (
 		<div className="bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs">
@@ -126,6 +129,7 @@ export default function SummarySection({ saleState, organizationCashbackProgram,
 			</div>
 			<div className="flex flex-col gap-1.5">
 				{!editMode && saleState.state.cliente ? <CouponRedemptionSection saleState={saleState} clientId={saleState.state.cliente.id} /> : null}
+				{!editMode && saleState.state.cliente ? <RewardRedemptionSection saleState={saleState} clientId={saleState.state.cliente.id} /> : null}
 				{!editMode && saleState.state.cliente ? (
 					<CashbackRedemptionBlock saleState={saleState} clientId={saleState.state.cliente.id} organizationCashbackProgram={organizationCashbackProgram} />
 				) : null}
@@ -189,6 +193,15 @@ export default function SummarySection({ saleState, organizationCashbackProgram,
 						{editMode ? <span className="text-[11px] text-muted-foreground"> (aplicado na venda)</span> : null}
 					</span>
 					<span>-{formatToMoney(saleState.state.cashbackResgate)}</span>
+				</div>
+			) : null}
+			{saleState.state.recompensaResgate ? (
+				<div className="flex items-center justify-between text-sm text-amber-600">
+					<span>
+						Recompensa: {saleState.state.recompensaResgate.titulo}
+						{editMode ? <span className="text-[11px] text-muted-foreground"> (aplicada na venda)</span> : null}
+					</span>
+					<span>GRÁTIS ({formatToMoney(saleState.state.recompensaResgate.valorVenda)})</span>
 				</div>
 			) : null}
 			<div className="flex items-center justify-between text-sm font-semibold">

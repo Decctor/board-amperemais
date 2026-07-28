@@ -92,10 +92,10 @@ export default function NewSalePage({
 	const cupomManual = saleState.state.cupomResgate?.validacaoModo === "MANUAL" ? saleState.state.cupomResgate.valorDesconto : 0;
 	const descontoAgregado = useMemo(
 		() => ({
-			valorBase: saleState.subtotal,
-			descontoTotal: saleState.state.descontoGeral + saleState.totalDescontoItens + cupomManual,
+			valorBase: saleState.subtotalAvaliavel,
+			descontoTotal: saleState.state.descontoGeral + saleState.totalDescontoItensAvaliavel + cupomManual,
 		}),
-		[saleState.subtotal, saleState.state.descontoGeral, saleState.totalDescontoItens, cupomManual],
+		[saleState.subtotalAvaliavel, saleState.state.descontoGeral, saleState.totalDescontoItensAvaliavel, cupomManual],
 	);
 	const discountRequiresApproval = discountAuthority
 		? evaluateDiscount({ authority: discountAuthority, ...descontoAgregado }) === "REQUER_APROVACAO"
@@ -144,6 +144,9 @@ export default function NewSalePage({
 					acrescimosTotal: saleState.state.acrescimoGeral,
 					cashbackResgate: saleState.state.cashbackResgate,
 					cupomResgate: saleState.state.cupomResgate,
+					recompensaResgate: saleState.state.recompensaResgate
+						? { recompensaId: saleState.state.recompensaResgate.recompensaId, programaId: saleState.state.recompensaResgate.programaId }
+						: null,
 					rascunhoMetadados: saleState.getDraftMetadata(),
 					emissaoFiscalAutomatica: saleState.state.emissaoFiscalAutomatica,
 				});
@@ -253,6 +256,9 @@ export default function NewSalePage({
 			acrescimosTotal: saleState.state.acrescimoGeral,
 			cashbackResgate: saleState.state.cashbackResgate,
 			cupomResgate: saleState.state.cupomResgate,
+			recompensaResgate: saleState.state.recompensaResgate
+				? { recompensaId: saleState.state.recompensaResgate.recompensaId, programaId: saleState.state.recompensaResgate.programaId }
+				: null,
 			rascunhoMetadados: saleState.getDraftMetadata(),
 			emissaoFiscalAutomatica: saleState.state.emissaoFiscalAutomatica,
 			itens: mapItemsToApi(saleState),
@@ -283,6 +289,9 @@ export default function NewSalePage({
 			})),
 			cashbackResgate: saleState.state.cashbackResgate,
 			cupomResgate: saleState.state.cupomResgate,
+			recompensaResgate: saleState.state.recompensaResgate
+				? { recompensaId: saleState.state.recompensaResgate.recompensaId, programaId: saleState.state.recompensaResgate.programaId }
+				: null,
 			emissaoFiscalAutomatica: saleState.state.emissaoFiscalAutomatica,
 			itens: mapItemsToApi(saleState),
 		});
