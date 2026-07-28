@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getWhatsappWindowDisplay } from "@/lib/chats/whatsapp-window-status";
 import { cn } from "@/lib/utils";
 import { Lock, Paperclip, Send, X } from "lucide-react";
+import { ChatVoiceRecorder } from "./ChatVoiceRecorder";
 import { useEffect, useId, useRef, useState } from "react";
 
 export type TOutgoingAttachment = { tipo: "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO"; base64: string; mimeType: string; arquivoNome: string };
@@ -46,6 +47,7 @@ export function ChatInputArea({
 	const [texto, setTexto] = useState("");
 	const [attachment, setAttachment] = useState<TOutgoingAttachment | null>(null);
 	const [assinaturaAtiva, setAssinaturaAtiva] = useState(false);
+	const [isRecordingVoice, setIsRecordingVoice] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const signatureSwitchId = useId();
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -70,10 +72,27 @@ export function ChatInputArea({
 		window.localStorage.setItem(signatureStorageKey, String(checked));
 	}
 
+	async function toBase64(blob: Blob) {
+		const bytes = new Uint8Array(await blob.arrayBuffer());
+		// Em blocos: String.fromCharCode(...array) estoura a pilha em arquivos grandes.
+		let binary = "";
+		for (let offset = 0; offset < bytes.length; offset += 8192) {
+			binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+		}
+		return btoa(binary);
+	}
+
 	async function handleFileSelected(file: File) {
-		const buffer = await file.arrayBuffer();
-		const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-		setAttachment({ tipo: resolveMediaType(file.type), base64, mimeType: file.type || "application/octet-stream", arquivoNome: file.name });
+		setAttachment({
+			tipo: resolveMediaType(file.type),
+			base64: await toBase64(file),
+			mimeType: file.type || "application/octet-stream",
+			arquivoNome: file.name,
+		});
+	}
+
+	async function handleVoiceRecorded({ blob, mimeType }: { blob: Blob; mimeType: string; durationSeconds: number }) {
+		setAttachment({ tipo: "AUDIO", base64: await toBase64(blob), mimeType, arquivoNome: `audio-${Date.now()}.ogg` });
 	}
 
 	function handleSubmit() {
@@ -145,10 +164,15 @@ export function ChatInputArea({
 						event.target.value = "";
 					}}
 				/>
-				<Button variant="ghost" size="icon" className="shrink-0" aria-label="Anexar arquivo" onClick={() => fileInputRef.current?.click()} disabled={isSending}>
-					<Paperclip className="h-4 w-4" />
-				</Button>
+				{!isRecordingVoice && (
+					<Button variant="ghost" size="icon" className="shrink-0" aria-label="Anexar arquivo" onClick={() => fileInputRef.current?.click()} disabled={isSending}>
+						<Paperclip className="h-4 w-4" />
+					</Button>
+				)}
 
+				<ChatVoiceRecorder disabled={isSending} onRecorded={(input) => void handleVoiceRecorded(input)} onActiveChange={setIsRecordingVoice} />
+
+				{!isRecordingVoice && (
 				<Textarea
 					ref={textareaRef}
 					value={texto}
@@ -170,10 +194,13 @@ export function ChatInputArea({
 					className="min-h-9 resize-none py-2 text-sm"
 					disabled={isSending}
 				/>
+				)}
 
-				<Button size="icon" className="shrink-0" aria-label="Enviar mensagem" onClick={handleSubmit} disabled={isSending || (!texto.trim() && !attachment)}>
-					<Send className="h-4 w-4" />
-				</Button>
+				{!isRecordingVoice && (
+					<Button size="icon" className="shrink-0" aria-label="Enviar mensagem" onClick={handleSubmit} disabled={isSending || (!texto.trim() && !attachment)}>
+						<Send className="h-4 w-4" />
+					</Button>
+				)}
 			</div>
 
 			<div className={cn("flex items-center gap-2 self-start", isSending && "opacity-60")}>

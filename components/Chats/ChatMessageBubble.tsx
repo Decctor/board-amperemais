@@ -5,7 +5,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import type { TChatThreadMessage } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
 import { AlertCircle, Check, CheckCheck, ChevronDown, Clock, RotateCw, Smartphone, Sparkles } from "lucide-react";
-import MediaMessageDisplay from "./MediaMessageDisplay";
+import { ChatMediaAttachment } from "./ChatMediaAttachment";
 import { WhatsAppMessageText } from "./WhatsAppMessageText";
 
 /** Mensagem otimista: existe no cliente antes de a rota confirmar a persistência. */
@@ -73,6 +73,9 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 	const isIncoming = message.autorTipo === "CLIENTE";
 	const isFailed = message.statusEntrega === "FALHA";
 	const isAutomated = message.autorTipo === "AI" || message.autorTipo === "BUSINESS-APP" || message.whatsappEcho;
+	// Bolha de saída (azul) e de falha (vermelha) são superfícies coloridas: links, code
+	// e fundos de anexo precisam derivar da cor do texto em vez de usar tokens fixos.
+	const onColoredSurface = !isIncoming && !isAutomated;
 	const referral = message.metadados?.whatsappReferral;
 	const aiContext = message.conteudoMidiaTextoProcessado || message.conteudoMidiaTextoProcessadoResumo;
 
@@ -115,18 +118,17 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 
 				{message.conteudoMidiaTipo !== "TEXTO" && (
 					<div className="mb-1">
-						<MediaMessageDisplay
-							mediaUrl={message.conteudoMidiaUrl ?? undefined}
-							mediaType={message.conteudoMidiaTipo}
-							fileName={message.conteudoMidiaArquivoNome ?? undefined}
-							fileSize={message.conteudoMidiaArquivoTamanho ?? undefined}
-							mimeType={message.conteudoMidiaMimeType ?? undefined}
-							variant={isIncoming ? "received" : "sent"}
+						<ChatMediaAttachment
+							tipo={message.conteudoMidiaTipo}
+							url={message.conteudoMidiaUrl}
+							arquivoNome={message.conteudoMidiaArquivoNome}
+							arquivoTamanho={message.conteudoMidiaArquivoTamanho}
+							mimeType={message.conteudoMidiaMimeType}
 						/>
 					</div>
 				)}
 
-				{message.conteudoTexto && <WhatsAppMessageText text={message.conteudoTexto} className="whitespace-pre-wrap break-words" />}
+				{message.conteudoTexto && <WhatsAppMessageText text={message.conteudoTexto} onColoredSurface={onColoredSurface} />}
 
 				{message.conteudoMidiaTipo !== "TEXTO" && aiContext && (
 					<Collapsible className="mt-1.5">
