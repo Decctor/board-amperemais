@@ -75,6 +75,7 @@ const websiteJsonLd = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+	console.log("Running");
 	return (
 		<html lang="pt-BR" suppressHydrationWarning>
 			<body className={cn(`min-h-screen min-w-screen bg-background text-foreground overflow-x-hidden antialiased font-raleway ${raleway.variable}`)}>
