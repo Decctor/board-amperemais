@@ -1,11 +1,17 @@
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { formatCashbackValue, formatToMoney } from "@/lib/formatting";
 import { type TPosAvailableReward, usePosAvailableRewards } from "@/lib/queries/cashback-programs";
 import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import type { TUseSaleState } from "@/state-hooks/use-sale-state";
-import { ChevronDown, ChevronUp, Gift, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp, Gift, Search, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+
+/** Busca tolerante a acentos e caixa, no mesmo idioma dos normalizadores da casa. */
+function normalizeForSearch(value: string) {
+	return value.trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+}
 
 type RewardRedemptionSectionProps = {
 	saleState: TUseSaleState;
@@ -19,13 +25,23 @@ type RewardRedemptionSectionProps = {
  */
 export default function RewardRedemptionSection({ saleState, clientId }: RewardRedemptionSectionProps) {
 	const [isListOpen, setIsListOpen] = useState(false);
+	const [searchValue, setSearchValue] = useState("");
 	const { data: rewardsData, isLoading } = usePosAvailableRewards({ clienteId: clientId });
 
 	const appliedReward = saleState.state.recompensaResgate;
 	const program = rewardsData?.program ?? null;
 	const terminologia: TCashbackProgramTerminologyEnum = program?.terminologia ?? "DINHEIRO";
 	const saldoDisponivel = rewardsData?.saldoValorDisponivel ?? 0;
-	const rewards = rewardsData?.rewards ?? [];
+	const rewards = useMemo(() => rewardsData?.rewards ?? [], [rewardsData?.rewards]);
+
+	// Catálogo de prêmios chega inteiro do servidor: o filtro é local, sem round-trip por tecla.
+	const filteredRewards = useMemo(() => {
+		const term = normalizeForSearch(searchValue);
+		if (!term) return rewards;
+		return rewards.filter((reward) =>
+			[reward.titulo, reward.descricao, reward.grupo].some((field) => (field ? normalizeForSearch(field).includes(term) : false)),
+		);
+	}, [rewards, searchValue]);
 
 	// Revalida a recompensa aplicada contra o servidor: prêmio desativado, saldo insuficiente
 	// ou valores alterados no catálogo removem/atualizam a seleção com aviso ao operador.
@@ -42,7 +58,8 @@ export default function RewardRedemptionSection({ saleState, clientId }: RewardR
 		}
 	}, [appliedReward, rewardsData, saleState.setRecompensaResgate]);
 
-	// Sem programa com modalidade de recompensas (ou sem prêmios cadastrados): a seção não aparece.
+	// A modalidade já é conferida pelo SummarySection (que monta ou não este bloco); aqui resta
+	// o caso de organização com a modalidade ligada mas nenhum prêmio ativo cadastrado.
 	if (!appliedReward && !isLoading && (!program?.modalidadeRecompensasPermitida || rewards.length === 0)) return null;
 
 	if (appliedReward) {
@@ -77,9 +94,15 @@ export default function RewardRedemptionSection({ saleState, clientId }: RewardR
 
 	const eligibleCount = rewards.filter((reward) => reward.elegivel).length;
 
+	// Fechar o painel limpa a busca: reabrir sempre parte do catálogo inteiro.
+	function toggleList() {
+		setIsListOpen((prev) => !prev);
+		setSearchValue("");
+	}
+
 	return (
 		<div className="w-full flex flex-col gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-2">
-			<button type="button" className="flex items-center justify-between cursor-pointer" onClick={() => setIsListOpen((prev) => !prev)}>
+			<button type="button" className="flex items-center justify-between cursor-pointer" onClick={toggleList}>
 				<div className="flex items-center gap-1.5">
 					<Gift className="w-3 h-3 text-amber-600" />
 					<span className="text-xs font-semibold text-amber-600">
@@ -97,16 +120,32 @@ export default function RewardRedemptionSection({ saleState, clientId }: RewardR
 			</button>
 			{isListOpen && program ? (
 				<div className="w-full flex flex-col gap-1.5">
-					{rewards.map((reward) => (
-						<AvailableRewardCard
-							key={reward.id}
-							reward={reward}
-							terminologia={terminologia}
-							programaId={program.id}
-							saleState={saleState}
-							onApplied={() => setIsListOpen(false)}
+					<div className="relative">
+						<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-600/70" />
+						<Input
+							value={searchValue}
+							onChange={(event) => setSearchValue(event.target.value)}
+							placeholder="Buscar recompensa..."
+							className="pl-8 h-8 text-xs border-amber-500/40"
 						/>
-					))}
+					</div>
+					{filteredRewards.length === 0 ? (
+						<p className="text-[11px] text-amber-700 py-1">Nenhuma recompensa encontrada para a busca.</p>
+					) : (
+						filteredRewards.map((reward) => (
+							<AvailableRewardCard
+								key={reward.id}
+								reward={reward}
+								terminologia={terminologia}
+								programaId={program.id}
+								saleState={saleState}
+								onApplied={() => {
+									setIsListOpen(false);
+									setSearchValue("");
+								}}
+							/>
+						))
+					)}
 				</div>
 			) : null}
 		</div>
