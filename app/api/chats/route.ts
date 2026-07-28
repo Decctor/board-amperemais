@@ -4,7 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
 import { chatServices, chats } from "@/services/drizzle/schema/chats";
 import { clients } from "@/services/drizzle/schema/clients";
-import { and, desc, eq, ilike, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, lt, or } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -46,63 +46,38 @@ async function getChats({ session, input }: { session: TAuthUserSession; input: 
 			: undefined,
 	);
 
-	let chatResults: (typeof chats.$inferSelect & { cliente: typeof clients.$inferSelect | null })[];
+	const chatProjection = {
+		id: chats.id,
+		organizacaoId: chats.organizacaoId,
+		clienteId: chats.clienteId,
+		whatsappConexaoId: chats.whatsappConexaoId,
+		whatsappConexaoTelefoneId: chats.whatsappConexaoTelefoneId,
+		whatsappTelefoneId: chats.whatsappTelefoneId,
+		mensagensNaoLidas: chats.mensagensNaoLidas,
+		ultimaMensagemId: chats.ultimaMensagemId,
+		ultimaMensagemData: chats.ultimaMensagemData,
+		ultimaMensagemConteudoTipo: chats.ultimaMensagemConteudoTipo,
+		ultimaMensagemConteudoTexto: chats.ultimaMensagemConteudoTexto,
+		status: chats.status,
+		ultimaInteracaoClienteData: chats.ultimaInteracaoClienteData,
+		aiAgendamentoRespostaData: chats.aiAgendamentoRespostaData,
+		dataInsercao: chats.dataInsercao,
+		cliente: clients,
+	};
 
-	if (search && search.trim().length > 0) {
-		// Search by client name or last message content
-		const searchPattern = `%${search}%`;
+	// Search by client name or last message content
+	const searchCondition =
+		search && search.trim().length > 0
+			? or(ilike(clients.nome, `%${search}%`), ilike(chats.ultimaMensagemConteudoTexto, `%${search}%`))
+			: undefined;
 
-		chatResults = await db
-			.select({
-				id: chats.id,
-				organizacaoId: chats.organizacaoId,
-				clienteId: chats.clienteId,
-				whatsappConexaoId: chats.whatsappConexaoId,
-				whatsappConexaoTelefoneId: chats.whatsappConexaoTelefoneId,
-				whatsappTelefoneId: chats.whatsappTelefoneId,
-				mensagensNaoLidas: chats.mensagensNaoLidas,
-				ultimaMensagemId: chats.ultimaMensagemId,
-				ultimaMensagemData: chats.ultimaMensagemData,
-				ultimaMensagemConteudoTipo: chats.ultimaMensagemConteudoTipo,
-				ultimaMensagemConteudoTexto: chats.ultimaMensagemConteudoTexto,
-				status: chats.status,
-				ultimaInteracaoClienteData: chats.ultimaInteracaoClienteData,
-				aiAgendamentoRespostaData: chats.aiAgendamentoRespostaData,
-				dataInsercao: chats.dataInsercao,
-				cliente: clients,
-			})
-			.from(chats)
-			.leftJoin(clients, eq(chats.clienteId, clients.id))
-			.where(and(baseConditions, or(ilike(clients.nome, searchPattern), ilike(chats.ultimaMensagemConteudoTexto, searchPattern))))
-			.orderBy(desc(chats.ultimaMensagemData), desc(chats.id))
-			.limit(limit + 1);
-	} else {
-		// No search - efficient indexed query
-		chatResults = await db
-			.select({
-				id: chats.id,
-				organizacaoId: chats.organizacaoId,
-				clienteId: chats.clienteId,
-				whatsappConexaoId: chats.whatsappConexaoId,
-				whatsappConexaoTelefoneId: chats.whatsappConexaoTelefoneId,
-				whatsappTelefoneId: chats.whatsappTelefoneId,
-				mensagensNaoLidas: chats.mensagensNaoLidas,
-				ultimaMensagemId: chats.ultimaMensagemId,
-				ultimaMensagemData: chats.ultimaMensagemData,
-				ultimaMensagemConteudoTipo: chats.ultimaMensagemConteudoTipo,
-				ultimaMensagemConteudoTexto: chats.ultimaMensagemConteudoTexto,
-				status: chats.status,
-				ultimaInteracaoClienteData: chats.ultimaInteracaoClienteData,
-				aiAgendamentoRespostaData: chats.aiAgendamentoRespostaData,
-				dataInsercao: chats.dataInsercao,
-				cliente: clients,
-			})
-			.from(chats)
-			.leftJoin(clients, eq(chats.clienteId, clients.id))
-			.where(baseConditions)
-			.orderBy(desc(chats.ultimaMensagemData), desc(chats.id))
-			.limit(limit + 1);
-	}
+	const chatResults = await db
+		.select(chatProjection)
+		.from(chats)
+		.leftJoin(clients, eq(chats.clienteId, clients.id))
+		.where(searchCondition ? and(baseConditions, searchCondition) : baseConditions)
+		.orderBy(desc(chats.ultimaMensagemData), desc(chats.id))
+		.limit(limit + 1);
 
 	// Check if there are more results
 	const hasMore = chatResults.length > limit;

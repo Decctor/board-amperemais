@@ -84,16 +84,55 @@ export const CashbackProgramTransactionStatusEnum = z.enum(["ATIVO", "CONSUMIDO"
 export type TCashbackProgramTransactionStatusEnum = z.infer<typeof CashbackProgramTransactionStatusEnum>;
 export const OrganizationIntegrationTypeEnum = z.enum(["ONLINE-SOFTWARE", "CARDAPIO-WEB", "NUVEM-SHOP", "IFOOD", "BLING"]);
 export type TOrganizationIntegrationTypeEnum = z.infer<typeof OrganizationIntegrationTypeEnum>;
-export const ChatStatusEnum = z.enum(["ABERTA", "FECHADA"]);
-export type TChatStatusEnum = z.infer<typeof ChatStatusEnum>;
 export const ChatMessageContentTypeEnum = z.enum(["TEXTO", "IMAGEM", "VIDEO", "AUDIO", "DOCUMENTO"]);
 export type TChatMessageContentTypeEnum = z.infer<typeof ChatMessageContentTypeEnum>;
+export const ChatMessageAuthorTypeEnum = z.enum(["CLIENTE", "USUÁRIO", "AI", "BUSINESS-APP"]);
+export type TChatMessageAuthorTypeEnum = z.infer<typeof ChatMessageAuthorTypeEnum>;
+
+// ─── Atendimento (chat_assignments) ──────────────────────────────────────────
+// Note que os valores de `autor_tipo` da mensagem e de `responsavel_tipo` do atendimento
+// são conjuntos distintos: AI ↔ AGENTE e BUSINESS-APP ↔ EXTERNO. O enum de autor não muda
+// nesta iniciativa para não exigir ALTER TYPE em uma coluna com histórico.
+export const ChatAssignmentResponsibleTypeEnum = z.enum(["USUARIO", "AGENTE", "EXTERNO", "NAO_ATRIBUIDO"], {
+	required_error: "Tipo de responsável pelo atendimento não informado.",
+	invalid_type_error: "Tipo não válido para o tipo de responsável pelo atendimento.",
+});
+export type TChatAssignmentResponsibleType = z.infer<typeof ChatAssignmentResponsibleTypeEnum>;
+
+export const ChatAssignmentStatusEnum = z.enum(
+	["ABERTO", "EM_ATENDIMENTO", "AGUARDANDO_CLIENTE", "AGUARDANDO_INTERNO", "RESOLVIDO", "ENCERRADO", "CANCELADO"],
+	{
+		required_error: "Status do atendimento não informado.",
+		invalid_type_error: "Tipo não válido para o status do atendimento.",
+	},
+);
+export type TChatAssignmentStatus = z.infer<typeof ChatAssignmentStatusEnum>;
+
+export const ChatAssignmentPriorityEnum = z.enum(["BAIXA", "MEDIA", "ALTA", "URGENTE"], {
+	required_error: "Prioridade do atendimento não informada.",
+	invalid_type_error: "Tipo não válido para a prioridade do atendimento.",
+});
+export type TChatAssignmentPriority = z.infer<typeof ChatAssignmentPriorityEnum>;
+
+export const ChatInboxViewEnum = z.enum(["MINHAS", "NAO_ATRIBUIDAS", "COM_AGENTE", "TODAS"], {
+	required_error: "Visão da caixa de entrada não informada.",
+	invalid_type_error: "Tipo não válido para a visão da caixa de entrada.",
+});
+export type TChatInboxView = z.infer<typeof ChatInboxViewEnum>;
+
+export const ChatMessageDeliveryStatusEnum = z.enum(["PENDENTE", "ENVIADA", "ENTREGUE", "LIDA", "FALHA", "CANCELADA"], {
+	required_error: "Status de entrega da mensagem não informado.",
+	invalid_type_error: "Tipo não válido para o status de entrega da mensagem.",
+});
+export type TChatMessageDeliveryStatus = z.infer<typeof ChatMessageDeliveryStatusEnum>;
+
+// TODO 0053: remover junto com o DROP TYPE dos enums legados de chat.
+export const ChatStatusEnum = z.enum(["ABERTA", "FECHADA"]);
+export type TChatStatusEnum = z.infer<typeof ChatStatusEnum>;
 export const ChatServiceStatusEnum = z.enum(["PENDENTE", "EM_ANDAMENTO", "CONCLUIDO"]);
 export type TChatServiceStatusEnum = z.infer<typeof ChatServiceStatusEnum>;
 export const ChatServiceResponsibleTypeEnum = z.enum(["USUÁRIO", "AI", "BUSINESS-APP", "CLIENTE"]);
 export type TChatServiceResponsibleTypeEnum = z.infer<typeof ChatServiceResponsibleTypeEnum>;
-export const ChatMessageAuthorTypeEnum = z.enum(["CLIENTE", "USUÁRIO", "AI", "BUSINESS-APP"]);
-export type TChatMessageAuthorTypeEnum = z.infer<typeof ChatMessageAuthorTypeEnum>;
 export const ChatMessageStatusEnum = z.enum(["CANCELADO", "ENVIADO", "RECEBIDO", "LIDO"]);
 export type TChatMessageStatusEnum = z.infer<typeof ChatMessageStatusEnum>;
 export const ChatMessageWhatsappStatusEnum = z.enum(["PENDENTE", "ENVIADO", "ENTREGUE", "LIDO", "FALHOU"]);

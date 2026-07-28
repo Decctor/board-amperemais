@@ -1,12 +1,11 @@
 import z from "zod";
 import {
+	ChatAssignmentPriorityEnum,
+	ChatAssignmentResponsibleTypeEnum,
+	ChatAssignmentStatusEnum,
 	ChatMessageAuthorTypeEnum,
 	ChatMessageContentTypeEnum,
-	ChatMessageStatusEnum,
-	ChatMessageWhatsappStatusEnum,
-	ChatServiceResponsibleTypeEnum,
-	ChatServiceStatusEnum,
-	ChatStatusEnum,
+	ChatMessageDeliveryStatusEnum,
 } from "./enums";
 
 export const ChatSchema = z.object({
@@ -36,7 +35,12 @@ export const ChatSchema = z.object({
 		required_error: "ID do telefone do WhatsApp não informado.",
 		invalid_type_error: "Tipo não válido para o ID do telefone do WhatsApp.",
 	}),
-
+	mensagensNaoLidas: z
+		.number({
+			required_error: "Número de mensagens não lidas não informado.",
+			invalid_type_error: "Tipo não válido para o número de mensagens não lidas.",
+		})
+		.default(0),
 	ultimaMensagemId: z
 		.string({
 			required_error: "ID da última mensagem não informado.",
@@ -44,22 +48,231 @@ export const ChatSchema = z.object({
 		})
 		.optional()
 		.nullable(),
-	ultimaMensagemData: z.number({
+	ultimaMensagemData: z.date({
 		required_error: "Data da última mensagem não informada.",
 		invalid_type_error: "Tipo não válido para a data da última mensagem.",
 	}),
-	ultimaMensagemConteudoTipo: ChatMessageContentTypeEnum,
-	ultimaMensagemConteudoTexto: z
-		.string({
-			required_error: "Texto da última mensagem não informado.",
-			invalid_type_error: "Tipo não válido para o texto da última mensagem.",
+	ultimaMensagemEntradaData: z
+		.date({
+			required_error: "Data da última mensagem recebida não informada.",
+			invalid_type_error: "Tipo não válido para a data da última mensagem recebida.",
 		})
 		.optional()
 		.nullable(),
-	status: ChatStatusEnum,
+	ultimaMensagemSaidaData: z
+		.date({
+			required_error: "Data da última mensagem enviada não informada.",
+			invalid_type_error: "Tipo não válido para a data da última mensagem enviada.",
+		})
+		.optional()
+		.nullable(),
+	whatsappJanelaDataExpiracao: z
+		.date({
+			required_error: "Data de expiração da janela do WhatsApp não informada.",
+			invalid_type_error: "Tipo não válido para a data de expiração da janela do WhatsApp.",
+		})
+		.optional()
+		.nullable(),
+	ultimaLeituraData: z
+		.date({
+			required_error: "Data da última leitura não informada.",
+			invalid_type_error: "Tipo não válido para a data da última leitura.",
+		})
+		.optional()
+		.nullable(),
+	ultimaLeituraPorUsuarioId: z
+		.string({
+			required_error: "ID do usuário da última leitura não informado.",
+			invalid_type_error: "Tipo não válido para o ID do usuário da última leitura.",
+		})
+		.optional()
+		.nullable(),
 });
+export type TChat = z.infer<typeof ChatSchema>;
 
-export const ChatServiceSchema = z.object({
+export const ChatAssignmentSchema = z.object({
+	organizacaoId: z.string({
+		required_error: "ID da organização não informado.",
+		invalid_type_error: "Tipo não válido para o ID da organização.",
+	}),
+	chatId: z.string({
+		required_error: "ID do chat não informado.",
+		invalid_type_error: "Tipo não válido para o ID do chat.",
+	}),
+	responsavelTipo: ChatAssignmentResponsibleTypeEnum,
+	responsavelUsuarioId: z
+		.string({
+			required_error: "ID do usuário responsável não informado.",
+			invalid_type_error: "Tipo não válido para o ID do usuário responsável.",
+		})
+		.optional()
+		.nullable(),
+	responsavelAgenteId: z
+		.string({
+			required_error: "ID do agente responsável não informado.",
+			invalid_type_error: "Tipo não válido para o ID do agente responsável.",
+		})
+		.optional()
+		.nullable(),
+	status: ChatAssignmentStatusEnum,
+	atribuidoPorUsuarioId: z
+		.string({
+			required_error: "ID do usuário que atribuiu não informado.",
+			invalid_type_error: "Tipo não válido para o ID do usuário que atribuiu.",
+		})
+		.optional()
+		.nullable(),
+	transferidoParaUsuarioId: z
+		.string({
+			required_error: "ID do usuário de destino da transferência não informado.",
+			invalid_type_error: "Tipo não válido para o ID do usuário de destino da transferência.",
+		})
+		.optional()
+		.nullable(),
+	transferenciaMotivo: z
+		.string({
+			required_error: "Motivo da transferência não informado.",
+			invalid_type_error: "Tipo não válido para o motivo da transferência.",
+		})
+		.optional()
+		.nullable(),
+	prioridade: ChatAssignmentPriorityEnum.optional().nullable(),
+	categoria: z
+		.string({
+			required_error: "Categoria do atendimento não informada.",
+			invalid_type_error: "Tipo não válido para a categoria do atendimento.",
+		})
+		.optional()
+		.nullable(),
+	resumo: z
+		.string({
+			required_error: "Resumo do atendimento não informado.",
+			invalid_type_error: "Tipo não válido para o resumo do atendimento.",
+		})
+		.optional()
+		.nullable(),
+	resultado: z
+		.string({
+			required_error: "Resultado do atendimento não informado.",
+			invalid_type_error: "Tipo não válido para o resultado do atendimento.",
+		})
+		.optional()
+		.nullable(),
+	dataAtribuicao: z.date({
+		required_error: "Data de atribuição não informada.",
+		invalid_type_error: "Tipo não válido para a data de atribuição.",
+	}),
+	dataLiberacao: z
+		.date({
+			required_error: "Data de liberação não informada.",
+			invalid_type_error: "Tipo não válido para a data de liberação.",
+		})
+		.optional()
+		.nullable(),
+	dataUltimaEntradaCliente: z
+		.date({
+			required_error: "Data da última entrada do cliente não informada.",
+			invalid_type_error: "Tipo não válido para a data da última entrada do cliente.",
+		})
+		.optional()
+		.nullable(),
+	dataPrimeiraResposta: z
+		.date({
+			required_error: "Data da primeira resposta não informada.",
+			invalid_type_error: "Tipo não válido para a data da primeira resposta.",
+		})
+		.optional()
+		.nullable(),
+	dataUltimaResposta: z
+		.date({
+			required_error: "Data da última resposta não informada.",
+			invalid_type_error: "Tipo não válido para a data da última resposta.",
+		})
+		.optional()
+		.nullable(),
+	dataResolucao: z
+		.date({
+			required_error: "Data de resolução não informada.",
+			invalid_type_error: "Tipo não válido para a data de resolução.",
+		})
+		.optional()
+		.nullable(),
+	dataEncerramento: z
+		.date({
+			required_error: "Data de encerramento não informada.",
+			invalid_type_error: "Tipo não válido para a data de encerramento.",
+		})
+		.optional()
+		.nullable(),
+	encerradoPorUsuarioId: z
+		.string({
+			required_error: "ID do usuário que encerrou não informado.",
+			invalid_type_error: "Tipo não válido para o ID do usuário que encerrou.",
+		})
+		.optional()
+		.nullable(),
+});
+export type TChatAssignment = z.infer<typeof ChatAssignmentSchema>;
+
+/**
+ * Referral de anúncio Meta (Click-to-WhatsApp): o anúncio que originou a conversa.
+ * Shape espelhado do payload do webhook da Meta; todos os campos são opcionais porque
+ * a Meta varia o que envia conforme o formato do anúncio.
+ */
+export const WhatsappReferralSchema = z.object({
+	sourceUrl: z.string().optional().nullable(),
+	sourceType: z.string().optional().nullable(),
+	sourceId: z.string().optional().nullable(),
+	headline: z.string().optional().nullable(),
+	body: z.string().optional().nullable(),
+	mediaType: z.string().optional().nullable(),
+	imageUrl: z.string().optional().nullable(),
+	videoUrl: z.string().optional().nullable(),
+	thumbnailUrl: z.string().optional().nullable(),
+	ctwaClid: z.string().optional().nullable(),
+});
+export type TWhatsappReferral = z.infer<typeof WhatsappReferralSchema>;
+
+export const ChatMessageMetadataSchema = z.object({
+	whatsappReferral: WhatsappReferralSchema.optional().nullable(),
+	whatsappMidia: z
+		.object({
+			mediaId: z.string().optional(),
+			downloadStatus: z.enum(["success", "failed", "skipped"]).optional(),
+			uploadStatus: z.enum(["success", "failed", "skipped"]).optional(),
+			processingStatus: z.enum(["processed", "stored_only", "failed"]).optional(),
+			model: z.string().optional(),
+			failureReason: z.string().optional(),
+			storageBucket: z.string().optional(),
+			storagePath: z.string().optional(),
+			mimeType: z.string().optional(),
+			fileName: z.string().optional(),
+			fileSize: z.number().optional(),
+		})
+		.optional()
+		.nullable(),
+	gatewayInterno: z
+		.object({
+			sessaoId: z.string().optional(),
+			gatewayTimestamp: z.string().optional(),
+			jobId: z.string().optional(),
+			echo: z.boolean().optional(),
+			queueFailure: z
+				.object({
+					error: z.string(),
+					attemptsUsed: z.number().optional(),
+					maxAttempts: z.number().optional(),
+					errorClass: z.string().optional(),
+					retriable: z.boolean().optional(),
+				})
+				.optional(),
+		})
+		.optional()
+		.nullable(),
+});
+export type TChatMessageMetadata = z.infer<typeof ChatMessageMetadataSchema>;
+
+export const ChatMessageSchema = z.object({
 	organizacaoId: z.string({
 		required_error: "ID da organização não informado.",
 		invalid_type_error: "Tipo não válido para o ID da organização.",
@@ -71,34 +284,6 @@ export const ChatServiceSchema = z.object({
 	clienteId: z.string({
 		required_error: "ID do cliente não informado.",
 		invalid_type_error: "Tipo não válido para o ID do cliente.",
-	}),
-	descricao: z.string({
-		required_error: "Descrição do serviço não informada.",
-		invalid_type_error: "Tipo não válido para a descrição do serviço.",
-	}),
-	status: ChatServiceStatusEnum,
-	responsavelTipo: ChatServiceResponsibleTypeEnum,
-	dataInicio: z.number({
-		required_error: "Data de início do serviço não informada.",
-		invalid_type_error: "Tipo não válido para a data de início do serviço.",
-	}),
-	dataFim: z
-		.number({
-			required_error: "Data de fim do serviço não informada.",
-			invalid_type_error: "Tipo não válido para a data de fim do serviço.",
-		})
-		.optional()
-		.nullable(),
-});
-
-export const ChatMessageSchema = z.object({
-	organizacaoId: z.string({
-		required_error: "ID da organização não informado.",
-		invalid_type_error: "Tipo não válido para o ID da organização.",
-	}),
-	chatId: z.string({
-		required_error: "ID do chat não informado.",
-		invalid_type_error: "Tipo não válido para o ID do chat.",
 	}),
 	whatsappTemplateId: z
 		.string({
@@ -122,10 +307,13 @@ export const ChatMessageSchema = z.object({
 		})
 		.optional()
 		.nullable(),
-	conteudoTexto: z.string({
-		required_error: "Conteúdo da mensagem não informado.",
-		invalid_type_error: "Tipo não válido para o conteúdo da mensagem.",
-	}),
+	conteudoTexto: z
+		.string({
+			required_error: "Conteúdo da mensagem não informado.",
+			invalid_type_error: "Tipo não válido para o conteúdo da mensagem.",
+		})
+		.optional()
+		.nullable(),
 	// Media content fields
 	conteudoMidiaUrl: z
 		.string({
@@ -184,7 +372,13 @@ export const ChatMessageSchema = z.object({
 		})
 		.optional()
 		.nullable(),
-	status: ChatMessageStatusEnum,
+	clienteMensagemId: z
+		.string({
+			required_error: "ID da mensagem gerado no cliente não informado.",
+			invalid_type_error: "Tipo não válido para o ID da mensagem gerado no cliente.",
+		})
+		.optional()
+		.nullable(),
 	whatsappMessageId: z
 		.string({
 			required_error: "ID da mensagem no WhatsApp não informado.",
@@ -192,22 +386,24 @@ export const ChatMessageSchema = z.object({
 		})
 		.optional()
 		.nullable(),
-	whatsappMessageStatus: ChatMessageWhatsappStatusEnum,
-	servicoId: z
-		.string({
-			required_error: "ID do serviço não informado.",
-			invalid_type_error: "Tipo não válido para o ID do serviço.",
+	whatsappEcho: z
+		.boolean({
+			required_error: "Indicação de echo da mensagem não informada.",
+			invalid_type_error: "Tipo não válido para a indicação de echo da mensagem.",
+		})
+		.default(false),
+	metadados: ChatMessageMetadataSchema.optional().nullable(),
+	statusEntrega: ChatMessageDeliveryStatusEnum,
+	provedorStatusDataAtualizacao: z
+		.date({
+			required_error: "Data de atualização do status pelo provedor não informada.",
+			invalid_type_error: "Tipo não válido para a data de atualização do status pelo provedor.",
 		})
 		.optional()
 		.nullable(),
-	dataEnvio: z.number({
+	dataEnvio: z.date({
 		required_error: "Data de envio da mensagem não informada.",
 		invalid_type_error: "Tipo não válido para a data de envio da mensagem.",
 	}),
-	isEcho: z
-		.boolean({
-			required_error: "Se a mensagem é um echo não informado.",
-			invalid_type_error: "Tipo não válido para se a mensagem é um echo.",
-		})
-		.default(false),
 });
+export type TChatMessage = z.infer<typeof ChatMessageSchema>;

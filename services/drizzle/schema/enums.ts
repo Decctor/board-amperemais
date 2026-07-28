@@ -88,18 +88,27 @@ export const integrationStatusEnum = pgEnum("integration_status", ["CONECTADO", 
 // Audiences (públicos) — status de sincronização de um destino (ex.: Custom Audience na Meta).
 export const audienceDestinationStatusEnum = pgEnum("audience_destination_status", ["PENDENTE", "SINCRONIZADO", "ERRO"]);
 
-export const chatStatusEnum = pgEnum("chat_status", ["ABERTA", "FECHADA"]);
-
 export const chatMessageContentTypeEnum = pgEnum("chat_message_content_type", ["TEXTO", "IMAGEM", "VIDEO", "AUDIO", "DOCUMENTO"]);
-
-export const chatServiceStatusEnum = pgEnum("chat_service_status", ["PENDENTE", "EM_ANDAMENTO", "CONCLUIDO"]);
-
-export const chatServiceResponsibleTypeEnum = pgEnum("chat_service_responsible_type", ["USUÁRIO", "AI", "BUSINESS-APP", "CLIENTE"]);
 
 export const chatMessageAuthorTypeEnum = pgEnum("chat_message_author_type", ["CLIENTE", "USUÁRIO", "AI", "BUSINESS-APP"]);
 
-export const chatMessageStatusEnum = pgEnum("chat_message_status", ["CANCELADO", "ENVIADO", "RECEBIDO", "LIDO"]);
+// Status de entrega unificado. Substitui o par chat_message_status + chat_message_whatsapp_status.
+// Coluna nova (status_entrega) em vez de swap sobre `status`: o código antigo continua escrevendo
+// os enums legados até a 0053, e um swap exigiria dois deploys. Ver docs/dev-planning/chat-attendance-redesign-plan.md §6.1.
+export const chatMessageDeliveryStatusEnum = pgEnum("chat_message_delivery_status", [
+	"PENDENTE",
+	"ENVIADA",
+	"ENTREGUE",
+	"LIDA",
+	"FALHA",
+	"CANCELADA",
+]);
 
+// TODO 0053: remover junto com o DROP TYPE dos enums legados de chat.
+export const chatStatusEnum = pgEnum("chat_status", ["ABERTA", "FECHADA"]);
+export const chatServiceStatusEnum = pgEnum("chat_service_status", ["PENDENTE", "EM_ANDAMENTO", "CONCLUIDO"]);
+export const chatServiceResponsibleTypeEnum = pgEnum("chat_service_responsible_type", ["USUÁRIO", "AI", "BUSINESS-APP", "CLIENTE"]);
+export const chatMessageStatusEnum = pgEnum("chat_message_status", ["CANCELADO", "ENVIADO", "RECEBIDO", "LIDO"]);
 export const chatMessageWhatsappStatusEnum = pgEnum("chat_message_whatsapp_status", ["PENDENTE", "ENVIADO", "ENTREGUE", "LIDO", "FALHOU"]);
 
 export const conversionTypeEnum = pgEnum("conversion_type", ["AQUISICAO", "REATIVACAO", "ACELERACAO", "REGULAR", "ATRASADA"]);
