@@ -46,29 +46,6 @@ export async function validatePrizeForRedemption({
 			produtoId: true,
 			produtoVarianteId: true,
 		},
-		with: {
-			produto: {
-				columns: {
-					id: true,
-					nome: true,
-					codigo: true,
-					imagemCapaUrl: true,
-					precoVenda: true,
-					precoCusto: true,
-				},
-			},
-			produtoVariante: {
-				columns: {
-					id: true,
-					produtoId: true,
-					nome: true,
-					codigo: true,
-					imagemCapaUrl: true,
-					precoVenda: true,
-					precoCusto: true,
-				},
-			},
-		},
 	});
 	if (!prize) {
 		throw new createHttpError.BadRequest("Recompensa não encontrada ou inativa.");
@@ -76,22 +53,39 @@ export async function validatePrizeForRedemption({
 	if (!prize.produtoId && !prize.produtoVarianteId) {
 		throw new createHttpError.BadRequest("A recompensa selecionada não possui vínculo com produto ou variante.");
 	}
+	if (prize.valor <= 0) {
+		// Sem isso o prêmio parece resgatável (saldo >= 0) mas a confirmação estoura lá na frente,
+		// no débito FIFO, derrubando a venda inteira com uma mensagem sem relação com a causa.
+		throw new createHttpError.BadRequest("A recompensa selecionada está configurada com valor inválido.");
+	}
 
-	const variante = prize.produtoVariante;
+	// Produto e variante são resolvidos com queries org-scoped, e não pelas relations por FK: um
+	// prêmio pode ter sido gravado apontando para catálogo de outra organização, e as relations
+	// resolveriam esse vínculo sem reclamar. Mesma régua de `validateSaleItemsPricing`.
+	const variante = prize.produtoVarianteId
+		? ((await tx.query.productVariants.findFirst({
+				where: (fields, { and, eq }) => and(eq(fields.id, prize.produtoVarianteId as string), eq(fields.organizacaoId, organizacaoId)),
+				columns: { id: true, produtoId: true, nome: true, codigo: true, imagemCapaUrl: true, precoVenda: true, precoCusto: true },
+			})) ?? null)
+		: null;
+	if (prize.produtoVarianteId && !variante) {
+		throw new createHttpError.BadRequest("A variante vinculada à recompensa não pertence ao catálogo desta organização.");
+	}
+
 	// Prêmio variante-only: o produto pai vem pela variante (saleItems.produtoId é NOT NULL).
 	const produtoId = prize.produtoId ?? variante?.produtoId;
 	if (!produtoId) {
 		throw new createHttpError.BadRequest("A recompensa selecionada não possui vínculo com produto ou variante.");
 	}
-	const produto =
-		prize.produto ??
-		(await tx.query.products.findFirst({
-			where: (fields, { eq }) => eq(fields.id, produtoId),
-			columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true, precoVenda: true, precoCusto: true },
-		})) ??
-		null;
+	const produto = await tx.query.products.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.id, produtoId), eq(fields.organizacaoId, organizacaoId)),
+		columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true, precoVenda: true, precoCusto: true },
+	});
 	if (!produto) {
-		throw new createHttpError.BadRequest("O produto vinculado à recompensa não foi encontrado.");
+		throw new createHttpError.BadRequest("O produto vinculado à recompensa não pertence ao catálogo desta organização.");
+	}
+	if (variante && variante.produtoId !== produto.id) {
+		throw new createHttpError.BadRequest("A variante vinculada à recompensa não pertence ao produto informado.");
 	}
 
 	return {

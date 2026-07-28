@@ -131,12 +131,14 @@ export default function EditSalePage({
 	// Teto de desconto: mesma fiação da criação (feedback imediato; enforcement na rota).
 	const { data: discountContext } = useSaleDiscountContext({ vendedorId: saleState.state.vendedorId ?? null });
 	const discountAuthority = discountContext?.authority ?? null;
+	// Mesmo recorte do servidor (`/api/pos/sales/edit`): itens de recompensa ficam fora da base e
+	// do desconto avaliados contra o teto — o resgate tem regras próprias, como o cashback.
 	const descontoAgregado = useMemo(
 		() => ({
-			valorBase: saleState.subtotal,
-			descontoTotal: saleState.state.descontoGeral + saleState.totalDescontoItens,
+			valorBase: saleState.subtotalAvaliavel,
+			descontoTotal: saleState.state.descontoGeral + saleState.totalDescontoItensAvaliavel,
 		}),
-		[saleState.subtotal, saleState.state.descontoGeral, saleState.totalDescontoItens],
+		[saleState.subtotalAvaliavel, saleState.state.descontoGeral, saleState.totalDescontoItensAvaliavel],
 	);
 	const discountRequiresApproval = discountAuthority
 		? evaluateDiscount({ authority: discountAuthority, ...descontoAgregado }) === "REQUER_APROVACAO"

@@ -231,11 +231,25 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 	}, []);
 
 	const removeItem = useCallback((tempId: string) => {
-		setState((prev) => ({ ...prev, itens: prev.itens.filter((item) => item.tempId !== tempId) }));
+		// Item de recompensa não sai pelo carrinho: o débito de saldo já está no ledger.
+		setState((prev) => ({ ...prev, itens: prev.itens.filter((item) => item.tempId !== tempId || !!item.recompensaId) }));
 	}, []);
 
 	const clearCart = useCallback(() => {
-		setState((prev) => ({ ...prev, itens: [], pagamentos: [], cashbackResgate: 0, cupomResgate: null, recompensaResgate: null }));
+		setState((prev) => {
+			// Itens de recompensa só existem no modo edição (a recompensa já foi resgatada e está
+			// materializada como item). Esvaziar o carrinho não pode desfazer um resgate — a válvula
+			// é o cancelamento da venda. Na criação não há item de recompensa e tudo é limpo.
+			const itensRecompensa = prev.itens.filter((item) => !!item.recompensaId);
+			return {
+				...prev,
+				itens: itensRecompensa,
+				pagamentos: [],
+				cashbackResgate: 0,
+				cupomResgate: null,
+				recompensaResgate: itensRecompensa.length > 0 ? prev.recompensaResgate : null,
+			};
+		});
 	}, []);
 
 	const setDescontoGeral = useCallback((descontoGeral: number) => {

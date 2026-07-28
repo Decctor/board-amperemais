@@ -157,7 +157,7 @@ async function getSaleForEdit({ input, session }: { input: TGetSaleForEditInput;
 					},
 				},
 			},
-			transacoesCashback: { columns: { id: true, tipo: true, status: true, valor: true } },
+			transacoesCashback: { columns: { id: true, tipo: true, status: true, valor: true, resgateRecompensaId: true, resgateRecompensaValor: true } },
 		},
 	});
 	if (!sale) throw new createHttpError.NotFound("Venda não encontrada.");
@@ -180,9 +180,14 @@ async function getSaleForEdit({ input, session }: { input: TGetSaleForEditInput;
 		documentosFiscais: sale.documentosFiscais,
 		transacoes: rawTransactions,
 	});
-	const cashbackResgate = sale.transacoesCashback
-		.filter((transaction) => transaction.tipo === "RESGATE" && transaction.status === "ATIVO")
+	const resgatesAtivos = sale.transacoesCashback.filter((transaction) => transaction.tipo === "RESGATE" && transaction.status === "ATIVO");
+	// Somente resgates-desconto compõem o desconto em R$ da venda. O resgate de recompensa está em
+	// moeda cashback (pontos ou R$) e seu efeito comercial já vive no item com 100% de desconto —
+	// somá-lo aqui descontaria o prêmio duas vezes (e compararia pontos com reais).
+	const cashbackResgate = resgatesAtivos
+		.filter((transaction) => !transaction.resgateRecompensaId)
 		.reduce((sum, transaction) => sum + Math.abs(transaction.valor), 0);
+	const recompensaResgatada = resgatesAtivos.find((transaction) => !!transaction.resgateRecompensaId) ?? null;
 
 	return {
 		data: {
@@ -191,6 +196,12 @@ async function getSaleForEdit({ input, session }: { input: TGetSaleForEditInput;
 			editabilidade,
 			cupomResgatado: cupomResgatado ?? null,
 			cashbackResgate,
+			recompensaResgatada: recompensaResgatada
+				? {
+						recompensaId: recompensaResgatada.resgateRecompensaId as string,
+						valor: recompensaResgatada.resgateRecompensaValor ?? Math.abs(recompensaResgatada.valor),
+					}
+				: null,
 		},
 		message: "Venda carregada para edição.",
 	};

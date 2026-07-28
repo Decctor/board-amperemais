@@ -111,10 +111,12 @@ export function mapSaleForEditToSaleState(data: TSaleForEditData): Partial<TSale
 			? (venda.rascunhoMetadados as { descontoGeral?: number; recompensa?: TSaleRewardDraftSnapshot | null })
 			: null;
 
+	// Já exclui o resgate de recompensa (que está em moeda cashback, não em R$).
 	const cashbackResgate = data.cashbackResgate;
 	const cupomDesconto = data.cupomResgatado?.valorDesconto ?? 0;
 	const itens = venda.itens.map(mapItemToCartItem);
-	// Recompensa resgatada: reconstruída a partir do item para exibição (imutável na edição).
+	// Recompensa resgatada: o item dá o valor comercial e a identidade visual; o débito de saldo
+	// vem do ledger (`recompensaResgatada`), nunca do snapshot do rascunho, que pode estar velho.
 	const rewardItem = itens.find((item) => !!item.recompensaId);
 	const recompensaSnapshot = draftMetadata?.recompensa ?? null;
 	const descontoRecompensa = rewardItem?.valorDesconto ?? 0;
@@ -150,7 +152,7 @@ export function mapSaleForEditToSaleState(data: TSaleForEditData): Partial<TSale
 						recompensaId: rewardItem.recompensaId,
 						programaId: recompensaSnapshot?.programaId ?? "",
 						titulo: recompensaSnapshot?.titulo || rewardItem.nome,
-						valor: recompensaSnapshot?.valor ?? 0,
+						valor: data.recompensaResgatada?.valor ?? recompensaSnapshot?.valor ?? 0,
 						valorVenda: rewardItem.valorTotalBruto,
 						imagemCapaUrl: rewardItem.imagemUrl ?? null,
 					}

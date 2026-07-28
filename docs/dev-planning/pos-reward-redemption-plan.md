@@ -172,6 +172,44 @@ recompensaResgate: z
 - **Typecheck e lint** limpos nos arquivos tocados (o repositório tem 334 erros de tipo
   pré-existentes, com `ignoreBuildErrors: true` no `next.config.mjs`).
 
+## Correções pós-review (2026-07-28)
+
+Um code review da implementação encontrou nove defeitos, dois bloqueantes. Todos corrigidos.
+
+- **`RESGATE` deixou de ser uma grandeza única.** O recompute da edição (`process-confirmed-sale-edit.ts`)
+  e a carga da tela (`/api/pos/sales/edit`) somavam todos os `RESGATE` ativos como desconto em R$ —
+  premissa válida enquanto só existia resgate-desconto. Com a recompensa (valor em moeda cashback,
+  desconto comercial já no item), isso descontava o prêmio duas vezes, comparava pontos com reais e
+  tornava a venda ineditável ou cobrada a menor. Ambos os lados passaram a filtrar
+  `resgateRecompensaId`.
+- **Itens de recompensa saíram do recompute pelo payload.** Na edição, seus valores vêm sempre das
+  linhas persistidas (`rewardValorBase`/`rewardDescontoTotal`/`rewardCustoTotal`). Isso corrige de
+  uma vez: `valorTotalLiquido` forjado no payload, perda de custo/desconto quando o cliente omite a
+  linha, e a assimetria de `descontosTotal` entre criação e edição.
+- **Prêmio órfão de organização.** `POST /api/cashback-programs` inseria prêmios aninhados sem
+  `organizacaoId`; o filtro org-scoped novo passou a excluí-los, quebrando resgates no POI que
+  funcionavam. O write foi corrigido e há backfill (`npm run backfill:cashback-prize-organizacao`,
+  dry-run por padrão) derivando a organização a partir do programa dono.
+- **Cross-org de catálogo.** `validatePrizeForRedemption` resolvia produto/variante pelas relations
+  por FK, que não são org-scoped — um prêmio apontando para catálogo alheio vazava nome, código e
+  **preço de custo** para dentro do `saleItems.metadados`. Agora produto e variante são resolvidos
+  por query org-scoped (régua de `validateSaleItemsPricing`), e o create/update de prêmio valida
+  posse de programa, produto e variante.
+- **Teto de desconto no `edit-sale-page`** passou a usar `subtotalAvaliavel`/`totalDescontoItensAvaliavel`,
+  eliminando o modal de aprovação espúrio numa edição que o servidor liberaria.
+- **Prêmio com `valor <= 0`** é rejeitado na admissão e filtrado da listagem — antes parecia
+  resgatável e derrubava a venda inteira no débito FIFO.
+- **Exclusividade no `updateSaleDraft`**: um `PUT` com cupom/cashback omitindo `recompensaResgate`
+  gravava as duas coisas lado a lado e produzia um rascunho inconfirmável.
+- **UI de imutabilidade aplicada no componente certo.** A proteção fora escrita em
+  `new-sale/components/CartItemRow.tsx`, que é código morto — o carrinho real usa o `CartItemRow`
+  local de `checkout/ItemsSection.tsx`. Corrigido lá, e `clearCart`/`removeItem` passaram a preservar
+  itens de recompensa. *(O arquivo morto segue no repositório, revertido ao original — candidato a
+  remoção em limpeza separada.)*
+- **`CANCELAMENTO` replica `resgateRecompensaId`** para o estorno ser rastreável até o prêmio, e o
+  endpoint de recompensas disponíveis resolve o programa pelo saldo do cliente (como o resgate faz),
+  não por um `findFirst` arbitrário da organização.
+
 ## Pendências para validar em ambiente
 
 - Emitir NFC-e de venda mista com recompensa em homologação: o produto do prêmio precisa de perfil

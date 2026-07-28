@@ -406,6 +406,20 @@ async function updateSaleDraft({ input, session }: { input: TUpdateSaleDraftInpu
 			? recompensaSnapshotAtual
 			: null;
 
+	// Exclusividade também vale para o snapshot preservado: sem esta checagem, um PUT com cupom
+	// (ou cashback) omitindo `recompensaResgate` gravaria os dois lado a lado e o rascunho ficaria
+	// inconfirmável para sempre — a confirmação recusa a combinação.
+	if (recompensaPersistida) {
+		if (input.cupomResgate) {
+			throw new createHttpError.BadRequest("Cupons não podem ser combinados com resgate de recompensa. Remova a recompensa para aplicar o cupom.");
+		}
+		if (input.cashbackResgate > 0) {
+			throw new createHttpError.BadRequest(
+				"Resgate de recompensa não pode ser combinado com desconto em cashback. Remova a recompensa para aplicar o desconto.",
+			);
+		}
+	}
+
 	await db
 		.update(sales)
 		.set({

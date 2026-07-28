@@ -10,10 +10,6 @@ type CartItemRowProps = {
 };
 
 export default function CartItemRow({ item, onUpdateQuantity, onRemove }: CartItemRowProps) {
-	// Item de recompensa resgatada: quantidade fixa em 1 e sem remoção pelo carrinho — o resgate
-	// é desfeito removendo a recompensa no resumo (ou, na venda confirmada, cancelando a venda).
-	const isReward = !!item.recompensaId;
-
 	return (
 		<div className="flex flex-col gap-2 p-3 rounded-xl border bg-card">
 			{/* Item Header */}
@@ -21,13 +17,10 @@ export default function CartItemRow({ item, onUpdateQuantity, onRemove }: CartIt
 				<div className="flex-1 min-w-0">
 					<h4 className="font-bold text-sm leading-tight line-clamp-2">{item.nome}</h4>
 					<p className="text-xs text-muted-foreground">{item.codigo}</p>
-					{isReward ? <span className="text-[11px] font-bold uppercase text-amber-600">RECOMPENSA RESGATADA</span> : null}
 				</div>
-				{!isReward ? (
-					<Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => onRemove(item.tempId)}>
-						<Trash2 className="w-4 h-4" />
-					</Button>
-				) : null}
+				<Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => onRemove(item.tempId)}>
+					<Trash2 className="w-4 h-4" />
+				</Button>
 			</div>
 
 			{/* Modifiers */}
@@ -48,29 +41,25 @@ export default function CartItemRow({ item, onUpdateQuantity, onRemove }: CartIt
 			{/* Quantity and Price */}
 			<div className="flex items-center justify-between">
 				{/* Quantity Stepper */}
-				{isReward ? (
-					<span className="text-sm font-bold">1x</span>
-				) : (
-					<div className="flex items-center gap-2">
-						<Button
-							size="icon"
-							variant="outline"
-							className="h-7 w-7 rounded-lg"
-							onClick={() => onUpdateQuantity(item.tempId, item.quantidade - 1)}
-							disabled={item.quantidade <= 1}
-						>
-							<Minus className="w-3 h-3" />
-						</Button>
-						<span className="w-8 text-center font-bold text-sm">{item.quantidade}</span>
-						<Button size="icon" variant="outline" className="h-7 w-7 rounded-lg" onClick={() => onUpdateQuantity(item.tempId, item.quantidade + 1)}>
-							<Plus className="w-3 h-3" />
-						</Button>
-					</div>
-				)}
+				<div className="flex items-center gap-2">
+					<Button
+						size="icon"
+						variant="outline"
+						className="h-7 w-7 rounded-lg"
+						onClick={() => onUpdateQuantity(item.tempId, item.quantidade - 1)}
+						disabled={item.quantidade <= 1}
+					>
+						<Minus className="w-3 h-3" />
+					</Button>
+					<span className="w-8 text-center font-bold text-sm">{item.quantidade}</span>
+					<Button size="icon" variant="outline" className="h-7 w-7 rounded-lg" onClick={() => onUpdateQuantity(item.tempId, item.quantidade + 1)}>
+						<Plus className="w-3 h-3" />
+					</Button>
+				</div>
 
 				{/* Line Total */}
 				<div className="text-right">
-					<p className={`font-black ${isReward ? "text-amber-600" : "text-foreground"}`}>{isReward ? "GRÁTIS" : formatToMoney(item.valorTotalLiquido)}</p>
+					<p className="font-black text-foreground">{formatToMoney(item.valorTotalLiquido)}</p>
 					{item.valorDesconto > 0 && <p className="text-xs text-muted-foreground line-through">{formatToMoney(item.valorTotalBruto)}</p>}
 				</div>
 			</div>
