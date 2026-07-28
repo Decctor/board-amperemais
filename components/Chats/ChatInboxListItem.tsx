@@ -5,6 +5,7 @@ import { getWhatsappWindowDisplay } from "@/lib/chats/whatsapp-window-status";
 import type { TChatInboxItem } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
 import { FileText, Image as ImageIcon, Mic, Smartphone, Sparkles, Video } from "lucide-react";
+import { PRIORITY_META, STATUS_META } from "./attendance-meta";
 
 type ChatInboxListItemProps = {
 	chat: TChatInboxItem;
@@ -85,6 +86,27 @@ export function ChatInboxListItem({ chat, isSelected, showPhoneBadge, onSelect }
 			</div>
 
 			<div className="flex flex-wrap items-center gap-1.5 pl-3.5 text-[11px] text-muted-foreground">
+				{/* Estado do atendimento: mesmo vocabulário do select, para a cor significar
+				    a mesma coisa nas duas superfícies. */}
+				{atendimento && (
+					<span className="flex items-center gap-1">
+						<span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", STATUS_META[atendimento.status].dot)} />
+						{STATUS_META[atendimento.status].label}
+					</span>
+				)}
+
+				{/* Prioridade só aparece quando foi atribuída: um pill em toda conversa
+				    "média" tornaria a urgência invisível justamente onde ela importa. */}
+				{atendimento?.prioridade && (
+					<span className={cn("flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 font-bold", PRIORITY_META[atendimento.prioridade].pill)}>
+						{(() => {
+							const PriorityIcon = PRIORITY_META[atendimento.prioridade].icon;
+							return PriorityIcon ? <PriorityIcon className="h-3 w-3" /> : null;
+						})()}
+						{PRIORITY_META[atendimento.prioridade].label}
+					</span>
+				)}
+
 				{/* "Livre" é disponibilidade, não alerta. O âmbar já significa "janela
 				    expirando"; duplicar a cor apagaria os dois sentidos. */}
 				{(!atendimento || atendimento.responsavelTipo === "NAO_ATRIBUIDO") && (

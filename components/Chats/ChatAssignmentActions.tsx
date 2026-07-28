@@ -3,47 +3,15 @@
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { getErrorMessage } from "@/lib/errors";
+import { PRIORITY_META, STATUS_META } from "./attendance-meta";
 import { cn } from "@/lib/utils";
 import { updateChatAssignment } from "@/lib/mutations/chats";
 import { useChatTransferTargets, type TChatAttendance } from "@/lib/queries/chats";
 import type { TChatAssignmentPriority, TChatAssignmentStatus } from "@/schemas/enums";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, CircleCheck, CircleCheckBig, CircleDot, CircleSlash, Clock, LogOut, MessageCircle, PauseCircle, Smartphone, Sparkles, UserPlus } from "lucide-react";
+import { ChevronDown, LogOut, Smartphone, Sparkles, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-
-/**
- * Cada estado tem cor e forma. A cor dá a leitura periférica (verde = fim, ouro = pede
- * ação, cinza = em espera); o ícone garante que a distinção sobreviva a daltonismo e a
- * telas ruins — dois passos de verde lado a lado seriam indistinguíveis só por matiz.
- * Mapeamento documentado em DESIGN.md §2.
- */
-const STATUS_META: Record<TChatAssignmentStatus, { label: string; dot: string; icon: typeof CircleDot }> = {
-	ABERTO: { label: "Aberto", dot: "bg-brand", icon: CircleDot },
-	EM_ATENDIMENTO: { label: "Em atendimento", dot: "bg-primary", icon: MessageCircle },
-	AGUARDANDO_CLIENTE: { label: "Aguardando cliente", dot: "bg-muted-foreground/50", icon: Clock },
-	AGUARDANDO_INTERNO: { label: "Aguardando interno", dot: "bg-muted-foreground/50", icon: PauseCircle },
-	RESOLVIDO: { label: "Resolvido", dot: "bg-success", icon: CircleCheck },
-	ENCERRADO: { label: "Encerrado", dot: "bg-success-strong", icon: CircleCheckBig },
-	CANCELADO: { label: "Cancelado", dot: "bg-destructive", icon: CircleSlash },
-};
-
-const STATUS_LABELS: Record<TChatAssignmentStatus, string> = {
-	ABERTO: STATUS_META.ABERTO.label,
-	EM_ATENDIMENTO: STATUS_META.EM_ATENDIMENTO.label,
-	AGUARDANDO_CLIENTE: STATUS_META.AGUARDANDO_CLIENTE.label,
-	AGUARDANDO_INTERNO: STATUS_META.AGUARDANDO_INTERNO.label,
-	RESOLVIDO: STATUS_META.RESOLVIDO.label,
-	ENCERRADO: STATUS_META.ENCERRADO.label,
-	CANCELADO: STATUS_META.CANCELADO.label,
-};
-
-const PRIORITY_LABELS: Record<TChatAssignmentPriority, string> = {
-	BAIXA: "Baixa",
-	MEDIA: "Média",
-	ALTA: "Alta",
-	URGENTE: "Urgente",
-};
 
 type ChatAssignmentActionsProps = {
 	chatId: string;
@@ -127,8 +95,9 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 			{!compact && (
 				<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button size="sm" variant="ghost" className="gap-1 text-xs" disabled={isPending}>
-								{atendimento ? STATUS_LABELS[atendimento.status] : "Status"}
+							<Button size="sm" variant="ghost" className="gap-1.5 text-xs" disabled={isPending}>
+								{atendimento && <span className={cn("h-2 w-2 shrink-0 rounded-full", STATUS_META[atendimento.status].dot)} />}
+								{atendimento ? STATUS_META[atendimento.status].label : "Status"}
 								<ChevronDown className="h-3 w-3 opacity-60" />
 							</Button>
 						</DropdownMenuTrigger>
@@ -150,15 +119,15 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 				<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button size="sm" variant="ghost" className="gap-1 text-xs" disabled={isPending}>
-								{atendimento?.prioridade ? PRIORITY_LABELS[atendimento.prioridade] : "Prioridade"}
+								{atendimento?.prioridade ? PRIORITY_META[atendimento.prioridade].label : "Prioridade"}
 								<ChevronDown className="h-3 w-3 opacity-60" />
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							<DropdownMenuItem onClick={() => mutate({ acao: "alterar_prioridade", chatId, prioridade: null })}>Sem prioridade</DropdownMenuItem>
-							{(Object.keys(PRIORITY_LABELS) as TChatAssignmentPriority[]).map((prioridade) => (
+							{(Object.keys(PRIORITY_META) as TChatAssignmentPriority[]).map((prioridade) => (
 								<DropdownMenuItem key={prioridade} onClick={() => mutate({ acao: "alterar_prioridade", chatId, prioridade })}>
-									{PRIORITY_LABELS[prioridade]}
+									{PRIORITY_META[prioridade].label}
 								</DropdownMenuItem>
 							))}
 						</DropdownMenuContent>
@@ -178,5 +147,3 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 		</div>
 	);
 }
-
-export { STATUS_LABELS, PRIORITY_LABELS };
