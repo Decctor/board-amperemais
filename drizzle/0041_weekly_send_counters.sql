@@ -6,6 +6,18 @@
 -- não é executado pelo pipeline de migrations.
 --
 -- Requer PostgreSQL 15+ (UNIQUE NULLS NOT DISTINCT).
+--
+-- ⚠️  ESTE ARQUIVO É A FONTE DA VERDADE DO `NULLS NOT DISTINCT`. O schema Drizzle
+-- (services/drizzle/schema/campaigns.ts) declara a constraint SEM o flag, porque a introspecção
+-- do drizzle-kit 0.31.x hardcoda nullsNotDistinct=false e o flag declarado gera drift permanente
+-- que aborta todo `db:push`. Consequência: em banco novo provisionado só por push, a constraint
+-- nasce como UNIQUE comum e os contadores agregados (campanha_id NULL) deixam de ser
+-- deduplicados — rode o ALTER abaixo à mão nesse cenário.
+--
+--   ALTER TABLE "ampmais_weekly_send_counters"
+--     DROP CONSTRAINT "uq_weekly_send_counters_org_campanha_semana",
+--     ADD CONSTRAINT "uq_weekly_send_counters_org_campanha_semana"
+--       UNIQUE NULLS NOT DISTINCT ("organizacao_id", "campanha_id", "semana_chave");
 
 CREATE TABLE "ampmais_weekly_send_counters" (
 	"id" varchar(255) PRIMARY KEY NOT NULL,

@@ -419,6 +419,12 @@ export const dealStatusEnum = pgEnum("deal_status", ["PENDENTE", "ATIVO", "INADI
 
 export const dealIntervaloEnum = pgEnum("deal_intervalo", ["MENSAL", "ANUAL"]);
 
+// Ciclo de vida do formulário público de onboarding do deal: EMITIDO (link ativo, aceita
+// rascunhos) → PREENCHIDO (envio final, respostas travadas) → CANCELADO (revogado/reemitido).
+// "CONCLUIDO" NÃO é persistido: é derivado de deal.status === "ATIVO" na leitura, para não
+// duplicar no webhook um estado que a assinatura Stripe já mantém.
+export const dealOnboardingFormStatusEnum = pgEnum("deal_onboarding_form_status", ["EMITIDO", "PREENCHIDO", "CANCELADO"]);
+
 export const actionApprovalDecisionMethodEnum = pgEnum("action_approval_decision_method", ["PLATAFORMA", "SENHA_OPERADOR"]);
 
 // ============================================================================

@@ -155,9 +155,14 @@ export const weeklySendCounters = newTable(
 		usados: integer("usados").notNull().default(0),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	},
-	// NULLS NOT DISTINCT (PG15+): garante um único contador de organização (campanha_id NULL) por semana,
-	// viabilizando upsert idempotente via ON CONFLICT.
-	(table) => [unique("uq_weekly_send_counters_org_campanha_semana").on(table.organizacaoId, table.campanhaId, table.semanaChave).nullsNotDistinct()],
+	// No banco esta constraint é UNIQUE NULLS NOT DISTINCT (PG15+): garante um único contador de
+	// organização (campanha_id NULL) por semana, viabilizando o upsert idempotente via ON CONFLICT
+	// de lib/interactions/weekly-send-counters.ts. O `.nullsNotDistinct()` está OMITIDO aqui de
+	// propósito: a introspecção do drizzle-kit (0.31.x) hardcoda nullsNotDistinct=false ao ler
+	// UNIQUEs do banco, então declará-lo gera drift permanente e todo `db:push` aborta tentando
+	// recriar a constraint (42P07). DDL verdadeira: drizzle/0041_weekly_send_counters.sql — banco
+	// novo criado só por push precisa dela aplicada à mão, senão o contador agregado duplica.
+	(table) => [unique("uq_weekly_send_counters_org_campanha_semana").on(table.organizacaoId, table.campanhaId, table.semanaChave)],
 );
 export type TWeeklySendCounterEntity = typeof weeklySendCounters.$inferSelect;
 export type TNewWeeklySendCounterEntity = typeof weeklySendCounters.$inferInsert;

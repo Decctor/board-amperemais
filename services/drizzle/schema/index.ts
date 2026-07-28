@@ -35,6 +35,7 @@ export * from "./platform-partnerships";
 export * from "./productions";
 export * from "./integrations";
 export * from "./audiences";
+export * from "./deal-onboarding";
 export * from "./deals";
 export * from "./service-points";
 export * from "./service-settings";

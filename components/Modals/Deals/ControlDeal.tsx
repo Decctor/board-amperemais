@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import DealGeneralBlock from "./Blocks/DealGeneralBlock";
 import DealObtentorBlock from "./Blocks/DealObtentorBlock";
+import DealOnboardingBlock from "./Blocks/DealOnboardingBlock";
 
 const DEAL_STATUS_PILLS: Record<TGetDealsOutputById["status"], { label: string; className: string }> = {
 	PENDENTE: { label: "AGUARDANDO PAGAMENTO", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
@@ -54,6 +55,7 @@ export default function ControlDeal({ dealId, closeModal, callbacks }: ControlDe
 
 	const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(null);
 	const [reissuedCheckoutUrl, setReissuedCheckoutUrl] = useState<string | null>(null);
+	const [emittedFormUrl, setEmittedFormUrl] = useState<string | null>(null);
 	const [cancelConfirmation, setCancelConfirmation] = useState(false);
 
 	// Organizações candidatas ao vínculo: sem deal e sem assinatura própria em estado cobrável.
@@ -91,6 +93,7 @@ export default function ControlDeal({ dealId, closeModal, callbacks }: ControlDe
 		onSuccess: async (data) => {
 			if (callbacks?.onSuccess) callbacks.onSuccess();
 			if (data.data.checkoutUrl) setReissuedCheckoutUrl(data.data.checkoutUrl);
+			if (data.data.formularioUrl) setEmittedFormUrl(data.data.formularioUrl);
 			setSelectedOrganizationId(null);
 			setCancelConfirmation(false);
 			return toast.success(data.message);
@@ -272,6 +275,15 @@ export default function ControlDeal({ dealId, closeModal, callbacks }: ControlDe
 							</div>
 						) : null}
 					</ResponsiveMenuSection>
+
+					{/* Formulário público de onboarding */}
+					<DealOnboardingBlock
+						deal={deal}
+						isPending={isPending}
+						emittedFormUrl={emittedFormUrl}
+						onEmit={(dataExpiracao) => handleUpdateDealMutation({ action: "EMITIR_FORMULARIO", dealId, dataExpiracao })}
+						onRevoke={() => handleUpdateDealMutation({ action: "REVOGAR_FORMULARIO", dealId })}
+					/>
 
 					{/* Dados editáveis */}
 					<DealGeneralBlock deal={state.deal} updateDeal={updateDealState} commercialTermsEditable={false} />

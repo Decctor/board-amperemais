@@ -492,6 +492,25 @@ export type TDealStatusEnum = z.infer<typeof DealStatusEnum>;
 export const DealIntervaloEnum = z.enum(["MENSAL", "ANUAL"]);
 export type TDealIntervaloEnum = z.infer<typeof DealIntervaloEnum>;
 
+// Espelha o pgEnum dealOnboardingFormStatusEnum. "CONCLUIDO" não existe aqui de propósito:
+// é derivado de deal.status === "ATIVO" (ver DealOnboardingFormSituationEnum).
+export const DealOnboardingFormStatusEnum = z.enum(["EMITIDO", "PREENCHIDO", "CANCELADO"]);
+export type TDealOnboardingFormStatusEnum = z.infer<typeof DealOnboardingFormStatusEnum>;
+
+// Tipos de campo do formulário de onboarding. Deliberadamente NÃO é pgEnum: os campos vivem
+// só no JSONB `estrutura`, e novos tipos não devem custar migração de enum no Postgres.
+export const DealOnboardingFieldTypeEnum = z.enum(["TEXTO", "TEXTO_LONGO", "EMAIL", "TELEFONE", "CNPJ"]);
+export type TDealOnboardingFieldTypeEnum = z.infer<typeof DealOnboardingFieldTypeEnum>;
+
+// Escopo do campo: GERAL (uma resposta por formulário) ou ORGANIZACAO (uma resposta por licença).
+export const DealOnboardingFieldScopeEnum = z.enum(["GERAL", "ORGANIZACAO"]);
+export type TDealOnboardingFieldScopeEnum = z.infer<typeof DealOnboardingFieldScopeEnum>;
+
+// Situação derivada do formulário (status persistido + status do deal + expiração), usada no
+// branching da página pública e na exibição do admin.
+export const DealOnboardingFormSituationEnum = z.enum(["EMITIDO", "EXPIRADO", "PREENCHIDO", "CONCLUIDO", "CANCELADO"]);
+export type TDealOnboardingFormSituationEnum = z.infer<typeof DealOnboardingFormSituationEnum>;
+
 // ============================================================================
 // TABS / PONTOS DE ATENDIMENTO (docs/tabs/implementation-plan.md)
 // ============================================================================
