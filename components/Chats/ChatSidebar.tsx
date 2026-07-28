@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from "@/components/ui/input";
 import { mapRealtimeChatRow, type TRealtimeChatRow } from "@/lib/chats/realtime-mappers";
 import { getErrorMessage } from "@/lib/errors";
-import { getChatsQueryKey, useChats, type TChatInboxItem } from "@/lib/queries/chats";
+import { useChats, type TChatInboxItem } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
 import type { TChatInboxView } from "@/schemas/enums";
 import { supabaseClient } from "@/services/supabase";
@@ -145,7 +145,8 @@ export function ChatSidebar({ organizationId, selectedChatId, onSelectChat, what
 						<button
 							type="button"
 							onClick={() => setSelectedPhoneId(null)}
-							className="flex h-8 min-w-0 items-center gap-1 rounded-md border border-border px-2 text-xs hover:bg-muted"
+							aria-label={`Remover filtro de número: ${selectedPhone.numero || selectedPhone.nome}`}
+							className="flex h-8 min-w-0 items-center gap-1 rounded-lg border border-border px-2 text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
 						>
 							<span className="truncate">{selectedPhone.numero || selectedPhone.nome}</span>
 							<X className="h-3 w-3 shrink-0 opacity-60" />
@@ -176,6 +177,7 @@ export function ChatSidebar({ organizationId, selectedChatId, onSelectChat, what
 					<Input
 						value={search}
 						onChange={(event) => setSearch(event.target.value)}
+						aria-label="Buscar conversas"
 						placeholder="Buscar por nome, telefone ou mensagem"
 						className="h-8 pl-7 text-xs"
 					/>
@@ -202,5 +204,3 @@ export function ChatSidebar({ organizationId, selectedChatId, onSelectChat, what
 		</aside>
 	);
 }
-
-export { getChatsQueryKey };

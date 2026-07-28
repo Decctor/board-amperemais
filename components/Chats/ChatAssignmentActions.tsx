@@ -33,11 +33,9 @@ type ChatAssignmentActionsProps = {
 	chatId: string;
 	atendimento: TChatAttendance;
 	currentUserId: string;
-	/** Layout compacto para o header da thread; o painel de contexto usa o completo. */
-	compact?: boolean;
 };
 
-export function ChatAssignmentActions({ chatId, atendimento, currentUserId, compact = false }: ChatAssignmentActionsProps) {
+export function ChatAssignmentActions({ chatId, atendimento, currentUserId }: ChatAssignmentActionsProps) {
 	const queryClient = useQueryClient();
 	const [transferMenuOpen, setTransferMenuOpen] = useState(false);
 	const { data: transferTargets } = useChatTransferTargets({ enabled: transferMenuOpen });
@@ -68,7 +66,7 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 	return (
 		<div className="flex flex-wrap items-center gap-1.5">
 			{!isOwner && (
-				<Button size="sm" className="h-7 gap-1 text-[0.7rem]" disabled={isPending} onClick={() => mutate({ acao: "assumir", chatId })}>
+				<Button size="sm" className="gap-1 text-[11px] font-extrabold uppercase tracking-[0.08em]" disabled={isPending} onClick={() => mutate({ acao: "assumir", chatId })}>
 					<UserPlus className="h-3 w-3" />
 					{assumeLabel}
 				</Button>
@@ -78,7 +76,7 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 				<Button
 					size="sm"
 					variant="outline"
-					className="h-7 gap-1 text-[0.7rem]"
+					className="gap-1 text-[11px]"
 					disabled={isPending}
 					onClick={() => mutate({ acao: "liberar", chatId })}
 				>
@@ -89,7 +87,7 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 
 			<DropdownMenu open={transferMenuOpen} onOpenChange={setTransferMenuOpen}>
 				<DropdownMenuTrigger asChild>
-					<Button size="sm" variant="outline" className="h-7 gap-1 text-[0.7rem]" disabled={isPending}>
+					<Button size="sm" variant="outline" className="gap-1 text-[11px] font-extrabold uppercase tracking-[0.08em]" disabled={isPending}>
 						TRANSFERIR
 						<ChevronDown className="h-3 w-3 opacity-60" />
 					</Button>
@@ -100,7 +98,7 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 						<DropdownMenuItem key={target.id} className="gap-2" onClick={() => mutate({ acao: "transferir", chatId, usuarioDestinoId: target.id })}>
 							<Avatar className="h-5 w-5">
 								{target.avatarUrl && <AvatarImage src={target.avatarUrl} />}
-								<AvatarFallback className="text-[0.6rem]">{target.nome.slice(0, 1)}</AvatarFallback>
+								<AvatarFallback className="text-[10px]">{target.nome.slice(0, 1)}</AvatarFallback>
 							</Avatar>
 							{target.nome}
 						</DropdownMenuItem>
@@ -108,11 +106,9 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 				</DropdownMenuContent>
 			</DropdownMenu>
 
-			{!compact && (
-				<>
-					<DropdownMenu>
+			<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button size="sm" variant="ghost" className="h-7 gap-1 text-[0.7rem]" disabled={isPending}>
+							<Button size="sm" variant="ghost" className="gap-1 text-xs" disabled={isPending}>
 								{atendimento ? STATUS_LABELS[atendimento.status] : "Status"}
 								<ChevronDown className="h-3 w-3 opacity-60" />
 							</Button>
@@ -124,11 +120,11 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 								</DropdownMenuItem>
 							))}
 						</DropdownMenuContent>
-					</DropdownMenu>
+			</DropdownMenu>
 
-					<DropdownMenu>
+			<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button size="sm" variant="ghost" className="h-7 gap-1 text-[0.7rem]" disabled={isPending}>
+							<Button size="sm" variant="ghost" className="gap-1 text-xs" disabled={isPending}>
 								{atendimento?.prioridade ? PRIORITY_LABELS[atendimento.prioridade] : "Prioridade"}
 								<ChevronDown className="h-3 w-3 opacity-60" />
 							</Button>
@@ -141,17 +137,15 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 								</DropdownMenuItem>
 							))}
 						</DropdownMenuContent>
-					</DropdownMenu>
-				</>
-			)}
+			</DropdownMenu>
 
 			{atendimento?.responsavelTipo === "AGENTE" && (
-				<span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[0.65rem] text-muted-foreground">
+				<span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
 					<Sparkles className="h-3 w-3" /> Automação
 				</span>
 			)}
 			{atendimento?.responsavelTipo === "EXTERNO" && (
-				<span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[0.65rem] text-muted-foreground">
+				<span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
 					<Smartphone className="h-3 w-3" /> Atendido pelo telefone
 				</span>
 			)}

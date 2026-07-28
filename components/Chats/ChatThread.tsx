@@ -226,8 +226,8 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 					<span className="truncate text-sm font-semibold">{chat.cliente?.nome ?? "Cliente sem nome"}</span>
 					<span
 						className={cn(
-							"text-[0.65rem]",
-							janela.variant === "expirada" ? "text-destructive" : janela.variant === "expirando" ? "text-amber-600" : "text-muted-foreground",
+							"text-[11px]",
+							janela.variant === "expirada" ? "text-destructive" : janela.variant === "expirando" ? "text-brand" : "text-muted-foreground",
 						)}
 					>
 						{chat.cliente?.telefone} · {janela.label}
@@ -263,7 +263,7 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 							{showDaySeparator && (
 								<div className="my-2 flex items-center gap-2">
 									<span className="h-px flex-1 bg-border" />
-									<span className="text-[0.65rem] uppercase tracking-wide text-muted-foreground">{formatDaySeparator(currentDate)}</span>
+									<span className="text-[11px] uppercase tracking-wide text-muted-foreground">{formatDaySeparator(currentDate)}</span>
 									<span className="h-px flex-1 bg-border" />
 								</div>
 							)}
@@ -280,6 +280,9 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 				)}
 			</div>
 
+			<div aria-live="polite" className="sr-only">
+				{unseenCount > 0 ? `${unseenCount} ${unseenCount === 1 ? "nova mensagem" : "novas mensagens"}` : ""}
+			</div>
 			{unseenCount > 0 && (
 				<button
 					type="button"
@@ -287,7 +290,7 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 						scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
 						setUnseenCount(0);
 					}}
-					className="mx-auto -mt-8 mb-2 flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground shadow-lg"
+					className="mx-auto -mt-8 mb-2 flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
 				>
 					<ChevronDown className="h-3 w-3" />
 					{unseenCount} {unseenCount === 1 ? "nova" : "novas"}
@@ -295,7 +298,6 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 			)}
 
 			<ChatInputArea
-				chatId={chatId}
 				organizationId={organizationId}
 				userName={currentUser.nome}
 				isOwner={!!isOwner}

@@ -15,11 +15,19 @@ type ChatInboxListItemProps = {
 
 const MEDIA_ICONS = { IMAGEM: ImageIcon, VIDEO: Video, AUDIO: Mic, DOCUMENTO: FileText } as const;
 
+/**
+ * Só os estados acionáveis recebem cor. Numa inbox com dezenas de conversas, colorir
+ * também o estado saudável faz quatro sinais competirem e nenhum se destacar — "janela
+ * aberta" e "sessão do gateway" são o normal, e normal não pede atenção.
+ *
+ * O âmbar é o único sinal quente da paleta; o vermelho é o destrutivo. Nada de
+ * emerald/sky ad-hoc: a regra de fechamento da paleta do DESIGN.md não abre exceção.
+ */
 const WINDOW_DOT_CLASS = {
-	aberta: "bg-emerald-500",
-	expirando: "bg-amber-500",
+	aberta: "bg-muted-foreground/40",
+	gateway: "bg-muted-foreground/40",
+	expirando: "bg-brand",
 	expirada: "bg-destructive",
-	gateway: "bg-sky-500",
 } as const;
 
 function formatRelative(date: Date | string | null) {
@@ -47,8 +55,10 @@ export function ChatInboxListItem({ chat, isSelected, onSelect }: ChatInboxListI
 		<button
 			type="button"
 			onClick={() => onSelect(chat.id)}
+			aria-current={isSelected ? "true" : undefined}
 			className={cn(
-				"flex w-full items-start gap-3 border-b border-border/60 px-3 py-3 text-left transition-colors hover:bg-muted/50",
+				"flex w-full items-start gap-3 border-b border-border/60 px-3 py-3 text-left transition-colors",
+				"hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
 				isSelected && "bg-muted",
 			)}
 		>
@@ -56,16 +66,16 @@ export function ChatInboxListItem({ chat, isSelected, onSelect }: ChatInboxListI
 				<Avatar className="h-10 w-10">
 					<AvatarFallback className="text-xs">{(chat.cliente?.nome ?? "?").slice(0, 2).toUpperCase()}</AvatarFallback>
 				</Avatar>
-				<span
-					className={cn("absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background", WINDOW_DOT_CLASS[janela.variant])}
-					title={janela.label}
-				/>
+				{/* O ponto sozinho seria informação só por cor (WCAG 1.4.1); o rótulo em
+				    sr-only entrega o mesmo dado a leitores de tela. */}
+				<span className={cn("absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background", WINDOW_DOT_CLASS[janela.variant])} />
+				<span className="sr-only">{janela.label}</span>
 			</div>
 
 			<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 				<div className="flex items-center justify-between gap-2">
 					<span className="truncate text-sm font-medium">{chat.cliente?.nome ?? "Cliente sem nome"}</span>
-					<span className="shrink-0 text-[0.65rem] text-muted-foreground">{formatRelative(chat.ultimaMensagemData)}</span>
+					<span className="shrink-0 text-[11px] text-muted-foreground">{formatRelative(chat.ultimaMensagemData)}</span>
 				</div>
 
 				<div className="flex items-center justify-between gap-2">
@@ -75,18 +85,18 @@ export function ChatInboxListItem({ chat, isSelected, onSelect }: ChatInboxListI
 						<span className="truncate">{preview.body}</span>
 					</span>
 					{naoLidas > 0 && (
-						<span className="shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[0.6rem] font-bold text-primary-foreground">
+						<span className="shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[11px] font-bold text-primary-foreground">
 							{naoLidas > 99 ? "99+" : naoLidas}
 						</span>
 					)}
 				</div>
 
-				<div className="flex items-center gap-1.5 text-[0.65rem] text-muted-foreground">
+				<div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
 					{atendimento?.responsavelTipo === "USUARIO" && (
 						<>
 							<Avatar className="h-3.5 w-3.5">
 								{atendimento.responsavelUsuario?.avatarUrl && <AvatarImage src={atendimento.responsavelUsuario.avatarUrl} />}
-								<AvatarFallback className="text-[0.5rem]">{(atendimento.responsavelUsuario?.nome ?? "?").slice(0, 1)}</AvatarFallback>
+								<AvatarFallback className="text-[10px]">{(atendimento.responsavelUsuario?.nome ?? "?").slice(0, 1)}</AvatarFallback>
 							</Avatar>
 							<span className="truncate">{atendimento.responsavelUsuario?.nome ?? "Atribuído"}</span>
 						</>
@@ -101,8 +111,10 @@ export function ChatInboxListItem({ chat, isSelected, onSelect }: ChatInboxListI
 							<Smartphone className="h-3 w-3" /> Telefone
 						</span>
 					)}
+					{/* "Livre" é disponibilidade, não alerta. O âmbar já significa "janela
+					    expirando"; duplicar a cor apagaria os dois sentidos. */}
 					{(!atendimento || atendimento.responsavelTipo === "NAO_ATRIBUIDO") && (
-						<span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 font-medium text-amber-600 dark:text-amber-400">Livre</span>
+						<span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 font-bold text-primary">Livre</span>
 					)}
 				</div>
 			</div>

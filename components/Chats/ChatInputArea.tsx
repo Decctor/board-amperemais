@@ -7,12 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { getWhatsappWindowDisplay } from "@/lib/chats/whatsapp-window-status";
 import { cn } from "@/lib/utils";
 import { Lock, Paperclip, Send, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 export type TOutgoingAttachment = { tipo: "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO"; base64: string; mimeType: string; arquivoNome: string };
 
 type ChatInputAreaProps = {
-	chatId: string;
 	userName: string;
 	organizationId: string;
 	isOwner: boolean;
@@ -33,7 +32,6 @@ function resolveMediaType(mimeType: string): TOutgoingAttachment["tipo"] {
 }
 
 export function ChatInputArea({
-	chatId,
 	userName,
 	organizationId,
 	isOwner,
@@ -49,6 +47,7 @@ export function ChatInputArea({
 	const [attachment, setAttachment] = useState<TOutgoingAttachment | null>(null);
 	const [assinaturaAtiva, setAssinaturaAtiva] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const signatureSwitchId = useId();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const signatureStorageKey = `chat-signature-${organizationId}`;
 
@@ -91,7 +90,7 @@ export function ChatInputArea({
 		return (
 			<div className="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-4 py-3">
 				<p className="text-xs text-muted-foreground">Assuma este atendimento para enviar mensagens.</p>
-				<Button size="sm" className="h-7 text-[0.7rem]" onClick={onAssume}>
+				<Button size="sm" className="text-[11px] font-extrabold uppercase tracking-[0.08em]" onClick={onAssume}>
 					ASSUMIR ATENDIMENTO
 				</Button>
 			</div>
@@ -107,7 +106,7 @@ export function ChatInputArea({
 				</p>
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
-						<Button size="sm" variant="outline" className="h-7 self-start text-[0.7rem]" disabled={isSending}>
+						<Button size="sm" variant="outline" className="self-start text-[11px] font-extrabold uppercase tracking-[0.08em]" disabled={isSending}>
 							ENVIAR TEMPLATE
 						</Button>
 					</DropdownMenuTrigger>
@@ -127,9 +126,9 @@ export function ChatInputArea({
 	return (
 		<div className="flex flex-col gap-2 border-t border-border bg-background px-3 py-2">
 			{attachment && (
-				<div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/50 px-2 py-1.5 text-xs">
+				<div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/50 px-2 py-1.5 text-xs">
 					<span className="truncate">{attachment.arquivoNome}</span>
-					<Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setAttachment(null)}>
+					<Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Remover anexo" onClick={() => setAttachment(null)}>
 						<X className="h-3 w-3" />
 					</Button>
 				</div>
@@ -146,7 +145,7 @@ export function ChatInputArea({
 						event.target.value = "";
 					}}
 				/>
-				<Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => fileInputRef.current?.click()} disabled={isSending}>
+				<Button variant="ghost" size="icon" className="shrink-0" aria-label="Anexar arquivo" onClick={() => fileInputRef.current?.click()} disabled={isSending}>
 					<Paperclip className="h-4 w-4" />
 				</Button>
 
@@ -165,22 +164,24 @@ export function ChatInputArea({
 							handleSubmit();
 						}
 					}}
+					aria-label="Mensagem"
 					placeholder="Digite uma mensagem..."
 					rows={1}
 					className="min-h-9 resize-none py-2 text-sm"
 					disabled={isSending}
 				/>
 
-				<Button size="icon" className="h-9 w-9 shrink-0" onClick={handleSubmit} disabled={isSending || (!texto.trim() && !attachment)}>
+				<Button size="icon" className="shrink-0" aria-label="Enviar mensagem" onClick={handleSubmit} disabled={isSending || (!texto.trim() && !attachment)}>
 					<Send className="h-4 w-4" />
 				</Button>
 			</div>
 
-			<label className={cn("flex items-center gap-2 self-start text-[0.7rem] text-muted-foreground", isSending && "opacity-60")}>
-				<Switch checked={assinaturaAtiva} onCheckedChange={handleSignatureChange} disabled={isSending} />
-				Assinar como {userName}
-			</label>
-			<input type="hidden" value={chatId} readOnly />
+			<div className={cn("flex items-center gap-2 self-start", isSending && "opacity-60")}>
+				<Switch id={signatureSwitchId} checked={assinaturaAtiva} onCheckedChange={handleSignatureChange} disabled={isSending} />
+				<label htmlFor={signatureSwitchId} className="cursor-pointer text-[11px] text-muted-foreground">
+					Assinar como {userName}
+				</label>
+			</div>
 		</div>
 	);
 }
