@@ -6,6 +6,7 @@ import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
 import { resolveSaleEditability } from "@/lib/sales/sale-editability";
 import { consumeSaleDiscountApproval } from "@/lib/sales/sale-discount-authorization";
 import { SALE_PRICING_CENT_TOLERANCE, saleValuesDiverge, validateSaleItemsPricing } from "@/lib/sales/sale-pricing-validation";
+import { POS_REWARD_SALE_ITEM_ORIGIN } from "@/lib/sales/sale-reward-redemption";
 import type { TDeliveryModeEnum } from "@/schemas/enums";
 import type { DBTransaction } from "@/services/drizzle";
 import { accountingEntries, couponRedemptions, financialTransactions, saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
@@ -81,6 +82,11 @@ export type TProcessConfirmedSaleEditInput = {
 	valorTotalEsperado: number;
 	sessaoVendaId?: string | null;
 };
+
+function isRewardSaleItem(metadados: unknown): boolean {
+	if (!metadados || typeof metadados !== "object" || Array.isArray(metadados)) return false;
+	return (metadados as { origem?: unknown }).origem === POS_REWARD_SALE_ITEM_ORIGIN;
+}
 
 function modifierIdentityKey(modifiers: { opcaoId: string | null; quantidade: number }[]) {
 	return modifiers
@@ -177,8 +183,18 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 	}
 
 	const existingItemsById = new Map(sale.itens.map((item) => [item.id, item]));
-	const activeItems = input.itens.filter((item) => !item.deletar);
-	if (activeItems.length === 0) {
+
+	// Itens de recompensa resgatada são imutáveis e ficam FORA do recompute pelo payload: todos os
+	// seus valores vêm das linhas persistidas. Assim o cliente não altera os totais nem omitindo a
+	// linha (custo/desconto sumiriam) nem adulterando-a (o líquido enviado seria somado na base).
+	const rewardItems = sale.itens.filter((item) => isRewardSaleItem(item.metadados));
+	const rewardItemIds = new Set(rewardItems.map((item) => item.id));
+	const rewardValorBase = rewardItems.reduce((sum, item) => sum + item.valorVendaTotalLiquido, 0);
+	const rewardDescontoTotal = rewardItems.reduce((sum, item) => sum + item.valorTotalDesconto, 0);
+	const rewardCustoTotal = rewardItems.reduce((sum, item) => sum + item.valorCustoTotal, 0);
+
+	const activeItems = input.itens.filter((item) => !item.deletar && !(item.id && rewardItemIds.has(item.id)));
+	if (activeItems.length === 0 && rewardItems.length === 0) {
 		throw new createHttpError.BadRequest("A venda precisa de pelo menos um item. Para remover tudo, cancele a venda.");
 	}
 
@@ -186,6 +202,23 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 	for (const item of input.itens) {
 		if (item.id && !existingItemsById.has(item.id)) {
 			throw new createHttpError.BadRequest("Um dos itens enviados não pertence a esta venda. Recarregue os dados e tente novamente.");
+		}
+		// Item de recompensa é imutável na edição, como cupom e resgate de cashback: alterar
+		// quantidade/valores ou removê-lo desfaria um débito de saldo já registrado no ledger.
+		const existingReward = item.id ? existingItemsById.get(item.id) : null;
+		if (existingReward && isRewardSaleItem(existingReward.metadados)) {
+			if (item.deletar) {
+				throw new createHttpError.BadRequest("A recompensa resgatada não pode ser removida pela edição. Para desfazer o resgate, cancele a venda.");
+			}
+			if (
+				item.quantidade !== existingReward.quantidade ||
+				saleValuesDiverge(item.valorTotalBruto, existingReward.valorVendaTotalBruto) ||
+				saleValuesDiverge(item.valorDesconto, existingReward.valorTotalDesconto) ||
+				saleValuesDiverge(item.valorTotalLiquido, existingReward.valorVendaTotalLiquido)
+			) {
+				throw new createHttpError.BadRequest("A recompensa resgatada não pode ser alterada pela edição.");
+			}
+			continue;
 		}
 		if (item.deletar) {
 			if (!item.id) throw new createHttpError.BadRequest("Item novo não pode ser marcado para remoção.");
@@ -233,7 +266,11 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 	// Cupom: reavaliação contra o carrinho editado (AUTOMATICA) ou teto pelo bruto novo (MANUAL).
 	// ------------------------------------------------------------------
 	const couponRedemption = await tx.query.couponRedemptions.findFirst({
-		where: and(eq(couponRedemptions.organizacaoId, organizationId), eq(couponRedemptions.vendaId, input.saleId), eq(couponRedemptions.status, "UTILIZADO")),
+		where: and(
+			eq(couponRedemptions.organizacaoId, organizationId),
+			eq(couponRedemptions.vendaId, input.saleId),
+			eq(couponRedemptions.status, "UTILIZADO"),
+		),
 	});
 	let cupomDesconto = 0;
 	let cupomRemovido = false;
@@ -290,9 +327,17 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 
 	// Resgate de cashback é imutável na edição (v1): entra como componente fixo do desconto e o
 	// novo total precisa continuar comportando-o. A válvula para desfazê-lo é o cancelamento.
+	// SOMENTE resgates-desconto: o RESGATE de recompensa está em moeda cashback (pontos ou R$) e
+	// não é um desconto em dinheiro — o desconto comercial do prêmio já vive no item (líquido 0).
 	const activeRedemptions = await tx.query.cashbackProgramTransactions.findMany({
-		where: (fields, { and, eq }) =>
-			and(eq(fields.organizacaoId, organizationId), eq(fields.vendaId, input.saleId), eq(fields.tipo, "RESGATE"), eq(fields.status, "ATIVO")),
+		where: (fields, { and, eq, isNull }) =>
+			and(
+				eq(fields.organizacaoId, organizationId),
+				eq(fields.vendaId, input.saleId),
+				eq(fields.tipo, "RESGATE"),
+				eq(fields.status, "ATIVO"),
+				isNull(fields.resgateRecompensaId),
+			),
 		columns: { valor: true },
 	});
 	const cashbackResgate = activeRedemptions.reduce((sum, transaction) => sum + Math.abs(transaction.valor), 0);
@@ -300,7 +345,7 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 	// ------------------------------------------------------------------
 	// Recompute do dinheiro da venda (mesmas fórmulas da criação).
 	// ------------------------------------------------------------------
-	const valorBaseItens = activeItems.reduce((sum, item) => sum + item.valorTotalLiquido, 0);
+	const valorBaseItens = activeItems.reduce((sum, item) => sum + item.valorTotalLiquido, 0) + rewardValorBase;
 	const descontosGerais = input.descontosTotal ?? 0;
 	const acrescimosGerais = input.acrescimosTotal ?? 0;
 	const descontosVenda = descontosGerais + cupomDesconto + cashbackResgate;
@@ -321,6 +366,7 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 		);
 	}
 	const descontosTotalItens = activeItems.reduce((sum, item) => sum + item.valorDesconto, 0);
+	const descontosTotalPersistido = (descontosVenda > 0 ? descontosVenda : descontosTotalItens) + rewardDescontoTotal;
 
 	// Custos atuais do catálogo, como na criação.
 	const activeProductIds = [...new Set(activeItems.map((item) => item.produtoId))];
@@ -343,7 +389,7 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 	const variantCostMap = new Map(variantesResult.map((variant) => [variant.id, variant.precoCusto ?? 0]));
 	const resolveUnitCost = (item: TEditSaleItemInput) =>
 		item.produtoVarianteId ? (variantCostMap.get(item.produtoVarianteId) ?? 0) : (productCostMap.get(item.produtoId) ?? 0);
-	const custoTotal = activeItems.reduce((sum, item) => sum + resolveUnitCost(item) * item.quantidade, 0);
+	const custoTotal = activeItems.reduce((sum, item) => sum + resolveUnitCost(item) * item.quantidade, 0) + rewardCustoTotal;
 
 	// One-shot: a aprovação de desconto (autorizada na rota) é consumida nesta transação.
 	if (input.descontoAprovacaoId) {
@@ -518,7 +564,9 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 		.update(sales)
 		.set({
 			valorTotal,
-			descontosTotal: descontosVenda > 0 ? descontosVenda : descontosTotalItens > 0 ? descontosTotalItens : null,
+			// Mesma fórmula da criação: descontos da venda (ou dos itens) + desconto comercial das
+			// recompensas resgatadas, que a confirmação já havia somado.
+			descontosTotal: descontosTotalPersistido > 0 ? descontosTotalPersistido : null,
 			acrescimosTotal: input.acrescimosTotal ?? null,
 			custoTotal,
 			vendedorId: input.vendedorId ?? sale.vendedorId,
@@ -590,7 +638,10 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 	);
 	const balanceError = getAccountingEntryBalanceError({
 		entryValue: valorTotal,
-		transactions: [...keptTransactions.map((transaction) => ({ valor: transaction.valor })), ...input.pagamentos.map((payment) => ({ valor: payment.valor }))],
+		transactions: [
+			...keptTransactions.map((transaction) => ({ valor: transaction.valor })),
+			...input.pagamentos.map((payment) => ({ valor: payment.valor })),
+		],
 	});
 	if (balanceError) {
 		throw new createHttpError.BadRequest(`${balanceError} Ajuste os pagamentos para cobrir o novo total da venda.`);

@@ -7,6 +7,7 @@ import { resolveSaleEditability } from "@/lib/sales/sale-editability";
 import { authorizeSaleDiscount, computeSaleAggregatedDiscount } from "@/lib/sales/sale-discount-authorization";
 import { resolveSaleFiscalEmissionOverride } from "@/lib/sales/sale-fiscal-emission-override";
 import { processConfirmedSaleEditInTransaction, processConfirmedSaleEditPostCommit } from "@/lib/sales/sale-processing";
+import { POS_REWARD_SALE_ITEM_ORIGIN } from "@/lib/sales/sale-reward-redemption";
 import { classifySalePaymentTransactions, type SalePaymentTransactionInput } from "@/lib/sales/utils";
 import { db } from "@/services/drizzle";
 import createHttpError from "http-errors";
@@ -76,6 +77,11 @@ function getSessionWithOrg(session: TAuthUserSession | null) {
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	if (!session.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
 	return session;
+}
+
+function isRewardSaleItemMetadata(metadados: unknown): boolean {
+	if (!metadados || typeof metadados !== "object" || Array.isArray(metadados)) return false;
+	return (metadados as { origem?: unknown }).origem === POS_REWARD_SALE_ITEM_ORIGIN;
 }
 
 // ============================================================================
@@ -151,7 +157,7 @@ async function getSaleForEdit({ input, session }: { input: TGetSaleForEditInput;
 					},
 				},
 			},
-			transacoesCashback: { columns: { id: true, tipo: true, status: true, valor: true } },
+			transacoesCashback: { columns: { id: true, tipo: true, status: true, valor: true, resgateRecompensaId: true, resgateRecompensaValor: true } },
 		},
 	});
 	if (!sale) throw new createHttpError.NotFound("Venda não encontrada.");
@@ -174,9 +180,14 @@ async function getSaleForEdit({ input, session }: { input: TGetSaleForEditInput;
 		documentosFiscais: sale.documentosFiscais,
 		transacoes: rawTransactions,
 	});
-	const cashbackResgate = sale.transacoesCashback
-		.filter((transaction) => transaction.tipo === "RESGATE" && transaction.status === "ATIVO")
+	const resgatesAtivos = sale.transacoesCashback.filter((transaction) => transaction.tipo === "RESGATE" && transaction.status === "ATIVO");
+	// Somente resgates-desconto compõem o desconto em R$ da venda. O resgate de recompensa está em
+	// moeda cashback (pontos ou R$) e seu efeito comercial já vive no item com 100% de desconto —
+	// somá-lo aqui descontaria o prêmio duas vezes (e compararia pontos com reais).
+	const cashbackResgate = resgatesAtivos
+		.filter((transaction) => !transaction.resgateRecompensaId)
 		.reduce((sum, transaction) => sum + Math.abs(transaction.valor), 0);
+	const recompensaResgatada = resgatesAtivos.find((transaction) => !!transaction.resgateRecompensaId) ?? null;
 
 	return {
 		data: {
@@ -185,6 +196,12 @@ async function getSaleForEdit({ input, session }: { input: TGetSaleForEditInput;
 			editabilidade,
 			cupomResgatado: cupomResgatado ?? null,
 			cashbackResgate,
+			recompensaResgatada: recompensaResgatada
+				? {
+						recompensaId: recompensaResgatada.resgateRecompensaId as string,
+						valor: recompensaResgatada.resgateRecompensaValor ?? Math.abs(recompensaResgatada.valor),
+					}
+				: null,
 		},
 		message: "Venda carregada para edição.",
 	};
@@ -217,8 +234,14 @@ async function editConfirmedSale({ input, session }: { input: TEditConfirmedSale
 	}
 
 	// Teto de desconto do vendedor: mesma régua da criação, sobre o carrinho editado. O desconto de
-	// cupom preexistente não entra (foi autorizado na criação e é imutável na edição).
-	const activeItems = input.itens.filter((item) => !item.deletar);
+	// cupom preexistente não entra (foi autorizado na criação e é imutável na edição), nem o item
+	// de recompensa resgatada (100% de desconto com regras próprias, como cashback).
+	const saleItemsRows = await db.query.saleItems.findMany({
+		where: (fields, { and, eq }) => and(eq(fields.vendaId, input.saleId), eq(fields.organizacaoId, orgId)),
+		columns: { id: true, metadados: true },
+	});
+	const rewardItemIds = new Set(saleItemsRows.filter((item) => isRewardSaleItemMetadata(item.metadados)).map((item) => item.id));
+	const activeItems = input.itens.filter((item) => !item.deletar && !(item.id && rewardItemIds.has(item.id)));
 	const descontoAgregado = computeSaleAggregatedDiscount({
 		itens: activeItems,
 		descontosGerais: input.descontosTotal ?? 0,

@@ -33,6 +33,8 @@ export const CartItemSchema = z.object({
 	// avisos de estoque na UI). Ausentes no fluxo de criação.
 	itemId: z.string({ invalid_type_error: "Tipo não válido para ID do item persistido." }).optional().nullable(),
 	quantidadeEntregue: z.number({ invalid_type_error: "Tipo não válido para quantidade entregue." }).optional().nullable(),
+	// Item de recompensa resgatada (100% de desconto): imutável na edição, como cupom e cashback.
+	recompensaId: z.string({ invalid_type_error: "Tipo não válido para ID da recompensa do item." }).optional().nullable(),
 	produtoId: z.string({ required_error: "ID do produto não informado.", invalid_type_error: "Tipo não válido para ID do produto." }),
 	produtoVarianteId: z.string({ invalid_type_error: "Tipo não válido para ID da variante." }).optional().nullable(),
 	nome: z.string({ required_error: "Nome do item não informado.", invalid_type_error: "Tipo não válido para nome do item." }),
@@ -62,6 +64,22 @@ export const CartItemSchema = z.object({
 	modificadores: z.array(CartItemModifierSchema),
 });
 
+// Recompensa (prêmio) selecionada para resgate via saldo de cashback. `valor` é o débito de
+// saldo (moeda cashback — R$ ou pontos); `valorVenda` é o valor comercial do prêmio (sempre R$).
+// O item da recompensa não entra em `itens` — o servidor o constrói a partir do catálogo.
+export const SaleRewardRedemptionSchema = z.object({
+	recompensaId: z.string({ required_error: "ID da recompensa não informado.", invalid_type_error: "Tipo não válido para ID da recompensa." }),
+	programaId: z.string({ required_error: "ID do programa não informado.", invalid_type_error: "Tipo não válido para ID do programa." }),
+	titulo: z.string({ required_error: "Título da recompensa não informado.", invalid_type_error: "Tipo não válido para título da recompensa." }),
+	valor: z.number({ required_error: "Valor da recompensa não informado.", invalid_type_error: "Tipo não válido para valor da recompensa." }),
+	valorVenda: z.number({
+		required_error: "Valor comercial da recompensa não informado.",
+		invalid_type_error: "Tipo não válido para valor comercial da recompensa.",
+	}),
+	imagemCapaUrl: z.string({ invalid_type_error: "Tipo não válido para URL da imagem da recompensa." }).optional().nullable(),
+});
+export type TSaleRewardRedemption = z.infer<typeof SaleRewardRedemptionSchema>;
+
 export const SaleAppliedCouponSchema = z.object({
 	cupomId: z.string({ required_error: "ID do cupom não informado.", invalid_type_error: "Tipo não válido para ID do cupom." }),
 	valorDesconto: z.number({
@@ -79,6 +97,7 @@ export const SaleDraftMetadataSchema = z.object({
 	descontoGeral: z.number({ invalid_type_error: "Tipo não válido para desconto geral." }),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }),
 	cashbackProgramaId: z.string({ invalid_type_error: "Tipo não válido para ID do programa de cashback." }).optional().nullable(),
+	recompensaResgate: SaleRewardRedemptionSchema.optional().nullable(),
 	valorFinal: z.number({ invalid_type_error: "Tipo não válido para valor final." }),
 	valorRestante: z.number({ invalid_type_error: "Tipo não válido para valor restante." }),
 	troco: z.number({ invalid_type_error: "Tipo não válido para troco." }),
@@ -125,6 +144,7 @@ export const SaleStateSchema = z.object({
 	pagamentosEfetivadosTotal: z.number({ invalid_type_error: "Tipo não válido para total de pagamentos efetivados." }).default(0),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
 	cupomResgate: SaleAppliedCouponSchema.optional().nullable(),
+	recompensaResgate: SaleRewardRedemptionSchema.optional().nullable(),
 	// Override tri-state da emissão fiscal automática. null = herda a preferência da organização.
 	emissaoFiscalAutomatica: z.boolean({ invalid_type_error: "Tipo não válido para emissão fiscal automática." }).nullable().default(null),
 	success: SaleSuccessSchema,
@@ -157,6 +177,7 @@ export function getDefaultSaleState(initialState?: Partial<TSaleState>): TSaleSt
 		pagamentosEfetivadosTotal: initialState?.pagamentosEfetivadosTotal ?? 0,
 		cashbackResgate: initialState?.cashbackResgate ?? 0,
 		cupomResgate: initialState?.cupomResgate ?? null,
+		recompensaResgate: initialState?.recompensaResgate ?? null,
 		emissaoFiscalAutomatica: initialState?.emissaoFiscalAutomatica ?? null,
 		success: initialState?.success ?? null,
 	};
@@ -171,7 +192,7 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 	}, []);
 
 	const clearCliente = useCallback(() => {
-		setState((prev) => ({ ...prev, cliente: null, entregaLocalizacaoId: null, cashbackResgate: 0, cupomResgate: null }));
+		setState((prev) => ({ ...prev, cliente: null, entregaLocalizacaoId: null, cashbackResgate: 0, cupomResgate: null, recompensaResgate: null }));
 	}, []);
 
 	const setModoCliente = useCallback((modoCliente: TSaleState["modoCliente"]) => {
@@ -183,6 +204,7 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 			entregaLocalizacaoId: modoCliente === "CONSUMIDOR" ? null : prev.entregaLocalizacaoId,
 			cashbackResgate: modoCliente === "CONSUMIDOR" ? 0 : prev.cashbackResgate,
 			cupomResgate: modoCliente === "CONSUMIDOR" ? null : prev.cupomResgate,
+			recompensaResgate: modoCliente === "CONSUMIDOR" ? null : prev.recompensaResgate,
 		}));
 	}, []);
 
@@ -209,11 +231,25 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 	}, []);
 
 	const removeItem = useCallback((tempId: string) => {
-		setState((prev) => ({ ...prev, itens: prev.itens.filter((item) => item.tempId !== tempId) }));
+		// Item de recompensa não sai pelo carrinho: o débito de saldo já está no ledger.
+		setState((prev) => ({ ...prev, itens: prev.itens.filter((item) => item.tempId !== tempId || !!item.recompensaId) }));
 	}, []);
 
 	const clearCart = useCallback(() => {
-		setState((prev) => ({ ...prev, itens: [], pagamentos: [], cashbackResgate: 0, cupomResgate: null }));
+		setState((prev) => {
+			// Itens de recompensa só existem no modo edição (a recompensa já foi resgatada e está
+			// materializada como item). Esvaziar o carrinho não pode desfazer um resgate — a válvula
+			// é o cancelamento da venda. Na criação não há item de recompensa e tudo é limpo.
+			const itensRecompensa = prev.itens.filter((item) => !!item.recompensaId);
+			return {
+				...prev,
+				itens: itensRecompensa,
+				pagamentos: [],
+				cashbackResgate: 0,
+				cupomResgate: null,
+				recompensaResgate: itensRecompensa.length > 0 ? prev.recompensaResgate : null,
+			};
+		});
 	}, []);
 
 	const setDescontoGeral = useCallback((descontoGeral: number) => {
@@ -310,7 +346,7 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 	);
 
 	const setCupomResgate = useCallback((cupomResgate: TSaleAppliedCoupon | null) => {
-		setState((prev) => ({ ...prev, cupomResgate }));
+		setState((prev) => ({ ...prev, cupomResgate, recompensaResgate: cupomResgate ? null : prev.recompensaResgate }));
 	}, []);
 
 	const setEmissaoFiscalAutomatica = useCallback((emissaoFiscalAutomatica: boolean | null) => {
@@ -321,7 +357,16 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		setState((prev) => {
 			const nextValue = Math.max(0, cashbackResgate || 0);
 			if (prev.cashbackResgate === nextValue) return prev;
-			return { ...prev, cashbackResgate: nextValue };
+			return { ...prev, cashbackResgate: nextValue, recompensaResgate: nextValue > 0 ? null : prev.recompensaResgate };
+		});
+	}, []);
+
+	// Recompensa é exclusiva com cupom e com resgate-desconto (invariante do ledger: 1 RESGATE
+	// por venda; cupom não combinável espelha o POI) — selecionar uma zera os outros.
+	const setRecompensaResgate = useCallback((recompensaResgate: TSaleRewardRedemption | null) => {
+		setState((prev) => {
+			if (!recompensaResgate) return { ...prev, recompensaResgate: null };
+			return { ...prev, recompensaResgate, cashbackResgate: 0, cupomResgate: null };
 		});
 	}, []);
 
@@ -347,6 +392,11 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 
 	const subtotal = useMemo(() => state.itens.reduce((sum, item) => sum + item.valorTotalBruto, 0), [state.itens]);
 	const totalDescontoItens = useMemo(() => state.itens.reduce((sum, item) => sum + item.valorDesconto, 0), [state.itens]);
+	// Base e desconto avaliados contra o teto do operador: itens de recompensa ficam de fora
+	// (o resgate tem regras próprias, como cashback e cupom AUTOMATICA). Mesmo recorte do servidor.
+	const itensAvaliaveis = useMemo(() => state.itens.filter((item) => !item.recompensaId), [state.itens]);
+	const subtotalAvaliavel = useMemo(() => itensAvaliaveis.reduce((sum, item) => sum + item.valorTotalBruto, 0), [itensAvaliaveis]);
+	const totalDescontoItensAvaliavel = useMemo(() => itensAvaliaveis.reduce((sum, item) => sum + item.valorDesconto, 0), [itensAvaliaveis]);
 	const totalItens = useMemo(() => state.itens.reduce((sum, item) => sum + item.valorTotalLiquido, 0), [state.itens]);
 	const itemCount = useMemo(() => state.itens.reduce((sum, item) => sum + item.quantidade, 0), [state.itens]);
 	const cupomDesconto = useMemo(() => state.cupomResgate?.valorDesconto ?? 0, [state.cupomResgate]);
@@ -361,14 +411,18 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 	// Modo edição: os splits editáveis só precisam cobrir o que ainda não foi recebido.
 	const valorAposEfetivados = useMemo(() => Math.max(0, valorFinal - state.pagamentosEfetivadosTotal), [valorFinal, state.pagamentosEfetivadosTotal]);
 	const valorRestante = useMemo(() => Math.max(0, valorAposEfetivados - totalPagamentos), [valorAposEfetivados, totalPagamentos]);
-	const troco = useMemo(() => (totalPagamentos > valorAposEfetivados ? totalPagamentos - valorAposEfetivados : 0), [totalPagamentos, valorAposEfetivados]);
+	const troco = useMemo(
+		() => (totalPagamentos > valorAposEfetivados ? totalPagamentos - valorAposEfetivados : 0),
+		[totalPagamentos, valorAposEfetivados],
+	);
 	const pagamentoCompleto = useMemo(() => valorRestante <= 0.01, [valorRestante]);
 
 	const isReadyForDraft = useMemo(() => {
-		if (state.itens.length === 0) return false;
+		// Venda só-recompensa é válida: o item do prêmio é construído pelo servidor.
+		if (state.itens.length === 0 && !state.recompensaResgate) return false;
 		if (state.modoCliente === "VINCULADO" && !state.cliente) return false;
 		return true;
-	}, [state.itens.length, state.modoCliente, state.cliente]);
+	}, [state.itens.length, state.recompensaResgate, state.modoCliente, state.cliente]);
 
 	const isReadyForFinalize = useMemo(() => {
 		if (!isReadyForDraft) return false;
@@ -404,11 +458,12 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 			pagamentos: state.pagamentos,
 			descontoGeral: state.descontoGeral,
 			cashbackResgate: state.cashbackResgate,
+			recompensaResgate: state.recompensaResgate,
 			valorFinal,
 			valorRestante,
 			troco,
 		};
-	}, [state.pagamentos, state.descontoGeral, state.cashbackResgate, valorFinal, valorRestante, troco]);
+	}, [state.pagamentos, state.descontoGeral, state.cashbackResgate, state.recompensaResgate, valorFinal, valorRestante, troco]);
 
 	const resetState = useCallback((newState?: Partial<TSaleState>) => {
 		setState(getDefaultSaleState(newState));
@@ -435,12 +490,15 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		removePagamento,
 		updatePagamento,
 		setCashbackResgate,
+		setRecompensaResgate,
 		setCupomResgate,
 		setEmissaoFiscalAutomatica,
 		setSuccess,
 		clearSuccess,
 		subtotal,
 		totalDescontoItens,
+		subtotalAvaliavel,
+		totalDescontoItensAvaliavel,
 		totalItens,
 		itemCount,
 		cupomDesconto,

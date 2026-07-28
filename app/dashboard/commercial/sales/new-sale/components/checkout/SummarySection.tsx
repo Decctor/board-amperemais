@@ -9,6 +9,7 @@ import type { TUseSaleState } from "@/state-hooks/use-sale-state";
 import { DollarSign, Minus, Plus, ShieldAlert, Wallet } from "lucide-react";
 import { useEffect } from "react";
 import CouponRedemptionSection from "./CouponRedemptionSection";
+import RewardRedemptionSection from "./RewardRedemptionSection";
 
 type CashbackRedemptionBlockProps = {
 	saleState: TUseSaleState;
@@ -32,17 +33,15 @@ function CashbackRedemptionBlock({ saleState, clientId, organizationCashbackProg
 		return Math.max(0, (saleState.valorAntesCashback * organizationCashbackProgram.resgateLimiteValor) / 100);
 	})();
 	const cashbackResgateMaximo = Math.max(0, Math.min(cashbackSaldoDisponivel, cashbackMaxByRule, saleState.valorAntesCashback));
-	const cashbackDisabledReason = !organizationCashbackProgram
-		? "Programa de cashback não configurado."
-		: !organizationCashbackProgram.ativo
-			? "Programa de cashback inativo."
-			: !organizationCashbackProgram.modalidadeDescontosPermitida
-				? "Este programa não permite resgate por desconto."
-				: cashbackSaldoDisponivel <= 0
-					? "Cliente sem saldo de cashback disponível."
-					: cashbackResgateMaximo <= 0
-						? "Não há valor disponível para resgate nesta venda."
-						: null;
+	// Programa ausente/inativo e modalidade de desconto desabilitada não chegam aqui: o bloco
+	// inteiro não é montado nesses casos (ver SummarySection).
+	const cashbackDisabledReason = saleState.state.recompensaResgate
+		? "Remova a recompensa para aplicar desconto em cashback."
+		: cashbackSaldoDisponivel <= 0
+			? "Cliente sem saldo de cashback disponível."
+			: cashbackResgateMaximo <= 0
+				? "Não há valor disponível para resgate nesta venda."
+				: null;
 	const isCashbackDisabled = isCashbackBalanceLoading || !!cashbackDisabledReason;
 
 	useEffect(() => {
@@ -109,11 +108,17 @@ type SummarySectionProps = {
 export default function SummarySection({ saleState, organizationCashbackProgram, discountAuthority, editMode }: SummarySectionProps) {
 	// Mesmo cômputo do servidor: desconto agregado (geral + itens + cupom MANUAL) sobre o bruto dos itens.
 	const cupomManual = saleState.state.cupomResgate?.validacaoModo === "MANUAL" ? saleState.state.cupomResgate.valorDesconto : 0;
-	const descontoAgregado = saleState.state.descontoGeral + saleState.totalDescontoItens + cupomManual;
-	const discountCeiling = discountAuthority ? getDiscountCeiling({ authority: discountAuthority, valorBase: saleState.subtotal }) : null;
+	const descontoAgregado = saleState.state.descontoGeral + saleState.totalDescontoItensAvaliavel + cupomManual;
+	const discountCeiling = discountAuthority ? getDiscountCeiling({ authority: discountAuthority, valorBase: saleState.subtotalAvaliavel }) : null;
 	const discountRequiresApproval = discountAuthority
-		? evaluateDiscount({ authority: discountAuthority, valorBase: saleState.subtotal, descontoTotal: descontoAgregado }) === "REQUER_APROVACAO"
+		? evaluateDiscount({ authority: discountAuthority, valorBase: saleState.subtotalAvaliavel, descontoTotal: descontoAgregado }) === "REQUER_APROVACAO"
 		: false;
+	// Modalidades desabilitadas não viram bloco desabilitado: somem do checkout. O programa vem
+	// do servidor (page.tsx), então não há piscada de carregamento antes de decidir.
+	const programaCashbackAtivo = !!organizationCashbackProgram?.ativo;
+	const podeResgatarPorDesconto = programaCashbackAtivo && !!organizationCashbackProgram?.modalidadeDescontosPermitida;
+	const podeResgatarRecompensa = programaCashbackAtivo && !!organizationCashbackProgram?.modalidadeRecompensasPermitida;
+	const mostrarBlocosDeResgate = !editMode && !!saleState.state.cliente;
 	return (
 		<div className="bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs">
 			<div className="flex items-center gap-1.5">
@@ -125,8 +130,13 @@ export default function SummarySection({ saleState, organizationCashbackProgram,
 				<span>{formatToMoney(saleState.totalItens)}</span>
 			</div>
 			<div className="flex flex-col gap-1.5">
-				{!editMode && saleState.state.cliente ? <CouponRedemptionSection saleState={saleState} clientId={saleState.state.cliente.id} /> : null}
-				{!editMode && saleState.state.cliente ? (
+				{mostrarBlocosDeResgate && saleState.state.cliente ? (
+					<CouponRedemptionSection saleState={saleState} clientId={saleState.state.cliente.id} />
+				) : null}
+				{mostrarBlocosDeResgate && podeResgatarRecompensa && saleState.state.cliente ? (
+					<RewardRedemptionSection saleState={saleState} clientId={saleState.state.cliente.id} />
+				) : null}
+				{mostrarBlocosDeResgate && podeResgatarPorDesconto && saleState.state.cliente ? (
 					<CashbackRedemptionBlock saleState={saleState} clientId={saleState.state.cliente.id} organizationCashbackProgram={organizationCashbackProgram} />
 				) : null}
 				<div className="w-full flex flex-col gap-1 px-2 py-1 rounded-lg bg-red-200">
@@ -189,6 +199,15 @@ export default function SummarySection({ saleState, organizationCashbackProgram,
 						{editMode ? <span className="text-[11px] text-muted-foreground"> (aplicado na venda)</span> : null}
 					</span>
 					<span>-{formatToMoney(saleState.state.cashbackResgate)}</span>
+				</div>
+			) : null}
+			{saleState.state.recompensaResgate ? (
+				<div className="flex items-center justify-between text-sm text-amber-600">
+					<span>
+						Recompensa: {saleState.state.recompensaResgate.titulo}
+						{editMode ? <span className="text-[11px] text-muted-foreground"> (aplicada na venda)</span> : null}
+					</span>
+					<span>GRÁTIS ({formatToMoney(saleState.state.recompensaResgate.valorVenda)})</span>
 				</div>
 			) : null}
 			<div className="flex items-center justify-between text-sm font-semibold">

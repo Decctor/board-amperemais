@@ -41,6 +41,48 @@ const GetCashbackProgramPrizesInputSchema = z.object({
 });
 export type TGetCashbackProgramPrizesInput = z.infer<typeof GetCashbackProgramPrizesInputSchema>;
 
+/**
+ * Um prêmio vira item de venda no resgate: seus vínculos precisam apontar para o catálogo e o
+ * programa da própria organização. Sem esta checagem, um `produtoId` alheio no payload faria o
+ * resgate expor nome, código e preço de custo de outra organização.
+ */
+async function assertPrizeLinksBelongToOrganization({
+	organizacaoId,
+	programaId,
+	prize,
+}: {
+	organizacaoId: string;
+	programaId?: string;
+	prize: { produtoId?: string | null; produtoVarianteId?: string | null };
+}) {
+	if (programaId) {
+		const programa = await db.query.cashbackPrograms.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.id, programaId), eq(fields.organizacaoId, organizacaoId)),
+			columns: { id: true },
+		});
+		if (!programa) throw new createHttpError.BadRequest("Programa de cashback não encontrado para esta organização.");
+	}
+
+	if (prize.produtoId) {
+		const produto = await db.query.products.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.id, prize.produtoId as string), eq(fields.organizacaoId, organizacaoId)),
+			columns: { id: true },
+		});
+		if (!produto) throw new createHttpError.BadRequest("O produto informado não pertence ao catálogo desta organização.");
+	}
+
+	if (prize.produtoVarianteId) {
+		const variante = await db.query.productVariants.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.id, prize.produtoVarianteId as string), eq(fields.organizacaoId, organizacaoId)),
+			columns: { id: true, produtoId: true },
+		});
+		if (!variante) throw new createHttpError.BadRequest("A variante informada não pertence ao catálogo desta organização.");
+		if (prize.produtoId && variante.produtoId !== prize.produtoId) {
+			throw new createHttpError.BadRequest("A variante informada não pertence ao produto informado.");
+		}
+	}
+}
+
 async function getCashbackProgramPrizes({ input, session }: { input: TGetCashbackProgramPrizesInput; session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
@@ -167,6 +209,8 @@ async function createCashbackProgramPrize({ input, session }: { input: TCreateCa
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
+	await assertPrizeLinksBelongToOrganization({ organizacaoId: userOrgId, programaId: input.cashbackProgramId, prize: input.cashbackProgramPrize });
+
 	const [insertedCashbackProgramPrize] = await db
 		.insert(cashbackProgramPrizes)
 		.values({
@@ -218,6 +262,8 @@ export type TUpdateCashbackProgramPrizeInput = z.infer<typeof UpdateCashbackProg
 async function updateCashbackProgramPrize({ input, session }: { input: TUpdateCashbackProgramPrizeInput; session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+
+	await assertPrizeLinksBelongToOrganization({ organizacaoId: userOrgId, prize: input.cashbackProgramPrize });
 
 	const [updatedCashbackProgramPrize] = await db
 		.update(cashbackProgramPrizes)

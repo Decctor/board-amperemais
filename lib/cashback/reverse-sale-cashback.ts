@@ -180,6 +180,9 @@ export async function reverseSaleCashback({ tx, saleId, clientId, organizationId
 			operadorId: redemption.operadorId,
 			operadorVendedorId: redemption.operadorVendedorId,
 			campanhaId: redemption.campanhaId,
+			// Preserva o vínculo com a recompensa para que o estorno seja rastreável até o prêmio.
+			resgateRecompensaId: redemption.resgateRecompensaId,
+			resgateRecompensaValor: redemption.resgateRecompensaValor,
 			dataInsercao: now,
 			metadados: {
 				transacaoOrigemId: redemption.id,
@@ -324,17 +327,17 @@ export async function reverseSaleCashback({ tx, saleId, clientId, organizationId
 		relatedCampaignIds.length === 0
 			? []
 			: await tx
-		.delete(interactions)
-		.where(
-			and(
-				eq(interactions.clienteId, clientId),
-				eq(interactions.organizacaoId, organizationId),
-				isNull(interactions.dataExecucao),
-				// Only delete interactions from campaigns that might have generated cashback
-				or(...relatedCampaignIds.map((campaignId) => eq(interactions.campanhaId, campaignId))),
-			),
-		)
-		.returning({ id: interactions.id });
+					.delete(interactions)
+					.where(
+						and(
+							eq(interactions.clienteId, clientId),
+							eq(interactions.organizacaoId, organizationId),
+							isNull(interactions.dataExecucao),
+							// Only delete interactions from campaigns that might have generated cashback
+							or(...relatedCampaignIds.map((campaignId) => eq(interactions.campanhaId, campaignId))),
+						),
+					)
+					.returning({ id: interactions.id });
 
 	const canceledInteractionsCount = canceledInteractions.length;
 	const detachedTransactionsCount =

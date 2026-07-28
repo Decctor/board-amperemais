@@ -113,8 +113,12 @@ async function createCashbackProgram({ input, session }: { input: TCreateCashbac
 		}
 
 		if (input.cashbackProgramPrizes.length > 0) {
+			// `organizacaoId` é obrigatório na prática: sem ele o prêmio fica órfão — invisível para
+			// as leituras org-scoped (resgate) e inalcançável pelo editor de programa, que restringe
+			// UPDATE/DELETE por organização.
 			const prizesToInsert = input.cashbackProgramPrizes.map((prize) => ({
 				...prize,
+				organizacaoId: userOrgId,
 				programaId: programId,
 			}));
 			await tx.insert(cashbackProgramPrizes).values(prizesToInsert);

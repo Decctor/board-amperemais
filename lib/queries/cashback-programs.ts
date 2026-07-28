@@ -6,6 +6,7 @@ import {
 	TGetCashbackProgramPrizesOutputById,
 } from "@/app/api/cashback-programs/prizes/route";
 import type { TGetCashbackProgramOutput } from "@/app/api/cashback-programs/route";
+import type { TGetAvailablePosRewardsOutput } from "@/app/api/pos/cashback-rewards/available/route";
 import type { TCashbackProgramsGraphInput, TCashbackProgramsGraphOutput } from "@/app/api/cashback-programs/stats/graph/route";
 import type { TCashbackProgramStatsOutput } from "@/app/api/cashback-programs/stats/route";
 import type { TCashbackProgramTransactionsInput, TCashbackProgramTransactionsOutput } from "@/app/api/cashback-programs/transactions/route";
@@ -209,3 +210,27 @@ export function useCashbackProgramPrizeById({ id }: { id: string }) {
 		queryKey: ["cashback-program-prize-by-id", id],
 	};
 }
+
+async function fetchPosAvailableRewards(clienteId: string) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("clienteId", clienteId);
+	const { data } = await axios.get<TGetAvailablePosRewardsOutput>(`/api/pos/cashback-rewards/available?${searchParams.toString()}`);
+	return data.data;
+}
+
+/**
+ * Recompensas (prêmios) resgatáveis pelo cliente vinculado no PDV: prêmios ativos do programa
+ * com elegibilidade computada contra o saldo do cliente (`elegivel`/`motivo`).
+ */
+export function usePosAvailableRewards({ clienteId }: { clienteId: string | null | undefined }) {
+	const queryKey = ["pos-available-rewards", clienteId];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchPosAvailableRewards(clienteId as string),
+			enabled: !!clienteId,
+		}),
+		queryKey,
+	};
+}
+export type TPosAvailableReward = Awaited<ReturnType<typeof fetchPosAvailableRewards>>["rewards"][number];

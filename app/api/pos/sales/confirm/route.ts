@@ -9,9 +9,10 @@ import {
 	processSaleConfirmationInTransaction,
 	processSaleConfirmationPostCommit,
 } from "@/lib/sales/sale-processing";
+import { admitSaleRewardRedemption, buildRewardSaleItemValues, parseSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-redemption";
 import { AppliedCouponSchema, type TAppliedCoupon } from "@/schemas/coupons";
 import { db } from "@/services/drizzle";
-import { sales } from "@/services/drizzle/schema";
+import { saleItems, sales } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -41,7 +42,7 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		}),
 		db.query.sales.findFirst({
 			where: and(eq(sales.id, input.id), eq(sales.organizacaoId, orgId)),
-			columns: { id: true, rascunhoMetadados: true, vendedorId: true, descontosTotal: true, tabId: true },
+			columns: { id: true, rascunhoMetadados: true, vendedorId: true, clienteId: true, descontosTotal: true, custoTotal: true, tabId: true },
 			with: {
 				itens: { columns: { valorVendaTotalBruto: true, valorTotalDesconto: true } },
 			},
@@ -98,6 +99,22 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 	const shopAppliedCoupon = shopMetadata?.shop?.cupom ?? null;
 	const effectiveAppliedCoupon = input.cupomResgate ?? shopAppliedCoupon ?? shopMetadata?.cupom ?? null;
 
+	// Recompensa: o rascunho guarda apenas o snapshot carimbado pelo servidor. Revalida tudo
+	// aqui (premio pode ter sido desativado, precos podem ter mudado) e so entao cria o item e
+	// o debito de saldo — nao se reserva saldo/estoque enquanto a venda e orcamento.
+	const rewardSnapshot = parseSaleRewardDraftSnapshot(saleDraft.rascunhoMetadados);
+	const admittedReward = rewardSnapshot
+		? await admitSaleRewardRedemption({
+				tx: db,
+				organizacaoId: orgId,
+				clienteId: input.clienteId ?? saleDraft.clienteId,
+				recompensaId: rewardSnapshot.recompensaId,
+				programaId: rewardSnapshot.programaId,
+				hasCoupon: !!effectiveAppliedCoupon,
+				cashbackResgate: effectiveCashbackResgate,
+			})
+		: null;
+
 	// Teto de desconto do vendedor: orcamento com desconto acima do limite nao e confirmavel sem aprovacao.
 	// Desconto geral vem do rascunhoMetadados do PDV; fallback deriva do total carimbado menos cupom/cashback.
 	const descontosGerais =
@@ -144,15 +161,41 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		saleCouponId: effectiveAppliedCoupon?.cupomId ?? null,
 		saleCouponDeclaredDiscountValue: effectiveAppliedCoupon?.valorDesconto ?? null,
 		saleCouponRedemptionSurface: !input.cupomResgate && shopAppliedCoupon ? "LOJA_DIGITAL" : undefined,
+		saleRewardRedemption: admittedReward
+			? {
+					recompensaId: admittedReward.prize.id,
+					programaId: admittedReward.programaId,
+					valorResgate: admittedReward.prize.valor,
+				}
+			: null,
 		accountingEntryDebitAccountId,
 		accountingEntryCreditAccountId,
 		sessaoVendaId,
 	};
 
-	// Mesma transacao: confirmacao + consumo one-shot da aprovacao de desconto (impede reuso).
+	// Mesma transacao: item da recompensa + confirmacao + consumo one-shot da aprovacao de desconto.
 	const confirmation = await db.transaction(async (tx) => {
 		if (descontoAprovacaoId) {
 			await consumeSaleDiscountApproval({ tx, aprovacaoId: descontoAprovacaoId, vendaId: input.id });
+		}
+		// O item nasce aqui (nao no rascunho) e antes da confirmacao, que le os itens da venda
+		// para baixa de estoque. Liquido 0 nao altera valorTotal; desconto e custo sim.
+		if (admittedReward) {
+			await tx.insert(saleItems).values(
+				buildRewardSaleItemValues({
+					organizacaoId: orgId,
+					vendaId: input.id,
+					clienteId: input.clienteId ?? saleDraft.clienteId ?? null,
+					prize: admittedReward.prize,
+				}),
+			);
+			await tx
+				.update(sales)
+				.set({
+					descontosTotal: (saleDraft.descontosTotal ?? 0) + admittedReward.prize.valorVenda,
+					custoTotal: (saleDraft.custoTotal ?? 0) + admittedReward.prize.precoCusto,
+				})
+				.where(eq(sales.id, input.id));
 		}
 		return processSaleConfirmationInTransaction({ tx, input: confirmationInput });
 	});

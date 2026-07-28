@@ -57,6 +57,9 @@ type CartItemRowProps = {
 
 function CartItemRow({ item, onUpdateQuantity, onRemove }: CartItemRowProps) {
 	const hasDiscount = item.valorDesconto > 0;
+	// Recompensa resgatada: quantidade fixa e sem remoção pelo carrinho. O débito de saldo já está
+	// no ledger — desfazê-lo exige remover a recompensa no resumo (venda em edição: cancelar).
+	const isReward = !!item.recompensaId;
 
 	return (
 		<div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-2.5">
@@ -75,17 +78,20 @@ function CartItemRow({ item, onUpdateQuantity, onRemove }: CartItemRowProps) {
 				<div className="min-w-0 flex-1">
 					<h4 className="line-clamp-2 text-sm font-bold leading-tight tracking-tight">{item.nome}</h4>
 					<p className="mt-0.5 truncate text-[0.65rem] font-medium text-muted-foreground">{item.codigo}</p>
+					{isReward ? <span className="text-[0.65rem] font-bold uppercase text-amber-600">Recompensa resgatada</span> : null}
 				</div>
 
-				<Button
-					size="icon"
-					variant="ghost"
-					className="h-7 w-7 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-					onClick={() => onRemove(item.tempId)}
-					aria-label="Remover item"
-				>
-					<Trash2 className="w-3.5 h-3.5" />
-				</Button>
+				{isReward ? null : (
+					<Button
+						size="icon"
+						variant="ghost"
+						className="h-7 w-7 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+						onClick={() => onRemove(item.tempId)}
+						aria-label="Remover item"
+					>
+						<Trash2 className="w-3.5 h-3.5" />
+					</Button>
+				)}
 			</div>
 
 			{/* Modificadores — bloco indentado com fundo, sem faixa lateral */}
@@ -106,29 +112,35 @@ function CartItemRow({ item, onUpdateQuantity, onRemove }: CartItemRowProps) {
 			{/* Quantidade + total */}
 			<div className="flex items-center justify-between">
 				{/* Stepper coeso: um único pill com divisórias internas */}
-				<div className="inline-flex items-center rounded-lg border border-border">
-					<button
-						type="button"
-						onClick={() => onUpdateQuantity(item.tempId, item.quantidade - 1)}
-						disabled={item.quantidade <= 1}
-						aria-label="Diminuir quantidade"
-						className="flex h-7 w-7 items-center justify-center rounded-l-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-					>
-						<Minus className="w-3 h-3" />
-					</button>
-					<span className="w-8 border-x border-border text-center text-sm font-bold tabular-nums leading-7">{item.quantidade}</span>
-					<button
-						type="button"
-						onClick={() => onUpdateQuantity(item.tempId, item.quantidade + 1)}
-						aria-label="Aumentar quantidade"
-						className="flex h-7 w-7 items-center justify-center rounded-r-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-					>
-						<Plus className="w-3 h-3" />
-					</button>
-				</div>
+				{isReward ? (
+					<span className="text-sm font-bold tabular-nums">1x</span>
+				) : (
+					<div className="inline-flex items-center rounded-lg border border-border">
+						<button
+							type="button"
+							onClick={() => onUpdateQuantity(item.tempId, item.quantidade - 1)}
+							disabled={item.quantidade <= 1}
+							aria-label="Diminuir quantidade"
+							className="flex h-7 w-7 items-center justify-center rounded-l-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+						>
+							<Minus className="w-3 h-3" />
+						</button>
+						<span className="w-8 border-x border-border text-center text-sm font-bold tabular-nums leading-7">{item.quantidade}</span>
+						<button
+							type="button"
+							onClick={() => onUpdateQuantity(item.tempId, item.quantidade + 1)}
+							aria-label="Aumentar quantidade"
+							className="flex h-7 w-7 items-center justify-center rounded-r-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+						>
+							<Plus className="w-3 h-3" />
+						</button>
+					</div>
+				)}
 
 				<div className="text-right">
-					<p className="font-black tabular-nums text-foreground">{formatToMoney(item.valorTotalLiquido)}</p>
+					<p className={`font-black tabular-nums ${isReward ? "text-amber-600" : "text-foreground"}`}>
+						{isReward ? "GRÁTIS" : formatToMoney(item.valorTotalLiquido)}
+					</p>
 					{hasDiscount ? <p className="text-xs tabular-nums text-muted-foreground line-through">{formatToMoney(item.valorTotalBruto)}</p> : null}
 				</div>
 			</div>

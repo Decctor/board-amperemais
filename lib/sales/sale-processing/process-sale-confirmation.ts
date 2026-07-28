@@ -24,6 +24,17 @@ export type TProcessSaleConfirmationInput = {
 	saleCashbackProgramId?: string | null;
 	saleCashbackRedemptionValue?: number;
 
+	// Resgate de recompensa (prêmio) do programa de cashback. Mutuamente exclusivo com
+	// saleCashbackRedemptionValue e com cupom: a idempotência do ledger é "existe RESGATE
+	// para a venda", e duas linhas RESGATE quebrariam reconfirmação e reversão.
+	// valorResgate está em moeda cashback (R$ ou pontos); o desconto comercial do prêmio
+	// já deve estar refletido no item da venda (item com 100% de desconto).
+	saleRewardRedemption?: {
+		recompensaId: string;
+		programaId: string;
+		valorResgate: number;
+	} | null;
+
 	// Cupom aplicado à venda (fase 1: no máximo 1 cupom por venda).
 	// O desconto já deve estar refletido nos totais da venda (como o cashbackResgate);
 	// aqui acontece o registro no ledger, com revalidação de disponibilidade e, para
@@ -129,8 +140,90 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 
 	const clientId = input.saleClientId ?? sale.clienteId;
 	const redemptionValue = input.saleCashbackRedemptionValue ?? 0;
+	const rewardRedemption = input.saleRewardRedemption ?? null;
 
-	if (redemptionValue > 0) {
+	if (rewardRedemption && redemptionValue > 0) {
+		throw new createHttpError.BadRequest("Resgate de recompensa nao pode ser combinado com desconto em cashback.");
+	}
+	if (rewardRedemption && input.saleCouponId) {
+		throw new createHttpError.BadRequest("Cupons nao podem ser combinados com resgate de recompensa.");
+	}
+
+	if (rewardRedemption) {
+		if (!clientId) throw new createHttpError.BadRequest("Cliente nao informado para resgate de recompensa.");
+
+		cashbackRedemptionResult = await (async () => {
+			// Idempotencia identica ao resgate-desconto: uma venda tem no maximo 1 RESGATE;
+			// reconfirmacoes reaproveitam a transacao existente.
+			const existingRedemption = await tx.query.cashbackProgramTransactions.findFirst({
+				where: and(
+					eq(cashbackProgramTransactions.organizacaoId, input.organization.id),
+					eq(cashbackProgramTransactions.vendaId, input.saleId),
+					eq(cashbackProgramTransactions.tipo, "RESGATE"),
+				),
+				columns: { id: true, saldoValorPosterior: true },
+			});
+			if (existingRedemption) {
+				return {
+					transactionId: existingRedemption.id,
+					newBalance: existingRedemption.saldoValorPosterior,
+				};
+			}
+
+			const program = await tx.query.cashbackPrograms.findFirst({
+				where: and(
+					eq(cashbackPrograms.id, rewardRedemption.programaId),
+					eq(cashbackPrograms.organizacaoId, input.organization.id),
+					eq(cashbackPrograms.ativo, true),
+				),
+			});
+			if (!program) throw new createHttpError.NotFound("Programa de cashback nao encontrado.");
+			if (!program.modalidadeRecompensasPermitida) throw new createHttpError.BadRequest("Resgate de recompensas nao permitido para esta venda.");
+			// Sem checagem de resgateLimite*: o teto e da modalidade desconto. O "preco" da
+			// recompensa e o proprio valor do premio, validado contra o catalogo pelo caller.
+
+			const redemptionResult = await applyCashbackRedemptionFIFO({
+				tx,
+				orgId: input.organization.id,
+				clientId,
+				programId: program.id,
+				redemptionValue: rewardRedemption.valorResgate,
+			});
+
+			const insertedTransaction = await tx
+				.insert(cashbackProgramTransactions)
+				.values({
+					organizacaoId: input.organization.id,
+					clienteId: clientId,
+					vendaId: input.saleId,
+					vendaValor: sale.valorTotal,
+					programaId: program.id,
+					status: "ATIVO",
+					tipo: "RESGATE",
+					valor: -rewardRedemption.valorResgate,
+					valorRestante: 0,
+					saldoValorAnterior: redemptionResult.previousBalance,
+					saldoValorPosterior: redemptionResult.newBalance,
+					expiracaoData: null,
+					operadorId: input.saleAuthorId,
+					operadorVendedorId: sale.vendedorId,
+					resgateRecompensaId: rewardRedemption.recompensaId,
+					resgateRecompensaValor: rewardRedemption.valorResgate,
+					metadados: {
+						consumoFifo: redemptionResult.consumedFromAccumulations,
+					},
+				})
+				.returning({ id: cashbackProgramTransactions.id });
+
+			const transactionId = insertedTransaction[0]?.id;
+			if (!transactionId) throw new createHttpError.InternalServerError("Erro ao registrar transacao de resgate de recompensa.");
+
+			return {
+				transactionId,
+				newBalance: redemptionResult.newBalance,
+			};
+		})();
+	} else if (redemptionValue > 0) {
 		if (!clientId) throw new createHttpError.BadRequest("Cliente nao informado para resgate de cashback.");
 
 		cashbackRedemptionResult = await (async () => {

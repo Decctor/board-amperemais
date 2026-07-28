@@ -2,6 +2,12 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
+import {
+	type TAdmittedSaleReward,
+	admitSaleRewardRedemption,
+	buildRewardSaleItemValues,
+	buildSaleRewardDraftSnapshot,
+} from "@/lib/sales/sale-reward-redemption";
 import { resolveActiveSalesSession } from "@/lib/sales-sessions";
 import { authorizeSaleDiscount, computeSaleAggregatedDiscount, consumeSaleDiscountApproval } from "@/lib/sales/sale-discount-authorization";
 import { resolveSaleFiscalEmissionOverride } from "@/lib/sales/sale-fiscal-emission-override";
@@ -53,12 +59,23 @@ const CreateAndConfirmSaleInputSchema = z.object({
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }).default(0),
 	cashbackProgramaId: z.string({ invalid_type_error: "Tipo não válido para ID do programa de cashback." }).optional().nullable(),
 	cupomResgate: AppliedCouponSchema.optional().nullable(),
+	// Resgate de recompensa (prêmio) via saldo de cashback. O item da recompensa NÃO vem em
+	// `itens` — o servidor valida o prêmio contra o catálogo e constrói o item ele mesmo.
+	recompensaResgate: z
+		.object({
+			recompensaId: z.string({ required_error: "ID da recompensa não informado." }),
+			programaId: z.string({ invalid_type_error: "Tipo não válido para ID do programa de cashback." }).optional().nullable(),
+		})
+		.optional()
+		.nullable(),
 	sessaoVendaId: z.string({ invalid_type_error: "Tipo não válido para o ID da sessão de venda." }).optional().nullable(),
 	// Override tri-state da emissão fiscal automática. null/ausente = herda a preferência da organização.
 	emissaoFiscalAutomatica: z.boolean({ invalid_type_error: "Tipo não válido para emissão fiscal automática." }).optional().nullable(),
 	// Aprovação VENDA_DESCONTO exigida quando o desconto agregado excede o teto do vendedor.
 	descontoAprovacaoId: z.string({ invalid_type_error: "Tipo não válido para o ID da aprovação de desconto." }).optional().nullable(),
-	itens: z.array(CartItemInputSchema).min(1, { message: "Pelo menos um item é obrigatório." }),
+	// Venda só-recompensa é permitida (carrinho vazio + recompensaResgate); a exigência de
+	// pelo menos um item quando não há recompensa é validada no service.
+	itens: z.array(CartItemInputSchema),
 });
 export type TCreateAndConfirmSaleInput = z.infer<typeof CreateAndConfirmSaleInputSchema>;
 
@@ -71,8 +88,28 @@ function getSessionWithOrg(session: TAuthUserSession | null) {
 async function createAndConfirmSale({ input, session }: { input: TCreateAndConfirmSaleInput; session: TAuthUserSession }) {
 	const orgId = session.membership!.organizacao.id;
 
+	if (input.itens.length === 0 && !input.recompensaResgate) {
+		throw new createHttpError.BadRequest("Pelo menos um item é obrigatório.");
+	}
+
 	// Nunca confie nos valores do cliente: recalcula os itens contra o catálogo antes de qualquer uso.
 	await validateSaleItemsPricing({ orgId, itens: input.itens });
+
+	// Resgate de recompensa: admissão + resolução autoritativa do prêmio contra o catálogo.
+	// Exclusivo com cupom (espelha o POI) e com resgate-desconto (a idempotência do ledger
+	// é "1 RESGATE por venda"). O desconto comercial do prêmio fica fora do teto de desconto
+	// do vendedor, como cashback e cupom AUTOMATICA — regras próprias validadas aqui.
+	const validatedReward: TAdmittedSaleReward | null = input.recompensaResgate
+		? await admitSaleRewardRedemption({
+				tx: db,
+				organizacaoId: orgId,
+				clienteId: input.clienteId,
+				recompensaId: input.recompensaResgate.recompensaId,
+				programaId: input.recompensaResgate.programaId,
+				hasCoupon: !!input.cupomResgate,
+				cashbackResgate: input.cashbackResgate ?? 0,
+			})
+		: null;
 
 	const productIds = [...new Set(input.itens.map((item) => item.produtoId))];
 	const variantIds = input.itens.map((item) => item.produtoVarianteId).filter((id): id is string => !!id);
@@ -157,10 +194,15 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 
 	const valorTotal = Math.max(0, valorBaseItens - descontosVenda + acrescimosGerais);
 	const descontosTotalItens = input.itens.reduce((sum, item) => sum + item.valorDesconto, 0);
-	const custoTotal = input.itens.reduce((sum, item) => {
-		const custo = item.produtoVarianteId ? (variantCostMap.get(item.produtoVarianteId) ?? 0) : (productCostMap.get(item.produtoId) ?? 0);
-		return sum + custo * item.quantidade;
-	}, 0);
+	// O item da recompensa entra com líquido 0 (bruto = desconto = precoVenda), então não afeta
+	// valorTotal — mas o desconto comercial compõe descontosTotal e o custo compõe custoTotal.
+	const recompensaDesconto = validatedReward?.prize.valorVenda ?? 0;
+	const descontosTotalPersistido = (descontosVenda > 0 ? descontosVenda : descontosTotalItens) + recompensaDesconto;
+	const custoTotal =
+		input.itens.reduce((sum, item) => {
+			const custo = item.produtoVarianteId ? (variantCostMap.get(item.produtoVarianteId) ?? 0) : (productCostMap.get(item.produtoId) ?? 0);
+			return sum + custo * item.quantidade;
+		}, 0) + (validatedReward?.prize.precoCusto ?? 0);
 
 	const salePayments = input.pagamentos.map((payment) => {
 		const methodDefaults = organizationPaymentMethodDefaults[payment.metodo];
@@ -188,7 +230,7 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 				clienteId: input.clienteId ?? null,
 				idExterno,
 				valorTotal,
-				descontosTotal: descontosVenda > 0 ? descontosVenda : descontosTotalItens > 0 ? descontosTotalItens : null,
+				descontosTotal: descontosTotalPersistido > 0 ? descontosTotalPersistido : null,
 				acrescimosTotal: input.acrescimosTotal ?? null,
 				custoTotal,
 				vendedorNome: input.vendedorNome ?? session.user.nome,
@@ -200,6 +242,7 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 				rascunhoMetadados: {
 					...((input.rascunhoMetadados as Record<string, unknown> | null) ?? {}),
 					cupom: input.cupomResgate ?? null,
+					recompensa: validatedReward ? buildSaleRewardDraftSnapshot(validatedReward) : null,
 				},
 				parceiro: "",
 				chave: "",
@@ -279,6 +322,18 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 			}
 		}
 
+		// Item da recompensa: construído pelo servidor (100% de desconto, custo real do catálogo).
+		if (validatedReward) {
+			await tx.insert(saleItems).values(
+				buildRewardSaleItemValues({
+					organizacaoId: orgId,
+					vendaId: newSaleId,
+					clienteId: input.clienteId ?? null,
+					prize: validatedReward.prize,
+				}),
+			);
+		}
+
 		const confirmation = await processSaleConfirmationInTransaction({
 			tx,
 			input: {
@@ -289,6 +344,13 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 				saleClientId: input.clienteId ?? null,
 				saleCashbackProgramId: input.cashbackProgramaId,
 				saleCashbackRedemptionValue: input.cashbackResgate,
+				saleRewardRedemption: validatedReward
+					? {
+							recompensaId: validatedReward.prize.id,
+							programaId: validatedReward.programaId,
+							valorResgate: validatedReward.prize.valor,
+						}
+					: null,
 				saleCouponId: input.cupomResgate?.cupomId ?? null,
 				saleCouponDeclaredDiscountValue: input.cupomResgate?.valorDesconto ?? null,
 				accountingEntryDebitAccountId,

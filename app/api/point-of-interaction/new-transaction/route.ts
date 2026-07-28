@@ -1,5 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { accumulateCashbackForClient, calculateAccumulatedCashbackValue, ensureCashbackBalanceForClient } from "@/lib/cashback/accumulation";
+import { type TValidatedPrizeForRedemption, validatePrizeForRedemption } from "@/lib/cashback/prizes";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { campaignAudienceHasClient, resolveCampaignAudiencesByCampaignId } from "@/lib/campaigns/filters";
 import { applyCampaignBonusToInteractionMetadata, buildBasePurchaseInteractionMetadata } from "@/lib/campaigns/interaction-metadata";
@@ -473,51 +474,14 @@ async function preparePointOfInteractionTransaction({ input, operatorContext, tx
 		}
 
 		// PRIZE VALIDATION (if prize redemption is requested)
-		let validatedPrize: {
-			id: string;
-			valor: number;
-			valorVenda: number;
-			produtoId: string | null;
-			produtoVarianteId: string | null;
-		} | null = null;
+		let validatedPrize: TValidatedPrizeForRedemption | null = null;
 		if (isPrizeRedemption && prizeRedemption) {
-			const prize = await tx.query.cashbackProgramPrizes.findFirst({
-				where: (fields, { and, eq }) => and(eq(fields.id, prizeRedemption.prizeId), eq(fields.ativo, true), eq(fields.programaId, program.id)),
-				columns: {
-					id: true,
-					valor: true,
-					produtoId: true,
-					produtoVarianteId: true,
-				},
-				with: {
-					produto: {
-						columns: {
-							precoVenda: true,
-						},
-					},
-					produtoVariante: {
-						columns: {
-							precoVenda: true,
-						},
-					},
-				},
+			validatedPrize = await validatePrizeForRedemption({
+				tx,
+				organizacaoId: input.orgId,
+				programaId: program.id,
+				recompensaId: prizeRedemption.prizeId,
 			});
-			if (!prize) {
-				throw new createHttpError.BadRequest("Recompensa não encontrada ou inativa.");
-			}
-			if (!prize.produtoId && !prize.produtoVarianteId) {
-				throw new createHttpError.BadRequest("A recompensa selecionada não possui vínculo com produto ou variante.");
-			}
-
-			const prizeSaleValue = prize.produtoVariante?.precoVenda ?? prize.produto?.precoVenda ?? 0;
-
-			validatedPrize = {
-				id: prize.id,
-				valor: prize.valor,
-				valorVenda: prizeSaleValue,
-				produtoId: prize.produtoId,
-				produtoVarianteId: prize.produtoVarianteId,
-			};
 		}
 
 		const effectiveSaleValue = validatedPrize?.valorVenda ?? input.sale.valor;
@@ -725,7 +689,7 @@ async function preparePointOfInteractionTransaction({ input, operatorContext, tx
 					idExterno: `POI-${Date.now()}-${Math.random().toString(36).substring(7)}`,
 					valorTotal: effectiveSaleFinalValue,
 					descontosTotal: (transactionRequiresRedemptionProcessing ? Math.min(effectiveSaleValue, effectiveRedemptionValue) : 0) + couponDiscountValue,
-					custoTotal: 0,
+					custoTotal: validatedPrize?.precoCusto ?? 0,
 					vendedorNome: operator.nome,
 					vendedorId: operator.id,
 					parceiro: normalizedPartnerCode ?? "N/A",
@@ -804,8 +768,9 @@ async function preparePointOfInteractionTransaction({ input, operatorContext, tx
 					.where(eq(couponRedemptions.id, transactionCouponRedemptionId));
 			}
 
-			// Insert saleItem if this is a prize redemption and the prize has a linked product
-			if (isPrizeRedemption && validatedPrize?.produtoId && transactionSaleId) {
+			// Insert saleItem if this is a prize redemption (produtoId sempre resolvido pelo validador,
+			// inclusive para prêmios vinculados apenas a variante).
+			if (isPrizeRedemption && validatedPrize && transactionSaleId) {
 				const saleItemDiscountValue = Math.min(validatedPrize.valorVenda, validatedPrize.valor);
 				await tx.insert(saleItems).values({
 					organizacaoId: input.orgId,
@@ -815,11 +780,11 @@ async function preparePointOfInteractionTransaction({ input, operatorContext, tx
 					produtoVarianteId: validatedPrize.produtoVarianteId ?? null,
 					quantidade: 1,
 					valorVendaUnitario: validatedPrize.valorVenda,
-					valorCustoUnitario: 0,
+					valorCustoUnitario: validatedPrize.precoCusto,
 					valorVendaTotalBruto: validatedPrize.valorVenda,
 					valorTotalDesconto: saleItemDiscountValue,
 					valorVendaTotalLiquido: Math.max(0, validatedPrize.valorVenda - saleItemDiscountValue),
-					valorCustoTotal: 0,
+					valorCustoTotal: validatedPrize.precoCusto,
 					metadados: {
 						origem: "POI-RESGATE-RECOMPENSA",
 						valorResgate: validatedPrize.valor,
