@@ -2,13 +2,13 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { assertChatAccess } from "@/lib/chats/access";
-import { ChatInboxViewEnum } from "@/schemas/enums";
+import { ChatAssignmentStatusEnum, ChatInboxViewEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { chatAssignments, chatMessages, chats } from "@/services/drizzle/schema/chats";
 import { clients } from "@/services/drizzle/schema/clients";
 import { users } from "@/services/drizzle/schema/users";
 import { whatsappConnectionPhones, whatsappConnections } from "@/services/drizzle/schema/whatsapp-connections";
-import { and, desc, eq, ilike, isNull, lt, notInArray, or } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, lt, notInArray, or } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -26,6 +26,20 @@ const GetChatsInputSchema = z.object({
 		.nullable()
 		.transform((v) => ChatInboxViewEnum.catch("MINHAS").parse(v ?? "MINHAS")),
 	search: z.string({ invalid_type_error: "Tipo inválido para a busca." }).optional().nullable(),
+	// Multi-seleção: valores separados por vírgula. Entradas fora do enum são descartadas
+	// (um status removido no futuro não pode derrubar a inbox de quem o tinha persistido).
+	status: z
+		.string({ invalid_type_error: "Tipo inválido para o filtro de status." })
+		.optional()
+		.nullable()
+		.transform((v) =>
+			v
+				? v
+						.split(",")
+						.map((s) => ChatAssignmentStatusEnum.safeParse(s))
+						.flatMap((r) => (r.success ? [r.data] : []))
+				: [],
+		),
 	cursor: z.string({ invalid_type_error: "Tipo inválido para o cursor." }).optional().nullable(),
 	limit: z
 		.string({ invalid_type_error: "Tipo inválido para o limite." })
@@ -157,6 +171,11 @@ async function getChats({ session, input }: { session: TAuthUserSession; input: 
 					? eq(chatAssignments.responsavelTipo, "AGENTE")
 					: undefined;
 
+	// O join só traz atendimentos não-terminais, então o filtro opera sobre o atendimento
+	// corrente; chats sem atendimento ativo ficam de fora quando há status selecionado
+	// (eles não têm status a comparar).
+	const statusCondition = input.status.length > 0 ? inArray(chatAssignments.status, input.status) : undefined;
+
 	const searchTerm = input.search?.trim();
 	const searchCondition = searchTerm
 		? or(ilike(clients.nome, `%${searchTerm}%`), ilike(clients.telefone, `%${searchTerm}%`), ilike(chatMessages.conteudoTexto, `%${searchTerm}%`))
@@ -169,6 +188,7 @@ async function getChats({ session, input }: { session: TAuthUserSession; input: 
 				input.whatsappConexaoTelefoneId ? eq(chats.whatsappConexaoTelefoneId, input.whatsappConexaoTelefoneId) : undefined,
 				cursor ? or(lt(chats.ultimaMensagemData, cursor.data), and(eq(chats.ultimaMensagemData, cursor.data), lt(chats.id, cursor.id))) : undefined,
 				viewCondition,
+				statusCondition,
 				searchCondition,
 			),
 		)
@@ -201,6 +221,7 @@ async function getChatsRoute(req: NextRequest) {
 		whatsappConexaoTelefoneId: searchParams.get("whatsappConexaoTelefoneId"),
 		view: searchParams.get("view"),
 		search: searchParams.get("search"),
+		status: searchParams.get("status"),
 		cursor: searchParams.get("cursor"),
 		limit: searchParams.get("limit"),
 	});
