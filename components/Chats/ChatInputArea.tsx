@@ -1,0 +1,186 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { getWhatsappWindowDisplay } from "@/lib/chats/whatsapp-window-status";
+import { cn } from "@/lib/utils";
+import { Lock, Paperclip, Send, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+export type TOutgoingAttachment = { tipo: "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO"; base64: string; mimeType: string; arquivoNome: string };
+
+type ChatInputAreaProps = {
+	chatId: string;
+	userName: string;
+	organizationId: string;
+	isOwner: boolean;
+	janelaExpiracao: Date | string | null;
+	conexaoTipo: "META_CLOUD_API" | "INTERNAL_GATEWAY" | null;
+	isSending: boolean;
+	onSend: (input: { texto: string; assinaturaAtiva: boolean; midia: TOutgoingAttachment | null }) => void;
+	onAssume: () => void;
+	templates: { id: string; nome: string }[];
+	onSendTemplate: (messageTemplateId: string) => void;
+};
+
+function resolveMediaType(mimeType: string): TOutgoingAttachment["tipo"] {
+	if (mimeType.startsWith("image/")) return "IMAGEM";
+	if (mimeType.startsWith("video/")) return "VIDEO";
+	if (mimeType.startsWith("audio/")) return "AUDIO";
+	return "DOCUMENTO";
+}
+
+export function ChatInputArea({
+	chatId,
+	userName,
+	organizationId,
+	isOwner,
+	janelaExpiracao,
+	conexaoTipo,
+	isSending,
+	onSend,
+	onAssume,
+	templates,
+	onSendTemplate,
+}: ChatInputAreaProps) {
+	const [texto, setTexto] = useState("");
+	const [attachment, setAttachment] = useState<TOutgoingAttachment | null>(null);
+	const [assinaturaAtiva, setAssinaturaAtiva] = useState(false);
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const signatureStorageKey = `chat-signature-${organizationId}`;
+
+	useEffect(() => {
+		setAssinaturaAtiva(window.localStorage.getItem(signatureStorageKey) === "true");
+	}, [signatureStorageKey]);
+
+	// Auto-resize: a textarea cresce com o conteúdo até 4 linhas.
+	useEffect(() => {
+		const element = textareaRef.current;
+		if (!element) return;
+		element.style.height = "auto";
+		element.style.height = `${Math.min(element.scrollHeight, 120)}px`;
+	}, []);
+
+	const janela = getWhatsappWindowDisplay({ expiracao: janelaExpiracao, tipoConexao: conexaoTipo });
+
+	function handleSignatureChange(checked: boolean) {
+		setAssinaturaAtiva(checked);
+		window.localStorage.setItem(signatureStorageKey, String(checked));
+	}
+
+	async function handleFileSelected(file: File) {
+		const buffer = await file.arrayBuffer();
+		const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+		setAttachment({ tipo: resolveMediaType(file.type), base64, mimeType: file.type || "application/octet-stream", arquivoNome: file.name });
+	}
+
+	function handleSubmit() {
+		if (isSending) return;
+		if (!texto.trim() && !attachment) return;
+		onSend({ texto: texto.trim(), assinaturaAtiva, midia: attachment });
+		setTexto("");
+		setAttachment(null);
+	}
+
+	// Sem posse, o envio seria recusado com 403 pela rota. Bloquear aqui transforma um
+	// erro em uma ação: o CTA leva direto ao "assumir".
+	if (!isOwner) {
+		return (
+			<div className="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-4 py-3">
+				<p className="text-xs text-muted-foreground">Assuma este atendimento para enviar mensagens.</p>
+				<Button size="sm" className="h-7 text-[0.7rem]" onClick={onAssume}>
+					ASSUMIR ATENDIMENTO
+				</Button>
+			</div>
+		);
+	}
+
+	if (!janela.canSendFreeform) {
+		return (
+			<div className="flex flex-col gap-2 border-t border-border bg-muted/40 px-4 py-3">
+				<p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+					<Lock className="h-3.5 w-3.5" />
+					{janela.label}. Só um template aprovado pode reabrir a conversa — a janela volta a abrir quando o cliente responder.
+				</p>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button size="sm" variant="outline" className="h-7 self-start text-[0.7rem]" disabled={isSending}>
+							ENVIAR TEMPLATE
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="start" className="max-h-64 overflow-y-auto">
+						{templates.length === 0 && <DropdownMenuItem disabled>Nenhum template aprovado para este número</DropdownMenuItem>}
+						{templates.map((template) => (
+							<DropdownMenuItem key={template.id} onClick={() => onSendTemplate(template.id)}>
+								{template.nome}
+							</DropdownMenuItem>
+						))}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
+		);
+	}
+
+	return (
+		<div className="flex flex-col gap-2 border-t border-border bg-background px-3 py-2">
+			{attachment && (
+				<div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/50 px-2 py-1.5 text-xs">
+					<span className="truncate">{attachment.arquivoNome}</span>
+					<Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setAttachment(null)}>
+						<X className="h-3 w-3" />
+					</Button>
+				</div>
+			)}
+
+			<div className="flex items-end gap-2">
+				<input
+					ref={fileInputRef}
+					type="file"
+					className="hidden"
+					onChange={(event) => {
+						const file = event.target.files?.[0];
+						if (file) void handleFileSelected(file);
+						event.target.value = "";
+					}}
+				/>
+				<Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => fileInputRef.current?.click()} disabled={isSending}>
+					<Paperclip className="h-4 w-4" />
+				</Button>
+
+				<Textarea
+					ref={textareaRef}
+					value={texto}
+					onChange={(event) => {
+						setTexto(event.target.value);
+						event.target.style.height = "auto";
+						event.target.style.height = `${Math.min(event.target.scrollHeight, 120)}px`;
+					}}
+					onKeyDown={(event) => {
+						// Enter envia, Shift+Enter quebra linha — convenção de chat, não de formulário.
+						if (event.key === "Enter" && !event.shiftKey) {
+							event.preventDefault();
+							handleSubmit();
+						}
+					}}
+					placeholder="Digite uma mensagem..."
+					rows={1}
+					className="min-h-9 resize-none py-2 text-sm"
+					disabled={isSending}
+				/>
+
+				<Button size="icon" className="h-9 w-9 shrink-0" onClick={handleSubmit} disabled={isSending || (!texto.trim() && !attachment)}>
+					<Send className="h-4 w-4" />
+				</Button>
+			</div>
+
+			<label className={cn("flex items-center gap-2 self-start text-[0.7rem] text-muted-foreground", isSending && "opacity-60")}>
+				<Switch checked={assinaturaAtiva} onCheckedChange={handleSignatureChange} disabled={isSending} />
+				Assinar como {userName}
+			</label>
+			<input type="hidden" value={chatId} readOnly />
+		</div>
+	);
+}

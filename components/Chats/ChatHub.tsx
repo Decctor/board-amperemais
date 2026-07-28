@@ -1,0 +1,45 @@
+"use client";
+
+import type { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/route";
+import type { TAuthUserSession } from "@/lib/authentication/types";
+import { cn } from "@/lib/utils";
+import { MessageSquare } from "lucide-react";
+import { useState } from "react";
+import { ChatSidebar } from "./ChatSidebar";
+import { ChatThread } from "./ChatThread";
+
+type ChatHubProps = {
+	user: TAuthUserSession["user"];
+	organizationId: string;
+	whatsappConnections: TGetWhatsappConnectionsOutput["data"];
+};
+
+export default function ChatHub({ user, organizationId, whatsappConnections }: ChatHubProps) {
+	const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+	const currentUser = { id: user.id, nome: user.nome, avatarUrl: user.avatarUrl };
+
+	return (
+		<div className="flex h-full min-h-0 w-full">
+			{/* No mobile, a lista some quando uma conversa está aberta. */}
+			<div className={cn("w-full shrink-0 md:w-80 lg:w-96", selectedChatId && "hidden md:block")}>
+				<ChatSidebar
+					organizationId={organizationId}
+					selectedChatId={selectedChatId}
+					onSelectChat={setSelectedChatId}
+					whatsappConnections={whatsappConnections}
+				/>
+			</div>
+
+			<div className={cn("min-w-0 flex-1", !selectedChatId && "hidden md:block")}>
+				{selectedChatId ? (
+					<ChatThread key={selectedChatId} chatId={selectedChatId} organizationId={organizationId} currentUser={currentUser} />
+				) : (
+					<div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
+						<MessageSquare className="h-8 w-8 opacity-40" />
+						<p className="text-sm">Selecione uma conversa para começar.</p>
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}

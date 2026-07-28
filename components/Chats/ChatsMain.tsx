@@ -5,7 +5,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { useWhatsappConnections } from "@/lib/queries/whatsapp-connections";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
-import ChatsHub from "./ChatsHub";
+import ChatHub from "./ChatHub";
 
 type ChatsMainProps = {
 	user: TAuthUserSession["user"];
@@ -19,5 +19,7 @@ export default function ChatsMain({ user, organizationId }: ChatsMainProps) {
 	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
 	if (whatsappConnections.length === 0) return <ErrorComponent msg="Conexão do WhatsApp não encontrada." />;
 
-	return <ChatsHub user={user} organizationId={organizationId} userHasMessageSendingPermission={true} whatsappConnections={whatsappConnections} />;
+	// As permissões passam a ser aplicadas na API; a UI reage aos 403 e ao estado de posse
+	// do atendimento, em vez do antigo `userHasMessageSendingPermission={true}` fixo.
+	return <ChatHub user={user} organizationId={organizationId} whatsappConnections={whatsappConnections} />;
 }

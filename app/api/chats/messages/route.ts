@@ -1,322 +1,306 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { assertChatAccess } from "@/lib/chats/access";
+import { markChatAnswered } from "@/lib/chats/attendance-state";
+import { deliverChatMessage, loadChatForSending, renderTemplatePlainContent, resolveApprovedTemplate } from "@/lib/chats/outgoing-message";
 import { getChatMediaUrl, uploadChatMedia } from "@/lib/files-storage/chat-media";
 import { db } from "@/services/drizzle";
-import { chatMessages, chatServices, chats } from "@/services/drizzle/schema/chats";
-import { and, desc, eq, lt, or } from "drizzle-orm";
+import { chatAssignments, chatMessages, chats } from "@/services/drizzle/schema/chats";
+import { and, eq, lt, notInArray, or } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-// ============= GET - Get paginated messages for a chat =============
+const DEFAULT_PAGE_SIZE = 30;
+const MAX_PAGE_SIZE = 100;
+const CLOSED_ASSIGNMENT_STATUSES = ["ENCERRADO", "CANCELADO"] as const;
 
-const getMessagesQuerySchema = z.object({
-	chatId: z.string(),
-	cursor: z.string().optional(),
-	limit: z.coerce.number().min(1).max(100).default(50),
+// ============= GET - Thread paginada por cursor =============
+
+const GetChatMessagesInputSchema = z.object({
+	chatId: z.string({ required_error: "ID do chat não informado.", invalid_type_error: "Tipo inválido para o ID do chat." }),
+	cursorDataEnvio: z.string({ invalid_type_error: "Tipo inválido para a data do cursor." }).optional().nullable(),
+	cursorId: z.string({ invalid_type_error: "Tipo inválido para o ID do cursor." }).optional().nullable(),
+	limit: z
+		.string({ invalid_type_error: "Tipo inválido para o limite." })
+		.optional()
+		.nullable()
+		.transform((v) => Math.min(Math.max(v ? Number(v) : DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE)),
 });
+export type TGetChatMessagesInput = z.infer<typeof GetChatMessagesInputSchema>;
 
-export type TGetMessagesInput = z.infer<typeof getMessagesQuerySchema>;
+type TChatMessageRow = typeof chatMessages.$inferSelect & {
+	autorUsuario: { id: string; nome: string; avatarUrl: string | null } | null;
+	autorCliente: { id: string; nome: string } | null;
+};
 
-async function getMessages({ session, input }: { session: TAuthUserSession; input: TGetMessagesInput }) {
-	const { chatId, cursor, limit } = input;
-	const organizacaoId = session.membership?.organizacao.id;
+/** Forma da mensagem consumida pelo hub. É o contrato que o realtime também precisa produzir. */
+function mapChatMessage(message: TChatMessageRow) {
+	return {
+		id: message.id,
+		chatId: message.chatId,
+		autorTipo: message.autorTipo,
+		autorUsuario: message.autorUsuario,
+		autorCliente: message.autorCliente,
+		conteudoTexto: message.conteudoTexto,
+		conteudoMidiaTipo: message.conteudoMidiaTipo,
+		// A URL pública é derivada do storage id: URLs salvas em conteudoMidiaUrl envelhecem.
+		conteudoMidiaUrl: message.conteudoMidiaStorageId ? getChatMediaUrl(message.conteudoMidiaStorageId) : message.conteudoMidiaUrl,
+		conteudoMidiaMimeType: message.conteudoMidiaMimeType,
+		conteudoMidiaArquivoNome: message.conteudoMidiaArquivoNome,
+		conteudoMidiaArquivoTamanho: message.conteudoMidiaArquivoTamanho,
+		conteudoMidiaTextoProcessado: message.conteudoMidiaTextoProcessado,
+		conteudoMidiaTextoProcessadoResumo: message.conteudoMidiaTextoProcessadoResumo,
+		statusEntrega: message.statusEntrega,
+		provedorStatusDataAtualizacao: message.provedorStatusDataAtualizacao,
+		dataEnvio: message.dataEnvio,
+		whatsappMessageId: message.whatsappMessageId,
+		whatsappEcho: message.whatsappEcho,
+		clienteMensagemId: message.clienteMensagemId,
+		metadados: message.metadados ?? null,
+	};
+}
+export type TChatMessageForHub = ReturnType<typeof mapChatMessage>;
 
-	if (!organizacaoId) {
-		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
-	}
+const MESSAGE_AUTHOR_WITH = {
+	autorUsuario: { columns: { id: true, nome: true, avatarUrl: true } },
+	autorCliente: { columns: { id: true, nome: true } },
+} as const;
 
-	// Verify chat belongs to organization
+async function getChatMessages({ session, input }: { session: TAuthUserSession; input: TGetChatMessagesInput }) {
+	const { organizacaoId } = assertChatAccess({ session, permission: "visualizar" });
+
 	const chat = await db.query.chats.findFirst({
-		where: (fields, { and, eq }) => and(eq(fields.id, chatId), eq(fields.organizacaoId, organizacaoId)),
-	});
-
-	if (!chat) {
-		throw new createHttpError.NotFound("Chat não encontrado.");
-	}
-
-	// Parse cursor (format: "timestamp_id")
-	let cursorTimestamp: Date | null = null;
-	let cursorId: string | null = null;
-	if (cursor) {
-		const [timestampStr, id] = cursor.split("_");
-		cursorTimestamp = new Date(Number.parseInt(timestampStr, 10));
-		cursorId = id;
-	}
-
-	// Build query for messages (reverse chronological order)
-	const messages = await db.query.chatMessages.findMany({
-		where: (fields, { and, eq, lt, or }) =>
-			and(
-				eq(fields.chatId, chatId),
-				cursorTimestamp && cursorId
-					? or(lt(fields.dataEnvio, cursorTimestamp), and(eq(fields.dataEnvio, cursorTimestamp), lt(fields.id, cursorId)))
-					: undefined,
-			),
-		orderBy: (fields, { desc }) => [desc(fields.dataEnvio), desc(fields.id)],
-		limit: limit + 1,
+		where: and(eq(chats.id, input.chatId), eq(chats.organizacaoId, organizacaoId)),
+		columns: {
+			id: true,
+			clienteId: true,
+			whatsappConexaoId: true,
+			whatsappConexaoTelefoneId: true,
+			whatsappTelefoneId: true,
+			mensagensNaoLidas: true,
+			whatsappJanelaDataExpiracao: true,
+			ultimaMensagemEntradaData: true,
+			ultimaMensagemSaidaData: true,
+			ultimaLeituraData: true,
+		},
 		with: {
-			autorUsuario: {
-				columns: {
-					id: true,
-					nome: true,
-					avatarUrl: true,
-				},
-			},
-			autorCliente: {
-				columns: {
-					id: true,
-					nome: true,
-				},
-			},
+			cliente: { columns: { id: true, nome: true, telefone: true } },
+			whatsappConexao: { columns: { id: true, tipoConexao: true } },
 		},
 	});
+	if (!chat) throw new createHttpError.NotFound("Chat não encontrado.");
 
-	// Check if there are more results
-	const hasMore = messages.length > limit;
-	const pageMessages = hasMore ? messages.slice(0, limit) : messages;
-
-	// Enrich messages with author data
-	const enrichedMessages = pageMessages.map((message) => {
-		let autor: { nome: string; avatarUrl?: string | null } | null = null;
-
-		switch (message.autorTipo) {
-			case "CLIENTE":
-				autor = message.autorCliente ? { nome: message.autorCliente.nome } : null;
-				break;
-			case "USUÁRIO":
-				autor = message.autorUsuario ? { nome: message.autorUsuario.nome, avatarUrl: message.autorUsuario.avatarUrl } : null;
-				break;
-			case "AI":
-				autor = { nome: "Assistente IA" };
-				break;
-			case "BUSINESS-APP":
-				autor = { nome: "Telefone" };
-				break;
-		}
-
-		// Get public URL for media if exists
-		const mediaUrl = message.conteudoMidiaStorageId ? getChatMediaUrl(message.conteudoMidiaStorageId) : message.conteudoMidiaUrl;
-
-		return {
-			...message,
-			autor,
-			conteudoMidiaUrl: mediaUrl,
-		};
+	const atendimentoAtivo = await db.query.chatAssignments.findFirst({
+		where: and(
+			eq(chatAssignments.chatId, input.chatId),
+			eq(chatAssignments.organizacaoId, organizacaoId),
+			notInArray(chatAssignments.status, [...CLOSED_ASSIGNMENT_STATUSES]),
+		),
+		with: { responsavelUsuario: { columns: { id: true, nome: true, avatarUrl: true } } },
+		orderBy: (fields, { desc: orderDesc }) => [orderDesc(fields.dataAtribuicao)],
 	});
 
-	// Reverse to show oldest first (for display)
-	enrichedMessages.reverse();
+	const cursorDate = input.cursorDataEnvio ? new Date(input.cursorDataEnvio) : null;
+	const messages = await db.query.chatMessages.findMany({
+		where: and(
+			eq(chatMessages.chatId, input.chatId),
+			eq(chatMessages.organizacaoId, organizacaoId),
+			cursorDate && input.cursorId
+				? or(lt(chatMessages.dataEnvio, cursorDate), and(eq(chatMessages.dataEnvio, cursorDate), lt(chatMessages.id, input.cursorId)))
+				: undefined,
+		),
+		with: MESSAGE_AUTHOR_WITH,
+		orderBy: (fields, { desc: orderDesc }) => [orderDesc(fields.dataEnvio), orderDesc(fields.id)],
+		limit: input.limit + 1,
+	});
 
-	// Create next cursor from the oldest message (before reversing)
-	let nextCursor: string | null = null;
-	if (hasMore && pageMessages.length > 0) {
-		const oldestMessage = pageMessages[pageMessages.length - 1];
-		nextCursor = `${oldestMessage.dataEnvio.getTime()}_${oldestMessage.id}`;
-	}
+	const hasMoreOlder = messages.length > input.limit;
+	// A thread é servida em ordem DESC (mais recente primeiro): o ChatThread renderiza
+	// em flex-col-reverse, e assim a página nova entra no fim do array sem re-ordenação.
+	const items = (hasMoreOlder ? messages.slice(0, input.limit) : messages).map((message) => mapChatMessage(message as TChatMessageRow));
+	const oldest = items[items.length - 1];
 
 	return {
 		data: {
-			items: enrichedMessages,
-			hasMore,
-			nextCursor,
+			chat: {
+				...chat,
+				conexaoTipo: chat.whatsappConexao?.tipoConexao ?? null,
+				atendimentoAtivo: atendimentoAtivo ?? null,
+			},
+			items,
+			nextCursor: hasMoreOlder && oldest ? { dataEnvio: oldest.dataEnvio.toISOString(), id: oldest.id } : null,
+			hasMoreOlder,
 		},
 		message: "Mensagens carregadas com sucesso.",
 	};
 }
+export type TGetChatMessagesOutput = Awaited<ReturnType<typeof getChatMessages>>;
 
-export type TGetMessagesOutput = Awaited<ReturnType<typeof getMessages>>;
-
-async function getMessagesRoute(req: NextRequest) {
+async function getChatMessagesRoute(req: NextRequest) {
 	const session = await getCurrentSessionUncached();
-	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado.");
-
 	const searchParams = req.nextUrl.searchParams;
-	const input = getMessagesQuerySchema.parse({
+	const input = GetChatMessagesInputSchema.parse({
 		chatId: searchParams.get("chatId"),
-		cursor: searchParams.get("cursor") || undefined,
-		limit: searchParams.get("limit") || 50,
+		cursorDataEnvio: searchParams.get("cursorDataEnvio"),
+		cursorId: searchParams.get("cursorId"),
+		limit: searchParams.get("limit"),
 	});
-
-	const result = await getMessages({ session, input });
+	const result = await getChatMessages({ session: session as TAuthUserSession, input });
 	return NextResponse.json(result, { status: 200 });
 }
 
-// ============= POST - Create a new message =============
+// ============= POST - Envio unificado (persiste + envia) =============
 
-const createMessageBodySchema = z.object({
-	chatId: z.string(),
-	conteudoTexto: z.string().optional(),
-	conteudoMidiaTipo: z.enum(["TEXTO", "IMAGEM", "VIDEO", "AUDIO", "DOCUMENTO"]).default("TEXTO"),
-	conteudoMidiaBase64: z.string().optional(),
-	conteudoMidiaMimeType: z.string().optional(),
-	conteudoMidiaArquivoNome: z.string().optional(),
-});
-
-export type TCreateMessageInput = z.infer<typeof createMessageBodySchema>;
-
-async function createMessage({ session, input }: { session: TAuthUserSession; input: TCreateMessageInput }) {
-	const organizacaoId = session.membership?.organizacao.id;
-
-	if (!organizacaoId) {
-		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
-	}
-
-	// Check if hubAtendimentos access is enabled
-	const hasHubAccess = session.membership?.organizacao.configuracao?.recursos?.hubAtendimentos?.acesso ?? false;
-	if (!hasHubAccess) {
-		throw new createHttpError.Forbidden("Acesso ao hub de atendimentos não está habilitado para esta organização.");
-	}
-
-	// Get chat with connection info
-	const chat = await db.query.chats.findFirst({
-		where: (fields, { and, eq }) => and(eq(fields.id, input.chatId), eq(fields.organizacaoId, organizacaoId)),
-		with: {
-			whatsappConexao: {
-				columns: {
-					id: true,
-					token: true,
-				},
-			},
-			cliente: true,
-		},
-	});
-
-	if (!chat) {
-		throw new createHttpError.NotFound("Chat não encontrado.");
-	}
-
-	// Get or create service
-	let serviceId: string | null = null;
-	const existingService = await db.query.chatServices.findFirst({
-		where: (fields, { and, eq, or }) => and(eq(fields.chatId, input.chatId), or(eq(fields.status, "PENDENTE"), eq(fields.status, "EM_ANDAMENTO"))),
-	});
-
-	if (existingService) {
-		serviceId = existingService.id;
-		// Update responsible to current user
-		if (existingService.responsavelTipo !== "USUÁRIO" || existingService.responsavelUsuarioId !== session.user.id) {
-			await db
-				.update(chatServices)
-				.set({
-					responsavelTipo: "USUÁRIO",
-					responsavelUsuarioId: session.user.id,
-				})
-				.where(eq(chatServices.id, serviceId));
-		}
-	} else {
-		// Create new service
-		const [newService] = await db
-			.insert(chatServices)
-			.values({
-				organizacaoId,
-				chatId: input.chatId,
-				clienteId: chat.clienteId,
-				responsavelTipo: "USUÁRIO",
-				responsavelUsuarioId: session.user.id,
-				descricao: "NÃO ESPECIFICADO",
-				status: "PENDENTE",
+const CreateChatMessageInputSchema = z
+	.object({
+		chatId: z.string({ required_error: "ID do chat não informado.", invalid_type_error: "Tipo inválido para o ID do chat." }),
+		clienteMensagemId: z.string({ invalid_type_error: "Tipo inválido para o ID da mensagem do cliente." }).optional().nullable(),
+		texto: z
+			.string({ invalid_type_error: "Tipo inválido para o texto." })
+			.max(4096, "A mensagem não pode ter mais de 4096 caracteres.")
+			.optional()
+			.nullable(),
+		assinaturaAtiva: z.boolean({ invalid_type_error: "Tipo inválido para a assinatura." }).default(false),
+		midia: z
+			.object({
+				tipo: z.enum(["IMAGEM", "VIDEO", "AUDIO", "DOCUMENTO"], { invalid_type_error: "Tipo inválido para o tipo de mídia." }),
+				base64: z.string({ required_error: "Conteúdo do arquivo não informado." }),
+				mimeType: z.string({ required_error: "MIME type do arquivo não informado." }),
+				arquivoNome: z.string({ invalid_type_error: "Tipo inválido para o nome do arquivo." }).optional().nullable(),
 			})
-			.returning({ id: chatServices.id });
-		serviceId = newService.id;
+			.optional()
+			.nullable(),
+		messageTemplateId: z.string({ invalid_type_error: "Tipo inválido para o ID do template." }).optional().nullable(),
+	})
+	.superRefine((input, ctx) => {
+		if (!input.texto?.trim() && !input.midia && !input.messageTemplateId) {
+			ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["texto"], message: "Informe texto, anexo ou template para enviar." });
+		}
+	});
+export type TCreateChatMessageInput = z.infer<typeof CreateChatMessageInputSchema>;
+
+/**
+ * Persiste e envia em uma única requisição.
+ *
+ * Antes o fluxo era partido entre `POST /api/chats/messages` (que persistia e devolvia
+ * `requiresWhatsappSend: true`) e `POST /api/chats/messages/send-whatsapp`. Se o segundo
+ * request falhasse — aba fechada, rede caindo — a mensagem ficava PENDENTE para sempre,
+ * sem nenhum processo para reconciliar.
+ */
+async function createChatMessage({ session, input }: { session: TAuthUserSession; input: TCreateChatMessageInput }) {
+	const { organizacaoId } = assertChatAccess({ session, permission: "responder" });
+
+	const { chat, atendimentoAtivo, janelaAberta } = await loadChatForSending({ organizacaoId, chatId: input.chatId });
+
+	// Posse do atendimento é pré-requisito de envio: sem isso qualquer usuário responderia
+	// por cima do dono, que era exatamente o comportamento antigo (o envio reatribuía o
+	// serviço ao remetente silenciosamente).
+	if (atendimentoAtivo?.responsavelTipo !== "USUARIO" || atendimentoAtivo.responsavelUsuarioId !== session.user.id) {
+		throw new createHttpError.Forbidden("Assuma este atendimento antes de enviar mensagens.");
 	}
 
-	// Handle media upload if present
-	let mediaStorageId: string | null = null;
-	let mediaUrl: string | null = null;
-	let mediaFileSize: number | null = null;
+	const template = input.messageTemplateId
+		? await resolveApprovedTemplate({ organizacaoId, messageTemplateId: input.messageTemplateId, whatsappTelefoneId: chat.whatsappTelefoneId })
+		: null;
 
-	if (input.conteudoMidiaBase64 && input.conteudoMidiaMimeType) {
-		// Decode base64 and upload to Supabase Storage
-		const fileBuffer = Buffer.from(input.conteudoMidiaBase64, "base64");
-		const uploadResult = await uploadChatMedia({
-			file: fileBuffer,
+	if (!janelaAberta && !template) {
+		throw new createHttpError.PreconditionFailed("Janela de 24h expirada. Envie um template aprovado para reabrir a conversa.");
+	}
+
+	// Upload antes do insert: sem storage id não há o que persistir nem o que enviar.
+	let midiaStorageId: string | null = null;
+	let midiaUrl: string | null = null;
+	let midiaTamanho: number | null = null;
+	if (input.midia) {
+		const upload = await uploadChatMedia({
+			file: Buffer.from(input.midia.base64, "base64"),
 			organizacaoId,
 			chatId: input.chatId,
-			mimeType: input.conteudoMidiaMimeType,
-			filename: input.conteudoMidiaArquivoNome || "arquivo",
+			mimeType: input.midia.mimeType,
+			filename: input.midia.arquivoNome || "arquivo",
 		});
-
-		mediaStorageId = uploadResult.storageId;
-		mediaUrl = uploadResult.publicUrl;
-		mediaFileSize = uploadResult.fileSize;
+		midiaStorageId = upload.storageId;
+		midiaUrl = upload.publicUrl;
+		midiaTamanho = upload.fileSize;
 	}
 
-	// Insert message
-	const [insertedMessage] = await db
+	// Áudio não carrega legenda no WhatsApp; assinar um áudio geraria uma legenda invisível.
+	// Para template, o texto persistido é o corpo renderizado: o payload enviado à Meta é
+	// estruturado em componentes, então sem isso a thread mostraria uma bolha vazia.
+	const textoBruto = template ? renderTemplatePlainContent(template) : (input.texto?.trim() ?? "");
+	const texto =
+		input.midia?.tipo === "AUDIO" ? "" : !template && input.assinaturaAtiva && textoBruto ? `${session.user.nome}:\n${textoBruto}` : textoBruto;
+
+	const now = new Date();
+	const [inserted] = await db
 		.insert(chatMessages)
 		.values({
 			organizacaoId,
 			chatId: input.chatId,
+			clienteId: chat.clienteId,
 			autorTipo: "USUÁRIO",
 			autorUsuarioId: session.user.id,
-			conteudoTexto: input.conteudoTexto || "",
-			conteudoMidiaTipo: input.conteudoMidiaTipo,
-			conteudoMidiaUrl: mediaUrl,
-			conteudoMidiaStorageId: mediaStorageId,
-			conteudoMidiaMimeType: input.conteudoMidiaMimeType,
-			conteudoMidiaArquivoNome: input.conteudoMidiaArquivoNome,
-			conteudoMidiaArquivoTamanho: mediaFileSize,
-			servicoId: serviceId,
-			status: "ENVIADO",
-			whatsappMessageStatus: "PENDENTE",
+			conteudoTexto: texto || null,
+			conteudoMidiaTipo: input.midia?.tipo ?? "TEXTO",
+			conteudoMidiaUrl: midiaUrl,
+			conteudoMidiaStorageId: midiaStorageId,
+			conteudoMidiaMimeType: input.midia?.mimeType ?? null,
+			conteudoMidiaArquivoNome: input.midia?.arquivoNome ?? null,
+			conteudoMidiaArquivoTamanho: midiaTamanho,
+			clienteMensagemId: input.clienteMensagemId ?? null,
+			whatsappTemplateId: template?.id ?? null,
+			// Nasce PENDENTE antes do envio: uma falha do provedor deixa rastro em vez de
+			// sumir, e o retry tem uma mensagem concreta para reprocessar.
+			statusEntrega: "PENDENTE",
+			dataEnvio: now,
 		})
-		.returning({ id: chatMessages.id, dataEnvio: chatMessages.dataEnvio });
+		.returning({ id: chatMessages.id });
 
-	// Update chat with last message info
+	if (!inserted) throw new createHttpError.InternalServerError("Erro ao registrar a mensagem.");
+
+	const delivery = await deliverChatMessage({
+		messageId: inserted.id,
+		chat,
+		texto,
+		midia: midiaStorageId
+			? { tipo: input.midia?.tipo ?? "DOCUMENTO", storageId: midiaStorageId, mimeType: input.midia?.mimeType ?? "application/octet-stream", arquivoNome: input.midia?.arquivoNome ?? null }
+			: null,
+		template,
+	});
+
 	await db
 		.update(chats)
-		.set({
-			ultimaMensagemId: insertedMessage.id,
-			ultimaMensagemData: insertedMessage.dataEnvio,
-			ultimaMensagemConteudoTexto: input.conteudoTexto,
-			ultimaMensagemConteudoTipo: input.conteudoMidiaTipo,
-		})
+		.set({ ultimaMensagemId: inserted.id, ultimaMensagemData: now, ultimaMensagemSaidaData: now })
 		.where(eq(chats.id, input.chatId));
 
+	await markChatAnswered(db, { organizacaoId, chatId: input.chatId, responseDate: now, source: "HUB", now });
+
+	const persisted = await db.query.chatMessages.findFirst({
+		where: eq(chatMessages.id, inserted.id),
+		with: MESSAGE_AUTHOR_WITH,
+	});
+	if (!persisted) throw new createHttpError.InternalServerError("Erro ao carregar a mensagem enviada.");
+
 	return {
-		data: {
-			messageId: insertedMessage.id,
-			chatId: input.chatId,
-			requiresWhatsappSend: true,
-			chat: {
-				status: chat.status,
-				whatsappToken: chat.whatsappConexao?.token,
-				whatsappPhoneNumberId: chat.whatsappTelefoneId,
-				clienteTelefone: chat.cliente?.telefone,
-			},
-			media: mediaStorageId
-				? {
-						storageId: mediaStorageId,
-						mimeType: input.conteudoMidiaMimeType,
-						filename: input.conteudoMidiaArquivoNome,
-					}
-				: null,
-		},
-		message: "Mensagem criada com sucesso.",
+		data: mapChatMessage(persisted as TChatMessageRow),
+		message: delivery.statusEntrega === "PENDENTE" ? "Mensagem enfileirada para envio." : "Mensagem enviada com sucesso.",
 	};
 }
+export type TCreateChatMessageOutput = Awaited<ReturnType<typeof createChatMessage>>;
 
-export type TCreateMessageOutput = Awaited<ReturnType<typeof createMessage>>;
-
-async function createMessageRoute(req: NextRequest) {
+async function createChatMessageRoute(req: NextRequest) {
 	const session = await getCurrentSessionUncached();
-	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado.");
-
-	const body = await req.json();
-	const input = createMessageBodySchema.parse(body);
-
-	const result = await createMessage({ session, input });
+	const input = CreateChatMessageInputSchema.parse(await req.json());
+	const result = await createChatMessage({ session: session as TAuthUserSession, input });
 	return NextResponse.json(result, { status: 201 });
 }
 
 // ============= Export handlers =============
 
-export const GET = appApiHandler({
-	GET: getMessagesRoute,
-});
+export const GET = appApiHandler({ GET: getChatMessagesRoute });
+export const POST = appApiHandler({ POST: createChatMessageRoute });
 
-export const POST = appApiHandler({
-	POST: createMessageRoute,
-});
+export { mapChatMessage, MESSAGE_AUTHOR_WITH };
+export type { TChatMessageRow };

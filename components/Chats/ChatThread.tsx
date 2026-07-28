@@ -1,0 +1,312 @@
+"use client";
+
+import ErrorComponent from "@/components/Layouts/ErrorComponent";
+import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import { Button } from "@/components/ui/button";
+import { mapRealtimeMessageRow, type TRealtimeChatMessageRow } from "@/lib/chats/realtime-mappers";
+import { getWhatsappWindowDisplay } from "@/lib/chats/whatsapp-window-status";
+import { getErrorMessage } from "@/lib/errors";
+import { markChatRead, retryChatMessage, sendChatMessage, updateChatAssignment } from "@/lib/mutations/chats";
+import { getChatMessagesQueryKey, useChatMessages, type TChatMessagesPage, type TChatThreadMessage } from "@/lib/queries/chats";
+import { cn } from "@/lib/utils";
+import { supabaseClient } from "@/services/supabase";
+import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { ChevronDown } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { ChatAssignmentActions } from "./ChatAssignmentActions";
+import { ChatInputArea, type TOutgoingAttachment } from "./ChatInputArea";
+import { ChatMessageBubble, type TOptimisticFields } from "./ChatMessageBubble";
+
+type TThreadMessage = TChatThreadMessage & TOptimisticFields & { clientTempId?: string };
+
+type ChatThreadProps = {
+	chatId: string;
+	organizationId: string;
+	currentUser: { id: string; nome: string; avatarUrl: string | null };
+};
+
+function insertMessageIntoCache(data: InfiniteData<TChatMessagesPage> | undefined, message: TChatThreadMessage) {
+	if (!data?.pages.length) return data;
+	const [firstPage, ...restPages] = data.pages;
+	if (firstPage.items.some((item) => item.id === message.id)) return data;
+	return { ...data, pages: [{ ...firstPage, items: [message, ...firstPage.items] }, ...restPages] };
+}
+
+function patchMessageInCache(data: InfiniteData<TChatMessagesPage> | undefined, messageId: string, patch: Partial<TChatThreadMessage>) {
+	if (!data?.pages.length) return data;
+	return {
+		...data,
+		pages: data.pages.map((page) => ({ ...page, items: page.items.map((item) => (item.id === messageId ? { ...item, ...patch } : item)) })),
+	};
+}
+
+function formatDaySeparator(date: Date) {
+	const today = new Date();
+	const isToday = date.toDateString() === today.toDateString();
+	if (isToday) return "Hoje";
+	const yesterday = new Date(today.getTime() - 86_400_000);
+	if (date.toDateString() === yesterday.toDateString()) return "Ontem";
+	return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+}
+
+export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadProps) {
+	const queryClient = useQueryClient();
+	const queryKey = getChatMessagesQueryKey(chatId);
+	const { messages, chat, isPending, isError, error, hasNextPage, fetchNextPage, isFetchingNextPage, refetch } = useChatMessages(chatId);
+
+	const [optimisticMessages, setOptimisticMessages] = useState<TThreadMessage[]>([]);
+	const [unseenCount, setUnseenCount] = useState(0);
+	const scrollRef = useRef<HTMLDivElement>(null);
+	const isAtBottomRef = useRef(true);
+	const initialSubscriptionCompleteRef = useRef(false);
+	const refetchRef = useRef(refetch);
+	refetchRef.current = refetch;
+
+	const atendimento = chat?.atendimentoAtivo ?? null;
+	const isOwner = atendimento?.responsavelTipo === "USUARIO" && atendimento.responsavelUsuarioId === currentUser.id;
+
+	// Otimista + persistida: a reconciliação é por clienteMensagemId, gerado no cliente.
+	const threadMessages = useMemo<TThreadMessage[]>(() => {
+		const persistedClientIds = new Set(messages.map((message) => message.clienteMensagemId).filter(Boolean));
+		const pendentes = optimisticMessages.filter((message) => !persistedClientIds.has(message.clienteMensagemId));
+		return [...pendentes, ...messages];
+	}, [messages, optimisticMessages]);
+
+	const markRead = useMutation({ mutationFn: markChatRead });
+	const markReadRef = useRef(markRead);
+	markReadRef.current = markRead;
+
+	const newestMessageId = threadMessages[0]?.id ?? null;
+	useEffect(() => {
+		if (!newestMessageId) return;
+		if (isAtBottomRef.current) {
+			setUnseenCount(0);
+			return;
+		}
+		setUnseenCount((current) => current + 1);
+	}, [newestMessageId]);
+
+	// A aba que escreve não recebe eco do próprio write, então a leitura é marcada aqui.
+	useEffect(() => {
+		if (!chatId || !messages.length) return;
+		markReadRef.current.mutate({ chatId });
+		queryClient.setQueryData<InfiniteData<TChatMessagesPage>>(queryKey, (current) =>
+			current ? { ...current, pages: current.pages.map((page) => ({ ...page, chat: { ...page.chat, mensagensNaoLidas: 0 } })) } : current,
+		);
+		// biome-ignore lint/correctness/useExhaustiveDependencies: só o id da mais recente importa
+	}, [chatId, newestMessageId]);
+
+	useEffect(() => {
+		const channel = supabaseClient
+			.channel(`chat-thread-${chatId}`)
+			.on("postgres_changes", { event: "INSERT", schema: "public", table: "ampmais_chat_messages", filter: `chat_id=eq.${chatId}` }, (payload) => {
+				const message = mapRealtimeMessageRow(payload.new as TRealtimeChatMessageRow, currentUser);
+				if (message.clienteMensagemId) {
+					setOptimisticMessages((current) => current.filter((item) => item.clienteMensagemId !== message.clienteMensagemId));
+				}
+				queryClient.setQueryData<InfiniteData<TChatMessagesPage>>(queryKey, (current) => insertMessageIntoCache(current, message));
+				// O realtime não traz o join de autor: para mensagens de terceiros o nome só
+				// aparece depois de um refetch.
+				if (message.autorTipo !== "CLIENTE" && message.autorUsuario?.id !== currentUser.id) void refetchRef.current();
+				if (message.autorTipo === "CLIENTE") markReadRef.current.mutate({ chatId });
+			})
+			.on("postgres_changes", { event: "UPDATE", schema: "public", table: "ampmais_chat_messages", filter: `chat_id=eq.${chatId}` }, (payload) => {
+				const row = payload.new as TRealtimeChatMessageRow;
+				queryClient.setQueryData<InfiniteData<TChatMessagesPage>>(queryKey, (current) =>
+					patchMessageInCache(current, row.id, {
+						statusEntrega: row.status_entrega,
+						whatsappMessageId: row.whatsapp_message_id,
+						conteudoMidiaTextoProcessado: row.conteudo_midia_texto_processado,
+					}),
+				);
+			})
+			.on("postgres_changes", { event: "*", schema: "public", table: "ampmais_chat_assignments", filter: `chat_id=eq.${chatId}` }, () => {
+				void refetchRef.current();
+			})
+			.on("postgres_changes", { event: "UPDATE", schema: "public", table: "ampmais_chats", filter: `id=eq.${chatId}` }, () => {
+				void refetchRef.current();
+			})
+			.subscribe((status) => {
+				if (status !== "SUBSCRIBED") return;
+				if (!initialSubscriptionCompleteRef.current) {
+					initialSubscriptionCompleteRef.current = true;
+					return;
+				}
+				void refetchRef.current();
+			});
+
+		return () => {
+			initialSubscriptionCompleteRef.current = false;
+			void supabaseClient.removeChannel(channel);
+		};
+	}, [chatId, currentUser, queryClient, queryKey]);
+
+	const sendMutation = useMutation({
+		mutationFn: sendChatMessage,
+		onSuccess: (data) => {
+			setOptimisticMessages((current) => current.filter((item) => item.clienteMensagemId !== data.data.clienteMensagemId));
+			queryClient.setQueryData<InfiniteData<TChatMessagesPage>>(queryKey, (current) => insertMessageIntoCache(current, data.data));
+			void queryClient.invalidateQueries({ queryKey: ["chats"] });
+		},
+		onError: (error, variables) => {
+			setOptimisticMessages((current) =>
+				current.map((item) => (item.clienteMensagemId === variables.clienteMensagemId ? { ...item, statusEntrega: "FALHA" as const } : item)),
+			);
+			toast.error(getErrorMessage(error));
+		},
+	});
+
+	const retryMutation = useMutation({
+		mutationFn: retryChatMessage,
+		onSuccess: () => void refetch(),
+		onError: (error) => toast.error(getErrorMessage(error)),
+	});
+
+	const assumeMutation = useMutation({
+		mutationFn: updateChatAssignment,
+		onSuccess: (data) => {
+			toast.success(data.message);
+			void refetch();
+			void queryClient.invalidateQueries({ queryKey: ["chats"] });
+		},
+		onError: (error) => toast.error(getErrorMessage(error)),
+	});
+
+	const handleSend = useCallback(
+		(input: { texto: string; assinaturaAtiva: boolean; midia: TOutgoingAttachment | null }) => {
+			const clienteMensagemId = crypto.randomUUID();
+			setOptimisticMessages((current) => [
+				{
+					id: `optimistic-${clienteMensagemId}`,
+					chatId,
+					autorTipo: "USUÁRIO",
+					autorUsuario: currentUser,
+					autorCliente: null,
+					conteudoTexto: input.texto || null,
+					conteudoMidiaTipo: input.midia?.tipo ?? "TEXTO",
+					conteudoMidiaUrl: null,
+					conteudoMidiaMimeType: input.midia?.mimeType ?? null,
+					conteudoMidiaArquivoNome: input.midia?.arquivoNome ?? null,
+					conteudoMidiaArquivoTamanho: null,
+					conteudoMidiaTextoProcessado: null,
+					conteudoMidiaTextoProcessadoResumo: null,
+					statusEntrega: "PENDENTE",
+					provedorStatusDataAtualizacao: null,
+					dataEnvio: new Date(),
+					whatsappMessageId: null,
+					whatsappEcho: false,
+					clienteMensagemId,
+					metadados: null,
+					optimistic: true,
+				},
+				...current,
+			]);
+			sendMutation.mutate({
+				chatId,
+				clienteMensagemId,
+				texto: input.texto || null,
+				assinaturaAtiva: input.assinaturaAtiva,
+				midia: input.midia,
+			});
+		},
+		[chatId, currentUser, sendMutation],
+	);
+
+	if (isPending) return <LoadingComponent />;
+	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
+	if (!chat) return <ErrorComponent msg="Chat não encontrado." />;
+
+	const janela = getWhatsappWindowDisplay({ expiracao: chat.whatsappJanelaDataExpiracao, tipoConexao: chat.conexaoTipo });
+
+	return (
+		<div className="flex h-full min-h-0 flex-col">
+			<header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
+				<div className="flex min-w-0 flex-col">
+					<span className="truncate text-sm font-semibold">{chat.cliente?.nome ?? "Cliente sem nome"}</span>
+					<span
+						className={cn(
+							"text-[0.65rem]",
+							janela.variant === "expirada" ? "text-destructive" : janela.variant === "expirando" ? "text-amber-600" : "text-muted-foreground",
+						)}
+					>
+						{chat.cliente?.telefone} · {janela.label}
+					</span>
+				</div>
+				<ChatAssignmentActions chatId={chatId} atendimento={atendimento} currentUserId={currentUser.id} />
+			</header>
+
+			<div
+				ref={scrollRef}
+				onScroll={(event) => {
+					const element = event.currentTarget;
+					// flex-col-reverse: o "fundo" (mensagem mais nova) é scrollTop === 0.
+					isAtBottomRef.current = element.scrollTop > -40;
+					if (isAtBottomRef.current) setUnseenCount(0);
+				}}
+				className="relative flex flex-1 flex-col-reverse gap-1 overflow-y-auto px-4 py-3"
+			>
+				{threadMessages.map((message, index) => {
+					const anterior = threadMessages[index + 1];
+					const showAuthor = !anterior || anterior.autorTipo !== message.autorTipo;
+					const currentDate = new Date(message.dataEnvio);
+					const showDaySeparator = !anterior || new Date(anterior.dataEnvio).toDateString() !== currentDate.toDateString();
+
+					return (
+						<div key={message.clientTempId ?? message.id} className="flex flex-col gap-1">
+							<ChatMessageBubble
+								message={message}
+								showAuthor={showAuthor}
+								onRetry={(messageId) => retryMutation.mutate({ messageId })}
+								isRetrying={retryMutation.isPending}
+							/>
+							{showDaySeparator && (
+								<div className="my-2 flex items-center gap-2">
+									<span className="h-px flex-1 bg-border" />
+									<span className="text-[0.65rem] uppercase tracking-wide text-muted-foreground">{formatDaySeparator(currentDate)}</span>
+									<span className="h-px flex-1 bg-border" />
+								</div>
+							)}
+						</div>
+					);
+				})}
+
+				{hasNextPage && (
+					<div className="flex justify-center py-2">
+						<Button variant="ghost" size="sm" className="text-xs" disabled={isFetchingNextPage} onClick={() => fetchNextPage()}>
+							{isFetchingNextPage ? "Carregando..." : "Carregar mensagens anteriores"}
+						</Button>
+					</div>
+				)}
+			</div>
+
+			{unseenCount > 0 && (
+				<button
+					type="button"
+					onClick={() => {
+						scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+						setUnseenCount(0);
+					}}
+					className="mx-auto -mt-8 mb-2 flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground shadow-lg"
+				>
+					<ChevronDown className="h-3 w-3" />
+					{unseenCount} {unseenCount === 1 ? "nova" : "novas"}
+				</button>
+			)}
+
+			<ChatInputArea
+				chatId={chatId}
+				organizationId={organizationId}
+				userName={currentUser.nome}
+				isOwner={!!isOwner}
+				janelaExpiracao={chat.whatsappJanelaDataExpiracao}
+				conexaoTipo={chat.conexaoTipo}
+				isSending={sendMutation.isPending}
+				onSend={handleSend}
+				onAssume={() => assumeMutation.mutate({ acao: "assumir", chatId })}
+				templates={[]}
+				onSendTemplate={(messageTemplateId) => sendMutation.mutate({ chatId, messageTemplateId, assinaturaAtiva: false })}
+			/>
+		</div>
+	);
+}

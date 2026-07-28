@@ -1,223 +1,305 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { assertChatAccess } from "@/lib/chats/access";
+import { ChatInboxViewEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
-import { chatServices, chats } from "@/services/drizzle/schema/chats";
+import { chatAssignments, chatMessages, chats } from "@/services/drizzle/schema/chats";
 import { clients } from "@/services/drizzle/schema/clients";
-import { and, desc, eq, ilike, lt, or } from "drizzle-orm";
+import { users } from "@/services/drizzle/schema/users";
+import { whatsappConnections } from "@/services/drizzle/schema/whatsapp-connections";
+import { and, desc, eq, ilike, isNull, lt, notInArray, or } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-// ============= GET - List chats with pagination and search =============
+const CLOSED_ASSIGNMENT_STATUSES = ["ENCERRADO", "CANCELADO"] as const;
 
-const getChatsQuerySchema = z.object({
-	whatsappPhoneId: z.string(),
-	cursor: z.string().optional(),
-	limit: z.coerce.number().min(1).max(100).default(20),
-	search: z.string().optional(),
+// ============= GET - Inbox (lista) ou chat único (?id=) =============
+
+const GetChatsInputSchema = z.object({
+	id: z.string({ invalid_type_error: "Tipo inválido para o ID do chat." }).optional().nullable(),
+	whatsappConexaoTelefoneId: z.string({ invalid_type_error: "Tipo inválido para o ID do telefone da conexão." }).optional().nullable(),
+	view: z
+		.string({ invalid_type_error: "Tipo inválido para a visão da caixa de entrada." })
+		.optional()
+		.nullable()
+		.transform((v) => ChatInboxViewEnum.catch("MINHAS").parse(v ?? "MINHAS")),
+	search: z.string({ invalid_type_error: "Tipo inválido para a busca." }).optional().nullable(),
+	cursor: z.string({ invalid_type_error: "Tipo inválido para o cursor." }).optional().nullable(),
+	limit: z
+		.string({ invalid_type_error: "Tipo inválido para o limite." })
+		.optional()
+		.nullable()
+		.transform((v) => Math.min(Math.max(v ? Number(v) : 20, 1), 50)),
 });
+export type TGetChatsInput = z.infer<typeof GetChatsInputSchema>;
 
-export type TGetChatsInput = z.infer<typeof getChatsQuerySchema>;
+/**
+ * Projeção de um chat da inbox.
+ *
+ * O `leftJoin` com `chat_assignments` filtrado por status não-terminal não duplica linhas
+ * porque o índice único parcial `idx_chat_assignments_one_current_per_chat` garante no
+ * máximo um atendimento ativo por chat — é a segunda razão de existir daquele índice.
+ */
+const chatInboxProjection = {
+	id: chats.id,
+	organizacaoId: chats.organizacaoId,
+	clienteId: chats.clienteId,
+	whatsappConexaoId: chats.whatsappConexaoId,
+	whatsappConexaoTelefoneId: chats.whatsappConexaoTelefoneId,
+	whatsappTelefoneId: chats.whatsappTelefoneId,
+	mensagensNaoLidas: chats.mensagensNaoLidas,
+	ultimaMensagemId: chats.ultimaMensagemId,
+	ultimaMensagemData: chats.ultimaMensagemData,
+	ultimaMensagemEntradaData: chats.ultimaMensagemEntradaData,
+	ultimaMensagemSaidaData: chats.ultimaMensagemSaidaData,
+	whatsappJanelaDataExpiracao: chats.whatsappJanelaDataExpiracao,
+	ultimaLeituraData: chats.ultimaLeituraData,
+	dataInsercao: chats.dataInsercao,
+	cliente: { id: clients.id, nome: clients.nome, telefone: clients.telefone },
+	ultimaMensagem: {
+		id: chatMessages.id,
+		autorTipo: chatMessages.autorTipo,
+		conteudoTexto: chatMessages.conteudoTexto,
+		conteudoMidiaTipo: chatMessages.conteudoMidiaTipo,
+		conteudoMidiaTextoProcessado: chatMessages.conteudoMidiaTextoProcessado,
+		conteudoMidiaArquivoNome: chatMessages.conteudoMidiaArquivoNome,
+	},
+	// O tipo de conexão decide se a janela de 24h se aplica; sem ele a inbox não consegue
+	// distinguir "sem janela porque é gateway" de "janela expirada".
+	conexaoTipo: whatsappConnections.tipoConexao,
+	atendimentoAtivo: {
+		id: chatAssignments.id,
+		status: chatAssignments.status,
+		responsavelTipo: chatAssignments.responsavelTipo,
+		responsavelUsuarioId: chatAssignments.responsavelUsuarioId,
+		responsavelAgenteId: chatAssignments.responsavelAgenteId,
+		prioridade: chatAssignments.prioridade,
+		dataAtribuicao: chatAssignments.dataAtribuicao,
+		dataLiberacao: chatAssignments.dataLiberacao,
+		transferenciaMotivo: chatAssignments.transferenciaMotivo,
+	},
+	responsavelUsuario: { id: users.id, nome: users.nome, avatarUrl: users.avatarUrl },
+};
 
-async function getChats({ session, input }: { session: TAuthUserSession; input: TGetChatsInput }) {
-	const { whatsappPhoneId, cursor, limit, search } = input;
-	const organizacaoId = session.membership?.organizacao.id;
-
-	if (!organizacaoId) {
-		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
-	}
-
-	// Parse cursor (format: "timestamp_id")
-	let cursorTimestamp: Date | null = null;
-	let cursorId: string | null = null;
-	if (cursor) {
-		const [timestampStr, id] = cursor.split("_");
-		cursorTimestamp = new Date(Number.parseInt(timestampStr, 10));
-		cursorId = id;
-	}
-
-	// Build base query conditions
-	const baseConditions = and(
-		eq(chats.organizacaoId, organizacaoId),
-		eq(chats.whatsappConexaoTelefoneId, whatsappPhoneId),
-		cursorTimestamp
-			? or(lt(chats.ultimaMensagemData, cursorTimestamp), and(eq(chats.ultimaMensagemData, cursorTimestamp), lt(chats.id, cursorId!)))
-			: undefined,
-	);
-
-	const chatProjection = {
-		id: chats.id,
-		organizacaoId: chats.organizacaoId,
-		clienteId: chats.clienteId,
-		whatsappConexaoId: chats.whatsappConexaoId,
-		whatsappConexaoTelefoneId: chats.whatsappConexaoTelefoneId,
-		whatsappTelefoneId: chats.whatsappTelefoneId,
-		mensagensNaoLidas: chats.mensagensNaoLidas,
-		ultimaMensagemId: chats.ultimaMensagemId,
-		ultimaMensagemData: chats.ultimaMensagemData,
-		ultimaMensagemConteudoTipo: chats.ultimaMensagemConteudoTipo,
-		ultimaMensagemConteudoTexto: chats.ultimaMensagemConteudoTexto,
-		status: chats.status,
-		ultimaInteracaoClienteData: chats.ultimaInteracaoClienteData,
-		aiAgendamentoRespostaData: chats.aiAgendamentoRespostaData,
-		dataInsercao: chats.dataInsercao,
-		cliente: clients,
-	};
-
-	// Search by client name or last message content
-	const searchCondition =
-		search && search.trim().length > 0
-			? or(ilike(clients.nome, `%${search}%`), ilike(chats.ultimaMensagemConteudoTexto, `%${search}%`))
-			: undefined;
-
-	const chatResults = await db
-		.select(chatProjection)
+function buildChatInboxQuery() {
+	return db
+		.select(chatInboxProjection)
 		.from(chats)
 		.leftJoin(clients, eq(chats.clienteId, clients.id))
-		.where(searchCondition ? and(baseConditions, searchCondition) : baseConditions)
-		.orderBy(desc(chats.ultimaMensagemData), desc(chats.id))
-		.limit(limit + 1);
+		.leftJoin(chatMessages, eq(chats.ultimaMensagemId, chatMessages.id))
+		.leftJoin(chatAssignments, and(eq(chatAssignments.chatId, chats.id), notInArray(chatAssignments.status, [...CLOSED_ASSIGNMENT_STATUSES])))
+		.leftJoin(users, eq(chatAssignments.responsavelUsuarioId, users.id))
+		.leftJoin(whatsappConnections, eq(chats.whatsappConexaoId, whatsappConnections.id));
+}
+type TChatInboxQueryRow = Awaited<ReturnType<typeof buildChatInboxQuery>>[number];
 
-	// Check if there are more results
-	const hasMore = chatResults.length > limit;
-	const items = hasMore ? chatResults.slice(0, limit) : chatResults;
+/**
+ * Achata a linha do join: o Drizzle devolve os objetos aninhados com todos os campos
+ * nulos quando o `leftJoin` não casa; aqui isso vira `null` de verdade, e o responsável
+ * é aninhado dentro do atendimento em vez de ficar solto na raiz.
+ */
+function mapChatInboxRow(row: TChatInboxQueryRow) {
+	const { responsavelUsuario, ...rest } = row;
+	return {
+		...rest,
+		cliente: rest.cliente?.id ? rest.cliente : null,
+		ultimaMensagem: rest.ultimaMensagem?.id ? rest.ultimaMensagem : null,
+		atendimentoAtivo: rest.atendimentoAtivo?.id
+			? { ...rest.atendimentoAtivo, responsavelUsuario: responsavelUsuario?.id ? responsavelUsuario : null }
+			: null,
+	};
+}
 
-	// Create next cursor
-	let nextCursor: string | null = null;
-	if (hasMore && items.length > 0) {
-		const lastItem = items[items.length - 1];
-		nextCursor = `${lastItem.ultimaMensagemData.getTime()}_${lastItem.id}`;
+function parseCursor(cursor: string | null | undefined) {
+	if (!cursor) return null;
+	const separator = cursor.lastIndexOf("_");
+	if (separator <= 0) return null;
+	const timestamp = Number.parseInt(cursor.slice(0, separator), 10);
+	const id = cursor.slice(separator + 1);
+	if (!Number.isFinite(timestamp) || !id) return null;
+	return { data: new Date(timestamp), id };
+}
+
+async function getChats({ session, input }: { session: TAuthUserSession; input: TGetChatsInput }) {
+	const { organizacaoId } = assertChatAccess({ session, permission: "visualizar" });
+
+	// Modo "byId": usado pelo header da thread e por links diretos.
+	if (input.id) {
+		const [row] = await buildChatInboxQuery()
+			.where(and(eq(chats.organizacaoId, organizacaoId), eq(chats.id, input.id)))
+			.limit(1);
+
+		return {
+			data: {
+				byId: row ? mapChatInboxRow(row) : null,
+				default: null,
+			},
+			message: "Chat carregado com sucesso.",
+		};
 	}
+
+	const cursor = parseCursor(input.cursor);
+
+	// A view entra no SQL. O módulo equivalente do Control carrega todos os chats do
+	// parceiro e filtra em memória, sem limit — inviável com paginação por cursor.
+	const viewCondition =
+		input.view === "MINHAS"
+			? eq(chatAssignments.responsavelUsuarioId, session.user.id)
+			: input.view === "NAO_ATRIBUIDAS"
+				? or(isNull(chatAssignments.id), eq(chatAssignments.responsavelTipo, "NAO_ATRIBUIDO"))
+				: input.view === "COM_AGENTE"
+					? eq(chatAssignments.responsavelTipo, "AGENTE")
+					: undefined;
+
+	const searchTerm = input.search?.trim();
+	const searchCondition = searchTerm
+		? or(ilike(clients.nome, `%${searchTerm}%`), ilike(clients.telefone, `%${searchTerm}%`), ilike(chatMessages.conteudoTexto, `%${searchTerm}%`))
+		: undefined;
+
+	const rows = await buildChatInboxQuery()
+		.where(
+			and(
+				eq(chats.organizacaoId, organizacaoId),
+				input.whatsappConexaoTelefoneId ? eq(chats.whatsappConexaoTelefoneId, input.whatsappConexaoTelefoneId) : undefined,
+				cursor ? or(lt(chats.ultimaMensagemData, cursor.data), and(eq(chats.ultimaMensagemData, cursor.data), lt(chats.id, cursor.id))) : undefined,
+				viewCondition,
+				searchCondition,
+			),
+		)
+		.orderBy(desc(chats.ultimaMensagemData), desc(chats.id))
+		.limit(input.limit + 1);
+
+	const hasMore = rows.length > input.limit;
+	const items = (hasMore ? rows.slice(0, input.limit) : rows).map((row) => mapChatInboxRow(row));
+	const lastItem = items[items.length - 1];
 
 	return {
 		data: {
-			items,
-			hasMore,
-			nextCursor,
+			byId: null,
+			default: {
+				items,
+				hasMore,
+				nextCursor: hasMore && lastItem ? `${lastItem.ultimaMensagemData.getTime()}_${lastItem.id}` : null,
+			},
 		},
 		message: "Chats carregados com sucesso.",
 	};
 }
-
 export type TGetChatsOutput = Awaited<ReturnType<typeof getChats>>;
 
 async function getChatsRoute(req: NextRequest) {
 	const session = await getCurrentSessionUncached();
-	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado.");
-
 	const searchParams = req.nextUrl.searchParams;
-	const input = getChatsQuerySchema.parse({
-		whatsappPhoneId: searchParams.get("whatsappPhoneId"),
-		cursor: searchParams.get("cursor") || undefined,
-		limit: searchParams.get("limit") || 20,
-		search: searchParams.get("search") || undefined,
+	const input = GetChatsInputSchema.parse({
+		id: searchParams.get("id"),
+		whatsappConexaoTelefoneId: searchParams.get("whatsappConexaoTelefoneId"),
+		view: searchParams.get("view"),
+		search: searchParams.get("search"),
+		cursor: searchParams.get("cursor"),
+		limit: searchParams.get("limit"),
 	});
 
-	const result = await getChats({ session, input });
+	const result = await getChats({ session: session as TAuthUserSession, input });
 	return NextResponse.json(result, { status: 200 });
 }
 
-// ============= POST - Create or get chat by client =============
+// ============= POST - Abrir ou recuperar chat de um cliente =============
 
-const createChatBodySchema = z.object({
-	clienteId: z.string(),
-	whatsappPhoneNumberId: z.string(),
-	whatsappConexaoId: z.string().optional(),
-	whatsappConexaoTelefoneId: z.string().optional(),
+const CreateChatInputSchema = z.object({
+	clienteId: z.string({ required_error: "ID do cliente não informado.", invalid_type_error: "Tipo inválido para o ID do cliente." }),
+	whatsappTelefoneId: z.string({
+		required_error: "ID do telefone do WhatsApp não informado.",
+		invalid_type_error: "Tipo inválido para o ID do telefone do WhatsApp.",
+	}),
+	whatsappConexaoId: z.string({ invalid_type_error: "Tipo inválido para o ID da conexão." }).optional().nullable(),
+	whatsappConexaoTelefoneId: z.string({ invalid_type_error: "Tipo inválido para o ID do telefone da conexão." }).optional().nullable(),
 });
-
-export type TCreateChatInput = z.infer<typeof createChatBodySchema>;
+export type TCreateChatInput = z.infer<typeof CreateChatInputSchema>;
 
 async function createChat({ session, input }: { session: TAuthUserSession; input: TCreateChatInput }) {
-	const { clienteId, whatsappPhoneNumberId, whatsappConexaoId, whatsappConexaoTelefoneId } = input;
-	const organizacaoId = session.membership?.organizacao.id;
+	const { organizacaoId } = assertChatAccess({ session, permission: "iniciar" });
 
-	if (!organizacaoId) {
-		throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
-	}
-
-	// Check if client exists
 	const client = await db.query.clients.findFirst({
-		where: (fields, { and, eq }) => and(eq(fields.id, clienteId), eq(fields.organizacaoId, organizacaoId)),
+		where: (fields, { and: andWhere, eq: eqWhere }) => andWhere(eqWhere(fields.id, input.clienteId), eqWhere(fields.organizacaoId, organizacaoId)),
+		columns: { id: true },
 	});
+	if (!client) throw new createHttpError.NotFound("Cliente não encontrado.");
 
-	if (!client) {
-		throw new createHttpError.NotFound("Cliente não encontrado.");
-	}
-
-	// Check if chat already exists for this client and phone
-	const existingChat = await db.query.chats.findFirst({
-		where: (fields, { and, eq }) =>
-			and(eq(fields.organizacaoId, organizacaoId), eq(fields.clienteId, clienteId), eq(fields.whatsappTelefoneId, whatsappPhoneNumberId)),
-	});
-
-	if (existingChat) {
-		return {
-			data: {
-				chatId: existingChat.id,
-				clientId: clienteId,
-				isNew: false,
-			},
-			message: "Chat já existente.",
-		};
-	}
-
-	// Create new chat
-	const [newChat] = await db
+	// Upsert pela chave natural em vez de find-then-insert: sob concorrência de webhooks
+	// o find-then-insert criava chats duplicados (não havia constraint até a 0052).
+	const [inserted] = await db
 		.insert(chats)
 		.values({
 			organizacaoId,
-			clienteId,
-			whatsappTelefoneId: whatsappPhoneNumberId,
-			whatsappConexaoId,
-			whatsappConexaoTelefoneId,
-			mensagensNaoLidas: 0,
+			clienteId: input.clienteId,
+			whatsappTelefoneId: input.whatsappTelefoneId,
+			whatsappConexaoId: input.whatsappConexaoId ?? null,
+			whatsappConexaoTelefoneId: input.whatsappConexaoTelefoneId ?? null,
 			ultimaMensagemData: new Date(),
-			ultimaMensagemConteudoTipo: "TEXTO",
-			status: "ABERTA",
 		})
+		.onConflictDoNothing({ target: [chats.organizacaoId, chats.clienteId, chats.whatsappTelefoneId] })
 		.returning({ id: chats.id });
 
-	// Create initial service for the chat
-	await db.insert(chatServices).values({
-		organizacaoId,
-		chatId: newChat.id,
-		clienteId,
-		responsavelTipo: "AI",
-		descricao: "NÃO ESPECIFICADO",
-		status: "PENDENTE",
+	if (inserted) {
+		return { data: { chatId: inserted.id, clienteId: input.clienteId, isNew: true }, message: "Chat criado com sucesso." };
+	}
+
+	const existing = await db.query.chats.findFirst({
+		where: (fields, { and: andWhere, eq: eqWhere }) =>
+			andWhere(
+				eqWhere(fields.organizacaoId, organizacaoId),
+				eqWhere(fields.clienteId, input.clienteId),
+				eqWhere(fields.whatsappTelefoneId, input.whatsappTelefoneId),
+			),
+		columns: { id: true },
 	});
+	if (!existing) throw new createHttpError.InternalServerError("Não foi possível abrir o chat.");
 
-	return {
-		data: {
-			chatId: newChat.id,
-			clientId: clienteId,
-			isNew: true,
-		},
-		message: "Chat criado com sucesso.",
-	};
+	return { data: { chatId: existing.id, clienteId: input.clienteId, isNew: false }, message: "Chat já existente." };
 }
-
 export type TCreateChatOutput = Awaited<ReturnType<typeof createChat>>;
 
 async function createChatRoute(req: NextRequest) {
 	const session = await getCurrentSessionUncached();
-	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado.");
-
-	const body = await req.json();
-	const input = createChatBodySchema.parse(body);
-
-	const result = await createChat({ session, input });
+	const input = CreateChatInputSchema.parse(await req.json());
+	const result = await createChat({ session: session as TAuthUserSession, input });
 	return NextResponse.json(result, { status: 201 });
+}
+
+// ============= PATCH - Ações sobre o chat =============
+
+const UpdateChatInputSchema = z.object({
+	acao: z.literal("mark_as_read"),
+	chatId: z.string({ required_error: "ID do chat não informado.", invalid_type_error: "Tipo inválido para o ID do chat." }),
+});
+export type TUpdateChatInput = z.infer<typeof UpdateChatInputSchema>;
+
+async function updateChat({ session, input }: { session: TAuthUserSession; input: TUpdateChatInput }) {
+	const { organizacaoId } = assertChatAccess({ session, permission: "visualizar" });
+
+	const [updated] = await db
+		.update(chats)
+		.set({ mensagensNaoLidas: 0, ultimaLeituraData: new Date(), ultimaLeituraPorUsuarioId: session.user.id })
+		.where(and(eq(chats.id, input.chatId), eq(chats.organizacaoId, organizacaoId)))
+		.returning({ id: chats.id });
+
+	if (!updated) throw new createHttpError.NotFound("Chat não encontrado.");
+
+	return { data: { chatId: updated.id, acao: input.acao }, message: "Mensagens marcadas como lidas." };
+}
+export type TUpdateChatOutput = Awaited<ReturnType<typeof updateChat>>;
+
+async function updateChatRoute(req: NextRequest) {
+	const session = await getCurrentSessionUncached();
+	const input = UpdateChatInputSchema.parse(await req.json());
+	const result = await updateChat({ session: session as TAuthUserSession, input });
+	return NextResponse.json(result, { status: 200 });
 }
 
 // ============= Export handlers =============
 
-export const GET = appApiHandler({
-	GET: getChatsRoute,
-});
-
-export const POST = appApiHandler({
-	POST: createChatRoute,
-});
+export const GET = appApiHandler({ GET: getChatsRoute });
+export const POST = appApiHandler({ POST: createChatRoute });
+export const PATCH = appApiHandler({ PATCH: updateChatRoute });
