@@ -2,7 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
-import { clients, sales } from "@/services/drizzle/schema";
+import { cashbackProgramBalances, clients, sales } from "@/services/drizzle/schema";
 import { and, count, eq, isNotNull, max, min, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -85,9 +85,18 @@ async function getClientContext({ input, session }: { input: TGetClientContextIn
 		})),
 	}));
 
+	// O saldo de cashback é contexto de cliente como qualquer outro: quem atende precisa
+	// saber que há crédito disponível antes de negociar. Somado entre programas — uma
+	// organização pode ter mais de um ativo.
+	const cashbackRows = await db
+		.select({ disponivel: sum(cashbackProgramBalances.saldoValorDisponivel) })
+		.from(cashbackProgramBalances)
+		.where(and(eq(cashbackProgramBalances.organizacaoId, organizacaoId), eq(cashbackProgramBalances.clienteId, input.clientId)));
+
 	return {
 		data: {
 			cliente: client,
+			cashback: { saldoDisponivel: cashbackRows[0]?.disponivel ? Number(cashbackRows[0].disponivel) : 0 },
 			historico: {
 				qtdeCompras,
 				valorTotalCompras,

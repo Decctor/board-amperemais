@@ -33,9 +33,15 @@ type ChatAssignmentActionsProps = {
 	chatId: string;
 	atendimento: TChatAttendance;
 	currentUserId: string;
+	/**
+	 * Header da thread: só posse e roteamento (assumir/liberar/transferir). Status e
+	 * prioridade vivem no painel de contexto — são decisões, não reflexos, e no header
+	 * competiriam com o nome do cliente por atenção.
+	 */
+	compact?: boolean;
 };
 
-export function ChatAssignmentActions({ chatId, atendimento, currentUserId }: ChatAssignmentActionsProps) {
+export function ChatAssignmentActions({ chatId, atendimento, currentUserId, compact = false }: ChatAssignmentActionsProps) {
 	const queryClient = useQueryClient();
 	const [transferMenuOpen, setTransferMenuOpen] = useState(false);
 	const { data: transferTargets } = useChatTransferTargets({ enabled: transferMenuOpen });
@@ -106,7 +112,8 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId }: Ch
 				</DropdownMenuContent>
 			</DropdownMenu>
 
-			<DropdownMenu>
+			{!compact && (
+				<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button size="sm" variant="ghost" className="gap-1 text-xs" disabled={isPending}>
 								{atendimento ? STATUS_LABELS[atendimento.status] : "Status"}
@@ -120,9 +127,11 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId }: Ch
 								</DropdownMenuItem>
 							))}
 						</DropdownMenuContent>
-			</DropdownMenu>
+				</DropdownMenu>
+			)}
 
-			<DropdownMenu>
+			{!compact && (
+				<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button size="sm" variant="ghost" className="gap-1 text-xs" disabled={isPending}>
 								{atendimento?.prioridade ? PRIORITY_LABELS[atendimento.prioridade] : "Prioridade"}
@@ -137,7 +146,8 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId }: Ch
 								</DropdownMenuItem>
 							))}
 						</DropdownMenuContent>
-			</DropdownMenu>
+				</DropdownMenu>
+			)}
 
 			{atendimento?.responsavelTipo === "AGENTE" && (
 				<span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">

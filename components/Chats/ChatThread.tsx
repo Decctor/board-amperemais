@@ -11,10 +11,12 @@ import { getChatMessagesQueryKey, useChatMessages, type TChatMessagesPage, type 
 import { cn } from "@/lib/utils";
 import { supabaseClient } from "@/services/supabase";
 import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, PanelRightOpen } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ChatAssignmentActions } from "./ChatAssignmentActions";
+import { ChatContextPanel } from "./ChatContextPanel";
 import { ChatInputArea, type TOutgoingAttachment } from "./ChatInputArea";
 import { ChatMessageBubble, type TOptimisticFields } from "./ChatMessageBubble";
 
@@ -220,7 +222,8 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 	const janela = getWhatsappWindowDisplay({ expiracao: chat.whatsappJanelaDataExpiracao, tipoConexao: chat.conexaoTipo });
 
 	return (
-		<div className="flex h-full min-h-0 flex-col">
+		<div className="flex h-full min-h-0">
+			<div className="flex min-w-0 flex-1 flex-col">
 			<header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
 				<div className="flex min-w-0 flex-col">
 					<span className="truncate text-sm font-semibold">{chat.cliente?.nome ?? "Cliente sem nome"}</span>
@@ -233,7 +236,23 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 						{chat.cliente?.telefone} · {janela.label}
 					</span>
 				</div>
-				<ChatAssignmentActions chatId={chatId} atendimento={atendimento} currentUserId={currentUser.id} />
+				<div className="flex items-center gap-1.5">
+					{/* Header carrega só posse e roteamento; status e prioridade vivem no painel. */}
+					<ChatAssignmentActions chatId={chatId} atendimento={atendimento} currentUserId={currentUser.id} compact />
+
+					{/* Abaixo de xl o painel não cabe como coluna; vira gaveta sob demanda. */}
+					<Sheet>
+						<SheetTrigger asChild>
+							<Button variant="ghost" size="icon" className="shrink-0 xl:hidden" aria-label="Abrir contexto do atendimento">
+								<PanelRightOpen className="h-4 w-4" />
+							</Button>
+						</SheetTrigger>
+						<SheetContent side="right" className="w-[min(22rem,90vw)] p-0">
+							<SheetTitle className="sr-only">Contexto do atendimento</SheetTitle>
+							<ChatContextPanel chatId={chatId} chat={chat} currentUserId={currentUser.id} />
+						</SheetContent>
+					</Sheet>
+				</div>
 			</header>
 
 			<div
@@ -309,6 +328,11 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 				templates={[]}
 				onSendTemplate={(messageTemplateId) => sendMutation.mutate({ chatId, messageTemplateId, assinaturaAtiva: false })}
 			/>
+			</div>
+
+			<aside className="hidden w-80 shrink-0 border-l border-border xl:block">
+				<ChatContextPanel chatId={chatId} chat={chat} currentUserId={currentUser.id} />
+			</aside>
 		</div>
 	);
 }
