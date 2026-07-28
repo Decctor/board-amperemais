@@ -367,6 +367,26 @@
 	body {
 		@apply bg-background text-foreground;
 	}
+
+	/* Shell de app em viewport cheia (ex.: /dashboard, marcado com data-app-shell).
+	   O wrapper do shell já é h-svh + overflow-hidden, mas scripts de marketing
+	   (GTM, pixels) injetam elementos em fluxo no fim do <body>; como o body é
+	   min-h-screen, 1px de sobra já reativa o scroll do documento — e um
+	   scrollIntoView na thread consegue rolá-lo mesmo escondido. Fixar html+body
+	   e usar `clip` (não `hidden`) elimina o overflow inclusive para scroll
+	   programático. `hidden` no html evita que o `clip` do body seja propagado ao
+	   viewport (propagado, `clip` vira `hidden` e o body volta a ser rolável). */
+	html:has([data-app-shell]) {
+		height: 100%;
+		overflow: hidden;
+	}
+	/* O !important vence o overflow-x-hidden utilitário do body no root layout; sem
+	   ele, o eixo x "hidden" rebaixa o clip do eixo y para hidden (regra de computed
+	   value do CSS Overflow 3) e o body volta a ser rolável programaticamente. */
+	body:has([data-app-shell]) {
+		height: 100%;
+		overflow: clip !important;
+	}
 }
 
 @theme inline {

@@ -26,7 +26,8 @@ const MainLayout = async ({ children }: { children: ReactNode }) => {
 	// Org exists but the deep onboarding flow was not concluded yet — bounce the user back to finish it.
 	if (!user.membership.organizacao.dataOnboardingConclusao) redirect("/onboarding");
 	return (
-		<SidebarProvider className="font-raleway h-svh overflow-hidden">
+		// data-app-shell aciona o clamp de scroll do documento em globals.css.
+		<SidebarProvider data-app-shell="" className="font-raleway h-svh overflow-hidden">
 			<AppSidebar user={user.user} organization={user.membership.organizacao} />
 			<Suspense fallback={<LoadingComponent />}>
 				<SidebarInset className="overflow-y-auto p-6 flex flex-col gap-3">
