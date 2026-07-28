@@ -1,7 +1,7 @@
 # Resgate de Recompensas (Cashback) no PDV — plano
 
 Data: 2026-07-28
-Status: **Proposto**
+Status: **Implementado** (Fases 0–3 entregues em 2026-07-28; Fase 4 segue como backlog futuro)
 
 ## O problema em uma frase
 
@@ -141,6 +141,44 @@ recompensaResgate: z
 - Snapshot de valor comercial no catálogo de prêmios (hoje o snapshot vive no `saleItem` + `resgateRecompensaValor`, o que é suficiente para auditoria da venda).
 - Combinabilidade recompensa + cupom/cashback-desconto, e múltiplas recompensas por venda.
 - Recompensa na loja digital (`coupon_redemption_source` já prevê `LOJA_DIGITAL`; o resgate de recompensa pediria o equivalente).
+
+## Ajustes feitos durante a implementação
+
+- **`updateSaleDraft`: recompensa ausente = não altera.** O checkout multi-etapas
+  (`app/dashboard/commercial/sales/checkout/[saleId]`) salva o rascunho a cada navegação sem
+  conhecer a recompensa; tratar ausência como remoção apagaria o resgate do orçamento. `undefined`
+  preserva o snapshot, `null` remove, objeto revalida e recarimba.
+- **Marcador de imutabilidade no item.** `saleItems.metadados.origem = "POS-RESGATE-RECOMPENSA"`
+  é o que torna o item imutável na edição — por isso `process-confirmed-sale-edit` pula a reescrita
+  da linha (o update genérico regravaria `metadados` e apagaria o marcador).
+- **Teto de desconto exclui a recompensa dos dois lados.** Além do desconto, a **base** também: o
+  bruto do item de recompensa não infla o `valorBase` do teto percentual. No client isso virou o par
+  `subtotalAvaliavel`/`totalDescontoItensAvaliavel`; no servidor, o filtro por item de recompensa em
+  `/api/pos/sales/edit` (na criação o item nem chega pelo cliente).
+- **Admissão extraída para `lib/sales/sale-reward-redemption.ts`.** As três rotas (criação,
+  rascunho, confirmação) compartilham a mesma admissão, construção de item e snapshot.
+
+## Verificações realizadas
+
+- **Venda 100% grátis** (`valorTotal = 0`): `computeSaleFinancialStatus` retorna `RECEBIDA` para
+  `saleTotal <= 0` (`lib/sales/utils.ts:38`), então o gate de emissão fiscal passa;
+  `assertFiscalReadiness` só compara pagamentos quando existem splits; `isReadyForFinalize` e o
+  `pagamentoCompleto` do checkout aceitam total 0 sem pagamentos.
+- **Acúmulo:** `accumulateCashbackForClient` retorna cedo quando o valor calculado é 0, sem inserir
+  linha espúria de `ACÚMULO` na venda só-recompensa.
+- **Reversão:** `reverse-sale-cashback` opera sobre qualquer `RESGATE` da venda (restaura
+  `Math.abs(valor)` e reativa os acúmulos de `metadados.consumoFifo`), então a recompensa é
+  revertida sem mudança; o item volta ao estoque pelo caminho comum.
+- **Typecheck e lint** limpos nos arquivos tocados (o repositório tem 334 erros de tipo
+  pré-existentes, com `ignoreBuildErrors: true` no `next.config.mjs`).
+
+## Pendências para validar em ambiente
+
+- Emitir NFC-e de venda mista com recompensa em homologação: o produto do prêmio precisa de perfil
+  fiscal + grupo tributário (erro bloqueante existente) — vale conferir se a mensagem no PDV aponta
+  o produto com clareza.
+- Conferir o carrinho da tela de checkout tardio (`checkout/[saleId]`) para um rascunho
+  só-recompensa: o item ainda não existe nessa etapa, então a lista aparece vazia até a confirmação.
 
 ## Pontos de atenção de implementação
 
