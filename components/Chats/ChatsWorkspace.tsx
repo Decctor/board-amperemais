@@ -7,6 +7,7 @@ import { BarChart3, Columns3, MessagesSquare } from "lucide-react";
 import { useCallback, useState } from "react";
 import ChatsBoard from "./Board/ChatsBoard";
 import ChatHub from "./ChatHub";
+import ChatsStatsSection from "./Stats/ChatsStatsSection";
 
 /**
  * Casca das três abas do módulo de atendimentos.
@@ -81,18 +82,9 @@ export default function ChatsWorkspace({ user, organizationId, whatsappConnectio
 				</TabsContent>
 
 				<TabsContent value="estatisticas" className="mt-3 flex min-h-0 flex-1 flex-col">
-					<PlaceholderPanel label="Estatísticas de atendimento" />
+					<ChatsStatsSection whatsappConnections={whatsappConnections} />
 				</TabsContent>
 			</Tabs>
-		</div>
-	);
-}
-
-function PlaceholderPanel({ label }: { label: string }) {
-	return (
-		<div className="flex min-h-[40vh] flex-1 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border text-center">
-			<p className="text-sm font-bold tracking-tight">{label}</p>
-			<p className="text-xs text-muted-foreground">Em construção.</p>
 		</div>
 	);
 }

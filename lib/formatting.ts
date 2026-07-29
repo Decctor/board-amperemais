@@ -12,6 +12,29 @@ export function formatDurationMs(durationMs: number) {
 	return `${(seconds / 60).toFixed(2)}min`;
 }
 
+/**
+ * Duração legível a partir de segundos ("45s", "12min", "2h15", "3d 4h").
+ *
+ * Diferente de `formatDurationMs`, que serve a medições de performance e mantém casas
+ * decimais: aqui a unidade é tempo de atendimento, onde "1,73h" não é como ninguém fala.
+ */
+export function formatDurationFromSeconds(seconds: number | null | undefined) {
+	if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) return "—";
+	const total = Math.max(0, Math.round(seconds));
+	if (total < 60) return `${total}s`;
+
+	const minutes = Math.floor(total / 60);
+	if (minutes < 60) return `${minutes}min`;
+
+	const hours = Math.floor(minutes / 60);
+	const remainingMinutes = minutes % 60;
+	if (hours < 24) return remainingMinutes > 0 ? `${hours}h${String(remainingMinutes).padStart(2, "0")}` : `${hours}h`;
+
+	const days = Math.floor(hours / 24);
+	const remainingHours = hours % 24;
+	return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+}
+
 export function formatDateTime(value: any) {
 	if (!value) return undefined;
 	if (Number.isNaN(new Date(value).getMilliseconds())) return undefined;
