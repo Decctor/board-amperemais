@@ -67,7 +67,11 @@ export default function ChatsWorkspace({ user, organizationId, whatsappConnectio
 				  atributo `hidden` que o Radix aplica é regra do agente de usuário e perde para
 				  a classe `flex`.
 				*/}
-				<TabsContent value="hub" forceMount className="mt-3 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden">
+				<TabsContent
+					value="hub"
+					forceMount
+					className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm data-[state=inactive]:hidden"
+				>
 					<ChatHub
 						user={user}
 						organizationId={organizationId}

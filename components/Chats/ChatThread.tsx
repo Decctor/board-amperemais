@@ -7,7 +7,7 @@ import { mapRealtimeMessageRow, type TRealtimeChatMessageRow } from "@/lib/chats
 import { getWhatsappWindowDisplay } from "@/lib/chats/whatsapp-window-status";
 import { getErrorMessage } from "@/lib/errors";
 import { markChatRead, retryChatMessage, sendChatMessage, updateChatAssignment } from "@/lib/mutations/chats";
-import { getChatMessagesQueryKey, useChatMessages, type TChatMessagesPage, type TChatThreadMessage } from "@/lib/queries/chats";
+import { getChatMessagesQueryKey, useChatMessages, type TChatInboxItem, type TChatMessagesPage, type TChatThreadMessage } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
 import { supabaseClient } from "@/services/supabase";
 import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
@@ -21,6 +21,7 @@ import { ChatInputArea, type TOutgoingAttachment } from "./ChatInputArea";
 import { ChatMessageBubble, type TOptimisticFields } from "./ChatMessageBubble";
 
 type TThreadMessage = TChatThreadMessage & TOptimisticFields & { clientTempId?: string };
+type TInboxPage = { items: TChatInboxItem[]; hasMore: boolean; nextCursor: string | null };
 
 type ChatThreadProps = {
 	chatId: string;
@@ -41,6 +42,22 @@ function patchMessageInCache(data: InfiniteData<TChatMessagesPage> | undefined, 
 		...data,
 		pages: data.pages.map((page) => ({ ...page, items: page.items.map((item) => (item.id === messageId ? { ...item, ...patch } : item)) })),
 	};
+}
+
+function markChatReadInInboxCache(data: InfiniteData<TInboxPage> | undefined, chatId: string) {
+	if (!data?.pages.length) return data;
+
+	let changed = false;
+	const pages = data.pages.map((page) => ({
+		...page,
+		items: page.items.map((item) => {
+			if (item.id !== chatId || item.mensagensNaoLidas === 0) return item;
+			changed = true;
+			return { ...item, mensagensNaoLidas: 0 };
+		}),
+	}));
+
+	return changed ? { ...data, pages } : data;
 }
 
 function formatDaySeparator(date: Date) {
@@ -75,7 +92,18 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 		return [...pendentes, ...messages];
 	}, [messages, optimisticMessages]);
 
-	const markRead = useMutation({ mutationFn: markChatRead });
+	const markRead = useMutation({
+		mutationFn: markChatRead,
+		onMutate: ({ chatId: readChatId }) => {
+			// A thread e a inbox são caches independentes. Zerar apenas a thread deixava
+			// o badge lateral dependente do eco do Realtime para a mesma aba.
+			queryClient.setQueriesData<InfiniteData<TInboxPage>>({ queryKey: ["chats"] }, (current) => markChatReadInInboxCache(current, readChatId));
+		},
+		onError: () => {
+			// Se a persistência falhar, recarregamos a fonte de verdade e restauramos o badge.
+			void queryClient.invalidateQueries({ queryKey: ["chats"] });
+		},
+	});
 	const markReadRef = useRef(markRead);
 	markReadRef.current = markRead;
 
@@ -224,110 +252,110 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 	return (
 		<div className="flex h-full min-h-0 w-full min-w-0 overflow-hidden">
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
-			<header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
-				<div className="flex min-w-0 flex-col">
-					<span className="truncate text-sm font-semibold">{chat.cliente?.nome ?? "Cliente sem nome"}</span>
-					<span
-						className={cn(
-							"text-[11px]",
-							janela.variant === "expirada" ? "text-destructive" : janela.variant === "expirando" ? "text-brand" : "text-muted-foreground",
-						)}
-					>
-						{chat.cliente?.telefone} · {janela.label}
-					</span>
-				</div>
-				<div className="flex items-center gap-1.5">
-					{/* Header carrega só posse e roteamento; status e prioridade vivem no painel. */}
-					<ChatAssignmentActions chatId={chatId} atendimento={atendimento} currentUserId={currentUser.id} compact />
-
-					{/* Abaixo de xl o painel não cabe como coluna; vira gaveta sob demanda. */}
-					<Sheet>
-						<SheetTrigger asChild>
-							<Button variant="ghost" size="icon" className="shrink-0 xl:hidden" aria-label="Abrir contexto do atendimento">
-								<PanelRightOpen className="h-4 w-4" />
-							</Button>
-						</SheetTrigger>
-						<SheetContent side="right" className="w-[min(22rem,90vw)] p-0">
-							<SheetTitle className="sr-only">Contexto do atendimento</SheetTitle>
-							<ChatContextPanel chatId={chatId} chat={chat} currentUserId={currentUser.id} />
-						</SheetContent>
-					</Sheet>
-				</div>
-			</header>
-
-			<div
-				ref={scrollRef}
-				onScroll={(event) => {
-					const element = event.currentTarget;
-					// flex-col-reverse: o "fundo" (mensagem mais nova) é scrollTop === 0.
-					isAtBottomRef.current = element.scrollTop > -40;
-					if (isAtBottomRef.current) setUnseenCount(0);
-				}}
-				className="relative flex flex-1 flex-col-reverse gap-1 overflow-y-auto px-4 py-3"
-			>
-				{threadMessages.map((message, index) => {
-					const anterior = threadMessages[index + 1];
-					const showAuthor = !anterior || anterior.autorTipo !== message.autorTipo;
-					const currentDate = new Date(message.dataEnvio);
-					const showDaySeparator = !anterior || new Date(anterior.dataEnvio).toDateString() !== currentDate.toDateString();
-
-					return (
-						<div key={message.clientTempId ?? message.id} className="flex flex-col gap-1">
-							<ChatMessageBubble
-								message={message}
-								showAuthor={showAuthor}
-								onRetry={(messageId) => retryMutation.mutate({ messageId })}
-								isRetrying={retryMutation.isPending}
-							/>
-							{showDaySeparator && (
-								<div className="my-2 flex items-center gap-2">
-									<span className="h-px flex-1 bg-border" />
-									<span className="text-[11px] uppercase tracking-wide text-muted-foreground">{formatDaySeparator(currentDate)}</span>
-									<span className="h-px flex-1 bg-border" />
-								</div>
+				<header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
+					<div className="flex min-w-0 flex-col">
+						<span className="truncate text-sm font-semibold">{chat.cliente?.nome ?? "Cliente sem nome"}</span>
+						<span
+							className={cn(
+								"text-[11px]",
+								janela.variant === "expirada" ? "text-destructive" : janela.variant === "expirando" ? "text-brand" : "text-muted-foreground",
 							)}
-						</div>
-					);
-				})}
-
-				{hasNextPage && (
-					<div className="flex justify-center py-2">
-						<Button variant="ghost" size="sm" className="text-xs" disabled={isFetchingNextPage} onClick={() => fetchNextPage()}>
-							{isFetchingNextPage ? "Carregando..." : "Carregar mensagens anteriores"}
-						</Button>
+						>
+							{chat.cliente?.telefone} · {janela.label}
+						</span>
 					</div>
-				)}
-			</div>
+					<div className="flex items-center gap-1.5">
+						{/* Header carrega só posse e roteamento; status e prioridade vivem no painel. */}
+						<ChatAssignmentActions chatId={chatId} atendimento={atendimento} currentUserId={currentUser.id} compact />
 
-			<div aria-live="polite" className="sr-only">
-				{unseenCount > 0 ? `${unseenCount} ${unseenCount === 1 ? "nova mensagem" : "novas mensagens"}` : ""}
-			</div>
-			{unseenCount > 0 && (
-				<button
-					type="button"
-					onClick={() => {
-						scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-						setUnseenCount(0);
+						{/* Abaixo de xl o painel não cabe como coluna; vira gaveta sob demanda. */}
+						<Sheet>
+							<SheetTrigger asChild>
+								<Button variant="ghost" size="icon" className="shrink-0 xl:hidden" aria-label="Abrir contexto do atendimento">
+									<PanelRightOpen className="h-4 w-4" />
+								</Button>
+							</SheetTrigger>
+							<SheetContent side="right" className="w-[min(22rem,90vw)] p-0">
+								<SheetTitle className="sr-only">Contexto do atendimento</SheetTitle>
+								<ChatContextPanel chatId={chatId} chat={chat} currentUserId={currentUser.id} />
+							</SheetContent>
+						</Sheet>
+					</div>
+				</header>
+
+				<div
+					ref={scrollRef}
+					onScroll={(event) => {
+						const element = event.currentTarget;
+						// flex-col-reverse: o "fundo" (mensagem mais nova) é scrollTop === 0.
+						isAtBottomRef.current = element.scrollTop > -40;
+						if (isAtBottomRef.current) setUnseenCount(0);
 					}}
-					className="mx-auto -mt-8 mb-2 flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+					className="relative flex flex-1 flex-col-reverse gap-1 overflow-y-auto px-4 py-3"
 				>
-					<ChevronDown className="h-3 w-3" />
-					{unseenCount} {unseenCount === 1 ? "nova" : "novas"}
-				</button>
-			)}
+					{threadMessages.map((message, index) => {
+						const anterior = threadMessages[index + 1];
+						const showAuthor = !anterior || anterior.autorTipo !== message.autorTipo;
+						const currentDate = new Date(message.dataEnvio);
+						const showDaySeparator = !anterior || new Date(anterior.dataEnvio).toDateString() !== currentDate.toDateString();
 
-			<ChatInputArea
-				organizationId={organizationId}
-				userName={currentUser.nome}
-				isOwner={!!isOwner}
-				janelaExpiracao={chat.whatsappJanelaDataExpiracao}
-				conexaoTipo={chat.conexaoTipo}
-				isSending={sendMutation.isPending}
-				onSend={handleSend}
-				onAssume={() => assumeMutation.mutate({ acao: "assumir", chatId })}
-				templates={[]}
-				onSendTemplate={(messageTemplateId) => sendMutation.mutate({ chatId, messageTemplateId, assinaturaAtiva: false })}
-			/>
+						return (
+							<div key={message.clientTempId ?? message.id} className="flex flex-col gap-1">
+								<ChatMessageBubble
+									message={message}
+									showAuthor={showAuthor}
+									onRetry={(messageId) => retryMutation.mutate({ messageId })}
+									isRetrying={retryMutation.isPending}
+								/>
+								{showDaySeparator && (
+									<div className="my-2 flex items-center gap-2">
+										<span className="h-px flex-1 bg-border" />
+										<span className="text-[11px] uppercase tracking-wide text-muted-foreground">{formatDaySeparator(currentDate)}</span>
+										<span className="h-px flex-1 bg-border" />
+									</div>
+								)}
+							</div>
+						);
+					})}
+
+					{hasNextPage && (
+						<div className="flex justify-center py-2">
+							<Button variant="ghost" size="sm" className="text-xs" disabled={isFetchingNextPage} onClick={() => fetchNextPage()}>
+								{isFetchingNextPage ? "Carregando..." : "Carregar mensagens anteriores"}
+							</Button>
+						</div>
+					)}
+				</div>
+
+				<div aria-live="polite" className="sr-only">
+					{unseenCount > 0 ? `${unseenCount} ${unseenCount === 1 ? "nova mensagem" : "novas mensagens"}` : ""}
+				</div>
+				{unseenCount > 0 && (
+					<button
+						type="button"
+						onClick={() => {
+							scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+							setUnseenCount(0);
+						}}
+						className="mx-auto -mt-8 mb-2 flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+					>
+						<ChevronDown className="h-3 w-3" />
+						{unseenCount} {unseenCount === 1 ? "nova" : "novas"}
+					</button>
+				)}
+
+				<ChatInputArea
+					organizationId={organizationId}
+					userName={currentUser.nome}
+					isOwner={!!isOwner}
+					janelaExpiracao={chat.whatsappJanelaDataExpiracao}
+					conexaoTipo={chat.conexaoTipo}
+					isSending={sendMutation.isPending}
+					onSend={handleSend}
+					onAssume={() => assumeMutation.mutate({ acao: "assumir", chatId })}
+					templates={[]}
+					onSendTemplate={(messageTemplateId) => sendMutation.mutate({ chatId, messageTemplateId, assinaturaAtiva: false })}
+				/>
 			</div>
 
 			<aside className="hidden min-h-0 w-80 shrink-0 overflow-hidden border-l border-border xl:block">

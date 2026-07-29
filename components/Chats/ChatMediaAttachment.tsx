@@ -6,7 +6,6 @@ import { getFileTypeTitle } from "@/lib/files-storage";
 import { cn } from "@/lib/utils";
 import type { TChatMessageContentTypeEnum } from "@/schemas/enums";
 import { Download, FileText, ImageOff } from "lucide-react";
-import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ChatAudioPlayer } from "./ChatAudioPlayer";
@@ -84,27 +83,36 @@ export function ChatMediaAttachment({ tipo, url, arquivoNome, arquivoTamanho, mi
 						className={cn(
 							// Proporção fluida em vez de quadrado fixo: um 256x256 rígido
 							// distorcia recibos e prints, que é o que mais chega no varejo.
-							"group relative block w-full max-w-[17rem] overflow-hidden rounded-lg bg-current/10",
+							"group relative block w-full overflow-hidden rounded-lg bg-current/10",
 							"focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-current/30",
 							className,
 						)}
 					>
-						{!imageLoaded && <div className="aspect-4/3 w-full animate-pulse bg-current/5" />}
-						<Image
+						{!imageLoaded && <div className="absolute inset-0 animate-pulse bg-current/5" />}
+						{/* biome-ignore lint/performance/noImgElement: mídia dinâmica do usuário não deve passar pelo otimizador do Next */}
+						<img
 							src={url}
 							alt={arquivoNome || "Imagem enviada na conversa"}
 							width={640}
 							height={480}
+							loading="lazy"
 							onLoad={() => setImageLoaded(true)}
 							onError={() => setImageFailed(true)}
-							className={cn("h-auto w-full object-cover transition-opacity group-hover:opacity-90", !imageLoaded && "hidden")}
+							className={cn("block h-auto w-full object-cover transition-opacity group-hover:opacity-90", imageLoaded ? "opacity-100" : "opacity-0")}
 						/>
 					</button>
 				</DialogTrigger>
 				<DialogContent className="max-w-3xl">
 					<DialogTitle className="sr-only">{nomeExibido}</DialogTitle>
 					<div className="flex flex-col gap-3">
-						<Image src={url} alt={arquivoNome || "Imagem enviada na conversa"} width={1600} height={1200} className="h-auto max-h-[75vh] w-full object-contain" />
+						{/* biome-ignore lint/performance/noImgElement: mesma mídia dinâmica da prévia */}
+						<img
+							src={url}
+							alt={arquivoNome || "Imagem enviada na conversa"}
+							width={1600}
+							height={1200}
+							className="h-auto max-h-[75vh] w-full object-contain"
+						/>
 						<Button variant="outline" size="sm" className="self-end gap-1.5" onClick={() => downloadFile(url, nomeExibido)}>
 							<Download className="h-4 w-4" />
 							Baixar
@@ -124,7 +132,7 @@ export function ChatMediaAttachment({ tipo, url, arquivoNome, arquivoTamanho, mi
 				src={url}
 				controls
 				preload="metadata"
-				className={cn("w-full max-w-[17rem] rounded-lg bg-current/10", className)}
+				className={cn("w-full rounded-lg bg-current/10", className)}
 				aria-label={arquivoNome || "Vídeo enviado na conversa"}
 			/>
 		);
@@ -134,13 +142,11 @@ export function ChatMediaAttachment({ tipo, url, arquivoNome, arquivoTamanho, mi
 	const tipoArquivo = mimeType ? getFileTypeTitle(mimeType) : null;
 
 	return (
-		<div className={cn("flex w-full max-w-[17rem] items-center gap-2.5 rounded-lg bg-current/10 p-2.5", className)}>
+		<div className={cn("flex w-full items-center gap-2.5 rounded-lg bg-current/10 p-2.5", className)}>
 			<FileText className="h-5 w-5 shrink-0 opacity-70" />
 			<div className="flex min-w-0 flex-1 flex-col">
 				<span className="truncate text-xs font-semibold">{nomeExibido}</span>
-				{(tamanho || tipoArquivo) && (
-					<span className="truncate text-[11px] opacity-70">{[tipoArquivo, tamanho].filter(Boolean).join(" · ")}</span>
-				)}
+				{(tamanho || tipoArquivo) && <span className="truncate text-[11px] opacity-70">{[tipoArquivo, tamanho].filter(Boolean).join(" · ")}</span>}
 			</div>
 			<button
 				type="button"
