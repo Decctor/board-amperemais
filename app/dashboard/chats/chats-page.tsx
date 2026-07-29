@@ -12,7 +12,11 @@ export default function ChatsPage({ user, membership }: ChatsPageProps) {
 			data-chat-page=""
 			className="flex h-[calc(100dvh-7rem)] min-h-0 w-full shrink-0 flex-col overflow-hidden lg:h-[calc(100dvh-8rem)]"
 		>
-			<ChatsMain user={user} organizationId={membership.organizacao.id} />
+			<ChatsMain
+				user={user}
+				organizationId={membership.organizacao.id}
+				canManageAttendances={membership.permissoes.atendimentos.finalizar ?? false}
+			/>
 		</div>
 	);
 }

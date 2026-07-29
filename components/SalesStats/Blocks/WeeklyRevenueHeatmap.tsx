@@ -108,7 +108,7 @@ function WeeklyRevenueHeatmapWeekDayStrip({
 					</button>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
+					<TooltipContent className="min-w-[180px] p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold mb-1">{WEEKDAY_MAP_FULL[index]}</h3>
 							<div className="flex items-center justify-between gap-4">
@@ -134,7 +134,7 @@ function WeeklyRevenueHeatmapWeekDayStrip({
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-foreground-foreground p-3">
+					<TooltipContent className="p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">{WEEKDAY_MAP_FULL[index]}</h3>
 							<span className="text-xs">SEM DADOS</span>
@@ -209,7 +209,7 @@ function WeeklyRevenueHeatmapGrid({
 					</div>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
+					<TooltipContent className="min-w-[180px] p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold">
 								{WEEKDAY_MAP_SHORT[diaSemana]} às {formatHourLabel(hora)}
@@ -237,7 +237,7 @@ function WeeklyRevenueHeatmapGrid({
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-foreground-foreground p-3">
+					<TooltipContent className="p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">
 								{WEEKDAY_MAP_SHORT[diaSemana]} às {formatHourLabel(hora)}

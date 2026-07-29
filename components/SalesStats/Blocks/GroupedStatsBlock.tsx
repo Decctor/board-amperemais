@@ -667,7 +667,7 @@ function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }
 					</div>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
+					<TooltipContent className="min-w-[180px] p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold mb-1">DIA {index + 1}</h3>
 							<div className="flex items-center justify-between gap-4">
@@ -693,7 +693,7 @@ function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-foreground-foreground p-3">
+					<TooltipContent className="p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">DIA {index + 1}</h3>
 							<span className="text-xs">SEM DADOS</span>
@@ -788,7 +788,7 @@ function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
 					</div>
 				</TooltipTrigger>
 				{result ? (
-					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
+					<TooltipContent className="min-w-[180px] p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 						<div className="flex flex-col gap-2">
 							<h3 className="text-sm font-semibold mb-1">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h3>
 							<div className="flex items-center justify-between gap-4">
@@ -814,7 +814,7 @@ function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
 						</div>
 					</TooltipContent>
 				) : (
-					<TooltipContent className="bg-primary text-foreground-foreground p-3">
+					<TooltipContent className="p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 						<div className="flex flex-col gap-1">
 							<h3 className="text-sm font-semibold">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h3>
 							<span className="text-xs">SEM DADOS</span>

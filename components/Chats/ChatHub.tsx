@@ -4,7 +4,6 @@ import type { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connectio
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { cn } from "@/lib/utils";
 import { MessageSquare } from "lucide-react";
-import { useState } from "react";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatThread } from "./ChatThread";
 
@@ -12,10 +11,12 @@ type ChatHubProps = {
 	user: TAuthUserSession["user"];
 	organizationId: string;
 	whatsappConnections: TGetWhatsappConnectionsOutput["data"];
+	/** Controlado pelo workspace: o quadro também seleciona conversas. */
+	selectedChatId: string | null;
+	onSelectChat: (chatId: string | null) => void;
 };
 
-export default function ChatHub({ user, organizationId, whatsappConnections }: ChatHubProps) {
-	const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+export default function ChatHub({ user, organizationId, whatsappConnections, selectedChatId, onSelectChat }: ChatHubProps) {
 	const currentUser = { id: user.id, nome: user.nome, avatarUrl: user.avatarUrl };
 
 	return (
@@ -25,7 +26,7 @@ export default function ChatHub({ user, organizationId, whatsappConnections }: C
 				<ChatSidebar
 					organizationId={organizationId}
 					selectedChatId={selectedChatId}
-					onSelectChat={setSelectedChatId}
+					onSelectChat={onSelectChat}
 					whatsappConnections={whatsappConnections}
 				/>
 			</div>

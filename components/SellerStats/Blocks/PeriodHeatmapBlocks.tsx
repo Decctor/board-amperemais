@@ -1,6 +1,7 @@
 "use client";
 
 import type { TGetSellerStatsOutput } from "@/app/api/sellers/stats/route";
+import { hexToRgba, useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
@@ -66,7 +67,8 @@ function PeriodHeatmapCell({
 	intensity: number;
 	className?: string;
 }) {
-	const bgColor = result ? `rgba(254, 173, 0, ${intensity})` : "transparent";
+	const { colors } = useOrgColors();
+	const bgColor = result ? hexToRgba(colors.primary, intensity) : "transparent";
 	const ticketMedio = result && result.quantidade > 0 ? result.total / result.quantidade : 0;
 
 	return (
@@ -83,7 +85,7 @@ function PeriodHeatmapCell({
 				</div>
 			</TooltipTrigger>
 			{result ? (
-				<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
+				<TooltipContent className="min-w-[180px] p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 					<div className="flex flex-col gap-2">
 						<h3 className="text-sm font-semibold mb-1">{tooltipTitle}</h3>
 						<div className="flex items-center justify-between gap-4">
@@ -109,7 +111,7 @@ function PeriodHeatmapCell({
 					</div>
 				</TooltipContent>
 			) : (
-				<TooltipContent className="bg-primary text-foreground-foreground p-3">
+				<TooltipContent className="p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 					<div className="flex flex-col gap-1">
 						<h3 className="text-sm font-semibold">{tooltipTitle}</h3>
 						<span className="text-xs">SEM DADOS</span>

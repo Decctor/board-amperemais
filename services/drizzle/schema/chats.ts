@@ -167,6 +167,13 @@ export const chatAssignments = newTable(
 	(table) => [
 		index("idx_chat_assignments_chat_status").on(table.chatId, table.status),
 		index("idx_chat_assignments_organizacao_usuario").on(table.organizacaoId, table.responsavelUsuarioId),
+		// Estatísticas e quadro (0055): varredura por organização + janela de datas. A abertura
+		// é `dataInsercao` — `dataAtribuicao` é reescrita a cada assumir/atribuir/transferir.
+		index("idx_chat_assignments_org_data_insercao").on(table.organizacaoId, table.dataInsercao.desc()),
+		index("idx_chat_assignments_org_data_encerramento")
+			.on(table.organizacaoId, table.dataEncerramento.desc())
+			.where(sql`${table.dataEncerramento} is not null`),
+		index("idx_chat_assignments_org_status").on(table.organizacaoId, table.status),
 		uniqueIndex("idx_chat_assignments_one_current_per_chat")
 			.on(table.chatId)
 			.where(sql`${table.status} not in ('ENCERRADO', 'CANCELADO')`),
