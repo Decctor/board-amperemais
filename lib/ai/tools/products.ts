@@ -13,7 +13,7 @@ import { defineAgentTool } from "./define-tool";
  * organização e podiam devolver o catálogo de outra empresa. Aqui `organizacaoId` vem do
  * contexto e entra em todos os `where`.
  */
-export const produtosConsultarTool = defineAgentTool({
+export const productsTool = defineAgentTool({
 	name: "produtos.consultar",
 	description: `Consulta o catálogo de produtos da empresa.
 
@@ -41,27 +41,27 @@ pedir mais páginas. Nunca invente preços ou disponibilidade: informe apenas o 
 	}),
 	async execute(input, context) {
 		const { db, organizacaoId } = context;
-		const limite = input.limite ?? 10;
-		const visao = input.visao ?? "LISTA";
-		const apenasAtivos = input.apenasAtivos ?? true;
+		const limit = input.limite ?? 10;
+		const view = input.visao ?? "LISTA";
+		const activeOnly = input.apenasAtivos ?? true;
 
 		const conditions = [eq(products.organizacaoId, organizacaoId)];
-		if (apenasAtivos) conditions.push(eq(products.ativo, true));
+		if (activeOnly) conditions.push(eq(products.ativo, true));
 		if (input.grupo) conditions.push(eq(products.grupo, input.grupo));
 		if (typeof input.precoMin === "number") conditions.push(gte(products.precoVenda, input.precoMin));
 		if (typeof input.precoMax === "number") conditions.push(lte(products.precoVenda, input.precoMax));
 
 		// O termo casa nome parcial OU código — o cliente tanto descreve quanto informa o código.
 		if (input.termo) {
-			const termo = `%${input.termo}%`;
-			const termoCondition = or(ilike(products.nome, termo), ilike(products.codigo, termo));
-			if (termoCondition) conditions.push(termoCondition);
+			const term = `%${input.termo}%`;
+			const termCondition = or(ilike(products.nome, term), ilike(products.codigo, term));
+			if (termCondition) conditions.push(termCondition);
 		}
 
 		const where = and(...conditions);
 
-		if (visao === "GRUPOS") {
-			const grupos = await db
+		if (view === "GRUPOS") {
+			const groups = await db
 				.select({ grupo: products.grupo, quantidade: count() })
 				.from(products)
 				.where(where)
@@ -69,14 +69,14 @@ pedir mais páginas. Nunca invente preços ou disponibilidade: informe apenas o 
 				.orderBy(desc(sql`count(*)`))
 				.limit(50);
 
-			if (grupos.length === 0) {
+			if (groups.length === 0) {
 				return { success: true, message: "Nenhuma categoria de produto encontrada com os filtros informados.", result: { grupos: [] } };
 			}
 
 			return {
 				success: true,
-				message: `${grupos.length} categoria(s) de produto encontrada(s).`,
-				result: { grupos: grupos.map((g) => ({ grupo: g.grupo, quantidadeProdutos: Number(g.quantidade) })) },
+				message: `${groups.length} categoria(s) de produto encontrada(s).`,
+				result: { grupos: groups.map((g) => ({ grupo: g.grupo, quantidadeProdutos: Number(g.quantidade) })) },
 			};
 		}
 
@@ -91,14 +91,14 @@ pedir mais páginas. Nunca invente preços ou disponibilidade: informe apenas o 
 			};
 		}
 
-		const encontrados = await db.query.products.findMany({
+		const found = await db.query.products.findMany({
 			where,
 			orderBy: [asc(products.nome)],
-			limit: limite,
+			limit,
 			columns: { nome: true, codigo: true, grupo: true, unidade: true, precoVenda: true, descricao: true },
 			with: {
 				variantes: {
-					where: apenasAtivos ? (variante, { eq: equals }) => equals(variante.ativo, true) : undefined,
+					where: activeOnly ? (variante, { eq: equals }) => equals(variante.ativo, true) : undefined,
 					columns: { nome: true, codigo: true, precoVenda: true },
 					limit: 20,
 				},
@@ -107,20 +107,20 @@ pedir mais páginas. Nunca invente preços ou disponibilidade: informe apenas o 
 
 		return {
 			success: true,
-			message: `${encontrados.length} de ${totalEncontrado} produto(s) retornado(s).`,
+			message: `${found.length} de ${totalEncontrado} produto(s) retornado(s).`,
 			result: {
 				totalEncontrado,
-				produtos: encontrados.map((produto) => ({
-					nome: produto.nome,
-					codigo: produto.codigo,
-					grupo: produto.grupo,
-					unidade: produto.unidade,
-					precoVenda: produto.precoVenda,
-					descricao: produto.descricao,
-					variacoes: produto.variantes.map((variante) => ({
-						nome: variante.nome,
-						codigo: variante.codigo,
-						precoVenda: variante.precoVenda,
+				produtos: found.map((product) => ({
+					nome: product.nome,
+					codigo: product.codigo,
+					grupo: product.grupo,
+					unidade: product.unidade,
+					precoVenda: product.precoVenda,
+					descricao: product.descricao,
+					variacoes: product.variantes.map((variant) => ({
+						nome: variant.nome,
+						codigo: variant.codigo,
+						precoVenda: variant.precoVenda,
 					})),
 				})),
 			},

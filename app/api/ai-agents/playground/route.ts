@@ -16,17 +16,17 @@ async function getPlayground({ organizacaoId }: { organizacaoId: string }) {
 		return { data: { chatId: null, estado: null }, message: "Nenhum chat de teste iniciado." };
 	}
 
-	const estado = await getPlaygroundState({ organizacaoId, chatId: chat.id });
-	return { data: { chatId: chat.id, estado }, message: "Estado do playground carregado com sucesso." };
+	const state = await getPlaygroundState({ organizacaoId, chatId: chat.id });
+	return { data: { chatId: chat.id, estado: state }, message: "Estado do playground carregado com sucesso." };
 }
 export type TGetPlaygroundOutput = Awaited<ReturnType<typeof getPlayground>>;
 
 async function createPlayground({ organizacaoId }: { organizacaoId: string }) {
-	const agente = await ensureOrganizationAgent(db, organizacaoId);
-	const { chatId } = await createPlaygroundChat({ organizacaoId, agenteId: agente.id });
-	const estado = await getPlaygroundState({ organizacaoId, chatId });
+	const agent = await ensureOrganizationAgent(db, organizacaoId);
+	const { chatId } = await createPlaygroundChat({ organizacaoId, agenteId: agent.id });
+	const state = await getPlaygroundState({ organizacaoId, chatId });
 
-	return { data: { chatId, estado }, message: "Chat de teste criado com sucesso." };
+	return { data: { chatId, estado: state }, message: "Chat de teste criado com sucesso." };
 }
 export type TCreatePlaygroundOutput = Awaited<ReturnType<typeof createPlayground>>;
 

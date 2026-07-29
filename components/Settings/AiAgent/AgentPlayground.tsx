@@ -20,37 +20,37 @@ import AgentRunDrawer from "./AgentRunDrawer";
  */
 export default function AgentPlayground() {
 	const queryClient = useQueryClient();
-	const [texto, setTexto] = useState("");
-	const [runIdAberto, setRunIdAberto] = useState<string | null>(null);
-	const fimDaConversaRef = useRef<HTMLDivElement>(null);
+	const [text, setText] = useState("");
+	const [openRunId, setOpenRunId] = useState<string | null>(null);
+	const conversationEndRef = useRef<HTMLDivElement>(null);
 
 	const { data, isLoading } = usePlaygroundState();
 	const chatId = data?.chatId ?? null;
-	const mensagens = data?.estado?.mensagens ?? [];
+	const messages = data?.estado?.mensagens ?? [];
 
 	useEffect(() => {
-		fimDaConversaRef.current?.scrollIntoView({ behavior: "smooth" });
+		conversationEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, []);
 
-	const { mutate: criarChat, isPending: criandoChat } = useMutation({
+	const { mutate: createChat, isPending: isCreatingChat } = useMutation({
 		mutationKey: ["create-playground-chat"],
 		mutationFn: createPlaygroundChat,
 		onSuccess: () => queryClient.invalidateQueries({ queryKey: AI_AGENT_PLAYGROUND_QUERY_KEY }),
 		onError: (error) => toast.error(getErrorMessage(error)),
 	});
 
-	const { mutate: enviarMensagem, isPending: enviando } = useMutation({
+	const { mutate: sendMessage, isPending: isSending } = useMutation({
 		mutationKey: ["send-playground-message"],
 		mutationFn: sendPlaygroundMessage,
-		onMutate: () => setTexto(""),
+		onMutate: () => setText(""),
 		onSuccess: () => queryClient.invalidateQueries({ queryKey: AI_AGENT_PLAYGROUND_QUERY_KEY }),
 		onError: (error) => toast.error(getErrorMessage(error)),
 	});
 
-	function handleEnviar() {
-		const conteudo = texto.trim();
-		if (!conteudo || !chatId || enviando) return;
-		enviarMensagem({ chatId, texto: conteudo });
+	function handleSend() {
+		const content = text.trim();
+		if (!content || !chatId || isSending) return;
+		sendMessage({ chatId, texto: content });
 	}
 
 	if (isLoading) return <LoadingComponent />;
@@ -62,7 +62,7 @@ export default function AgentPlayground() {
 					Converse como se fosse um cliente. O agente usa as configurações salvas — salve antes de testar uma alteração. Nada é enviado por WhatsApp e esta
 					conversa não aparece no hub de atendimentos.
 				</p>
-				<Button variant="outline" size="sm" className="flex shrink-0 items-center gap-2" disabled={criandoChat} onClick={() => criarChat()}>
+				<Button variant="outline" size="sm" className="flex shrink-0 items-center gap-2" disabled={isCreatingChat} onClick={() => createChat()}>
 					<MessageSquarePlus className="h-4 w-4" />
 					NOVA CONVERSA
 				</Button>
@@ -72,35 +72,31 @@ export default function AgentPlayground() {
 				<div className="flex w-full flex-col items-center gap-3 rounded-lg border border-dashed border-border px-4 py-10 text-center">
 					<p className="text-sm font-medium">Nenhuma conversa de teste iniciada</p>
 					<p className="text-xs text-muted-foreground">Comece uma conversa para ver como o agente responde antes de liberá-lo aos clientes.</p>
-					<Button size="sm" disabled={criandoChat} onClick={() => criarChat()}>
-						{criandoChat ? "CRIANDO..." : "INICIAR CONVERSA"}
+					<Button size="sm" disabled={isCreatingChat} onClick={() => createChat()}>
+						{isCreatingChat ? "CRIANDO..." : "INICIAR CONVERSA"}
 					</Button>
 				</div>
 			) : (
 				<>
 					<div className="flex max-h-[28rem] w-full flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-muted/30 px-4 py-4">
-						{mensagens.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Envie a primeira mensagem para começar.</p> : null}
+						{messages.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Envie a primeira mensagem para começar.</p> : null}
 
-						{mensagens.map((mensagem) => {
-							const doCliente = mensagem.autorTipo === "CLIENTE";
-							const runId = mensagem.metadados?.aiAgente?.runId ?? null;
+						{messages.map((message) => {
+							const fromClient = message.autorTipo === "CLIENTE";
+							const runId = message.metadados?.aiAgente?.runId ?? null;
 							return (
-								<div key={mensagem.id} className={cn("flex w-full", doCliente ? "justify-end" : "justify-start")}>
-									<div className={cn("flex max-w-[80%] flex-col gap-1", doCliente ? "items-end" : "items-start")}>
+								<div key={message.id} className={cn("flex w-full", fromClient ? "justify-end" : "justify-start")}>
+									<div className={cn("flex max-w-[80%] flex-col gap-1", fromClient ? "items-end" : "items-start")}>
 										<div
 											className={cn(
 												"rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap",
-												doCliente ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm border border-border bg-card",
+												fromClient ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm border border-border bg-card",
 											)}
 										>
-											{mensagem.conteudoTexto}
+											{message.conteudoTexto}
 										</div>
 										{runId ? (
-											<button
-												type="button"
-												onClick={() => setRunIdAberto(runId)}
-												className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
-											>
+											<button type="button" onClick={() => setOpenRunId(runId)} className="text-[11px] text-muted-foreground underline-offset-2 hover:underline">
 												ver o que o agente consultou
 											</button>
 										) : null}
@@ -109,35 +105,35 @@ export default function AgentPlayground() {
 							);
 						})}
 
-						{enviando || data?.estado?.execucaoAtiva ? (
+						{isSending || data?.estado?.execucaoAtiva ? (
 							<div className="flex w-full justify-start">
 								<div className="rounded-2xl rounded-bl-sm border border-border bg-card px-3 py-2 text-sm text-muted-foreground">digitando...</div>
 							</div>
 						) : null}
 
-						<div ref={fimDaConversaRef} />
+						<div ref={conversationEndRef} />
 					</div>
 
 					<div className="flex w-full items-center gap-2">
 						<Input
-							value={texto}
-							onChange={(event) => setTexto(event.target.value)}
+							value={text}
+							onChange={(event) => setText(event.target.value)}
 							onKeyDown={(event) => {
 								if (event.key !== "Enter" || event.shiftKey) return;
 								event.preventDefault();
-								handleEnviar();
+								handleSend();
 							}}
 							placeholder="Escreva como um cliente escreveria..."
-							disabled={enviando}
+							disabled={isSending}
 						/>
-						<Button size="icon" disabled={enviando || !texto.trim()} onClick={handleEnviar} aria-label="Enviar mensagem">
+						<Button size="icon" disabled={isSending || !text.trim()} onClick={handleSend} aria-label="Enviar mensagem">
 							<Send className="h-4 w-4" />
 						</Button>
 					</div>
 				</>
 			)}
 
-			{runIdAberto ? <AgentRunDrawer runId={runIdAberto} closeModal={() => setRunIdAberto(null)} /> : null}
+			{openRunId ? <AgentRunDrawer runId={openRunId} closeModal={() => setOpenRunId(null)} /> : null}
 		</div>
 	);
 }

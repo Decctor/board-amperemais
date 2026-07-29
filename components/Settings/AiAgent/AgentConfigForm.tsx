@@ -24,10 +24,10 @@ export default function AgentConfigForm() {
 	const {
 		state,
 		updateAgent,
-		updateModeloConfig,
-		updateLimites,
-		updateAtendimento,
-		toggleFerramenta,
+		updateModelConfig,
+		updateLimits,
+		updateAttendanceSettings,
+		toggleTool,
 		addKnowledgeBlock,
 		updateKnowledgeBlock,
 		removeKnowledgeBlock,
@@ -70,7 +70,7 @@ export default function AgentConfigForm() {
 
 	return (
 		<div className="flex w-full flex-col gap-8">
-			<GeneralBlock state={state} updateAgent={updateAgent} updateModeloConfig={updateModeloConfig} />
+			<GeneralBlock state={state} updateAgent={updateAgent} updateModelConfig={updateModelConfig} />
 
 			<div className="flex w-full flex-col gap-4 border-t pt-6">
 				<h2 className="text-sm font-bold uppercase tracking-tight">PERSONALIDADE E REGRAS</h2>
@@ -79,7 +79,7 @@ export default function AgentConfigForm() {
 
 			<div className="flex w-full flex-col gap-4 border-t pt-6">
 				<h2 className="text-sm font-bold uppercase tracking-tight">O QUE O AGENTE PODE CONSULTAR</h2>
-				<ToolsBlock state={state} toggleFerramenta={toggleFerramenta} updateLimites={updateLimites} updateAtendimento={updateAtendimento} />
+				<ToolsBlock state={state} toggleTool={toggleTool} updateLimits={updateLimits} updateAttendanceSettings={updateAttendanceSettings} />
 			</div>
 
 			<div className="flex w-full flex-col gap-4 border-t pt-6">

@@ -40,14 +40,14 @@ export function useInternalAiAgentState() {
 		setState((prev) => ({ ...prev, agente: { ...prev.agente, ...agente } }));
 	}, []);
 
-	const updateModeloConfig = useCallback((modeloConfig: Partial<TAiAgentModeloConfig>) => {
+	const updateModelConfig = useCallback((modeloConfig: Partial<TAiAgentModeloConfig>) => {
 		setState((prev) => ({
 			...prev,
 			agente: { ...prev.agente, modeloConfig: { ...prev.agente.modeloConfig, ...modeloConfig } },
 		}));
 	}, []);
 
-	const updateLimites = useCallback((limites: Partial<TAiAgentCapacidades["limites"]>) => {
+	const updateLimits = useCallback((limites: Partial<TAiAgentCapacidades["limites"]>) => {
 		setState((prev) => ({
 			...prev,
 			agente: {
@@ -57,7 +57,7 @@ export function useInternalAiAgentState() {
 		}));
 	}, []);
 
-	const updateAtendimento = useCallback((atendimento: Partial<TAiAgentCapacidades["atendimento"]>) => {
+	const updateAttendanceSettings = useCallback((atendimento: Partial<TAiAgentCapacidades["atendimento"]>) => {
 		setState((prev) => ({
 			...prev,
 			agente: {
@@ -67,14 +67,14 @@ export function useInternalAiAgentState() {
 		}));
 	}, []);
 
-	const toggleFerramenta = useCallback((nome: TAiAgentToolNameEnum, habilitada: boolean) => {
+	const toggleTool = useCallback((name: TAiAgentToolNameEnum, enabled: boolean) => {
 		setState((prev) => ({
 			...prev,
 			agente: {
 				...prev.agente,
 				capacidades: {
 					...prev.agente.capacidades,
-					ferramentas: { ...prev.agente.capacidades.ferramentas, [nome]: { habilitada } },
+					ferramentas: { ...prev.agente.capacidades.ferramentas, [name]: { habilitada: enabled } },
 				},
 			},
 		}));
@@ -103,16 +103,16 @@ export function useInternalAiAgentState() {
 		}));
 	}, []);
 
-	const redefineState = useCallback((novoEstado: TInternalAiAgentState) => setState(novoEstado), []);
+	const redefineState = useCallback((newState: TInternalAiAgentState) => setState(newState), []);
 	const resetState = useCallback(() => setState(buildInitialState()), []);
 
 	return {
 		state,
 		updateAgent,
-		updateModeloConfig,
-		updateLimites,
-		updateAtendimento,
-		toggleFerramenta,
+		updateModelConfig,
+		updateLimits,
+		updateAttendanceSettings,
+		toggleTool,
 		addKnowledgeBlock,
 		updateKnowledgeBlock,
 		removeKnowledgeBlock,

@@ -370,13 +370,13 @@ async function handleIncomingMessage(body: Extract<WebhookBody, { event: "messag
 	}
 
 	// Provisionamento lazy: a primeira mensagem cria o agente da organização.
-	const agente = await ensureOrganizationAgent(db, organizacaoId);
-	if (agente.status !== "ATIVO") {
+	const agent = await ensureOrganizationAgent(db, organizacaoId);
+	if (agent.status !== "ATIVO") {
 		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Agente de IA pausado para a organização:", organizacaoId);
 		return;
 	}
 
-	const claim = await claimChatForAi({ organizacaoId, chatId, agenteId: agente.id });
+	const claim = await claimChatForAi({ organizacaoId, chatId, agenteId: agent.id });
 	if (!claim.shouldRespond) {
 		console.log("[INTERNAL_WHATSAPP_WEBHOOK] IA não assumiu o atendimento:", claim.reason);
 		return;
@@ -387,7 +387,7 @@ async function handleIncomingMessage(body: Extract<WebhookBody, { event: "messag
 		chatId,
 		messageId: insertedMessage.messageId,
 		messageDate: insertedMessage.dataEnvio,
-		delayMs: agente.capacidades?.atendimento?.atrasoRespostaMs,
+		delayMs: agent.capacidades?.atendimento?.atrasoRespostaMs,
 	});
 	if (!confirmation.shouldRespond) {
 		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Resposta da IA abortada:", confirmation.reason);
@@ -395,14 +395,14 @@ async function handleIncomingMessage(body: Extract<WebhookBody, { event: "messag
 	}
 
 	try {
-		const resultado = await respondToChatWithAgent({
+		const result = await respondToChatWithAgent({
 			organizacaoId,
 			chatId,
 			gatilho: "CHAT_MENSAGEM",
 			mensagemGatilhoId: insertedMessage.messageId,
 			deliver: createInternalGatewayDeliverer({ organizacaoId, chatId, sessaoId: sessionId }),
 		});
-		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Execução do agente concluída:", resultado.runId);
+		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Execução do agente concluída:", result.runId);
 	} catch (error) {
 		// A execução falha fica registrada em `ai_agent_runs` com o erro; nada é enviado ao cliente.
 		console.error("[INTERNAL_WHATSAPP_WEBHOOK] Falha na execução do agente de IA:", error);

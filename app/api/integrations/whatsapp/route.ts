@@ -552,15 +552,15 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 	}
 
 	// Provisionamento lazy: a primeira mensagem cria o agente da organização.
-	const agente = await ensureOrganizationAgent(db, organizacaoId);
-	if (agente.status !== "ATIVO") {
+	const agent = await ensureOrganizationAgent(db, organizacaoId);
+	if (agent.status !== "ATIVO") {
 		console.log("[WHATSAPP_WEBHOOK] Agente de IA pausado para a organização:", organizacaoId);
 		return;
 	}
 
 	// A IA reivindica o atendimento em vez de nascer dona dele. Se um humano assumiu a
 	// conversa, o claim não casa e ela recua sem gerar resposta.
-	const claim = await claimChatForAi({ organizacaoId, chatId, agenteId: agente.id });
+	const claim = await claimChatForAi({ organizacaoId, chatId, agenteId: agent.id });
 	if (!claim.shouldRespond) {
 		console.log("[WHATSAPP_WEBHOOK] IA não assumiu o atendimento:", claim.reason);
 		return;
@@ -571,7 +571,7 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 		chatId,
 		messageId: insertedMessage.messageId,
 		messageDate: insertedMessage.dataEnvio,
-		delayMs: agente.capacidades?.atendimento?.atrasoRespostaMs,
+		delayMs: agent.capacidades?.atendimento?.atrasoRespostaMs,
 	});
 	if (!confirmation.shouldRespond) {
 		console.log("[WHATSAPP_WEBHOOK] Resposta da IA abortada:", confirmation.reason);
@@ -579,14 +579,14 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 	}
 
 	try {
-		const resultado = await respondToChatWithAgent({
+		const result = await respondToChatWithAgent({
 			organizacaoId,
 			chatId,
 			gatilho: "CHAT_MENSAGEM",
 			mensagemGatilhoId: insertedMessage.messageId,
 			deliver: createMetaCloudDeliverer({ organizacaoId, chatId }),
 		});
-		console.log("[WHATSAPP_WEBHOOK] Execução do agente concluída:", resultado.runId);
+		console.log("[WHATSAPP_WEBHOOK] Execução do agente concluída:", result.runId);
 	} catch (error) {
 		// A execução falha fica registrada em `ai_agent_runs` com o erro; nada é enviado ao
 		// cliente — mensagem genérica de desculpas só esconderia o problema.

@@ -18,13 +18,13 @@ const PLAYGROUND_CLIENT_NAME = "Cliente de Teste (Playground)";
 
 /** Cliente fictício por organização, reaproveitado entre sessões de teste. */
 export async function ensurePlaygroundClient(organizacaoId: string) {
-	const existente = await db.query.clients.findFirst({
+	const existing = await db.query.clients.findFirst({
 		where: and(eq(clients.organizacaoId, organizacaoId), eq(clients.nome, PLAYGROUND_CLIENT_NAME)),
 		columns: { id: true },
 	});
-	if (existente) return existente.id;
+	if (existing) return existing.id;
 
-	const [criado] = await db
+	const [created] = await db
 		.insert(clients)
 		.values({
 			organizacaoId,
@@ -34,7 +34,7 @@ export async function ensurePlaygroundClient(organizacaoId: string) {
 		})
 		.returning({ id: clients.id });
 
-	return criado.id;
+	return created.id;
 }
 
 export async function getPlaygroundChat(organizacaoId: string) {
@@ -81,7 +81,7 @@ export async function persistPlaygroundClientMessage({
 	clienteId: string;
 	texto: string;
 }) {
-	const agora = new Date();
+	const now = new Date();
 
 	const [inserted] = await db
 		.insert(chatMessages)
@@ -94,7 +94,7 @@ export async function persistPlaygroundClientMessage({
 			conteudoTexto: texto,
 			conteudoMidiaTipo: "TEXTO",
 			statusEntrega: "ENTREGUE",
-			dataEnvio: agora,
+			dataEnvio: now,
 		})
 		.returning({ id: chatMessages.id, dataEnvio: chatMessages.dataEnvio });
 
@@ -108,27 +108,27 @@ export async function persistPlaygroundClientMessage({
 
 /** Estado que a UI busca por polling enquanto o agente responde. */
 export async function getPlaygroundState({ organizacaoId, chatId }: { organizacaoId: string; chatId: string }) {
-	const mensagens = await db.query.chatMessages.findMany({
+	const messages = await db.query.chatMessages.findMany({
 		where: and(eq(chatMessages.chatId, chatId), eq(chatMessages.organizacaoId, organizacaoId)),
 		orderBy: [asc(chatMessages.dataEnvio)],
 		columns: { id: true, autorTipo: true, conteudoTexto: true, dataEnvio: true, metadados: true },
 	});
 
-	const atendimento = await getCurrentChatAttendance(db, { organizacaoId, chatId });
+	const attendance = await getCurrentChatAttendance(db, { organizacaoId, chatId });
 
-	const execucoes = await db.query.aiAgentRuns.findMany({
+	const runs = await db.query.aiAgentRuns.findMany({
 		where: and(eq(aiAgentRuns.chatId, chatId), eq(aiAgentRuns.organizacaoId, organizacaoId)),
 		orderBy: [desc(aiAgentRuns.dataInsercao)],
 		limit: 1,
 		columns: { id: true, status: true, erro: true, uso: true, dataInsercao: true },
 	});
 
-	const ultimaExecucao = execucoes[0] ?? null;
+	const lastRun = runs[0] ?? null;
 
 	return {
-		mensagens,
-		atendimento: atendimento ? { status: atendimento.status, responsavelTipo: atendimento.responsavelTipo, resumo: atendimento.resumo } : null,
-		ultimaExecucao,
-		execucaoAtiva: ultimaExecucao ? ultimaExecucao.status === "PENDENTE" || ultimaExecucao.status === "RODANDO" : false,
+		mensagens: messages,
+		atendimento: attendance ? { status: attendance.status, responsavelTipo: attendance.responsavelTipo, resumo: attendance.resumo } : null,
+		ultimaExecucao: lastRun,
+		execucaoAtiva: lastRun ? lastRun.status === "PENDENTE" || lastRun.status === "RODANDO" : false,
 	};
 }

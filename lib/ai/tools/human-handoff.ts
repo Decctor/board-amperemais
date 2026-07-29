@@ -8,7 +8,7 @@ import { defineAgentTool } from "./define-tool";
  * `chatId` vem do contexto — na versão anterior o modelo informava o id do chat e do cliente,
  * o que permitia apontar para uma conversa alheia.
  */
-export const atendimentoTransferirParaHumanoTool = defineAgentTool({
+export const humanHandoffTool = defineAgentTool({
 	name: "atendimento.transferir_para_humano",
 	description: `Transfere esta conversa para um atendente humano.
 

@@ -50,13 +50,13 @@ async function getAiAgentRuns({ input, organizacaoId }: { input: TGetAiAgentRuns
 
 		if (!run) throw new createHttpError.NotFound("Execução não encontrada.");
 
-		const chamadasFerramentas = await db.query.aiAgentToolCalls.findMany({
+		const toolCalls = await db.query.aiAgentToolCalls.findMany({
 			where: and(eq(aiAgentToolCalls.runId, run.id), eq(aiAgentToolCalls.organizacaoId, organizacaoId)),
 			orderBy: [asc(aiAgentToolCalls.dataInsercao)],
 		});
 
 		return {
-			data: { byId: { ...run, chamadasFerramentas }, default: null },
+			data: { byId: { ...run, chamadasFerramentas: toolCalls }, default: null },
 			message: "Execução carregada com sucesso.",
 		};
 	}

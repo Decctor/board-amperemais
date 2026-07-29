@@ -54,14 +54,14 @@ export function buildDefaultAgentCapabilities(): TAiAgentCapacidades {
  * `ai_agents_organizacao_unica_idx` garante um por organização.
  */
 export async function ensureOrganizationAgent(db: TDb, organizacaoId: string) {
-	const existente = await db.query.aiAgents.findFirst({ where: eq(aiAgents.organizacaoId, organizacaoId) });
-	if (existente) return existente;
+	const existing = await db.query.aiAgents.findFirst({ where: eq(aiAgents.organizacaoId, organizacaoId) });
+	if (existing) return existing;
 
-	const organizacao = await db.query.organizations.findFirst({
+	const organization = await db.query.organizations.findFirst({
 		where: eq(organizations.id, organizacaoId),
 		columns: { nome: true },
 	});
-	if (!organizacao) throw new AgentInactiveError("Organização não encontrada para provisionar o agente de IA.");
+	if (!organization) throw new AgentInactiveError("Organização não encontrada para provisionar o agente de IA.");
 
 	await db
 		.insert(aiAgents)
@@ -69,13 +69,13 @@ export async function ensureOrganizationAgent(db: TDb, organizacaoId: string) {
 			organizacaoId,
 			nome: "Agente de Atendimento",
 			status: "ATIVO",
-			instrucoes: buildDefaultAgentInstructions(organizacao.nome),
+			instrucoes: buildDefaultAgentInstructions(organization.nome),
 			modeloConfig: AiAgentModeloConfigSchema.parse({}),
 			capacidades: buildDefaultAgentCapabilities(),
 		})
 		.onConflictDoNothing();
 
-	const agente = await db.query.aiAgents.findFirst({ where: eq(aiAgents.organizacaoId, organizacaoId) });
-	if (!agente) throw new AgentInactiveError("Não foi possível provisionar o agente de IA da organização.");
-	return agente;
+	const agent = await db.query.aiAgents.findFirst({ where: eq(aiAgents.organizacaoId, organizacaoId) });
+	if (!agent) throw new AgentInactiveError("Não foi possível provisionar o agente de IA da organização.");
+	return agent;
 }

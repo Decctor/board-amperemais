@@ -14,7 +14,7 @@ import { defineAgentTool } from "./define-tool";
  * `clienteId` e `organizacaoId` vêm do contexto — o modelo não pode consultar outro cliente
  * nem outra organização.
  */
-export const clientesConsultarComprasTool = defineAgentTool({
+export const customerPurchasesTool = defineAgentTool({
 	name: "clientes.consultar_compras",
 	description: `Consulta as compras do cliente com quem você está conversando.
 
@@ -41,8 +41,8 @@ pedir mais páginas.`,
 	}),
 	async execute(input, context) {
 		const { db, organizacaoId, chat } = context;
-		const limite = input.limite ?? 10;
-		const visao = input.visao ?? "LISTA";
+		const limit = input.limite ?? 10;
+		const view = input.visao ?? "LISTA";
 
 		const conditions = [eq(sales.organizacaoId, organizacaoId), eq(sales.clienteId, chat.clienteId)];
 		if (input.dataInicio) conditions.push(gte(sales.dataVenda, new Date(input.dataInicio)));
@@ -51,8 +51,8 @@ pedir mais páginas.`,
 		// O filtro por produto é um semi-join: restringe as vendas àquelas que têm ao menos um
 		// item cujo produto casa o termo (por nome ou código).
 		if (input.produtoTermo) {
-			const termo = `%${input.produtoTermo}%`;
-			const vendaIds = db
+			const term = `%${input.produtoTermo}%`;
+			const saleIds = db
 				.selectDistinct({ vendaId: saleItems.vendaId })
 				.from(saleItems)
 				.innerJoin(products, eq(saleItems.produtoId, products.id))
@@ -60,10 +60,10 @@ pedir mais páginas.`,
 					and(
 						eq(saleItems.organizacaoId, organizacaoId),
 						eq(saleItems.clienteId, chat.clienteId),
-						or(ilike(products.nome, termo), ilike(products.codigo, termo)),
+						or(ilike(products.nome, term), ilike(products.codigo, term)),
 					),
 				);
-			conditions.push(inArray(sales.id, vendaIds));
+			conditions.push(inArray(sales.id, saleIds));
 		}
 
 		const where = and(...conditions);
@@ -79,8 +79,8 @@ pedir mais páginas.`,
 			};
 		}
 
-		if (visao === "RESUMO") {
-			const [estatisticas] = await db
+		if (view === "RESUMO") {
+			const [stats] = await db
 				.select({
 					totalCompras: count(),
 					valorTotalGasto: sql<number>`COALESCE(SUM(${sales.valorTotal}), 0)`,
@@ -92,9 +92,9 @@ pedir mais páginas.`,
 				.where(where);
 
 			// Agregações por item respeitam o mesmo recorte de vendas.
-			const vendaIdsSubquery = db.select({ id: sales.id }).from(sales).where(where);
+			const saleIdsSubquery = db.select({ id: sales.id }).from(sales).where(where);
 
-			const gruposFavoritos = await db
+			const favoriteGroups = await db
 				.select({
 					grupo: products.grupo,
 					quantidadeItens: count(),
@@ -102,12 +102,12 @@ pedir mais páginas.`,
 				})
 				.from(saleItems)
 				.innerJoin(products, eq(saleItems.produtoId, products.id))
-				.where(and(eq(saleItems.organizacaoId, organizacaoId), inArray(saleItems.vendaId, vendaIdsSubquery)))
+				.where(and(eq(saleItems.organizacaoId, organizacaoId), inArray(saleItems.vendaId, saleIdsSubquery)))
 				.groupBy(products.grupo)
 				.orderBy(desc(sql`SUM(${saleItems.valorVendaTotalLiquido})`))
 				.limit(5);
 
-			const produtosMaisComprados = await db
+			const topProducts = await db
 				.select({
 					nome: products.nome,
 					codigo: products.codigo,
@@ -117,12 +117,12 @@ pedir mais páginas.`,
 				})
 				.from(saleItems)
 				.innerJoin(products, eq(saleItems.produtoId, products.id))
-				.where(and(eq(saleItems.organizacaoId, organizacaoId), inArray(saleItems.vendaId, vendaIdsSubquery)))
+				.where(and(eq(saleItems.organizacaoId, organizacaoId), inArray(saleItems.vendaId, saleIdsSubquery)))
 				.groupBy(products.id, products.nome, products.codigo, products.grupo)
 				.orderBy(desc(sql`SUM(${saleItems.valorVendaTotalLiquido})`))
 				.limit(10);
 
-			const cliente = await db.query.clients.findFirst({
+			const client = await db.query.clients.findFirst({
 				where: and(eq(clients.id, chat.clienteId), eq(clients.organizacaoId, organizacaoId)),
 				columns: {
 					analiseRFMTitulo: true,
@@ -138,30 +138,30 @@ pedir mais páginas.`,
 				result: {
 					totalEncontrado,
 					estatisticas: {
-						totalCompras: Number(estatisticas?.totalCompras ?? 0),
-						valorTotalGasto: Number(estatisticas?.valorTotalGasto ?? 0),
-						ticketMedio: Number(estatisticas?.ticketMedio ?? 0),
-						primeiraCompraData: estatisticas?.primeiraCompraData ?? null,
-						ultimaCompraData: estatisticas?.ultimaCompraData ?? null,
+						totalCompras: Number(stats?.totalCompras ?? 0),
+						valorTotalGasto: Number(stats?.valorTotalGasto ?? 0),
+						ticketMedio: Number(stats?.ticketMedio ?? 0),
+						primeiraCompraData: stats?.primeiraCompraData ?? null,
+						ultimaCompraData: stats?.ultimaCompraData ?? null,
 					},
-					gruposFavoritos: gruposFavoritos.map((g) => ({
+					gruposFavoritos: favoriteGroups.map((g) => ({
 						grupo: g.grupo,
 						quantidadeItens: Number(g.quantidadeItens),
 						valorTotal: Number(g.valorTotal),
 					})),
-					produtosMaisComprados: produtosMaisComprados.map((p) => ({
+					produtosMaisComprados: topProducts.map((p) => ({
 						nome: p.nome,
 						codigo: p.codigo,
 						grupo: p.grupo,
 						quantidadeTotal: Number(p.quantidadeTotal),
 						valorTotal: Number(p.valorTotal),
 					})),
-					analiseRFM: cliente?.analiseRFMTitulo
+					analiseRFM: client?.analiseRFMTitulo
 						? {
-								titulo: cliente.analiseRFMTitulo,
-								recencia: cliente.analiseRFMNotasRecencia,
-								frequencia: cliente.analiseRFMNotasFrequencia,
-								monetario: cliente.analiseRFMNotasMonetario,
+								titulo: client.analiseRFMTitulo,
+								recencia: client.analiseRFMNotasRecencia,
+								frequencia: client.analiseRFMNotasFrequencia,
+								monetario: client.analiseRFMNotasMonetario,
 							}
 						: null,
 				},
@@ -171,10 +171,10 @@ pedir mais páginas.`,
 		const orderBy =
 			input.ordem === "DATA_ASC" ? [asc(sales.dataVenda)] : input.ordem === "VALOR_DESC" ? [desc(sales.valorTotal)] : [desc(sales.dataVenda)];
 
-		const compras = await db.query.sales.findMany({
+		const purchases = await db.query.sales.findMany({
 			where,
 			orderBy,
-			limit: limite,
+			limit,
 			columns: {
 				id: true,
 				dataVenda: true,
@@ -195,16 +195,16 @@ pedir mais páginas.`,
 
 		return {
 			success: true,
-			message: `${compras.length} de ${totalEncontrado} compra(s) retornada(s).`,
+			message: `${purchases.length} de ${totalEncontrado} compra(s) retornada(s).`,
 			result: {
 				totalEncontrado,
-				compras: compras.map((venda) => ({
-					dataVenda: venda.dataVenda,
-					valorTotal: venda.valorTotal,
-					vendedorNome: venda.vendedorNome,
-					documento: venda.documento,
-					situacao: venda.situacao,
-					itens: venda.itens.map((item) => ({
+				compras: purchases.map((sale) => ({
+					dataVenda: sale.dataVenda,
+					valorTotal: sale.valorTotal,
+					vendedorNome: sale.vendedorNome,
+					documento: sale.documento,
+					situacao: sale.situacao,
+					itens: sale.itens.map((item) => ({
 						produto: item.produto?.nome ?? null,
 						codigo: item.produto?.codigo ?? null,
 						grupo: item.produto?.grupo ?? null,

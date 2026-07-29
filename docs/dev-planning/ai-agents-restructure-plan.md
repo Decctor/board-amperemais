@@ -278,11 +278,11 @@ lib/ai/
     define-tool.ts   # defineAgentTool — identity helper p/ inferência de tipos
     guards.ts        # assertToolEnabled(capacidades, name) → AgentToolNotEnabledError
     registry.ts      # AGENT_TOOL_REGISTRY + executeAgentTool + toAISdkTools
-    clientes.consultar-compras.ts
-    produtos.consultar.ts
-    cashback.consultar.ts
-    cupons.consultar.ts
-    atendimento.transferir-para-humano.ts
+    customer-purchases.ts
+    products.ts
+    cashback.ts
+    coupons.ts
+    human-handoff.ts
   agent/
     runs.ts          # createAgentRun / markAgentRunRunning / completeAgentRun /
                      # failAgentRun / linkAgentRunMessage

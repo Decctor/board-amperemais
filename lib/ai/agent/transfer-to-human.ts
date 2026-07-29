@@ -43,7 +43,7 @@ export async function transferChatToHuman({
 	if (!chat) throw new Error("Chat não encontrado.");
 
 	// Candidatos: membros da organização com permissão de receber transferências.
-	const candidatos = await db
+	const candidates = await db
 		.select({ id: users.id, nome: users.nome, telefone: users.telefone })
 		.from(organizationMembers)
 		.innerJoin(users, eq(users.id, organizationMembers.usuarioId))
@@ -54,30 +54,30 @@ export async function transferChatToHuman({
 			),
 		);
 
-	if (candidatos.length === 0) throw new Error("Nenhum usuário apto a receber transferências de atendimentos encontrado.");
+	if (candidates.length === 0) throw new Error("Nenhum usuário apto a receber transferências de atendimentos encontrado.");
 
-	const destino = candidatos[Math.floor(Math.random() * candidatos.length)];
-	const resumo = `[TRANSFERÊNCIA IA]\nMotivo: ${motivo}\n\nResumo da conversa:\n${resumoConversa}`;
+	const target = candidates[Math.floor(Math.random() * candidates.length)];
+	const summary = `[TRANSFERÊNCIA IA]\nMotivo: ${motivo}\n\nResumo da conversa:\n${resumoConversa}`;
 
-	await updateChatAttendanceSummary(db, { organizacaoId, chatId, resumo });
-	const atendimento = await transferChatAttendance(db, {
+	await updateChatAttendanceSummary(db, { organizacaoId, chatId, resumo: summary });
+	const attendance = await transferChatAttendance(db, {
 		organizacaoId,
 		chatId,
-		usuarioDestinoId: destino.id,
+		usuarioDestinoId: target.id,
 		motivo: `HUMAN_HANDOFF: ${motivo}`,
 	});
 
 	// Notificação é acessória: uma falha aqui não desfaz a transferência.
 	const whatsappToken = chat.whatsappConexao?.token;
 	const fromPhoneNumberId = chat.whatsappConexaoTelefone?.whatsappTelefoneId;
-	if (destino.telefone && whatsappToken && fromPhoneNumberId && chat.cliente) {
+	if (target.telefone && whatsappToken && fromPhoneNumberId && chat.cliente) {
 		try {
 			const notificationPayload = WHATSAPP_REPORT_TEMPLATES.SERVICE_TRANSFER_NOTIFICATIONS.getPayload({
 				templateKey: "SERVICE_TRANSFER_NOTIFICATIONS",
 				clientName: chat.cliente.nome,
 				clientePhoneNumber: chat.cliente.telefone,
-				toPhoneNumber: destino.telefone,
-				serviceDescription: resumo,
+				toPhoneNumber: target.telefone,
+				serviceDescription: summary,
 			}).data;
 
 			sendTemplateWhatsappMessage({ whatsappToken, fromPhoneNumberId, templatePayload: notificationPayload }).catch((error) => {
@@ -88,5 +88,5 @@ export async function transferChatToHuman({
 		}
 	}
 
-	return { atendimentoId: atendimento?.id, usuarioDestinoNome: destino.nome };
+	return { atendimentoId: attendance?.id, usuarioDestinoNome: target.nome };
 }

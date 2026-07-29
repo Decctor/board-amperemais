@@ -26,22 +26,22 @@ export type TUpdateAiAgentInput = z.infer<typeof UpdateAiAgentInputSchema>;
 
 async function getAiAgent({ organizacaoId }: { organizacaoId: string }) {
 	// Provisionamento lazy: o primeiro acesso à tela cria o agente da organização.
-	const agente = await ensureOrganizationAgent(db, organizacaoId);
+	const agent = await ensureOrganizationAgent(db, organizacaoId);
 
-	const conhecimento = await db.query.aiAgentKnowledge.findMany({
-		where: eq(aiAgentKnowledge.agenteId, agente.id),
+	const knowledge = await db.query.aiAgentKnowledge.findMany({
+		where: eq(aiAgentKnowledge.agenteId, agent.id),
 		orderBy: [asc(aiAgentKnowledge.ordem), asc(aiAgentKnowledge.dataInsercao)],
 	});
 
 	return {
-		data: { agente, conhecimento },
+		data: { agente: agent, conhecimento: knowledge },
 		message: "Agente de IA carregado com sucesso.",
 	};
 }
 export type TGetAiAgentOutput = Awaited<ReturnType<typeof getAiAgent>>;
 
 async function updateAiAgent({ input, organizacaoId }: { input: TUpdateAiAgentInput; organizacaoId: string }) {
-	const agente = await ensureOrganizationAgent(db, organizacaoId);
+	const agent = await ensureOrganizationAgent(db, organizacaoId);
 
 	await db.transaction(async (tx) => {
 		await tx
@@ -53,20 +53,20 @@ async function updateAiAgent({ input, organizacaoId }: { input: TUpdateAiAgentIn
 				modeloConfig: input.agente.modeloConfig,
 				capacidades: input.agente.capacidades,
 			})
-			.where(and(eq(aiAgents.id, agente.id), eq(aiAgents.organizacaoId, organizacaoId)));
+			.where(and(eq(aiAgents.id, agent.id), eq(aiAgents.organizacaoId, organizacaoId)));
 
 		await handleSimpleChildRowsProcessing({
 			trx: tx,
 			table: aiAgentKnowledge,
 			entities: input.conhecimento,
 			fatherEntityKey: "agenteId",
-			fatherEntityId: agente.id,
+			fatherEntityId: agent.id,
 			organizacaoId,
 		});
 	});
 
 	return {
-		data: { agenteId: agente.id },
+		data: { agenteId: agent.id },
 		message: "Agente de IA atualizado com sucesso.",
 	};
 }

@@ -56,38 +56,38 @@ export async function prepareAgentExecution({
 	mensagemGatilhoId?: string | null;
 	database?: TDb;
 }): Promise<TPreparedAgentExecution> {
-	const agente = await database.query.aiAgents.findFirst({ where: eq(aiAgents.organizacaoId, organizacaoId) });
-	if (!agente) throw new AgentInactiveError("A organização não possui um agente de IA configurado.");
-	if (agente.status !== "ATIVO") throw new AgentInactiveError("O agente de IA da organização está pausado.");
+	const agent = await database.query.aiAgents.findFirst({ where: eq(aiAgents.organizacaoId, organizacaoId) });
+	if (!agent) throw new AgentInactiveError("A organização não possui um agente de IA configurado.");
+	if (agent.status !== "ATIVO") throw new AgentInactiveError("O agente de IA da organização está pausado.");
 
-	const modeloConfig = parseJsonbWithFallback(AiAgentModeloConfigSchema, agente.modeloConfig);
-	const capacidades = parseJsonbWithFallback(AiAgentCapacidadesSchema, agente.capacidades);
+	const modeloConfig = parseJsonbWithFallback(AiAgentModeloConfigSchema, agent.modeloConfig);
+	const capacidades = parseJsonbWithFallback(AiAgentCapacidadesSchema, agent.capacidades);
 
-	const runsHoje = await countAgentRunsToday(database, organizacaoId);
-	if (runsHoje >= capacidades.limites.maxRunsDiarios) {
+	const runsToday = await countAgentRunsToday(database, organizacaoId);
+	if (runsToday >= capacidades.limites.maxRunsDiarios) {
 		throw new AgentDailyRunLimitError(`Limite diário de ${capacidades.limites.maxRunsDiarios} execuções do agente atingido.`);
 	}
 
-	const [{ contexto, clienteId }, conhecimento] = await Promise.all([
+	const [{ contexto: chatContext, clienteId }, knowledge] = await Promise.all([
 		buildChatRunContext(database, { organizacaoId, chatId }),
-		getActiveKnowledgeBlocks(database, agente.id),
+		getActiveKnowledgeBlocks(database, agent.id),
 	]);
 
 	const run = await createAgentRun(database, {
 		organizacaoId,
-		agenteId: agente.id,
+		agenteId: agent.id,
 		gatilho,
 		chatId,
 		clienteId,
 		mensagemGatilhoId,
 		// Substitui o versionamento: o run carrega a configuração que o produziu.
 		configSnapshot: {
-			instrucoes: agente.instrucoes,
+			instrucoes: agent.instrucoes,
 			modeloConfig,
 			capacidades,
-			conhecimento: conhecimento.map((bloco) => ({ id: bloco.id, titulo: bloco.titulo })),
+			conhecimento: knowledge.map((block) => ({ id: block.id, titulo: block.titulo })),
 		},
-		contextoEntradaSnapshot: contexto,
+		contextoEntradaSnapshot: chatContext,
 	});
 
 	return {
@@ -95,17 +95,17 @@ export async function prepareAgentExecution({
 		toolContext: {
 			db: database,
 			organizacaoId,
-			agent: { id: agente.id, nome: agente.nome },
+			agent: { id: agent.id, nome: agent.nome },
 			run: { id: run.id, gatilho },
 			chat: { id: chatId, clienteId },
 			capacidades,
 		},
 		systemPrompt: buildAgentSystemPrompt({
-			instrucoes: agente.instrucoes,
+			instrucoes: agent.instrucoes,
 			capacidades,
-			knowledgeContext: formatKnowledgeContext(conhecimento),
+			knowledgeContext: formatKnowledgeContext(knowledge),
 		}),
-		turnPrompt: formatChatRunContext(contexto),
+		turnPrompt: formatChatRunContext(chatContext),
 		modeloConfig,
 		maxSteps: capacidades.limites.maxChamadasFerramentasPorRun,
 	};
@@ -124,7 +124,7 @@ export async function executeAgentTurn(prepared: TPreparedAgentExecution): Promi
 	await markAgentRunRunning(toolContext.db, run.id);
 
 	try {
-		const agent = new ToolLoopAgent({
+		const loopAgent = new ToolLoopAgent({
 			model: resolveLanguageModel(modeloConfig),
 			instructions: prepared.systemPrompt,
 			tools: toAISdkTools(toolContext),
@@ -135,7 +135,7 @@ export async function executeAgentTurn(prepared: TPreparedAgentExecution): Promi
 			output: Output.object({ schema: TurnOutputSchema }),
 		});
 
-		const result = await agent.generate({ prompt: prepared.turnPrompt });
+		const result = await loopAgent.generate({ prompt: prepared.turnPrompt });
 		const output = result.output;
 		if (!output) throw new Error("O agente não produziu uma resposta estruturada.");
 

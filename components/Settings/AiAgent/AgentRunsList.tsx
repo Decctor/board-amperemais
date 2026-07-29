@@ -18,20 +18,20 @@ const STATUS_FILTERS: Array<{ value: TAiAgentRunStatusEnum | null; label: string
 
 export default function AgentRunsList() {
 	const [filters, setFilters] = useState<TAiAgentRunsFilters>({ page: 1, gatilho: null, status: null });
-	const [runIdAberto, setRunIdAberto] = useState<string | null>(null);
+	const [openRunId, setOpenRunId] = useState<string | null>(null);
 	const { data, isLoading, isError, error } = useAiAgentRuns({ filters });
 
 	return (
 		<div className="flex w-full flex-col gap-4">
 			<div className="flex items-center gap-2">
-				{STATUS_FILTERS.map((filtro) => (
+				{STATUS_FILTERS.map((filter) => (
 					<Button
-						key={filtro.label}
+						key={filter.label}
 						size="sm"
-						variant={filters.status === filtro.value ? "secondary" : "ghost"}
-						onClick={() => setFilters((prev) => ({ ...prev, status: filtro.value, page: 1 }))}
+						variant={filters.status === filter.value ? "secondary" : "ghost"}
+						onClick={() => setFilters((prev) => ({ ...prev, status: filter.value, page: 1 }))}
 					>
-						{filtro.label}
+						{filter.label}
 					</Button>
 				))}
 			</div>
@@ -54,7 +54,7 @@ export default function AgentRunsList() {
 						<button
 							key={run.id}
 							type="button"
-							onClick={() => setRunIdAberto(run.id)}
+							onClick={() => setOpenRunId(run.id)}
 							className="flex w-full items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/50"
 						>
 							<div className="flex min-w-0 flex-col">
@@ -108,7 +108,7 @@ export default function AgentRunsList() {
 				</div>
 			) : null}
 
-			{runIdAberto ? <AgentRunDrawer runId={runIdAberto} closeModal={() => setRunIdAberto(null)} /> : null}
+			{openRunId ? <AgentRunDrawer runId={openRunId} closeModal={() => setOpenRunId(null)} /> : null}
 		</div>
 	);
 }

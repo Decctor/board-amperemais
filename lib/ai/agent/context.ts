@@ -79,7 +79,7 @@ export async function buildChatRunContext(
 
 	if (!chat) throw new Error("Chat não encontrado para montar o contexto do agente.");
 
-	const mensagens = await db.query.chatMessages.findMany({
+	const messages = await db.query.chatMessages.findMany({
 		where: and(eq(chatMessages.chatId, chat.id), eq(chatMessages.organizacaoId, input.organizacaoId)),
 		orderBy: [desc(chatMessages.dataEnvio)],
 		limit: HISTORY_MESSAGE_LIMIT,
@@ -93,13 +93,13 @@ export async function buildChatRunContext(
 		},
 	});
 
-	const atendimento = await getCurrentChatAttendance(db, { organizacaoId: input.organizacaoId, chatId: chat.id });
+	const attendance = await getCurrentChatAttendance(db, { organizacaoId: input.organizacaoId, chatId: chat.id });
 
-	const agora = new Date();
-	const janelaAberta = isWhatsappWindowOpen({
+	const now = new Date();
+	const isWindowOpen = isWhatsappWindowOpen({
 		expiracao: chat.whatsappJanelaDataExpiracao,
 		tipoConexao: chat.whatsappConexao?.tipoConexao,
-		now: agora,
+		now,
 	});
 
 	return {
@@ -116,26 +116,26 @@ export async function buildChatRunContext(
 				aniversario: chat.cliente.dataNascimento,
 			},
 			// Cronológico: o modelo lê a conversa como ela aconteceu.
-			conversa: mensagens
+			conversa: messages
 				.slice()
 				.reverse()
-				.map((mensagem) => ({
-					autor: describeAuthor(mensagem.autorTipo),
+				.map((message) => ({
+					autor: describeAuthor(message.autorTipo),
 					// Mídia processada (áudio transcrito, imagem descrita) entra como texto — para o
 					// modelo, uma nota de voz e uma mensagem escrita valem o mesmo.
 					texto:
-						mensagem.conteudoTexto ||
-						mensagem.conteudoMidiaTextoProcessado ||
-						mensagem.conteudoMidiaTextoProcessadoResumo ||
-						(mensagem.conteudoMidiaTipo ? `[${mensagem.conteudoMidiaTipo}]` : ""),
-					dataEnvio: mensagem.dataEnvio,
+						message.conteudoTexto ||
+						message.conteudoMidiaTextoProcessado ||
+						message.conteudoMidiaTextoProcessadoResumo ||
+						(message.conteudoMidiaTipo ? `[${message.conteudoMidiaTipo}]` : ""),
+					dataEnvio: message.dataEnvio,
 				}))
-				.filter((mensagem) => mensagem.texto.length > 0),
-			atendimento: atendimento ? { status: atendimento.status, responsavelTipo: atendimento.responsavelTipo, resumo: atendimento.resumo } : null,
+				.filter((message) => message.texto.length > 0),
+			atendimento: attendance ? { status: attendance.status, responsavelTipo: attendance.responsavelTipo, resumo: attendance.resumo } : null,
 			tempo: {
-				agora: agora.toISOString(),
+				agora: now.toISOString(),
 				fusoHorario: "America/Sao_Paulo (BRT, UTC-03:00)",
-				janelaWhatsapp: { aberta: janelaAberta, expiraEm: chat.whatsappJanelaDataExpiracao },
+				janelaWhatsapp: { aberta: isWindowOpen, expiraEm: chat.whatsappJanelaDataExpiracao },
 				ultimaMensagemDoClienteEm: chat.ultimaMensagemEntradaData,
 				ultimaMensagemEnviadaEm: chat.ultimaMensagemSaidaData,
 			},
@@ -144,34 +144,34 @@ export async function buildChatRunContext(
 }
 
 /** Serializa o contexto para o prompt do turno. */
-export function formatChatRunContext(contexto: TChatRunContext): string {
-	const cliente = contexto.cliente;
-	const linhasCliente = [
-		`- Nome: ${cliente.nome}`,
-		cliente.telefone ? `- Telefone: ${cliente.telefone}` : null,
-		cliente.email ? `- E-mail: ${cliente.email}` : null,
-		cliente.cidade || cliente.estado ? `- Localização: ${[cliente.cidade, cliente.estado].filter(Boolean).join(" / ")}` : null,
+export function formatChatRunContext(context: TChatRunContext): string {
+	const client = context.cliente;
+	const clientLines = [
+		`- Nome: ${client.nome}`,
+		client.telefone ? `- Telefone: ${client.telefone}` : null,
+		client.email ? `- E-mail: ${client.email}` : null,
+		client.cidade || client.estado ? `- Localização: ${[client.cidade, client.estado].filter(Boolean).join(" / ")}` : null,
 	]
 		.filter(Boolean)
 		.join("\n");
 
-	const conversa = contexto.conversa.map((mensagem) => `${mensagem.autor}: ${mensagem.texto}`).join("\n");
+	const conversation = context.conversa.map((message) => `${message.autor}: ${message.texto}`).join("\n");
 
-	const atendimento = contexto.atendimento
-		? `\n## Atendimento em aberto\n- Status: ${contexto.atendimento.status}\n- Responsável: ${contexto.atendimento.responsavelTipo}${
-				contexto.atendimento.resumo ? `\n- Resumo acumulado: ${contexto.atendimento.resumo}` : ""
+	const attendanceBlock = context.atendimento
+		? `\n## Atendimento em aberto\n- Status: ${context.atendimento.status}\n- Responsável: ${context.atendimento.responsavelTipo}${
+				context.atendimento.resumo ? `\n- Resumo acumulado: ${context.atendimento.resumo}` : ""
 			}\n`
 		: "";
 
 	return `## Cliente
-${linhasCliente}
+${clientLines}
 
 ## Momento atual
-- Agora: ${contexto.tempo.agora} (${contexto.tempo.fusoHorario})
-- Janela de 24h do WhatsApp: ${contexto.tempo.janelaWhatsapp.aberta ? "aberta" : "fechada"}
-${atendimento}
+- Agora: ${context.tempo.agora} (${context.tempo.fusoHorario})
+- Janela de 24h do WhatsApp: ${context.tempo.janelaWhatsapp.aberta ? "aberta" : "fechada"}
+${attendanceBlock}
 ## Conversa até aqui
-${conversa || "(sem mensagens anteriores)"}
+${conversation || "(sem mensagens anteriores)"}
 
 Responda à última mensagem do cliente.`;
 }

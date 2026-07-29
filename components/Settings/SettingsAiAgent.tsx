@@ -24,8 +24,8 @@ export default function SettingsAiAgent({ membership }: SettingsAiAgentProps) {
 
 	// Mesma capability que os webhooks checam antes de executar o agente: configurar um
 	// recurso que não vai rodar seria uma promessa vazia.
-	const temAcesso = membership.organizacao.configuracao?.recursos?.iaAtendimento?.acesso === true;
-	if (!temAcesso) {
+	const hasAccess = membership.organizacao.configuracao?.recursos?.iaAtendimento?.acesso === true;
+	if (!hasAccess) {
 		return (
 			<div className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-border px-4 py-12 text-center">
 				<Bot className="h-8 w-8 text-muted-foreground" />

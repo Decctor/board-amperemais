@@ -1,27 +1,30 @@
 import type { TAiAgentToolNameEnum } from "@/schemas/enums";
 import { aiAgentToolCalls } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
-import { atendimentoTransferirParaHumanoTool } from "./atendimento.transferir-para-humano";
-import { cashbackConsultarTool } from "./cashback.consultar";
-import { clientesConsultarComprasTool } from "./clientes.consultar-compras";
-import { produtosConsultarTool } from "./produtos.consultar";
+import { cashbackTool } from "./cashback";
+import { couponsTool } from "./coupons";
+import { customerPurchasesTool } from "./customer-purchases";
 import { assertToolEnabled, isToolEnabled } from "./guards";
+import { humanHandoffTool } from "./human-handoff";
+import { productsTool } from "./products";
 import type { TAgentToolContext, TAgentToolDefinitionErased, TAgentToolOutput } from "./types";
-import { cuponsConsultarTool } from "./cupons.consultar";
 
 /**
  * Registro único de ferramentas. Adicionar uma ferramenta são 3 passos:
- *  1. criar `lib/ai/tools/<dominio>.<acao>.ts` com `defineAgentTool`;
+ *  1. criar `lib/ai/tools/<dominio-em-ingles>.ts` com `defineAgentTool`;
  *  2. adicionar o nome em `AiAgentToolNameEnum` (`schemas/enums.ts`) — o que já a inclui em
  *     `AiAgentFerramentasConfigSchema`;
  *  3. registrar aqui.
+ *
+ * O arquivo e a const são inglês (código); o `name` da ferramenta é português porque viaja
+ * como dado — vai para o modelo e é persistido em `ai_agent_tool_calls.ferramentaNome`.
  */
 export const AGENT_TOOL_REGISTRY: Record<TAiAgentToolNameEnum, TAgentToolDefinitionErased> = {
-	"clientes.consultar_compras": clientesConsultarComprasTool,
-	"produtos.consultar": produtosConsultarTool,
-	"cashback.consultar": cashbackConsultarTool,
-	"cupons.consultar": cuponsConsultarTool,
-	"atendimento.transferir_para_humano": atendimentoTransferirParaHumanoTool,
+	"clientes.consultar_compras": customerPurchasesTool,
+	"produtos.consultar": productsTool,
+	"cashback.consultar": cashbackTool,
+	"cupons.consultar": couponsTool,
+	"atendimento.transferir_para_humano": humanHandoffTool,
 };
 
 /** O AI SDK não aceita `.` em nome de ferramenta. */

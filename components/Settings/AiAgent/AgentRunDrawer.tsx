@@ -103,18 +103,18 @@ export default function AgentRunDrawer({ runId, closeModal }: AgentRunDrawerProp
 						{run.chamadasFerramentas.length === 0 ? (
 							<p className="text-sm text-muted-foreground">O agente respondeu sem consultar nada.</p>
 						) : (
-							run.chamadasFerramentas.map((chamada) => {
-								const style = TOOL_CALL_STATUS_STYLES[chamada.status] ?? TOOL_CALL_STATUS_STYLES.EXECUTANDO;
+							run.chamadasFerramentas.map((toolCall) => {
+								const style = TOOL_CALL_STATUS_STYLES[toolCall.status] ?? TOOL_CALL_STATUS_STYLES.EXECUTANDO;
 								const Icon = style.icon;
 								return (
-									<div key={chamada.id} className="flex w-full flex-col gap-2 rounded-lg border border-border px-3 py-2">
+									<div key={toolCall.id} className="flex w-full flex-col gap-2 rounded-lg border border-border px-3 py-2">
 										<div className="flex items-center gap-2">
 											<Icon className={cn("h-4 w-4 shrink-0", style.className)} />
-											<span className="font-mono text-xs font-bold">{chamada.ferramentaNome}</span>
+											<span className="font-mono text-xs font-bold">{toolCall.ferramentaNome}</span>
 										</div>
-										{chamada.erro ? <p className="text-xs text-destructive">{chamada.erro}</p> : null}
-										<JsonBlock label="Argumentos" value={chamada.input} />
-										<JsonBlock label="Resultado" value={chamada.output} />
+										{toolCall.erro ? <p className="text-xs text-destructive">{toolCall.erro}</p> : null}
+										<JsonBlock label="Argumentos" value={toolCall.input} />
+										<JsonBlock label="Resultado" value={toolCall.output} />
 									</div>
 								);
 							})

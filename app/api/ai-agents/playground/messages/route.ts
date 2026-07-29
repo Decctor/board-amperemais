@@ -38,7 +38,7 @@ async function sendPlaygroundMessage({ input, organizacaoId }: { input: TSendPla
 	});
 	if (!chat) throw new createHttpError.NotFound("Chat de teste não encontrado.");
 
-	const mensagemCliente = await persistPlaygroundClientMessage({
+	const clientMessage = await persistPlaygroundClientMessage({
 		organizacaoId,
 		chatId: chat.id,
 		clienteId: chat.clienteId,
@@ -46,18 +46,18 @@ async function sendPlaygroundMessage({ input, organizacaoId }: { input: TSendPla
 	});
 
 	// Pipeline idêntico ao de produção — só o gatilho e o adapter de entrega mudam.
-	const resultado = await respondToChatWithAgent({
+	const result = await respondToChatWithAgent({
 		organizacaoId,
 		chatId: chat.id,
 		gatilho: "PLAYGROUND",
-		mensagemGatilhoId: mensagemCliente.messageId,
+		mensagemGatilhoId: clientMessage.messageId,
 		deliver: createPlaygroundDeliverer({ organizacaoId, chatId: chat.id }),
 	});
 
-	const estado = await getPlaygroundState({ organizacaoId, chatId: chat.id });
+	const state = await getPlaygroundState({ organizacaoId, chatId: chat.id });
 
 	return {
-		data: { runId: resultado.runId, estado },
+		data: { runId: result.runId, estado: state },
 		message: "Mensagem processada com sucesso.",
 	};
 }
