@@ -507,8 +507,31 @@ são terminais e nenhuma volta pelo quadro; confirmar uma e não a outra seria a
 
 ### D-6 — O que ficou fora
 
-Nada do escopo planejado. O `next build` continua vermelho na base por três dependências
-ausentes do `package.json` (`d3-ease`, `@radix-ui/react-slider`, `@tiptap/core`), em arquivos
-alheios a esta iniciativa (`lib/animations.ts`, `components/ui/slider.tsx`,
-`components/Whatsapp/whatsapp-editor-marks.ts`). Com elas instaladas temporariamente, o
-`Compiled successfully` passa. Corrigi-las é assunto de outro commit.
+Nada do escopo planejado.
+
+### D-7 — O lockfile que quebrou o deploy (e a leitura errada que veio junto)
+
+Durante a Fase 1 um `pnpm install` gerou `pnpm-lock.yaml`, e um `git add -A` o commitou. O
+projeto usa npm — `package-lock.json` é o lockfile versionado. A Vercel detecta o lockfile
+para escolher o gerenciador, trocou para pnpm (`Package Manager changed from "npm" to
+"pnpm"` no log) e o build passou a falhar em três imports que não mudaram:
+
+| Import | Pacote que o fornecia por transitividade |
+|---|---|
+| `@radix-ui/react-slider` em `components/ui/slider.tsx` | `radix-ui` (umbrella) |
+| `@tiptap/core` em `components/Whatsapp/whatsapp-editor-marks.ts` | os vários `@tiptap/*` |
+| `d3-ease` em `lib/animations.ts` e `PermissionsScope.tsx` | `recharts` → `victory-vendor` |
+
+Nenhum dos três é declarado no `package.json`. O `node_modules` achatado do npm os expunha
+por hoisting; o do pnpm, simbólico e estrito, só expõe o que está declarado.
+
+Vale registrar o erro de diagnóstico junto com o erro em si: a primeira leitura foi de que a
+falha era pré-existente, porque `git stash` + build reproduzia os mesmos erros "sem as minhas
+mudanças". Reproduzia porque o `node_modules` local já tinha sido instalado com pnpm — o
+stash reverte arquivos versionados, não a árvore de dependências. O teste confirmava o
+sintoma que eu mesmo havia criado.
+
+Corrigido removendo o lockfile e ignorando lockfiles de outros gerenciadores no `.gitignore`.
+Os três imports não declarados seguem sendo uma fragilidade latente — voltam a quebrar se o
+projeto migrar de gerenciador de propósito, ou se `recharts` deixar de usar `victory-vendor`.
+Declará-los é um commit pequeno e independente deste.
