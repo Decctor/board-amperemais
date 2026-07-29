@@ -1,18 +1,66 @@
 "use client";
 
-import type { TChatBoardStatus } from "@/lib/chats/board";
+import { type TChatBoardStatus } from "@/lib/chats/board";
 import type { TChatBoardCard } from "@/lib/queries/chats-board";
+import { cn } from "@/lib/utils";
+import type { TChatAssignmentPriority, TChatAssignmentStatus } from "@/schemas/enums";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { ChatsBoardCard } from "./ChatsBoardCard";
 import { CHAT_BOARD_COLUMN_META } from "./config";
+
+type ColumnCallbacks = {
+	onOpenChat: (chatId: string) => void;
+	onMove: (card: TChatBoardCard, target: TChatAssignmentStatus) => void;
+	onChangePriority: (card: TChatBoardCard, prioridade: TChatAssignmentPriority | null) => void;
+};
+
+function DraggableCard({
+	card,
+	isPending,
+	awaitingConfirm,
+	callbacks,
+}: {
+	card: TChatBoardCard;
+	isPending: boolean;
+	awaitingConfirm: boolean;
+	callbacks: ColumnCallbacks;
+}) {
+	const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
+		id: card.id,
+		data: { from: card.status },
+		disabled: !card.podeGerenciar || isPending || awaitingConfirm,
+	});
+
+	return (
+		<ChatsBoardCard
+			ref={setNodeRef}
+			card={card}
+			isPending={isPending}
+			isDragging={isDragging}
+			awaitingConfirm={awaitingConfirm}
+			onOpen={callbacks.onOpenChat}
+			onMove={(target) => callbacks.onMove(card, target)}
+			onChangePriority={(prioridade) => callbacks.onChangePriority(card, prioridade)}
+			dragAttributes={attributes}
+			dragListeners={listeners}
+			className="animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none"
+		/>
+	);
+}
 
 type ChatsBoardColumnProps = {
 	status: TChatBoardStatus;
 	itens: TChatBoardCard[];
 	total: number;
-	onOpenChat: (chatId: string) => void;
+	pendingCardIds: Set<string>;
+	confirmCardId: string | null;
+	callbacks: ColumnCallbacks;
 };
 
-export function ChatsBoardColumn({ status, itens, total, onOpenChat }: ChatsBoardColumnProps) {
+export function ChatsBoardColumn({ status, itens, total, pendingCardIds, confirmCardId, callbacks }: ChatsBoardColumnProps) {
+	// `ENCERRADO` é vitrine, não área de drop — ver `isValidChatBoardTransition`.
+	const isDropDisabled = status === "ENCERRADO";
+	const { setNodeRef, isOver } = useDroppable({ id: status, disabled: isDropDisabled });
 	const meta = CHAT_BOARD_COLUMN_META[status];
 	const Icon = meta.icon;
 	const excedente = total - itens.length;
@@ -29,11 +77,25 @@ export function ChatsBoardColumn({ status, itens, total, onOpenChat }: ChatsBoar
 				</span>
 			</div>
 
-			<div className="scrollbar-subtle flex min-h-0 grow flex-col gap-2 overflow-y-auto rounded-xl border border-dashed border-border/60 p-1.5">
+			<div
+				ref={setNodeRef}
+				className={cn(
+					"scrollbar-subtle flex min-h-0 grow flex-col gap-2 overflow-y-auto rounded-xl border border-dashed p-1.5 transition-colors",
+					isOver && !isDropDisabled ? "border-foreground/30 bg-accent/50" : "border-border/60",
+				)}
+			>
 				{itens.length === 0 ? (
 					<div className="flex grow items-center justify-center px-2 py-8 text-center text-[11px] text-muted-foreground/60">{meta.hint}</div>
 				) : (
-					itens.map((card) => <ChatsBoardCard key={card.id} card={card} onOpen={onOpenChat} />)
+					itens.map((card) => (
+						<DraggableCard
+							key={card.id}
+							card={card}
+							isPending={pendingCardIds.has(card.id)}
+							awaitingConfirm={confirmCardId === card.id}
+							callbacks={callbacks}
+						/>
+					))
 				)}
 
 				{/* Truncar em silêncio faria a coluna parecer completa quando não está. */}

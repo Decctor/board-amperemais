@@ -47,7 +47,15 @@ export function isValidChatBoardTransition(from: TChatAssignmentStatus, to: TCha
 	return isChatBoardStatus(to);
 }
 
-/** Encerrar é a única transição do quadro que perde estado: pede confirmação. */
+/**
+ * Cancelar não é coluna — é ação de menu —, então não passa por `isValidChatBoardTransition`,
+ * que só fala sobre destinos que existem como coluna.
+ */
+export function canCancelChatBoardAttendance(from: TChatAssignmentStatus) {
+	return from !== "ENCERRADO" && from !== "CANCELADO";
+}
+
+/** Transições que perdem estado pedem confirmação: as duas terminais. */
 export function chatBoardTransitionNeedsConfirmation(to: TChatAssignmentStatus) {
-	return to === "ENCERRADO";
+	return to === "ENCERRADO" || to === "CANCELADO";
 }
