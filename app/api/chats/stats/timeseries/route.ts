@@ -140,7 +140,12 @@ async function fetchHeatmap({
 	startDate: Date;
 	endDate: Date;
 }) {
-	const phoneCondition = whatsappConexaoTelefoneId ? eq(chats.whatsappConexaoTelefoneId, whatsappConexaoTelefoneId) : undefined;
+	// Recorte de chats considerados: os reais (chats de teste do agente de IA ficam de fora) e,
+	// quando informado, apenas os do telefone selecionado.
+	const chatScopeCondition = and(
+		eq(chats.origem, "WHATSAPP"),
+		whatsappConexaoTelefoneId ? eq(chats.whatsappConexaoTelefoneId, whatsappConexaoTelefoneId) : undefined,
+	);
 	const localMessageDate = inOperationTimezone(chatMessages.dataEnvio);
 	const localAssignmentDate = inOperationTimezone(chatAssignments.dataInsercao);
 
@@ -158,7 +163,7 @@ async function fetchHeatmap({
 					eq(chatMessages.organizacaoId, organizacaoId),
 					eq(chatMessages.autorTipo, "CLIENTE"),
 					between(chatMessages.dataEnvio, startDate, endDate),
-					phoneCondition,
+					chatScopeCondition,
 				),
 			)
 			.groupBy(sql`1`, sql`2`),
@@ -170,7 +175,7 @@ async function fetchHeatmap({
 			})
 			.from(chatAssignments)
 			.innerJoin(chats, eq(chatAssignments.chatId, chats.id))
-			.where(and(eq(chatAssignments.organizacaoId, organizacaoId), between(chatAssignments.dataInsercao, startDate, endDate), phoneCondition))
+			.where(and(eq(chatAssignments.organizacaoId, organizacaoId), between(chatAssignments.dataInsercao, startDate, endDate), chatScopeCondition))
 			.groupBy(sql`1`, sql`2`),
 	]);
 

@@ -55,7 +55,12 @@ async function getChatsStatsAgents({ session, input }: { session: TAuthUserSessi
 
 	const endDate = input.endDate ?? new Date();
 	const startDate = input.startDate ?? new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-	const phoneCondition = input.whatsappConexaoTelefoneId ? eq(chats.whatsappConexaoTelefoneId, input.whatsappConexaoTelefoneId) : undefined;
+	// Recorte de chats considerados: os reais (chats de teste do agente de IA ficam de fora) e,
+	// quando informado, apenas os do telefone selecionado.
+	const chatScopeCondition = and(
+		eq(chats.origem, "WHATSAPP"),
+		input.whatsappConexaoTelefoneId ? eq(chats.whatsappConexaoTelefoneId, input.whatsappConexaoTelefoneId) : undefined,
+	);
 
 	const [membros, aberturas, encerramentos, resolucoes, carteiras, mensagens] = await Promise.all([
 		db
@@ -77,7 +82,7 @@ async function getChatsStatsAgents({ session, input }: { session: TAuthUserSessi
 					eq(chatAssignments.organizacaoId, organizacaoId),
 					between(chatAssignments.dataInsercao, startDate, endDate),
 					isNotNull(chatAssignments.responsavelUsuarioId),
-					phoneCondition,
+					chatScopeCondition,
 				),
 			)
 			.groupBy(chatAssignments.responsavelUsuarioId),
@@ -91,7 +96,7 @@ async function getChatsStatsAgents({ session, input }: { session: TAuthUserSessi
 					eq(chatAssignments.organizacaoId, organizacaoId),
 					between(chatAssignments.dataEncerramento, startDate, endDate),
 					isNotNull(chatAssignments.encerradoPorUsuarioId),
-					phoneCondition,
+					chatScopeCondition,
 				),
 			)
 			.groupBy(chatAssignments.encerradoPorUsuarioId),
@@ -109,7 +114,7 @@ async function getChatsStatsAgents({ session, input }: { session: TAuthUserSessi
 					eq(chatAssignments.organizacaoId, organizacaoId),
 					between(chatAssignments.dataResolucao, startDate, endDate),
 					isNotNull(chatAssignments.responsavelUsuarioId),
-					phoneCondition,
+					chatScopeCondition,
 				),
 			)
 			.groupBy(chatAssignments.responsavelUsuarioId),
@@ -124,7 +129,7 @@ async function getChatsStatsAgents({ session, input }: { session: TAuthUserSessi
 					eq(chatAssignments.organizacaoId, organizacaoId),
 					notInArray(chatAssignments.status, [...CLOSED_STATUSES]),
 					isNotNull(chatAssignments.responsavelUsuarioId),
-					phoneCondition,
+					chatScopeCondition,
 				),
 			)
 			.groupBy(chatAssignments.responsavelUsuarioId),
@@ -138,7 +143,7 @@ async function getChatsStatsAgents({ session, input }: { session: TAuthUserSessi
 					eq(chatMessages.organizacaoId, organizacaoId),
 					between(chatMessages.dataEnvio, startDate, endDate),
 					isNotNull(chatMessages.autorUsuarioId),
-					phoneCondition,
+					chatScopeCondition,
 				),
 			)
 			.groupBy(chatMessages.autorUsuarioId),
