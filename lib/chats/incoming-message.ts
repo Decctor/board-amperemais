@@ -47,7 +47,10 @@ export async function resolveIncomingChat(input: {
 			whatsappConexaoTelefoneId: input.whatsappConexaoTelefoneId,
 			ultimaMensagemData: new Date(),
 		})
-		.onConflictDoNothing({ target: [chats.organizacaoId, chats.clienteId, chats.whatsappTelefoneId] })
+		.onConflictDoNothing({
+			target: [chats.organizacaoId, chats.clienteId, chats.whatsappTelefoneId],
+			where: sql`${chats.whatsappTelefoneId} is not null`,
+		})
 		.returning({ id: chats.id });
 
 	if (inserted) return { chatId: inserted.id, isNew: true };

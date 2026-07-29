@@ -8,7 +8,7 @@ import { chatAssignments, chatMessages, chats } from "@/services/drizzle/schema/
 import { clients } from "@/services/drizzle/schema/clients";
 import { users } from "@/services/drizzle/schema/users";
 import { whatsappConnectionPhones, whatsappConnections } from "@/services/drizzle/schema/whatsapp-connections";
-import { and, desc, eq, ilike, inArray, isNull, lt, notInArray, or } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, lt, notInArray, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -264,7 +264,10 @@ async function createChat({ session, input }: { session: TAuthUserSession; input
 			whatsappConexaoTelefoneId: input.whatsappConexaoTelefoneId ?? null,
 			ultimaMensagemData: new Date(),
 		})
-		.onConflictDoNothing({ target: [chats.organizacaoId, chats.clienteId, chats.whatsappTelefoneId] })
+		.onConflictDoNothing({
+			target: [chats.organizacaoId, chats.clienteId, chats.whatsappTelefoneId],
+			where: sql`${chats.whatsappTelefoneId} is not null`,
+		})
 		.returning({ id: chats.id });
 
 	if (inserted) {

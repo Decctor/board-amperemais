@@ -11,7 +11,7 @@ import { parseTemplatePayloadToGatewayContent, sendMessage } from "@/lib/whatsap
 import { formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
 import { db } from "@/services/drizzle";
 import { chatMessages, chats } from "@/services/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { buildInteractionMessageVariables } from "./message-preview";
 import { markInteractionBlocked, markInteractionFailed, updateInteractionDeliveryState } from "./delivery-state";
 import type { ImmediateProcessingData, TSendReservedInteractionResult } from "./types";
@@ -126,7 +126,10 @@ async function getOrCreateChatId({
 					whatsappConexaoTelefoneId: whatsappConnectionPhoneId,
 					ultimaMensagemData: new Date(),
 				})
-				.onConflictDoNothing({ target: [chats.organizacaoId, chats.clienteId, chats.whatsappTelefoneId] })
+				.onConflictDoNothing({
+					target: [chats.organizacaoId, chats.clienteId, chats.whatsappTelefoneId],
+					where: sql`${chats.whatsappTelefoneId} is not null`,
+				})
 				.returning({ id: chats.id });
 
 			if (inserted) return inserted.id;
