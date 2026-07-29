@@ -163,17 +163,19 @@ export function ChatsLoadHeatmapBlock({ timeseries, isLoading }: ChatsLoadHeatma
 													return (
 														<Tooltip key={hora} delayDuration={150}>
 															<TooltipTrigger asChild>
-																<div className="flex min-h-0 min-w-0 flex-1 items-center justify-center p-0.5">
-																	<button
-																		type="button"
-																		aria-label={`${DIAS_SEMANA_COMPLETOS[diaSemana]} às ${formatHourLabel(hora)}: ${formatDecimalPlaces(valor, 0, 0)} ${metricaSelecionada.label.toLocaleLowerCase("pt-BR")}`}
+																<button
+																	type="button"
+																	aria-label={`${DIAS_SEMANA_COMPLETOS[diaSemana]} às ${formatHourLabel(hora)}: ${formatDecimalPlaces(valor, 0, 0)} ${metricaSelecionada.label.toLocaleLowerCase("pt-BR")}`}
+																	className="group flex min-h-0 min-w-0 flex-1 cursor-default items-center justify-center p-0.5 focus-visible:outline-none"
+																>
+																	<span
 																		className={cn(
-																			"aspect-square max-h-full w-full max-w-full cursor-default rounded-full border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+																			"aspect-square max-h-full w-full max-w-full rounded-full border border-border group-focus-visible:ring-2 group-focus-visible:ring-ring",
 																			valor === 0 && "bg-muted/40",
 																		)}
 																		style={valor > 0 ? { backgroundColor: hexToRgba(colors.primary, intensidade) } : undefined}
 																	/>
-																</div>
+																</button>
 															</TooltipTrigger>
 															<TooltipContent
 																className="min-w-44 p-3"
