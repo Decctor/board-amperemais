@@ -36,6 +36,7 @@ export async function resolveIncomingChat(input: {
 	whatsappTelefoneId: string;
 	whatsappConexaoId: string;
 	whatsappConexaoTelefoneId: string;
+	now?: Date;
 }) {
 	const [inserted] = await db
 		.insert(chats)
@@ -45,7 +46,7 @@ export async function resolveIncomingChat(input: {
 			whatsappTelefoneId: input.whatsappTelefoneId,
 			whatsappConexaoId: input.whatsappConexaoId,
 			whatsappConexaoTelefoneId: input.whatsappConexaoTelefoneId,
-			ultimaMensagemData: new Date(),
+			ultimaMensagemData: input.now ?? new Date(),
 		})
 		.onConflictDoNothing({
 			target: [chats.organizacaoId, chats.clienteId, chats.whatsappTelefoneId],

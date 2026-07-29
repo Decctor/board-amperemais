@@ -531,6 +531,7 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 		conteudoTexto: incomingMessage.textContent || incomingMessage.caption || null,
 		conteudoMidiaTipo: midiaTipo,
 		midia: mediaData ? { ...mediaData, whatsappMediaId: incomingMessage.mediaId } : null,
+		now: new Date(incomingMessage.timestamp),
 	});
 
 	console.log("[WHATSAPP_WEBHOOK] Message created from:", incomingMessage.fromPhoneNumber);
@@ -681,6 +682,7 @@ async function handleMessageEcho(body: WebhookBody): Promise<void> {
 		conteudoTexto: messageEcho.textContent || messageEcho.caption || null,
 		conteudoMidiaTipo: midiaTipo,
 		midia: mediaData ? { ...mediaData, whatsappMediaId: messageEcho.mediaId } : null,
+		now: new Date(messageEcho.timestamp),
 	});
 
 	console.log("[WHATSAPP_WEBHOOK] [ECHO] Message echo created to:", messageEcho.toPhoneNumber);
