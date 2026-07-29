@@ -1,5 +1,6 @@
 import type { TAiAgentCapacidades } from "@/schemas/ai-agents";
 import type { TAiAgentToolNameEnum } from "@/schemas/enums";
+import type { TProductGroupSummary } from "../shared/product-groups";
 import { getEnabledAgentTools } from "../tools/registry";
 
 /**
@@ -9,20 +10,27 @@ import { getEnabledAgentTools } from "../tools/registry";
  *  2. regras operacionais fixas do canal
  *  3. regras **condicionais às ferramentas habilitadas**
  *  4. inventário de ferramentas
- *  5. base de conhecimento
+ *  5. grupos do catálogo (quando a consulta de produtos está habilitada)
+ *  6. base de conhecimento
  *
  * A camada 3 é a que mais importa: um agente sem a ferramenta de cashback não deve receber
  * instruções sobre cashback. Regras para capacidades que o agente não tem só diluem a tarefa
  * real e induzem promessas que ele não pode cumprir.
+ *
+ * A camada 5 existe porque a grafia dos grupos é um dado que o modelo não tem como adivinhar:
+ * sem ela, ou o agente gasta uma tool call para descobrir as categorias, ou filtra por um
+ * grupo que não existe. A lista é pequena, estável dentro do turno e barata em tokens.
  */
 export function buildAgentSystemPrompt({
 	instrucoes,
 	capacidades,
 	knowledgeContext,
+	productGroups = [],
 }: {
 	instrucoes: string;
 	capacidades: TAiAgentCapacidades;
 	knowledgeContext: string;
+	productGroups?: TProductGroupSummary[];
 }): string {
 	const has = (name: TAiAgentToolNameEnum) => capacidades.ferramentas[name]?.habilitada === true;
 	const parts: string[] = [instrucoes.trim()];
@@ -50,6 +58,11 @@ export function buildAgentSystemPrompt({
 				? "- Consulte o catálogo antes de citar produto ou preço. Use somente o preço retornado pela ferramenta. Produto ativo não significa estoque disponível ou reservado."
 				: "- Consulte o catálogo antes de citar produtos. Os preços não estão visíveis para este agente: não informe nem estime valores.",
 		);
+		if (productGroups.length > 0) {
+			conditionalRules.push(
+				'- Ao filtrar o catálogo por grupo, use exatamente uma das grafias da seção "Grupos de produtos do catálogo". Não invente categorias.',
+			);
+		}
 	}
 	if (has("orcamentos.criar")) {
 		conditionalRules.push(
@@ -87,6 +100,12 @@ export function buildAgentSystemPrompt({
 		parts.push(`## Ferramentas disponíveis\n${enabledTools.map((tool) => `- ${tool.name}`).join("\n")}`);
 	} else {
 		parts.push("## Ferramentas disponíveis\nNenhuma. Responda apenas com o que estiver na base de conhecimento e no contexto da conversa.");
+	}
+
+	if (has("produtos.consultar") && productGroups.length > 0) {
+		parts.push(
+			`## Grupos de produtos do catálogo\nEstas são as categorias que existem hoje, com a quantidade de produtos ativos em cada uma. Use esta grafia exata no filtro "grupo" da consulta de catálogo. Para saber o que a empresa vende, parta desta lista — só consulte o catálogo para detalhar produtos.\n\n${productGroups.map((group) => `- ${group.grupo} (${group.quantidadeProdutos} produto(s))`).join("\n")}`,
+		);
 	}
 
 	if (knowledgeContext.trim()) {

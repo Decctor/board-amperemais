@@ -10,6 +10,8 @@ import { resolveLanguageModel } from "../providers/language";
 import { normalizeAiUsage } from "../providers/usage";
 import { AgentDailyRunLimitError, AgentInactiveError } from "../shared/errors";
 import { parseJsonbWithFallback } from "../shared/json";
+import { listActiveProductGroups } from "../shared/product-groups";
+import { isToolEnabled } from "../tools/guards";
 import { toAISdkTools } from "../tools/registry";
 import type { TAgentToolContext } from "../tools/types";
 import { buildChatRunContext, formatChatRunContext } from "./context";
@@ -68,9 +70,12 @@ export async function prepareAgentExecution({
 		throw new AgentDailyRunLimitError(`Limite diário de ${capacidades.limites.maxRunsDiarios} execuções do agente atingido.`);
 	}
 
-	const [{ contexto: chatContext, clienteId }, knowledge] = await Promise.all([
+	const [{ contexto: chatContext, clienteId }, knowledge, productGroups] = await Promise.all([
 		buildChatRunContext(database, { organizacaoId, chatId }),
 		getActiveKnowledgeBlocks(database, agent.id),
+		// A grafia dos grupos entra no system prompt para o agente não filtrar por categoria
+		// inexistente nem gastar uma tool call para descobrir o que a empresa vende.
+		isToolEnabled(capacidades, "produtos.consultar") ? listActiveProductGroups(database, organizacaoId) : Promise.resolve([]),
 	]);
 
 	const run = await createAgentRun(database, {
@@ -106,6 +111,7 @@ export async function prepareAgentExecution({
 			instrucoes: agent.instrucoes,
 			capacidades,
 			knowledgeContext: formatKnowledgeContext(knowledge),
+			productGroups,
 		}),
 		turnPrompt: formatChatRunContext(chatContext),
 		modeloConfig,
