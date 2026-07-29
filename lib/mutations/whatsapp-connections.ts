@@ -1,6 +1,10 @@
 import type { TSyncWhatsappContactsOutput } from "@/app/api/whatsapp-connections/contacts-sync/route";
 import type { TSyncWhatsappMessageHistoryOutput } from "@/app/api/whatsapp-connections/message-history-sync/route";
-import type { TDeleteWhatsappConnectionOutput } from "@/app/api/whatsapp-connections/route";
+import type {
+	TDeleteWhatsappConnectionOutput,
+	TUpdateConnectionPhoneAiServiceInput,
+	TUpdateConnectionPhoneAiServiceOutput,
+} from "@/app/api/whatsapp-connections/route";
 import axios from "axios";
 
 export async function syncWhatsappContacts(phoneId: string) {
@@ -15,5 +19,9 @@ export async function syncWhatsappMessageHistory(phoneId: string) {
 }
 export async function deleteWhatsappConnection(input: string) {
 	const { data } = await axios.delete<TDeleteWhatsappConnectionOutput>(`/api/whatsapp-connections?id=${input}`);
+	return data;
+}
+export async function updateConnectionPhoneAiService(input: TUpdateConnectionPhoneAiServiceInput) {
+	const { data } = await axios.patch<TUpdateConnectionPhoneAiServiceOutput>("/api/whatsapp-connections", input);
 	return data;
 }
