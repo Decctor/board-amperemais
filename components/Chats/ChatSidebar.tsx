@@ -4,20 +4,36 @@ import type { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connectio
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+	DropdownMenu,
+	DropdownMenuCheckboxItem,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { mapRealtimeChatRow, type TRealtimeChatRow } from "@/lib/chats/realtime-mappers";
 import { getErrorMessage } from "@/lib/errors";
 import { useChats, type TChatInboxItem } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
-import type { TChatInboxView } from "@/schemas/enums";
+import { ChatAssignmentStatusEnum, ChatInboxViewEnum, type TChatAssignmentStatus, type TChatInboxView } from "@/schemas/enums";
 import { supabaseClient } from "@/services/supabase";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { ChevronDown, Inbox, Search, Sparkles, User, Users, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { STATUS_META } from "./attendance-meta";
 import { ChatInboxListItem } from "./ChatInboxListItem";
 
 type TInboxPage = { items: TChatInboxItem[]; hasMore: boolean; nextCursor: string | null };
+
+/**
+ * ENCERRADO e CANCELADO ficam de fora: a inbox junta apenas o atendimento corrente
+ * (não-terminal), então essas opções nunca casariam com nada — seriam filtros mortos.
+ */
+const FILTERABLE_STATUSES = (Object.keys(STATUS_META) as TChatAssignmentStatus[]).filter(
+	(status) => status !== "ENCERRADO" && status !== "CANCELADO",
+);
 
 const INBOX_VIEWS: { id: TChatInboxView; label: string; icon: typeof Inbox }[] = [
 	{ id: "MINHAS", label: "Minhas", icon: User },
@@ -34,20 +50,66 @@ type ChatSidebarProps = {
 	className?: string;
 };
 
+/**
+ * Filtros persistidos por organização.
+ *
+ * Lidos em efeito, não no inicializador do useState: o servidor não tem localStorage e
+ * ler no primeiro render produziria markup diferente do cliente (erro de hidratação). O
+ * custo é um render com o padrão antes de aplicar o salvo.
+ */
+const FILTERS_STORAGE_PREFIX = "chat-inbox-filters";
+
+type TPersistedFilters = { view: TChatInboxView; selectedPhoneId: string | null; statusFilter: TChatAssignmentStatus[] };
+
 export function ChatSidebar({ organizationId, selectedChatId, onSelectChat, whatsappConnections, className }: ChatSidebarProps) {
 	const [view, setView] = useState<TChatInboxView>("MINHAS");
 	const [search, setSearch] = useState("");
 	const [selectedPhoneId, setSelectedPhoneId] = useState<string | null>(null);
+	const [statusFilter, setStatusFilter] = useState<TChatAssignmentStatus[]>([]);
+	const [filtersLoaded, setFiltersLoaded] = useState(false);
 	const queryClient = useQueryClient();
 	const initialSubscriptionCompleteRef = useRef(false);
 
 	const phones = useMemo(() => whatsappConnections.flatMap((connection) => connection.telefones ?? []), [whatsappConnections]);
 	const selectedPhone = phones.find((phone) => phone.id === selectedPhoneId) ?? null;
+	const storageKey = `${FILTERS_STORAGE_PREFIX}-${organizationId}`;
+
+	useEffect(() => {
+		try {
+			const raw = window.localStorage.getItem(storageKey);
+			if (raw) {
+				const parsed = JSON.parse(raw) as Partial<TPersistedFilters>;
+				const parsedView = ChatInboxViewEnum.safeParse(parsed.view);
+				if (parsedView.success) setView(parsedView.data);
+				// Um telefone salvo pode ter sido removido da organização desde então;
+				// restaurar um filtro inexistente esvaziaria a inbox sem explicação.
+				if (parsed.selectedPhoneId && phones.some((phone) => phone.id === parsed.selectedPhoneId)) {
+					setSelectedPhoneId(parsed.selectedPhoneId);
+				}
+				if (Array.isArray(parsed.statusFilter)) {
+					setStatusFilter(parsed.statusFilter.flatMap((s) => (ChatAssignmentStatusEnum.safeParse(s).success ? [s as TChatAssignmentStatus] : [])));
+				}
+			}
+		} catch {
+			// Storage indisponível ou JSON corrompido: seguir com os padrões.
+		}
+		setFiltersLoaded(true);
+	}, [storageKey, phones]);
+
+	useEffect(() => {
+		if (!filtersLoaded) return;
+		try {
+			window.localStorage.setItem(storageKey, JSON.stringify({ view, selectedPhoneId, statusFilter } satisfies TPersistedFilters));
+		} catch {
+			// Modo privado / quota estourada: o filtro só não persiste.
+		}
+	}, [filtersLoaded, storageKey, view, selectedPhoneId, statusFilter]);
 
 	const { chats, isPending, isError, error, hasNextPage, fetchNextPage, isFetchingNextPage, queryKey } = useChats({
 		whatsappConexaoTelefoneId: selectedPhoneId,
 		view,
 		search,
+		status: statusFilter,
 	});
 
 	// A key muda com view/busca/telefone; o canal precisa sempre patchar a key corrente.
@@ -122,7 +184,7 @@ export function ChatSidebar({ organizationId, selectedChatId, onSelectChat, what
 	return (
 		<aside className={cn("flex h-full w-full flex-col border-r border-border bg-background", className)}>
 			<div className="flex flex-col gap-2 border-b border-border p-3">
-				<div className="flex items-center gap-2">
+				<div className="flex flex-wrap items-center gap-2">
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant="outline" size="sm" className="h-8 gap-1.5">
@@ -170,6 +232,41 @@ export function ChatSidebar({ organizationId, selectedChatId, onSelectChat, what
 							</DropdownMenu>
 						)
 					)}
+
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant={statusFilter.length > 0 ? "outline" : "ghost"} size="sm" className="h-8 gap-1 text-xs">
+								Status
+								{statusFilter.length > 0 && (
+									<span className="rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">{statusFilter.length}</span>
+								)}
+								<ChevronDown className="h-3 w-3 opacity-60" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="start">
+							{FILTERABLE_STATUSES.map((status) => (
+								<DropdownMenuCheckboxItem
+									key={status}
+									checked={statusFilter.includes(status)}
+									// Sem o preventDefault o menu fecharia a cada clique — inviável
+									// para uma seleção múltipla.
+									onSelect={(event) => event.preventDefault()}
+									onCheckedChange={(checked) =>
+										setStatusFilter((current) => (checked ? [...current, status] : current.filter((item) => item !== status)))
+									}
+								>
+									<span className={cn("h-2 w-2 shrink-0 rounded-full", STATUS_META[status].dot)} />
+									{STATUS_META[status].label}
+								</DropdownMenuCheckboxItem>
+							))}
+							{statusFilter.length > 0 && (
+								<>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem onClick={() => setStatusFilter([])}>Limpar filtro</DropdownMenuItem>
+								</>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 
 				<div className="relative">
@@ -191,7 +288,14 @@ export function ChatSidebar({ organizationId, selectedChatId, onSelectChat, what
 					<p className="p-6 text-center text-xs text-muted-foreground">Nenhuma conversa nesta visão.</p>
 				)}
 				{chats.map((chat) => (
-					<ChatInboxListItem key={chat.id} chat={chat} isSelected={chat.id === selectedChatId} onSelect={onSelectChat} />
+					<ChatInboxListItem
+						key={chat.id}
+						chat={chat}
+						isSelected={chat.id === selectedChatId}
+						// Com filtro ativo o número é redundante — ele já está no chip acima.
+						showPhoneBadge={!selectedPhoneId && phones.length > 1}
+						onSelect={onSelectChat}
+					/>
 				))}
 				{hasNextPage && (
 					<div className="p-3">

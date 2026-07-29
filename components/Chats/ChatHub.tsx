@@ -21,7 +21,7 @@ export default function ChatHub({ user, organizationId, whatsappConnections }: C
 	return (
 		<div className="flex h-full min-h-0 w-full">
 			{/* No mobile, a lista some quando uma conversa está aberta. */}
-			<div className={cn("w-full shrink-0 md:w-80 lg:w-96", selectedChatId && "hidden md:block")}>
+			<div className={cn("h-full w-full shrink-0 md:w-80 lg:w-96", selectedChatId && "hidden md:block")}>
 				<ChatSidebar
 					organizationId={organizationId}
 					selectedChatId={selectedChatId}
@@ -30,7 +30,7 @@ export default function ChatHub({ user, organizationId, whatsappConnections }: C
 				/>
 			</div>
 
-			<div className={cn("min-w-0 flex-1", !selectedChatId && "hidden md:block")}>
+			<div className={cn("h-full min-w-0 flex-1", !selectedChatId && "hidden md:block")}>
 				{selectedChatId ? (
 					<ChatThread key={selectedChatId} chatId={selectedChatId} organizationId={organizationId} currentUser={currentUser} />
 				) : (

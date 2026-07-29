@@ -2,7 +2,7 @@ import type { TGetTransferTargetsOutput } from "@/app/api/chats/assignments/rout
 import type { TGetChatMessagesOutput } from "@/app/api/chats/messages/route";
 import type { TGetChatsOutput } from "@/app/api/chats/route";
 import type { TGetClientContextOutput } from "@/app/api/clients/context/route";
-import type { TChatInboxView } from "@/schemas/enums";
+import type { TChatAssignmentStatus, TChatInboxView } from "@/schemas/enums";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useDebounceMemo } from "../hooks/use-debounce";
@@ -15,12 +15,14 @@ async function fetchChats(params: {
 	whatsappConexaoTelefoneId: string | null;
 	view: TChatInboxView;
 	search: string;
+	status: TChatAssignmentStatus[];
 	cursor?: TChatsCursor;
 }) {
 	const searchParams = new URLSearchParams();
 	if (params.whatsappConexaoTelefoneId) searchParams.set("whatsappConexaoTelefoneId", params.whatsappConexaoTelefoneId);
 	searchParams.set("view", params.view);
 	if (params.search) searchParams.set("search", params.search);
+	if (params.status.length > 0) searchParams.set("status", params.status.join(","));
 	if (params.cursor) searchParams.set("cursor", params.cursor);
 
 	const { data } = await axios.get<TGetChatsOutput>(`/api/chats?${searchParams.toString()}`);
@@ -69,32 +71,36 @@ export function getChatsQueryKey({
 	whatsappConexaoTelefoneId,
 	view,
 	search,
+	status,
 }: {
 	whatsappConexaoTelefoneId: string | null;
 	view: TChatInboxView;
 	search: string;
+	status: TChatAssignmentStatus[];
 }) {
-	return ["chats", whatsappConexaoTelefoneId, view, search] as const;
+	return ["chats", whatsappConexaoTelefoneId, view, search, status] as const;
 }
 
 export function useChats({
 	whatsappConexaoTelefoneId,
 	view,
 	search = "",
+	status = [],
 }: {
 	whatsappConexaoTelefoneId: string | null;
 	view: TChatInboxView;
 	search?: string;
+	status?: TChatAssignmentStatus[];
 }) {
 	// A busca vai para o servidor (o índice de chave natural + ordenação já suportam),
 	// então precisa de debounce para não disparar uma query por tecla.
 	const debounced = useDebounceMemo({ search }, 350);
-	const queryKey = getChatsQueryKey({ whatsappConexaoTelefoneId, view, search: debounced.search });
+	const queryKey = getChatsQueryKey({ whatsappConexaoTelefoneId, view, search: debounced.search, status });
 
 	const query = useInfiniteQuery({
 		queryKey,
 		queryFn: ({ pageParam }) =>
-			fetchChats({ whatsappConexaoTelefoneId, view, search: debounced.search, cursor: pageParam ?? undefined }),
+			fetchChats({ whatsappConexaoTelefoneId, view, search: debounced.search, status, cursor: pageParam ?? undefined }),
 		getNextPageParam: (lastPage) => lastPage.nextCursor,
 		initialPageParam: null as TChatsCursor,
 		refetchOnWindowFocus: false,

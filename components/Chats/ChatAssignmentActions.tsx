@@ -1,9 +1,10 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { getErrorMessage } from "@/lib/errors";
+import { PRIORITY_META, STATUS_META } from "./attendance-meta";
+import { cn } from "@/lib/utils";
 import { updateChatAssignment } from "@/lib/mutations/chats";
 import { useChatTransferTargets, type TChatAttendance } from "@/lib/queries/chats";
 import type { TChatAssignmentPriority, TChatAssignmentStatus } from "@/schemas/enums";
@@ -11,23 +12,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, LogOut, Smartphone, Sparkles, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-
-const STATUS_LABELS: Record<TChatAssignmentStatus, string> = {
-	ABERTO: "Aberto",
-	EM_ATENDIMENTO: "Em atendimento",
-	AGUARDANDO_CLIENTE: "Aguardando cliente",
-	AGUARDANDO_INTERNO: "Aguardando interno",
-	RESOLVIDO: "Resolvido",
-	ENCERRADO: "Encerrado",
-	CANCELADO: "Cancelado",
-};
-
-const PRIORITY_LABELS: Record<TChatAssignmentPriority, string> = {
-	BAIXA: "Baixa",
-	MEDIA: "Média",
-	ALTA: "Alta",
-	URGENTE: "Urgente",
-};
 
 type ChatAssignmentActionsProps = {
 	chatId: string;
@@ -101,11 +85,7 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 				<DropdownMenuContent align="end" className="max-h-64 overflow-y-auto">
 					{(transferTargets ?? []).length === 0 && <DropdownMenuItem disabled>Nenhum usuário disponível</DropdownMenuItem>}
 					{(transferTargets ?? []).map((target) => (
-						<DropdownMenuItem key={target.id} className="gap-2" onClick={() => mutate({ acao: "transferir", chatId, usuarioDestinoId: target.id })}>
-							<Avatar className="h-5 w-5">
-								{target.avatarUrl && <AvatarImage src={target.avatarUrl} />}
-								<AvatarFallback className="text-[10px]">{target.nome.slice(0, 1)}</AvatarFallback>
-							</Avatar>
+						<DropdownMenuItem key={target.id} onClick={() => mutate({ acao: "transferir", chatId, usuarioDestinoId: target.id })}>
 							{target.nome}
 						</DropdownMenuItem>
 					))}
@@ -115,17 +95,22 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 			{!compact && (
 				<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button size="sm" variant="ghost" className="gap-1 text-xs" disabled={isPending}>
-								{atendimento ? STATUS_LABELS[atendimento.status] : "Status"}
+							<Button size="sm" variant="ghost" className="gap-1.5 text-xs" disabled={isPending}>
+								{atendimento && <span className={cn("h-2 w-2 shrink-0 rounded-full", STATUS_META[atendimento.status].dot)} />}
+								{atendimento ? STATUS_META[atendimento.status].label : "Status"}
 								<ChevronDown className="h-3 w-3 opacity-60" />
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
-							{(Object.keys(STATUS_LABELS) as TChatAssignmentStatus[]).map((status) => (
-								<DropdownMenuItem key={status} onClick={() => mutate({ acao: "alterar_status", chatId, status })}>
-									{STATUS_LABELS[status]}
-								</DropdownMenuItem>
-							))}
+							{(Object.keys(STATUS_META) as TChatAssignmentStatus[]).map((status) => {
+								const StatusIcon = STATUS_META[status].icon;
+								return (
+									<DropdownMenuItem key={status} className="gap-2" onClick={() => mutate({ acao: "alterar_status", chatId, status })}>
+										<StatusIcon className={cn("h-3.5 w-3.5", STATUS_META[status].dot.replace("bg-", "text-"))} />
+										{STATUS_META[status].label}
+									</DropdownMenuItem>
+								);
+							})}
 						</DropdownMenuContent>
 				</DropdownMenu>
 			)}
@@ -134,15 +119,15 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 				<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button size="sm" variant="ghost" className="gap-1 text-xs" disabled={isPending}>
-								{atendimento?.prioridade ? PRIORITY_LABELS[atendimento.prioridade] : "Prioridade"}
+								{atendimento?.prioridade ? PRIORITY_META[atendimento.prioridade].label : "Prioridade"}
 								<ChevronDown className="h-3 w-3 opacity-60" />
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							<DropdownMenuItem onClick={() => mutate({ acao: "alterar_prioridade", chatId, prioridade: null })}>Sem prioridade</DropdownMenuItem>
-							{(Object.keys(PRIORITY_LABELS) as TChatAssignmentPriority[]).map((prioridade) => (
+							{(Object.keys(PRIORITY_META) as TChatAssignmentPriority[]).map((prioridade) => (
 								<DropdownMenuItem key={prioridade} onClick={() => mutate({ acao: "alterar_prioridade", chatId, prioridade })}>
-									{PRIORITY_LABELS[prioridade]}
+									{PRIORITY_META[prioridade].label}
 								</DropdownMenuItem>
 							))}
 						</DropdownMenuContent>
@@ -162,5 +147,3 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 		</div>
 	);
 }
-
-export { STATUS_LABELS, PRIORITY_LABELS };

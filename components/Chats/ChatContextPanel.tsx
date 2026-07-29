@@ -6,7 +6,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { useChatClientContext, type TChatMessagesPage } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
-import { ArrowDownLeft, ArrowUpRight, Mail, MapPin, Smartphone, Sparkles, User } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, ExternalLink, Mail, MapPin, Smartphone, Sparkles, User } from "lucide-react";
 import { ChatAssignmentActions } from "./ChatAssignmentActions";
 
 /**
@@ -179,14 +179,27 @@ function ClientTab({ chat }: { chat: TChatMessagesPage["chat"] }) {
 					<SectionTitle>Últimas compras</SectionTitle>
 					<ul className="flex flex-col gap-2">
 						{ultimasCompras.map((compra) => (
-							<li key={compra.id} className="flex flex-col gap-0.5 rounded-lg bg-muted/60 p-2">
-								<div className="flex items-baseline justify-between gap-2 text-xs">
-									<span className="text-muted-foreground">{formatDateAsLocale(compra.dataVenda)}</span>
-									<span className="font-bold tabular-nums">{formatToMoney(compra.valorTotal)}</span>
-								</div>
-								<span className="truncate text-[11px] text-muted-foreground">
-									{compra.itens.map((item) => item.produtoNome).join(", ") || "Sem itens"}
-								</span>
+							<li key={compra.id}>
+								{/* Nova aba: quem abre a venda está no meio de um atendimento e
+								    perder a conversa para navegar seria pior que o ganho. */}
+								<a
+									href={`/dashboard/commercial/sales/${compra.id}`}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="flex flex-col gap-0.5 rounded-lg bg-muted/60 p-2 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+								>
+									<div className="flex items-baseline justify-between gap-2 text-xs">
+										<span className="flex items-center gap-1 text-muted-foreground">
+											{formatDateAsLocale(compra.dataVenda, true)}
+											<ExternalLink className="h-3 w-3 shrink-0" />
+											<span className="sr-only">Abrir venda em nova aba</span>
+										</span>
+										<span className="font-bold tabular-nums">{formatToMoney(compra.valorTotal)}</span>
+									</div>
+									<span className="truncate text-[11px] text-muted-foreground">
+										{compra.itens.map((item) => item.produtoNome).join(", ") || "Sem itens"}
+									</span>
+								</a>
 							</li>
 						))}
 					</ul>

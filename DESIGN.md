@@ -210,7 +210,27 @@ Two brand colors carry the identity. Don't try to make this a one-color minimal 
 
 ### Semantic
 - **Destrutivo** (`#ef4444`): Delete actions, errors. Never decorative.
-- **Sucesso** (`#16a34a`): Confirmation feedback, "ATIVA" status. Used sparingly.
+- **Sucesso** (`#16a34a`): Confirmation feedback, "ATIVA" status. Used sparingly. Token: `--color-success`.
+- **Sucesso Forte** (`#15803d`): O passo escuro do verde. Existe para pares de estado em que
+  "concluído" e "encerrado definitivamente" precisam se distinguir sem trocar de matiz —
+  hoje `RESOLVIDO` vs. `ENCERRADO` no hub de atendimentos. Token: `--color-success-strong`.
+
+### Estados de atendimento (hub de chats)
+O ciclo de vida de um atendimento tem sete estados, e um select sem cor obriga a ler texto
+para achar o que importa. O mapeamento reusa a paleta existente em vez de abrir matizes novas:
+
+| Estado | Cor | Por quê |
+| --- | --- | --- |
+| `ABERTO` | Ouro Comercial | Há pendência do cliente esperando resposta — é o estado que pede ação |
+| `EM_ATENDIMENTO` | Azul Primário | Em curso, sob controle |
+| `AGUARDANDO_CLIENTE` | Muted | A bola está com o cliente; não há nada a fazer |
+| `AGUARDANDO_INTERNO` | Muted | Bloqueado por terceiro interno |
+| `RESOLVIDO` | Sucesso | Fim positivo, ainda reaberto por uma resposta do cliente |
+| `ENCERRADO` | Sucesso Forte | Fim definitivo; libera o chat para um novo atendimento |
+| `CANCELADO` | Destrutivo | Encerrado sem desfecho |
+
+Só dois estados usam cor quente (`ABERTO` em ouro, `CANCELADO` em vermelho), o que mantém a
+proporção 1:3 de âmbar mesmo com o select colorido.
 
 ### Data visualization
 Five warm gold steps. Distinctive — most analytics tools default to cold blue/teal/red. The gold palette extends the brand identity into charts:
