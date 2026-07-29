@@ -7,7 +7,6 @@ import type {
 	TUpdateOrganizationOutput,
 } from "@/app/api/admin/organizations/route";
 import type { TJoinAsMemberAdminInput, TJoinAsMemberAdminOutput } from "@/app/api/admin/organizations/join-as-member/route";
-import type { TExportMarketingContextInput, TExportMarketingContextOutput } from "@/app/api/admin/marketing-context/route";
 import type { TUpdateUserAdminInput, TUpdateUserAdminOutput } from "@/app/api/admin/users/route";
 import axios from "axios";
 
@@ -33,10 +32,5 @@ export async function deleteOrganization(input: TDeleteOrganizationInput) {
 
 export async function updateUserAsAdmin(input: TUpdateUserAdminInput) {
 	const response = await axios.put<TUpdateUserAdminOutput>("/api/admin/users", input);
-	return response.data;
-}
-
-export async function exportMarketingContext(input: TExportMarketingContextInput) {
-	const response = await axios.post<TExportMarketingContextOutput>("/api/admin/marketing-context", input);
 	return response.data;
 }
