@@ -4,7 +4,8 @@ import type { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connectio
 import { Tabs, TabsContent, TabsList, TabsTrigger, tabsPageToolbarClassName } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { BarChart3, Columns3, MessagesSquare } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import ChatsBoard from "./Board/ChatsBoard";
 import ChatHub from "./ChatHub";
 
 /**
@@ -30,6 +31,12 @@ type ChatsWorkspaceProps = {
 export default function ChatsWorkspace({ user, organizationId, whatsappConnections }: ChatsWorkspaceProps) {
 	const [tab, setTab] = useState<TChatsWorkspaceTab>("hub");
 	const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+
+	/** Abrir uma conversa a partir do quadro é sempre um movimento para o hub. */
+	const openChatInHub = useCallback((chatId: string) => {
+		setSelectedChatId(chatId);
+		setTab("hub");
+	}, []);
 
 	return (
 		<div className="flex h-full min-h-0 w-full flex-col gap-3">
@@ -70,7 +77,7 @@ export default function ChatsWorkspace({ user, organizationId, whatsappConnectio
 
 				{/* Quadro e estatísticas montam sob demanda: nenhum dos dois precisa ficar quente. */}
 				<TabsContent value="quadro" className="mt-3 flex min-h-0 flex-1 flex-col">
-					<PlaceholderPanel label="Quadro de atendimentos" />
+					<ChatsBoard organizationId={organizationId} whatsappConnections={whatsappConnections} onOpenChat={openChatInHub} />
 				</TabsContent>
 
 				<TabsContent value="estatisticas" className="mt-3 flex min-h-0 flex-1 flex-col">
