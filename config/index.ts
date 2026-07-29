@@ -4,8 +4,6 @@ import type { TOrganizationEntity } from "@/services/drizzle/schema";
 
 export const SESSION_COOKIE_NAME = "syncrono-session";
 
-export const HINTS_AMMOUNT_VALIDATION_THRESHOLD = 5;
-
 export const DEFAULT_ORGANIZATION_OWNER_PERMISSIONS: TUserPermissions = {
 	usuarios: {
 		visualizar: true,
@@ -160,10 +158,6 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES: TOrganizationConfigur
 	integracoes: {
 		acesso: false,
 		limiteAtivas: 0,
-	},
-	iaDicas: {
-		acesso: false,
-		limiteSemanal: 0,
 	},
 	iaAtendimento: {
 		acesso: false,
@@ -364,10 +358,6 @@ export const AppSubscriptionPlans: {
 				acesso: false,
 				limiteAtivas: 0,
 			},
-			iaDicas: {
-				acesso: false,
-				limiteSemanal: 0,
-			},
 			iaAtendimento: {
 				acesso: false,
 				limiteCreditos: 0,
@@ -494,10 +484,6 @@ export const AppSubscriptionPlans: {
 				acesso: true,
 				limiteCreditos: null,
 			},
-			iaDicas: {
-				acesso: true,
-				limiteSemanal: null,
-			},
 			erp: {
 				acesso: false,
 			},
@@ -522,10 +508,6 @@ export const AppSubscriptionPlans: {
 			{
 				checked: true,
 				label: "Ponto de Interação personalizado para acumulação de cashback",
-			},
-			{
-				checked: true,
-				label: "Dicas de IA personalizadas para o seu negócio",
 			},
 			{
 				checked: true,
@@ -625,10 +607,6 @@ export const AppSubscriptionPlans: {
 				acesso: true,
 				limiteAtendentes: 5,
 			},
-			iaDicas: {
-				acesso: true,
-				limiteSemanal: null,
-			},
 			iaAtendimento: {
 				acesso: true,
 				limiteCreditos: null,
@@ -657,10 +635,6 @@ export const AppSubscriptionPlans: {
 			{
 				checked: true,
 				label: "Ponto de Interação personalizado para acumulação de cashback",
-			},
-			{
-				checked: true,
-				label: "Dicas de IA personalizadas para o seu negócio",
 			},
 			{
 				checked: true,

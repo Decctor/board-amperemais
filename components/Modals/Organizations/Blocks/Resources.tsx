@@ -104,15 +104,6 @@ export default function AdminOrganizationResourcesBlock({ recursos, updateResour
 				onAccessChange={(checked) => updateResource("relatoriosWhatsapp", { acesso: checked })}
 			/>
 			<ResourceRow
-				title="Dicas de IA"
-				description="Sugestões inteligentes de ações comerciais."
-				access={recursos.iaDicas.acesso}
-				onAccessChange={(checked) => updateResource("iaDicas", { acesso: checked })}
-				limitLabel="LIMITE SEMANAL DE DICAS"
-				limitValue={recursos.iaDicas.limiteSemanal}
-				onLimitChange={(value) => updateResource("iaDicas", { limiteSemanal: value })}
-			/>
-			<ResourceRow
 				title="Atendimento com IA"
 				description="Assistente de IA nos fluxos de atendimento."
 				access={recursos.iaAtendimento.acesso}

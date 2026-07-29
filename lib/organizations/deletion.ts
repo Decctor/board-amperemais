@@ -3,8 +3,6 @@ import {
 	accountingEntries,
 	accountsCharts,
 	actionApprovalRequests,
-	aiHintFeedback,
-	aiHints,
 	audienceDestinationMembers,
 	audienceDestinations,
 	audiences,
@@ -141,9 +139,6 @@ export async function deleteAllOrganizationData({
 			inArray(audienceDestinations.audienciaId, trx.select({ id: audiences.id }).from(audiences).where(eq(audiences.organizacaoId, organizationId))),
 		);
 	await trx
-		.delete(aiHintFeedback)
-		.where(inArray(aiHintFeedback.hintId, trx.select({ id: aiHints.id }).from(aiHints).where(eq(aiHints.organizacaoId, organizationId))));
-	await trx
 		.delete(productAddOnReferences)
 		.where(
 			inArray(
@@ -248,7 +243,6 @@ export async function deleteAllOrganizationData({
 	await trx.delete(whatsappConnections).where(eq(whatsappConnections.organizacaoId, organizationId));
 	await trx.delete(audiences).where(eq(audiences.organizacaoId, organizationId));
 	await trx.delete(integrations).where(eq(integrations.organizacaoId, organizationId));
-	await trx.delete(aiHints).where(eq(aiHints.organizacaoId, organizationId));
 	await trx.delete(actionApprovalRequests).where(eq(actionApprovalRequests.organizacaoId, organizationId));
 
 	// --- Clientes / parceiros / metas ---

@@ -2,7 +2,6 @@
 import { getAppRouteIcon } from "@/config/app-route-icons";
 import { getAppRouteDescription, getAppRouteTitle } from "@/config";
 import SubscriptionStatusBanner from "@/components/Sidebar/SubscriptionStatusBanner";
-import { AIHintsBadge } from "@/components/AIHints/AIHintsBadge";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -38,7 +37,6 @@ export default function AppHeader({ showSidebarTrigger = true }: AppHeaderProps)
 					<h1 className="text-xl font-black leading-none tracking-tight md:text-2xl text-foreground">{title}</h1>
 				</div>
 				<div className="flex items-center gap-2">
-					{/* <AIHintsBadge /> */}
 					<SubscriptionStatusBanner />
 				</div>
 			</div>

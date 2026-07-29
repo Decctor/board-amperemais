@@ -23,7 +23,6 @@ export * from "./fiscal";
 export * from "./organizations";
 export * from "./whatsapp-connections";
 export * from "./chats";
-export * from "./ai-hints";
 export * from "./community";
 export * from "./suppliers";
 export * from "./purchases";
