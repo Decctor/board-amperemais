@@ -4,6 +4,7 @@ This file documents the architectural patterns, conventions, and "tastes" of thi
 
 ## Tech Stack
 
+- **Package manager**: **npm** (`package-lock.json`). Never pnpm/yarn/bun — Vercel picks the package manager by lockfile, and a foreign one breaks the build on undeclared transitive imports. See *Package Manager* in AGENTS.md.
 - **Framework**: Next.js 16 (App Router)
 - **Database**: PostgreSQL via Supabase, Drizzle ORM
 - **Auth**: Lucia (session-based), `admin: boolean` flag on users for platform admin access
