@@ -6,7 +6,7 @@ import {
 	extractSearchTokens,
 } from "@/lib/search";
 import { products, productVariants } from "@/services/drizzle/schema";
-import { and, asc, count, desc, eq, exists, gte, ilike, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import z from "zod";
 import { findProductGroupByName, listActiveProductGroups } from "../shared/product-groups";
 import { defineAgentTool } from "./define-tool";
@@ -103,6 +103,54 @@ function buildTermCondition({
 	return or(...nameTerms.map((term) => createSimplifiedSearchCondition(products.nome, term)), ilike(products.codigo, codePrefix), variantMatch);
 }
 
+/**
+ * Busca em duas fases, e não por acaso: o `findMany` relacional apelida a tabela
+ * (`FROM "ampmais_products" "products"`), e um `EXISTS` construído com `db.select()` serializa a
+ * correlação pelo nome bruto (`"ampmais_products"."id"`) — que sai de escopo quando o alias
+ * existe, quebrando a query. A fase 1 resolve os IDs ranqueados no select builder (tabela sem
+ * alias, correlação válida); a fase 2 usa o relacional só com `IN (ids)` para montar as variações.
+ */
+async function fetchRankedProducts({
+	db,
+	organizacaoId,
+	where,
+	orderBy,
+	limit,
+	activeOnly,
+}: {
+	db: TAgentToolContext["db"];
+	organizacaoId: string;
+	where: SQL | undefined;
+	orderBy: SQL[];
+	limit: number;
+	activeOnly: boolean;
+}): Promise<TFoundProduct[]> {
+	const ranked = await db
+		.select({ id: products.id })
+		.from(products)
+		.where(where)
+		.orderBy(...orderBy)
+		.limit(limit);
+	if (ranked.length === 0) return [];
+	const ids = ranked.map((row) => row.id);
+
+	const rows = await db.query.products.findMany({
+		where: and(eq(products.organizacaoId, organizacaoId), inArray(products.id, ids)),
+		columns: { id: true, nome: true, codigo: true, grupo: true, unidade: true, precoVenda: true, descricao: true },
+		with: {
+			variantes: {
+				where: activeOnly ? (variante, { eq: equals }) => equals(variante.ativo, true) : undefined,
+				columns: { id: true, nome: true, codigo: true, precoVenda: true },
+				limit: 20,
+			},
+		},
+	});
+
+	// O IN não preserva ordem: reordena pelo ranking da fase 1.
+	const rankById = new Map(ids.map((id, index) => [id, index]));
+	return rows.sort((a, b) => (rankById.get(a.id) ?? 0) - (rankById.get(b.id) ?? 0));
+}
+
 export const productsTool = defineAgentTool({
 	name: "produtos.consultar",
 	description: `Consulta o catálogo de produtos da empresa.
@@ -118,7 +166,8 @@ Filtros disponíveis (combináveis, todos opcionais):
   ("vinho tinto") a frases inteiras.
 - grupo: restringe a uma categoria. Use exatamente um dos grupos listados na seção "Grupos de
   produtos do catálogo" do seu contexto; a comparação ignora acentos e maiúsculas.
-- precoMin / precoMax: faixa de preço de venda.
+- precoMin / precoMax: faixa de preço de venda. Use somente quando o cliente pedir por faixa de
+  preço — omita os dois nos demais casos.
 - apenasAtivos: por padrão true; use false apenas para consultar itens desativados.
 - limite: quantos produtos retornar (máximo 50).
 
@@ -130,8 +179,8 @@ ou disponibilidade: informe apenas o que vier daqui.`,
 	inputSchema: z.object({
 		termo: z.string().min(2).optional().describe("Busca pelo nome do produto/variação ou pelo código (prefixo)."),
 		grupo: z.string().min(1).optional().describe("Restringe a uma categoria/grupo de produtos (grafia da lista de grupos do contexto)."),
-		precoMin: z.number().min(0).optional().describe("Preço de venda mínimo."),
-		precoMax: z.number().min(0).optional().describe("Preço de venda máximo."),
+		precoMin: z.number().min(0).optional().describe("Preço de venda mínimo. Só envie se o cliente citou uma faixa de preço."),
+		precoMax: z.number().positive("O preço máximo deve ser maior que zero.").optional().describe("Preço de venda máximo, maior que zero. Só envie se o cliente citou uma faixa de preço."),
 		apenasAtivos: z.boolean().optional().describe("Considerar apenas produtos ativos. Padrão: true."),
 		limite: z.number().int().min(1).max(50).optional().describe("Máximo de produtos retornados. Padrão: 10."),
 		visao: z.enum(["LISTA", "GRUPOS"]).optional().describe("LISTA para produtos, GRUPOS para as categorias disponíveis."),
@@ -207,18 +256,13 @@ ou disponibilidade: informe apenas o que vier daqui.`,
 			// pega erro de digitação ("vhinho" → "Vinho") sem exigir nova rodada do modelo.
 			if (termo) {
 				const wordSimilarity = createWordSimilarityExpression(products.nome, termo);
-				const approximate = await db.query.products.findMany({
+				const approximate = await fetchRankedProducts({
+					db,
+					organizacaoId,
 					where: and(...baseConditions, sql`${wordSimilarity} > ${APPROXIMATE_MATCH_MIN_WORD_SIMILARITY}`),
 					orderBy: [sql`${wordSimilarity} DESC`],
 					limit,
-					columns: { id: true, nome: true, codigo: true, grupo: true, unidade: true, precoVenda: true, descricao: true },
-					with: {
-						variantes: {
-							where: activeOnly ? (variante, { eq: equals }) => equals(variante.ativo, true) : undefined,
-							columns: { id: true, nome: true, codigo: true, precoVenda: true },
-							limit: 20,
-						},
-					},
+					activeOnly,
 				});
 
 				if (approximate.length > 0) {
@@ -243,19 +287,14 @@ ou disponibilidade: informe apenas o que vier daqui.`,
 			};
 		}
 
-		const found = await db.query.products.findMany({
+		const found = await fetchRankedProducts({
+			db,
+			organizacaoId,
 			where,
 			// Com termo, relevância primeiro; alfabético é só critério de desempate.
 			orderBy: termo ? [sql`${createSimilarityExpression(products.nome, termo)} DESC`, asc(products.nome)] : [asc(products.nome)],
 			limit,
-			columns: { id: true, nome: true, codigo: true, grupo: true, unidade: true, precoVenda: true, descricao: true },
-			with: {
-				variantes: {
-					where: activeOnly ? (variante, { eq: equals }) => equals(variante.ativo, true) : undefined,
-					columns: { id: true, nome: true, codigo: true, precoVenda: true },
-					limit: 20,
-				},
-			},
+			activeOnly,
 		});
 
 		return {
