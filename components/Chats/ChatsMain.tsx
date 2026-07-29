@@ -5,7 +5,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { useWhatsappConnections } from "@/lib/queries/whatsapp-connections";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
-import ChatHub from "./ChatHub";
+import ChatsWorkspace from "./ChatsWorkspace";
 
 type ChatsMainProps = {
 	user: TAuthUserSession["user"];
@@ -21,5 +21,5 @@ export default function ChatsMain({ user, organizationId }: ChatsMainProps) {
 
 	// As permissões passam a ser aplicadas na API; a UI reage aos 403 e ao estado de posse
 	// do atendimento, em vez do antigo `userHasMessageSendingPermission={true}` fixo.
-	return <ChatHub user={user} organizationId={organizationId} whatsappConnections={whatsappConnections} />;
+	return <ChatsWorkspace user={user} organizationId={organizationId} whatsappConnections={whatsappConnections} />;
 }
