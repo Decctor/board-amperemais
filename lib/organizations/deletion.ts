@@ -3,6 +3,10 @@ import {
 	accountingEntries,
 	accountsCharts,
 	actionApprovalRequests,
+	aiAgentKnowledge,
+	aiAgentRuns,
+	aiAgentToolCalls,
+	aiAgents,
 	audienceDestinationMembers,
 	audienceDestinations,
 	audiences,
@@ -146,6 +150,13 @@ export async function deleteAllOrganizationData({
 				trx.select({ id: productAddOns.id }).from(productAddOns).where(eq(productAddOns.organizacaoId, organizationId)),
 			),
 		);
+
+	// --- Agentes de IA ---
+	// Antes das conversas: `ai_agent_runs` referencia `chats` e `chat_messages`.
+	await trx.delete(aiAgentToolCalls).where(eq(aiAgentToolCalls.organizacaoId, organizationId));
+	await trx.delete(aiAgentRuns).where(eq(aiAgentRuns.organizacaoId, organizationId));
+	await trx.delete(aiAgentKnowledge).where(eq(aiAgentKnowledge.organizacaoId, organizationId));
+	await trx.delete(aiAgents).where(eq(aiAgents.organizacaoId, organizationId));
 
 	// --- Atendimento / conversas ---
 	await trx.delete(chatMessages).where(eq(chatMessages.organizacaoId, organizationId));

@@ -1,5 +1,5 @@
 import type { TChatMessageMetadata } from "@/schemas/chats";
-import type { TChatAssignmentPriority, TChatAssignmentResponsibleType, TChatAssignmentStatus } from "@/schemas/enums";
+import type { TChatAssignmentPriority, TChatAssignmentResponsibleType, TChatAssignmentStatus, TChatOriginEnum } from "@/schemas/enums";
 import { relations, sql } from "drizzle-orm";
 import { boolean, index, integer, jsonb, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { clients } from "./clients";
@@ -38,6 +38,9 @@ export const chats = newTable(
 			onDelete: "set null",
 		}),
 		whatsappTelefoneId: varchar("whatsapp_telefone_id", { length: 255 }),
+		// PLAYGROUND = chat sintético de teste do agente de IA: não tem conexão WhatsApp, nunca
+		// envia nada para fora e é filtrado do hub de atendimentos.
+		origem: varchar("origem", { length: 16 }).$type<TChatOriginEnum>().notNull().default("WHATSAPP"),
 		mensagensNaoLidas: integer("mensagens_nao_lidas").notNull().default(0),
 		ultimaMensagemId: varchar("ultima_mensagem_id", { length: 255 }),
 		ultimaMensagemData: timestamp("ultima_mensagem_data").notNull(),
@@ -138,7 +141,8 @@ export const chatAssignments = newTable(
 		responsavelUsuarioId: varchar("responsavel_usuario_id", { length: 255 }).references(() => users.id, {
 			onDelete: "set null",
 		}),
-		// Sem FK: a tabela de agentes de IA ainda não existe aqui. null + tipo AGENTE = "a IA da organização".
+		// Id do agente em `ampmais_ai_agents`. Sem FK de propósito: a FK inversa criaria ciclo de
+		// import entre os módulos de schema (`ai-agents.ts` já importa este arquivo).
 		responsavelAgenteId: varchar("responsavel_agente_id", { length: 255 }),
 		status: varchar("status", { length: 32 }).$type<TChatAssignmentStatus>().notNull().default("ABERTO"),
 		atribuidoPorUsuarioId: varchar("atribuido_por_usuario_id", { length: 255 }).references(() => users.id, {
