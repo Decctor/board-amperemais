@@ -106,7 +106,12 @@ export default function ChatsBoard({ organizationId, whatsappConnections, onOpen
 		};
 	}, [organizationId, queryClient]);
 
-	/** Move o card entre colunas no cache, mantendo os totais coerentes com o que se vê. */
+	/**
+	 * Move o card entre colunas no cache, mantendo os totais coerentes com o que se vê.
+	 *
+	 * `CANCELADO` não tem coluna: nenhum destino casa, o card some do quadro e o total da
+	 * origem cai. É exatamente o efeito desejado — cancelar tira o atendimento do fluxo.
+	 */
 	const setCardStatus = useCallback(
 		(cardId: string, target: TChatAssignmentStatus) => {
 			queryClient.setQueryData<TChatBoardData>(queryKey, (old) => {

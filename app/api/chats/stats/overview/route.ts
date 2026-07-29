@@ -5,6 +5,7 @@ import {
 	CHAT_FIRST_RESPONSE_BUCKETS,
 	CHAT_FIRST_RESPONSE_TARGET_MINUTES,
 	durationStatsSelection,
+	nowAsNaiveUtc,
 	safeRatio,
 	secondsBetween,
 	toDurationStats,
@@ -162,9 +163,11 @@ async function fetchMessages({ filters, startDate, endDate }: { filters: TCohort
  * abertos" é uma pergunta sobre o presente, e responder com o passado seria mentira.
  */
 async function fetchBacklog({ filters }: { filters: TCohortFilters }) {
-	const now = new Date();
-	const janelaRisco = new Date(now.getTime() + 4 * 60 * 60 * 1000);
-	const idadeSegundos = secondsBetween(chatAssignments.dataInsercao, sql`now()`);
+	const agora = new Date();
+	const janelaRisco = new Date(agora.getTime() + 4 * 60 * 60 * 1000);
+	// `now()` é timestamptz e as colunas do módulo são timestamp sem fuso: sem normalizar,
+	// a subtração dependeria do `TimeZone` da sessão do Postgres.
+	const idadeSegundos = secondsBetween(chatAssignments.dataInsercao, nowAsNaiveUtc());
 	// Só conta como pendente o que o cliente está esperando: última entrada mais recente
 	// que a última saída. Mesma regra de `getChatPendingState`.
 	const aguardando = sql`${chats.ultimaMensagemEntradaData} is not null and (${chats.ultimaMensagemSaidaData} is null or ${chats.ultimaMensagemEntradaData} > ${chats.ultimaMensagemSaidaData})`;
@@ -177,8 +180,8 @@ async function fetchBacklog({ filters }: { filters: TCohortFilters }) {
 			abertosAgora: sql<number>`count(*)::int`,
 			naFila: sql<number>`count(*) filter (where ${chatAssignments.responsavelTipo} = 'NAO_ATRIBUIDO')::int`,
 			aguardandoResposta: sql<number>`count(*) filter (where ${aguardando})::int`,
-			janelaExpirando: sql<number>`count(*) filter (where ${aguardando} and ${temJanela} and ${chats.whatsappJanelaDataExpiracao} > now() and ${chats.whatsappJanelaDataExpiracao} <= ${janelaRisco})::int`,
-			janelaExpirada: sql<number>`count(*) filter (where ${aguardando} and ${temJanela} and (${chats.whatsappJanelaDataExpiracao} is null or ${chats.whatsappJanelaDataExpiracao} <= now()))::int`,
+			janelaExpirando: sql<number>`count(*) filter (where ${aguardando} and ${temJanela} and ${chats.whatsappJanelaDataExpiracao} > ${agora} and ${chats.whatsappJanelaDataExpiracao} <= ${janelaRisco})::int`,
+			janelaExpirada: sql<number>`count(*) filter (where ${aguardando} and ${temJanela} and (${chats.whatsappJanelaDataExpiracao} is null or ${chats.whatsappJanelaDataExpiracao} <= ${agora}))::int`,
 			maisAntigoData: sql<Date | null>`min(${chatAssignments.dataInsercao})`,
 			...durationStatsSelection(idadeSegundos),
 		})

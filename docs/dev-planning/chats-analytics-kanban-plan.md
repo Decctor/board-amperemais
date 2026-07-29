@@ -3,6 +3,11 @@
 Transforma `app/dashboard/chats` de uma tela única (o hub) em um workspace de três abas:
 **Hub** (padrão), **Quadro** e **Estatísticas**.
 
+> **Estado: implementado.** As seis fases da [§10](#10-fases-de-implementação) estão em código.
+> O que mudou em relação ao plano original está registrado em
+> [§12](#12-desvios-durante-a-implementação) — inclusive uma armadilha de fuso horário que só
+> apareceu ao escrever as agregações.
+
 ---
 
 ## Índice
@@ -18,6 +23,7 @@ Transforma `app/dashboard/chats` de uma tela única (o hub) em um workspace de t
 9. [Mapa de arquivos](#9-mapa-de-arquivos)
 10. [Fases de implementação](#10-fases-de-implementação)
 11. [Riscos e follow-ups](#11-riscos-e-follow-ups)
+12. [Desvios durante a implementação](#12-desvios-durante-a-implementação)
 
 ---
 
@@ -436,3 +442,73 @@ menu de mover/prioridade/cancelar, realtime e polling pausável.
 | R6 | Fuso horário nos buckets diários e no heatmap | Agregação em `America/Sao_Paulo` explícito no SQL, não no fuso do servidor | Fuso por organização quando existir o campo |
 | R7 | `forceMount` no hub mantém realtime de todas as abas vivo | É desejado no hub (a inbox deve continuar quente); quadro/estatísticas usam `enabled` por aba | — |
 ```
+
+---
+
+## 12. Desvios durante a implementação
+
+O que o código faz diferente do que este plano previa, e por quê.
+
+### D-1 — A conversão de fuso precisa de dois `AT TIME ZONE` (correção de bug)
+
+O plano ([R6](#11-riscos-e-follow-ups)) dizia "agregação em `America/Sao_Paulo` explícito no SQL", e a
+leitura natural disso — `data_insercao AT TIME ZONE 'America/Sao_Paulo'` — está **errada**.
+
+As colunas de data do módulo são `timestamp without time zone` alimentadas por `now()` sob
+`TimeZone = UTC`: valores UTC que não declaram fuso nenhum. Um `AT TIME ZONE` sozinho não
+converte esse valor — ele **interpreta** o valor como já sendo horário de São Paulo e produz
+um `timestamptz` deslocado para o lado oposto. Um atendimento das 21h UTC (18h local) cairia
+às 00h do dia seguinte em vez de às 18h: erro de 6 horas, atravessando a meia-noite. O
+heatmap mostraria movimento de fim de tarde como madrugada, e a série diária empurraria parte
+do movimento noturno para o dia seguinte.
+
+O correto é declarar o fuso que o valor tem e só então converter:
+
+```sql
+(data_insercao at time zone 'UTC') at time zone 'America/Sao_Paulo'
+```
+
+Encapsulado em `inOperationTimezone()` (`lib/chats/analytics.ts`), com o mesmo cuidado em
+`nowAsNaiveUtc()` para comparações contra `now()` — que é `timestamptz` e, sem normalização,
+faria o resultado depender do `TimeZone` da sessão do Postgres.
+
+### D-2 — Migration sem `CONCURRENTLY`, e um índice a menos
+
+O plano pedia `CREATE INDEX CONCURRENTLY`. Não dá: `scripts/apply-sql-migration.ts` envolve o
+arquivo inteiro em uma transação, e `CONCURRENTLY` não roda dentro de transação. A 0055 cria
+os índices no modo normal e o cabeçalho documenta como aplicá-los com `psql -f` caso o lock em
+`ampmais_chat_messages` se torne inaceitável.
+
+O quarto índice previsto (`chat_messages` por organização + data) **já existia**: é o
+`idx_chat_messages_organizacao_data_envio`, criado na 0052. Criar um duplicado custaria escrita
+e disco sem ganho nenhum.
+
+### D-3 — Menos enums do que o plano previa
+
+`ChatStatsRankingByEnum` e `ChatBoardClosedWindowEnum` não foram criados.
+
+A ordenação do ranking passou a ser **do cliente**: são poucas dezenas de linhas, e um refetch
+por clique em cabeçalho custaria latência numa operação que é puramente local. A janela de
+encerrados virou um número com clamp — um `z.enum(["1","3","7"])` existiria só para recusar 5.
+
+`ChatsWorkspaceTabEnum` também não: a aba ativa é estado da tela e nunca atravessa a API, então
+pela regra do CLAUDE.md ela é código, não dado — union local em `ChatsWorkspace.tsx`.
+
+### D-4 — `podeGerenciar` viaja no card
+
+O plano dizia que a UI espelharia `mayManageAssignment`. Em vez de reimplementar a regra no
+cliente, a rota do quadro resolve a posse por card e envia `podeGerenciar`. Uma segunda cópia
+da regra de autorização é uma cópia que vai divergir.
+
+### D-5 — Cancelar também confirma
+
+`chatBoardTransitionNeedsConfirmation` cobre `ENCERRADO` **e** `CANCELADO`. As duas transições
+são terminais e nenhuma volta pelo quadro; confirmar uma e não a outra seria arbitrário.
+
+### D-6 — O que ficou fora
+
+Nada do escopo planejado. O `next build` continua vermelho na base por três dependências
+ausentes do `package.json` (`d3-ease`, `@radix-ui/react-slider`, `@tiptap/core`), em arquivos
+alheios a esta iniciativa (`lib/animations.ts`, `components/ui/slider.tsx`,
+`components/Whatsapp/whatsapp-editor-marks.ts`). Com elas instaladas temporariamente, o
+`Compiled successfully` passa. Corrigi-las é assunto de outro commit.

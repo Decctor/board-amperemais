@@ -80,6 +80,28 @@ export function safeRatio(numerator: number, denominator: number) {
 	return numerator / denominator;
 }
 
+/**
+ * Converte um `timestamp` (sem fuso, guardando UTC) para o horário local da operação.
+ *
+ * A dupla conversão não é redundância. As colunas de data do módulo são `timestamp without
+ * time zone` alimentadas por `now()` sob `TimeZone = UTC`, ou seja: valores UTC sem fuso
+ * declarado. Um `AT TIME ZONE 'America/Sao_Paulo'` sozinho **interpretaria** o valor como
+ * horário de São Paulo e o deslocaria para o lado errado — um atendimento das 21h UTC
+ * (18h local) cairia às 00h do dia seguinte em vez de às 18h, jogando movimento do fim da
+ * tarde para a madrugada do dia errado.
+ *
+ * O primeiro `AT TIME ZONE 'UTC'` declara o fuso que o valor já tem; o segundo converte
+ * para o fuso da operação.
+ */
+export function inOperationTimezone(column: SQL | unknown): SQL {
+	return sql`((${column}) at time zone 'UTC' at time zone ${CHAT_ANALYTICS_TIMEZONE})`;
+}
+
+/** `now()` como `timestamp` UTC sem fuso, para comparar com as colunas do módulo. */
+export function nowAsNaiveUtc(): SQL {
+	return sql`(now() at time zone 'UTC')`;
+}
+
 /** Períodos longos em barras diárias viram serrilha ilegível; acima de 90 dias, semana. */
 export function resolveGranularity({ startDate, endDate }: { startDate: Date; endDate: Date }): "DIA" | "SEMANA" {
 	const days = (endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000);

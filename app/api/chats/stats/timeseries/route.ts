@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { CHAT_ANALYTICS_TIMEZONE, resolveGranularity } from "@/lib/chats/analytics";
+import { CHAT_ANALYTICS_TIMEZONE, inOperationTimezone, resolveGranularity } from "@/lib/chats/analytics";
 import { assertChatAccess } from "@/lib/chats/access";
 import { db } from "@/services/drizzle";
 import { chatAssignments, chatMessages, chats } from "@/services/drizzle/schema/chats";
@@ -67,7 +67,7 @@ async function fetchSeries({
 		),
 		aberturas as (
 			select
-				date_trunc(${unit}, a.data_insercao at time zone ${CHAT_ANALYTICS_TIMEZONE}) as bucket,
+				date_trunc(${unit}, a.data_insercao at time zone 'UTC' at time zone ${CHAT_ANALYTICS_TIMEZONE}) as bucket,
 				count(*)::int as abertos,
 				(percentile_cont(0.5) within group (
 					order by extract(epoch from (a.data_primeira_resposta - a.data_insercao))::float8
@@ -80,7 +80,7 @@ async function fetchSeries({
 			group by 1
 		),
 		encerramentos as (
-			select date_trunc(${unit}, a.data_encerramento at time zone ${CHAT_ANALYTICS_TIMEZONE}) as bucket, count(*)::int as encerrados
+			select date_trunc(${unit}, a.data_encerramento at time zone 'UTC' at time zone ${CHAT_ANALYTICS_TIMEZONE}) as bucket, count(*)::int as encerrados
 			from ampmais_chat_assignments a
 			join ampmais_chats c on c.id = a.chat_id
 			where a.organizacao_id = ${organizacaoId}
@@ -89,7 +89,7 @@ async function fetchSeries({
 			group by 1
 		),
 		resolucoes as (
-			select date_trunc(${unit}, a.data_resolucao at time zone ${CHAT_ANALYTICS_TIMEZONE}) as bucket, count(*)::int as resolvidos
+			select date_trunc(${unit}, a.data_resolucao at time zone 'UTC' at time zone ${CHAT_ANALYTICS_TIMEZONE}) as bucket, count(*)::int as resolvidos
 			from ampmais_chat_assignments a
 			join ampmais_chats c on c.id = a.chat_id
 			where a.organizacao_id = ${organizacaoId}
@@ -138,8 +138,8 @@ async function fetchHeatmap({
 	endDate: Date;
 }) {
 	const phoneCondition = whatsappConexaoTelefoneId ? eq(chats.whatsappConexaoTelefoneId, whatsappConexaoTelefoneId) : undefined;
-	const localMessageDate = sql`${chatMessages.dataEnvio} at time zone ${CHAT_ANALYTICS_TIMEZONE}`;
-	const localAssignmentDate = sql`${chatAssignments.dataInsercao} at time zone ${CHAT_ANALYTICS_TIMEZONE}`;
+	const localMessageDate = inOperationTimezone(chatMessages.dataEnvio);
+	const localAssignmentDate = inOperationTimezone(chatAssignments.dataInsercao);
 
 	const [mensagens, aberturas] = await Promise.all([
 		db
