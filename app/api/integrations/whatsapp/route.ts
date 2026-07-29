@@ -1,5 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
-import { type TChatDetailsForAgentResponse, getAgentResponse } from "@/lib/ai/ai-agent";
+import { createMetaCloudDeliverer } from "@/lib/ai/agent/delivery";
+import { ensureOrganizationAgent } from "@/lib/ai/agent/provisioning";
+import { respondToChatWithAgent } from "@/lib/ai/agent/respond-to-chat";
 import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProcessing, handleAIVideoProcessing } from "@/lib/ai/ai-media-processing";
 import { lockConnectedWhatsappPhone, mergeMessageTemplatePhoneMetadataSql } from "@/lib/db-utils";
 import { downloadAndStoreWhatsappMedia } from "@/lib/files-storage/chat-media";
@@ -38,10 +40,8 @@ import {
 	parseWhatsappMessageHistoryWebhook,
 	type TWhatsappMessageHistoryEvent,
 } from "@/lib/whatsapp/smb-message-history-sync";
-import { formatPhoneAsWhatsappId } from "@/lib/whatsapp/utils";
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
 import type { TMessageTemplateMetadata } from "@/schemas/message-templates";
-import { getCurrentChatAttendance, releaseChatAttendance, updateChatAttendanceSummary } from "@/lib/chats/attendance-state";
 import { claimChatForAi, waitAndConfirmAiResponse } from "@/lib/chats/ai-trigger";
 import {
 	applyProviderDeliveryStatus,
@@ -50,7 +50,6 @@ import {
 	persistOutboundNonHubMessage,
 	resolveIncomingChat,
 } from "@/lib/chats/incoming-message";
-import { isWhatsappWindowOpen } from "@/lib/chats/whatsapp-window-status";
 import { db } from "@/services/drizzle";
 import { chatMessages } from "@/services/drizzle/schema/chats";
 import { clients } from "@/services/drizzle/schema/clients";
@@ -544,9 +543,24 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 
 	if (!allowsAIService) return;
 
+	// Capability de plano. Antes só `hubAtendimentos.acesso` era checado, e o atendimento por
+	// IA rodava para qualquer organização com um número habilitado.
+	const hasAiServiceAccess = connectionPhone.conexao.organizacao?.configuracao?.recursos?.iaAtendimento?.acesso ?? false;
+	if (!hasAiServiceAccess) {
+		console.log("[WHATSAPP_WEBHOOK] Recurso de atendimento com IA indisponível para a organização:", organizacaoId);
+		return;
+	}
+
+	// Provisionamento lazy: a primeira mensagem cria o agente da organização.
+	const agente = await ensureOrganizationAgent(db, organizacaoId);
+	if (agente.status !== "ATIVO") {
+		console.log("[WHATSAPP_WEBHOOK] Agente de IA pausado para a organização:", organizacaoId);
+		return;
+	}
+
 	// A IA reivindica o atendimento em vez de nascer dona dele. Se um humano assumiu a
 	// conversa, o claim não casa e ela recua sem gerar resposta.
-	const claim = await claimChatForAi({ organizacaoId, chatId });
+	const claim = await claimChatForAi({ organizacaoId, chatId, agenteId: agente.id });
 	if (!claim.shouldRespond) {
 		console.log("[WHATSAPP_WEBHOOK] IA não assumiu o atendimento:", claim.reason);
 		return;
@@ -557,13 +571,27 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 		chatId,
 		messageId: insertedMessage.messageId,
 		messageDate: insertedMessage.dataEnvio,
+		delayMs: agente.capacidades?.atendimento?.atrasoRespostaMs,
 	});
 	if (!confirmation.shouldRespond) {
 		console.log("[WHATSAPP_WEBHOOK] Resposta da IA abortada:", confirmation.reason);
 		return;
 	}
 
-	await handleAIMessageResponse(chatId, organizacaoId);
+	try {
+		const resultado = await respondToChatWithAgent({
+			organizacaoId,
+			chatId,
+			gatilho: "CHAT_MENSAGEM",
+			mensagemGatilhoId: insertedMessage.messageId,
+			deliver: createMetaCloudDeliverer({ organizacaoId, chatId }),
+		});
+		console.log("[WHATSAPP_WEBHOOK] Execução do agente concluída:", resultado.runId);
+	} catch (error) {
+		// A execução falha fica registrada em `ai_agent_runs` com o erro; nada é enviado ao
+		// cliente — mensagem genérica de desculpas só esconderia o problema.
+		console.error("[WHATSAPP_WEBHOOK] Falha na execução do agente de IA:", error);
+	}
 }
 
 /**
@@ -688,154 +716,6 @@ async function handleMessageEcho(body: WebhookBody): Promise<void> {
 	console.log("[WHATSAPP_WEBHOOK] [ECHO] Message echo created to:", messageEcho.toPhoneNumber);
 }
 
-/**
- * Gera e envia a resposta da IA.
- *
- * O debounce e a reconfirmação de posse acontecem antes, em lib/chats/ai-trigger.ts —
- * aqui o atendimento já está reivindicado e confirmado.
- */
-async function handleAIMessageResponse(chatId: string, organizacaoId: string) {
-	const chat = await db.query.chats.findFirst({
-		where: (fields, { eq }) => eq(fields.id, chatId),
-		with: {
-			cliente: true,
-		},
-	});
-
-	if (!chat) {
-		console.log("[AI_RESPONSE] Chat not found:", chatId);
-		return;
-	}
-
-	const atendimento = await getCurrentChatAttendance(db, { organizacaoId, chatId });
-
-	// Get last 100 messages
-	const messages = await db.query.chatMessages.findMany({
-		where: (fields, { eq }) => eq(fields.chatId, chatId),
-		orderBy: (fields, { desc }) => [desc(fields.dataEnvio)],
-		limit: 100,
-	});
-
-	const chatSummary: TChatDetailsForAgentResponse = {
-		id: chat.id,
-		cliente: {
-			idApp: chat.cliente?.id || "",
-			nome: chat.cliente?.nome || "",
-			cpfCnpj: "",
-			telefone: chat.cliente?.telefone || "",
-			email: chat.cliente?.email,
-			localizacaoCep: chat.cliente?.localizacaoCep ?? undefined,
-			localizacaoEstado: chat.cliente?.localizacaoEstado ?? undefined,
-			localizacaoCidade: chat.cliente?.localizacaoCidade ?? undefined,
-			localizacaoBairro: chat.cliente?.localizacaoBairro ?? undefined,
-			localizacaoLogradouro: chat.cliente?.localizacaoLogradouro ?? undefined,
-			localizacaoNumero: chat.cliente?.localizacaoNumero ?? undefined,
-			localizacaoComplemento: chat.cliente?.localizacaoComplemento ?? undefined,
-		},
-		ultimasMensagens: messages.map((m) => ({
-			id: m.id,
-			autorTipo: m.autorTipo,
-			conteudoTipo: m.conteudoMidiaTipo,
-			conteudoTexto: m.conteudoTexto || `[${m.conteudoMidiaTipo}]: ${m.conteudoMidiaTextoProcessadoResumo || ""}`,
-			conteudoMidiaUrl: m.conteudoMidiaUrl ?? undefined,
-			dataEnvio: m.dataEnvio,
-			atendimentoId: atendimento?.id,
-		})),
-		atendimentoAberto: atendimento
-			? {
-					id: atendimento.id,
-					descricao: atendimento.resumo ?? "",
-					status: atendimento.status,
-				}
-			: null,
-	};
-
-	const aiResponse = await getAgentResponse({
-		details: chatSummary,
-	});
-	await createAIMessage(chatId, organizacaoId, aiResponse.message, aiResponse.metadata);
-
-	return { success: true, content: aiResponse.message };
-}
-
-/**
- * Create AI message and send via WhatsApp
- */
-async function createAIMessage(
-	chatId: string,
-	organizacaoId: string,
-	content: string,
-	metadata?: { serviceDescription?: string; escalation?: { applicable: boolean; reason?: string } },
-): Promise<void> {
-	const chat = await db.query.chats.findFirst({
-		where: (fields, { eq }) => eq(fields.id, chatId),
-		with: {
-			cliente: true,
-			whatsappConexao: { columns: { token: true, tipoConexao: true } },
-		},
-	});
-
-	if (!chat) {
-		console.log("[AI_MESSAGE] Cannot send - chat not found");
-		return;
-	}
-
-	// A janela de 24h substitui o antigo chats.status: fora dela só template passa, e a
-	// IA não envia template.
-	if (!isWhatsappWindowOpen({ expiracao: chat.whatsappJanelaDataExpiracao, tipoConexao: chat.whatsappConexao?.tipoConexao })) {
-		console.log("[AI_MESSAGE] Cannot send - janela de 24h expirada");
-		return;
-	}
-
-	if (metadata?.serviceDescription) {
-		await updateChatAttendanceSummary(db, { organizacaoId, chatId, resumo: metadata.serviceDescription });
-	}
-
-	// Escalonamento pedido pelo modelo: devolve o atendimento para a fila do hub em vez
-	// de marcá-lo como "de um usuário" sem dizer qual, que era o efeito do código antigo.
-	if (metadata?.escalation?.applicable) {
-		await releaseChatAttendance(db, {
-			organizacaoId,
-			chatId,
-			motivo: `HUMAN_HANDOFF: ${metadata.escalation.reason ?? "Escalonamento solicitado pela IA."}`,
-		});
-	}
-
-	const sent = await (async () => {
-		if (!chat.whatsappConexao?.token || !chat.cliente?.telefone || !chat.whatsappTelefoneId) return null;
-		try {
-			const { sendBasicWhatsappMessage } = await import("@/lib/whatsapp");
-			const response = await sendBasicWhatsappMessage({
-				fromPhoneNumberId: chat.whatsappTelefoneId,
-				toPhoneNumber: formatPhoneAsWhatsappId(chat.cliente.telefone),
-				content,
-				whatsappToken: chat.whatsappConexao.token,
-			});
-			return response.whatsappMessageId;
-		} catch (error) {
-			console.error("[AI_MESSAGE] Send failed:", error);
-			return null;
-		}
-	})();
-
-	const inserted = await persistOutboundNonHubMessage({
-		organizacaoId,
-		chatId,
-		clienteId: chat.clienteId,
-		origem: "AI",
-		whatsappMessageId: sent,
-		conteudoTexto: content,
-		conteudoMidiaTipo: "TEXTO",
-		midia: null,
-	});
-
-	if (!sent) {
-		await applyProviderDeliveryStatus({ statusEntrega: "FALHA", chatMessageId: inserted.messageId });
-		return;
-	}
-
-	console.log("[AI_MESSAGE] Sent successfully:", inserted.messageId);
-}
 
 /**
  * Process media with AI (transcription, image analysis, etc.)

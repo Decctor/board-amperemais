@@ -1,22 +1,21 @@
 import { appApiHandler } from "@/lib/app-api";
-import { type TChatDetailsForAgentResponse, getAgentResponse } from "@/lib/ai/ai-agent";
+import { createInternalGatewayDeliverer } from "@/lib/ai/agent/delivery";
+import { ensureOrganizationAgent } from "@/lib/ai/agent/provisioning";
+import { respondToChatWithAgent } from "@/lib/ai/agent/respond-to-chat";
 import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProcessing, handleAIVideoProcessing } from "@/lib/ai/ai-media-processing";
 import { lockConnectedWhatsappPhone, mergeMessageTemplatePhoneMetadataSql, missingMessageTemplatePhoneMetadataCondition } from "@/lib/db-utils";
 import { uploadChatMedia } from "@/lib/files-storage/chat-media";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { updateInteractionDeliveryState } from "@/lib/interactions/delivery-state";
-import { downloadMedia, sendMessage as sendInternalGatewayMessage } from "@/lib/whatsapp/internal-gateway";
+import { downloadMedia } from "@/lib/whatsapp/internal-gateway";
 import { type AppWhatsappStatus, mapWhatsAppStatusToAppStatus } from "@/lib/whatsapp/parsing";
-import { formatPhoneForInternalGateway } from "@/lib/whatsapp/utils";
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
-import { getCurrentChatAttendance, releaseChatAttendance, updateChatAttendanceSummary } from "@/lib/chats/attendance-state";
 import { claimChatForAi, waitAndConfirmAiResponse } from "@/lib/chats/ai-trigger";
 import {
 	applyProviderDeliveryStatus,
 	mapProviderStatusToDeliveryStatus,
 	persistIncomingClientMessage,
 	resolveIncomingChat,
-	persistOutboundNonHubMessage,
 } from "@/lib/chats/incoming-message";
 import { db } from "@/services/drizzle";
 import { chatMessages } from "@/services/drizzle/schema/chats";
@@ -362,7 +361,22 @@ async function handleIncomingMessage(body: Extract<WebhookBody, { event: "messag
 
 	if (!allowsAIService) return;
 
-	const claim = await claimChatForAi({ organizacaoId, chatId });
+	// Capability de plano. Antes só `hubAtendimentos.acesso` era checado, e o atendimento por
+	// IA rodava para qualquer organização com um número habilitado.
+	const hasAiServiceAccess = connection.organizacao?.configuracao?.recursos?.iaAtendimento?.acesso ?? false;
+	if (!hasAiServiceAccess) {
+		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Recurso de atendimento com IA indisponível para a organização:", organizacaoId);
+		return;
+	}
+
+	// Provisionamento lazy: a primeira mensagem cria o agente da organização.
+	const agente = await ensureOrganizationAgent(db, organizacaoId);
+	if (agente.status !== "ATIVO") {
+		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Agente de IA pausado para a organização:", organizacaoId);
+		return;
+	}
+
+	const claim = await claimChatForAi({ organizacaoId, chatId, agenteId: agente.id });
 	if (!claim.shouldRespond) {
 		console.log("[INTERNAL_WHATSAPP_WEBHOOK] IA não assumiu o atendimento:", claim.reason);
 		return;
@@ -373,13 +387,26 @@ async function handleIncomingMessage(body: Extract<WebhookBody, { event: "messag
 		chatId,
 		messageId: insertedMessage.messageId,
 		messageDate: insertedMessage.dataEnvio,
+		delayMs: agente.capacidades?.atendimento?.atrasoRespostaMs,
 	});
 	if (!confirmation.shouldRespond) {
 		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Resposta da IA abortada:", confirmation.reason);
 		return;
 	}
 
-	await handleAIMessageResponse(chatId, organizacaoId, sessionId);
+	try {
+		const resultado = await respondToChatWithAgent({
+			organizacaoId,
+			chatId,
+			gatilho: "CHAT_MENSAGEM",
+			mensagemGatilhoId: insertedMessage.messageId,
+			deliver: createInternalGatewayDeliverer({ organizacaoId, chatId, sessaoId: sessionId }),
+		});
+		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Execução do agente concluída:", resultado.runId);
+	} catch (error) {
+		// A execução falha fica registrada em `ai_agent_runs` com o erro; nada é enviado ao cliente.
+		console.error("[INTERNAL_WHATSAPP_WEBHOOK] Falha na execução do agente de IA:", error);
+	}
 }
 
 const INTERACTION_STATUS_MAPPING: Record<AppWhatsappStatus, TInteractionsStatusEnum> = {
@@ -549,148 +576,6 @@ async function handleMessageUpdated(body: Extract<WebhookBody, { event: "message
 		whatsappMessageId: data.whatsappMessageId,
 		status: data.status,
 	});
-}
-
-/**
- * Gera e envia a resposta da IA. O debounce e a reconfirmação de posse acontecem antes,
- * em lib/chats/ai-trigger.ts.
- */
-async function handleAIMessageResponse(chatId: string, organizacaoId: string, sessionId: string) {
-	const chat = await db.query.chats.findFirst({
-		where: (fields, { eq }) => eq(fields.id, chatId),
-		with: {
-			cliente: true,
-		},
-	});
-
-	if (!chat) {
-		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Chat not found:", chatId);
-		return;
-	}
-
-	const atendimento = await getCurrentChatAttendance(db, { organizacaoId, chatId });
-
-	// Get last 100 messages
-	const messages = await db.query.chatMessages.findMany({
-		where: (fields, { eq }) => eq(fields.chatId, chatId),
-		orderBy: (fields, { desc }) => [desc(fields.dataEnvio)],
-		limit: 100,
-	});
-
-	const chatSummary: TChatDetailsForAgentResponse = {
-		id: chat.id,
-		cliente: {
-			idApp: chat.cliente?.id || "",
-			nome: chat.cliente?.nome || "",
-			cpfCnpj: "",
-			telefone: chat.cliente?.telefone || "",
-			email: chat.cliente?.email,
-			localizacaoCep: chat.cliente?.localizacaoCep ?? undefined,
-			localizacaoEstado: chat.cliente?.localizacaoEstado ?? undefined,
-			localizacaoCidade: chat.cliente?.localizacaoCidade ?? undefined,
-			localizacaoBairro: chat.cliente?.localizacaoBairro ?? undefined,
-			localizacaoLogradouro: chat.cliente?.localizacaoLogradouro ?? undefined,
-			localizacaoNumero: chat.cliente?.localizacaoNumero ?? undefined,
-			localizacaoComplemento: chat.cliente?.localizacaoComplemento ?? undefined,
-		},
-		ultimasMensagens: messages.map((m) => ({
-			id: m.id,
-			autorTipo: m.autorTipo,
-			conteudoTipo: m.conteudoMidiaTipo,
-			conteudoTexto: m.conteudoTexto || `[${m.conteudoMidiaTipo}]: ${m.conteudoMidiaTextoProcessadoResumo || ""}`,
-			conteudoMidiaUrl: m.conteudoMidiaUrl ?? undefined,
-			dataEnvio: m.dataEnvio,
-			atendimentoId: atendimento?.id,
-		})),
-		atendimentoAberto: atendimento
-			? {
-					id: atendimento.id,
-					descricao: atendimento.resumo ?? "",
-					status: atendimento.status,
-				}
-			: null,
-	};
-
-	const aiResponse = await getAgentResponse({
-		details: chatSummary,
-	});
-	await createAIMessage(chatId, organizacaoId, sessionId, aiResponse.message, aiResponse.metadata);
-
-	return { success: true, content: aiResponse.message };
-}
-
-async function createAIMessage(
-	chatId: string,
-	organizacaoId: string,
-	sessionId: string,
-	content: string,
-	metadata?: { serviceDescription?: string; escalation?: { applicable: boolean; reason?: string } },
-): Promise<void> {
-	const chat = await db.query.chats.findFirst({
-		where: (fields, { eq }) => eq(fields.id, chatId),
-		with: {
-			cliente: true,
-			whatsappConexao: {
-				columns: {
-					gatewaySessaoId: true,
-					gatewayStatus: true,
-				},
-			},
-		},
-	});
-
-	if (!chat) {
-		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Cannot send - chat not found");
-		return;
-	}
-
-	if (metadata?.serviceDescription) {
-		await updateChatAttendanceSummary(db, { organizacaoId, chatId, resumo: metadata.serviceDescription });
-	}
-
-	// Escalonamento: devolve o atendimento para a fila do hub, em vez de marcá-lo como
-	// "de um usuário" sem dizer qual — o efeito do código antigo.
-	if (metadata?.escalation?.applicable) {
-		await releaseChatAttendance(db, {
-			organizacaoId,
-			chatId,
-			motivo: `HUMAN_HANDOFF: ${metadata.escalation.reason ?? "Escalonamento solicitado pela IA."}`,
-		});
-	}
-
-	// A mensagem nasce PENDENTE e o gateway confirma a entrega por webhook; o
-	// clientMessageId é o próprio id da mensagem, que é como o message.sent a reconcilia.
-	const inserted = await persistOutboundNonHubMessage({
-		organizacaoId,
-		chatId,
-		clienteId: chat.clienteId,
-		origem: "AI",
-		whatsappMessageId: null,
-		conteudoTexto: content,
-		conteudoMidiaTipo: "TEXTO",
-		midia: null,
-		metadados: { gatewayInterno: { sessaoId: sessionId } },
-	});
-
-	if (!chat.whatsappConexao?.gatewaySessaoId || chat.whatsappConexao.gatewayStatus !== "connected" || !chat.cliente?.telefone) {
-		console.warn("[INTERNAL_WHATSAPP_WEBHOOK] Gateway indisponível para enviar resposta da IA:", chatId);
-		await applyProviderDeliveryStatus({ statusEntrega: "FALHA", chatMessageId: inserted.messageId });
-		return;
-	}
-
-	try {
-		const response = await sendInternalGatewayMessage(
-			chat.whatsappConexao.gatewaySessaoId,
-			formatPhoneForInternalGateway(chat.cliente.telefone),
-			{ type: "text", text: content },
-			{ clientMessageId: inserted.messageId },
-		);
-		if (!response.success) throw new Error(response.error || "Falha ao enfileirar mensagem da IA no Gateway Interno.");
-		console.log("[INTERNAL_WHATSAPP_WEBHOOK] AI message enqueued:", inserted.messageId);
-	} catch (error) {
-		console.error("[INTERNAL_WHATSAPP_WEBHOOK] AI message send failed:", error);
-		await applyProviderDeliveryStatus({ statusEntrega: "FALHA", chatMessageId: inserted.messageId });
-	}
 }
 
 async function handleAIMediaProcessing(
