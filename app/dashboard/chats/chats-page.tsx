@@ -9,7 +9,11 @@ type ChatsPageProps = {
 export default function ChatsPage({ user, membership }: ChatsPageProps) {
 	return (
 		<div className="flex w-full h-full grow flex-col">
-			<ChatsMain user={user} organizationId={membership.organizacao.id} />
+			<ChatsMain
+				user={user}
+				organizationId={membership.organizacao.id}
+				canManageAttendances={membership.permissoes.atendimentos.finalizar ?? false}
+			/>
 		</div>
 	);
 }

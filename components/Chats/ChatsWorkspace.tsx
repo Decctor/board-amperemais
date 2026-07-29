@@ -27,9 +27,10 @@ type ChatsWorkspaceProps = {
 	user: TAuthUserSession["user"];
 	organizationId: string;
 	whatsappConnections: TGetWhatsappConnectionsOutput["data"];
+	canManageAttendances: boolean;
 };
 
-export default function ChatsWorkspace({ user, organizationId, whatsappConnections }: ChatsWorkspaceProps) {
+export default function ChatsWorkspace({ user, organizationId, whatsappConnections, canManageAttendances }: ChatsWorkspaceProps) {
 	const [tab, setTab] = useState<TChatsWorkspaceTab>("hub");
 	const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
 
@@ -82,7 +83,7 @@ export default function ChatsWorkspace({ user, organizationId, whatsappConnectio
 				</TabsContent>
 
 				<TabsContent value="estatisticas" className="mt-3 flex min-h-0 flex-1 flex-col">
-					<ChatsStatsSection whatsappConnections={whatsappConnections} />
+					<ChatsStatsSection whatsappConnections={whatsappConnections} canManageAttendances={canManageAttendances} />
 				</TabsContent>
 			</Tabs>
 		</div>

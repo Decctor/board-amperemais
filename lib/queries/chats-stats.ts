@@ -1,3 +1,4 @@
+import type { TGetChatsStatsAgentsOutput } from "@/app/api/chats/stats/agents/route";
 import type { TGetChatsStatsOverviewOutput } from "@/app/api/chats/stats/overview/route";
 import type { TGetChatsStatsTimeseriesOutput } from "@/app/api/chats/stats/timeseries/route";
 import { useQuery } from "@tanstack/react-query";
@@ -13,6 +14,8 @@ export type TChatsStatsPeriod = {
 
 export type TChatsStatsOverview = TGetChatsStatsOverviewOutput["data"];
 export type TChatsStatsTimeseries = TGetChatsStatsTimeseriesOutput["data"];
+export type TChatsStatsAgents = TGetChatsStatsAgentsOutput["data"];
+export type TChatsStatsAgentRow = TChatsStatsAgents["ranking"][number];
 
 /** As estatísticas mudam devagar; refazer a varredura a cada foco de janela não paga. */
 const STATS_STALE_TIME_MS = 5 * 60 * 1000;
@@ -61,6 +64,27 @@ export function useChatsStatsTimeseries({ period, enabled = true }: { period: TC
 	const queryKey = ["chats-stats-timeseries", ...periodQueryKeyPart(period)] as const;
 	return {
 		...useQuery({ queryKey, queryFn: () => fetchChatsStatsTimeseries(period), enabled, staleTime: STATS_STALE_TIME_MS }),
+		queryKey,
+	};
+}
+
+async function fetchChatsStatsAgents(period: TChatsStatsPeriod) {
+	const searchParams = buildStatsSearchParams(period, { withComparison: false });
+	const { data } = await axios.get<TGetChatsStatsAgentsOutput>(`/api/chats/stats/agents?${searchParams.toString()}`);
+	return data.data;
+}
+
+/**
+ * Ranking de atendentes. `enabled` reflete a permissão de gestão — a rota devolve 403 para
+ * quem não a tem, e disparar a query só para colher o erro seria ruído no console.
+ *
+ * A ordenação da tabela é do cliente, não da rota: são poucas dezenas de linhas, e um
+ * refetch por clique em cabeçalho custaria latência para uma operação que é local.
+ */
+export function useChatsStatsAgents({ period, enabled = true }: { period: TChatsStatsPeriod; enabled?: boolean }) {
+	const queryKey = ["chats-stats-agents", ...periodQueryKeyPart(period)] as const;
+	return {
+		...useQuery({ queryKey, queryFn: () => fetchChatsStatsAgents(period), enabled, staleTime: STATS_STALE_TIME_MS }),
 		queryKey,
 	};
 }

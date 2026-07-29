@@ -7,21 +7,25 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { InteractiveFilter } from "@/components/ui/interactive-filter";
 import { formatInteractiveDateRangeSummary } from "@/components/ui/interactive-filter-formatting";
 import { getErrorMessage } from "@/lib/errors";
-import { useChatsStatsOverview, useChatsStatsTimeseries, type TChatsStatsPeriod } from "@/lib/queries/chats-stats";
+import { useChatsStatsAgents, useChatsStatsOverview, useChatsStatsTimeseries, type TChatsStatsPeriod } from "@/lib/queries/chats-stats";
 import dayjs from "dayjs";
 import { Calendar, ChevronDown, X } from "lucide-react";
 import { useMemo, useState } from "react";
+import { ChatsAgentRankingBlock } from "./Blocks/ChatsAgentRankingBlock";
 import { ChatsAutomationBlock } from "./Blocks/ChatsAutomationBlock";
 import { ChatsBacklogBlock } from "./Blocks/ChatsBacklogBlock";
 import { ChatsFirstResponseBlock } from "./Blocks/ChatsFirstResponseBlock";
 import { ChatsKpiCardsBlock } from "./Blocks/ChatsKpiCardsBlock";
+import { ChatsLoadHeatmapBlock } from "./Blocks/ChatsLoadHeatmapBlock";
 import { ChatsVolumeGraphBlock } from "./Blocks/ChatsVolumeGraphBlock";
 
 type ChatsStatsSectionProps = {
 	whatsappConnections: TGetWhatsappConnectionsOutput["data"];
+	/** Ranking nominal é dado de gestão: a rota exige `finalizar` e a UI esconde o bloco. */
+	canManageAttendances: boolean;
 };
 
-export default function ChatsStatsSection({ whatsappConnections }: ChatsStatsSectionProps) {
+export default function ChatsStatsSection({ whatsappConnections, canManageAttendances }: ChatsStatsSectionProps) {
 	const [period, setPeriod] = useState(() => ({
 		startDate: dayjs().startOf("month").toDate(),
 		endDate: dayjs().endOf("day").toDate(),
@@ -46,6 +50,7 @@ export default function ChatsStatsSection({ whatsappConnections }: ChatsStatsSec
 
 	const { data: overview, isPending: overviewPending, isError: overviewError, error: overviewErrorObject } = useChatsStatsOverview({ period: statsPeriod });
 	const { data: timeseries, isPending: timeseriesPending } = useChatsStatsTimeseries({ period: statsPeriod });
+	const { data: agents, isPending: agentsPending } = useChatsStatsAgents({ period: statsPeriod, enabled: canManageAttendances });
 
 	if (overviewError) return <ErrorComponent msg={getErrorMessage(overviewErrorObject)} />;
 
@@ -118,6 +123,10 @@ export default function ChatsStatsSection({ whatsappConnections }: ChatsStatsSec
 			</div>
 
 			<ChatsBacklogBlock overview={overview} isLoading={overviewPending} />
+
+			{canManageAttendances && <ChatsAgentRankingBlock agents={agents} isLoading={agentsPending} />}
+
+			<ChatsLoadHeatmapBlock timeseries={timeseries} isLoading={timeseriesPending} />
 		</div>
 	);
 }
