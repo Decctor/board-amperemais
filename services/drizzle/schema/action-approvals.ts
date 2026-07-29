@@ -9,7 +9,7 @@ import { users } from "./users";
 /**
  * Primitivo genérico de aprovação de ações. Desconto de venda (`tipo = "VENDA_DESCONTO"`) é o
  * primeiro caso; novos cenários entram via payload jsonb discriminado por `tipo` (varchar
- * deliberadamente, padrão ai-hints) sem migração de enum. A própria linha é o registro de
+ * deliberadamente) sem migração de enum. A própria linha é o registro de
  * auditoria — inclusive no fluxo síncrono por PIN, em que nasce e é decidida no mesmo request.
  */
 export const actionApprovalRequests = newTable(
