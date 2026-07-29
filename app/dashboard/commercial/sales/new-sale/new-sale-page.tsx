@@ -6,7 +6,6 @@ import CashSessionBar from "@/components/CashSessions/CashSessionBar";
 import CashSessionGate from "@/components/CashSessions/CashSessionGate";
 import { DiscountApproval } from "@/components/Modals/Sales/DiscountApproval";
 import { getErrorMessage } from "@/lib/errors";
-import { useIsMobile } from "@/lib/hooks/use-mobile";
 import { createAndConfirmSale, createSaleDraft, updateSaleDraft } from "@/lib/mutations/pos";
 import { evaluateDiscount } from "@/lib/permissions/discounts";
 import { useSaleDiscountContext } from "@/lib/queries/action-approvals";
@@ -17,11 +16,12 @@ import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import { type TUseSaleState, getDefaultSaleState, useSaleState } from "@/state-hooks/use-sale-state";
 import { useMutation } from "@tanstack/react-query";
-import { Check, ShoppingCart } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import CheckoutPanel from "./components/CheckoutPanel";
 import ProductBuilderModal from "./components/ProductBuilderModal";
+import SaleSuccessPanel from "./components/SaleSuccessPanel";
 import CategoriesBar from "./components/composition/CategoriesBar";
 import PaginationBlock from "./components/composition/PaginationBlock";
 import ProductsGridBlock from "./components/composition/ProductsGridBlock";
@@ -49,6 +49,18 @@ function mapItemsToApi(saleState: TUseSaleState) {
 	}));
 }
 
+function getSaleSuccessSnapshot(saleState: TUseSaleState) {
+	return {
+		valorFinal: saleState.valorFinal,
+		itemCount: saleState.itemCount,
+		clienteNome: saleState.state.cliente?.nome ?? null,
+		vendedorNome: saleState.state.vendedorNome ?? null,
+		entregaModalidade: saleState.state.entregaModalidade,
+		pagamentos: saleState.state.pagamentos.map((payment) => ({ metodo: payment.metodo, valor: payment.valor })),
+		troco: saleState.troco,
+	};
+}
+
 type NewSalePageProps = {
 	organizationCashbackProgram: TCashbackProgramEntity | null;
 	organizationConfiguration: TOrganizationConfiguration;
@@ -63,7 +75,6 @@ export default function NewSalePage({
 	organizationAutoFiscalCapable,
 	canEmitFiscal,
 }: NewSalePageProps) {
-	const isMobile = useIsMobile();
 	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 	const [searchValue, setSearchValue] = useState("");
 	const [viewMode, setViewMode] = useState<ProductViewMode>("grid");
@@ -152,8 +163,12 @@ export default function NewSalePage({
 				});
 				saleState.setSuccess({
 					mode: "ORCAMENTO",
+					saleId: data.data.saleId,
 					title: "Orçamento criado com sucesso",
-					description: "Você pode iniciar uma nova venda agora.",
+					description: "O pedido foi salvo e já pode ser acompanhado.",
+					...getSaleSuccessSnapshot(saleState),
+					cashbackAcumulado: null,
+					fiscal: null,
 				});
 			} catch (error) {
 				toast.error(getErrorMessage(error));
@@ -174,8 +189,15 @@ export default function NewSalePage({
 			setDiscountApproval(null);
 			saleState.setSuccess({
 				mode: "FINALIZADA",
+				saleId: data.data.saleId,
 				title: "Venda finalizada com sucesso",
 				description: "Pagamento confirmado e venda concluída.",
+				...getSaleSuccessSnapshot(saleState),
+				cashbackAcumulado: data.data.confirmation.cashbackAcumulo?.accumulatedValue ?? null,
+				fiscal: {
+					status: data.data.confirmation.fiscal.status,
+					error: data.data.confirmation.fiscal.status === "ERRO" ? data.data.confirmation.fiscal.error : null,
+				},
 			});
 		},
 		onError: (error) => {
@@ -314,23 +336,13 @@ export default function NewSalePage({
 
 	if (saleState.state.success) {
 		return (
-			<div className="w-full h-[calc(100vh-8rem)] flex items-center justify-center p-4">
-				<div className="w-full max-w-lg rounded-2xl border bg-card p-6 flex flex-col gap-4 items-center text-center">
-					<div className="h-12 w-12 rounded-full bg-green-500/15 flex items-center justify-center">
-						<Check className="h-6 w-6 text-green-600" />
-					</div>
-					<h2 className="text-xl font-black">{saleState.state.success.title}</h2>
-					<p className="text-sm text-muted-foreground">{saleState.state.success.description}</p>
-					<Button
-						onClick={() => {
-							saleState.clearSuccess();
-							saleState.resetState(getDefaultSaleState());
-						}}
-					>
-						NOVA VENDA
-					</Button>
-				</div>
-			</div>
+			<SaleSuccessPanel
+				success={saleState.state.success}
+				onStartNewSale={() => {
+					saleState.clearSuccess();
+					saleState.resetState(getDefaultSaleState());
+				}}
+			/>
 		);
 	}
 
@@ -428,46 +440,44 @@ export default function NewSalePage({
 					</div>
 				</div>
 
-				{isMobile ? (
-					<div className="fixed bottom-4 right-4 z-50 lg:hidden">
-						<Sheet open={isCheckoutSheetOpen} onOpenChange={setIsCheckoutSheetOpen}>
-							<SheetTrigger asChild>
-								<Button className="rounded-full shadow-lg px-4">
-									<ShoppingCart className="w-4 h-4 mr-2" /> CHECKOUT ({saleState.itemCount})
-								</Button>
-							</SheetTrigger>
-							<SheetContent
-								side="bottom"
-								className="flex h-[92dvh] max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-2xl p-0 data-[side=bottom]:h-[92dvh]"
-							>
-								<SheetHeader className="shrink-0 border-b p-4 text-left">
-									<SheetTitle className="text-lg font-black">CHECKOUT</SheetTitle> <SheetDescription>Finalize ou salve como orçamento.</SheetDescription>
-									<SheetDescription>Finalize ou salve como orçamento.</SheetDescription>
-								</SheetHeader>
-								<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-									<CheckoutPanel
-										organizationCashbackProgram={organizationCashbackProgram}
-										saleState={saleState}
-										organizationAutoFiscalEmission={organizationAutoFiscalEmission}
-										organizationAutoFiscalCapable={organizationAutoFiscalCapable}
-										canEmitFiscal={canEmitFiscal}
-										discountAuthority={discountAuthority}
-										onCreateDraft={handleCreateDraft}
-										onFinalizeSale={handleFinalizeSale}
-										isCreatingDraft={isCreatingDraft}
-										isFinalizingSale={isFinalizingSale}
-										onOpenContext={() => {
-											setIsCheckoutSheetOpen(false);
-											setIsContextSheetOpen(true);
-										}}
-									/>
-								</div>
-							</SheetContent>
-						</Sheet>
-					</div>
-				) : null}
+				<div className="fixed bottom-4 right-4 z-50 lg:hidden">
+					<Sheet open={isCheckoutSheetOpen} onOpenChange={setIsCheckoutSheetOpen}>
+						<SheetTrigger asChild>
+							<Button className="rounded-full px-4 shadow-lg">
+								<ShoppingCart className="mr-2 h-4 w-4" /> CHECKOUT ({saleState.itemCount})
+							</Button>
+						</SheetTrigger>
+						<SheetContent
+							side="bottom"
+							className="flex h-[92dvh] max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-2xl p-0 data-[side=bottom]:h-[92dvh]"
+						>
+							<SheetHeader className="shrink-0 border-b p-4 text-left">
+								<SheetTitle className="text-lg font-black">CHECKOUT</SheetTitle>
+								<SheetDescription>Finalize ou salve como orçamento.</SheetDescription>
+							</SheetHeader>
+							<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+								<CheckoutPanel
+									organizationCashbackProgram={organizationCashbackProgram}
+									saleState={saleState}
+									organizationAutoFiscalEmission={organizationAutoFiscalEmission}
+									organizationAutoFiscalCapable={organizationAutoFiscalCapable}
+									canEmitFiscal={canEmitFiscal}
+									discountAuthority={discountAuthority}
+									onCreateDraft={handleCreateDraft}
+									onFinalizeSale={handleFinalizeSale}
+									isCreatingDraft={isCreatingDraft}
+									isFinalizingSale={isFinalizingSale}
+									onOpenContext={() => {
+										setIsCheckoutSheetOpen(false);
+										setIsContextSheetOpen(true);
+									}}
+								/>
+							</div>
+						</SheetContent>
+					</Sheet>
+				</div>
 
-				{isMobile && linkedClient ? (
+				{linkedClient ? (
 					<ClientContextSheet
 						open={isContextSheetOpen}
 						onOpenChange={setIsContextSheetOpen}

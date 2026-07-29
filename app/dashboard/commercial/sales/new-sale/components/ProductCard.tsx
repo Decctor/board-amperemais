@@ -38,8 +38,8 @@ function ProductCard({ product, onSelect }: ProductCardProps) {
 				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
 			)}
 		>
-			{/* Imagem — proporção fixa mantém todos os cards alinhados */}
-			<div className="relative aspect-square w-full overflow-hidden bg-secondary/40">
+			{/* Imagem — 4:3 reduz altura sem sacrificar a leitura rápida do produto. */}
+			<div className="relative aspect-[4/3] w-full overflow-hidden bg-secondary/40">
 				{product.imagemCapaUrl ? (
 					<Image src={product.imagemCapaUrl} alt={product.nome} fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
 				) : (
@@ -49,40 +49,41 @@ function ProductCard({ product, onSelect }: ProductCardProps) {
 				)}
 
 				{isComplex ? (
-					<Badge className="absolute right-2 top-2 z-10 gap-1 bg-brand-secondary text-[0.6rem] font-bold text-brand-secondary-foreground shadow-sm">
+					<Badge
+						className="absolute right-1.5 top-1.5 z-10 gap-1 bg-brand-secondary px-1.5 py-0.5 text-[0.55rem] font-bold text-brand-secondary-foreground shadow-sm"
+						title={hasVariants && hasAddOns ? "Variantes e adicionais" : hasVariants ? "Variantes" : "Adicionais"}
+					>
 						<PackagePlus className="h-3 w-3" />
-						{hasVariants && hasAddOns ? "VAR + ADD" : hasVariants ? "VARIANTES" : "ADICIONAIS"}
+						<span className="sr-only sm:not-sr-only">{hasVariants && hasAddOns ? "VAR + ADD" : hasVariants ? "VARIANTES" : "ADICIONAIS"}</span>
 					</Badge>
 				) : null}
 			</div>
 
-			{/* Corpo — nome reserva 2 linhas, preço fixado na base via mt-auto */}
-			<div className="flex flex-1 flex-col gap-2 p-3">
+			{/* Corpo — conteúdo essencial em uma altura previsível para catálogos densos. */}
+			<div className="flex min-h-[6.25rem] flex-1 flex-col gap-1.5 p-2.5">
 				<div className="flex flex-col gap-0.5">
-					<h3 className="line-clamp-2 min-h-[2.25rem] text-sm font-bold leading-tight tracking-tight">{product.nome}</h3>
+					<h3 className="line-clamp-2 min-h-8 text-xs font-bold leading-tight tracking-tight sm:text-sm">{product.nome}</h3>
 					<p className="truncate text-[0.65rem] font-medium text-muted-foreground">{product.codigo}</p>
 				</div>
 
-				<div className="mt-auto flex flex-col gap-1.5">
-					<div className="flex flex-col gap-0.5">
+				<div className="mt-auto flex items-end justify-between gap-2">
+					<div className="min-w-0">
 						{displayPrice.type === "starting-from" ? (
-							<span className="text-[0.6rem] font-bold uppercase tracking-wide text-muted-foreground">A partir de</span>
+							<span className="block text-[0.55rem] font-bold uppercase leading-none tracking-wide text-muted-foreground">A partir de</span>
 						) : null}
-						<p className="text-lg font-black tabular-nums text-foreground">{formatToMoney(displayPrice.value)}</p>
+						<p className="truncate text-base font-black tabular-nums text-foreground">{formatToMoney(displayPrice.value)}</p>
 					</div>
 
 					{hasStock ? (
-						<div className="flex items-center gap-1.5">
+						<div className="flex shrink-0 items-center gap-1">
 							<span
-								className={cn("h-2 w-2 rounded-full", {
+								className={cn("h-1.5 w-1.5 rounded-full", {
 									"bg-red-500": product.quantidade === 0,
 									"bg-yellow-500": product.quantidade! > 0 && product.quantidade! <= 10,
 									"bg-green-500": product.quantidade! > 10,
 								})}
 							/>
-							<span className="text-[0.65rem] font-medium text-muted-foreground">
-								{product.quantidade! > 0 ? `${product.quantidade} un.` : "SEM ESTOQUE"}
-							</span>
+							<span className="text-[0.6rem] font-medium text-muted-foreground">{product.quantidade! > 0 ? `${product.quantidade} un.` : "ESGOTADO"}</span>
 						</div>
 					) : null}
 				</div>

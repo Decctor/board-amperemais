@@ -60,7 +60,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { parseAsString, useQueryState } from "nuqs";
+import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
+
+const SALES_VIEWS = ["historico", "atendimento", "preparo", "aprovacoes"] as const;
+type SalesView = (typeof SALES_VIEWS)[number];
 
 type SalesPageProps = {
 	user: TAuthUserSession["user"];
@@ -73,6 +76,8 @@ type SalesPageProps = {
 export default function SalesPage({ user: _user, organization, canApproveActionRequests, canEditSales, canDeleteSales }: SalesPageProps) {
 	const orgHasERPAccess = organization.configuracao.recursos.erp.acesso;
 	const [selectedSaleId, setSelectedSaleId] = useQueryState("saleId", parseAsString.withOptions({ shallow: true }));
+	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum([...SALES_VIEWS]).withOptions({ shallow: true }));
+	const activeView: SalesView = viewMode ?? (selectedSaleId ? "atendimento" : "historico");
 
 	function closeSaleDetails() {
 		const triggerId = selectedSaleId ? `sale-details-trigger-${selectedSaleId}` : null;
@@ -96,7 +101,11 @@ export default function SalesPage({ user: _user, organization, canApproveActionR
 
 	return (
 		<div className="flex h-full w-full flex-col gap-3">
-			<Tabs defaultValue={selectedSaleId ? "atendimento" : "historico"} className="flex h-full w-full flex-col">
+			<Tabs
+				value={activeView}
+				onValueChange={(value) => void setViewMode(value as SalesView, { history: "replace" })}
+				className="flex h-full w-full flex-col"
+			>
 				<div className={tabsPageToolbarClassName}>
 					<TabsList variant="page">
 						<TabsTrigger value="historico">
@@ -570,10 +579,7 @@ function SaleCardActionsMenu({ sale, canEditSales }: { sale: TGetSalesOutputDefa
 					</DropdownMenuItem>
 				)}
 				<DropdownMenuSeparator />
-				<DropdownMenuItem
-					disabled={!canPrintCupom || printIsPending}
-					onClick={() => printCupom({ finalidade: "CUPOM_VENDA", vendaId: sale.id })}
-				>
+				<DropdownMenuItem disabled={!canPrintCupom || printIsPending} onClick={() => printCupom({ finalidade: "CUPOM_VENDA", vendaId: sale.id })}>
 					<Printer className="h-4 w-4" />
 					IMPRIMIR CUPOM
 				</DropdownMenuItem>

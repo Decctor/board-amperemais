@@ -34,7 +34,7 @@ function ProductsGridBlock({ productsData, isLoading, isError, error, viewMode, 
 		}
 
 		return (
-			<div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-4 pb-4">
+			<div className="grid grid-cols-2 gap-2.5 pb-4 sm:grid-cols-[repeat(auto-fill,minmax(9.5rem,10.5rem))] sm:justify-start">
 				{productsData.products.map((product) => (
 					<ProductCard key={product.id} product={product} onSelect={onProductClick} />
 				))}

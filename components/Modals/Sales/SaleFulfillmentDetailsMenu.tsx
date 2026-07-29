@@ -115,11 +115,9 @@ export function SaleFulfillmentDetailsMenu({ saleId, closeMenu, canEditSales, ca
 			dialogVariant="md"
 			drawerVariant="xl"
 			mode="read-only"
-			dialogContentClassName="w-[50%] min-w-[50%] max-w-[50%] lg:max-w-[50%]"
-			// drawerContentClassName="max-h-[94dvh] gap-0 overflow-hidden p-0 before:inset-0 before:rounded-t-3xl [&_[data-slot=drawer-footer]]:border-t [&_[data-slot=drawer-footer]]:border-border [&_[data-slot=drawer-footer]]:bg-card"
-			// headerClassName="shrink-0 border-b border-border bg-card px-5 py-4 pr-14 sm:px-6"
-			// contentClassName="gap-4 bg-muted/35 p-4 sm:p-5 lg:px-6 lg:py-5"
-			titleClassName="text-lg font-extrabold tracking-tight"
+			dialogContentClassName="w-[min(820px,calc(100vw-2rem))] min-w-0 max-w-[820px] lg:max-w-[820px]"
+			contentClassName="gap-3"
+			titleClassName="text-lg font-bold tracking-tight"
 			descriptionClassName="text-sm"
 		>
 			{query.isLoading ? <SaleDetailsSkeleton /> : null}
@@ -190,7 +188,7 @@ function SaleFulfillmentDetailsContent({
 	const delivery = sale.entregaModalidade ? DELIVERY_META[sale.entregaModalidade] : null;
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-3">
 			<OrderSummary sale={sale} />
 
 			<OperationalSection title="Itens do pedido" count={sale.itens.length} icon={<Package className="size-4" />}>
@@ -207,8 +205,8 @@ function SaleFulfillmentDetailsContent({
 				{hiddenItemsCount > 0 ? (
 					<Button
 						variant="secondary"
-						size="lg"
-						className="mt-3 w-full rounded-xl border border-border/70 font-bold"
+						size="sm"
+						className="mt-3 w-full rounded-lg border border-border/70 font-semibold"
 						onClick={() => setItemsExpanded((expanded) => !expanded)}
 						aria-expanded={itemsExpanded}
 					>
@@ -218,11 +216,11 @@ function SaleFulfillmentDetailsContent({
 				) : null}
 			</OperationalSection>
 
-			<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+			<div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
 				<OperationalSection title="Entrega" icon={delivery?.icon ?? <MapPin className="size-4" />}>
 					<div className="flex flex-col gap-3">
 						<div>
-							<p className="text-base font-extrabold">{delivery?.label ?? "Modalidade não informada"}</p>
+							<p className="text-sm font-semibold">{delivery?.label ?? "Modalidade não informada"}</p>
 							{sale.comandaNumero ? <p className="mt-0.5 text-sm text-muted-foreground">Comanda {sale.comandaNumero}</p> : null}
 						</div>
 						{sale.entregaLocalizacao ? <DeliveryAddress location={sale.entregaLocalizacao} /> : null}
@@ -240,13 +238,13 @@ function SaleFulfillmentDetailsContent({
 								return (
 									<div key={payment.id} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
 										<div className="min-w-0">
-											<p className="truncate text-sm font-extrabold">{PAYMENT_METHOD_LABELS[payment.metodo] ?? payment.metodo}</p>
+											<p className="truncate text-sm font-semibold">{PAYMENT_METHOD_LABELS[payment.metodo] ?? payment.metodo}</p>
 											<p className={cn("mt-0.5 flex items-center gap-1.5 text-xs font-semibold", paymentState.className)}>
 												<span className="size-1.5 rounded-full bg-current" />
 												{paymentState.label}
 											</p>
 										</div>
-										<p className="shrink-0 text-base font-black tabular-nums">{formatToMoney(payment.valor)}</p>
+										<p className="shrink-0 text-sm font-bold tabular-nums">{formatToMoney(payment.valor)}</p>
 									</div>
 								);
 							})}
@@ -261,11 +259,11 @@ function SaleFulfillmentDetailsContent({
 				{sale.documentosFiscais.length > 0 ? (
 					<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
 						{sale.documentosFiscais.map((document) => (
-							<div key={document.id} className="flex items-center justify-between gap-3 rounded-xl bg-secondary/65 px-3 py-3">
+							<div key={document.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-secondary/35 px-3 py-2.5">
 								<div className="flex min-w-0 items-center gap-2.5">
-									<FileText className="size-4 shrink-0 text-brand-secondary" />
+									<FileText className="size-4 shrink-0 text-brand" />
 									<div className="min-w-0">
-										<p className="truncate text-sm font-extrabold">
+										<p className="truncate text-sm font-semibold">
 											{document.tipo} {document.numero ? `nº ${document.numero}` : "sem numeração"}
 										</p>
 										{document.serie ? <p className="text-xs text-muted-foreground">Série {document.serie}</p> : null}
@@ -283,12 +281,12 @@ function SaleFulfillmentDetailsContent({
 			</OperationalSection>
 
 			{sale.observacoes || sale.pagamentoObservacoes ? (
-				<section className="rounded-2xl border border-brand/35 bg-brand/10 px-4 py-4">
+				<section className="rounded-xl border border-brand/20 bg-brand/5 px-4 py-3.5">
 					<div className="mb-3 flex items-center gap-2 text-foreground">
-						<div className="flex size-8 items-center justify-center rounded-xl bg-brand text-brand-foreground shadow-sm">
+						<div className="flex size-7 items-center justify-center rounded-lg bg-brand/12 text-brand">
 							<MessageSquareText className="size-4" />
 						</div>
-						<h2 className="text-xs font-extrabold uppercase tracking-wide">Observações</h2>
+						<h2 className="text-xs font-semibold uppercase tracking-wide">Observações</h2>
 					</div>
 					<div className="space-y-2">
 						{sale.observacoes ? <DetailLine label="Pedido" value={sale.observacoes} /> : null}
@@ -324,7 +322,7 @@ function SaleActionsFooter({
 	const editIsEnabled = editability.nivel === "TOTAL" || editability.rascunho;
 
 	return (
-		<section className="rounded-2xl border border-border bg-card px-4 py-4 shadow-2xs">
+		<section className="rounded-xl border border-border bg-card px-4 py-3">
 			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div className="flex flex-col gap-1">
 					{showEdit && !editIsEnabled ? <p className="text-xs text-muted-foreground">{editability.motivos[0]}</p> : null}
@@ -374,24 +372,24 @@ function OrderSummary({ sale }: { sale: TGetSalesFulfillmentOutputById }) {
 	const fiscal = FISCAL_META[sale.fiscal];
 
 	return (
-		<section className="overflow-hidden rounded-2xl bg-brand-secondary text-brand-secondary-foreground shadow-lg shadow-brand-secondary/20">
-			<div className="flex flex-col justify-between gap-5 px-4 py-4 sm:flex-row sm:items-end sm:px-5 sm:py-5">
+		<section className="overflow-hidden rounded-xl border border-border bg-card">
+			<div className="flex flex-col justify-between gap-4 border-t-4 border-brand px-4 py-4 sm:flex-row sm:items-end sm:px-5">
 				<div className="min-w-0">
-					<div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-bold">
-						<span className="rounded-full bg-brand-secondary-foreground/12 px-2.5 py-1">ATENDIMENTO</span>
+					<div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+						<span className="font-semibold uppercase tracking-wide text-foreground">ATENDIMENTO</span>
 						{sale.integracaoCanal || sale.canal ? (
-							<span className="rounded-full bg-brand px-2.5 py-1 text-brand-foreground shadow-sm">{sale.integracaoCanal ?? sale.canal}</span>
+							<span className="rounded-md bg-brand/10 px-2 py-1 font-semibold text-brand">{sale.integracaoCanal ?? sale.canal}</span>
 						) : null}
-						{sale.dataVenda ? <span className="font-medium text-brand-secondary-foreground/75">{formatDateAsLocale(sale.dataVenda, true)}</span> : null}
+						{sale.dataVenda ? <span>{formatDateAsLocale(sale.dataVenda, true)}</span> : null}
 					</div>
 					<div className="flex items-center gap-3">
-						<div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-brand-secondary-foreground/12">
+						<div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
 							<CircleUser className="size-5" />
 						</div>
 						<div className="min-w-0">
-							<h2 className="truncate text-lg font-extrabold tracking-tight sm:text-xl">{sale.cliente?.nome ?? "Ao consumidor"}</h2>
+							<h2 className="truncate text-base font-bold tracking-tight sm:text-lg">{sale.cliente?.nome ?? "Ao consumidor"}</h2>
 							{sale.cliente?.telefone ? (
-								<p className="mt-0.5 flex items-center gap-1.5 text-sm text-brand-secondary-foreground/75">
+								<p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
 									<Phone className="size-3.5" />
 									{formatToPhone(sale.cliente.telefone)}
 								</p>
@@ -399,10 +397,10 @@ function OrderSummary({ sale }: { sale: TGetSalesFulfillmentOutputById }) {
 						</div>
 					</div>
 					{phoneLinks ? (
-						<div className="mt-3 flex flex-wrap gap-2 sm:ml-14">
+						<div className="mt-3 flex flex-wrap gap-2 sm:ml-[52px]">
 							<a
 								href={phoneLinks.tel}
-								className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-brand-secondary-foreground/15 bg-brand-secondary-foreground/10 px-3.5 text-xs font-extrabold transition-colors hover:bg-brand-secondary-foreground/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-secondary-foreground/80 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-secondary"
+								className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 text-xs font-semibold transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 								aria-label={`Ligar para ${sale.cliente?.nome ?? "o cliente"}`}
 							>
 								<PhoneCall className="size-4" />
@@ -412,7 +410,7 @@ function OrderSummary({ sale }: { sale: TGetSalesFulfillmentOutputById }) {
 								href={phoneLinks.whatsapp}
 								target="_blank"
 								rel="noreferrer"
-								className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand px-3.5 text-xs font-extrabold text-brand-foreground shadow-sm transition-[filter,transform] hover:brightness-105 active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-foreground/80 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-secondary"
+								className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:text-emerald-400"
 								aria-label={`Conversar com ${sale.cliente?.nome ?? "o cliente"} no WhatsApp`}
 							>
 								<FaWhatsapp className="size-4" />
@@ -423,18 +421,20 @@ function OrderSummary({ sale }: { sale: TGetSalesFulfillmentOutputById }) {
 				</div>
 
 				<div className="shrink-0 sm:text-right">
-					<p className="text-xs font-bold uppercase tracking-wide text-brand-secondary-foreground/70">Total do pedido</p>
-					<p className="mt-0.5 text-3xl font-black tracking-tight tabular-nums">{formatToMoney(sale.valorTotal)}</p>
+					<p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Total do pedido</p>
+					<p className="mt-0.5 text-2xl font-bold tracking-tight tabular-nums">{formatToMoney(sale.valorTotal)}</p>
 					<div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs sm:justify-end">
-						{sale.descontosTotal && sale.descontosTotal > 0 ? <span className="text-brand">-{formatToMoney(sale.descontosTotal)} em descontos</span> : null}
+						{sale.descontosTotal && sale.descontosTotal > 0 ? (
+							<span className="text-green-700 dark:text-green-400">-{formatToMoney(sale.descontosTotal)} em descontos</span>
+						) : null}
 						{sale.acrescimosTotal && sale.acrescimosTotal > 0 ? (
-							<span className="text-brand-secondary-foreground/75">+{formatToMoney(sale.acrescimosTotal)} em acréscimos</span>
+							<span className="text-muted-foreground">+{formatToMoney(sale.acrescimosTotal)} em acréscimos</span>
 						) : null}
 					</div>
 				</div>
 			</div>
 
-			<div className="flex flex-wrap gap-2 border-t border-brand-secondary-foreground/10 bg-brand-secondary-foreground/6 px-4 py-3 sm:px-5">
+			<div className="flex flex-wrap gap-2 border-t border-border bg-secondary/25 px-4 py-2.5 sm:px-5">
 				<SummaryStatus icon={attendance.icon}>{attendance.label}</SummaryStatus>
 				<SummaryStatus icon={financial?.icon} tone={sale.financeiro === "EM_ATRASO" ? "danger" : sale.financeiro === "RECEBIDA" ? "success" : "default"}>
 					{financial?.label ?? sale.financeiro}
@@ -454,10 +454,10 @@ function SummaryStatus({ children, icon, tone = "default" }: { children: ReactNo
 	return (
 		<span
 			className={cn(
-				"inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold",
-				tone === "default" && "border-brand-secondary-foreground/15 bg-brand-secondary-foreground/10",
-				tone === "success" && "border-green-200/30 bg-green-100 text-green-700",
-				tone === "danger" && "border-red-200/30 bg-red-100 text-red-700",
+				"inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium",
+				tone === "default" && "border-border bg-background text-muted-foreground",
+				tone === "success" && "border-green-500/20 bg-green-500/10 text-green-700 dark:text-green-400",
+				tone === "danger" && "border-destructive/20 bg-destructive/10 text-destructive",
 			)}
 		>
 			{icon ?? <span className="size-1.5 rounded-full bg-current opacity-70" />}
@@ -489,12 +489,12 @@ function getCustomerPhoneLinks(phone: string) {
 
 function OperationalSection({ title, icon, count, children }: { title: string; icon: ReactNode; count?: number; children: ReactNode }) {
 	return (
-		<section className="rounded-2xl border border-border bg-card p-4 shadow-2xs sm:p-5">
-			<div className="mb-4 flex min-h-9 items-center gap-2.5">
-				<div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-secondary/10 text-brand-secondary">{icon}</div>
-				<h2 className="text-xs font-extrabold uppercase tracking-wide">{title}</h2>
+		<section className="rounded-xl border border-border bg-card p-4">
+			<div className="mb-3 flex min-h-8 items-center gap-2.5">
+				<div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">{icon}</div>
+				<h2 className="text-xs font-semibold uppercase tracking-wide">{title}</h2>
 				{count !== undefined ? (
-					<span className="inline-flex size-6 items-center justify-center rounded-full bg-brand-secondary text-xs font-extrabold tabular-nums text-brand-secondary-foreground shadow-sm">
+					<span className="inline-flex min-w-5 items-center justify-center rounded-md bg-brand/10 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-brand">
 						{count}
 					</span>
 				) : null}
@@ -515,11 +515,11 @@ function SaleItemRow({ item, reveal }: { item: TGetSalesFulfillmentOutputById["i
 				reveal && "animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none",
 			)}
 		>
-			<div className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-secondary sm:size-20">
+			<div className="relative size-16 shrink-0 overflow-hidden rounded-lg border border-border/60 bg-secondary sm:size-18">
 				{imageUrl ? (
 					<Image src={imageUrl} alt={item.produto?.nome ?? "Produto do pedido"} fill sizes="80px" className="object-cover" />
 				) : (
-					<div className="flex h-full w-full items-center justify-center bg-brand-secondary/8 text-brand-secondary/45">
+					<div className="flex h-full w-full items-center justify-center bg-brand/8 text-brand/45">
 						<Package className="size-7" />
 					</div>
 				)}
@@ -529,11 +529,11 @@ function SaleItemRow({ item, reveal }: { item: TGetSalesFulfillmentOutputById["i
 				<div className="flex items-start justify-between gap-3">
 					<div className="min-w-0">
 						<div className="flex items-start gap-2">
-							<span className="inline-flex min-w-7 shrink-0 items-center justify-center rounded-lg bg-brand-secondary/10 px-1.5 py-1 text-xs font-extrabold tabular-nums text-brand-secondary">
+							<span className="inline-flex min-w-7 shrink-0 items-center justify-center rounded-md bg-brand/10 px-1.5 py-1 text-xs font-semibold tabular-nums text-brand">
 								{item.quantidade}x
 							</span>
 							<div className="min-w-0">
-								<h3 className="line-clamp-2 text-sm font-extrabold leading-snug tracking-tight sm:text-base">{item.produto?.nome ?? "Produto"}</h3>
+								<h3 className="line-clamp-2 text-sm font-semibold leading-snug tracking-tight sm:text-base">{item.produto?.nome ?? "Produto"}</h3>
 								<div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-xs font-medium text-muted-foreground">
 									{item.produtoVariante?.nome ? <span className="text-foreground/75">{item.produtoVariante.nome}</span> : null}
 									{item.produto?.codigo ? <span>Cód. {item.produto.codigo}</span> : null}
@@ -544,14 +544,14 @@ function SaleItemRow({ item, reveal }: { item: TGetSalesFulfillmentOutputById["i
 					</div>
 
 					<div className="shrink-0 text-right">
-						<p className="text-base font-black tabular-nums sm:text-lg">{formatToMoney(item.valorVendaTotalLiquido)}</p>
+						<p className="text-sm font-bold tabular-nums sm:text-base">{formatToMoney(item.valorVendaTotalLiquido)}</p>
 						{hasDiscount ? <p className="text-xs tabular-nums text-muted-foreground line-through">{formatToMoney(item.valorVendaTotalBruto)}</p> : null}
 					</div>
 				</div>
 
 				{item.adicionais.length > 0 ? (
-					<div className="mt-2.5 rounded-xl bg-secondary/65 px-3 py-2">
-						<p className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">Adicionais</p>
+					<div className="mt-2.5 rounded-lg border border-border/50 bg-secondary/35 px-3 py-2">
+						<p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Adicionais</p>
 						<ul className="space-y-1.5">
 							{item.adicionais.map((additional) => (
 								<li key={additional.id} className="flex items-center justify-between gap-3 text-xs sm:text-sm">
@@ -589,7 +589,7 @@ function EmptyDetail({ icon, text, compact = false }: { icon: ReactNode; text: s
 		<div
 			className={cn("flex items-center gap-3 rounded-xl bg-secondary/55 px-3 py-3 text-muted-foreground", !compact && "justify-center py-6 text-center")}
 		>
-			<span className="shrink-0 text-brand-secondary/60">{icon}</span>
+			<span className="shrink-0 text-brand/60">{icon}</span>
 			<p className="text-sm font-medium">{text}</p>
 		</div>
 	);
@@ -598,7 +598,7 @@ function EmptyDetail({ icon, text, compact = false }: { icon: ReactNode; text: s
 function DetailLine({ label, value }: { label: string; value: string }) {
 	return (
 		<div className="flex items-start gap-2 text-sm">
-			<span className="shrink-0 font-extrabold">{label}:</span>
+			<span className="shrink-0 font-semibold">{label}:</span>
 			<span className="min-w-0 whitespace-pre-wrap font-medium text-foreground/80">{value}</span>
 		</div>
 	);
@@ -610,11 +610,11 @@ function DeliveryAddress({ location }: { location: NonNullable<TGetSalesFulfillm
 
 	return (
 		<div className="flex items-start gap-3 rounded-xl bg-secondary/55 px-3 py-3 text-sm">
-			<div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-card text-brand-secondary shadow-2xs">
+			<div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-card text-brand">
 				<MapPin className="size-4" />
 			</div>
 			<div className="min-w-0">
-				{location.titulo ? <p className="font-extrabold">{location.titulo}</p> : null}
+				{location.titulo ? <p className="font-semibold">{location.titulo}</p> : null}
 				{firstLine ? <p className="mt-0.5 font-medium">{firstLine}</p> : null}
 				{location.localizacaoComplemento ? <p className="text-muted-foreground">{location.localizacaoComplemento}</p> : null}
 				{secondLine ? <p className="mt-1 text-xs text-muted-foreground">{secondLine}</p> : null}

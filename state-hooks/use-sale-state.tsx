@@ -106,8 +106,24 @@ export const SaleDraftMetadataSchema = z.object({
 const SaleSuccessSchema = z
 	.object({
 		mode: z.enum(["ORCAMENTO", "FINALIZADA"]),
+		saleId: z.string(),
 		title: z.string(),
 		description: z.string(),
+		valorFinal: z.number(),
+		itemCount: z.number(),
+		clienteNome: z.string().optional().nullable(),
+		vendedorNome: z.string().optional().nullable(),
+		entregaModalidade: z.enum(["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"]),
+		pagamentos: z.array(CheckoutPaymentSplitSchema.pick({ metodo: true, valor: true })),
+		troco: z.number(),
+		cashbackAcumulado: z.number().optional().nullable(),
+		fiscal: z
+			.object({
+				status: z.enum(["NAO_SOLICITADO", "SOLICITADO", "ERRO"]),
+				error: z.string().optional().nullable(),
+			})
+			.optional()
+			.nullable(),
 	})
 	.optional()
 	.nullable();
@@ -154,6 +170,7 @@ export type TCartItemModifier = z.infer<typeof CartItemModifierSchema>;
 export type TCartItem = z.infer<typeof CartItemSchema>;
 export type TSaleDraftMetadata = z.infer<typeof SaleDraftMetadataSchema>;
 export type TSaleState = z.infer<typeof SaleStateSchema>;
+export type TSaleSuccess = NonNullable<TSaleState["success"]>;
 
 type UseSaleStateProps = {
 	initialState?: Partial<TSaleState>;
