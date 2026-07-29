@@ -1,0 +1,54 @@
+import type { TAiAgentCapacidades } from "@/schemas/ai-agents";
+import type { TAiAgentRunGatilhoEnum, TAiAgentToolNameEnum } from "@/schemas/enums";
+import type { DB, DBTransaction } from "@/services/drizzle";
+import type z from "zod";
+
+/**
+ * Tudo que uma ferramenta precisa saber e que o modelo **não** fornece.
+ *
+ * Ids de tenant e de entidade vivem aqui, nunca no `inputSchema`: é o que torna o isolamento
+ * multi-tenant estrutural (o modelo não tem como apontar para outra organização) e elimina a
+ * classe de bug em que o LLM alucina um `clienteId`.
+ */
+export type TAgentToolContext = {
+	db: DB | DBTransaction;
+	organizacaoId: string;
+	agent: { id: string; nome: string };
+	run: { id: string; gatilho: TAiAgentRunGatilhoEnum };
+	chat: { id: string; clienteId: string };
+	capacidades: TAiAgentCapacidades;
+};
+
+/**
+ * Formato normalizado devolvido ao modelo. `success: false` é um resultado legítimo — uma
+ * organização sem programa de cashback não é um erro, é uma informação que o agente deve
+ * comunicar ao cliente.
+ */
+export type TAgentToolOutput = {
+	success: boolean;
+	message: string;
+	result?: unknown;
+};
+
+export type TAgentToolDefinition<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> = {
+	name: TAiAgentToolNameEnum;
+	/** Descrição rica: é por ela que o modelo decide quais filtros usar. */
+	description: string;
+	inputSchema: TInputSchema;
+	execute: (input: z.infer<TInputSchema>, context: TAgentToolContext) => Promise<TAgentToolOutput>;
+};
+
+/**
+ * Definição com o tipo de input apagado.
+ *
+ * O registro guarda ferramentas de schemas diferentes lado a lado, e `execute` é
+ * contravariante no input — nenhuma delas é atribuível a um `TAgentToolDefinition` concreto.
+ * `never` no parâmetro aceita qualquer implementação; quem executa faz o cast único (o input
+ * já foi validado pelo `inputSchema` naquele ponto).
+ */
+export type TAgentToolDefinitionErased = {
+	name: TAiAgentToolNameEnum;
+	description: string;
+	inputSchema: z.ZodTypeAny;
+	execute: (input: never, context: TAgentToolContext) => Promise<TAgentToolOutput>;
+};
