@@ -5,6 +5,7 @@ import {
 	CHAT_FIRST_RESPONSE_BUCKETS,
 	CHAT_FIRST_RESPONSE_TARGET_MINUTES,
 	durationStatsSelection,
+	naiveUtcParam,
 	nowAsNaiveUtc,
 	safeRatio,
 	secondsBetween,
@@ -163,8 +164,8 @@ async function fetchMessages({ filters, startDate, endDate }: { filters: TCohort
  * abertos" é uma pergunta sobre o presente, e responder com o passado seria mentira.
  */
 async function fetchBacklog({ filters }: { filters: TCohortFilters }) {
-	const agora = new Date();
-	const janelaRisco = new Date(agora.getTime() + 4 * 60 * 60 * 1000);
+	const agora = naiveUtcParam(new Date());
+	const janelaRisco = naiveUtcParam(new Date(Date.now() + 4 * 60 * 60 * 1000));
 	// `now()` é timestamptz e as colunas do módulo são timestamp sem fuso: sem normalizar,
 	// a subtração dependeria do `TimeZone` da sessão do Postgres.
 	const idadeSegundos = secondsBetween(chatAssignments.dataInsercao, nowAsNaiveUtc());

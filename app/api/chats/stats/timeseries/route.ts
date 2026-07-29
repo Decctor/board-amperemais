@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { CHAT_ANALYTICS_TIMEZONE, inOperationTimezone, resolveGranularity } from "@/lib/chats/analytics";
+import { CHAT_ANALYTICS_TIMEZONE, inOperationTimezone, naiveUtcParam, resolveGranularity } from "@/lib/chats/analytics";
 import { assertChatAccess } from "@/lib/chats/access";
 import { db } from "@/services/drizzle";
 import { chatAssignments, chatMessages, chats } from "@/services/drizzle/schema/chats";
@@ -56,12 +56,15 @@ async function fetchSeries({
 	const step = granularidade === "SEMANA" ? sql.raw("'1 week'") : sql.raw("'1 day'");
 	const unit = granularidade === "SEMANA" ? sql.raw("'week'") : sql.raw("'day'");
 	const phoneFilter = whatsappConexaoTelefoneId ? sql`and c.whatsapp_conexao_telefone_id = ${whatsappConexaoTelefoneId}` : sql``;
+	// Datas viram parâmetros tipados: um `Date` cru dentro do template estoura no driver.
+	const inicio = naiveUtcParam(startDate);
+	const fim = naiveUtcParam(endDate);
 
 	const result = await db.execute<TSeriesRow>(sql`
 		with buckets as (
 			select generate_series(
-				date_trunc(${unit}, ${startDate}::timestamptz at time zone ${CHAT_ANALYTICS_TIMEZONE}),
-				date_trunc(${unit}, ${endDate}::timestamptz at time zone ${CHAT_ANALYTICS_TIMEZONE}),
+				date_trunc(${unit}, ${inOperationTimezone(inicio)}),
+				date_trunc(${unit}, ${inOperationTimezone(fim)}),
 				${step}::interval
 			) as bucket
 		),
@@ -75,7 +78,7 @@ async function fetchSeries({
 			from ampmais_chat_assignments a
 			join ampmais_chats c on c.id = a.chat_id
 			where a.organizacao_id = ${organizacaoId}
-				and a.data_insercao between ${startDate} and ${endDate}
+				and a.data_insercao between ${inicio} and ${fim}
 				${phoneFilter}
 			group by 1
 		),
@@ -84,7 +87,7 @@ async function fetchSeries({
 			from ampmais_chat_assignments a
 			join ampmais_chats c on c.id = a.chat_id
 			where a.organizacao_id = ${organizacaoId}
-				and a.data_encerramento between ${startDate} and ${endDate}
+				and a.data_encerramento between ${inicio} and ${fim}
 				${phoneFilter}
 			group by 1
 		),
@@ -93,7 +96,7 @@ async function fetchSeries({
 			from ampmais_chat_assignments a
 			join ampmais_chats c on c.id = a.chat_id
 			where a.organizacao_id = ${organizacaoId}
-				and a.data_resolucao between ${startDate} and ${endDate}
+				and a.data_resolucao between ${inicio} and ${fim}
 				${phoneFilter}
 			group by 1
 		)

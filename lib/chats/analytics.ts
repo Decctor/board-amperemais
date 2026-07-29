@@ -102,6 +102,23 @@ export function nowAsNaiveUtc(): SQL {
 	return sql`(now() at time zone 'UTC')`;
 }
 
+/**
+ * Uma data como parâmetro de um template `sql` cru.
+ *
+ * **Nunca interpole um `Date` direto em `sql\`\``.** Operadores como `between(coluna, a, b)`
+ * funcionam porque conhecem a coluna e aplicam o `mapToDriverValue` dela; num template cru
+ * não há coluna, o `Date` chega inteiro ao postgres-js e o driver estoura com
+ * `The "string" argument must be of type string ... Received an instance of Date`. O erro é
+ * de execução, não de tipo — o TypeScript aceita `${data}` sem reclamar, e a rota só quebra
+ * em produção.
+ *
+ * `toISOString()` produz UTC, e o `::timestamp` descarta o designador de fuso: o resultado é
+ * exatamente o UTC-sem-fuso que as colunas do módulo guardam.
+ */
+export function naiveUtcParam(date: Date): SQL {
+	return sql`${date.toISOString()}::timestamp`;
+}
+
 /** Períodos longos em barras diárias viram serrilha ilegível; acima de 90 dias, semana. */
 export function resolveGranularity({ startDate, endDate }: { startDate: Date; endDate: Date }): "DIA" | "SEMANA" {
 	const days = (endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000);
