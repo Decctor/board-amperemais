@@ -1,0 +1,114 @@
+import ErrorComponent from "@/components/Layouts/ErrorComponent";
+import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import { Button } from "@/components/ui/button";
+import { getErrorMessage } from "@/lib/errors";
+import { formatDateAsLocale } from "@/lib/formatting";
+import { type TAiAgentRunsFilters, useAiAgentRuns } from "@/lib/queries/ai-agents";
+import { cn } from "@/lib/utils";
+import type { TAiAgentRunStatusEnum } from "@/schemas/enums";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import AgentRunDrawer from "./AgentRunDrawer";
+
+const STATUS_FILTERS: Array<{ value: TAiAgentRunStatusEnum | null; label: string }> = [
+	{ value: null, label: "TODAS" },
+	{ value: "CONCLUIDO", label: "CONCLUÍDAS" },
+	{ value: "FALHA", label: "COM FALHA" },
+];
+
+export default function AgentRunsList() {
+	const [filters, setFilters] = useState<TAiAgentRunsFilters>({ page: 1, gatilho: null, status: null });
+	const [runIdAberto, setRunIdAberto] = useState<string | null>(null);
+	const { data, isLoading, isError, error } = useAiAgentRuns({ filters });
+
+	return (
+		<div className="flex w-full flex-col gap-4">
+			<div className="flex items-center gap-2">
+				{STATUS_FILTERS.map((filtro) => (
+					<Button
+						key={filtro.label}
+						size="sm"
+						variant={filters.status === filtro.value ? "secondary" : "ghost"}
+						onClick={() => setFilters((prev) => ({ ...prev, status: filtro.value, page: 1 }))}
+					>
+						{filtro.label}
+					</Button>
+				))}
+			</div>
+
+			{isLoading ? <LoadingComponent /> : null}
+			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+
+			{data && data.runs.length === 0 ? (
+				<div className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-border px-4 py-10 text-center">
+					<p className="text-sm font-medium">Nenhuma execução registrada</p>
+					<p className="text-xs text-muted-foreground">
+						Cada resposta do agente aparece aqui com o que ele consultou, quantos tokens gastou e o que deu errado, se algo deu.
+					</p>
+				</div>
+			) : null}
+
+			{data && data.runs.length > 0 ? (
+				<div className="flex w-full flex-col gap-2">
+					{data.runs.map((run) => (
+						<button
+							key={run.id}
+							type="button"
+							onClick={() => setRunIdAberto(run.id)}
+							className="flex w-full items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/50"
+						>
+							<div className="flex min-w-0 flex-col">
+								<div className="flex items-center gap-2">
+									<span
+										className={cn(
+											"text-xs font-bold",
+											run.status === "CONCLUIDO" && "text-emerald-600",
+											run.status === "FALHA" && "text-destructive",
+											(run.status === "RODANDO" || run.status === "PENDENTE") && "text-amber-600",
+										)}
+									>
+										{run.status}
+									</span>
+									<span className="text-xs text-muted-foreground">{run.gatilho === "PLAYGROUND" ? "TESTE" : "WHATSAPP"}</span>
+								</div>
+								<p className="truncate text-sm">{run.erro ?? run.outputResumo ?? "—"}</p>
+							</div>
+							<div className="flex shrink-0 flex-col items-end">
+								<span className="text-xs text-muted-foreground">{formatDateAsLocale(run.dataInsercao, true)}</span>
+								<span className="text-xs text-muted-foreground">{run.uso?.tokensTotal ? `${run.uso.tokensTotal} tokens` : "—"}</span>
+							</div>
+						</button>
+					))}
+				</div>
+			) : null}
+
+			{data && data.pagination.totalPages > 1 ? (
+				<div className="flex items-center justify-center gap-3">
+					<Button
+						size="icon-sm"
+						variant="ghost"
+						disabled={filters.page <= 1}
+						onClick={() => setFilters((prev) => ({ ...prev, page: prev.page - 1 }))}
+						aria-label="Página anterior"
+					>
+						<ChevronLeft className="h-4 w-4" />
+					</Button>
+					<span className="text-xs text-muted-foreground">
+						{data.pagination.page} de {data.pagination.totalPages}
+					</span>
+					<Button
+						size="icon-sm"
+						variant="ghost"
+						disabled={filters.page >= data.pagination.totalPages}
+						onClick={() => setFilters((prev) => ({ ...prev, page: prev.page + 1 }))}
+						aria-label="Próxima página"
+					>
+						<ChevronRight className="h-4 w-4" />
+					</Button>
+				</div>
+			) : null}
+
+			{runIdAberto ? <AgentRunDrawer runId={runIdAberto} closeModal={() => setRunIdAberto(null)} /> : null}
+		</div>
+	);
+}

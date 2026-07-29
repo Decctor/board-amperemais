@@ -1,4 +1,5 @@
 "use client";
+import SettingsAiAgent from "@/components/Settings/SettingsAiAgent";
 import SettingsDevices from "@/components/Settings/SettingsDevices";
 import SettingsIntegration from "@/components/Settings/SettingsIntegration";
 import SettingsOrg from "@/components/Settings/SettingsOrg";
@@ -11,7 +12,7 @@ import UnauthorizedPage from "@/components/Utils/UnauthorizedPage";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { copyToClipboard } from "@/lib/utils";
-import { Building2, Grid3x3, Key, MessageCircleIcon, Plug, Presentation, TabletSmartphone, User, UsersRound } from "lucide-react";
+import { Bot, Building2, Grid3x3, Key, MessageCircleIcon, Plug, Presentation, TabletSmartphone, User, UsersRound } from "lucide-react";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 type SettingsPageProps = {
 	user: TAuthUserSession["user"];
@@ -20,7 +21,7 @@ type SettingsPageProps = {
 export default function SettingsPage({ user, membership }: SettingsPageProps) {
 	const [view, setView] = useQueryState(
 		"view",
-		parseAsStringEnum(["profile", "users", "meta-oauth", "message-templates", "segments", "organization", "integration", "devices"]),
+		parseAsStringEnum(["profile", "users", "meta-oauth", "message-templates", "segments", "organization", "integration", "devices", "ai-agent"]),
 	);
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
@@ -111,6 +112,15 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 						<Grid3x3 className="w-4 h-4 min-w-4 min-h-4" />
 						SEGMENTAÇÕES
 					</Button>
+					<Button
+						variant={view === "ai-agent" ? "secondary" : "ghost"}
+						className="flex items-center gap-2 whitespace-nowrap"
+						size="sm"
+						onClick={() => setView("ai-agent")}
+					>
+						<Bot className="w-4 h-4 min-w-4 min-h-4" />
+						AGENTE DE IA
+					</Button>
 				</div>
 			</div>
 			{!view || view === "profile" ? <SettingsProfile sessionUser={user} /> : null}
@@ -133,6 +143,7 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 			{view === "segments" ? <SettingsSegments user={user} /> : null}
 			{view === "organization" ? <SettingsOrg user={user} membership={membership} /> : null}
 			{view === "integration" ? <SettingsIntegration user={user} membership={membership} /> : null}
+			{view === "ai-agent" ? <SettingsAiAgent membership={membership} /> : null}
 		</div>
 	);
 }
