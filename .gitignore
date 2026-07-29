@@ -43,3 +43,11 @@ next-env.d.ts
 
 # Extratos de teste gerados por scripts/generate-test-bank-statement.ts
 scripts/output/
+
+# O gerenciador do projeto é o npm (package-lock.json). Um lockfile de outro
+# gerenciador commitado por engano faz a Vercel trocar de package manager, e o
+# node_modules estrito do pnpm/yarn deixa de expor dependências transitivas que
+# o hoisting do npm resolvia — o build quebra em imports que nunca mudaram.
+pnpm-lock.yaml
+yarn.lock
+bun.lockb
