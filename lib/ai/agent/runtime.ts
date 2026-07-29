@@ -96,7 +96,9 @@ export async function prepareAgentExecution({
 			db: database,
 			organizacaoId,
 			agent: { id: agent.id, nome: agent.nome },
-			run: { id: run.id, gatilho },
+			// A mensagem é a chave estável entre retries do mesmo evento; no playground não há
+			// mensagem gatilho e o próprio run assume esse papel.
+			run: { id: run.id, gatilho, mensagemGatilhoId: mensagemGatilhoId ?? null },
 			chat: { id: chatId, clienteId },
 			capacidades,
 		},

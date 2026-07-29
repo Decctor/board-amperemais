@@ -1,5 +1,5 @@
 import type { TAiAgentCapacidades } from "@/schemas/ai-agents";
-import type { TAiAgentRunGatilhoEnum, TAiAgentToolNameEnum } from "@/schemas/enums";
+import type { TAiAgentOperationTypeEnum, TAiAgentRunGatilhoEnum, TAiAgentToolNameEnum } from "@/schemas/enums";
 import type { DB, DBTransaction } from "@/services/drizzle";
 import type z from "zod";
 
@@ -14,9 +14,11 @@ export type TAgentToolContext = {
 	db: DB | DBTransaction;
 	organizacaoId: string;
 	agent: { id: string; nome: string };
-	run: { id: string; gatilho: TAiAgentRunGatilhoEnum };
+	run: { id: string; gatilho: TAiAgentRunGatilhoEnum; mensagemGatilhoId: string | null };
 	chat: { id: string; clienteId: string };
 	capacidades: TAiAgentCapacidades;
+	toolCall?: { id: string };
+	operation?: { id: string; tipo: TAiAgentOperationTypeEnum };
 };
 
 /**
@@ -35,6 +37,7 @@ export type TAgentToolDefinition<TInputSchema extends z.ZodTypeAny = z.ZodTypeAn
 	/** Descrição rica: é por ela que o modelo decide quais filtros usar. */
 	description: string;
 	inputSchema: TInputSchema;
+	operation?: { tipo: TAiAgentOperationTypeEnum; leaseMs: number };
 	execute: (input: z.infer<TInputSchema>, context: TAgentToolContext) => Promise<TAgentToolOutput>;
 };
 
@@ -50,5 +53,6 @@ export type TAgentToolDefinitionErased = {
 	name: TAiAgentToolNameEnum;
 	description: string;
 	inputSchema: z.ZodTypeAny;
+	operation?: { tipo: TAiAgentOperationTypeEnum; leaseMs: number };
 	execute: (input: never, context: TAgentToolContext) => Promise<TAgentToolOutput>;
 };

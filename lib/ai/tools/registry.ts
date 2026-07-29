@@ -1,12 +1,15 @@
 import type { TAiAgentToolNameEnum } from "@/schemas/enums";
-import { aiAgentToolCalls } from "@/services/drizzle/schema";
+import { aiAgentOperations, aiAgentToolCalls } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
+import { claimAgentOperation } from "../operations/claim";
+import { completeAgentOperation, failAgentOperation } from "../operations/lifecycle";
 import { cashbackTool } from "./cashback";
 import { couponsTool } from "./coupons";
 import { customerPurchasesTool } from "./customer-purchases";
 import { assertToolEnabled, isToolEnabled } from "./guards";
 import { humanHandoffTool } from "./human-handoff";
 import { productsTool } from "./products";
+import { quotesTool } from "./quotes";
 import type { TAgentToolContext, TAgentToolDefinitionErased, TAgentToolOutput } from "./types";
 
 /**
@@ -22,6 +25,7 @@ import type { TAgentToolContext, TAgentToolDefinitionErased, TAgentToolOutput } 
 export const AGENT_TOOL_REGISTRY: Record<TAiAgentToolNameEnum, TAgentToolDefinitionErased> = {
 	"clientes.consultar_compras": customerPurchasesTool,
 	"produtos.consultar": productsTool,
+	"orcamentos.criar": quotesTool,
 	"cashback.consultar": cashbackTool,
 	"cupons.consultar": couponsTool,
 	"atendimento.transferir_para_humano": humanHandoffTool,
@@ -77,15 +81,76 @@ export async function executeAgentTool({
 
 	if (!toolCall) throw new Error("Erro ao registrar a chamada de ferramenta.");
 
+	let claimedOperationId: string | null = null;
 	try {
 		assertToolEnabled(context.capacidades, definition.name);
+		let executionContext: TAgentToolContext = { ...context, toolCall: { id: toolCall.id } };
+
+		if (definition.operation) {
+			const claim = await claimAgentOperation({
+				db: context.db,
+				organizacaoId: context.organizacaoId,
+				agenteId: context.agent.id,
+				runId: context.run.id,
+				tipo: definition.operation.tipo,
+				chave: context.run.mensagemGatilhoId ?? context.run.id,
+				input: parsedInput,
+				leaseMs: definition.operation.leaseMs,
+			});
+			await context.db.update(aiAgentToolCalls).set({ operacaoId: claim.operation.id }).where(eq(aiAgentToolCalls.id, toolCall.id));
+
+			if (claim.state !== "CLAIMED") {
+				const output: TAgentToolOutput =
+					claim.state === "REPLAY"
+						? normalizeToolOutput(claim.operation.output, "Resultado idempotente recuperado.")
+						: claim.state === "IN_PROGRESS"
+							? {
+									success: false,
+									message: "Essa operação já está em processamento.",
+									result: { codigo: "OPERACAO_EM_ANDAMENTO" },
+								}
+							: claim.state === "CONFLICT"
+								? {
+										success: false,
+										message: "A mesma solicitação já foi usada com dados diferentes.",
+										result: { codigo: "CHAVE_IDEMPOTENCIA_DIVERGENTE" },
+									}
+								: {
+										success: false,
+										message: "A operação não pode ser repetida.",
+										result: {
+											codigo: "OPERACAO_FALHOU",
+											...(claim.operation.output === null ? {} : { detalhe: claim.operation.output }),
+										},
+									};
+				await context.db.update(aiAgentToolCalls).set({ status: "CONCLUIDO", output }).where(eq(aiAgentToolCalls.id, toolCall.id));
+				return output;
+			}
+
+			claimedOperationId = claim.operation.id;
+			executionContext = { ...executionContext, operation: { id: claim.operation.id, tipo: claim.operation.tipo } };
+		}
+
 		// Cast único do input apagado: `parsedInput` já passou pelo `inputSchema` da ferramenta.
 		const execute = definition.execute as (input: unknown, context: TAgentToolContext) => Promise<TAgentToolOutput>;
-		const rawOutput = await execute(parsedInput, context);
+		const rawOutput = await execute(parsedInput, executionContext);
 		const output = normalizeToolOutput(rawOutput, `Ferramenta ${definition.name} executada com sucesso.`);
+		if (claimedOperationId) {
+			const operation = await context.db.query.aiAgentOperations.findFirst({ where: eq(aiAgentOperations.id, claimedOperationId) });
+			if (operation?.status === "PROCESSANDO") {
+				await completeAgentOperation({ db: context.db, operationId: claimedOperationId, output });
+			}
+		}
 		await context.db.update(aiAgentToolCalls).set({ status: "CONCLUIDO", output }).where(eq(aiAgentToolCalls.id, toolCall.id));
 		return output;
 	} catch (error) {
+		if (claimedOperationId) {
+			try {
+				await failAgentOperation({ db: context.db, operationId: claimedOperationId, error, retryable: true });
+			} catch {
+				// A falha original continua sendo a causa da tool call; a operação expirada poderá ser retomada pelo lease.
+			}
+		}
 		await context.db
 			.update(aiAgentToolCalls)
 			.set({ status: "FALHA", erro: error instanceof Error ? error.message : String(error) })

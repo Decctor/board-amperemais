@@ -27,6 +27,8 @@ export default function AgentConfigForm() {
 		updateModelConfig,
 		updateLimits,
 		updateAttendanceSettings,
+		updatePrices,
+		updateQuotes,
 		toggleTool,
 		addKnowledgeBlock,
 		updateKnowledgeBlock,
@@ -67,6 +69,7 @@ export default function AgentConfigForm() {
 
 	if (isLoading) return <LoadingComponent />;
 	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
+	if (!data) return <ErrorComponent msg="Não foi possível carregar a configuração do agente." />;
 
 	return (
 		<div className="flex w-full flex-col gap-8">
@@ -79,7 +82,15 @@ export default function AgentConfigForm() {
 
 			<div className="flex w-full flex-col gap-4 border-t pt-6">
 				<h2 className="text-sm font-bold uppercase tracking-tight">O QUE O AGENTE PODE CONSULTAR</h2>
-				<ToolsBlock state={state} toggleTool={toggleTool} updateLimits={updateLimits} updateAttendanceSettings={updateAttendanceSettings} />
+				<ToolsBlock
+					state={state}
+					diagnosticoComercial={data.diagnosticoComercial}
+					toggleTool={toggleTool}
+					updateLimits={updateLimits}
+					updateAttendanceSettings={updateAttendanceSettings}
+					updatePrices={updatePrices}
+					updateQuotes={updateQuotes}
+				/>
 			</div>
 
 			<div className="flex w-full flex-col gap-4 border-t pt-6">

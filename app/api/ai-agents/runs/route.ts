@@ -53,6 +53,23 @@ async function getAiAgentRuns({ input, organizacaoId }: { input: TGetAiAgentRuns
 		const toolCalls = await db.query.aiAgentToolCalls.findMany({
 			where: and(eq(aiAgentToolCalls.runId, run.id), eq(aiAgentToolCalls.organizacaoId, organizacaoId)),
 			orderBy: [asc(aiAgentToolCalls.dataInsercao)],
+			with: {
+				operacao: {
+					columns: {
+						id: true,
+						tipo: true,
+						status: true,
+						recursoTipo: true,
+						recursoId: true,
+						erro: true,
+						dataInicio: true,
+						dataFim: true,
+					},
+					with: {
+						chamadas: { columns: { id: true } },
+					},
+				},
+			},
 		});
 
 		return {

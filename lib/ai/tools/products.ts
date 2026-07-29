@@ -17,7 +17,8 @@ export const productsTool = defineAgentTool({
 	name: "produtos.consultar",
 	description: `Consulta o catálogo de produtos da empresa.
 
-Use visao="LISTA" (padrão) para ver produtos com nome, código, grupo, preço e variações.
+Use visao="LISTA" (padrão) para ver produtos com ID, nome, código, grupo e variações. Preços de
+venda aparecem somente quando a política comercial do agente permite.
 Use visao="GRUPOS" para descobrir quais categorias de produto existem, com a contagem de cada
 uma — útil quando o cliente pergunta "o que vocês vendem?".
 
@@ -41,6 +42,14 @@ pedir mais páginas. Nunca invente preços ou disponibilidade: informe apenas o 
 	}),
 	async execute(input, context) {
 		const { db, organizacaoId } = context;
+		const pricesVisible = context.capacidades.comercial.precos.visiveis;
+		if (!pricesVisible && (input.precoMin !== undefined || input.precoMax !== undefined)) {
+			return {
+				success: false,
+				message: "A consulta por faixa de preço não está disponível para este agente.",
+				result: { codigo: "PRECOS_NAO_VISIVEIS" },
+			};
+		}
 		const limit = input.limite ?? 10;
 		const view = input.visao ?? "LISTA";
 		const activeOnly = input.apenasAtivos ?? true;
@@ -95,11 +104,11 @@ pedir mais páginas. Nunca invente preços ou disponibilidade: informe apenas o 
 			where,
 			orderBy: [asc(products.nome)],
 			limit,
-			columns: { nome: true, codigo: true, grupo: true, unidade: true, precoVenda: true, descricao: true },
+			columns: { id: true, nome: true, codigo: true, grupo: true, unidade: true, precoVenda: true, descricao: true },
 			with: {
 				variantes: {
 					where: activeOnly ? (variante, { eq: equals }) => equals(variante.ativo, true) : undefined,
-					columns: { nome: true, codigo: true, precoVenda: true },
+					columns: { id: true, nome: true, codigo: true, precoVenda: true },
 					limit: 20,
 				},
 			},
@@ -111,16 +120,18 @@ pedir mais páginas. Nunca invente preços ou disponibilidade: informe apenas o 
 			result: {
 				totalEncontrado,
 				produtos: found.map((product) => ({
+					produtoId: product.id,
 					nome: product.nome,
 					codigo: product.codigo,
 					grupo: product.grupo,
 					unidade: product.unidade,
-					precoVenda: product.precoVenda,
+					...(pricesVisible ? { preco: product.precoVenda } : {}),
 					descricao: product.descricao,
 					variacoes: product.variantes.map((variant) => ({
+						produtoVarianteId: variant.id,
 						nome: variant.nome,
 						codigo: variant.codigo,
-						precoVenda: variant.precoVenda,
+						...(pricesVisible ? { preco: variant.precoVenda } : {}),
 					})),
 				})),
 			},

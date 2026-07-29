@@ -67,17 +67,80 @@ export function useInternalAiAgentState() {
 		}));
 	}, []);
 
-	const toggleTool = useCallback((name: TAiAgentToolNameEnum, enabled: boolean) => {
+	const updatePrices = useCallback((precos: Partial<TAiAgentCapacidades["comercial"]["precos"]>) => {
+		setState((prev) => {
+			const nextVisible = precos.visiveis ?? prev.agente.capacidades.comercial.precos.visiveis;
+			return {
+				...prev,
+				agente: {
+					...prev.agente,
+					capacidades: {
+						...prev.agente.capacidades,
+						comercial: {
+							...prev.agente.capacidades.comercial,
+							precos: { ...prev.agente.capacidades.comercial.precos, ...precos },
+						},
+						ferramentas: nextVisible
+							? prev.agente.capacidades.ferramentas
+							: {
+									...prev.agente.capacidades.ferramentas,
+									"orcamentos.criar": { habilitada: false },
+								},
+					},
+				},
+			};
+		});
+	}, []);
+
+	const updateQuotes = useCallback((orcamentos: Partial<TAiAgentCapacidades["comercial"]["orcamentos"]>) => {
 		setState((prev) => ({
 			...prev,
 			agente: {
 				...prev.agente,
 				capacidades: {
 					...prev.agente.capacidades,
-					ferramentas: { ...prev.agente.capacidades.ferramentas, [name]: { habilitada: enabled } },
+					comercial: {
+						...prev.agente.capacidades.comercial,
+						orcamentos: { ...prev.agente.capacidades.comercial.orcamentos, ...orcamentos },
+					},
+					ferramentas:
+						orcamentos.bloqueio === "TRANSFERIR"
+							? {
+									...prev.agente.capacidades.ferramentas,
+									"atendimento.transferir_para_humano": { habilitada: true },
+								}
+							: prev.agente.capacidades.ferramentas,
 				},
 			},
 		}));
+	}, []);
+
+	const toggleTool = useCallback((name: TAiAgentToolNameEnum, enabled: boolean) => {
+		setState((prev) => {
+			const ferramentas = { ...prev.agente.capacidades.ferramentas, [name]: { habilitada: enabled } };
+			const isQuoteBeingEnabled = name === "orcamentos.criar" && enabled;
+			const isHandoffBeingDisabled = name === "atendimento.transferir_para_humano" && !enabled;
+			return {
+				...prev,
+				agente: {
+					...prev.agente,
+					capacidades: {
+						...prev.agente.capacidades,
+						ferramentas,
+						comercial: {
+							...prev.agente.capacidades.comercial,
+							precos: isQuoteBeingEnabled
+								? { ...prev.agente.capacidades.comercial.precos, visiveis: true }
+								: prev.agente.capacidades.comercial.precos,
+							orcamentos:
+								isHandoffBeingDisabled && prev.agente.capacidades.comercial.orcamentos.bloqueio === "TRANSFERIR"
+									? { ...prev.agente.capacidades.comercial.orcamentos, bloqueio: "INFORMAR" }
+									: prev.agente.capacidades.comercial.orcamentos,
+						},
+					},
+				},
+			};
+		});
 	}, []);
 
 	const addKnowledgeBlock = useCallback(() => {
@@ -112,6 +175,8 @@ export function useInternalAiAgentState() {
 		updateModelConfig,
 		updateLimits,
 		updateAttendanceSettings,
+		updatePrices,
+		updateQuotes,
 		toggleTool,
 		addKnowledgeBlock,
 		updateKnowledgeBlock,

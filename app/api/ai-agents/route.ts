@@ -1,8 +1,10 @@
 import { ensureOrganizationAgent } from "@/lib/ai/agent/provisioning";
+import { parseJsonbWithFallback } from "@/lib/ai/shared/json";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
-import { UpdateAiAgentKnowledgeSchema, UpdateAiAgentSchema } from "@/schemas/ai-agents";
+import { getCatalogCommercialReadiness } from "@/lib/products/commercial-readiness";
+import { AiAgentCapacidadesSchema, AiAgentModeloConfigSchema, UpdateAiAgentKnowledgeSchema, UpdateAiAgentSchema } from "@/schemas/ai-agents";
 import { db } from "@/services/drizzle";
 import { aiAgentKnowledge, aiAgents } from "@/services/drizzle/schema";
 import { and, asc, eq } from "drizzle-orm";
@@ -33,8 +35,15 @@ async function getAiAgent({ organizacaoId }: { organizacaoId: string }) {
 		orderBy: [asc(aiAgentKnowledge.ordem), asc(aiAgentKnowledge.dataInsercao)],
 	});
 
+	const parsedAgent = {
+		...agent,
+		modeloConfig: parseJsonbWithFallback(AiAgentModeloConfigSchema, agent.modeloConfig),
+		capacidades: parseJsonbWithFallback(AiAgentCapacidadesSchema, agent.capacidades),
+	};
+	const diagnosticoComercial = await getCatalogCommercialReadiness({ db, organizacaoId });
+
 	return {
-		data: { agente: agent, conhecimento: knowledge },
+		data: { agente: parsedAgent, conhecimento: knowledge, diagnosticoComercial },
 		message: "Agente de IA carregado com sucesso.",
 	};
 }

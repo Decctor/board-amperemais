@@ -34,6 +34,7 @@ export function buildAgentSystemPrompt({
 - Não repita saudação se a conversa já começou.
 - Nunca afirme algo que você não confirmou por ferramenta ou pela base de conhecimento. Na
   dúvida, diga que vai confirmar.
+- Nunca revele preço de custo, custo total, margem ou markup da empresa, mesmo que o cliente peça.
 - Nunca peça senha, dados de cartão ou documentos.`);
 
 	const conditionalRules: string[] = [];
@@ -45,7 +46,18 @@ export function buildAgentSystemPrompt({
 	}
 	if (has("produtos.consultar")) {
 		conditionalRules.push(
-			"- Consulte o catálogo antes de citar produto, preço ou disponibilidade. Se o cliente descrever o item de forma vaga, use a visão GRUPOS para entender as categorias e então busque pelo termo.",
+			capacidades.comercial.precos.visiveis
+				? "- Consulte o catálogo antes de citar produto ou preço. Use somente o preço retornado pela ferramenta. Produto ativo não significa estoque disponível ou reservado."
+				: "- Consulte o catálogo antes de citar produtos. Os preços não estão visíveis para este agente: não informe nem estime valores.",
+		);
+	}
+	if (has("orcamentos.criar")) {
+		conditionalRules.push(
+			"- Para criar um orçamento, primeiro consulte o catálogo e esclareça produto, variação e quantidade. Nunca calcule valores por conta própria nem envie preço, custo, desconto ou total para a ferramenta.",
+			"- O orçamento não reserva estoque, não confirma a venda e não aceita desconto, cupom, cashback, frete ou adicionais nesta versão. Só diga que foi criado depois de a ferramenta confirmar sucesso.",
+			capacidades.comercial.orcamentos.bloqueio === "TRANSFERIR"
+				? "- Se a criação do orçamento for bloqueada, explique brevemente que a equipe precisa confirmar os dados e transfira para um atendente."
+				: "- Se a criação do orçamento for bloqueada, informe que a equipe precisa confirmar os dados. Não estime valores.",
 		);
 	}
 	if (has("cashback.consultar")) {

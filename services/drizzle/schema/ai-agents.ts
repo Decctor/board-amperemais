@@ -3,6 +3,9 @@ import type {
 	TAiAgentRunGatilhoEnum,
 	TAiAgentRunStatusEnum,
 	TAiAgentStatusEnum,
+	TAiAgentOperationResourceTypeEnum,
+	TAiAgentOperationStatusEnum,
+	TAiAgentOperationTypeEnum,
 	TAiAgentToolCallStatusEnum,
 	TAiAgentToolNameEnum,
 } from "@/schemas/enums";
@@ -60,6 +63,7 @@ export const aiAgentsRelations = relations(aiAgents, ({ one, many }) => ({
 	}),
 	conhecimento: many(aiAgentKnowledge),
 	execucoes: many(aiAgentRuns),
+	operacoes: many(aiAgentOperations),
 }));
 export type TAiAgentEntity = typeof aiAgents.$inferSelect;
 export type TNewAiAgentEntity = typeof aiAgents.$inferInsert;
@@ -173,9 +177,70 @@ export const aiAgentRunsRelations = relations(aiAgentRuns, ({ one, many }) => ({
 		references: [chatMessages.id],
 	}),
 	chamadasFerramentas: many(aiAgentToolCalls),
+	operacoes: many(aiAgentOperations),
 }));
 export type TAiAgentRunEntity = typeof aiAgentRuns.$inferSelect;
 export type TNewAiAgentRunEntity = typeof aiAgentRuns.$inferInsert;
+
+// ============================================================================
+// OPERAÇÕES DURÁVEIS
+// ============================================================================
+
+/**
+ * Uma operação lógica mutável iniciada pelo agente. Diferente de uma tool call: retries e runs
+ * distintos podem apontar para a mesma operação sem repetir o efeito de negócio.
+ */
+export const aiAgentOperations = newTable(
+	"ai_agent_operations",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		agenteId: varchar("agente_id", { length: 255 })
+			.references(() => aiAgents.id, { onDelete: "cascade" })
+			.notNull(),
+		runId: varchar("run_id", { length: 255 }).references(() => aiAgentRuns.id, { onDelete: "set null" }),
+		tipo: varchar("tipo", { length: 64 }).$type<TAiAgentOperationTypeEnum>().notNull(),
+		chave: varchar("chave", { length: 255 }).notNull(),
+		inputHash: varchar("input_hash", { length: 64 }).notNull(),
+		status: varchar("status", { length: 32 }).$type<TAiAgentOperationStatusEnum>().notNull().default("PROCESSANDO"),
+		input: jsonb("input"),
+		output: jsonb("output"),
+		recursoTipo: varchar("recurso_tipo", { length: 64 }).$type<TAiAgentOperationResourceTypeEnum>(),
+		recursoId: varchar("recurso_id", { length: 255 }),
+		erro: text("erro"),
+		leaseAte: timestamp("lease_ate").notNull(),
+		dataInicio: timestamp("data_inicio").defaultNow().notNull(),
+		dataFim: timestamp("data_fim"),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+		dataAtualizacao: timestamp("data_atualizacao").$onUpdate(() => new Date()),
+	},
+	(table) => [
+		uniqueIndex("ai_agent_operations_org_tipo_chave_idx").on(table.organizacaoId, table.tipo, table.chave),
+		index("ai_agent_operations_agent_status_idx").on(table.agenteId, table.status),
+		index("ai_agent_operations_resource_idx").on(table.recursoTipo, table.recursoId),
+	],
+);
+export const aiAgentOperationsRelations = relations(aiAgentOperations, ({ one, many }) => ({
+	organizacao: one(organizations, {
+		fields: [aiAgentOperations.organizacaoId],
+		references: [organizations.id],
+	}),
+	agente: one(aiAgents, {
+		fields: [aiAgentOperations.agenteId],
+		references: [aiAgents.id],
+	}),
+	run: one(aiAgentRuns, {
+		fields: [aiAgentOperations.runId],
+		references: [aiAgentRuns.id],
+	}),
+	chamadas: many(aiAgentToolCalls),
+}));
+export type TAiAgentOperationEntity = typeof aiAgentOperations.$inferSelect;
+export type TNewAiAgentOperationEntity = typeof aiAgentOperations.$inferInsert;
 
 /**
  * Auditoria de cada chamada de ferramenta. A linha nasce **antes** da execução (status
@@ -196,6 +261,7 @@ export const aiAgentToolCalls = newTable(
 		agenteId: varchar("agente_id", { length: 255 })
 			.references(() => aiAgents.id, { onDelete: "cascade" })
 			.notNull(),
+		operacaoId: varchar("operacao_id", { length: 255 }).references(() => aiAgentOperations.id, { onDelete: "set null" }),
 		ferramentaNome: varchar("ferramenta_nome", { length: 128 }).$type<TAiAgentToolNameEnum>().notNull(),
 		status: varchar("status", { length: 32 }).$type<TAiAgentToolCallStatusEnum>().notNull().default("EXECUTANDO"),
 		// Input já validado pelo schema Zod da ferramenta.
@@ -216,10 +282,14 @@ export const aiAgentToolCallsRelations = relations(aiAgentToolCalls, ({ one }) =
 		fields: [aiAgentToolCalls.runId],
 		references: [aiAgentRuns.id],
 	}),
-	agente: one(aiAgents, {
-		fields: [aiAgentToolCalls.agenteId],
-		references: [aiAgents.id],
-	}),
-}));
+		agente: one(aiAgents, {
+			fields: [aiAgentToolCalls.agenteId],
+			references: [aiAgents.id],
+		}),
+		operacao: one(aiAgentOperations, {
+			fields: [aiAgentToolCalls.operacaoId],
+			references: [aiAgentOperations.id],
+		}),
+	}));
 export type TAiAgentToolCallEntity = typeof aiAgentToolCalls.$inferSelect;
 export type TNewAiAgentToolCallEntity = typeof aiAgentToolCalls.$inferInsert;

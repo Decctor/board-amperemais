@@ -4,6 +4,7 @@ import {
 	accountsCharts,
 	actionApprovalRequests,
 	aiAgentKnowledge,
+	aiAgentOperations,
 	aiAgentRuns,
 	aiAgentToolCalls,
 	aiAgents,
@@ -154,6 +155,7 @@ export async function deleteAllOrganizationData({
 	// --- Agentes de IA ---
 	// Antes das conversas: `ai_agent_runs` referencia `chats` e `chat_messages`.
 	await trx.delete(aiAgentToolCalls).where(eq(aiAgentToolCalls.organizacaoId, organizationId));
+	await trx.delete(aiAgentOperations).where(eq(aiAgentOperations.organizacaoId, organizationId));
 	await trx.delete(aiAgentRuns).where(eq(aiAgentRuns.organizacaoId, organizationId));
 	await trx.delete(aiAgentKnowledge).where(eq(aiAgentKnowledge.organizacaoId, organizationId));
 	await trx.delete(aiAgents).where(eq(aiAgents.organizacaoId, organizationId));

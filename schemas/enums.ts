@@ -513,11 +513,21 @@ export type TAiAgentToolCallStatusEnum = z.infer<typeof AiAgentToolCallStatusEnu
 export const AiAgentToolNameEnum = z.enum([
 	"clientes.consultar_compras",
 	"produtos.consultar",
+	"orcamentos.criar",
 	"cashback.consultar",
 	"cupons.consultar",
 	"atendimento.transferir_para_humano",
 ]);
 export type TAiAgentToolNameEnum = z.infer<typeof AiAgentToolNameEnum>;
+
+// Operações mutáveis e duráveis iniciadas por ferramentas do agente. Permanecem varchar no
+// banco: novos tipos de operação/recurso não devem exigir ALTER TYPE em produção.
+export const AiAgentOperationStatusEnum = z.enum(["PROCESSANDO", "CONCLUIDA", "FALHA_REPETIVEL", "FALHA_FINAL"]);
+export type TAiAgentOperationStatusEnum = z.infer<typeof AiAgentOperationStatusEnum>;
+export const AiAgentOperationTypeEnum = z.enum(["ORCAMENTO_CRIAR"]);
+export type TAiAgentOperationTypeEnum = z.infer<typeof AiAgentOperationTypeEnum>;
+export const AiAgentOperationResourceTypeEnum = z.enum(["VENDA"]);
+export type TAiAgentOperationResourceTypeEnum = z.infer<typeof AiAgentOperationResourceTypeEnum>;
 
 // Origem do chat. PLAYGROUND é chat sintético de teste do agente e é filtrado do hub.
 export const ChatOriginEnum = z.enum(["WHATSAPP", "PLAYGROUND"]);

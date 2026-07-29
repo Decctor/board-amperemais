@@ -55,6 +55,7 @@ export const AiAgentFerramentasConfigSchema = z
 	.object({
 		"clientes.consultar_compras": AiAgentFerramentaConfigSchema.optional(),
 		"produtos.consultar": AiAgentFerramentaConfigSchema.optional(),
+		"orcamentos.criar": AiAgentFerramentaConfigSchema.optional(),
 		"cashback.consultar": AiAgentFerramentaConfigSchema.optional(),
 		"cupons.consultar": AiAgentFerramentaConfigSchema.optional(),
 		"atendimento.transferir_para_humano": AiAgentFerramentaConfigSchema.optional(),
@@ -62,10 +63,33 @@ export const AiAgentFerramentasConfigSchema = z
 	.default({});
 export type TAiAgentFerramentasConfig = z.infer<typeof AiAgentFerramentasConfigSchema>;
 
+export const AiAgentPrecosConfigSchema = z
+	.object({
+		visiveis: z.boolean({ invalid_type_error: "Tipo não válido para a visibilidade dos preços." }).default(true),
+	})
+	.default({});
+export type TAiAgentPrecosConfig = z.infer<typeof AiAgentPrecosConfigSchema>;
+
+export const AiAgentOrcamentosConfigSchema = z
+	.object({
+		bloqueio: z.enum(["TRANSFERIR", "INFORMAR"]).default("TRANSFERIR"),
+	})
+	.default({});
+export type TAiAgentOrcamentosConfig = z.infer<typeof AiAgentOrcamentosConfigSchema>;
+
+export const AiAgentComercialConfigSchema = z
+	.object({
+		precos: AiAgentPrecosConfigSchema,
+		orcamentos: AiAgentOrcamentosConfigSchema,
+	})
+	.default({});
+export type TAiAgentComercialConfig = z.infer<typeof AiAgentComercialConfigSchema>;
+
 export const AiAgentCapacidadesSchema = z
 	.object({
 		version: z.literal(1).default(1),
 		ferramentas: AiAgentFerramentasConfigSchema,
+		comercial: AiAgentComercialConfigSchema,
 		limites: z
 			.object({
 				// Vira `stopWhen: stepCountIs(...)` no loop do agente.
@@ -94,6 +118,26 @@ export const AiAgentCapacidadesSchema = z
 					.default(5000),
 			})
 			.default({}),
+	})
+	.superRefine((capabilities, ctx) => {
+		if (capabilities.ferramentas["orcamentos.criar"]?.habilitada && !capabilities.comercial.precos.visiveis) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Preços precisam estar visíveis para habilitar a criação de orçamentos.",
+				path: ["comercial", "precos", "visiveis"],
+			});
+		}
+		if (
+			capabilities.ferramentas["orcamentos.criar"]?.habilitada &&
+			capabilities.comercial.orcamentos.bloqueio === "TRANSFERIR" &&
+			!capabilities.ferramentas["atendimento.transferir_para_humano"]?.habilitada
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "A transferência para atendente precisa estar habilitada para usar essa política de bloqueio.",
+				path: ["comercial", "orcamentos", "bloqueio"],
+			});
+		}
 	})
 	.default({});
 export type TAiAgentCapacidades = z.infer<typeof AiAgentCapacidadesSchema>;

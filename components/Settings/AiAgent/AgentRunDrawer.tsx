@@ -4,6 +4,7 @@ import { useAiAgentRunById } from "@/lib/queries/ai-agents";
 import { cn } from "@/lib/utils";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import Link from "next/link";
 
 type AgentRunDrawerProps = {
 	runId: string;
@@ -113,6 +114,23 @@ export default function AgentRunDrawer({ runId, closeModal }: AgentRunDrawerProp
 											<span className="font-mono text-xs font-bold">{toolCall.ferramentaNome}</span>
 										</div>
 										{toolCall.erro ? <p className="text-xs text-destructive">{toolCall.erro}</p> : null}
+										{toolCall.operacao ? (
+											<div className="flex flex-col gap-1 rounded-md bg-muted px-3 py-2 text-xs">
+												<span>
+													Operação: <strong>{toolCall.operacao.tipo}</strong> · {toolCall.operacao.status} ·{" "}
+													{toolCall.operacao.chamadas.length} tentativa(s)
+												</span>
+												{toolCall.operacao.recursoTipo === "VENDA" && toolCall.operacao.recursoId ? (
+													<Link
+														href={`/dashboard/commercial/sales/${toolCall.operacao.recursoId}`}
+														className="font-medium text-primary underline-offset-4 hover:underline"
+													>
+														Abrir orçamento
+													</Link>
+												) : null}
+												{toolCall.operacao.erro ? <span className="text-destructive">{toolCall.operacao.erro}</span> : null}
+											</div>
+										) : null}
 										<JsonBlock label="Argumentos" value={toolCall.input} />
 										<JsonBlock label="Resultado" value={toolCall.output} />
 									</div>

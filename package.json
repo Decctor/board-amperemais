@@ -37,6 +37,8 @@
 		"sync:bling-collecting": "tsx ./scripts/sync-bling-collecting.ts",
 		"simulate:sale-taxes": "tsx ./scripts/simulate-todays-sale-taxes.ts",
 		"test:data-collecting-template-vars": "tsx ./scripts/validate-data-collecting-template-variables.ts",
+		"test:ai-quotes": "node --import tsx --test lib/ai/operations/hash.test.ts lib/ai/tools/quotes.test.ts lib/sales/resolve-sale-items.test.ts schemas/ai-agents.test.ts",
+		"pilot:ai-quotes": "tsx ./scripts/prepare-ai-agent-quotes-pilot.ts",
 		"sync:nuvemshop-manual": "tsx ./utils/scripts/sync-nuvemshop-manual-collecting.ts",
 		"sync:organization-products": "tsx ./utils/scripts/sync-organization-products.ts",
 		"sync:organization-manual": "tsx ./utils/scripts/sync-organization-manual-collecting.ts",
