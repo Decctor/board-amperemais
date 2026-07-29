@@ -222,8 +222,8 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 	const janela = getWhatsappWindowDisplay({ expiracao: chat.whatsappJanelaDataExpiracao, tipoConexao: chat.conexaoTipo });
 
 	return (
-		<div className="flex h-full min-h-0">
-			<div className="flex min-w-0 flex-1 flex-col">
+		<div className="flex h-full min-h-0 w-full min-w-0 overflow-hidden">
+			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 			<header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
 				<div className="flex min-w-0 flex-col">
 					<span className="truncate text-sm font-semibold">{chat.cliente?.nome ?? "Cliente sem nome"}</span>
@@ -330,7 +330,7 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 			/>
 			</div>
 
-			<aside className="hidden w-80 shrink-0 border-l border-border xl:block">
+			<aside className="hidden min-h-0 w-80 shrink-0 overflow-hidden border-l border-border xl:block">
 				<ChatContextPanel chatId={chatId} chat={chat} currentUserId={currentUser.id} />
 			</aside>
 		</div>

@@ -182,7 +182,7 @@ export function ChatSidebar({ organizationId, selectedChatId, onSelectChat, what
 	const SelectedViewIcon = selectedViewMeta.icon;
 
 	return (
-		<aside className={cn("flex h-full w-full flex-col border-r border-border bg-background", className)}>
+		<aside className={cn("flex h-full min-h-0 w-full min-w-0 flex-col border-r border-border bg-background", className)}>
 			<div className="flex flex-col gap-2 border-b border-border p-3">
 				<div className="flex flex-wrap items-center gap-2">
 					<DropdownMenu>
@@ -281,7 +281,7 @@ export function ChatSidebar({ organizationId, selectedChatId, onSelectChat, what
 				</div>
 			</div>
 
-			<div className="flex-1 overflow-y-auto">
+			<div className="min-h-0 flex-1 overflow-y-auto">
 				{isPending && <LoadingComponent />}
 				{isError && <ErrorComponent msg={getErrorMessage(error)} />}
 				{!isPending && !isError && chats.length === 0 && (
