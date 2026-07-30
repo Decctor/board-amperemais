@@ -9,7 +9,7 @@ import {
 	ModelSelectorLogo,
 	ModelSelectorName,
 	ModelSelectorTrigger,
-} from "@/components/ai-elements/model-selector";
+} from "@/components/ui/model-selector";
 import { Button } from "@/components/ui/button";
 import { AI_AGENT_MODEL_PERFIL_LABELS, AI_AGENT_MODEL_PERFIL_ORDER } from "@/lib/ai/providers/model-catalog";
 import { useAiAgentModels } from "@/lib/queries/ai-agents";

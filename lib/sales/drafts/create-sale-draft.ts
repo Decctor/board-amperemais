@@ -4,7 +4,26 @@ import type { TResolvedSaleItem } from "../resolve-sale-items";
 
 export type TSaleDraftOrigin =
 	| { tipo: "AGENTE_IA"; agenteId: string; runId: string; chatId: string; operacaoId: string }
+	| { tipo: "HUB"; usuarioId: string; chatId: string | null }
 	| { tipo: "POS" };
+
+/**
+ * Canal do rascunho: quem nasce de uma conversa é WHATSAPP (agente ou atendente do hub), o resto é POS.
+ * O canal alimenta atribuição e relatórios — um orçamento montado no hub não é venda de balcão.
+ */
+function resolveDraftChannel(origem: TSaleDraftOrigin) {
+	return origem.tipo === "POS" ? "POS" : "WHATSAPP";
+}
+
+/**
+ * A operação durável do agente já é única por (organização, tipo, chave), então serve de `idExterno`.
+ * O hub não tem esse envelope: usa UUID em vez do `Date.now()` legado do POS, que colide sob concorrência.
+ */
+function resolveDraftExternalId(origem: TSaleDraftOrigin) {
+	if (origem.tipo === "AGENTE_IA") return `AI-${origem.operacaoId}`;
+	if (origem.tipo === "HUB") return `HUB-${crypto.randomUUID()}`;
+	return `POS-${Date.now()}`;
+}
 
 export async function createSaleDraft({
 	tx,
@@ -27,7 +46,7 @@ export async function createSaleDraft({
 
 	const valorTotal = itens.reduce((total, item) => total + item.total, 0);
 	const custoTotal = itens.reduce((total, item) => total + item.custoTotal, 0);
-	const idExterno = origem.tipo === "AGENTE_IA" ? `AI-${origem.operacaoId}` : `POS-${Date.now()}`;
+	const idExterno = resolveDraftExternalId(origem);
 
 	const [sale] = await tx
 		.insert(sales)
@@ -50,12 +69,18 @@ export async function createSaleDraft({
 			serie: "",
 			situacao: "",
 			tipo: "Venda de produtos",
-			canal: origem.tipo === "AGENTE_IA" ? "WHATSAPP" : "POS",
+			canal: resolveDraftChannel(origem),
 			observacoes: observacoes ?? null,
-			rascunhoMetadados: { origem, estoqueReservado: false },
+			// `sales` não tem coluna de criação (`dataVenda` só nasce na confirmação), então o instante
+			// vive no metadado do rascunho. É o que permite ordenar e envelhecer orçamento em aberto
+			// sem inventar data. Ver `resolveQuoteCreationDate` em lib/sales/quote-freshness.ts.
+			rascunhoMetadados: { origem, estoqueReservado: false, criadoEm: new Date().toISOString() },
 			processamentoOrigem: "INTERNO",
 			statusVenda: "ORCAMENTO",
-			emissaoFiscalAutomatica: false,
+			// `null` = herda `organizations.fiscalEmissaoAutomatica` na confirmação. Gravar `false` aqui
+			// travava a emissão automática de todo orçamento criado por este serviço, mesmo com a
+			// organização configurada para emitir — o POS e a loja digital sempre herdaram.
+			emissaoFiscalAutomatica: null,
 		})
 		.returning({ id: sales.id });
 	if (!sale) throw new Error("Erro ao criar o orçamento.");

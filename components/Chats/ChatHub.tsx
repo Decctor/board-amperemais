@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { MessageSquare } from "lucide-react";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatThread } from "./ChatThread";
+import type { TQuotePermissions } from "./Quotes/config";
 
 type ChatHubProps = {
 	user: TAuthUserSession["user"];
@@ -14,9 +15,10 @@ type ChatHubProps = {
 	/** Controlado pelo workspace: o quadro também seleciona conversas. */
 	selectedChatId: string | null;
 	onSelectChat: (chatId: string | null) => void;
+	quotePermissions: TQuotePermissions;
 };
 
-export default function ChatHub({ user, organizationId, whatsappConnections, selectedChatId, onSelectChat }: ChatHubProps) {
+export default function ChatHub({ user, organizationId, whatsappConnections, selectedChatId, onSelectChat, quotePermissions }: ChatHubProps) {
 	const currentUser = { id: user.id, nome: user.nome, avatarUrl: user.avatarUrl };
 
 	return (
@@ -33,7 +35,13 @@ export default function ChatHub({ user, organizationId, whatsappConnections, sel
 
 			<div className={cn("h-full min-h-0 min-w-0 flex-1 overflow-hidden", !selectedChatId && "hidden md:block")}>
 				{selectedChatId ? (
-					<ChatThread key={selectedChatId} chatId={selectedChatId} organizationId={organizationId} currentUser={currentUser} />
+					<ChatThread
+						key={selectedChatId}
+						chatId={selectedChatId}
+						organizationId={organizationId}
+						currentUser={currentUser}
+						quotePermissions={quotePermissions}
+					/>
 				) : (
 					<div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
 						<MessageSquare className="h-8 w-8 opacity-40" />

@@ -17,8 +17,10 @@ import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ChatAssignmentActions } from "./ChatAssignmentActions";
 import { ChatContextPanel } from "./ChatContextPanel";
-import { ChatInputArea, type TOutgoingAttachment } from "./ChatInputArea";
+import { ChatInputArea, type TChatInputAreaHandle, type TOutgoingAttachment } from "./ChatInputArea";
 import { ChatMessageBubble, type TOptimisticFields } from "./ChatMessageBubble";
+import { ChatQuotesHeaderActions } from "./Quotes/ChatQuotesHeaderActions";
+import type { TQuotePermissions } from "./Quotes/config";
 
 type TThreadMessage = TChatThreadMessage & TOptimisticFields & { clientTempId?: string };
 type TInboxPage = { items: TChatInboxItem[]; hasMore: boolean; nextCursor: string | null };
@@ -27,6 +29,7 @@ type ChatThreadProps = {
 	chatId: string;
 	organizationId: string;
 	currentUser: { id: string; nome: string; avatarUrl: string | null };
+	quotePermissions: TQuotePermissions;
 };
 
 function insertMessageIntoCache(data: InfiniteData<TChatMessagesPage> | undefined, message: TChatThreadMessage) {
@@ -69,7 +72,7 @@ function formatDaySeparator(date: Date) {
 	return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadProps) {
+export function ChatThread({ chatId, organizationId, currentUser, quotePermissions }: ChatThreadProps) {
 	const queryClient = useQueryClient();
 	const queryKey = getChatMessagesQueryKey(chatId);
 	const { messages, chat, isPending, isError, error, hasNextPage, fetchNextPage, isFetchingNextPage, refetch } = useChatMessages(chatId);
@@ -77,6 +80,7 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 	const [optimisticMessages, setOptimisticMessages] = useState<TThreadMessage[]>([]);
 	const [unseenCount, setUnseenCount] = useState(0);
 	const scrollRef = useRef<HTMLDivElement>(null);
+	const inputAreaRef = useRef<TChatInputAreaHandle>(null);
 	const isAtBottomRef = useRef(true);
 	const initialSubscriptionCompleteRef = useRef(false);
 	const refetchRef = useRef(refetch);
@@ -139,7 +143,12 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 				// O realtime não traz o join de autor: para mensagens de terceiros o nome só
 				// aparece depois de um refetch.
 				if (message.autorTipo !== "CLIENTE" && message.autorUsuario?.id !== currentUser.id) void refetchRef.current();
-				if (message.autorTipo === "CLIENTE") markReadRef.current.mutate({ chatId });
+					// Um orçamento criado pelo agente sempre vem acompanhado de mensagem, então a própria
+					// thread serve de sinal — sem abrir um canal de realtime em `sales`. Invalidação por
+					// prefixo: só uma conversa está aberta por vez, e assim o `clienteId` não precisa
+					// entrar nas dependências desta inscrição.
+					if (message.autorTipo !== "CLIENTE") void queryClient.invalidateQueries({ queryKey: ["client-open-quotes"] });
+					if (message.autorTipo === "CLIENTE") markReadRef.current.mutate({ chatId });
 			})
 			.on("postgres_changes", { event: "UPDATE", schema: "public", table: "ampmais_chat_messages", filter: `chat_id=eq.${chatId}` }, (payload) => {
 				const row = payload.new as TRealtimeChatMessageRow;
@@ -249,6 +258,15 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 
 	const janela = getWhatsappWindowDisplay({ expiracao: chat.whatsappJanelaDataExpiracao, tipoConexao: chat.conexaoTipo });
 
+	/**
+	 * Inserir o orçamento na conversa só faz sentido quando a conversa aceita texto livre agora: sem
+	 * posse do atendimento não há o que enviar, e com a janela de 24h expirada só sai template
+	 * aprovado. Fora dessas condições o orçamento continua registrado, apenas não é oferecido o
+	 * atalho de escrever a mensagem.
+	 */
+	const canWriteInConversation = isOwner && janela.variant !== "expirada";
+	const insertQuoteInConversation = canWriteInConversation ? (texto: string) => inputAreaRef.current?.appendText(texto) : undefined;
+
 	return (
 		<div className="flex h-full min-h-0 w-full min-w-0 overflow-hidden">
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -265,6 +283,17 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 						</span>
 					</div>
 					<div className="flex items-center gap-1.5">
+						{/* Orçamento em aberto é pendência comercial: aparece no header, que é a única
+						    faixa sempre visível da thread. O `flex-wrap` do header cuida da quebra em
+						    telas estreitas. */}
+						<ChatQuotesHeaderActions
+							chatId={chatId}
+							clientId={chat.clienteId}
+							clientName={chat.cliente?.nome ?? "este cliente"}
+							permissions={quotePermissions}
+							onInsertInConversation={insertQuoteInConversation}
+						/>
+
 						{/* Header carrega só posse e roteamento; status e prioridade vivem no painel. */}
 						<ChatAssignmentActions chatId={chatId} atendimento={atendimento} currentUserId={currentUser.id} compact />
 
@@ -277,7 +306,13 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 							</SheetTrigger>
 							<SheetContent side="right" className="w-[min(22rem,90vw)] p-0">
 								<SheetTitle className="sr-only">Contexto do atendimento</SheetTitle>
-								<ChatContextPanel chatId={chatId} chat={chat} currentUserId={currentUser.id} />
+								<ChatContextPanel
+									chatId={chatId}
+									chat={chat}
+									currentUserId={currentUser.id}
+									quotePermissions={quotePermissions}
+									onInsertQuoteInConversation={insertQuoteInConversation}
+								/>
 							</SheetContent>
 						</Sheet>
 					</div>
@@ -345,6 +380,7 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 				)}
 
 				<ChatInputArea
+					ref={inputAreaRef}
 					organizationId={organizationId}
 					userName={currentUser.nome}
 					isOwner={!!isOwner}
@@ -359,7 +395,13 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 			</div>
 
 			<aside className="hidden min-h-0 w-80 shrink-0 overflow-hidden border-l border-border xl:block">
-				<ChatContextPanel chatId={chatId} chat={chat} currentUserId={currentUser.id} />
+				<ChatContextPanel
+					chatId={chatId}
+					chat={chat}
+					currentUserId={currentUser.id}
+					quotePermissions={quotePermissions}
+					onInsertQuoteInConversation={insertQuoteInConversation}
+				/>
 			</aside>
 		</div>
 	);

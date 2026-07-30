@@ -7,6 +7,7 @@ import { BarChart3, Columns3, MessagesSquare } from "lucide-react";
 import { useCallback, useState } from "react";
 import ChatsBoard from "./Board/ChatsBoard";
 import ChatHub from "./ChatHub";
+import type { TQuotePermissions } from "./Quotes/config";
 import ChatsStatsSection from "./Stats/ChatsStatsSection";
 
 /**
@@ -28,9 +29,10 @@ type ChatsWorkspaceProps = {
 	organizationId: string;
 	whatsappConnections: TGetWhatsappConnectionsOutput["data"];
 	canManageAttendances: boolean;
+	quotePermissions: TQuotePermissions;
 };
 
-export default function ChatsWorkspace({ user, organizationId, whatsappConnections, canManageAttendances }: ChatsWorkspaceProps) {
+export default function ChatsWorkspace({ user, organizationId, whatsappConnections, canManageAttendances, quotePermissions }: ChatsWorkspaceProps) {
 	const [tab, setTab] = useState<TChatsWorkspaceTab>("hub");
 	const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
 
@@ -78,6 +80,7 @@ export default function ChatsWorkspace({ user, organizationId, whatsappConnectio
 						whatsappConnections={whatsappConnections}
 						selectedChatId={selectedChatId}
 						onSelectChat={setSelectedChatId}
+						quotePermissions={quotePermissions}
 					/>
 				</TabsContent>
 

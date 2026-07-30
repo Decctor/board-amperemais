@@ -28,6 +28,8 @@ import {
 	UserRound,
 } from "lucide-react";
 import { ChatAssignmentActions } from "./ChatAssignmentActions";
+import { ChatQuotesBlock } from "./Quotes/ChatQuotesBlock";
+import type { TQuotePermissions } from "./Quotes/config";
 
 /**
  * Contexto lateral do atendimento.
@@ -44,6 +46,9 @@ type ChatContextPanelProps = {
 	chatId: string;
 	chat: TChatMessagesPage["chat"];
 	currentUserId: string;
+	quotePermissions: TQuotePermissions;
+	/** Ausente quando a conversa não aceita mensagem agora (sem posse ou fora da janela de 24h). */
+	onInsertQuoteInConversation?: (texto: string) => void;
 	className?: string;
 };
 
@@ -138,7 +143,7 @@ function CouponBenefit({ beneficioTipo, beneficioValor }: { beneficioTipo: strin
 	return <>Oferta especial</>;
 }
 
-function AttendanceTab({ chatId, chat, currentUserId }: Omit<ChatContextPanelProps, "className">) {
+function AttendanceTab({ chatId, chat, currentUserId }: Pick<ChatContextPanelProps, "chatId" | "chat" | "currentUserId">) {
 	const atendimento = chat.atendimentoAtivo;
 	const janela = getWhatsappWindowDisplay({ expiracao: chat.whatsappJanelaDataExpiracao, tipoConexao: chat.conexaoTipo });
 
@@ -194,7 +199,17 @@ function AttendanceTab({ chatId, chat, currentUserId }: Omit<ChatContextPanelPro
 	);
 }
 
-function ClientTab({ chat }: { chat: TChatMessagesPage["chat"] }) {
+function ClientTab({
+	chatId,
+	chat,
+	quotePermissions,
+	onInsertQuoteInConversation,
+}: {
+	chatId: string;
+	chat: TChatMessagesPage["chat"];
+	quotePermissions: TQuotePermissions;
+	onInsertQuoteInConversation?: (texto: string) => void;
+}) {
 	const [showAllPurchases, setShowAllPurchases] = useState(false);
 	const { data, isPending, isError, error } = useChatClientContext({ clienteId: chat.clienteId });
 
@@ -254,6 +269,16 @@ function ClientTab({ chat }: { chat: TChatMessagesPage["chat"] }) {
 					Comunicações pausadas até {formatDateAsLocale(cliente.comunicacaoPausadaAte)}.
 				</div>
 			)}
+
+			{/* Antes das oportunidades: pendência acionável ganha de sugestão de cross-sell. Um orçamento
+			    em aberto é dinheiro esperando resposta; o cross-sell é hipótese. */}
+			<ChatQuotesBlock
+				chatId={chatId}
+				clientId={chat.clienteId}
+				clientName={cliente.nome}
+				permissions={quotePermissions}
+				onInsertInConversation={onInsertQuoteInConversation}
+			/>
 
 			{hasOpportunities && (
 				<div className="border-t border-border pt-3">
@@ -454,7 +479,14 @@ function ActivityTab({ chat }: { chat: TChatMessagesPage["chat"] }) {
 	);
 }
 
-export function ChatContextPanel({ chatId, chat, currentUserId, className }: ChatContextPanelProps) {
+export function ChatContextPanel({
+	chatId,
+	chat,
+	currentUserId,
+	quotePermissions,
+	onInsertQuoteInConversation,
+	className,
+}: ChatContextPanelProps) {
 	return (
 		<Tabs defaultValue="atendimento" className={cn("flex h-full min-h-0 flex-col", className)}>
 			<div className="shrink-0 px-3 pt-3">
@@ -479,7 +511,12 @@ export function ChatContextPanel({ chatId, chat, currentUserId, className }: Cha
 					<AttendanceTab chatId={chatId} chat={chat} currentUserId={currentUserId} />
 				</TabsContent>
 				<TabsContent value="cliente" className="mt-0">
-					<ClientTab chat={chat} />
+					<ClientTab
+						chatId={chatId}
+						chat={chat}
+						quotePermissions={quotePermissions}
+						onInsertQuoteInConversation={onInsertQuoteInConversation}
+					/>
 				</TabsContent>
 				<TabsContent value="atividade" className="mt-0">
 					<ActivityTab chat={chat} />

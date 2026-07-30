@@ -8,9 +8,20 @@ import { getWhatsappWindowDisplay } from "@/lib/chats/whatsapp-window-status";
 import { cn } from "@/lib/utils";
 import { Lock, Paperclip, Send, X } from "lucide-react";
 import { ChatVoiceRecorder } from "./ChatVoiceRecorder";
-import { useEffect, useId, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
 
 export type TOutgoingAttachment = { tipo: "IMAGEM" | "VIDEO" | "AUDIO" | "DOCUMENTO"; base64: string; mimeType: string; arquivoNome: string };
+
+/**
+ * Comando imperativo para escrever no compositor de fora — hoje o orçamento inserido na conversa.
+ *
+ * Imperativo em vez de prop controlada de propósito: o rascunho continua sendo estado local do
+ * compositor. Espelhá-lo para cima só para permitir uma inserção ocasional duplicaria a fonte da
+ * verdade do texto que o atendente está digitando.
+ */
+export type TChatInputAreaHandle = {
+	appendText: (texto: string) => void;
+};
 
 type ChatInputAreaProps = {
 	userName: string;
@@ -32,18 +43,10 @@ function resolveMediaType(mimeType: string): TOutgoingAttachment["tipo"] {
 	return "DOCUMENTO";
 }
 
-export function ChatInputArea({
-	userName,
-	organizationId,
-	isOwner,
-	janelaExpiracao,
-	conexaoTipo,
-	isSending,
-	onSend,
-	onAssume,
-	templates,
-	onSendTemplate,
-}: ChatInputAreaProps) {
+export const ChatInputArea = forwardRef<TChatInputAreaHandle, ChatInputAreaProps>(function ChatInputArea(
+	{ userName, organizationId, isOwner, janelaExpiracao, conexaoTipo, isSending, onSend, onAssume, templates, onSendTemplate },
+	ref,
+) {
 	const [texto, setTexto] = useState("");
 	const [attachment, setAttachment] = useState<TOutgoingAttachment | null>(null);
 	const [assinaturaAtiva, setAssinaturaAtiva] = useState(false);
@@ -58,12 +61,35 @@ export function ChatInputArea({
 	}, [signatureStorageKey]);
 
 	// Auto-resize: a textarea cresce com o conteúdo até 4 linhas.
-	useEffect(() => {
+	const resizeTextarea = useCallback(() => {
 		const element = textareaRef.current;
 		if (!element) return;
 		element.style.height = "auto";
 		element.style.height = `${Math.min(element.scrollHeight, 120)}px`;
 	}, []);
+
+	useEffect(() => {
+		resizeTextarea();
+	}, [resizeTextarea]);
+
+	useImperativeHandle(
+		ref,
+		() => ({
+			appendText: (novoTexto: string) => {
+				// Anexa em vez de sobrescrever: o atendente pode já ter escrito uma introdução.
+				setTexto((current) => (current.trim() ? `${current.trimEnd()}\n\n${novoTexto}` : novoTexto));
+				// O foco vai para o fim do texto, pronto para revisar e enviar.
+				requestAnimationFrame(() => {
+					const element = textareaRef.current;
+					if (!element) return;
+					element.focus();
+					element.setSelectionRange(element.value.length, element.value.length);
+					resizeTextarea();
+				});
+			},
+		}),
+		[resizeTextarea],
+	);
 
 	const janela = getWhatsappWindowDisplay({ expiracao: janelaExpiracao, tipoConexao: conexaoTipo });
 
@@ -211,4 +237,4 @@ export function ChatInputArea({
 			</div>
 		</div>
 	);
-}
+});
