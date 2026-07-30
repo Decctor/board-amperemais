@@ -30,6 +30,8 @@ type TUseInternalIfoodOpeningHoursStateProps = {
 /**
  * Estado local do editor de horários de funcionamento do iFood. O PUT da API substitui o conjunto
  * inteiro de turnos, então não há soft-delete (`deletar`) — remover é filtrar da lista.
+ *
+ * A lista é plana como a API a espera; a visão por dia da semana é derivada na UI.
  */
 export function useInternalIfoodOpeningHoursState({ initialState }: TUseInternalIfoodOpeningHoursStateProps) {
 	const initialStateHolder: TIfoodOpeningHoursState = useMemo(() => {
@@ -40,7 +42,7 @@ export function useInternalIfoodOpeningHoursState({ initialState }: TUseInternal
 	}, []);
 	const [state, setState] = useState<TIfoodOpeningHoursState>(initialStateHolder);
 
-	const addTurno = useCallback((turno?: Partial<TIfoodOpeningShiftState>) => {
+	const addShift = useCallback((turno?: Partial<TIfoodOpeningShiftState>) => {
 		setState((prev) => ({
 			...prev,
 			turnos: [
@@ -54,19 +56,33 @@ export function useInternalIfoodOpeningHoursState({ initialState }: TUseInternal
 		}));
 	}, []);
 
-	const updateTurno = useCallback((index: number, turno: Partial<TIfoodOpeningShiftState>) => {
+	const updateShift = useCallback((index: number, turno: Partial<TIfoodOpeningShiftState>) => {
 		setState((prev) => ({
 			...prev,
 			turnos: prev.turnos.map((item, i) => (i === index ? { ...item, ...turno } : item)),
 		}));
 	}, []);
 
-	const removeTurno = useCallback((index: number) => {
+	const removeShift = useCallback((index: number) => {
 		setState((prev) => ({ ...prev, turnos: prev.turnos.filter((_, i) => i !== index) }));
 	}, []);
 
-	const removeTurnosDoDia = useCallback((diaSemana: TIfoodDayOfWeek) => {
+	const removeDayShifts = useCallback((diaSemana: TIfoodDayOfWeek) => {
 		setState((prev) => ({ ...prev, turnos: prev.turnos.filter((turno) => turno.diaSemana !== diaSemana) }));
+	}, []);
+
+	/** Copia os turnos de um dia para os outros, substituindo o que os dias de destino já tinham. */
+	const replicateDay = useCallback(({ source, targets }: { source: TIfoodDayOfWeek; targets: TIfoodDayOfWeek[] }) => {
+		setState((prev) => {
+			const effectiveTargets = targets.filter((target) => target !== source);
+			if (effectiveTargets.length === 0) return prev;
+
+			const sourceShifts = prev.turnos.filter((turno) => turno.diaSemana === source);
+			const untouched = prev.turnos.filter((turno) => !effectiveTargets.includes(turno.diaSemana));
+			const replicated = effectiveTargets.flatMap((target) => sourceShifts.map((turno) => ({ ...turno, diaSemana: target })));
+
+			return { ...prev, turnos: [...untouched, ...replicated] };
+		});
 	}, []);
 
 	const resetState = useCallback(() => {
@@ -79,10 +95,11 @@ export function useInternalIfoodOpeningHoursState({ initialState }: TUseInternal
 
 	return {
 		state,
-		addTurno,
-		updateTurno,
-		removeTurno,
-		removeTurnosDoDia,
+		addShift,
+		updateShift,
+		removeShift,
+		removeDayShifts,
+		replicateDay,
 		resetState,
 		redefineState,
 	};

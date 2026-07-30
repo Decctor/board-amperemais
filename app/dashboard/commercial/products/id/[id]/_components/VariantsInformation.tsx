@@ -1,7 +1,7 @@
 import { TGetProductsOutputById } from "@/app/api/products/route";
 import ProductStateOptionsBlock from "@/components/Modals/Products/Blocks/Options";
 import ProductStateVariantsBlock from "@/components/Modals/Products/Blocks/Variants";
-import SectionApplyBar from "@/components/Products/SectionApplyBar";
+import SectionApplyBar from "@/components/Utils/SectionApplyBar";
 import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { useProductVariationsSectionEditor } from "@/state-hooks/use-product-section-editor";
 import { GitBranch } from "lucide-react";

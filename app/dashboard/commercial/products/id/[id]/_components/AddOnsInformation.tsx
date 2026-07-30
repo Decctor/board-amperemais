@@ -1,6 +1,6 @@
 import { TGetProductsOutputById } from "@/app/api/products/route";
 import ProductStateAddOnsBlock from "@/components/Modals/Products/Blocks/AddOns";
-import SectionApplyBar from "@/components/Products/SectionApplyBar";
+import SectionApplyBar from "@/components/Utils/SectionApplyBar";
 import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { useProductAddOnsSectionEditor } from "@/state-hooks/use-product-section-editor";
 import { Layers } from "lucide-react";
