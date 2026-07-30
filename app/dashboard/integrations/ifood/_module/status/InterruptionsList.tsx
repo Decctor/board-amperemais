@@ -8,6 +8,7 @@ import { deleteIfoodInterruption } from "@/lib/mutations/ifood";
 import { useMutation } from "@tanstack/react-query";
 import { CirclePause, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { IfoodSectionEmpty } from "../shared/IfoodSectionEmpty";
 
 type InterruptionsListProps = {
 	merchantId: string;
@@ -31,18 +32,13 @@ export function InterruptionsList({ merchantId, interruptions, canManage, onChan
 	});
 
 	if (interruptions.length === 0) {
-		return (
-			<div className="flex w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border p-6 text-center">
-				<CirclePause className="h-5 w-5 text-muted-foreground" />
-				<p className="text-sm text-muted-foreground">Nenhuma pausa programada. A loja segue os horários de funcionamento configurados.</p>
-			</div>
-		);
+		return <IfoodSectionEmpty icon={CirclePause} message="Nenhuma pausa programada. A loja segue os horários de funcionamento configurados." />;
 	}
 
 	return (
 		<div className="flex w-full flex-col gap-2">
 			{interruptions.map((interruption) => (
-				<div key={interruption.id} className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2.5 shadow-2xs">
+				<div key={interruption.id} className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
 					<div className="flex min-w-0 flex-col gap-0.5">
 						<span className="truncate text-sm font-medium text-foreground">{interruption.descricao ?? "Pausa programada"}</span>
 						<span className="text-xs text-muted-foreground">

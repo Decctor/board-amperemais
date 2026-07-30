@@ -1,9 +1,8 @@
 "use client";
 
-import IntegrationErpSettings from "@/components/Modals/Integrations/IntegrationErpSettings";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import IntegrationErpSettings from "@/components/Modals/Integrations/IntegrationErpSettings";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { canManageIntegrations, canViewIntegrations } from "@/lib/integrations/mask";
 import { useIfoodMerchants } from "@/lib/queries/ifood";
@@ -11,12 +10,14 @@ import IfoodLogo from "@/utils/images/integrations/ifood-logo.png";
 import { SlidersHorizontal } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { IfoodCatalogTab } from "./_module/catalog/IfoodCatalogTab";
-import { IfoodOrdersTab } from "./_module/orders/IfoodOrdersTab";
-import { IfoodOverviewTab } from "./_module/overview/IfoodOverviewTab";
+import { IfoodCatalogSection } from "./_module/catalog/IfoodCatalogSection";
+import { IfoodOptionGroupsSection } from "./_module/catalog/IfoodOptionGroupsSection";
+import { IfoodOrdersSection } from "./_module/orders/IfoodOrdersSection";
+import { IfoodStoreSection } from "./_module/overview/IfoodStoreSection";
 import { IfoodConnectionGate } from "./_module/shared/IfoodConnectionGate";
 import { MerchantSelector } from "./_module/shared/MerchantSelector";
-import { IfoodStatusTab } from "./_module/status/IfoodStatusTab";
+import { IfoodInterruptionsSection } from "./_module/status/IfoodInterruptionsSection";
+import { IfoodOpeningHoursSection } from "./_module/status/IfoodOpeningHoursSection";
 
 type IntegrationsIFoodPageProps = {
 	sessionUser: TAuthUserSession["user"];
@@ -66,26 +67,14 @@ export default function IntegrationsIFoodPage({ sessionUser: _sessionUser, membe
 				{merchantsQuery.isLoading ? (
 					<LoadingComponent />
 				) : (
-					<Tabs defaultValue="overview" className="w-full">
-						<TabsList>
-							<TabsTrigger value="overview">Visão geral</TabsTrigger>
-							<TabsTrigger value="orders">Pedidos</TabsTrigger>
-							<TabsTrigger value="status">Status & Horários</TabsTrigger>
-							<TabsTrigger value="catalog">Catálogo</TabsTrigger>
-						</TabsList>
-						<TabsContent value="overview" className="pt-2">
-							<IfoodOverviewTab merchantId={selectedMerchantId} />
-						</TabsContent>
-						<TabsContent value="orders" className="pt-2">
-							<IfoodOrdersTab canManage={canManage} />
-						</TabsContent>
-						<TabsContent value="status" className="pt-2">
-							<IfoodStatusTab merchantId={selectedMerchantId} canManage={canManage} />
-						</TabsContent>
-						<TabsContent value="catalog" className="pt-2">
-							<IfoodCatalogTab merchantId={selectedMerchantId} canManage={canManage} />
-						</TabsContent>
-					</Tabs>
+					<div className="flex w-full flex-col gap-6 py-3">
+						<IfoodStoreSection merchantId={selectedMerchantId} />
+						<IfoodInterruptionsSection merchantId={selectedMerchantId} canManage={canManage} />
+						<IfoodOpeningHoursSection merchantId={selectedMerchantId} canManage={canManage} />
+						<IfoodOrdersSection canManage={canManage} />
+						<IfoodCatalogSection merchantId={selectedMerchantId} canManage={canManage} />
+						<IfoodOptionGroupsSection merchantId={selectedMerchantId} canManage={canManage} />
+					</div>
 				)}
 			</IfoodConnectionGate>
 		</div>

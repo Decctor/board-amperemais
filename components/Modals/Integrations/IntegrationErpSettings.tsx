@@ -109,7 +109,6 @@ export default function IntegrationErpSettings({ canManage, closeMenu }: Integra
 			actionIsLoading={isPending}
 			stateIsLoading={isLoading}
 			closeMenu={closeMenu}
-			dialogVariant="fit"
 			drawerVariant="md"
 		>
 			<div className="flex flex-col gap-4 px-1">

@@ -1,48 +1,50 @@
 "use client";
 
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
-import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Button } from "@/components/ui/button";
+import { SectionWrapper } from "@/components/ui/section-wrapper";
 import type { TIfoodOptionGroupDTO } from "@/lib/integrations/ifood/catalog-types";
 import { useIfoodOptionGroups } from "@/lib/queries/ifood";
 import { useQueryClient } from "@tanstack/react-query";
-import { Layers, Settings2 } from "lucide-react";
+import { Layers, Settings2, Store } from "lucide-react";
 import { useState } from "react";
+import { IfoodSectionEmpty } from "../shared/IfoodSectionEmpty";
+import { IfoodSectionLoading } from "../shared/IfoodSectionLoading";
 import { ControlIfoodOptionGroup } from "./ControlIfoodOptionGroup";
 
-type OptionGroupsSectionProps = {
-	merchantId: string;
+type IfoodOptionGroupsSectionProps = {
+	merchantId: string | null;
 	canManage: boolean;
 };
 
 /** Seção de grupos de complementos da loja, com gestão via modal. */
-export function OptionGroupsSection({ merchantId, canManage }: OptionGroupsSectionProps) {
+export function IfoodOptionGroupsSection({ merchantId, canManage }: IfoodOptionGroupsSectionProps) {
 	const queryClient = useQueryClient();
 	const { data: optionGroups, isLoading, isError, error, queryKey } = useIfoodOptionGroups({ merchantId });
 	const [selectedGroup, setSelectedGroup] = useState<TIfoodOptionGroupDTO | null>(null);
 
+	const groups = optionGroups ?? [];
+
 	return (
-		<div className="flex w-full flex-col gap-3">
-			<h3 className="text-xs font-medium tracking-tight uppercase">Grupos de complementos</h3>
-			{isLoading ? (
-				<LoadingComponent />
+		<SectionWrapper title="GRUPOS DE COMPLEMENTOS" icon={<Layers className="w-4 h-4 min-w-4 min-h-4" />}>
+			{!merchantId ? (
+				<IfoodSectionEmpty icon={Store} message="Selecione uma loja para ver os grupos de complementos." />
+			) : isLoading ? (
+				<IfoodSectionLoading rows={2} />
 			) : isError ? (
 				<ErrorComponent msg={error instanceof Error ? error.message : "Erro ao carregar os grupos de complementos."} />
-			) : (optionGroups ?? []).length === 0 ? (
-				<div className="flex w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border p-6 text-center">
-					<Layers className="h-5 w-5 text-muted-foreground" />
-					<p className="text-sm text-muted-foreground">Nenhum grupo de complementos encontrado para esta loja.</p>
-				</div>
+			) : groups.length === 0 ? (
+				<IfoodSectionEmpty icon={Layers} message="Nenhum grupo de complementos encontrado para esta loja." />
 			) : (
 				<div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-					{(optionGroups ?? []).map((group) => {
+					{groups.map((group) => {
 						const isPaused = group.status?.toUpperCase() === "UNAVAILABLE";
 						return (
-							<div key={group.id} className="bg-card border-border flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs">
+							<div key={group.id} className="flex w-full flex-col gap-2 rounded-lg border border-border bg-card px-3 py-2.5">
 								<div className="flex w-full items-center justify-between gap-2">
 									<span className="truncate text-sm font-bold tracking-tight">{group.nome ?? "Grupo sem nome"}</span>
 									{canManage ? (
-										<Button variant="ghost" size="sm" onClick={() => setSelectedGroup(group)} title="Gerenciar grupo">
+										<Button variant="ghost" size="icon-sm" onClick={() => setSelectedGroup(group)} title="Gerenciar grupo">
 											<Settings2 className="h-4 w-4" />
 										</Button>
 									) : null}
@@ -59,7 +61,7 @@ export function OptionGroupsSection({ merchantId, canManage }: OptionGroupsSecti
 				</div>
 			)}
 
-			{selectedGroup ? (
+			{selectedGroup && merchantId ? (
 				<ControlIfoodOptionGroup
 					merchantId={merchantId}
 					optionGroup={selectedGroup}
@@ -67,6 +69,6 @@ export function OptionGroupsSection({ merchantId, canManage }: OptionGroupsSecti
 					callbacks={{ onSuccess: () => queryClient.invalidateQueries({ queryKey }) }}
 				/>
 			) : null}
-		</div>
+		</SectionWrapper>
 	);
 }

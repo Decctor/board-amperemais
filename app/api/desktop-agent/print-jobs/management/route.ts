@@ -19,7 +19,7 @@ import { z } from "zod";
 
 const GetPrintJobsManagementInputSchema = z.object({
 	status: PrintJobStatusEnum.optional().nullable(),
-	limite: z
+	limit: z
 		.string({ invalid_type_error: "Tipo não válido para o limite." })
 		.optional()
 		.nullable()
@@ -54,7 +54,7 @@ async function getPrintJobsManagement({ input, organizacaoId }: TGetPrintJobsMan
 			solicitadoPor: { columns: { id: true, nome: true } },
 		},
 		orderBy: [desc(printJobs.dataInsercao)],
-		limit: input.limite,
+		limit: input.limit,
 	});
 	return { data: { jobs }, message: "Jobs de impressão listados com sucesso." };
 }
@@ -69,7 +69,7 @@ async function getPrintJobsManagementRoute(request: NextRequest) {
 
 	const input = GetPrintJobsManagementInputSchema.parse({
 		status: request.nextUrl.searchParams.get("status"),
-		limite: request.nextUrl.searchParams.get("limite"),
+		limit: request.nextUrl.searchParams.get("limit"),
 	});
 	const result = await getPrintJobsManagement({ input, organizacaoId: session.membership.organizacao.id });
 	return NextResponse.json(result);

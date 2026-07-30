@@ -128,7 +128,7 @@ type CategoryCardProps = {
 export function CategoryCard({ merchantId, category, canManage, onEdit, onAddProduct, onChanged }: CategoryCardProps) {
 	const isPaused = category.status?.toUpperCase() === "UNAVAILABLE";
 	return (
-		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+		<div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
 			<div className="flex w-full items-center justify-between gap-2">
 				<div className="flex items-center gap-2">
 					<h3 className="text-sm font-bold tracking-tight">{category.nome ?? "Categoria sem nome"}</h3>
