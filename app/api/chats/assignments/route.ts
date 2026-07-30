@@ -1,14 +1,19 @@
+import { triggerAgentTurnFromHub } from "@/lib/ai/agent/hub-turn";
+import { ensureOrganizationAgent } from "@/lib/ai/agent/provisioning";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { assertChatAccess, mayManageAssignment } from "@/lib/chats/access";
+import { AI_ASSIGNMENT_BLOCK_MESSAGES, resolveAiAssignmentAvailability } from "@/lib/chats/ai-assignment";
 import {
 	assignChatAttendance,
+	assignChatAttendanceToAgent,
 	assumeChatAttendanceForUser,
 	changeChatAttendancePriority,
 	changeChatAttendanceStatus,
 	getCurrentChatAttendance,
 	releaseChatAttendance,
+	type TCurrentChatAttendance,
 	transferChatAttendance,
 } from "@/lib/chats/attendance-state";
 import { ChatAssignmentPriorityEnum, ChatAssignmentStatusEnum } from "@/schemas/enums";
@@ -16,6 +21,7 @@ import { db } from "@/services/drizzle";
 import { chats } from "@/services/drizzle/schema/chats";
 import { organizationMembers } from "@/services/drizzle/schema/organizations";
 import { users } from "@/services/drizzle/schema/users";
+import { waitUntil } from "@vercel/functions";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -31,7 +37,16 @@ const UpdateChatAssignmentInputSchema = z.discriminatedUnion("acao", [
 	z.object({
 		acao: z.literal("transferir"),
 		chatId: chatIdField,
-		usuarioDestinoId: z.string({ required_error: "Usuário de destino não informado." }),
+		// Os destinos legais de uma transferência, enumerados em um lugar só. `EXTERNO` (o
+		// telefone) não é expressável de propósito: aquele estado só nasce do echo do WhatsApp
+		// Business, nunca de uma decisão do hub. `NAO_ATRIBUIDO` se alcança por `liberar`.
+		destino: z.discriminatedUnion("tipo", [
+			z.object({
+				tipo: z.literal("USUARIO"),
+				usuarioDestinoId: z.string({ required_error: "Usuário de destino não informado." }),
+			}),
+			z.object({ tipo: z.literal("AGENTE") }),
+		]),
 		motivo: motivoField,
 		prioridade: ChatAssignmentPriorityEnum.optional().nullable(),
 	}),
@@ -70,6 +85,73 @@ async function assertTargetUserIsActiveMember({ organizacaoId, usuarioId }: { or
 	if (!member) throw new createHttpError.BadRequest("Usuário de destino não encontrado nesta organização.");
 }
 
+/**
+ * Entrega o atendimento ao agente de IA.
+ *
+ * Duas famílias de regra, na ordem em que importam:
+ *
+ * 1. **Estado de origem.** `EXTERNO` é barrado: o telefone é um humano respondendo pelo celular,
+ *    e colocar a IA em paralelo com ele produziria duas respostas. Quem quiser mesmo entregar à
+ *    IA assume do telefone primeiro — dois cliques que tornam a decisão explícita em vez de um
+ *    override escondido. Já estar com o agente é no-op idempotente.
+ * 2. **Disponibilidade do recurso.** A mesma cadeia que os webhooks checam antes de executar o
+ *    agente (`resolveAiAssignmentAvailability`). Atribuir a um agente que o webhook vai ignorar
+ *    deixaria o cliente esperando uma resposta que nunca chega.
+ */
+async function assignAttendanceToAgent({
+	session,
+	organizacaoId,
+	atual,
+	input,
+}: {
+	session: TAuthUserSession;
+	organizacaoId: string;
+	atual: NonNullable<TCurrentChatAttendance>;
+	input: Extract<TUpdateChatAssignmentInput, { acao: "transferir" }>;
+}) {
+	if (atual.responsavelTipo === "EXTERNO") {
+		throw new createHttpError.Conflict(
+			"Este atendimento está sendo conduzido pelo telefone. Assuma o atendimento antes de direcioná-lo ao agente.",
+		);
+	}
+	if (atual.responsavelTipo === "AGENTE") {
+		return { data: { chatId: input.chatId, atendimentoId: atual.id }, message: "Este atendimento já está com o agente de IA." };
+	}
+
+	const disponibilidade = await resolveAiAssignmentAvailability(db, {
+		organizacaoId,
+		chatId: input.chatId,
+		configuracao: session.membership?.organizacao.configuracao,
+	});
+	if (!disponibilidade.disponivel) {
+		const mensagem = AI_ASSIGNMENT_BLOCK_MESSAGES[disponibilidade.motivo];
+		// Plano é permissão (403); número desabilitado e agente pausado são estado corrigível
+		// pela própria organização (409).
+		if (disponibilidade.motivo === "RECURSO_INDISPONIVEL") throw new createHttpError.Forbidden(mensagem);
+		throw new createHttpError.Conflict(mensagem);
+	}
+
+	// Provisionamento lazy, como nos webhooks: a organização pode nunca ter tido um agente.
+	const agente = await ensureOrganizationAgent(db, organizacaoId);
+
+	const assigned = await assignChatAttendanceToAgent(db, {
+		organizacaoId,
+		chatId: input.chatId,
+		agenteId: agente.id,
+		atribuidoPorUsuarioId: session.user.id,
+		motivo: input.motivo ?? null,
+		prioridade: input.prioridade ?? null,
+	});
+	if (!assigned) throw new createHttpError.Conflict("Conversa sem atendimento ativo.");
+
+	// A resposta imediata é acessória à atribuição: roda fora do ciclo do request e uma falha
+	// dela não desfaz a posse. Sem pendência do cliente nada é disparado — a IA atende o
+	// próximo turno, pelo webhook.
+	waitUntil(triggerAgentTurnFromHub({ organizacaoId, chatId: input.chatId, agenteId: agente.id }));
+
+	return { data: { chatId: input.chatId, atendimentoId: assigned.id }, message: "Atendimento direcionado ao agente de IA." };
+}
+
 async function updateChatAssignment({ session, input }: { session: TAuthUserSession; input: TUpdateChatAssignmentInput }) {
 	const { organizacaoId } = assertChatAccess({ session, permission: ACTION_PERMISSION[input.acao] });
 	await assertChatBelongsToOrganization({ organizacaoId, chatId: input.chatId });
@@ -100,11 +182,17 @@ async function updateChatAssignment({ session, input }: { session: TAuthUserSess
 		if (!mayManageAssignment({ session, assignment: atual })) {
 			throw new createHttpError.Forbidden("Somente o responsável ou um gestor pode transferir este atendimento.");
 		}
-		await assertTargetUserIsActiveMember({ organizacaoId, usuarioId: input.usuarioDestinoId });
+
+		if (input.destino.tipo === "AGENTE") {
+			const assigned = await assignAttendanceToAgent({ session, organizacaoId, atual, input });
+			return assigned;
+		}
+
+		await assertTargetUserIsActiveMember({ organizacaoId, usuarioId: input.destino.usuarioDestinoId });
 		const transferred = await transferChatAttendance(db, {
 			organizacaoId,
 			chatId: input.chatId,
-			usuarioDestinoId: input.usuarioDestinoId,
+			usuarioDestinoId: input.destino.usuarioDestinoId,
 			motivo: input.motivo ?? null,
 			prioridade: input.prioridade ?? null,
 			transferidoPorUsuarioId: session.user.id,
@@ -177,6 +265,10 @@ async function getTransferTargetsRoute(_req: NextRequest) {
 }
 
 // ============= Export handlers =============
+
+// O turno do agente disparado por `waitUntil` mantém a função viva depois da resposta, e isso
+// conta contra o limite da rota. Mesmo teto do playground, que executa o mesmo pipeline.
+export const maxDuration = 300;
 
 export const GET = appApiHandler({ GET: getTransferTargetsRoute });
 export const PATCH = appApiHandler({ PATCH: updateChatAssignmentRoute });

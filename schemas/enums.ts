@@ -501,7 +501,9 @@ export const AiAgentRunStatusEnum = z.enum(["PENDENTE", "RODANDO", "CONCLUIDO", 
 export type TAiAgentRunStatusEnum = z.infer<typeof AiAgentRunStatusEnum>;
 
 // O que originou a execução. PLAYGROUND roda o mesmo pipeline, sem envio externo.
-export const AiAgentRunGatilhoEnum = z.enum(["CHAT_MENSAGEM", "PLAYGROUND"]);
+// ATRIBUICAO_HUB é a execução disparada por um humano que entregou a conversa ao agente pelo
+// hub — separa, na análise de runs, o que a IA pegou da fila do que lhe foi passado de mão.
+export const AiAgentRunGatilhoEnum = z.enum(["CHAT_MENSAGEM", "PLAYGROUND", "ATRIBUICAO_HUB"]);
 export type TAiAgentRunGatilhoEnum = z.infer<typeof AiAgentRunGatilhoEnum>;
 
 // Ciclo de vida de uma chamada de ferramenta dentro de uma execução.

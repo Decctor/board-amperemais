@@ -151,7 +151,7 @@ function AttendanceTab({ chatId, chat, currentUserId }: Pick<ChatContextPanelPro
 		<div className="flex flex-col gap-4">
 			<div>
 				<SectionTitle>Ações</SectionTitle>
-				<ChatAssignmentActions chatId={chatId} atendimento={atendimento} currentUserId={currentUserId} />
+				<ChatAssignmentActions chatId={chatId} atendimento={atendimento} atendimentoIa={chat.atendimentoIa} currentUserId={currentUserId} />
 			</div>
 
 			<div className="border-t border-border pt-3">

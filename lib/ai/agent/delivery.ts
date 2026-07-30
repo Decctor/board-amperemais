@@ -131,6 +131,32 @@ export function createInternalGatewayDeliverer({ organizacaoId, chatId, sessaoId
 }
 
 /**
+ * Escolhe o adapter pelo canal da conexão do chat.
+ *
+ * Os webhooks montam o seu adapter direto, porque já sabem por qual canal a mensagem entrou.
+ * Quem dispara o agente fora de um webhook (a atribuição pelo hub) não sabe, e replicar a
+ * escolha no chamador espalharia a regra de canal por dois lugares.
+ *
+ * Devolve `null` quando não há canal por onde entregar — conexão ausente, ou gateway interno
+ * sem sessão. Aí não há turno a executar: gastar tokens numa resposta que não sai é pior do
+ * que não responder.
+ */
+export async function resolveChatDeliverer({
+	organizacaoId,
+	chatId,
+}: TDelivererParams): Promise<TAgentMessageDeliverer | null> {
+	const chat = await loadChatForDelivery(organizacaoId, chatId);
+	if (!chat?.whatsappConexao) return null;
+
+	if (chat.whatsappConexao.tipoConexao === "INTERNAL_GATEWAY") {
+		if (!chat.whatsappConexao.gatewaySessaoId) return null;
+		return createInternalGatewayDeliverer({ organizacaoId, chatId, sessaoId: chat.whatsappConexao.gatewaySessaoId });
+	}
+
+	return createMetaCloudDeliverer({ organizacaoId, chatId });
+}
+
+/**
  * Playground: apenas persiste. Sem envio externo e sem checagem de janela — o chat de teste
  * não tem conexão de WhatsApp.
  */

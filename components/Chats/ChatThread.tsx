@@ -295,7 +295,13 @@ export function ChatThread({ chatId, organizationId, currentUser, quotePermissio
 						/>
 
 						{/* Header carrega só posse e roteamento; status e prioridade vivem no painel. */}
-						<ChatAssignmentActions chatId={chatId} atendimento={atendimento} currentUserId={currentUser.id} compact />
+						<ChatAssignmentActions
+							chatId={chatId}
+							atendimento={atendimento}
+							atendimentoIa={chat.atendimentoIa}
+							currentUserId={currentUser.id}
+							compact
+						/>
 
 						{/* Abaixo de xl o painel não cabe como coluna; vira gaveta sob demanda. */}
 						<Sheet>
