@@ -3,8 +3,8 @@
 > **Status**: em revisão
 > **Origem**: duplicação de mensagens recebidas via webhook e respostas duplicadas/defasadas em runs concorrentes de IA, observadas em produção.
 > **Princípio norteador**: o banco de dados é a fonte de verdade dos fluxos assíncronos. Toda entrega é *at-least-once* (webhooks da Meta, Vercel Queues); a idempotência vive em constraints e compare-and-sets no Postgres, nunca na esperança de entrega única.
-> **Escopo desta iniciativa**: idempotência de mensagens por `wamid`, revalidação pós-run antes da entrega, ack imediato do webhook Meta e migração do turno de IA para Vercel Queues. **Fora de escopo**: mover a transcrição de mídia para fila, migrar para Vercel Workflows, tocar no fluxo de envio do hub — ver [Decisões](#2-decisões-fechadas).
-> **Como ler este documento**: as seções 1–2 são diagnóstico e contrato; 3–7 são as fases, cada uma deployável de forma independente e na ordem em que aparecem; 8–11 são riscos, validação, rollback e ordem de commits. Blocos de código são a forma-alvo; `// …` é elisão de trecho mecânico, não de decisão.
+> **Escopo desta iniciativa**: idempotência de mensagens por `wamid`, revalidação pós-run antes da entrega, ack imediato do webhook Meta, migração do turno de IA para Vercel Queues e encerramento automático de atendimentos inativos. **Fora de escopo**: mover a transcrição de mídia para fila, migrar para Vercel Workflows, tocar no fluxo de envio do hub, resumo por IA no encerramento automático (incremento futuro documentado na seção 9) — ver [Decisões](#2-decisões-fechadas).
+> **Como ler este documento**: as seções 1–2 são diagnóstico e contrato; 3–8 são as fases, cada uma deployável de forma independente e na ordem em que aparecem; 9–12 são o caminho futuro, riscos, validação, rollback e ordem de commits. Blocos de código são a forma-alvo; `// …` é elisão de trecho mecânico, não de decisão.
 
 ---
 
@@ -17,11 +17,12 @@
 5. [Fase 3 — Ack imediato no webhook da Meta](#fase-3--ack-imediato-no-webhook-da-meta)
 6. [Fase 4 — Extração do turno de IA (`ai-turn-runner` + `dispatch`)](#fase-4--extração-do-turno-de-ia-ai-turn-runner--dispatch)
 7. [Fase 5 — Vercel Queues como transporte do turno](#fase-5--vercel-queues-como-transporte-do-turno)
-8. [Caminho futuro — Vercel Workflows](#8-caminho-futuro--vercel-workflows)
-9. [Riscos e mitigações](#9-riscos-e-mitigações)
-10. [Plano de validação](#10-plano-de-validação)
-11. [Rollback](#11-rollback)
-12. [Ordem de commits](#12-ordem-de-commits)
+8. [Fase 6 — Encerramento automático de atendimentos inativos](#fase-6--encerramento-automático-de-atendimentos-inativos)
+9. [Caminho futuro — Workflows e resumo por IA no encerramento](#9-caminho-futuro--workflows-e-resumo-por-ia-no-encerramento)
+10. [Riscos e mitigações](#10-riscos-e-mitigações)
+11. [Plano de validação](#11-plano-de-validação)
+12. [Rollback](#12-rollback)
+13. [Ordem de commits](#13-ordem-de-commits)
 
 ---
 
@@ -35,6 +36,7 @@
 | A mensagem nova do cliente fica sem resposta própria | Corolário do item anterior: quando a run antiga entrega, o ciclo da mensagem nova vê "a conversa já foi respondida" e aborta. A ordem certa é a inversa — a run **antiga** deve abortar |
 | Runs abandonadas em `RODANDO`, sem retry | O turno roda dentro da request do webhook; crash, deploy ou `maxDuration` no meio da run = resposta perdida silenciosamente |
 | `sleep()` de debounce dentro de função serverless | Compute pago parado, e o debounce morre junto com a função |
+| Atendimentos `EXTERNO` nunca encerram | O echo do celular marca o ticket `EM_ATENDIMENTO`/`EXTERNO` (`attendance-state.ts:151`), mas nenhum caminho o leva a `ENCERRADO` — só o hub encerra, e atendimento pelo telefone não passa pelo hub. O ticket fica ativo para sempre, poluindo o quadro e as estatísticas |
 
 O dedupe do history-sync (`lib/whatsapp/smb-message-history-sync.ts:405`) já usa a chave natural `(organizacaoId, whatsappMessageId)` — mas via find-then-insert, que perde corridas. A Fase 1 formaliza essa chave como constraint.
 
@@ -48,7 +50,9 @@ O dedupe do history-sync (`lib/whatsapp/smb-message-history-sync.ts:405`) já us
 4. **Claim se move para depois do debounce.** Hoje o claim acontece antes do sleep; movê-lo para o início do turno (no consumer/runner) o aproxima da entrega e reduz a janela em que um humano assume e a IA responde por cima. O CAS do claim já torna a mudança segura.
 5. **Cancelamento é estado observável.** Run supersedida vira `status: "CANCELADO"` em `ai_agent_runs` (valor novo no enum de aplicação; a coluna é `varchar + $type`, sem `ALTER TYPE`). Tokens já gastos ficam registrados em `uso`.
 6. **Escopo do índice único**: `(whatsapp_message_id, organizacao_id)`, parcial em `whatsapp_message_id IS NOT NULL`. `wamid` na frente para o índice servir também os lookups por `wamid` puro de `applyProviderDeliveryStatus`, substituindo o índice não-único atual.
-7. **Fora de escopo**: transcrição de mídia via fila (follow-up natural, mesma topologia), Workflows (ver seção 8), envio do hub, `pages/api`.
+7. **Encerramento por inatividade fecha qualquer atendimento ativo, de qualquer responsável.** O caso motivador é o `EXTERNO` (telefone), mas tickets `AGENTE`, `NAO_ATRIBUIDO` e `USUARIO` parados sofrem do mesmo problema — e encerrá-los cria a fronteira de episódio correta: a próxima mensagem do cliente abre um ticket novo via `ensureCurrentAttendance`, em vez de reanimar um atendimento de semanas atrás. Um único limiar de inatividade (7 dias sobre `chats.ultimaMensagemData`), inclusive para tickets com pendência do cliente: depois de 7 dias a janela de 24h está morta há muito tempo e o ticket não representa mais um atendimento em curso. O encerramento automático é distinguível do manual por `resultado: "INATIVIDADE"` + `encerradoPorUsuarioId` nulo.
+8. **A mutação em lote vive em `attendance-state.ts`.** A invariante do módulo — nenhum `db.update(chatAssignments)` fora da camada canônica — vale também para o cron.
+9. **Fora de escopo**: transcrição de mídia via fila (follow-up natural, mesma topologia), Workflows e resumo por IA no encerramento (ver seção 9), envio do hub, `pages/api`, limiar de inatividade configurável por organização (incremento simples se houver demanda).
 
 ---
 
@@ -448,7 +452,93 @@ O que muda de garantia com a fila ativa: o webhook responde em milissegundos; cr
 
 ---
 
-## 8. Caminho futuro — Vercel Workflows
+## Fase 6 — Encerramento automático de atendimentos inativos
+
+Independente das fases anteriores; pode ser deployada a qualquer momento. Sem migration: `resultado` já é `text` e todos os campos necessários existem.
+
+### 6.1 `lib/chats/attendance-state.ts`
+
+```typescript
+/**
+ * Encerra em lote os atendimentos ativos sem atividade no chat há mais tempo que o corte.
+ *
+ * O caso motivador é o EXTERNO: atendimento feito pelo telefone nunca passa pelo hub e o
+ * ticket ficaria ativo para sempre. Fecha qualquer responsável (ver Decisão 7) — a próxima
+ * mensagem do cliente abre um episódio novo via ensureCurrentAttendance.
+ *
+ * Set-based de propósito: uma varredura por chamada, sem loop por linha. Devolve as linhas
+ * encerradas — é o ponto de acoplamento do incremento futuro de resumo por IA (seção 9).
+ */
+export async function closeStaleChatAttendances(db: TAttendanceDb, input: { inactiveSince: Date; now?: Date }) {
+	const now = input.now ?? new Date();
+
+	const staleChats = db
+		.select({ id: chats.id })
+		.from(chats)
+		.where(lt(chats.ultimaMensagemData, input.inactiveSince));
+
+	return db
+		.update(chatAssignments)
+		.set({
+			status: "ENCERRADO",
+			// Não sobrescreve um resultado que a IA ou o hub já tenham gravado.
+			resultado: sql`COALESCE(${chatAssignments.resultado}, 'INATIVIDADE')`,
+			dataEncerramento: now,
+			dataLiberacao: now,
+		})
+		.where(and(notInArray(chatAssignments.status, CLOSED_ATTENDANCE_STATUSES), inArray(chatAssignments.chatId, staleChats)))
+		.returning({
+			id: chatAssignments.id,
+			chatId: chatAssignments.chatId,
+			organizacaoId: chatAssignments.organizacaoId,
+			responsavelTipo: chatAssignments.responsavelTipo,
+		});
+}
+```
+
+`encerradoPorUsuarioId` fica intocado (nulo) e `dataResolucao` não é gravada: encerramento por inatividade não é resolução. O UPDATE dispara `postgres_changes` normalmente — o quadro do hub reflete sem refetch, como no cron de janelas.
+
+### 6.2 Cron `app/api/cron/close-stale-attendances/route.ts`
+
+Mesmo esqueleto de `invalidate-chat-windows` (`assertCronAuthorized` + `appApiHandler`):
+
+```typescript
+/** Sete dias sem qualquer mensagem no chat: o atendimento não está mais em curso. */
+const STALE_ATTENDANCE_INACTIVITY_MS = 7 * 24 * 60 * 60 * 1000;
+
+async function closeStaleAttendances() {
+	const now = new Date();
+	const closed = await closeStaleChatAttendances(db, {
+		inactiveSince: new Date(now.getTime() - STALE_ATTENDANCE_INACTIVITY_MS),
+		now,
+	});
+
+	console.log(`[INFO] [CLOSE_STALE_ATTENDANCES] ${closed.length} atendimento(s) encerrado(s) por inatividade.`);
+
+	return { data: { atendimentosEncerrados: closed.length }, message: "Atendimentos inativos encerrados com sucesso." };
+}
+export type TCloseStaleAttendancesOutput = Awaited<ReturnType<typeof closeStaleAttendances>>;
+```
+
+`vercel.json`, junto aos crons existentes:
+
+```json
+{ "path": "/api/cron/close-stale-attendances", "schedule": "30 3 * * *" }
+```
+
+Diário e fora do horário comercial basta: a granularidade relevante do limiar é dias, e rodar de madrugada evita que a rajada de eventos realtime da primeira execução (que encerrará o backlog histórico de uma vez) concorra com o uso do hub.
+
+### 6.3 Interações com o restante do módulo
+
+- **Estatísticas** (`chats-stats`, quadro 0055): tickets encerrados por inatividade entram nas contagens de encerramento com `resultado: "INATIVIDADE"` — filtrável, e deixa de inflar o "em atendimento" eterno.
+- **IA**: um chat cujo ticket foi encerrado volta ao estado "sem atendimento ativo"; se o cliente escrever de novo, `claimChatAttendanceForAgent` disputa um ticket novo `NAO_ATRIBUIDO` — comportamento idêntico ao de um chat novo, que é o desejado.
+- **`AGUARDANDO_CLIENTE`/`AGUARDANDO_INTERNO`**: também são encerrados quando estagnados — sete dias sem nenhuma mensagem esgota qualquer espera legítima.
+
+---
+
+## 9. Caminho futuro — Workflows e resumo por IA no encerramento
+
+### 9.1 Vercel Workflows
 
 A fundação desta rodada é exatamente a exigida por Workflows — que roda **sobre** Queues:
 
@@ -462,9 +552,22 @@ A fundação desta rodada é exatamente a exigida por Workflows — que roda **s
 
 Nada do que este plano constrói é descartado na migração; o grosso do trabalho vira mover o corpo de `runAiTurnForMessage` para steps.
 
+### 9.2 Resumo por IA no encerramento automático (incremento futuro, fora desta rodada)
+
+A Fase 6 já deixa o ponto de acoplamento pronto: `closeStaleChatAttendances` devolve as linhas encerradas. O incremento é o cron publicar cada encerramento num tópico próprio e um consumer barato processar:
+
+```
+cron → send("attendance-closures", { assignmentId, chatId, organizacaoId }, { idempotencyKey: `closure-${assignmentId}` })
+	→ consumer: modelo barato (ex.: claude-haiku-4-5) lê a conversa
+		→ grava `resumo` e refina `resultado`/`categoria` no ticket encerrado
+		→ opcionalmente agenda follow-ups (`interactions`) — ex.: cliente sumiu com pendência
+```
+
+Por que a topologia é a mesma da Fase 5 e por que fila (e não o próprio cron): volume em rajada na primeira execução, retry por item em vez de por varredura, e custo de LLM isolado do caminho do cron. O `idempotencyKey` por ticket e a escrita idempotente (o resumo é um `SET`, não um incremento) seguem a Decisão 1. Nenhuma coluna nova: `resumo`, `resultado` e `categoria` já existem em `chat_assignments`.
+
 ---
 
-## 9. Riscos e mitigações
+## 10. Riscos e mitigações
 
 | Risco | Mitigação |
 | --- | --- |
@@ -476,10 +579,12 @@ Nada do que este plano constrói é descartado na migração; o grosso do trabal
 | Claim movido para depois do debounce muda o momento em que o hub mostra "IA atendendo" | Aceito e desejável: o ticket só vira da IA quando ela de fato vai responder. Comunicar no changelog interno |
 | `waitUntil` no webhook Meta: erro após o 200 não é reentregue pela Meta | Mesmo trade-off já aceito no gateway; com a fila ativa, o trecho crítico (turno de IA) tem retry próprio |
 | Dois transportes ativos durante o rollout (deploy antigo drena a própria fila) | Tópicos são particionados por deployment na Vercel — os deployments não consomem mensagens um do outro |
+| Primeira execução do cron de inatividade encerra o backlog histórico de uma vez (rajada de realtime + salto nas estatísticas de encerramento) | Agendado de madrugada; encerramentos automáticos são filtráveis por `resultado: "INATIVIDADE"` nas análises. Se o backlog for muito grande, rodar a primeira varredura manualmente via script antes de ativar o cron |
+| Cron encerra um atendimento que o operador considerava vivo (ex.: espera longa combinada com o cliente) | Limiar generoso (7 dias **sem nenhuma mensagem**, em qualquer direção); qualquer mensagem nova reabre episódio limpo. Limiar por organização fica como incremento se houver demanda real |
 
 ---
 
-## 10. Plano de validação
+## 11. Plano de validação
 
 Sem runner de teste configurado no projeto; validação por script + cenários manuais em preview.
 
@@ -489,11 +594,12 @@ Sem runner de teste configurado no projeto; validação por script + cenários m
 4. **Takeover humano durante a run**: humano assume o atendimento durante a run → entrega cancelada ("O atendimento deixou de ser da IA").
 5. **Fila**: com `AI_TURN_TRANSPORT=queue`, cenários 1 e 3 novamente; conferir no painel de observabilidade de Queues o delay aplicado e o ack; matar o consumer no meio (redeploy) → turno reentregue e concluído.
 6. **Regressão**: fluxo do gateway interno ponta a ponta; `ATRIBUICAO_HUB` pelo hub; playground (não passa pela fila e não revalida).
-7. `npm run lint` e `npx tsc --noEmit` verdes em cada commit.
+7. **Encerramento por inatividade**: seed com tickets `EXTERNO`, `NAO_ATRIBUIDO`, `AGENTE` e `USUARIO` com `ultimaMensagemData` além e aquém do corte → só os além encerram, com `resultado: "INATIVIDADE"` e `encerradoPorUsuarioId` nulo; ticket que já tinha `resultado` (ex.: `HUMAN_HANDOFF`) o preserva; mensagem nova num chat encerrado abre ticket novo e a IA disputa o claim normalmente.
+8. `npm run lint` e `npx tsc --noEmit` verdes em cada commit.
 
 ---
 
-## 11. Rollback
+## 12. Rollback
 
 | Fase | Reversão |
 | --- | --- |
@@ -501,15 +607,17 @@ Sem runner de teste configurado no projeto; validação por script + cenários m
 | 2 | Revert de código; `"CANCELADO"` é aditivo no enum de aplicação e linhas já gravadas com ele continuam legíveis pelo type `varchar` |
 | 3–4 | Revert de código puro |
 | 5 | `AI_TURN_TRANSPORT` removida/`inline` — sem deploy. Mensagens já na fila são consumidas ou expiram em 24h; o runner as trata com as mesmas checagens |
+| 6 | Remover a entrada do cron em `vercel.json`. Tickets já encerrados não são reabertos em massa — a próxima mensagem de cada cliente abre episódio novo, que é o comportamento correto mesmo sem o cron |
 
 ---
 
-## 12. Ordem de commits
+## 13. Ordem de commits
 
 1. `feat: idempotência de mensagens de chat por wamid (migration 0057 + onConflictDoNothing)` — Fases 1.1–1.4.
 2. `feat: revalidação pós-run da IA antes da entrega + status CANCELADO` — Fase 2.
 3. `fix: ack imediato no webhook da Meta via waitUntil` — Fase 3.
 4. `refactor: extrai ai-turn-runner e dispatchAiTurn dos webhooks` — Fase 4.
 5. `feat: Vercel Queues como transporte do turno de IA` — Fase 5 (código + `vercel.json`).
+6. `feat: encerramento automático de atendimentos inativos via cron` — Fase 6.
 
-Cada commit deixa a aplicação deployável; 1–3 podem ir a produção antes de 4–5 existirem.
+Cada commit deixa a aplicação deployável; 1–3 e 6 podem ir a produção antes de 4–5 existirem.
