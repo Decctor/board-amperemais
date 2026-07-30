@@ -4,7 +4,6 @@ import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { useUsers } from "@/lib/queries/users";
-import { canManageIntegrations, canViewIntegrations } from "@/lib/integrations/mask";
 import { resolveDiscountAuthority } from "@/lib/permissions/discounts";
 import type { TDiscountLimitTypeEnum } from "@/schemas/enums";
 import type { TUseUserState } from "@/state-hooks/use-user-state";
@@ -30,7 +29,6 @@ export default function UsersPermissionsBlock({
 			<GoalsPermissions permissionsHolder={permissionsHolder} updateUserPermissions={updateUserPermissions} />
 			<UsersPermissions permissionsHolder={permissionsHolder} updateUserPermissions={updateUserPermissions} />
 			<ChatServicesPermissions permissionsHolder={permissionsHolder} updateUserPermissions={updateUserPermissions} />
-			<IntegrationsPermissions permissionsHolder={permissionsHolder} updateUserPermissions={updateUserPermissions} />
 			{organizationHasERPAccess ? (
 				<>
 					<SalesPermissions permissions={permissionsHolder} updateUserPermissions={updateUserPermissions} />
@@ -219,38 +217,6 @@ function ChatServicesPermissions({ permissionsHolder, updateUserPermissions }: C
 					labelFalse="APTO A RECEBER TRANSFERÊNCIAS DE ATENDIMENTOS"
 					checked={!!permissionsHolder.atendimentos.receberTransferencias}
 					handleChange={(value) => updateUserPermissions({ atendimentos: { ...permissionsHolder.atendimentos, receberTransferencias: value } })}
-				/>
-			</div>
-		</div>
-	);
-}
-
-type IntegrationsPermissionsProps = {
-	permissionsHolder: TUseUserState["state"]["membership"]["permissoes"];
-	updateUserPermissions: TUseUserState["updateMembershipPermissions"];
-};
-function IntegrationsPermissions({ permissionsHolder, updateUserPermissions }: IntegrationsPermissionsProps) {
-	// A ausência da chave `integracoes` (JSONB antigo) cai para as permissões de empresa, mesma regra de
-	// lib/integrations/mask.ts; o bloco completo é materializado ao primeiro toque em qualquer campo.
-	const integracoes = {
-		visualizar: canViewIntegrations(permissionsHolder),
-		gerenciar: canManageIntegrations(permissionsHolder),
-	};
-	return (
-		<div className="w-full flex flex-col gap-1">
-			<h2 className="text-xs tracking-tight font-medium text-start w-fit">PERMISSÕES DE INTEGRAÇÕES</h2>
-			<div className="w-full flex flex-col gap-2">
-				<CheckboxInput
-					labelTrue="APTO A VISUALIZAR INTEGRAÇÕES"
-					labelFalse="APTO A VISUALIZAR INTEGRAÇÕES"
-					checked={integracoes.visualizar}
-					handleChange={(value) => updateUserPermissions({ integracoes: { ...integracoes, visualizar: value } })}
-				/>
-				<CheckboxInput
-					labelTrue="APTO A GERENCIAR INTEGRAÇÕES"
-					labelFalse="APTO A GERENCIAR INTEGRAÇÕES"
-					checked={integracoes.gerenciar}
-					handleChange={(value) => updateUserPermissions({ integracoes: { ...integracoes, gerenciar: value } })}
 				/>
 			</div>
 		</div>

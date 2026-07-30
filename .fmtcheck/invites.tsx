@@ -3,7 +3,6 @@ import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { useUsers } from "@/lib/queries/users";
-import { canManageIntegrations, canViewIntegrations } from "@/lib/integrations/mask";
 import { resolveDiscountAuthority } from "@/lib/permissions/discounts";
 import type { TDiscountLimitTypeEnum } from "@/schemas/enums";
 import type { TUseOrganizationMembershipInvitationState } from "@/state-hooks/use-organization-membership-invitation-state";
@@ -27,7 +26,6 @@ export default function OrganizationsMembershipInvitationsPermissionsBlock({
 			<GoalsPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
 			<UsersPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
 			<ChatServicesPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
-			<IntegrationsPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
 			{organizationHasERPAccess ? (
 				<>
 					<SalesPermissions permissions={permissions} updateInvitationPermissions={updateInvitationPermissions} />
@@ -216,38 +214,6 @@ function ChatServicesPermissions({ permissions, updateInvitationPermissions }: C
 					labelFalse="APTO A RECEBER TRANSFERÊNCIAS DE ATENDIMENTOS"
 					checked={!!permissions.atendimentos.receberTransferencias}
 					handleChange={(value) => updateInvitationPermissions({ atendimentos: { ...permissions.atendimentos, receberTransferencias: value } })}
-				/>
-			</div>
-		</div>
-	);
-}
-
-type IntegrationsPermissionsProps = {
-	permissions: TUseOrganizationMembershipInvitationState["state"]["invitation"]["permissoes"];
-	updateInvitationPermissions: TUseOrganizationMembershipInvitationState["updateInvitationPermissions"];
-};
-function IntegrationsPermissions({ permissions, updateInvitationPermissions }: IntegrationsPermissionsProps) {
-	// A ausência da chave `integracoes` (JSONB antigo) cai para as permissões de empresa, mesma regra de
-	// lib/integrations/mask.ts; o bloco completo é materializado ao primeiro toque em qualquer campo.
-	const integracoes = {
-		visualizar: canViewIntegrations(permissions),
-		gerenciar: canManageIntegrations(permissions),
-	};
-	return (
-		<div className="w-full flex flex-col gap-2">
-			<h2 className="text-xs tracking-tight font-medium text-start w-fit">PERMISSÕES DE INTEGRAÇÕES</h2>
-			<div className="w-full flex flex-col gap-2">
-				<CheckboxInput
-					labelTrue="APTO A VISUALIZAR INTEGRAÇÕES"
-					labelFalse="APTO A VISUALIZAR INTEGRAÇÕES"
-					checked={integracoes.visualizar}
-					handleChange={(value) => updateInvitationPermissions({ integracoes: { ...integracoes, visualizar: value } })}
-				/>
-				<CheckboxInput
-					labelTrue="APTO A GERENCIAR INTEGRAÇÕES"
-					labelFalse="APTO A GERENCIAR INTEGRAÇÕES"
-					checked={integracoes.gerenciar}
-					handleChange={(value) => updateInvitationPermissions({ integracoes: { ...integracoes, gerenciar: value } })}
 				/>
 			</div>
 		</div>
