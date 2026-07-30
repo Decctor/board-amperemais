@@ -12,6 +12,7 @@ import createHttpError from "http-errors";
 import z from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
+import { resolveValidatedAuthorSeller } from "@/lib/clients/authorship";
 import { normalizeSocialProfile, normalizeWebsiteUrl } from "@/lib/socials";
 
 const GetClientsInputSchema = z.object({
@@ -297,6 +298,8 @@ const getClientsRoute = async (req: NextRequest) => {
 };
 
 const ClientNonEditableFieldsOmit = {
+	// Autoria de usuário é sempre resolvida da sessão — nunca aceita no payload.
+	autorId: true,
 	primeiraCompraData: true,
 	primeiraCompraId: true,
 	ultimaCompraData: true,
@@ -355,6 +358,12 @@ async function createClientService({ input, session }: { input: TCreateClientInp
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
+	// autorVendedorId viaja na própria entidade (ex.: vendedor da venda no new-sale);
+	// validado contra a org quando informado, senão fallback para o vínculo da sessão.
+	const autorVendedorId = input.client.autorVendedorId
+		? await resolveValidatedAuthorSeller({ organizacaoId: userOrgId, vendedorId: input.client.autorVendedorId })
+		: (session.membership?.usuarioVendedorId ?? null);
+
 	const insertedId = await db.transaction(async (tx) => {
 		const firstLocation = input.clientLocations[0] ?? null;
 
@@ -363,6 +372,8 @@ async function createClientService({ input, session }: { input: TCreateClientInp
 			.values({
 				...input.client,
 				organizacaoId: userOrgId,
+				autorId: session.user.id,
+				autorVendedorId,
 				telefone: input.client.telefone ?? "",
 				telefoneBase: formatPhoneAsBase(input.client.telefone ?? ""),
 				websiteUrl: normalizeWebsiteUrl(input.client.websiteUrl),
@@ -437,6 +448,8 @@ const createClientRoute = async (req: NextRequest) => {
 const UpdateClientEntityInputSchema = ClientSchema.omit({
 	organizacaoId: true,
 	dataInsercao: true,
+	// Autoria é imutável: aceita apenas na criação, nunca no update.
+	autorVendedorId: true,
 	...ClientNonEditableFieldsOmit,
 }).extend(ClientEditableDateInputSchema);
 const UpdateClientInputSchema = z.object({

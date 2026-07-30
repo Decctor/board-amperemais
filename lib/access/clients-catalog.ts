@@ -10,6 +10,7 @@ export const POI_ACCESS_SCOPES: TAccessScopeEnum[] = [
 	"poi:transactions:create",
 	"poi:coupons:read",
 	"poi:prizes:read",
+	"poi:sellers:read",
 ];
 
 // Scopes do agente desktop local (recompra-local-agent) — controle de periféricos da loja.

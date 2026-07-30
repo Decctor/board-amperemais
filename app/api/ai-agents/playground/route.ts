@@ -21,9 +21,9 @@ async function getPlayground({ organizacaoId }: { organizacaoId: string }) {
 }
 export type TGetPlaygroundOutput = Awaited<ReturnType<typeof getPlayground>>;
 
-async function createPlayground({ organizacaoId }: { organizacaoId: string }) {
+async function createPlayground({ organizacaoId, autorId }: { organizacaoId: string; autorId?: string | null }) {
 	const agent = await ensureOrganizationAgent(db, organizacaoId);
-	const { chatId } = await createPlaygroundChat({ organizacaoId, agenteId: agent.id });
+	const { chatId } = await createPlaygroundChat({ organizacaoId, agenteId: agent.id, autorId });
 	const state = await getPlaygroundState({ organizacaoId, chatId });
 
 	return { data: { chatId, estado: state }, message: "Chat de teste criado com sucesso." };
@@ -52,8 +52,9 @@ async function getPlaygroundRoute(_request: NextRequest) {
 }
 
 async function createPlaygroundRoute(_request: NextRequest) {
-	const membership = requirePlaygroundAccess(await getCurrentSessionUncached());
-	const result = await createPlayground({ organizacaoId: membership.organizacao.id });
+	const session = await getCurrentSessionUncached();
+	const membership = requirePlaygroundAccess(session);
+	const result = await createPlayground({ organizacaoId: membership.organizacao.id, autorId: session?.user.id ?? null });
 	return NextResponse.json(result);
 }
 

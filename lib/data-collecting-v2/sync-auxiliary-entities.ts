@@ -96,14 +96,16 @@ export function resolveClientForCanonicalSale(batch: TCanonicalImportBatch, cont
 	return context.clientsByName.get(normalizeName(client.name)) ?? null;
 }
 
-function getFirstValidSaleDateForClient(batch: TCanonicalImportBatch, client: TCanonicalClient) {
+// Venda válida mais antiga do batch para o cliente — origem de primeiraCompraData e, quando o
+// conector emite vendedores (Online Software, Bling), do autorVendedorId do cadastro
+// (docs/dev-planning/client-authorship-plan.md §4.E).
+function getFirstValidSaleForClient(batch: TCanonicalImportBatch, client: TCanonicalClient) {
 	const clientKey = getCanonicalClientResolutionKey(batch, client);
 	if (!clientKey) return null;
 
 	const clientSales = batch.sales
 		.filter((sale) => sale.isValidSale && getCanonicalClientResolutionKey(batch, sale.client) === clientKey)
-		.map((sale) => sale.occurredAt)
-		.sort((left, right) => left.getTime() - right.getTime());
+		.sort((left, right) => left.occurredAt.getTime() - right.occurredAt.getTime());
 
 	return clientSales[0] ?? null;
 }
@@ -150,6 +152,24 @@ export async function syncAuxiliaryEntities({
 		indexClient(context, resolvedClient);
 	}
 
+	// Sellers sincronizam ANTES dos clientes: o autorVendedorId do cliente novo referencia o
+	// vendedor da primeira venda, que pode estar sendo criado neste mesmo batch.
+	const existingSellers = await tx.query.sellers.findMany({
+		where: eq(sellers.organizacaoId, batch.organizationId),
+		columns: { id: true, identificador: true, nome: true },
+	});
+	for (const seller of existingSellers) context.sellersByIdentifier.set(seller.identificador || seller.nome, seller.id);
+
+	for (const seller of uniqueBy(batch.sellers, (value) => value.identifier)) {
+		if (context.sellersByIdentifier.has(seller.identifier)) continue;
+		const inserted = await tx
+			.insert(sellers)
+			.values({ organizacaoId: batch.organizationId, nome: seller.name, identificador: seller.identifier })
+			.returning({ id: sellers.id });
+		context.sellersByIdentifier.set(seller.identifier, inserted[0].id);
+		context.createdSellersCount += 1;
+	}
+
 	for (const client of uniqueBy(
 		batch.sales.map((sale) => sale.client).filter((value): value is TCanonicalClient => !!value),
 		(client) => `${client.externalId ?? ""}|${normalizeName(client.name)}|${client.basePhone}`,
@@ -157,11 +177,14 @@ export async function syncAuxiliaryEntities({
 		if (!getCanonicalClientResolutionKey(batch, client)) continue;
 		if (resolveClientForCanonicalSale(batch, context, client)) continue;
 
-		const firstPurchaseDate = getFirstValidSaleDateForClient(batch, client);
+		const firstSale = getFirstValidSaleForClient(batch, client);
+		const firstPurchaseDate = firstSale?.occurredAt ?? null;
+		const authorSellerId = firstSale?.seller ? (context.sellersByIdentifier.get(firstSale.seller.identifier) ?? null) : null;
 		const inserted = await tx
 			.insert(clients)
 			.values({
 				organizacaoId: batch.organizationId,
+				autorVendedorId: authorSellerId,
 				idExterno: client.externalId,
 				nome: client.name,
 				cpfCnpj: client.cpfCnpj,
@@ -244,22 +267,6 @@ export async function syncAuxiliaryEntities({
 			.returning({ id: products.id });
 		context.productsByCode.set(product.code, inserted[0].id);
 		context.createdProductsCount += 1;
-	}
-
-	const existingSellers = await tx.query.sellers.findMany({
-		where: eq(sellers.organizacaoId, batch.organizationId),
-		columns: { id: true, identificador: true, nome: true },
-	});
-	for (const seller of existingSellers) context.sellersByIdentifier.set(seller.identificador || seller.nome, seller.id);
-
-	for (const seller of uniqueBy(batch.sellers, (value) => value.identifier)) {
-		if (context.sellersByIdentifier.has(seller.identifier)) continue;
-		const inserted = await tx
-			.insert(sellers)
-			.values({ organizacaoId: batch.organizationId, nome: seller.name, identificador: seller.identifier })
-			.returning({ id: sellers.id });
-		context.sellersByIdentifier.set(seller.identifier, inserted[0].id);
-		context.createdSellersCount += 1;
 	}
 
 	const existingPartners = await tx.query.partners.findMany({

@@ -46,8 +46,7 @@ async function createPartner({ input, session }: { input: TCreatePartnerInput; s
 		if (normalizedPartner.codigoAfiliacao) {
 			const partnerAffiliateCode = normalizedPartner.codigoAfiliacao;
 			const codeAlreadyUsed = await tx.query.partners.findFirst({
-				where: (fields, { and, eq }) =>
-					and(eq(fields.organizacaoId, userOrgId), eq(fields.codigoAfiliacao, partnerAffiliateCode)),
+				where: (fields, { and, eq }) => and(eq(fields.organizacaoId, userOrgId), eq(fields.codigoAfiliacao, partnerAffiliateCode)),
 				columns: { id: true },
 			});
 			if (codeAlreadyUsed) {
@@ -61,6 +60,7 @@ async function createPartner({ input, session }: { input: TCreatePartnerInput; s
 			partner: normalizedPartner,
 			manualClientId: normalizedPartner.clienteId,
 			createClientIfNotFound: true,
+			authorship: { autorId: session.user.id, autorVendedorId: session.membership?.usuarioVendedorId ?? null },
 		});
 
 		const insertedPartner = await tx
@@ -321,8 +321,7 @@ async function updatePartner({ input, session }: UpdatePartnerParams) {
 			...existingPartner,
 			...input.partner,
 			identificador: (input.partner.identificador ?? existingPartner.identificador).trim(),
-			codigoAfiliacao:
-				normalizeOptionalString(input.partner.codigoAfiliacao ?? existingPartner.codigoAfiliacao)?.toUpperCase() ?? null,
+			codigoAfiliacao: normalizeOptionalString(input.partner.codigoAfiliacao ?? existingPartner.codigoAfiliacao)?.toUpperCase() ?? null,
 			cpfCnpj: normalizeOptionalString(input.partner.cpfCnpj ?? existingPartner.cpfCnpj),
 			telefone: normalizeOptionalString(input.partner.telefone ?? existingPartner.telefone),
 			telefoneBase:
@@ -336,11 +335,7 @@ async function updatePartner({ input, session }: UpdatePartnerParams) {
 			const partnerAffiliateCode = mergedPartnerData.codigoAfiliacao;
 			const codeAlreadyUsed = await tx.query.partners.findFirst({
 				where: (fields, { and, eq, ne }) =>
-					and(
-						eq(fields.organizacaoId, userOrgId),
-						eq(fields.codigoAfiliacao, partnerAffiliateCode),
-						ne(fields.id, input.partnerId),
-					),
+					and(eq(fields.organizacaoId, userOrgId), eq(fields.codigoAfiliacao, partnerAffiliateCode), ne(fields.id, input.partnerId)),
 				columns: { id: true },
 			});
 			if (codeAlreadyUsed) throw new createHttpError.Conflict("Já existe um parceiro com este código de afiliação.");
@@ -352,6 +347,7 @@ async function updatePartner({ input, session }: UpdatePartnerParams) {
 			partner: mergedPartnerData,
 			manualClientId: mergedPartnerData.clienteId,
 			createClientIfNotFound: true,
+			authorship: { autorId: session.user.id, autorVendedorId: session.membership?.usuarioVendedorId ?? null },
 		});
 
 		const updatedPartner = await tx

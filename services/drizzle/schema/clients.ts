@@ -5,6 +5,7 @@ import { newTable } from "./common";
 import { organizations } from "./organizations";
 import { sales } from "./sales";
 import { fiscalClientTaxIndicatorEnum } from "./enums";
+import { sellers } from "./sellers";
 import { users } from "./users";
 import { TClientTagMetadata } from "@/schemas/clients";
 
@@ -68,6 +69,12 @@ export const clients = newTable(
 		// Opt-out de comunicação (pedido do cliente): suprime campanhas e fila da carteira
 		// até a data. Null = sem pausa. Gravada por ação manual explícita.
 		comunicacaoPausadaAte: timestamp("comunicacao_pausada_ate"),
+
+		// Autoria do cadastro (imutável, gravada na criação). Null = criação de sistema
+		// (webhooks, cron, loja digital, scripts) ou registro legado. Nas integrações,
+		// autorVendedorId guarda o primeiro vendedor conhecido da venda que originou o cliente.
+		autorId: varchar("autor_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+		autorVendedorId: varchar("autor_vendedor_id", { length: 255 }).references(() => sellers.id, { onDelete: "set null" }),
 
 		dataNascimento: timestamp("data_nascimento"),
 		dataFundacao: timestamp("data_fundacao"),
@@ -194,12 +201,20 @@ export const clientLocations = newTable(
 	}),
 );
 
-export const clientsRelations = relations(clients, ({ many }) => ({
+export const clientsRelations = relations(clients, ({ one, many }) => ({
 	compras: many(sales),
 	saldos: many(cashbackProgramBalances),
 	transacoesCashback: many(cashbackProgramTransactions),
 	localizacoes: many(clientLocations),
 	tagReferencias: many(clientTagReferences),
+	autor: one(users, {
+		fields: [clients.autorId],
+		references: [users.id],
+	}),
+	autorVendedor: one(sellers, {
+		fields: [clients.autorVendedorId],
+		references: [sellers.id],
+	}),
 }));
 export type TClientEntity = typeof clients.$inferSelect;
 export type TNewClientEntity = typeof clients.$inferInsert;

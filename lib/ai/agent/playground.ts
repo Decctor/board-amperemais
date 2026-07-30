@@ -17,7 +17,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 const PLAYGROUND_CLIENT_NAME = "Cliente de Teste (Playground)";
 
 /** Cliente fictício por organização, reaproveitado entre sessões de teste. */
-export async function ensurePlaygroundClient(organizacaoId: string) {
+export async function ensurePlaygroundClient(organizacaoId: string, autorId?: string | null) {
 	const existing = await db.query.clients.findFirst({
 		where: and(eq(clients.organizacaoId, organizacaoId), eq(clients.nome, PLAYGROUND_CLIENT_NAME)),
 		columns: { id: true },
@@ -28,6 +28,7 @@ export async function ensurePlaygroundClient(organizacaoId: string) {
 		.insert(clients)
 		.values({
 			organizacaoId,
+			autorId: autorId ?? null,
 			nome: PLAYGROUND_CLIENT_NAME,
 			telefone: "",
 			canalAquisicao: "PLAYGROUND",
@@ -50,8 +51,16 @@ export async function getPlaygroundChat(organizacaoId: string) {
  * de teste" da UI, que é como se testa uma instrução alterada sem o histórico anterior
  * contaminando o contexto.
  */
-export async function createPlaygroundChat({ organizacaoId, agenteId }: { organizacaoId: string; agenteId: string }) {
-	const clienteId = await ensurePlaygroundClient(organizacaoId);
+export async function createPlaygroundChat({
+	organizacaoId,
+	agenteId,
+	autorId,
+}: {
+	organizacaoId: string;
+	agenteId: string;
+	autorId?: string | null;
+}) {
+	const clienteId = await ensurePlaygroundClient(organizacaoId, autorId);
 
 	const [chat] = await db
 		.insert(chats)

@@ -139,6 +139,7 @@ export default function CheckoutPanel({
 
 			{isVinculationMenuOpen ? (
 				<ClientVinculationMenu
+					authorSellerId={saleState.state.vendedorId}
 					closeModal={() => setIsVinculationMenuOpen(false)}
 					onSelectClient={(client) => {
 						saleState.setModoCliente("VINCULADO");

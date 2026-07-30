@@ -155,6 +155,11 @@ export const ClientSchema = z.object({
 		.optional()
 		.nullable(),
 
+	// Autoria do cadastro: sempre resolvida no servidor (sessão / operador / pipeline),
+	// nunca aceita diretamente do payload — exceto autorVendedorId nos fluxos de venda e POI,
+	// onde é validada contra a organização antes de persistir.
+	autorId: z.string({ invalid_type_error: "Tipo não válido para o ID do autor." }).optional().nullable(),
+	autorVendedorId: z.string({ invalid_type_error: "Tipo não válido para o ID do vendedor autor." }).optional().nullable(),
 	dataNascimento: z
 		.string({
 			invalid_type_error: "Tipo não válido para data de nascimento.",

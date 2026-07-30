@@ -74,11 +74,13 @@ async function resolveOrCreateClient({
 	orgId,
 	row,
 	cashbackProgramId,
+	autorId,
 }: {
 	tx: DBTransaction;
 	orgId: string;
 	row: TBulkSaleImportRow;
 	cashbackProgramId?: string;
+	autorId?: string | null;
 }) {
 	const phoneBase = formatPhoneAsBase(row.clienteTelefone ?? "");
 	const docDigits = formatStringAsOnlyDigits(row.clienteCpfCnpj ?? "");
@@ -138,6 +140,7 @@ async function resolveOrCreateClient({
 		.insert(clients)
 		.values({
 			organizacaoId: orgId,
+			autorId: autorId ?? null,
 			nome: clientName,
 			telefone: normalizeOptionalText(row.clienteTelefone) ? formatToPhone(row.clienteTelefone as string) : "",
 			telefoneBase: phoneBase,
@@ -214,10 +217,12 @@ async function resolveOrCreatePartner({
 	tx,
 	orgId,
 	partnerNameOrIdentifier,
+	autorId,
 }: {
 	tx: DBTransaction;
 	orgId: string;
 	partnerNameOrIdentifier?: string | null;
+	autorId?: string | null;
 }) {
 	const normalized = normalizeOptionalText(partnerNameOrIdentifier);
 	if (!normalized || normalized === "N/A" || normalized === "0") return null;
@@ -250,6 +255,7 @@ async function resolveOrCreatePartner({
 			cpfCnpj: partnerDocument || null,
 		},
 		createClientIfNotFound: true,
+		authorship: { autorId: autorId ?? null },
 	});
 
 	const insertedPartner = await tx
@@ -311,12 +317,17 @@ async function bulkCreateSales({
 
 		try {
 			await db.transaction(async (tx) => {
-				const clientResolution = await resolveOrCreateClient({ tx, orgId, row, cashbackProgramId });
+				const clientResolution = await resolveOrCreateClient({ tx, orgId, row, cashbackProgramId, autorId: sessionUserId });
 				const clientId = clientResolution.clientId;
 				if (clientResolution.wasCreated) createdClientsCount += 1;
 
 				const sellerResolution = await resolveOrCreateSeller({ tx, orgId, sellerName: row.vendedorNome });
-				const partnerResolution = await resolveOrCreatePartner({ tx, orgId, partnerNameOrIdentifier: row.parceiroNomeOuIdentificador });
+				const partnerResolution = await resolveOrCreatePartner({
+					tx,
+					orgId,
+					partnerNameOrIdentifier: row.parceiroNomeOuIdentificador,
+					autorId: sessionUserId,
+				});
 				if (sellerResolution?.wasCreated) createdSellersCount += 1;
 				if (partnerResolution?.wasCreated) createdPartnersCount += 1;
 				if (clientResolution.wasCreated || sellerResolution?.wasCreated || partnerResolution?.wasCreated) {

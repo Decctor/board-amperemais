@@ -56,6 +56,7 @@ type TExistingClientLookup = {
 
 type TClientInsertPayload = {
 	organizacaoId: TNewClientEntity["organizacaoId"];
+	autorId: TNewClientEntity["autorId"];
 	nome: TNewClientEntity["nome"];
 	cpfCnpj: TNewClientEntity["cpfCnpj"];
 	telefone: TNewClientEntity["telefone"];
@@ -215,6 +216,7 @@ async function bulkCreateClients({ input, sessionUser }: { input: TBulkCreateCli
 		if (!matchedClientId) {
 			clientsToInsert.push({
 				organizacaoId: userOrgId,
+				autorId: sessionUser.user.id,
 				nome,
 				cpfCnpj,
 				telefone: telefone,

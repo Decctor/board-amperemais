@@ -1,4 +1,5 @@
 import type { TGetSellersByIdInput, TGetSellersDefaultInput, TGetSellersInput, TGetSellersOutput } from "@/app/api/sellers/route";
+import type { TGetPoiSellersOutput } from "@/app/api/point-of-interaction/sellers/route";
 import type { TGetSellerStatsInput, TGetSellerStatsOutput } from "@/app/api/sellers/stats/route";
 import type { TGetSellersGraphInput, TGetSellersGraphOutput } from "@/app/api/sellers/stats/graph/route";
 import type { TGetSellersOverallStatsInput, TGetSellersOverallStatsOutput } from "@/app/api/sellers/stats/overall/route";
@@ -104,6 +105,24 @@ export function useSellersSimplified() {
 			queryFn: () => fetchSellersSimplified(),
 		}),
 		queryKey: ["sellers-simplified"],
+	};
+}
+
+// Lista mínima (id, nome, avatarUrl) para o select "QUEM TE ATENDEU" do autocadastro POI.
+// Rota pública em modo legado — o orgId vai na query string, sem sessão.
+async function fetchPoiSellers(orgId: string) {
+	const { data } = await axios.get<TGetPoiSellersOutput>(`/api/point-of-interaction/sellers?orgId=${orgId}`);
+	return data.data.sellers;
+}
+
+export function usePoiSellers({ orgId }: { orgId: string }) {
+	return {
+		...useQuery({
+			queryKey: ["poi-sellers", orgId],
+			queryFn: () => fetchPoiSellers(orgId),
+			staleTime: 5 * 60 * 1000,
+		}),
+		queryKey: ["poi-sellers", orgId],
 	};
 }
 

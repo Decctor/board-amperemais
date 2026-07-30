@@ -8,6 +8,8 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatCashbackValue, formatToCPForCNPJ, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { createClientViaPointOfInteraction } from "@/lib/mutations/clients";
 import { useClientByLookup } from "@/lib/queries/clients";
+import { usePoiSellers } from "@/lib/queries/sellers";
+import { cn } from "@/lib/utils";
 import type { TCashbackProgramEntity, TOrganizationEntity } from "@/services/drizzle/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BadgePercent, Building2, ChevronDown, ChevronUp, Clock, Delete, Gift, Loader2, Phone, ShoppingCart, UserPlus } from "lucide-react";
@@ -66,6 +68,10 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 	const [newClientCpfCnpj, setNewClientCpfCnpj] = useState("");
 	const [newClientDateOfBirth, setNewClientDateOfBirth] = useState("");
 	const [showOptionalFields, setShowOptionalFields] = useState(false);
+	// "Quem te atendeu": seleção opcional — null = cliente pulou ("não sei"), não trava a conversão.
+	const [newClientAuthorSellerId, setNewClientAuthorSellerId] = useState<string | null>(null);
+
+	const { data: poiSellers } = usePoiSellers({ orgId: org.id });
 
 	// Client lookup
 	const {
@@ -158,6 +164,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 		setNewClientName("");
 		setNewClientCpfCnpj("");
 		setNewClientDateOfBirth("");
+		setNewClientAuthorSellerId(null);
 		setShowOptionalFields(false);
 		clearClientLookup();
 		resetCancellation();
@@ -182,6 +189,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 				cpfCnpj: newClientCpfCnpj || null,
 				// biome-ignore lint: dataNascimento schema transforms string->Date, but API receives string via JSON
 				dataNascimento: (newClientDateOfBirth || null) as any,
+				autorVendedorId: newClientAuthorSellerId,
 			},
 		});
 	}
@@ -443,6 +451,43 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 									triggerClassName="h-11 justify-start text-left px-3 rounded-lg border-input bg-background text-sm font-medium"
 								/>
 							</div>
+
+							{poiSellers && poiSellers.length > 0 ? (
+								<div className="flex flex-col gap-1.5">
+									<span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">QUEM TE ATENDEU? (OPCIONAL)</span>
+									<div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+										{poiSellers.map((seller) => {
+											const isSelected = newClientAuthorSellerId === seller.id;
+											return (
+												<button
+													key={seller.id}
+													type="button"
+													onClick={() => setNewClientAuthorSellerId((prev) => (prev === seller.id ? null : seller.id))}
+													className={cn(
+														"flex flex-col items-center gap-1.5 rounded-xl border-2 p-2.5 transition-all active:scale-95",
+														isSelected ? "border-blue-600 bg-blue-100 shadow-md" : "border-border bg-background hover:border-blue-300",
+													)}
+												>
+													<div className="relative w-12 h-12 rounded-full overflow-hidden bg-blue-600/10 flex items-center justify-center">
+														{seller.avatarUrl ? (
+															<Image src={seller.avatarUrl} alt={seller.nome} fill className="object-cover" />
+														) : (
+															<span className="text-base font-black text-blue-700">
+																{seller.nome
+																	.split(" ")
+																	.slice(0, 2)
+																	.map((part) => part.charAt(0).toUpperCase())
+																	.join("")}
+															</span>
+														)}
+													</div>
+													<span className="w-full text-[0.65rem] font-bold uppercase leading-tight text-center truncate">{seller.nome.split(" ")[0]}</span>
+												</button>
+											);
+										})}
+									</div>
+								</div>
+							) : null}
 
 							<div className="w-full flex items-center justify-center">
 								<Button

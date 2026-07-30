@@ -20,9 +20,12 @@ import { Input } from "../ui/input";
 type ClientVinculationMenuProps = {
 	closeModal: () => void;
 	onSelectClient: (client: { id: string; nome: string; telefone: string }) => void;
+	// Vendedor do contexto (ex.: vendedor selecionado na venda) para autoria do cadastro
+	// criado via menu. Quando ausente, o servidor usa o vínculo vendedor da sessão.
+	authorSellerId?: string | null;
 };
 
-export default function ClientVinculationMenu({ closeModal, onSelectClient }: ClientVinculationMenuProps) {
+export default function ClientVinculationMenu({ closeModal, onSelectClient, authorSellerId }: ClientVinculationMenuProps) {
 	const { search, updateSearch, debouncedSearch, isSearchPending, data: clients = [], isFetching } = useClientsBySearch({ initialSearch: "" });
 	const { state, updateClient, addClientLocation, updateClientLocation, removeClientLocation, resetState } = useClientState();
 	const lastAppliedSearchRef = useRef<string | null>(null);
@@ -87,7 +90,7 @@ export default function ClientVinculationMenu({ closeModal, onSelectClient }: Cl
 		}
 
 		handleCreateClient({
-			client: state.client,
+			client: { ...state.client, autorVendedorId: authorSellerId ?? null },
 			clientLocations: state.clientLocations
 				.filter((location) => !location.deletar)
 				.map((location) => ({

@@ -633,6 +633,7 @@ export const AccessScopeEnum = z.enum([
 	"poi:transactions:create",
 	"poi:coupons:read",
 	"poi:prizes:read",
+	"poi:sellers:read",
 	"desktop-agent:configuration:read",
 	"desktop-agent:printers:sync",
 	"desktop-agent:print-jobs:read",

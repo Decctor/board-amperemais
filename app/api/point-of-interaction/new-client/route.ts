@@ -1,5 +1,6 @@
 import { resolvePoiActorContext } from "@/lib/access/poi-actor";
 import { appApiHandler } from "@/lib/app-api";
+import { resolveValidatedAuthorSeller } from "@/lib/clients/authorship";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { ClientSchema } from "@/schemas/clients";
 import { db } from "@/services/drizzle";
@@ -11,15 +12,15 @@ import z from "zod";
 
 const CreateClientViaPointOfInteractionInputSchema = z.object({
 	// Opcional para dispositivos autenticados (a organização deriva do principal); obrigatório no modo legado.
-	orgId: z
-		.string({ invalid_type_error: "Tipo não válido para ID da organização." })
-		.optional()
-		.nullable(),
+	orgId: z.string({ invalid_type_error: "Tipo não válido para ID da organização." }).optional().nullable(),
 	client: ClientSchema.pick({
 		nome: true,
 		telefone: true,
 		cpfCnpj: true,
 		dataNascimento: true,
+		// "Quem te atendeu": vendedor escolhido pelo cliente no autocadastro. Opcional;
+		// validado no servidor contra a organização resolvida pelo actor context.
+		autorVendedorId: true,
 	}),
 });
 export type TCreateClientViaPointOfInteractionInput = z.infer<typeof CreateClientViaPointOfInteractionInputSchema>;
@@ -28,6 +29,9 @@ async function createClientViaPointOfInteraction({ input }: { input: Omit<TCreat
 	const { orgId, client } = input;
 
 	return await db.transaction(async (tx) => {
+		const autorVendedorId = client.autorVendedorId
+			? await resolveValidatedAuthorSeller({ trx: tx, organizacaoId: orgId, vendedorId: client.autorVendedorId })
+			: null;
 		const cashbackProgram = await tx.query.cashbackPrograms.findFirst({
 			where: (fields, { eq }) => eq(fields.organizacaoId, orgId),
 		});
@@ -50,6 +54,7 @@ async function createClientViaPointOfInteraction({ input }: { input: Omit<TCreat
 			.values({
 				...client,
 				organizacaoId: orgId,
+				autorVendedorId,
 				cpfCnpj: client.cpfCnpj ?? null,
 				telefone: client.telefone ?? "",
 				telefoneBase: clientPhoneAsBase,

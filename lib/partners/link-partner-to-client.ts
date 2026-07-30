@@ -1,3 +1,4 @@
+import type { TClientAuthorship } from "@/lib/clients/authorship";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import type { DBTransaction } from "@/services/drizzle";
 import { clients } from "@/services/drizzle/schema";
@@ -14,6 +15,9 @@ type LinkPartnerToClientParams = {
 	};
 	manualClientId?: string | null;
 	createClientIfNotFound?: boolean;
+	// Autoria do cadastro quando um cliente é criado aqui: cada call site passa o que tem
+	// (sessão do dashboard, operador do POI, nada nos pipelines/scripts).
+	authorship?: TClientAuthorship;
 };
 
 type LinkPartnerToClientResult = {
@@ -40,6 +44,7 @@ export async function linkPartnerToClient({
 	partner,
 	manualClientId,
 	createClientIfNotFound = false,
+	authorship,
 }: LinkPartnerToClientParams): Promise<LinkPartnerToClientResult> {
 	const normalizedManualClientId = normalizeNullableString(manualClientId);
 	if (normalizedManualClientId) {
@@ -58,10 +63,7 @@ export async function linkPartnerToClient({
 	const normalizedCpfCnpj = normalizeDocument(partner.cpfCnpj);
 	if (normalizedCpfCnpj) {
 		const matchedByDocument = await tx.query.clients.findFirst({
-			where: and(
-				eq(clients.organizacaoId, orgId),
-				sql`regexp_replace(coalesce(${clients.cpfCnpj}, ''), '\D', '', 'g') = ${normalizedCpfCnpj}`,
-			),
+			where: and(eq(clients.organizacaoId, orgId), sql`regexp_replace(coalesce(${clients.cpfCnpj}, ''), '\D', '', 'g') = ${normalizedCpfCnpj}`),
 			columns: { id: true },
 		});
 
@@ -105,6 +107,8 @@ export async function linkPartnerToClient({
 		.insert(clients)
 		.values({
 			organizacaoId: orgId,
+			autorId: authorship?.autorId ?? null,
+			autorVendedorId: authorship?.autorVendedorId ?? null,
 			nome: normalizeNullableString(partner.nome) ?? "PARCEIRO NÃO IDENTIFICADO",
 			cpfCnpj: normalizeNullableString(partner.cpfCnpj),
 			telefone: normalizeNullableString(partner.telefone) ?? "",

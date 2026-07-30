@@ -351,6 +351,8 @@ async function preparePointOfInteractionTransaction({ input, operatorContext, tx
 				.insert(clients)
 				.values({
 					organizacaoId: input.orgId,
+					autorId: operatorMembershipUser?.id ?? null,
+					autorVendedorId: operator.id,
 					nome: input.client.nome,
 					cpfCnpj: input.client.cpfCnpj ?? null,
 					telefone: input.client.telefone,
@@ -460,6 +462,7 @@ async function preparePointOfInteractionTransaction({ input, operatorContext, tx
 						telefoneBase: matchedPartner.telefoneBase,
 					},
 					createClientIfNotFound: true,
+					authorship: { autorId: operatorMembershipUser?.id ?? null, autorVendedorId: operator.id },
 				});
 
 				salePartnerClientId = linkage.clientId;
