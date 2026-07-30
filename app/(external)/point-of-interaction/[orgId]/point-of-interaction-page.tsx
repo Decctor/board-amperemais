@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { VirtualKeyboard } from "@/components/ui/virtual-keyboard";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { getErrorMessage } from "@/lib/errors";
-import { formatCashbackValue, formatToCPForCNPJ, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { formatCashbackValue, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import { createClientViaPointOfInteraction } from "@/lib/mutations/clients";
 import { useClientByLookup } from "@/lib/queries/clients";
 import { usePoiSellers } from "@/lib/queries/sellers";
@@ -31,6 +31,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { getCashbackAccumulationCopy } from "./_shared/helpers/cashback-copy";
 import { useAutoAdvanceTimer } from "./_shared/hooks/use-auto-advance-timer";
 import { usePoiSounds } from "./_shared/hooks/use-poi-sounds";
 
@@ -44,6 +45,12 @@ type PointOfInteractionContentProps = {
 		telefone: TOrganizationEntity["telefone"];
 	};
 	mode: "kiosk" | "mobile";
+	// Destino pós-identificação/cadastro: "transaction" = fluxo de venda no caixa (padrão);
+	// "profile" = clube de benefícios (perfil do cliente) — QR de mesa, link do vendedor.
+	flow: "transaction" | "profile";
+	// Vendedor pré-atribuído via link pessoal (?sellerId=), já validado no servidor.
+	// Quando presente, o select "quem te atendeu" fica oculto.
+	presetSellerId: string | null;
 };
 
 // Preview progressivo do teclado numérico: "31121990" -> "31/12/1990".
@@ -67,31 +74,12 @@ function parseBirthDateDigitsToIso(digits: string): string | null {
 	return `${digits.slice(4, 8)}-${digits.slice(2, 4)}-${digits.slice(0, 2)}`;
 }
 
-function getCashbackAccumulationCopy(cashbackProgram: TCashbackProgramEntity): string {
-	const { acumuloTipo, acumuloValor, acumuloRegraValorMinimo, terminologia } = cashbackProgram;
-
-	let copy: string;
-
-	if (acumuloTipo === "PERCENTUAL") {
-		const referencePurchaseValue = 100;
-		const earnedPerReference = (referencePurchaseValue * acumuloValor) / 100;
-		copy = `A cada ${formatToMoney(referencePurchaseValue)} gastos, você ganha ${formatCashbackValue(earnedPerReference, terminologia)}`;
-	} else {
-		copy = `Ganhe ${formatCashbackValue(acumuloValor, terminologia)} por compra`;
-	}
-
-	if (acumuloRegraValorMinimo > 0) {
-		copy += ` ( para compras a partir de ${formatToMoney(acumuloRegraValorMinimo)} )`;
-	}
-
-	return copy;
-}
-
-export default function PointOfInteractionContent({ org, cashbackProgram, mode }: PointOfInteractionContentProps) {
+export default function PointOfInteractionContent({ org, cashbackProgram, mode, flow, presetSellerId }: PointOfInteractionContentProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const { playAction, playSuccess } = usePoiSounds();
 	const isMobileMode = mode === "mobile";
+	const isProfileFlow = flow === "profile";
 
 	// Phone number state (raw digits only)
 	const [phoneDigits, setPhoneDigits] = useState("");
@@ -106,10 +94,12 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 	const [showOptionalFields, setShowOptionalFields] = useState(false);
 	// "Quem te atendeu": seleção opcional — null = sem escolha, não trava a conversão.
 	// authorSellerSkipped distingue "tocou em NÃO SEI" de "nem interagiu com o campo".
-	const [newClientAuthorSellerId, setNewClientAuthorSellerId] = useState<string | null>(null);
+	// Com vendedor pré-atribuído via link, a seleção nasce feita e o select fica oculto.
+	const [newClientAuthorSellerId, setNewClientAuthorSellerId] = useState<string | null>(presetSellerId);
 	const [authorSellerSkipped, setAuthorSellerSkipped] = useState(false);
 
 	const { data: poiSellers, isLoading: isLoadingPoiSellers } = usePoiSellers({ orgId: org.id });
+	const showSellerSelection = !presetSellerId;
 
 	// Client lookup
 	const {
@@ -141,9 +131,14 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 	// Auto-advance timer for found clients
 	const handleAdvance = useCallback(() => {
 		if (!client || !isPhoneComplete) return;
+		if (isProfileFlow) {
+			// Clube de benefícios: cliente já cadastrado vai direto ao perfil (consulta de saldo).
+			router.push(`/point-of-interaction/${org.id}/client-profile/${client.id}${isMobileMode ? "?mode=mobile" : ""}`);
+			return;
+		}
 		const modeParam = isMobileMode ? "&mode=mobile" : "";
 		router.push(`/point-of-interaction/${org.id}/new-transaction?clientId=${client.id}${modeParam}`);
-	}, [client, isMobileMode, isPhoneComplete, org.id, router]);
+	}, [client, isMobileMode, isPhoneComplete, isProfileFlow, org.id, router]);
 
 	const { countdown, countdownSeconds, isAdvancing, wasCancelled, cancel, resetCancellation } = useAutoAdvanceTimer({
 		shouldStart: isSuccessClient && !!client && isPhoneComplete,
@@ -171,6 +166,11 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 		onSuccess: (data) => {
 			playSuccess();
 			toast.success(data.message);
+			if (isProfileFlow) {
+				// Recém-entrou no clube: perfil com boas-vindas.
+				router.push(`/point-of-interaction/${org.id}/client-profile/${data.data.insertedClientId}?welcome=true${isMobileMode ? "&mode=mobile" : ""}`);
+				return;
+			}
 			const modeParam = isMobileMode ? "&mode=mobile" : "";
 			router.push(`/point-of-interaction/${org.id}/new-transaction?clientId=${data.data.insertedClientId}${modeParam}`);
 		},
@@ -202,7 +202,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 		setNewClientName("");
 		setNewClientCpfCnpj("");
 		setNewClientBirthDateDigits("");
-		setNewClientAuthorSellerId(null);
+		setNewClientAuthorSellerId(presetSellerId);
 		setAuthorSellerSkipped(false);
 		setShowOptionalFields(false);
 		clearClientLookup();
@@ -472,9 +472,12 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 								<UserPlus className="w-7 h-7 short:w-5 short:h-5" />
 							</div>
 							<div className="min-w-0">
-								<h3 className="font-black uppercase text-foreground text-xl short:text-lg tracking-tight">NOVO CLIENTE</h3>
+								<h3 className="font-black uppercase text-foreground text-xl short:text-lg tracking-tight">
+									{isProfileFlow ? "CLUBE DE BENEFÍCIOS" : "NOVO CLIENTE"}
+								</h3>
 								<p className="text-sm text-muted-foreground">
-									Complete os dados para cadastrar <span className="font-bold text-foreground whitespace-nowrap">{formattedPhone}</span>
+									{isProfileFlow ? "Complete os dados para entrar no clube com" : "Complete os dados para cadastrar"}{" "}
+									<span className="font-bold text-foreground whitespace-nowrap">{formattedPhone}</span>
 								</p>
 							</div>
 						</div>
@@ -500,7 +503,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 								/>
 							</div>
 
-							{isLoadingPoiSellers ? (
+							{showSellerSelection && isLoadingPoiSellers ? (
 								<div className="flex flex-col gap-1.5">
 									<span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">QUEM TE ATENDEU? (OPCIONAL)</span>
 									<div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -517,7 +520,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 								</div>
 							) : null}
 
-							{!isLoadingPoiSellers && poiSellers && poiSellers.length > 0 ? (
+							{showSellerSelection && !isLoadingPoiSellers && poiSellers && poiSellers.length > 0 ? (
 								<div className="flex flex-col gap-1.5">
 									<span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">QUEM TE ATENDEU? (OPCIONAL)</span>
 									{/* Teto de altura: orgs com muitos vendedores rolam aqui dentro, o AVANÇAR nunca sai da dobra. */}
@@ -664,7 +667,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 								) : (
 									<>
 										<UserPlus className="w-5 h-5 mr-2" />
-										AVANÇAR
+										{isProfileFlow ? "ENTRAR NO CLUBE" : "AVANÇAR"}
 									</>
 								)}
 							</Button>

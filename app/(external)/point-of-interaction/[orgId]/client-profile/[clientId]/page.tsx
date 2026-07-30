@@ -10,11 +10,13 @@ export default async function ClientProfilePage({
 	searchParams,
 }: {
 	params: Promise<{ orgId: string; clientId: string }>;
-	searchParams: Promise<{ mode?: string }>;
+	searchParams: Promise<{ mode?: string; welcome?: string }>;
 }) {
 	const { orgId, clientId } = await params;
-	const { mode } = await searchParams;
+	const { mode, welcome } = await searchParams;
 	const interfaceMode = mode === "mobile" ? "mobile" : "kiosk";
+	// Chegada via cadastro no fluxo de clube: exibe as boas-vindas ao programa.
+	const showWelcome = welcome === "true";
 
 	if (!orgId || !clientId) {
 		return <ErrorComponent msg="Oops, parâmetro inválido." />;
@@ -120,6 +122,7 @@ export default async function ClientProfilePage({
 			<ClientProfileContent
 				orgId={orgId}
 				mode={interfaceMode}
+				showWelcome={showWelcome}
 				cashbackProgram={cashbackProgram}
 				client={client}
 				balance={balance}

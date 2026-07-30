@@ -13,11 +13,14 @@ export default async function PointOfInteraction({
 	searchParams,
 }: {
 	params: Promise<{ orgId: string }>;
-	searchParams: Promise<{ mode?: string }>;
+	searchParams: Promise<{ mode?: string; flow?: string; sellerId?: string }>;
 }) {
 	const { orgId } = await params;
-	const { mode } = await searchParams;
+	const { mode, flow, sellerId } = await searchParams;
 	const interfaceMode = mode === "mobile" ? "mobile" : "kiosk";
+	// flow controla o destino pós-identificação/cadastro: "transaction" (caixa, padrão)
+	// ou "profile" (clube de benefícios — QR de mesa, link do vendedor no salão).
+	const interfaceFlow = flow === "profile" ? "profile" : "transaction";
 
 	if (!orgId) {
 		return <ErrorComponent msg="Oops, parâmetro inválido." />;
@@ -41,6 +44,15 @@ export default async function PointOfInteraction({
 	if (!org) {
 		return <ErrorComponent msg="Organização não encontrada" />;
 	}
+
+	// Link pessoal do vendedor (salão): pré-atribui o "quem te atendeu" no cadastro.
+	// Validado aqui contra a org; id inválido/inativo é simplesmente ignorado.
+	const presetSeller = sellerId
+		? await db.query.sellers.findFirst({
+				where: (fields, { and, eq }) => and(eq(fields.id, sellerId), eq(fields.organizacaoId, orgId), eq(fields.ativo, true)),
+				columns: { id: true },
+			})
+		: null;
 
 	const cashbackProgram = await db.query.cashbackPrograms.findFirst({
 		where: (fields, { eq }) => eq(fields.organizacaoId, orgId),
@@ -73,7 +85,13 @@ export default async function PointOfInteraction({
 			corSecundaria={org.corSecundaria}
 			corSecundariaForeground={org.corSecundariaForeground}
 		>
-			<PointOfInteractionContent org={org} cashbackProgram={cashbackProgram} mode={interfaceMode} />
+			<PointOfInteractionContent
+				org={org}
+				cashbackProgram={cashbackProgram}
+				mode={interfaceMode}
+				flow={interfaceFlow}
+				presetSellerId={presetSeller?.id ?? null}
+			/>
 		</OrgColorsProvider>
 	);
 }

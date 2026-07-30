@@ -7,6 +7,7 @@ import {
 	Calendar,
 	Clock,
 	History,
+	PartyPopper,
 	ShoppingBag,
 	ShoppingCart,
 	TrendingDown,
@@ -20,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
+import { getCashbackAccumulationCopy } from "../../_shared/helpers/cashback-copy";
 import { formatCashbackValue, formatDateAsLocale, formatToPhone, getCashbackUnitLabel } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema/cashback-programs";
@@ -41,6 +43,8 @@ type Transaction = {
 type ClientProfileContentProps = {
 	orgId: string;
 	mode?: "kiosk" | "mobile";
+	// Chegada via cadastro no fluxo de clube: banner de boas-vindas com a regra de acúmulo.
+	showWelcome?: boolean;
 	cashbackProgram: TCashbackProgramEntity;
 	client: {
 		id: string;
@@ -61,7 +65,16 @@ type ClientProfileContentProps = {
 	transactions: Transaction[];
 };
 
-export default function ClientProfileContent({ orgId, mode = "kiosk", cashbackProgram, client, balance, rankingPosition, transactions }: ClientProfileContentProps) {
+export default function ClientProfileContent({
+	orgId,
+	mode = "kiosk",
+	showWelcome = false,
+	cashbackProgram,
+	client,
+	balance,
+	rankingPosition,
+	transactions,
+}: ClientProfileContentProps) {
 	const router = useRouter();
 
 	useEffect(() => {
@@ -96,10 +109,21 @@ export default function ClientProfileContent({ orgId, mode = "kiosk", cashbackPr
 	};
 
 	return (
-		<div className="h-full bg-slate-50 p-4 md:p-6 short:p-2 flex flex-col items-center overflow-y-auto md:overflow-hidden">
+		<div className="h-full bg-background p-4 md:p-6 short:p-2 flex flex-col items-center overflow-y-auto md:overflow-hidden">
 			<div className="w-full max-w-6xl flex flex-col gap-4 short:gap-2 min-h-full md:h-full md:min-h-0">
+				{showWelcome ? (
+					<div className="w-full flex items-center gap-3 short:gap-2 bg-brand text-brand-foreground p-4 short:p-2.5 rounded-4xl short:rounded-2xl shadow-sm shrink-0 animate-in fade-in slide-in-from-top-2 motion-reduce:animate-none">
+						<div className="p-2.5 short:p-1.5 bg-brand-foreground/10 rounded-full shrink-0">
+							<PartyPopper className="w-6 h-6 short:w-4 short:h-4" />
+						</div>
+						<div className="min-w-0">
+							<p className="font-black uppercase text-base short:text-sm tracking-tight leading-tight">Bem-vindo ao clube, {client.nome.split(" ")[0]}!</p>
+							<p className="text-xs short:text-[0.65rem] font-medium opacity-80 leading-snug">{getCashbackAccumulationCopy(cashbackProgram)}</p>
+						</div>
+					</div>
+				) : null}
 				{/* 1. HEADER: Informações e Status */}
-				<header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 short:gap-2 bg-white p-4 short:p-2.5 rounded-4xl short:rounded-2xl shadow-sm border border-slate-100 shrink-0">
+				<header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 short:gap-2 bg-card p-4 short:p-2.5 rounded-4xl short:rounded-2xl shadow-sm border border-border shrink-0">
 					<div className="flex items-center gap-3 short:gap-1.5">
 						<Button variant="ghost" size="fit" asChild className="rounded-full hover:bg-brand/10 flex items-center gap-1 px-2 py-2 short:px-1.5 short:py-1">
 							<Link href={`/point-of-interaction/${orgId}${mode === "mobile" ? "?mode=mobile" : ""}`} className="flex items-center gap-1">
@@ -108,7 +132,7 @@ export default function ClientProfileContent({ orgId, mode = "kiosk", cashbackPr
 							</Link>
 						</Button>
 						<div>
-							<h1 className="text-xl short:text-base font-black text-black uppercase italic leading-none">{client.nome}</h1>
+							<h1 className="text-xl short:text-base font-black text-foreground uppercase italic leading-none">{client.nome}</h1>
 							<p className="text-xs short:text-[0.6rem] font-bold text-muted-foreground mt-0.5">{formatToPhone(client.telefone)}</p>
 						</div>
 					</div>
@@ -116,13 +140,13 @@ export default function ClientProfileContent({ orgId, mode = "kiosk", cashbackPr
 					{/* Badge de Saldo e Ranking em estilo "Pílula" */}
 					<div className="flex items-center bg-brand/5 border-2 short:border border-brand/10 rounded-full px-6 short:px-3 py-2 short:py-1.5 gap-6 short:gap-3 shadow-inner">
 						<div className="flex flex-col items-center border-r-2 short:border-r border-brand/10 pr-6 short:pr-3">
-							<span className="text-[0.6rem] short:text-[0.5rem] font-black text-black uppercase tracking-widest">Saldo Disponível</span>
+							<span className="text-[0.6rem] short:text-[0.5rem] font-black text-foreground uppercase tracking-widest">Saldo Disponível</span>
 							<span className="text-xl short:text-base font-black text-brand">
 								{formatCashbackValue(balance.saldoValorDisponivel, cashbackProgram.terminologia)}
 							</span>
 						</div>
 						<div className="flex flex-col items-center">
-							<span className="text-[0.6rem] short:text-[0.5rem] font-black text-black uppercase tracking-widest">Ranking</span>
+							<span className="text-[0.6rem] short:text-[0.5rem] font-black text-foreground uppercase tracking-widest">Ranking</span>
 							<div className="flex items-center gap-1">
 								<Award className="w-4 h-4 short:w-3 short:h-3 text-amber-500" />
 								<span className="text-xl short:text-base font-black text-brand">#{rankingPosition}</span>
@@ -142,7 +166,7 @@ export default function ClientProfileContent({ orgId, mode = "kiosk", cashbackPr
 						</div>
 						<div>
 							<span className="block text-xl short:text-sm font-black text-brand-foreground italic leading-none uppercase">Nova Compra</span>
-							<span className="text-[0.65rem] short:text-[0.5rem] font-bold text-muted-foreground uppercase tracking-widest short:hidden">
+							<span className="text-[0.65rem] short:text-[0.5rem] font-bold text-brand-foreground/70 uppercase tracking-widest short:hidden">
 								Registre compras e acumule {getCashbackUnitLabel(cashbackProgram.terminologia)}
 							</span>
 						</div>
@@ -173,27 +197,27 @@ export default function ClientProfileContent({ orgId, mode = "kiosk", cashbackPr
 				{/* 3. GRID INFERIOR: Resgates e Histórico */}
 				<div className="grid grid-cols-1 md:grid-cols-12 gap-4 short:gap-2 items-stretch md:flex-1 md:min-h-0">
 					{/* Seção de Resumo (Lado Esquerdo) */}
-					<section className="md:col-span-5 bg-white rounded-4xl short:rounded-2xl p-6 short:p-3 shadow-sm border border-slate-100 flex flex-col overflow-visible md:min-h-0 md:overflow-hidden">
+					<section className="md:col-span-5 bg-card rounded-4xl short:rounded-2xl p-6 short:p-3 shadow-sm border border-border flex flex-col overflow-visible md:min-h-0 md:overflow-hidden">
 						<div className="flex items-center gap-3 short:gap-1.5 mb-6 short:mb-2 shrink-0">
 							<div className="p-2 short:p-1 bg-brand/5 rounded-lg short:rounded text-brand">
 								<UserRound className="w-5 h-5 short:w-3.5 short:h-3.5" />
 							</div>
-							<h2 className="text-lg short:text-sm font-black text-black uppercase italic">SOBRE VOCÊ</h2>
+							<h2 className="text-lg short:text-sm font-black text-foreground uppercase italic">SOBRE VOCÊ</h2>
 						</div>
 
 						<div className="grid grid-cols-2 gap-4 short:gap-1.5 p-2 short:p-0.5 md:overflow-y-auto md:overscroll-y-auto md:scrollbar-thin md:scrollbar-track-primary/10 md:scrollbar-thumb-primary/30">
 							{/* Card 1: Total Compras */}
-							<div className="col-span-2 p-4 short:p-2 rounded-2xl short:rounded-lg bg-slate-50 border border-slate-100 flex flex-col gap-1 short:gap-0">
+							<div className="col-span-2 p-4 short:p-2 rounded-2xl short:rounded-lg bg-muted/50 border border-border flex flex-col gap-1 short:gap-0">
 								<div className="flex items-center gap-2 short:gap-1 mb-1 short:mb-0">
 									<div className="p-1.5 short:p-1 rounded-md short:rounded bg-blue-100 text-blue-700">
 										<ShoppingBag className="w-3.5 h-3.5 short:w-2.5 short:h-2.5" />
 									</div>
 									<span className="text-[0.6rem] short:text-[0.5rem] font-bold text-muted-foreground uppercase tracking-wider">Total Compras</span>
 								</div>
-								<span className="text-xl short:text-sm font-black text-slate-800">{client.metadataTotalCompras ?? 0}</span>
+								<span className="text-xl short:text-sm font-black text-foreground">{client.metadataTotalCompras ?? 0}</span>
 							</div>
 							{/* Card 2: Total Acumulado */}
-							<div className="p-4 short:p-2 rounded-2xl short:rounded-lg bg-slate-50 border border-slate-100 flex flex-col gap-1 short:gap-0">
+							<div className="p-4 short:p-2 rounded-2xl short:rounded-lg bg-muted/50 border border-border flex flex-col gap-1 short:gap-0">
 								<div className="flex items-center gap-2 short:gap-1 mb-1 short:mb-0">
 									<div className="p-1.5 short:p-1 rounded-md short:rounded bg-green-100 text-green-700">
 										<TrendingUp className="w-3.5 h-3.5 short:w-2.5 short:h-2.5" />
@@ -206,7 +230,7 @@ export default function ClientProfileContent({ orgId, mode = "kiosk", cashbackPr
 							</div>
 
 							{/* Card 3: Total Resgatado */}
-							<div className="p-4 short:p-2 rounded-2xl short:rounded-lg bg-slate-50 border border-slate-100 flex flex-col gap-1 short:gap-0">
+							<div className="p-4 short:p-2 rounded-2xl short:rounded-lg bg-muted/50 border border-border flex flex-col gap-1 short:gap-0">
 								<div className="flex items-center gap-2 short:gap-1 mb-1 short:mb-0">
 									<div className="p-1.5 short:p-1 rounded-md short:rounded bg-orange-100 text-orange-700">
 										<TrendingDown className="w-3.5 h-3.5 short:w-2.5 short:h-2.5" />
@@ -219,25 +243,25 @@ export default function ClientProfileContent({ orgId, mode = "kiosk", cashbackPr
 							</div>
 
 							{/* Card 4: Última Compra (Recência) */}
-							<div className="p-4 short:p-2 rounded-2xl short:rounded-lg bg-slate-50 border border-slate-100 flex flex-col gap-1 short:gap-0">
+							<div className="p-4 short:p-2 rounded-2xl short:rounded-lg bg-muted/50 border border-border flex flex-col gap-1 short:gap-0">
 								<div className="flex items-center gap-2 short:gap-1 mb-1 short:mb-0">
 									<div className="p-1.5 short:p-1 rounded-md short:rounded bg-amber-100 text-amber-700">
 										<Clock className="w-3.5 h-3.5 short:w-2.5 short:h-2.5" />
 									</div>
 									<span className="text-[0.6rem] short:text-[0.5rem] font-bold text-muted-foreground uppercase tracking-wider">Última Compra</span>
 								</div>
-								<span className="text-xl short:text-sm font-black text-slate-800">{formatRecency(daysSinceLastPurchase)}</span>
+								<span className="text-xl short:text-sm font-black text-foreground">{formatRecency(daysSinceLastPurchase)}</span>
 							</div>
 
 							{/* Card 6: Dias como membro */}
-							<div className="p-4 short:p-2 rounded-2xl short:rounded-lg bg-slate-50 border border-slate-100 flex flex-col gap-1 short:gap-0">
+							<div className="p-4 short:p-2 rounded-2xl short:rounded-lg bg-muted/50 border border-border flex flex-col gap-1 short:gap-0">
 								<div className="flex items-center gap-2 short:gap-1 mb-1 short:mb-0">
 									<div className="p-1.5 short:p-1 rounded-md short:rounded bg-purple-100 text-purple-700">
 										<Calendar className="w-3.5 h-3.5 short:w-2.5 short:h-2.5" />
 									</div>
 									<span className="text-[0.6rem] short:text-[0.5rem] font-bold text-muted-foreground uppercase tracking-wider">Fidelidade</span>
 								</div>
-								<span className="text-xl short:text-sm font-black text-slate-800">
+								<span className="text-xl short:text-sm font-black text-foreground">
 									{daysSinceCreation} <span className="text-xs short:text-[0.5rem] font-bold text-muted-foreground">dias</span>
 								</span>
 							</div>
@@ -260,7 +284,7 @@ export default function ClientProfileContent({ orgId, mode = "kiosk", cashbackPr
 								<div className="p-2 short:p-1 bg-brand/5 rounded-lg short:rounded text-muted-foreground">
 									<History className="w-5 h-5 short:w-3.5 short:h-3.5" />
 								</div>
-								<h2 className="text-lg short:text-sm font-black text-black uppercase italic">Histórico</h2>
+								<h2 className="text-lg short:text-sm font-black text-foreground uppercase italic">Histórico</h2>
 							</div>
 						</div>
 
