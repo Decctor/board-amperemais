@@ -53,6 +53,18 @@ export function isValidCNPJ(cnpj: string): boolean {
 }
 
 /**
+ * Validates a value as either a CPF (11 digits) or CNPJ (14 digits),
+ * including verification digits. Any other length is invalid.
+ * @param value - The document string to validate (can include formatting characters)
+ */
+export function isValidCpfCnpj(value: string): boolean {
+	const digits = value.replace(/\D/g, "");
+	if (digits.length === 11) return isValidCPF(digits);
+	if (digits.length === 14) return isValidCNPJ(digits);
+	return false;
+}
+
+/**
  * Validates a Brazilian CPF (Cadastro de Pessoas Físicas).
  * @param cpf - The CPF string to validate (can include formatting characters)
  * @returns true if valid, false otherwise

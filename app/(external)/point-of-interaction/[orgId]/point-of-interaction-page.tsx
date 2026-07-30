@@ -10,9 +10,23 @@ import { createClientViaPointOfInteraction } from "@/lib/mutations/clients";
 import { useClientByLookup } from "@/lib/queries/clients";
 import { usePoiSellers } from "@/lib/queries/sellers";
 import { cn } from "@/lib/utils";
+import { isValidCpfCnpj } from "@/lib/validation";
 import type { TCashbackProgramEntity, TOrganizationEntity } from "@/services/drizzle/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BadgePercent, Building2, ChevronDown, ChevronUp, Clock, Delete, Gift, Loader2, Phone, ShoppingCart, UserPlus } from "lucide-react";
+import {
+	BadgePercent,
+	Building2,
+	Check,
+	ChevronDown,
+	ChevronUp,
+	Clock,
+	Delete,
+	Gift,
+	HelpCircle,
+	Loader2,
+	ShoppingCart,
+	UserPlus,
+} from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
@@ -31,6 +45,27 @@ type PointOfInteractionContentProps = {
 	};
 	mode: "kiosk" | "mobile";
 };
+
+// Preview progressivo do teclado numérico: "31121990" -> "31/12/1990".
+function formatBirthDateDigits(digits: string): string {
+	const day = digits.slice(0, 2);
+	const month = digits.slice(2, 4);
+	const year = digits.slice(4, 8);
+	return [day, month, year].filter((part) => part.length > 0).join("/");
+}
+
+// "DDMMAAAA" -> "AAAA-MM-DD" (o formato que o ClientSchema transforma em Date).
+// Null = data incompleta ou inexistente (ex.: 31/02); nunca enviar DD/MM cru no payload.
+function parseBirthDateDigitsToIso(digits: string): string | null {
+	if (digits.length !== 8) return null;
+	const day = Number(digits.slice(0, 2));
+	const month = Number(digits.slice(2, 4));
+	const year = Number(digits.slice(4, 8));
+	const date = new Date(year, month - 1, day);
+	const isRealDate = date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+	if (!isRealDate || year < 1900 || date.getTime() > Date.now()) return null;
+	return `${digits.slice(4, 8)}-${digits.slice(2, 4)}-${digits.slice(0, 2)}`;
+}
 
 function getCashbackAccumulationCopy(cashbackProgram: TCashbackProgramEntity): string {
 	const { acumuloTipo, acumuloValor, acumuloRegraValorMinimo, terminologia } = cashbackProgram;
@@ -66,12 +101,15 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 	// New client form state
 	const [newClientName, setNewClientName] = useState("");
 	const [newClientCpfCnpj, setNewClientCpfCnpj] = useState("");
-	const [newClientDateOfBirth, setNewClientDateOfBirth] = useState("");
+	// Dígitos DDMMAAAA do teclado numérico; convertidos para ISO só no submit.
+	const [newClientBirthDateDigits, setNewClientBirthDateDigits] = useState("");
 	const [showOptionalFields, setShowOptionalFields] = useState(false);
-	// "Quem te atendeu": seleção opcional — null = cliente pulou ("não sei"), não trava a conversão.
+	// "Quem te atendeu": seleção opcional — null = sem escolha, não trava a conversão.
+	// authorSellerSkipped distingue "tocou em NÃO SEI" de "nem interagiu com o campo".
 	const [newClientAuthorSellerId, setNewClientAuthorSellerId] = useState<string | null>(null);
+	const [authorSellerSkipped, setAuthorSellerSkipped] = useState(false);
 
-	const { data: poiSellers } = usePoiSellers({ orgId: org.id });
+	const { data: poiSellers, isLoading: isLoadingPoiSellers } = usePoiSellers({ orgId: org.id });
 
 	// Client lookup
 	const {
@@ -163,8 +201,9 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 		setPhoneDigits("");
 		setNewClientName("");
 		setNewClientCpfCnpj("");
-		setNewClientDateOfBirth("");
+		setNewClientBirthDateDigits("");
 		setNewClientAuthorSellerId(null);
+		setAuthorSellerSkipped(false);
 		setShowOptionalFields(false);
 		clearClientLookup();
 		resetCancellation();
@@ -181,6 +220,18 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 			toast.error("Preencha o nome do cliente.");
 			return;
 		}
+		if (newClientCpfCnpj && !isValidCpfCnpj(newClientCpfCnpj)) {
+			toast.error("CPF/CNPJ inválido. Confira os números digitados.");
+			return;
+		}
+		let birthDateIso: string | null = null;
+		if (newClientBirthDateDigits.length > 0) {
+			birthDateIso = parseBirthDateDigitsToIso(newClientBirthDateDigits);
+			if (!birthDateIso) {
+				toast.error("Data de nascimento inválida. Confira o formato DD/MM/AAAA.");
+				return;
+			}
+		}
 		handleCreateClient({
 			orgId: org.id,
 			client: {
@@ -188,7 +239,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 				telefone: formattedPhone,
 				cpfCnpj: newClientCpfCnpj || null,
 				// biome-ignore lint: dataNascimento schema transforms string->Date, but API receives string via JSON
-				dataNascimento: (newClientDateOfBirth || null) as any,
+				dataNascimento: birthDateIso as any,
 				autorVendedorId: newClientAuthorSellerId,
 			},
 		});
@@ -414,25 +465,22 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 
 			{/* ===== CLIENT NOT FOUND ===== */}
 			{clientNotFound ? (
-				<div className="w-full max-w-xl flex flex-col items-center justify-center animate-in zoom-in duration-300">
-					<div className="w-full bg-blue-50 border-2 border-blue-200 rounded-3xl p-8 md:p-10 flex flex-col gap-5 shadow-lg">
-						<div className="flex items-center gap-4 mb-1">
-							<div className="p-3 bg-blue-600 rounded-xl text-white shadow-sm">
-								<UserPlus className="w-7 h-7" />
+				<div className="w-full max-w-xl flex flex-col items-center justify-center animate-in zoom-in duration-300 motion-reduce:animate-none">
+					<div className="w-full bg-card border-2 border-brand/20 rounded-3xl p-8 md:p-10 short:p-5 flex flex-col gap-5 short:gap-3 shadow-xl">
+						<div className="flex items-center gap-4 short:gap-3 mb-1 short:mb-0">
+							<div className="p-3 short:p-2 bg-brand rounded-xl text-brand-foreground shadow-sm">
+								<UserPlus className="w-7 h-7 short:w-5 short:h-5" />
 							</div>
-							<div>
-								<h3 className="font-black uppercase text-blue-900 text-xl tracking-tight">NOVO CLIENTE</h3>
-								<p className="text-sm text-blue-600">Complete os dados para criar o cadastro</p>
+							<div className="min-w-0">
+								<h3 className="font-black uppercase text-foreground text-xl short:text-lg tracking-tight">NOVO CLIENTE</h3>
+								<p className="text-sm text-muted-foreground">
+									Complete os dados para cadastrar <span className="font-bold text-foreground whitespace-nowrap">{formattedPhone}</span>
+								</p>
 							</div>
-						</div>
-
-						<div className="w-fit flex items-center gap-2 self-center bg-blue-600 text-white px-5 py-2.5 rounded-xl shadow-sm">
-							<Phone className="w-4 h-4" />
-							<span className="text-sm font-bold tracking-wide">{formattedPhone}</span>
 						</div>
 
 						<form
-							className="flex flex-col gap-4"
+							className="flex flex-col gap-4 short:gap-3"
 							onSubmit={(e) => {
 								e.preventDefault();
 								handleSubmitNewClient();
@@ -452,39 +500,98 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 								/>
 							</div>
 
-							{poiSellers && poiSellers.length > 0 ? (
+							{isLoadingPoiSellers ? (
 								<div className="flex flex-col gap-1.5">
 									<span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">QUEM TE ATENDEU? (OPCIONAL)</span>
 									<div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-										{poiSellers.map((seller) => {
-											const isSelected = newClientAuthorSellerId === seller.id;
-											return (
-												<button
-													key={seller.id}
-													type="button"
-													onClick={() => setNewClientAuthorSellerId((prev) => (prev === seller.id ? null : seller.id))}
-													className={cn(
-														"flex flex-col items-center gap-1.5 rounded-xl border-2 p-2.5 transition-all active:scale-95",
-														isSelected ? "border-blue-600 bg-blue-100 shadow-md" : "border-border bg-background hover:border-blue-300",
-													)}
-												>
-													<div className="relative w-12 h-12 rounded-full overflow-hidden bg-blue-600/10 flex items-center justify-center">
-														{seller.avatarUrl ? (
-															<Image src={seller.avatarUrl} alt={seller.nome} fill className="object-cover" />
-														) : (
-															<span className="text-base font-black text-blue-700">
-																{seller.nome
-																	.split(" ")
-																	.slice(0, 2)
-																	.map((part) => part.charAt(0).toUpperCase())
-																	.join("")}
-															</span>
+										{[0, 1, 2, 3].map((placeholder) => (
+											<div
+												key={placeholder}
+												className="flex flex-col items-center gap-1.5 rounded-xl border-2 border-border p-2.5 short:p-2 animate-pulse motion-reduce:animate-none"
+											>
+												<div className="w-12 h-12 short:w-10 short:h-10 rounded-full bg-muted" />
+												<div className="h-2.5 w-12 rounded bg-muted" />
+											</div>
+										))}
+									</div>
+								</div>
+							) : null}
+
+							{!isLoadingPoiSellers && poiSellers && poiSellers.length > 0 ? (
+								<div className="flex flex-col gap-1.5">
+									<span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">QUEM TE ATENDEU? (OPCIONAL)</span>
+									{/* Teto de altura: orgs com muitos vendedores rolam aqui dentro, o AVANÇAR nunca sai da dobra. */}
+									<div className="max-h-[15.5rem] short:max-h-44 overflow-y-auto overscroll-contain pr-1">
+										<div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+											{poiSellers.map((seller, sellerIndex) => {
+												const isSelected = newClientAuthorSellerId === seller.id;
+												return (
+													<button
+														key={seller.id}
+														type="button"
+														aria-pressed={isSelected}
+														onClick={() => {
+															setAuthorSellerSkipped(false);
+															setNewClientAuthorSellerId((prev) => (prev === seller.id ? null : seller.id));
+														}}
+														style={{ animationDelay: `${Math.min(sellerIndex * 30, 240)}ms`, animationFillMode: "backwards" }}
+														className={cn(
+															"relative flex flex-col items-center gap-1.5 rounded-xl border-2 p-2.5 short:p-2 transition-all active:scale-95 motion-reduce:active:scale-100",
+															"animate-in fade-in slide-in-from-bottom-2 motion-reduce:animate-none",
+															"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
+															isSelected ? "border-brand bg-brand/10 shadow-md" : "border-border bg-background hover:border-brand/50",
 														)}
-													</div>
-													<span className="w-full text-[0.65rem] font-bold uppercase leading-tight text-center truncate">{seller.nome.split(" ")[0]}</span>
-												</button>
-											);
-										})}
+													>
+														{isSelected ? (
+															<span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 rounded-full bg-brand text-brand-foreground shadow-sm">
+																<Check className="w-3 h-3" strokeWidth={3} />
+															</span>
+														) : null}
+														<div className="relative w-12 h-12 short:w-10 short:h-10 rounded-full overflow-hidden bg-brand/10 flex items-center justify-center">
+															{seller.avatarUrl ? (
+																<Image src={seller.avatarUrl} alt={seller.nome} fill sizes="48px" className="object-cover" />
+															) : (
+																<span className="text-base font-black text-foreground/80">
+																	{seller.nome
+																		.split(" ")
+																		.slice(0, 2)
+																		.map((part) => part.charAt(0).toUpperCase())
+																		.join("")}
+																</span>
+															)}
+														</div>
+														<span className="w-full text-[0.65rem] font-bold uppercase leading-tight text-center truncate text-foreground">
+															{seller.nome.split(" ")[0]}
+														</span>
+													</button>
+												);
+											})}
+											<button
+												type="button"
+												aria-pressed={authorSellerSkipped}
+												onClick={() => {
+													setAuthorSellerSkipped(true);
+													setNewClientAuthorSellerId(null);
+												}}
+												style={{ animationDelay: `${Math.min(poiSellers.length * 30, 240)}ms`, animationFillMode: "backwards" }}
+												className={cn(
+													"relative flex flex-col items-center gap-1.5 rounded-xl border-2 border-dashed p-2.5 short:p-2 transition-all active:scale-95 motion-reduce:active:scale-100",
+													"animate-in fade-in slide-in-from-bottom-2 motion-reduce:animate-none",
+													"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
+													authorSellerSkipped ? "border-brand bg-brand/10 shadow-md" : "border-border bg-background hover:border-brand/50",
+												)}
+											>
+												{authorSellerSkipped ? (
+													<span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 rounded-full bg-brand text-brand-foreground shadow-sm">
+														<Check className="w-3 h-3" strokeWidth={3} />
+													</span>
+												) : null}
+												<div className="relative w-12 h-12 short:w-10 short:h-10 rounded-full bg-muted flex items-center justify-center">
+													<HelpCircle className="w-6 h-6 text-muted-foreground" />
+												</div>
+												<span className="w-full text-[0.65rem] font-bold uppercase leading-tight text-center truncate text-muted-foreground">NÃO SEI</span>
+											</button>
+										</div>
 									</div>
 								</div>
 							) : null}
@@ -497,8 +604,8 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 									className="w-fit flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold"
 									onClick={() => setShowOptionalFields((prev) => !prev)}
 								>
-									{showOptionalFields ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-									MOSTRAR OUTROS DADOS
+									{showOptionalFields ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+									{showOptionalFields ? "OCULTAR OUTROS DADOS" : "MOSTRAR OUTROS DADOS"}
 								</Button>
 							</div>
 
@@ -516,16 +623,28 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 											maxLength={14}
 											formatValue={formatToCPForCNPJ}
 											confirmLabel="Confirmar documento"
-											triggerClassName="h-11 justify-start text-left px-3 rounded-lg border-input bg-background text-sm font-medium"
+											triggerClassName={cn(
+												"h-11 justify-start text-left px-3 rounded-lg border-input bg-background text-sm font-medium",
+												newClientCpfCnpj && !isValidCpfCnpj(newClientCpfCnpj) && "border-destructive",
+											)}
 										/>
+										{newClientCpfCnpj && !isValidCpfCnpj(newClientCpfCnpj) ? (
+											<p className="text-xs font-medium text-destructive">CPF/CNPJ inválido — confira os números.</p>
+										) : null}
 									</div>
 									<div className="flex flex-col gap-1.5">
-										<label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">DATA DE NASCIMENTO</label>
-										<input
-											type="date"
-											value={newClientDateOfBirth}
-											onChange={(e) => setNewClientDateOfBirth(e.target.value)}
-											className="w-full h-11 px-3 rounded-lg border border-input bg-background text-sm font-medium"
+										<span className="text-xs font-bold uppercase text-muted-foreground tracking-wider">DATA DE NASCIMENTO</span>
+										<VirtualKeyboard
+											type="numeric"
+											label="Data de nascimento"
+											description="Digite dia, mês e ano (DD/MM/AAAA)."
+											placeholder="DD/MM/AAAA"
+											value={newClientBirthDateDigits}
+											onChange={setNewClientBirthDateDigits}
+											maxLength={8}
+											formatValue={formatBirthDateDigits}
+											confirmLabel="Confirmar data"
+											triggerClassName="h-11 justify-start text-left px-3 rounded-lg border-input bg-background text-sm font-medium"
 										/>
 									</div>
 								</div>
@@ -535,7 +654,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 								type="submit"
 								size="lg"
 								disabled={isCreatingClient || !newClientName}
-								className="w-full mt-1 rounded-2xl h-16 text-lg font-bold shadow-lg shadow-blue-600/20 bg-blue-600 hover:bg-blue-700 uppercase tracking-widest"
+								className="w-full mt-1 short:mt-0 rounded-2xl h-16 short:h-12 text-lg short:text-base font-bold shadow-lg shadow-brand/20 bg-brand text-brand-foreground hover:bg-brand hover:opacity-90 uppercase tracking-widest"
 							>
 								{isCreatingClient ? (
 									<>
@@ -549,13 +668,14 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode }
 									</>
 								)}
 							</Button>
+							{!newClientName ? <p className="text-xs text-muted-foreground text-center -mt-2 short:-mt-1">Preencha o nome para continuar</p> : null}
 						</form>
 
 						<div className="w-full flex items-center flex-col gap-1 pt-2">
-							<p className="text-sm text-gray-500 font-medium">Outro número de telefone?</p>
+							<p className="text-sm text-muted-foreground font-medium">Outro número de telefone?</p>
 							<button
 								type="button"
-								className="px-5 py-2.5 bg-gray-400 hover:bg-gray-500 text-white rounded-xl text-xs font-bold transition-colors"
+								className="px-5 py-2.5 border border-border bg-background text-foreground hover:bg-accent rounded-xl text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
 								onClick={handleReset}
 							>
 								TENTAR OUTRO NÚMERO

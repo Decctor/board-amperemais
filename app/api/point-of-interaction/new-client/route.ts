@@ -2,6 +2,7 @@ import { resolvePoiActorContext } from "@/lib/access/poi-actor";
 import { appApiHandler } from "@/lib/app-api";
 import { resolveValidatedAuthorSeller } from "@/lib/clients/authorship";
 import { formatPhoneAsBase } from "@/lib/formatting";
+import { isValidCpfCnpj } from "@/lib/validation";
 import { ClientSchema } from "@/schemas/clients";
 import { db } from "@/services/drizzle";
 import { cashbackProgramBalances } from "@/services/drizzle/schema/cashback-programs";
@@ -42,6 +43,8 @@ async function createClientViaPointOfInteraction({ input }: { input: Omit<TCreat
 
 		const clientPhoneAsBase = formatPhoneAsBase(client.telefone ?? "");
 		if (!clientPhoneAsBase) throw new createHttpError.BadRequest("Telefone inválido.");
+
+		if (client.cpfCnpj && !isValidCpfCnpj(client.cpfCnpj)) throw new createHttpError.BadRequest("CPF/CNPJ inválido.");
 
 		const existingClientForPhone = await tx.query.clients.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.telefoneBase, clientPhoneAsBase), eq(fields.organizacaoId, orgId)),

@@ -8,6 +8,7 @@ import { resolveExclusivePurchaseTriggerCampaigns } from "@/lib/campaigns/purcha
 import { processConversionAttribution } from "@/lib/conversions/attribution";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { formatCashbackValue, formatPhoneAsBase } from "@/lib/formatting";
+import { isValidCpfCnpj } from "@/lib/validation";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import { evaluateCouponAgainstSaleValue } from "@/lib/coupons/engine";
@@ -346,6 +347,8 @@ async function preparePointOfInteractionTransaction({ input, operatorContext, tx
 			});
 
 			if (existingClientForPhone) throw new createHttpError.BadRequest("Cliente já existe para este telefone.");
+
+			if (input.client.cpfCnpj && !isValidCpfCnpj(input.client.cpfCnpj)) throw new createHttpError.BadRequest("CPF/CNPJ inválido.");
 
 			const insertedClientResponse = await tx
 				.insert(clients)
