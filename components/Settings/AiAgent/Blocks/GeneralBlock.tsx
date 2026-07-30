@@ -1,9 +1,7 @@
-import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
 import { Switch } from "@/components/ui/switch";
-import { AI_AGENT_MODEL_OPTIONS } from "@/lib/ai/providers/models";
 import type { TUseInternalAiAgentState } from "@/state-hooks/use-internal-ai-agent-state";
-import { DEFAULT_AI_AGENT_MODEL } from "@/schemas/ai-agents";
+import ModelSelectorField from "./ModelSelectorField";
 
 type GeneralBlockProps = {
 	state: TUseInternalAiAgentState["state"];
@@ -39,14 +37,7 @@ export default function GeneralBlock({ state, updateAgent, updateModelConfig }: 
 				handleChange={(value) => updateAgent({ nome: value })}
 			/>
 
-			<SelectInput
-				label="MODELO"
-				value={state.agente.modeloConfig.modelo}
-				options={AI_AGENT_MODEL_OPTIONS.map((option) => ({ id: option.value, value: option.value, label: option.label }))}
-				handleChange={(value) => updateModelConfig({ modelo: value })}
-				onReset={() => updateModelConfig({ modelo: DEFAULT_AI_AGENT_MODEL })}
-				resetOptionLabel="MODELO PADRÃO"
-			/>
+			<ModelSelectorField value={state.agente.modeloConfig.modelo} onChange={(modelo) => updateModelConfig({ modelo })} />
 
 			<div className="flex w-full flex-col gap-2">
 				<div className="flex items-center justify-between">

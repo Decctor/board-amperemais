@@ -1,3 +1,4 @@
+import type { TGetAiAgentModelsOutput } from "@/app/api/ai-agents/models/route";
 import type { TGetAiAgentOutput } from "@/app/api/ai-agents/route";
 import type { TGetPlaygroundOutput } from "@/app/api/ai-agents/playground/route";
 import type { TGetAiAgentRunsOutput } from "@/app/api/ai-agents/runs/route";
@@ -21,6 +22,25 @@ export function useOrganizationAiAgent({ enabled = true }: { enabled?: boolean }
 	return {
 		...useQuery({ queryKey: AI_AGENT_QUERY_KEY, queryFn: fetchOrganizationAiAgent, enabled }),
 		queryKey: AI_AGENT_QUERY_KEY,
+	};
+}
+
+// ============================================================================
+// MODELOS
+// ============================================================================
+
+async function fetchAiAgentModels() {
+	const { data } = await axios.get<TGetAiAgentModelsOutput>("/api/ai-agents/models");
+	return data.data;
+}
+
+export const AI_AGENT_MODELS_QUERY_KEY = ["ai-agent-models"] as const;
+
+/** Catálogo curado + preços correntes do AI Gateway. Muda pouco: cache longo. */
+export function useAiAgentModels({ enabled = true }: { enabled?: boolean } = {}) {
+	return {
+		...useQuery({ queryKey: AI_AGENT_MODELS_QUERY_KEY, queryFn: fetchAiAgentModels, enabled, staleTime: 1000 * 60 * 60 }),
+		queryKey: AI_AGENT_MODELS_QUERY_KEY,
 	};
 }
 

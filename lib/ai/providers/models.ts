@@ -12,15 +12,6 @@ export const AI_MODEL_ALIASES = {
 
 export type TAiModelAlias = keyof typeof AI_MODEL_ALIASES;
 
-/** Modelos oferecidos na UI de configuração do agente. */
-export const AI_AGENT_MODEL_OPTIONS = [
-	{ value: "agent-default", label: "Padrão (mais capaz)" },
-	{ value: "agent-fast", label: "Rápido (mais barato)" },
-	{ value: "openai/gpt-5", label: "GPT-5" },
-	{ value: "openai/gpt-5-mini", label: "GPT-5 mini" },
-	{ value: "anthropic/claude-sonnet-5", label: "Claude Sonnet 5" },
-] as const;
-
 function isAlias(value: string): value is TAiModelAlias {
 	return value in AI_MODEL_ALIASES;
 }

@@ -508,6 +508,10 @@ export type TAiAgentRunGatilhoEnum = z.infer<typeof AiAgentRunGatilhoEnum>;
 export const AiAgentToolCallStatusEnum = z.enum(["EXECUTANDO", "CONCLUIDO", "FALHA"]);
 export type TAiAgentToolCallStatusEnum = z.infer<typeof AiAgentToolCallStatusEnum>;
 
+// Patamar de custo/capacidade de um modelo no catálogo do agente (`lib/ai/providers/model-catalog.ts`).
+export const AiAgentModelPerfilEnum = z.enum(["ECONOMICO", "EQUILIBRADO", "AVANCADO"]);
+export type TAiAgentModelPerfilEnum = z.infer<typeof AiAgentModelPerfilEnum>;
+
 // Ferramentas disponíveis ao agente. O nome é `dominio.acao`; a tradução para o formato do
 // AI SDK (que não aceita ponto) acontece em `lib/ai/tools/registry.ts`.
 export const AiAgentToolNameEnum = z.enum([
