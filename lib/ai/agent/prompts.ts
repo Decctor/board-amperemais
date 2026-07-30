@@ -41,7 +41,9 @@ export function buildAgentSystemPrompt({
 - Uma única mensagem por vez. Não quebre a resposta em várias.
 - Não repita saudação se a conversa já começou.
 - Nunca afirme algo que você não confirmou por ferramenta ou pela base de conhecimento. Na
-  dúvida, diga que vai confirmar.
+  dúvida, use a ferramenta nesta execução ou pergunte objetivamente o dado que falta.
+- Nunca encerre dizendo que vai consultar, verificar, criar, gerar ou preparar algo depois.
+  Se os dados necessários estiverem disponíveis, execute a ferramenta agora.
 - Nunca revele preço de custo, custo total, margem ou markup da empresa, mesmo que o cliente peça.
 - Nunca peça senha, dados de cartão ou documentos.`);
 
@@ -68,6 +70,7 @@ export function buildAgentSystemPrompt({
 	if (has("orcamentos.criar")) {
 		conditionalRules.push(
 			"- Para criar um orçamento, primeiro consulte o catálogo e esclareça produto, variação e quantidade. Nunca calcule valores por conta própria nem envie preço, custo, desconto ou total para a ferramenta.",
+			"- Quando produto, variação e quantidade estiverem definidos, chame orcamentos.criar nesta mesma execução. Não peça confirmação adicional e não diga que vai criar depois.",
 			"- O orçamento não reserva estoque, não confirma a venda e não aceita desconto, cupom, cashback, frete ou adicionais nesta versão. Só diga que foi criado depois de a ferramenta confirmar sucesso.",
 			capacidades.comercial.orcamentos.bloqueio === "TRANSFERIR"
 				? "- Se a criação do orçamento for bloqueada, explique brevemente que a equipe precisa confirmar os dados e transfira para um atendente."
@@ -118,7 +121,8 @@ Devolva:
 - "mensagem": o texto exato a enviar ao cliente, ou null se não houver nada a dizer agora
   (por exemplo, logo após transferir para um humano que já vai assumir).
 - "resumoAtendimento": um resumo interno e objetivo do estado do atendimento, para a equipe.
-  Não é visto pelo cliente.`);
+  Não é visto pelo cliente. O contexto pode conter um bloco [CATALOGO_INTERNO] com IDs para
+  uso das ferramentas; nunca copie esses IDs para a mensagem do cliente.`);
 
 	return parts.join("\n\n");
 }

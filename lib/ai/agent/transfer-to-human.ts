@@ -35,8 +35,7 @@ export async function transferChatToHuman({
 		columns: { id: true, organizacaoId: true },
 		with: {
 			cliente: { columns: { nome: true, telefone: true } },
-			whatsappConexao: { columns: { token: true } },
-			whatsappConexaoTelefone: { columns: { whatsappTelefoneId: true } },
+			organizacao: { columns: { nome: true } },
 		},
 	});
 
@@ -68,23 +67,22 @@ export async function transferChatToHuman({
 	});
 
 	// Notificação é acessória: uma falha aqui não desfaz a transferência.
-	const whatsappToken = chat.whatsappConexao?.token;
-	const fromPhoneNumberId = chat.whatsappConexaoTelefone?.whatsappTelefoneId;
-	if (target.telefone && whatsappToken && fromPhoneNumberId && chat.cliente) {
+	const whatsappToken = process.env.META_ACCESS_TOKEN;
+	const fromPhoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
+	if (target.telefone && whatsappToken && fromPhoneNumberId && chat.cliente && chat.organizacao) {
 		try {
 			const notificationPayload = WHATSAPP_REPORT_TEMPLATES.SERVICE_TRANSFER_NOTIFICATIONS.getPayload({
 				templateKey: "SERVICE_TRANSFER_NOTIFICATIONS",
+				organizationName: chat.organizacao.nome,
 				clientName: chat.cliente.nome,
 				clientePhoneNumber: chat.cliente.telefone,
 				toPhoneNumber: target.telefone,
 				serviceDescription: summary,
 			}).data;
 
-			sendTemplateWhatsappMessage({ whatsappToken, fromPhoneNumberId, templatePayload: notificationPayload }).catch((error) => {
-				console.error("[ERROR] [AI_AGENT] [TRANSFER_TO_HUMAN] Falha ao notificar o usuário:", error);
-			});
+			await sendTemplateWhatsappMessage({ whatsappToken, fromPhoneNumberId, templatePayload: notificationPayload });
 		} catch (error) {
-			console.error("[ERROR] [AI_AGENT] [TRANSFER_TO_HUMAN] Erro ao preparar a notificação:", error);
+			console.error("[ERROR] [AI_AGENT] [TRANSFER_TO_HUMAN] Falha ao notificar o usuário:", error);
 		}
 	}
 

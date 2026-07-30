@@ -10,6 +10,7 @@ import { and, asc, count, desc, eq, exists, gte, ilike, inArray, lte, or, sql, t
 import z from "zod";
 import { findProductGroupByName, listActiveProductGroups } from "../shared/product-groups";
 import { defineAgentTool } from "./define-tool";
+import { normalizeProductQueryInput } from "./product-query-policy";
 import type { TAgentToolContext } from "./types";
 
 /**
@@ -192,29 +193,31 @@ ou disponibilidade: informe apenas o que vier daqui.`,
 	}),
 	async execute(input, context) {
 		const { db, organizacaoId } = context;
+		const normalized = normalizeProductQueryInput(input, context.turn.ultimaMensagemCliente);
+		const queryInput = normalized.input;
 		const pricesVisible = context.capacidades.comercial.precos.visiveis;
-		if (!pricesVisible && (input.precoMin !== undefined || input.precoMax !== undefined)) {
+		if (!pricesVisible && (queryInput.precoMin !== undefined || queryInput.precoMax !== undefined)) {
 			return {
 				success: false,
 				message: "A consulta por faixa de preço não está disponível para este agente.",
 				result: { codigo: "PRECOS_NAO_VISIVEIS" },
 			};
 		}
-		const limit = input.limite ?? 10;
-		const view = input.visao ?? "LISTA";
-		const activeOnly = input.apenasAtivos ?? true;
-		const termo = input.termo?.trim();
+		const limit = queryInput.limite ?? 10;
+		const view = queryInput.visao ?? "LISTA";
+		const activeOnly = queryInput.apenasAtivos ?? true;
+		const termo = queryInput.termo;
 
 		// Escopo (tenant/ativo/grupo) separado da faixa de preço: quando a busca dá vazio, é a
 		// faixa de preço o filtro que o modelo mais manda errado — e o diagnóstico precisa
 		// reconsultar o escopo sem ela para apontar o culpado.
 		const scopeConditions = [eq(products.organizacaoId, organizacaoId)];
 		if (activeOnly) scopeConditions.push(eq(products.ativo, true));
-		if (input.grupo) scopeConditions.push(createSimplifiedEqualityCondition(products.grupo, input.grupo));
+		if (queryInput.grupo) scopeConditions.push(createSimplifiedEqualityCondition(products.grupo, queryInput.grupo));
 
 		const priceConditions = [];
-		if (typeof input.precoMin === "number" && input.precoMin > 0) priceConditions.push(gte(products.precoVenda, input.precoMin));
-		if (typeof input.precoMax === "number") priceConditions.push(lte(products.precoVenda, input.precoMax));
+		if (typeof queryInput.precoMin === "number" && queryInput.precoMin > 0) priceConditions.push(gte(products.precoVenda, queryInput.precoMin));
+		if (typeof queryInput.precoMax === "number") priceConditions.push(lte(products.precoVenda, queryInput.precoMax));
 
 		// Condições sem o termo: são a base da consulta principal e da passada de aproximação.
 		const baseConditions = [...scopeConditions, ...priceConditions];
@@ -248,12 +251,12 @@ ou disponibilidade: informe apenas o que vier daqui.`,
 		if (totalEncontrado === 0) {
 			// Grupo que não existe no catálogo: devolve a lista válida para o modelo se corrigir
 			// na mesma execução, em vez de um vazio que ele não sabe interpretar.
-			if (input.grupo) {
+			if (queryInput.grupo) {
 				const groups = await listActiveProductGroups(db, organizacaoId);
-				if (!findProductGroupByName(groups, input.grupo)) {
+				if (!findProductGroupByName(groups, queryInput.grupo)) {
 					return {
 						success: false,
-						message: `O grupo "${input.grupo}" não existe no catálogo. Refaça a consulta usando um dos grupos disponíveis.`,
+						message: `O grupo "${queryInput.grupo}" não existe no catálogo. Refaça a consulta usando um dos grupos disponíveis.`,
 						result: { codigo: "GRUPO_INEXISTENTE", gruposDisponiveis: groups.map((group) => group.grupo) },
 					};
 				}
@@ -337,9 +340,14 @@ ou disponibilidade: informe apenas o que vier daqui.`,
 
 		return {
 			success: true,
-			message: `${found.length} de ${totalEncontrado} produto(s) retornado(s).`,
+			message: `${found.length} de ${totalEncontrado} produto(s) retornado(s).${
+				normalized.filtrosIgnorados.length > 0
+					? ` Os filtros ${normalized.filtrosIgnorados.join(" e ")} foram ignorados porque o cliente não pediu uma faixa de preço.`
+					: ""
+			}`,
 			result: {
 				totalEncontrado,
+				...(normalized.filtrosIgnorados.length > 0 ? { filtrosIgnorados: normalized.filtrosIgnorados } : {}),
 				produtos: formatProducts(found, pricesVisible),
 			},
 		};

@@ -16,6 +16,7 @@ export type TAgentToolContext = {
 	agent: { id: string; nome: string };
 	run: { id: string; gatilho: TAiAgentRunGatilhoEnum; mensagemGatilhoId: string | null };
 	chat: { id: string; clienteId: string };
+	turn: { ultimaMensagemCliente: string };
 	capacidades: TAiAgentCapacidades;
 	toolCall?: { id: string };
 	operation?: { id: string; tipo: TAiAgentOperationTypeEnum };

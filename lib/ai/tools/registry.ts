@@ -2,6 +2,7 @@ import type { TAiAgentToolNameEnum } from "@/schemas/enums";
 import { aiAgentOperations, aiAgentToolCalls } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { claimAgentOperation } from "../operations/claim";
+import { hashAgentOperationInput } from "../operations/hash";
 import { completeAgentOperation, failAgentOperation } from "../operations/lifecycle";
 import { cashbackTool } from "./cashback";
 import { couponsTool } from "./coupons";
@@ -10,6 +11,7 @@ import { assertToolEnabled, isToolEnabled } from "./guards";
 import { humanHandoffTool } from "./human-handoff";
 import { productsTool } from "./products";
 import { quotesTool } from "./quotes";
+import { createAgentToolExecutionGuard } from "./tool-execution-guard";
 import type { TAgentToolContext, TAgentToolDefinitionErased, TAgentToolOutput } from "./types";
 
 /**
@@ -164,12 +166,17 @@ export async function executeAgentTool({
  * nunca pelo modelo.
  */
 export function toAISdkTools(context: TAgentToolContext) {
+	const executeGuarded = createAgentToolExecutionGuard(context.capacidades.limites.maxChamadasFerramentasPorRun);
 	const entries = getEnabledAgentTools(context.capacidades).map((definition) => [
 		toAISdkToolName(definition.name),
 		{
 			description: definition.description,
 			inputSchema: definition.inputSchema,
-			execute: async (input: unknown) => executeAgentTool({ context, definition, input }),
+			execute: async (input: unknown) => {
+				const parsedInput = definition.inputSchema.parse(input);
+				const key = `${definition.name}:${hashAgentOperationInput(parsedInput)}`;
+				return executeGuarded(key, () => executeAgentTool({ context, definition, input: parsedInput }));
+			},
 		},
 	]);
 	return Object.fromEntries(entries);
