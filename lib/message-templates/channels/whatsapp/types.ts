@@ -44,7 +44,7 @@ export type TMetaCreateTemplatePayload = {
 	name: string;
 	category: "authentication" | "marketing" | "utility";
 	language: string;
-	parameter_format: "positional";
+	parameter_format: "positional" | "named";
 	components: TMetaTemplateComponent[];
 };
 

@@ -7,10 +7,16 @@ import { MetaIcon, RecompraCRMIconColorful, WhatsappIcon } from "@/components/ic
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToPhone } from "@/lib/formatting";
 import { disconnectInternalGateway } from "@/lib/mutations/internal-gateway";
-import { deleteWhatsappConnection, syncWhatsappContacts, syncWhatsappMessageHistory } from "@/lib/mutations/whatsapp-connections";
+import {
+	deleteWhatsappConnection,
+	syncWhatsappContacts,
+	syncWhatsappMessageHistory,
+	updateConnectionPhoneAiService,
+} from "@/lib/mutations/whatsapp-connections";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, History, RefreshCw, UsersRound } from "lucide-react";
+import { AlertTriangle, Bot, History, RefreshCw, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 
 type TWhatsappConnection = TGetWhatsappConnectionsOutput["data"][number];
@@ -66,6 +72,15 @@ export default function ViewConnectionPhone({ context, closeMenu }: ViewConnecti
 		onSuccess: (data) => toast.success(data.message),
 		onError: (error) => toast.error(getErrorMessage(error)),
 	});
+	const { mutate: handleAiServiceToggle, isPending: isTogglingAiService } = useMutation({
+		mutationKey: ["update-connection-phone-ai-service", phone.id],
+		mutationFn: updateConnectionPhoneAiService,
+		onSuccess: (data) => {
+			toast.success(data.message);
+			queryClient.invalidateQueries({ queryKey: ["whatsapp-connection"] });
+		},
+		onError: (error) => toast.error(getErrorMessage(error)),
+	});
 	const meta = getConnectionMeta(connection.tipoConexao);
 	const details = getPhoneDetails({ phone, connection });
 
@@ -80,9 +95,7 @@ export default function ViewConnectionPhone({ context, closeMenu }: ViewConnecti
 			actionIsLoading={isDisconnecting}
 			stateIsLoading={false}
 			closeMenu={closeMenu}
-			dialogVariant="fit"
 			drawerVariant="md"
-			dialogContentClassName="w-[min(100vw-2rem,34rem)] max-w-[min(100vw-2rem,34rem)]"
 			drawerContentClassName="max-h-[90dvh]"
 		>
 			<div className="flex flex-col gap-4 px-1">
@@ -110,6 +123,28 @@ export default function ViewConnectionPhone({ context, closeMenu }: ViewConnecti
 							<p className={cn("mt-1 text-sm font-semibold tracking-tight", getDetailToneClass(detail.tone))}>{detail.value}</p>
 						</div>
 					))}
+				</div>
+
+				<div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-3">
+					<div className="flex items-start justify-between gap-3">
+						<div className="flex items-start gap-3">
+							<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+								<Bot className="h-4 w-4" />
+							</div>
+							<div>
+								<p className="text-sm font-bold tracking-tight">Atendimento com IA</p>
+								<p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+									Quando ativo, o agente responde automaticamente às mensagens recebidas neste número — e recua assim que alguém da equipe assume a conversa.
+								</p>
+							</div>
+						</div>
+						<Switch
+							checked={phone.permitirAtendimentoIa}
+							disabled={isTogglingAiService}
+							onCheckedChange={(checked) => handleAiServiceToggle({ phoneId: phone.id, permitirAtendimentoIa: checked })}
+							aria-label="Atendimento com IA neste número"
+						/>
+					</div>
 				</div>
 
 				{isMetaConnection ? (
@@ -217,12 +252,6 @@ function getPhoneDetails({ phone, connection }: { phone: TWhatsappConnectionPhon
 		label: "Conectado em",
 		value: formatDateAsLocale(new Date(connection.dataInsercao), true) || "Não informado",
 	};
-	const aiAttendance: DetailItem = {
-		label: "Atendimento IA",
-		value: phone.permitirAtendimentoIa ? "Permitido" : "Desativado",
-		tone: phone.permitirAtendimentoIa ? "success" : "default",
-	};
-
 	if (connection.tipoConexao === "META_CLOUD_API") {
 		const tokenExpiresAt = connection.dataExpiracao ? new Date(connection.dataExpiracao) : null;
 		const isExpired = tokenExpiresAt ? tokenExpiresAt <= new Date() : false;
@@ -236,7 +265,6 @@ function getPhoneDetails({ phone, connection }: { phone: TWhatsappConnectionPhon
 				value: tokenExpiresAt ? `Expira ${formatDateAsLocale(tokenExpiresAt, true)}` : "Sem expiração",
 				tone: isExpired ? "danger" : "default",
 			},
-			aiAttendance,
 			connectedAt,
 		];
 	}
@@ -250,7 +278,6 @@ function getPhoneDetails({ phone, connection }: { phone: TWhatsappConnectionPhon
 			label: "Última conexão",
 			value: connection.gatewayUltimaConexao ? formatDateAsLocale(new Date(connection.gatewayUltimaConexao), true) || "Não informado" : "Não informado",
 		},
-		aiAttendance,
 		connectedAt,
 	];
 }

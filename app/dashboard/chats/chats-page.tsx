@@ -16,6 +16,13 @@ export default function ChatsPage({ user, membership }: ChatsPageProps) {
 				user={user}
 				organizationId={membership.organizacao.id}
 				canManageAttendances={membership.permissoes.atendimentos.finalizar ?? false}
+				quotePermissions={{
+					criar: membership.permissoes.vendas.criar ?? false,
+					// Mesmo gate da listagem de vendas para abrir o checkout de um orçamento.
+					editar: membership.permissoes.vendas.editar ?? false,
+					// Rascunho não tem trilha contábil: quem opera vendas pode descartar.
+					cancelar: (membership.permissoes.vendas.criar || membership.permissoes.vendas.excluir) ?? false,
+				}}
 			/>
 		</div>
 	);

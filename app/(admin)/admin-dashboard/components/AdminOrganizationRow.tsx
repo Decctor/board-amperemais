@@ -12,11 +12,10 @@ import { joinAsMember } from "@/lib/mutations/admin";
 import { cn, copyToClipboard } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { BrainCircuit, Building2, Calendar, Copy, ImageIcon, MoreVertical, Settings2, Trash2, Users } from "lucide-react";
+import { Building2, Calendar, Copy, ImageIcon, MoreVertical, Settings2, Trash2, Users } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
-import AdminMarketingContextExportMenu from "./AdminMarketingContextExportMenu";
 import AdminOrganizationWatermarkMenu from "./AdminOrganizationWatermarkMenu";
 
 type TAdminOrganization = TGetOrganizationsAdminOutputDefault["organizations"][number];
@@ -85,7 +84,6 @@ type AdminOrganizationRowProps = {
 export default function AdminOrganizationRow({ sessionUser, organization, callbacks }: AdminOrganizationRowProps) {
 	const { id, nome, cnpj, logoUrl, dataInsercao } = organization;
 	const [controlModalOpen, setControlModalOpen] = useState(false);
-	const [marketingContextModalOpen, setMarketingContextModalOpen] = useState(false);
 	const [watermarkModalOpen, setWatermarkModalOpen] = useState(false);
 	const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
@@ -170,10 +168,6 @@ export default function AdminOrganizationRow({ sessionUser, organization, callba
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
-						<DropdownMenuItem onClick={() => setMarketingContextModalOpen(true)}>
-							<BrainCircuit className="h-3.5 w-3.5" />
-							CONTEXTO IA
-						</DropdownMenuItem>
 						<DropdownMenuItem onClick={() => setWatermarkModalOpen(true)}>
 							<ImageIcon className="h-3.5 w-3.5" />
 							MARCA D'ÁGUA
@@ -188,9 +182,6 @@ export default function AdminOrganizationRow({ sessionUser, organization, callba
 
 			{controlModalOpen ? <AdminControlOrganization organizationId={id} closeModal={() => setControlModalOpen(false)} callbacks={callbacks} /> : null}
 			{deleteModalOpen ? <AdminDeleteOrganization organizationId={id} closeModal={() => setDeleteModalOpen(false)} callbacks={callbacks} /> : null}
-			{marketingContextModalOpen ? (
-				<AdminMarketingContextExportMenu organizationId={id} organizationName={nome} closeModal={() => setMarketingContextModalOpen(false)} />
-			) : null}
 			{watermarkModalOpen ? (
 				<AdminOrganizationWatermarkMenu organizationName={nome} organizationLogoUrl={logoUrl} closeModal={() => setWatermarkModalOpen(false)} />
 			) : null}

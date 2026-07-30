@@ -40,7 +40,6 @@ const MainLayout = async ({ children }: { children: ReactNode }) => {
 						<AppHeader />
 						{children}
 						<OnboardingQualityBubble />
-						{/* <AIHintsBubble /> */}
 						<SubscriptionPaywall />
 					</OrgColorsProvider>
 				</SidebarInset>

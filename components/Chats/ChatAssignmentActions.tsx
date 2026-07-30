@@ -54,9 +54,14 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 				: "ASSUMIR";
 
 	return (
-		<div className="flex flex-wrap items-center gap-1.5">
+		<div className={cn(compact ? "flex flex-wrap items-center gap-1.5" : "flex flex-col gap-2")}>
 			{!isOwner && (
-				<Button size="sm" className="gap-1 text-[11px] font-extrabold uppercase tracking-[0.08em]" disabled={isPending} onClick={() => mutate({ acao: "assumir", chatId })}>
+				<Button
+					size="sm"
+					className={cn("gap-1 text-[11px] font-extrabold uppercase tracking-[0.08em]", !compact && "col-span-2 w-full")}
+					disabled={isPending}
+					onClick={() => mutate({ acao: "assumir", chatId })}
+				>
 					<UserPlus className="h-3 w-3" />
 					{assumeLabel}
 				</Button>
@@ -66,7 +71,7 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 				<Button
 					size="sm"
 					variant="outline"
-					className="gap-1 text-[11px]"
+					className={cn("gap-1 text-[11px]", !compact && "col-span-2 w-full")}
 					disabled={isPending}
 					onClick={() => mutate({ acao: "liberar", chatId })}
 				>
@@ -77,7 +82,12 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 
 			<DropdownMenu open={transferMenuOpen} onOpenChange={setTransferMenuOpen}>
 				<DropdownMenuTrigger asChild>
-					<Button size="sm" variant="outline" className="gap-1 text-[11px] font-extrabold uppercase tracking-[0.08em]" disabled={isPending}>
+					<Button
+						size="sm"
+						variant="outline"
+						className={cn("gap-1 text-[11px] font-extrabold uppercase tracking-[0.08em]", !compact && "col-span-2 w-full")}
+						disabled={isPending}
+					>
 						TRANSFERIR
 						<ChevronDown className="h-3 w-3 opacity-60" />
 					</Button>
@@ -93,54 +103,70 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 			</DropdownMenu>
 
 			{!compact && (
+				<div className="col-span-2 mt-1 border-t border-border pt-3">
+					<span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-muted-foreground">Detalhes do atendimento</span>
+				</div>
+			)}
+
+			{!compact && (
 				<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button size="sm" variant="ghost" className="gap-1.5 text-xs" disabled={isPending}>
+					<DropdownMenuTrigger asChild>
+						<Button size="sm" variant="outline" className="w-full justify-between gap-2 px-2.5 text-xs" disabled={isPending}>
+							<span className="text-muted-foreground">Status</span>
+							<span className="flex min-w-0 items-center gap-1.5">
 								{atendimento && <span className={cn("h-2 w-2 shrink-0 rounded-full", STATUS_META[atendimento.status].dot)} />}
-								{atendimento ? STATUS_META[atendimento.status].label : "Status"}
-								<ChevronDown className="h-3 w-3 opacity-60" />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							{(Object.keys(STATUS_META) as TChatAssignmentStatus[]).map((status) => {
-								const StatusIcon = STATUS_META[status].icon;
-								return (
-									<DropdownMenuItem key={status} className="gap-2" onClick={() => mutate({ acao: "alterar_status", chatId, status })}>
-										<StatusIcon className={cn("h-3.5 w-3.5", STATUS_META[status].dot.replace("bg-", "text-"))} />
-										{STATUS_META[status].label}
-									</DropdownMenuItem>
-								);
-							})}
-						</DropdownMenuContent>
+								<span className="truncate">{atendimento ? STATUS_META[atendimento.status].label : "Definir"}</span>
+								<ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+							</span>
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						{(Object.keys(STATUS_META) as TChatAssignmentStatus[]).map((status) => {
+							const StatusIcon = STATUS_META[status].icon;
+							return (
+								<DropdownMenuItem key={status} className="gap-2" onClick={() => mutate({ acao: "alterar_status", chatId, status })}>
+									<StatusIcon className={cn("h-3.5 w-3.5", STATUS_META[status].dot.replace("bg-", "text-"))} />
+									{STATUS_META[status].label}
+								</DropdownMenuItem>
+							);
+						})}
+					</DropdownMenuContent>
 				</DropdownMenu>
 			)}
 
 			{!compact && (
 				<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button size="sm" variant="ghost" className="gap-1 text-xs" disabled={isPending}>
-								{atendimento?.prioridade ? PRIORITY_META[atendimento.prioridade].label : "Prioridade"}
-								<ChevronDown className="h-3 w-3 opacity-60" />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							<DropdownMenuItem onClick={() => mutate({ acao: "alterar_prioridade", chatId, prioridade: null })}>Sem prioridade</DropdownMenuItem>
-							{(Object.keys(PRIORITY_META) as TChatAssignmentPriority[]).map((prioridade) => (
-								<DropdownMenuItem key={prioridade} onClick={() => mutate({ acao: "alterar_prioridade", chatId, prioridade })}>
-									{PRIORITY_META[prioridade].label}
-								</DropdownMenuItem>
-							))}
-						</DropdownMenuContent>
+					<DropdownMenuTrigger asChild>
+						<Button size="sm" variant="outline" className="w-full justify-between gap-2 px-2.5 text-xs" disabled={isPending}>
+							<span className="text-muted-foreground">Prioridade</span>
+							<span className="flex min-w-0 items-center gap-1">
+								<span className="truncate">{atendimento?.prioridade ? PRIORITY_META[atendimento.prioridade].label : "Nenhuma"}</span>
+								<ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+							</span>
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						<DropdownMenuItem onClick={() => mutate({ acao: "alterar_prioridade", chatId, prioridade: null })}>Sem prioridade</DropdownMenuItem>
+						{(Object.keys(PRIORITY_META) as TChatAssignmentPriority[]).map((prioridade) => (
+							<DropdownMenuItem key={prioridade} onClick={() => mutate({ acao: "alterar_prioridade", chatId, prioridade })}>
+								{PRIORITY_META[prioridade].label}
+							</DropdownMenuItem>
+						))}
+					</DropdownMenuContent>
 				</DropdownMenu>
 			)}
 
 			{atendimento?.responsavelTipo === "AGENTE" && (
-				<span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+				<span
+					className={cn("flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground", !compact && "col-span-2 w-fit")}
+				>
 					<Sparkles className="h-3 w-3" /> Automação
 				</span>
 			)}
 			{atendimento?.responsavelTipo === "EXTERNO" && (
-				<span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+				<span
+					className={cn("flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground", !compact && "col-span-2 w-fit")}
+				>
 					<Smartphone className="h-3 w-3" /> Atendido pelo telefone
 				</span>
 			)}

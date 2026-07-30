@@ -73,6 +73,7 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 	const isIncoming = message.autorTipo === "CLIENTE";
 	const isFailed = message.statusEntrega === "FALHA";
 	const isAutomated = message.autorTipo === "AI" || message.autorTipo === "BUSINESS-APP" || message.whatsappEcho;
+	const hasMedia = message.conteudoMidiaTipo !== "TEXTO";
 	// Bolha de saída (azul) e de falha (vermelha) são superfícies coloridas: links, code
 	// e fundos de anexo precisam derivar da cor do texto em vez de usar tokens fixos.
 	const onColoredSurface = !isIncoming && !isAutomated;
@@ -92,6 +93,9 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 			<div
 				className={cn(
 					"max-w-[72%] rounded-2xl px-3 py-2 text-sm shadow-sm",
+					// Como no WhatsApp, mensagens com mídia têm uma coluna estável: a
+					// legenda quebra dentro dela em vez de alargar a bubble sozinha.
+					hasMedia && "w-[20rem]",
 					// Rabinho assimétrico do lado do autor.
 					isIncoming ? "rounded-tl-lg" : "rounded-tr-lg",
 					isIncoming
@@ -116,7 +120,7 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 					</div>
 				)}
 
-				{message.conteudoMidiaTipo !== "TEXTO" && (
+				{hasMedia && (
 					<div className="mb-1">
 						<ChatMediaAttachment
 							tipo={message.conteudoMidiaTipo}
@@ -130,15 +134,13 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 
 				{message.conteudoTexto && <WhatsAppMessageText text={message.conteudoTexto} onColoredSurface={onColoredSurface} />}
 
-				{message.conteudoMidiaTipo !== "TEXTO" && aiContext && (
+				{hasMedia && aiContext && (
 					<Collapsible className="mt-1.5">
 						<CollapsibleTrigger className="flex items-center gap-1 text-[11px] opacity-80 hover:opacity-100">
 							<ChevronDown className="h-3 w-3" />
 							Ver análise da IA
 						</CollapsibleTrigger>
-						<CollapsibleContent className="mt-1 whitespace-pre-wrap rounded-lg bg-current/10 p-2 text-[11px] leading-snug">
-							{aiContext}
-						</CollapsibleContent>
+						<CollapsibleContent className="mt-1 whitespace-pre-wrap rounded-lg bg-current/10 p-2 text-[11px] leading-snug">{aiContext}</CollapsibleContent>
 					</Collapsible>
 				)}
 

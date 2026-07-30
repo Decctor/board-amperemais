@@ -1,5 +1,5 @@
 import z from "zod";
-import { formatPhoneAsWhatsappId, sanitizeTemplateParameter } from "./utils";
+import { formatPhoneAsWhatsappId, formatPhoneForInternalGateway, sanitizeTemplateParameter } from "./utils";
 
 export type TemplateParameter =
 	| {
@@ -164,6 +164,7 @@ type MonthlyReportParametersInput = z.infer<typeof MonthlyReportParametersInputS
 
 const ServiceTransferNotificationsParametersInputSchema = DefaultTemplatePayloadSchema.extend({
 	templateKey: z.enum(["SERVICE_TRANSFER_NOTIFICATIONS"]),
+	organizationName: z.string(),
 	clientName: z.string(),
 	clientePhoneNumber: z.string(),
 	serviceDescription: z.string(),
@@ -486,18 +487,19 @@ export const WHATSAPP_REPORT_TEMPLATES = {
 		language: "pt_BR",
 		type: "utility",
 		getPayload: (input: ServiceTransferNotificationsParametersInput) => {
-			const { templateKey, toPhoneNumber, clientName, clientePhoneNumber, serviceDescription } =
+			const { toPhoneNumber, organizationName, clientName, clientePhoneNumber, serviceDescription } =
 				ServiceTransferNotificationsParametersInputSchema.parse(input);
+			const clientWhatsappId = formatPhoneForInternalGateway(clientePhoneNumber);
 
 			return {
-				content: `
-Você recebeu uma nova transferência para ${clientName}, de telefone ${clientePhoneNumber}.
-Detalhes:
-${serviceDescription}.
-Disponível para atendimento imediato.Um atendimento foi transferido para você ${serviceDescription}`,
+				content: `Novo atendimento transferido pela IA.
+Organização: ${organizationName}
+Cliente: ${clientName}
+Telefone: ${clientePhoneNumber}
+Detalhes: ${serviceDescription}`,
 				data: {
 					messaging_product: "whatsapp",
-					to: formatPhoneAsWhatsappId(toPhoneNumber),
+					to: formatPhoneForInternalGateway(toPhoneNumber),
 					type: "template",
 					template: {
 						name: "service_transfer_notification",
@@ -508,6 +510,11 @@ Disponível para atendimento imediato.Um atendimento foi transferido para você 
 							{
 								type: "body",
 								parameters: [
+									{
+										type: "text",
+										parameter_name: "organizacao_nome",
+										text: sanitizeTemplateParameter(organizationName),
+									},
 									{
 										type: "text",
 										parameter_name: "cliente_nome",
@@ -522,6 +529,17 @@ Disponível para atendimento imediato.Um atendimento foi transferido para você 
 										type: "text",
 										parameter_name: "atendimento_detalhes",
 										text: sanitizeTemplateParameter(serviceDescription),
+									},
+								],
+							},
+							{
+								type: "button",
+								sub_type: "url",
+								index: "0",
+								parameters: [
+									{
+										type: "text",
+										text: clientWhatsappId,
 									},
 								],
 							},

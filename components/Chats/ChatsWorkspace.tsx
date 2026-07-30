@@ -7,6 +7,7 @@ import { BarChart3, Columns3, MessagesSquare } from "lucide-react";
 import { useCallback, useState } from "react";
 import ChatsBoard from "./Board/ChatsBoard";
 import ChatHub from "./ChatHub";
+import type { TQuotePermissions } from "./Quotes/config";
 import ChatsStatsSection from "./Stats/ChatsStatsSection";
 
 /**
@@ -28,9 +29,10 @@ type ChatsWorkspaceProps = {
 	organizationId: string;
 	whatsappConnections: TGetWhatsappConnectionsOutput["data"];
 	canManageAttendances: boolean;
+	quotePermissions: TQuotePermissions;
 };
 
-export default function ChatsWorkspace({ user, organizationId, whatsappConnections, canManageAttendances }: ChatsWorkspaceProps) {
+export default function ChatsWorkspace({ user, organizationId, whatsappConnections, canManageAttendances, quotePermissions }: ChatsWorkspaceProps) {
 	const [tab, setTab] = useState<TChatsWorkspaceTab>("hub");
 	const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
 
@@ -67,13 +69,18 @@ export default function ChatsWorkspace({ user, organizationId, whatsappConnectio
 				  atributo `hidden` que o Radix aplica é regra do agente de usuário e perde para
 				  a classe `flex`.
 				*/}
-				<TabsContent value="hub" forceMount className="mt-3 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden">
+				<TabsContent
+					value="hub"
+					forceMount
+					className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm data-[state=inactive]:hidden"
+				>
 					<ChatHub
 						user={user}
 						organizationId={organizationId}
 						whatsappConnections={whatsappConnections}
 						selectedChatId={selectedChatId}
 						onSelectChat={setSelectedChatId}
+						quotePermissions={quotePermissions}
 					/>
 				</TabsContent>
 

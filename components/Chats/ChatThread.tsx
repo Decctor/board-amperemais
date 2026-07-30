@@ -7,7 +7,7 @@ import { mapRealtimeMessageRow, type TRealtimeChatMessageRow } from "@/lib/chats
 import { getWhatsappWindowDisplay } from "@/lib/chats/whatsapp-window-status";
 import { getErrorMessage } from "@/lib/errors";
 import { markChatRead, retryChatMessage, sendChatMessage, updateChatAssignment } from "@/lib/mutations/chats";
-import { getChatMessagesQueryKey, useChatMessages, type TChatMessagesPage, type TChatThreadMessage } from "@/lib/queries/chats";
+import { getChatMessagesQueryKey, useChatMessages, type TChatInboxItem, type TChatMessagesPage, type TChatThreadMessage } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
 import { supabaseClient } from "@/services/supabase";
 import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
@@ -17,15 +17,19 @@ import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ChatAssignmentActions } from "./ChatAssignmentActions";
 import { ChatContextPanel } from "./ChatContextPanel";
-import { ChatInputArea, type TOutgoingAttachment } from "./ChatInputArea";
+import { ChatInputArea, type TChatInputAreaHandle, type TOutgoingAttachment } from "./ChatInputArea";
 import { ChatMessageBubble, type TOptimisticFields } from "./ChatMessageBubble";
+import { ChatQuotesHeaderActions } from "./Quotes/ChatQuotesHeaderActions";
+import type { TQuotePermissions } from "./Quotes/config";
 
 type TThreadMessage = TChatThreadMessage & TOptimisticFields & { clientTempId?: string };
+type TInboxPage = { items: TChatInboxItem[]; hasMore: boolean; nextCursor: string | null };
 
 type ChatThreadProps = {
 	chatId: string;
 	organizationId: string;
 	currentUser: { id: string; nome: string; avatarUrl: string | null };
+	quotePermissions: TQuotePermissions;
 };
 
 function insertMessageIntoCache(data: InfiniteData<TChatMessagesPage> | undefined, message: TChatThreadMessage) {
@@ -43,6 +47,22 @@ function patchMessageInCache(data: InfiniteData<TChatMessagesPage> | undefined, 
 	};
 }
 
+function markChatReadInInboxCache(data: InfiniteData<TInboxPage> | undefined, chatId: string) {
+	if (!data?.pages.length) return data;
+
+	let changed = false;
+	const pages = data.pages.map((page) => ({
+		...page,
+		items: page.items.map((item) => {
+			if (item.id !== chatId || item.mensagensNaoLidas === 0) return item;
+			changed = true;
+			return { ...item, mensagensNaoLidas: 0 };
+		}),
+	}));
+
+	return changed ? { ...data, pages } : data;
+}
+
 function formatDaySeparator(date: Date) {
 	const today = new Date();
 	const isToday = date.toDateString() === today.toDateString();
@@ -52,7 +72,7 @@ function formatDaySeparator(date: Date) {
 	return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadProps) {
+export function ChatThread({ chatId, organizationId, currentUser, quotePermissions }: ChatThreadProps) {
 	const queryClient = useQueryClient();
 	const queryKey = getChatMessagesQueryKey(chatId);
 	const { messages, chat, isPending, isError, error, hasNextPage, fetchNextPage, isFetchingNextPage, refetch } = useChatMessages(chatId);
@@ -60,6 +80,7 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 	const [optimisticMessages, setOptimisticMessages] = useState<TThreadMessage[]>([]);
 	const [unseenCount, setUnseenCount] = useState(0);
 	const scrollRef = useRef<HTMLDivElement>(null);
+	const inputAreaRef = useRef<TChatInputAreaHandle>(null);
 	const isAtBottomRef = useRef(true);
 	const initialSubscriptionCompleteRef = useRef(false);
 	const refetchRef = useRef(refetch);
@@ -75,7 +96,18 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 		return [...pendentes, ...messages];
 	}, [messages, optimisticMessages]);
 
-	const markRead = useMutation({ mutationFn: markChatRead });
+	const markRead = useMutation({
+		mutationFn: markChatRead,
+		onMutate: ({ chatId: readChatId }) => {
+			// A thread e a inbox são caches independentes. Zerar apenas a thread deixava
+			// o badge lateral dependente do eco do Realtime para a mesma aba.
+			queryClient.setQueriesData<InfiniteData<TInboxPage>>({ queryKey: ["chats"] }, (current) => markChatReadInInboxCache(current, readChatId));
+		},
+		onError: () => {
+			// Se a persistência falhar, recarregamos a fonte de verdade e restauramos o badge.
+			void queryClient.invalidateQueries({ queryKey: ["chats"] });
+		},
+	});
 	const markReadRef = useRef(markRead);
 	markReadRef.current = markRead;
 
@@ -111,7 +143,12 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 				// O realtime não traz o join de autor: para mensagens de terceiros o nome só
 				// aparece depois de um refetch.
 				if (message.autorTipo !== "CLIENTE" && message.autorUsuario?.id !== currentUser.id) void refetchRef.current();
-				if (message.autorTipo === "CLIENTE") markReadRef.current.mutate({ chatId });
+					// Um orçamento criado pelo agente sempre vem acompanhado de mensagem, então a própria
+					// thread serve de sinal — sem abrir um canal de realtime em `sales`. Invalidação por
+					// prefixo: só uma conversa está aberta por vez, e assim o `clienteId` não precisa
+					// entrar nas dependências desta inscrição.
+					if (message.autorTipo !== "CLIENTE") void queryClient.invalidateQueries({ queryKey: ["client-open-quotes"] });
+					if (message.autorTipo === "CLIENTE") markReadRef.current.mutate({ chatId });
 			})
 			.on("postgres_changes", { event: "UPDATE", schema: "public", table: "ampmais_chat_messages", filter: `chat_id=eq.${chatId}` }, (payload) => {
 				const row = payload.new as TRealtimeChatMessageRow;
@@ -221,117 +258,150 @@ export function ChatThread({ chatId, organizationId, currentUser }: ChatThreadPr
 
 	const janela = getWhatsappWindowDisplay({ expiracao: chat.whatsappJanelaDataExpiracao, tipoConexao: chat.conexaoTipo });
 
+	/**
+	 * Inserir o orçamento na conversa só faz sentido quando a conversa aceita texto livre agora: sem
+	 * posse do atendimento não há o que enviar, e com a janela de 24h expirada só sai template
+	 * aprovado. Fora dessas condições o orçamento continua registrado, apenas não é oferecido o
+	 * atalho de escrever a mensagem.
+	 */
+	const canWriteInConversation = isOwner && janela.variant !== "expirada";
+	const insertQuoteInConversation = canWriteInConversation ? (texto: string) => inputAreaRef.current?.appendText(texto) : undefined;
+
 	return (
 		<div className="flex h-full min-h-0 w-full min-w-0 overflow-hidden">
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
-			<header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
-				<div className="flex min-w-0 flex-col">
-					<span className="truncate text-sm font-semibold">{chat.cliente?.nome ?? "Cliente sem nome"}</span>
-					<span
-						className={cn(
-							"text-[11px]",
-							janela.variant === "expirada" ? "text-destructive" : janela.variant === "expirando" ? "text-brand" : "text-muted-foreground",
-						)}
-					>
-						{chat.cliente?.telefone} · {janela.label}
-					</span>
-				</div>
-				<div className="flex items-center gap-1.5">
-					{/* Header carrega só posse e roteamento; status e prioridade vivem no painel. */}
-					<ChatAssignmentActions chatId={chatId} atendimento={atendimento} currentUserId={currentUser.id} compact />
-
-					{/* Abaixo de xl o painel não cabe como coluna; vira gaveta sob demanda. */}
-					<Sheet>
-						<SheetTrigger asChild>
-							<Button variant="ghost" size="icon" className="shrink-0 xl:hidden" aria-label="Abrir contexto do atendimento">
-								<PanelRightOpen className="h-4 w-4" />
-							</Button>
-						</SheetTrigger>
-						<SheetContent side="right" className="w-[min(22rem,90vw)] p-0">
-							<SheetTitle className="sr-only">Contexto do atendimento</SheetTitle>
-							<ChatContextPanel chatId={chatId} chat={chat} currentUserId={currentUser.id} />
-						</SheetContent>
-					</Sheet>
-				</div>
-			</header>
-
-			<div
-				ref={scrollRef}
-				onScroll={(event) => {
-					const element = event.currentTarget;
-					// flex-col-reverse: o "fundo" (mensagem mais nova) é scrollTop === 0.
-					isAtBottomRef.current = element.scrollTop > -40;
-					if (isAtBottomRef.current) setUnseenCount(0);
-				}}
-				className="relative flex flex-1 flex-col-reverse gap-1 overflow-y-auto px-4 py-3"
-			>
-				{threadMessages.map((message, index) => {
-					const anterior = threadMessages[index + 1];
-					const showAuthor = !anterior || anterior.autorTipo !== message.autorTipo;
-					const currentDate = new Date(message.dataEnvio);
-					const showDaySeparator = !anterior || new Date(anterior.dataEnvio).toDateString() !== currentDate.toDateString();
-
-					return (
-						<div key={message.clientTempId ?? message.id} className="flex flex-col gap-1">
-							<ChatMessageBubble
-								message={message}
-								showAuthor={showAuthor}
-								onRetry={(messageId) => retryMutation.mutate({ messageId })}
-								isRetrying={retryMutation.isPending}
-							/>
-							{showDaySeparator && (
-								<div className="my-2 flex items-center gap-2">
-									<span className="h-px flex-1 bg-border" />
-									<span className="text-[11px] uppercase tracking-wide text-muted-foreground">{formatDaySeparator(currentDate)}</span>
-									<span className="h-px flex-1 bg-border" />
-								</div>
+				<header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
+					<div className="flex min-w-0 flex-col">
+						<span className="truncate text-sm font-semibold">{chat.cliente?.nome ?? "Cliente sem nome"}</span>
+						<span
+							className={cn(
+								"text-[11px]",
+								janela.variant === "expirada" ? "text-destructive" : janela.variant === "expirando" ? "text-brand" : "text-muted-foreground",
 							)}
-						</div>
-					);
-				})}
-
-				{hasNextPage && (
-					<div className="flex justify-center py-2">
-						<Button variant="ghost" size="sm" className="text-xs" disabled={isFetchingNextPage} onClick={() => fetchNextPage()}>
-							{isFetchingNextPage ? "Carregando..." : "Carregar mensagens anteriores"}
-						</Button>
+						>
+							{chat.cliente?.telefone} · {janela.label}
+						</span>
 					</div>
-				)}
-			</div>
+					<div className="flex items-center gap-1.5">
+						{/* Orçamento em aberto é pendência comercial: aparece no header, que é a única
+						    faixa sempre visível da thread. O `flex-wrap` do header cuida da quebra em
+						    telas estreitas. */}
+						<ChatQuotesHeaderActions
+							chatId={chatId}
+							clientId={chat.clienteId}
+							clientName={chat.cliente?.nome ?? "este cliente"}
+							permissions={quotePermissions}
+							onInsertInConversation={insertQuoteInConversation}
+						/>
 
-			<div aria-live="polite" className="sr-only">
-				{unseenCount > 0 ? `${unseenCount} ${unseenCount === 1 ? "nova mensagem" : "novas mensagens"}` : ""}
-			</div>
-			{unseenCount > 0 && (
-				<button
-					type="button"
-					onClick={() => {
-						scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-						setUnseenCount(0);
+						{/* Header carrega só posse e roteamento; status e prioridade vivem no painel. */}
+						<ChatAssignmentActions chatId={chatId} atendimento={atendimento} currentUserId={currentUser.id} compact />
+
+						{/* Abaixo de xl o painel não cabe como coluna; vira gaveta sob demanda. */}
+						<Sheet>
+							<SheetTrigger asChild>
+								<Button variant="ghost" size="icon" className="shrink-0 xl:hidden" aria-label="Abrir contexto do atendimento">
+									<PanelRightOpen className="h-4 w-4" />
+								</Button>
+							</SheetTrigger>
+							<SheetContent side="right" className="w-[min(22rem,90vw)] p-0">
+								<SheetTitle className="sr-only">Contexto do atendimento</SheetTitle>
+								<ChatContextPanel
+									chatId={chatId}
+									chat={chat}
+									currentUserId={currentUser.id}
+									quotePermissions={quotePermissions}
+									onInsertQuoteInConversation={insertQuoteInConversation}
+								/>
+							</SheetContent>
+						</Sheet>
+					</div>
+				</header>
+
+				<div
+					ref={scrollRef}
+					onScroll={(event) => {
+						const element = event.currentTarget;
+						// flex-col-reverse: o "fundo" (mensagem mais nova) é scrollTop === 0.
+						isAtBottomRef.current = element.scrollTop > -40;
+						if (isAtBottomRef.current) setUnseenCount(0);
 					}}
-					className="mx-auto -mt-8 mb-2 flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+					className="relative flex flex-1 flex-col-reverse gap-1 overflow-y-auto px-4 py-3"
 				>
-					<ChevronDown className="h-3 w-3" />
-					{unseenCount} {unseenCount === 1 ? "nova" : "novas"}
-				</button>
-			)}
+					{threadMessages.map((message, index) => {
+						const anterior = threadMessages[index + 1];
+						const showAuthor = !anterior || anterior.autorTipo !== message.autorTipo;
+						const currentDate = new Date(message.dataEnvio);
+						const showDaySeparator = !anterior || new Date(anterior.dataEnvio).toDateString() !== currentDate.toDateString();
 
-			<ChatInputArea
-				organizationId={organizationId}
-				userName={currentUser.nome}
-				isOwner={!!isOwner}
-				janelaExpiracao={chat.whatsappJanelaDataExpiracao}
-				conexaoTipo={chat.conexaoTipo}
-				isSending={sendMutation.isPending}
-				onSend={handleSend}
-				onAssume={() => assumeMutation.mutate({ acao: "assumir", chatId })}
-				templates={[]}
-				onSendTemplate={(messageTemplateId) => sendMutation.mutate({ chatId, messageTemplateId, assinaturaAtiva: false })}
-			/>
+						return (
+							<div key={message.clientTempId ?? message.id} className="flex flex-col gap-1">
+								<ChatMessageBubble
+									message={message}
+									showAuthor={showAuthor}
+									onRetry={(messageId) => retryMutation.mutate({ messageId })}
+									isRetrying={retryMutation.isPending}
+								/>
+								{showDaySeparator && (
+									<div className="my-2 flex items-center gap-2">
+										<span className="h-px flex-1 bg-border" />
+										<span className="text-[11px] uppercase tracking-wide text-muted-foreground">{formatDaySeparator(currentDate)}</span>
+										<span className="h-px flex-1 bg-border" />
+									</div>
+								)}
+							</div>
+						);
+					})}
+
+					{hasNextPage && (
+						<div className="flex justify-center py-2">
+							<Button variant="ghost" size="sm" className="text-xs" disabled={isFetchingNextPage} onClick={() => fetchNextPage()}>
+								{isFetchingNextPage ? "Carregando..." : "Carregar mensagens anteriores"}
+							</Button>
+						</div>
+					)}
+				</div>
+
+				<div aria-live="polite" className="sr-only">
+					{unseenCount > 0 ? `${unseenCount} ${unseenCount === 1 ? "nova mensagem" : "novas mensagens"}` : ""}
+				</div>
+				{unseenCount > 0 && (
+					<button
+						type="button"
+						onClick={() => {
+							scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+							setUnseenCount(0);
+						}}
+						className="mx-auto -mt-8 mb-2 flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground shadow-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+					>
+						<ChevronDown className="h-3 w-3" />
+						{unseenCount} {unseenCount === 1 ? "nova" : "novas"}
+					</button>
+				)}
+
+				<ChatInputArea
+					ref={inputAreaRef}
+					organizationId={organizationId}
+					userName={currentUser.nome}
+					isOwner={!!isOwner}
+					janelaExpiracao={chat.whatsappJanelaDataExpiracao}
+					conexaoTipo={chat.conexaoTipo}
+					isSending={sendMutation.isPending}
+					onSend={handleSend}
+					onAssume={() => assumeMutation.mutate({ acao: "assumir", chatId })}
+					templates={[]}
+					onSendTemplate={(messageTemplateId) => sendMutation.mutate({ chatId, messageTemplateId, assinaturaAtiva: false })}
+				/>
 			</div>
 
 			<aside className="hidden min-h-0 w-80 shrink-0 overflow-hidden border-l border-border xl:block">
-				<ChatContextPanel chatId={chatId} chat={chat} currentUserId={currentUser.id} />
+				<ChatContextPanel
+					chatId={chatId}
+					chat={chat}
+					currentUserId={currentUser.id}
+					quotePermissions={quotePermissions}
+					onInsertQuoteInConversation={insertQuoteInConversation}
+				/>
 			</aside>
 		</div>
 	);

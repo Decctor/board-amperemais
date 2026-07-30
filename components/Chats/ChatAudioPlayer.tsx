@@ -85,7 +85,7 @@ export function ChatAudioPlayer({ audioUrl, fileName, className }: ChatAudioPlay
 	}
 
 	return (
-		<div className={cn("flex w-full max-w-[17rem] items-center gap-2", className)}>
+		<div className={cn("flex w-full items-center gap-2", className)}>
 			<audio
 				ref={audioRef}
 				src={audioUrl}
@@ -124,7 +124,10 @@ export function ChatAudioPlayer({ audioUrl, fileName, className }: ChatAudioPlay
 							<span
 								key={`${audioUrl}-bar-${index}`}
 								style={{ height: `${Math.round(height * 100)}%` }}
-								className={cn("flex-1 rounded-full transition-opacity", index / WAVEFORM_BARS <= progress ? "bg-current opacity-90" : "bg-current opacity-30")}
+								className={cn(
+									"flex-1 rounded-full transition-opacity",
+									index / WAVEFORM_BARS <= progress ? "bg-current opacity-90" : "bg-current opacity-30",
+								)}
 							/>
 						))}
 					</div>

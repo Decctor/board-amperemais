@@ -2,7 +2,6 @@
 import { getAppRouteIcon } from "@/config/app-route-icons";
 import { getAppRouteDescription, getAppRouteTitle } from "@/config";
 import SubscriptionStatusBanner from "@/components/Sidebar/SubscriptionStatusBanner";
-import { AIHintsBadge } from "@/components/AIHints/AIHintsBadge";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -34,15 +33,14 @@ export default function AppHeader({ showSidebarTrigger = true }: AppHeaderProps)
 						</Button>
 					) : null}
 					{/* Decorativo: o título ao lado já nomeia a rota. */}
-					{RouteIcon ? <RouteIcon aria-hidden className="size-5 shrink-0 text-foreground md:size-6" /> : null}
-					<h1 className="text-xl font-black leading-none tracking-tight md:text-2xl text-foreground">{title}</h1>
+					{RouteIcon ? <RouteIcon aria-hidden className="size-4 shrink-0 text-foreground md:size-5" /> : null}
+					<h1 className="text-lg font-black leading-none tracking-tight text-foreground md:text-xl">{title}</h1>
 				</div>
 				<div className="flex items-center gap-2">
-					{/* <AIHintsBadge /> */}
 					<SubscriptionStatusBanner />
 				</div>
 			</div>
-			<p className="pl-2 text-sm text-muted-foreground">{description}</p>
+			<p className="pl-2 text-xs leading-tight text-muted-foreground">{description}</p>
 		</header>
 	);
 }

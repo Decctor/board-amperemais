@@ -480,9 +480,62 @@ export const ActionApprovalDecisionMethodEnum = z.enum(["PLATAFORMA", "SENHA_OPE
 export type TActionApprovalDecisionMethodEnum = z.infer<typeof ActionApprovalDecisionMethodEnum>;
 
 // Tipos de ação aprovável. Deliberadamente NÃO é pgEnum: a coluna `tipo` é varchar para que novos
-// cenários de aprovação não custem migração de enum no Postgres (padrão ai-hints).
+// cenários de aprovação não custem migração de enum no Postgres.
 export const ActionApprovalTypeEnum = z.enum(["VENDA_DESCONTO"]);
 export type TActionApprovalTypeEnum = z.infer<typeof ActionApprovalTypeEnum>;
+
+// ============================================================================
+// AGENTES DE IA
+// ============================================================================
+//
+// Deliberadamente NÃO são pgEnum (mesmo desvio consciente de chat_assignments): as colunas
+// são varchar + `$type<...>` + validação Zod, para que novos status/gatilhos/ferramentas não
+// custem `ALTER TYPE` em migration manual.
+
+// Um agente PAUSADO continua configurável, mas o runtime recusa executá-lo.
+export const AiAgentStatusEnum = z.enum(["ATIVO", "PAUSADO"]);
+export type TAiAgentStatusEnum = z.infer<typeof AiAgentStatusEnum>;
+
+// Ciclo de vida de uma execução (run) do agente.
+export const AiAgentRunStatusEnum = z.enum(["PENDENTE", "RODANDO", "CONCLUIDO", "FALHA"]);
+export type TAiAgentRunStatusEnum = z.infer<typeof AiAgentRunStatusEnum>;
+
+// O que originou a execução. PLAYGROUND roda o mesmo pipeline, sem envio externo.
+export const AiAgentRunGatilhoEnum = z.enum(["CHAT_MENSAGEM", "PLAYGROUND"]);
+export type TAiAgentRunGatilhoEnum = z.infer<typeof AiAgentRunGatilhoEnum>;
+
+// Ciclo de vida de uma chamada de ferramenta dentro de uma execução.
+export const AiAgentToolCallStatusEnum = z.enum(["EXECUTANDO", "CONCLUIDO", "FALHA"]);
+export type TAiAgentToolCallStatusEnum = z.infer<typeof AiAgentToolCallStatusEnum>;
+
+// Patamar de custo/capacidade de um modelo no catálogo do agente (`lib/ai/providers/model-catalog.ts`).
+export const AiAgentModelPerfilEnum = z.enum(["ECONOMICO", "EQUILIBRADO", "AVANCADO"]);
+export type TAiAgentModelPerfilEnum = z.infer<typeof AiAgentModelPerfilEnum>;
+
+// Ferramentas disponíveis ao agente. O nome é `dominio.acao`; a tradução para o formato do
+// AI SDK (que não aceita ponto) acontece em `lib/ai/tools/registry.ts`.
+export const AiAgentToolNameEnum = z.enum([
+	"clientes.consultar_compras",
+	"produtos.consultar",
+	"orcamentos.criar",
+	"cashback.consultar",
+	"cupons.consultar",
+	"atendimento.transferir_para_humano",
+]);
+export type TAiAgentToolNameEnum = z.infer<typeof AiAgentToolNameEnum>;
+
+// Operações mutáveis e duráveis iniciadas por ferramentas do agente. Permanecem varchar no
+// banco: novos tipos de operação/recurso não devem exigir ALTER TYPE em produção.
+export const AiAgentOperationStatusEnum = z.enum(["PROCESSANDO", "CONCLUIDA", "FALHA_REPETIVEL", "FALHA_FINAL"]);
+export type TAiAgentOperationStatusEnum = z.infer<typeof AiAgentOperationStatusEnum>;
+export const AiAgentOperationTypeEnum = z.enum(["ORCAMENTO_CRIAR"]);
+export type TAiAgentOperationTypeEnum = z.infer<typeof AiAgentOperationTypeEnum>;
+export const AiAgentOperationResourceTypeEnum = z.enum(["VENDA"]);
+export type TAiAgentOperationResourceTypeEnum = z.infer<typeof AiAgentOperationResourceTypeEnum>;
+
+// Origem do chat. PLAYGROUND é chat sintético de teste do agente e é filtrado do hub.
+export const ChatOriginEnum = z.enum(["WHATSAPP", "PLAYGROUND"]);
+export type TChatOriginEnum = z.infer<typeof ChatOriginEnum>;
 
 // Espelha o pgEnum dealStatusEnum.
 export const DealStatusEnum = z.enum(["PENDENTE", "ATIVO", "INADIMPLENTE", "CANCELADO"]);

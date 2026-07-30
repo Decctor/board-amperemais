@@ -185,6 +185,8 @@ async function getChats({ session, input }: { session: TAuthUserSession; input: 
 		.where(
 			and(
 				eq(chats.organizacaoId, organizacaoId),
+				// Chats de teste do agente de IA não são atendimento real.
+				eq(chats.origem, "WHATSAPP"),
 				input.whatsappConexaoTelefoneId ? eq(chats.whatsappConexaoTelefoneId, input.whatsappConexaoTelefoneId) : undefined,
 				cursor ? or(lt(chats.ultimaMensagemData, cursor.data), and(eq(chats.ultimaMensagemData, cursor.data), lt(chats.id, cursor.id))) : undefined,
 				viewCondition,

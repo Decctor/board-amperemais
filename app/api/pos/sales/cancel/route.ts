@@ -20,7 +20,7 @@ const CancelSaleInputSchema = z.object({
 		.min(3)
 		.optional()
 		.default("Cancelamento solicitado pelo usuário."),
-	sessaoVendaId: z.string({ invalid_type_error: "Tipo não válido para o ID da sessão de venda." }).optional().nullable(),
+	saleSessionId: z.string({ invalid_type_error: "Tipo não válido para o ID da sessão de venda." }).optional().nullable(),
 });
 
 // ============================================================================
@@ -36,7 +36,7 @@ async function cancelSale(request: NextRequest) {
 	const input = CancelSaleInputSchema.parse({
 		id: searchParams.get("id"),
 		reason: searchParams.get("reason") ?? undefined,
-		sessaoVendaId: searchParams.get("sessaoVendaId") ?? undefined,
+		saleSessionId: searchParams.get("saleSessionId") ?? undefined,
 	});
 
 	const orgId = session.membership.organizacao.id;
@@ -60,12 +60,20 @@ async function cancelSale(request: NextRequest) {
 			saleId: input.id,
 			authorId: session.user.id,
 			reason: input.reason,
-			sessaoVendaId: input.sessaoVendaId,
+			sessaoVendaId: input.saleSessionId,
 		});
 		return NextResponse.json({ data: result, message: "Venda cancelada com sucesso." });
 	}
 	if (existing.statusVenda !== "ORCAMENTO") {
 		throw new createHttpError.BadRequest("A venda não pode ser cancelada no status atual.");
+	}
+
+	// Rascunho não tem trilha contábil, então descartá-lo é ato de quem opera vendas — não exige a
+	// permissão de excluir venda confirmada (que travaria o checkout do POS para operadores comuns).
+	// Sem nenhuma das duas, porém, ninguém deveria descartar orçamento alheio: até aqui a rota
+	// aceitava qualquer membro autenticado da organização.
+	if (!session.membership.permissoes.vendas.criar && !session.membership.permissoes.vendas.excluir) {
+		throw new createHttpError.Forbidden("Você não possui permissão para cancelar orçamentos.");
 	}
 
 	await db.update(sales).set({ statusVenda: "CANCELADA", statusAtendimento: "CANCELADO" }).where(eq(sales.id, input.id));

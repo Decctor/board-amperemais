@@ -7,6 +7,7 @@ import type {
 	TPostFulfillmentOrderConfirmationOutput,
 } from "@/app/api/sales/fulfillment/order-confirmation/route";
 import type { TPatchSalesFulfillmentInput, TPatchSalesFulfillmentOutput } from "@/app/api/sales/fulfillment/route";
+import type { TCreateQuoteInput, TCreateQuoteOutput } from "@/app/api/sales/quotes/route";
 import type { TUpdateSaleAttendanceStatusInput, TUpdateSaleAttendanceStatusOutput } from "@/app/api/pos/sales/attendance-status/route";
 import type { TCreateSaleInput, TCreateSaleOutput, TDeleteSaleOutput } from "@/app/api/sales/route";
 import type { TBulkCreateSalesInput, TBulkCreateSalesOutput, TBulkSalesMapInput, TBulkSalesMapOutput } from "@/state-hooks/use-bulk-create-sales";
@@ -88,6 +89,11 @@ export async function bulkCreateSales(input: TBulkCreateSalesInput, onUploadProg
 	const { data } = await axios.post<TBulkCreateSalesOutput>("/api/sales/bulk", input, {
 		onUploadProgress: (progressEvent) => onUploadProgress?.(Math.round((progressEvent.loaded * 100) / (progressEvent.total ?? 1))),
 	});
+	return data;
+}
+
+export async function createQuote(input: TCreateQuoteInput) {
+	const { data } = await axios.post<TCreateQuoteOutput>("/api/sales/quotes", input);
 	return data;
 }
 

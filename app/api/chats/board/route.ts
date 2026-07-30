@@ -140,6 +140,8 @@ async function getChatBoard({ session, input }: { session: TAuthUserSession; inp
 
 	const baseConditions = [
 		eq(chatAssignments.organizacaoId, organizacaoId),
+		// Chats de teste do agente de IA não entram no quadro de atendimentos.
+		eq(chats.origem, "WHATSAPP"),
 		input.whatsappConexaoTelefoneId ? eq(chats.whatsappConexaoTelefoneId, input.whatsappConexaoTelefoneId) : undefined,
 		input.prioridade ? eq(chatAssignments.prioridade, input.prioridade) : undefined,
 		viewCondition,

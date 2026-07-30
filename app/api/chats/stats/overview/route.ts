@@ -49,6 +49,8 @@ type TCohortFilters = { organizacaoId: string; whatsappConexaoTelefoneId?: strin
 function cohortConditions({ organizacaoId, whatsappConexaoTelefoneId }: TCohortFilters) {
 	return [
 		eq(chatAssignments.organizacaoId, organizacaoId),
+		// Chats de teste do agente de IA não contam como atendimento.
+		eq(chats.origem, "WHATSAPP"),
 		whatsappConexaoTelefoneId ? eq(chats.whatsappConexaoTelefoneId, whatsappConexaoTelefoneId) : undefined,
 	];
 }
@@ -151,6 +153,7 @@ async function fetchMessages({ filters, startDate, endDate }: { filters: TCohort
 		.where(
 			and(
 				eq(chatMessages.organizacaoId, filters.organizacaoId),
+				eq(chats.origem, "WHATSAPP"),
 				filters.whatsappConexaoTelefoneId ? eq(chats.whatsappConexaoTelefoneId, filters.whatsappConexaoTelefoneId) : undefined,
 				between(chatMessages.dataEnvio, startDate, endDate),
 			),

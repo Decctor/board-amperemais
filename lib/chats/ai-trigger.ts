@@ -35,7 +35,15 @@ export type TAiTriggerDecision = { shouldRespond: true } | { shouldRespond: fals
  * Devolve `false` quando a conversa já tem dono — humano do hub, telefone ou outro
  * episódio da própria IA que ainda não encerrou.
  */
-export async function claimChatForAi({ organizacaoId, chatId }: { organizacaoId: string; chatId: string }): Promise<TAiTriggerDecision> {
+export async function claimChatForAi({
+	organizacaoId,
+	chatId,
+	agenteId,
+}: {
+	organizacaoId: string;
+	chatId: string;
+	agenteId: string;
+}): Promise<TAiTriggerDecision> {
 	const atual = await getCurrentChatAttendance(db, { organizacaoId, chatId });
 
 	if (atual?.responsavelTipo === "USUARIO") return { shouldRespond: false, reason: "Atendimento com responsável humano." };
@@ -43,7 +51,7 @@ export async function claimChatForAi({ organizacaoId, chatId }: { organizacaoId:
 	// Já é da IA: o episódio segue, não precisa reivindicar de novo.
 	if (atual?.responsavelTipo === "AGENTE") return { shouldRespond: true };
 
-	const claimed = await claimChatAttendanceForAgent(db, { organizacaoId, chatId });
+	const claimed = await claimChatAttendanceForAgent(db, { organizacaoId, chatId, agenteId });
 	if (!claimed) return { shouldRespond: false, reason: "Atendimento assumido por outra parte durante o claim." };
 
 	return { shouldRespond: true };

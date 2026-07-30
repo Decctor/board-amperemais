@@ -269,6 +269,15 @@ export const ChatMessageMetadataSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+	// Vínculo denormalizado mensagem → execução do agente. O canônico é
+	// `ai_agent_runs.mensagemEnviadaId`; este espelho evita join no hub.
+	aiAgente: z
+		.object({
+			runId: z.string(),
+			agenteId: z.string(),
+		})
+		.optional()
+		.nullable(),
 });
 export type TChatMessageMetadata = z.infer<typeof ChatMessageMetadataSchema>;
 

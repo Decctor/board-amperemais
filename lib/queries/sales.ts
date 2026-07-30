@@ -1,3 +1,4 @@
+import type { TGetQuotesOutput } from "@/app/api/sales/quotes/route";
 import type { TGetSalesInput, TGetSalesOutput } from "@/app/api/sales/route";
 import type { TSalesSimplifiedSearchResult } from "@/app/api/sales/simplified-search/route";
 import type { TSalesSimplifiedSearchQueryParams } from "@/schemas/sales";
@@ -83,6 +84,43 @@ async function fetchSalesSimplifiedSearch(params: TSalesSimplifiedSearchQueryPar
 		console.log("Error running fetchSalesSimplifiedSearch");
 		throw error;
 	}
+}
+
+async function fetchClientOpenQuotes(clientId: string) {
+	const { data } = await axios.get<TGetQuotesOutput>(`/api/sales/quotes?clientId=${clientId}`);
+	return {
+		...data.data,
+		// A rota devolve `Date`, o transporte entrega string: reidratar aqui evita que cada consumidor
+		// faça `new Date()` sobre um campo tipado como Date.
+		orcamentos: data.data.orcamentos.map((orcamento) => ({
+			...orcamento,
+			criadoEm: orcamento.criadoEm ? new Date(orcamento.criadoEm) : null,
+		})),
+	};
+}
+
+export type TClientOpenQuotes = Awaited<ReturnType<typeof fetchClientOpenQuotes>>;
+export type TClientOpenQuote = TClientOpenQuotes["orcamentos"][number];
+
+export function getClientOpenQuotesQueryKey(clientId: string | null) {
+	return ["client-open-quotes", clientId] as const;
+}
+
+/**
+ * Orçamentos em aberto do cliente. Alimenta a pill do header e o bloco do painel de contexto, então
+ * o `staleTime` é curto: um orçamento criado pelo agente precisa aparecer no atendimento em curso.
+ */
+export function useClientOpenQuotes({ clientId, enabled = true }: { clientId: string | null; enabled?: boolean }) {
+	const queryKey = getClientOpenQuotesQueryKey(clientId);
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchClientOpenQuotes(clientId ?? ""),
+			enabled: enabled && !!clientId,
+			staleTime: 30 * 1000,
+		}),
+		queryKey,
+	};
 }
 
 export function useSalesSimplifiedSearch() {

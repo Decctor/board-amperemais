@@ -37,9 +37,9 @@ export async function editConfirmedSale(input: TEditConfirmedSaleInput) {
 
 // Cancelamento com estorno de venda CONFIRMADA (financeiro, estoque, cashback e cupons).
 // A mesma rota trata rascunhos, mas para CONFIRMADA exige permissoes.vendas.excluir no servidor.
-export async function cancelConfirmedSale({ id, reason, sessaoVendaId }: { id: string; reason: string; sessaoVendaId?: string | null }) {
+export async function cancelConfirmedSale({ id, reason, saleSessionId }: { id: string; reason: string; saleSessionId?: string | null }) {
 	const searchParams = new URLSearchParams({ id, reason });
-	if (sessaoVendaId) searchParams.set("sessaoVendaId", sessaoVendaId);
+	if (saleSessionId) searchParams.set("saleSessionId", saleSessionId);
 	const { data } = await axios.post<{ data: { saleId: string }; message: string }>(`/api/pos/sales/cancel?${searchParams.toString()}`);
 	return data;
 }

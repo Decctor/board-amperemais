@@ -164,12 +164,6 @@ export const OrganizationConfigurationSchema = z.object({
 				invalid_type_error: "Tipo não válido para o acesso aos recursos de relatórios via WhatsApp.",
 			}),
 		}),
-		iaDicas: z.object({
-			acesso: z.boolean({
-				invalid_type_error: "Tipo não válido para o acesso aos recursos de dicas de IA.",
-			}),
-			limiteSemanal: z.number({ invalid_type_error: "Tipo não válido para o limite de dicas de IA por semana." }).nullable(),
-		}),
 		iaAtendimento: z.object({
 			acesso: z.boolean({
 				invalid_type_error: "Tipo não válido para o acesso aos recursos de atendimento via IA.",
