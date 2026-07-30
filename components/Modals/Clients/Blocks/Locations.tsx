@@ -2,12 +2,11 @@ import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
+import { getClientLocationAddressByCEP } from "@/lib/clients/locations";
 import { formatToCEP } from "@/lib/formatting";
-import { getCEPInfo } from "@/lib/utils";
 import type { TUseClientState } from "@/state-hooks/use-client-state";
 import { BrazilianCitiesOptionsFromUF, BrazilianStatesOptions } from "@/utils/states-cities";
 import { MapPin, Plus, Trash2 } from "lucide-react";
-import { toast } from "sonner";
 
 type ClientLocationsBlockProps = {
 	locations: TUseClientState["state"]["clientLocations"];
@@ -76,25 +75,9 @@ type ClientLocationBlockCardProps = {
 };
 function ClientLocationBlockCard({ location, isPrimary, updateClientLocation, removeClientLocation }: ClientLocationBlockCardProps) {
 	async function setAddressDataByCEP(cep: string) {
-		const addressInfo = await getCEPInfo(cep);
-		const toastID = toast.loading("Buscando informações sobre o CEP...", {
-			duration: 2000,
-		});
-		setTimeout(() => {
-			if (addressInfo) {
-				toast.dismiss(toastID);
-				toast.success("Dados do CEP buscados com sucesso.", {
-					duration: 1000,
-				});
-				updateClientLocation({
-					localizacaoCep: cep,
-					localizacaoLogradouro: addressInfo.logradouro,
-					localizacaoBairro: addressInfo.bairro,
-					localizacaoEstado: addressInfo.uf,
-					localizacaoCidade: addressInfo.localidade.toUpperCase(),
-				});
-			}
-		}, 1000);
+		const addressInfo = await getClientLocationAddressByCEP(cep);
+		if (!addressInfo) return;
+		updateClientLocation(addressInfo);
 	}
 	return (
 		<div className="w-full rounded-lg border p-3 flex flex-col gap-2">
@@ -118,10 +101,9 @@ function ClientLocationBlockCard({ location, isPrimary, updateClientLocation, re
 					placeholder="Digite o CEP"
 					value={location.localizacaoCep ?? ""}
 					handleChange={(value) => {
-						if (value.length === 9) {
-							setAddressDataByCEP(value);
-						}
-						updateClientLocation({ localizacaoCep: formatToCEP(value) || null });
+						const formattedCep = formatToCEP(value);
+						if (formattedCep.length === 9) setAddressDataByCEP(formattedCep);
+						updateClientLocation({ localizacaoCep: formattedCep || null });
 					}}
 				/>
 				<SelectInput
@@ -129,7 +111,7 @@ function ClientLocationBlockCard({ location, isPrimary, updateClientLocation, re
 					value={location.localizacaoEstado ?? null}
 					options={BrazilianStatesOptions}
 					handleChange={(value) =>
-						updateClientLocation({ localizacaoEstado: value || null, localizacaoCidade: BrazilianCitiesOptionsFromUF(value)[0].value || null })
+						updateClientLocation({ localizacaoEstado: value || null, localizacaoCidade: BrazilianCitiesOptionsFromUF(value)[0]?.value ?? null })
 					}
 					onReset={() => updateClientLocation({ localizacaoEstado: null, localizacaoCidade: null })}
 					resetOptionLabel="NÃO DEFINIDO"

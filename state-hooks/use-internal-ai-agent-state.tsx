@@ -115,6 +115,32 @@ export function useInternalAiAgentState() {
 		}));
 	}, []);
 
+	/**
+	 * Mantém a coerência que o `superRefine` de `AiAgentCapacidadesSchema` exige, em vez de deixar o
+	 * usuário montar uma configuração que só falha no salvamento: esconder a disponibilidade
+	 * rebaixa `AVISAR` para `PERMITIR`, porque avisar sobre um saldo que o agente não pode mencionar
+	 * produz resposta vaga.
+	 */
+	const updateStock = useCallback((estoque: Partial<TAiAgentCapacidades["comercial"]["estoque"]>) => {
+		setState((prev) => {
+			const previous = prev.agente.capacidades.comercial.estoque;
+			const next = { ...previous, ...estoque };
+			return {
+				...prev,
+				agente: {
+					...prev.agente,
+					capacidades: {
+						...prev.agente.capacidades,
+						comercial: {
+							...prev.agente.capacidades.comercial,
+							estoque: next.visibilidade === "OCULTO" && next.excedente === "AVISAR" ? { ...next, excedente: "PERMITIR" } : next,
+						},
+					},
+				},
+			};
+		});
+	}, []);
+
 	const toggleTool = useCallback((name: TAiAgentToolNameEnum, enabled: boolean) => {
 		setState((prev) => {
 			const ferramentas = { ...prev.agente.capacidades.ferramentas, [name]: { habilitada: enabled } };
@@ -129,9 +155,7 @@ export function useInternalAiAgentState() {
 						ferramentas,
 						comercial: {
 							...prev.agente.capacidades.comercial,
-							precos: isQuoteBeingEnabled
-								? { ...prev.agente.capacidades.comercial.precos, visiveis: true }
-								: prev.agente.capacidades.comercial.precos,
+							precos: isQuoteBeingEnabled ? { ...prev.agente.capacidades.comercial.precos, visiveis: true } : prev.agente.capacidades.comercial.precos,
 							orcamentos:
 								isHandoffBeingDisabled && prev.agente.capacidades.comercial.orcamentos.bloqueio === "TRANSFERIR"
 									? { ...prev.agente.capacidades.comercial.orcamentos, bloqueio: "INFORMAR" }
@@ -177,6 +201,7 @@ export function useInternalAiAgentState() {
 		updateAttendanceSettings,
 		updatePrices,
 		updateQuotes,
+		updateStock,
 		toggleTool,
 		addKnowledgeBlock,
 		updateKnowledgeBlock,

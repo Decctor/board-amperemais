@@ -1,12 +1,16 @@
 "use client";
 
+import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
+import { getClientLocationAddressByCEP } from "@/lib/clients/locations";
 import { getErrorMessage } from "@/lib/errors";
+import { formatToCEP } from "@/lib/formatting";
 import { createClientLocation } from "@/lib/mutations/clients/locations";
 import type { TCreateClientLocationInput } from "@/app/api/clients/locations/route";
 import { useClientLocationState } from "@/state-hooks/use-client-location-state";
+import { BrazilianCitiesOptionsFromUF, BrazilianStatesOptions } from "@/utils/states-cities";
 import { useMutation } from "@tanstack/react-query";
 import { MapPin } from "lucide-react";
 import { toast } from "sonner";
@@ -46,6 +50,12 @@ export function NewClientLocation({ clienteId, closeModal, callbacks }: NewClien
 		},
 	});
 
+	async function setAddressDataByCEP(cep: string) {
+		const addressInfo = await getClientLocationAddressByCEP(cep);
+		if (!addressInfo) return;
+		updateClientLocation(addressInfo);
+	}
+
 	return (
 		<ResponsiveMenu
 			menuTitle="NOVA LOCALIZAÇÃO"
@@ -70,19 +80,29 @@ export function NewClientLocation({ clienteId, closeModal, callbacks }: NewClien
 						label="CEP"
 						placeholder="Digite o CEP"
 						value={state.localizacaoCep ?? ""}
-						handleChange={(value) => updateClientLocation({ localizacaoCep: value || null })}
+						handleChange={(value) => {
+							const formattedCep = formatToCEP(value);
+							if (formattedCep.length === 9) setAddressDataByCEP(formattedCep);
+							updateClientLocation({ localizacaoCep: formattedCep || null });
+						}}
 					/>
-					<TextInput
+					<SelectInput
 						label="Estado"
-						placeholder="Digite o estado"
-						value={state.localizacaoEstado ?? ""}
-						handleChange={(value) => updateClientLocation({ localizacaoEstado: value || null })}
+						value={state.localizacaoEstado ?? null}
+						options={BrazilianStatesOptions}
+						handleChange={(value) =>
+							updateClientLocation({ localizacaoEstado: value || null, localizacaoCidade: BrazilianCitiesOptionsFromUF(value)[0]?.value ?? null })
+						}
+						onReset={() => updateClientLocation({ localizacaoEstado: null, localizacaoCidade: null })}
+						resetOptionLabel="NÃO DEFINIDO"
 					/>
-					<TextInput
+					<SelectInput
 						label="Cidade"
-						placeholder="Digite a cidade"
-						value={state.localizacaoCidade ?? ""}
+						value={state.localizacaoCidade ?? null}
+						options={BrazilianCitiesOptionsFromUF(state.localizacaoEstado ?? "")}
 						handleChange={(value) => updateClientLocation({ localizacaoCidade: value || null })}
+						onReset={() => updateClientLocation({ localizacaoCidade: null })}
+						resetOptionLabel="NÃO DEFINIDO"
 					/>
 					<TextInput
 						label="Bairro"

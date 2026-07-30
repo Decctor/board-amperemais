@@ -1,13 +1,17 @@
 "use client";
 
+import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
+import { getClientLocationAddressByCEP } from "@/lib/clients/locations";
 import { getErrorMessage } from "@/lib/errors";
+import { formatToCEP } from "@/lib/formatting";
 import { updateClientLocation } from "@/lib/mutations/clients/locations";
 import { useClientLocationById } from "@/lib/queries/clients/locations";
 import type { TUpdateClientLocationInput } from "@/app/api/clients/locations/route";
 import { useClientLocationState } from "@/state-hooks/use-client-location-state";
+import { BrazilianCitiesOptionsFromUF, BrazilianStatesOptions } from "@/utils/states-cities";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MapPin } from "lucide-react";
 import { useEffect } from "react";
@@ -65,6 +69,12 @@ export function ControlClientLocation({ clientLocationId, closeModal, callbacks 
 		},
 	});
 
+	async function setAddressDataByCEP(cep: string) {
+		const addressInfo = await getClientLocationAddressByCEP(cep);
+		if (!addressInfo) return;
+		updateState(addressInfo);
+	}
+
 	return (
 		<ResponsiveMenu
 			menuTitle="EDITAR LOCALIZAÇÃO"
@@ -87,19 +97,29 @@ export function ControlClientLocation({ clientLocationId, closeModal, callbacks 
 						label="CEP"
 						placeholder="Digite o CEP"
 						value={state.localizacaoCep ?? ""}
-						handleChange={(value) => updateState({ localizacaoCep: value || null })}
+						handleChange={(value) => {
+							const formattedCep = formatToCEP(value);
+							if (formattedCep.length === 9) setAddressDataByCEP(formattedCep);
+							updateState({ localizacaoCep: formattedCep || null });
+						}}
 					/>
-					<TextInput
+					<SelectInput
 						label="Estado"
-						placeholder="Digite o estado"
-						value={state.localizacaoEstado ?? ""}
-						handleChange={(value) => updateState({ localizacaoEstado: value || null })}
+						value={state.localizacaoEstado ?? null}
+						options={BrazilianStatesOptions}
+						handleChange={(value) =>
+							updateState({ localizacaoEstado: value || null, localizacaoCidade: BrazilianCitiesOptionsFromUF(value)[0]?.value ?? null })
+						}
+						onReset={() => updateState({ localizacaoEstado: null, localizacaoCidade: null })}
+						resetOptionLabel="NÃO DEFINIDO"
 					/>
-					<TextInput
+					<SelectInput
 						label="Cidade"
-						placeholder="Digite a cidade"
-						value={state.localizacaoCidade ?? ""}
+						value={state.localizacaoCidade ?? null}
+						options={BrazilianCitiesOptionsFromUF(state.localizacaoEstado ?? "")}
 						handleChange={(value) => updateState({ localizacaoCidade: value || null })}
+						onReset={() => updateState({ localizacaoCidade: null })}
+						resetOptionLabel="NÃO DEFINIDO"
 					/>
 					<TextInput
 						label="Bairro"

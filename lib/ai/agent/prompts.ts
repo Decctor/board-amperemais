@@ -21,6 +21,44 @@ import { getEnabledAgentTools } from "../tools/registry";
  * sem ela, ou o agente gasta uma tool call para descobrir as categorias, ou filtra por um
  * grupo que não existe. A lista é pequena, estável dentro do turno e barata em tokens.
  */
+/**
+ * Regras de estoque, uma redação por mundo — o agente nunca lê "se a disponibilidade estiver
+ * visível…", só a regra que vale para ele.
+ *
+ * Antes disso havia uma frase única ("produto ativo não significa estoque disponível") presa dentro
+ * do branch de preços visíveis: quem escondia preços perdia o aviso inteiro, e quem o recebia não
+ * tinha o que fazer com ele.
+ */
+function buildStockRules(estoque: TAiAgentCapacidades["comercial"]["estoque"]): string[] {
+	const rules: string[] = [];
+
+	if (estoque.visibilidade === "OCULTO") {
+		rules.push(
+			"- Você não tem informação de estoque. Produto no catálogo não significa produto disponível: nunca afirme que um item está em estoque, reservado ou em falta, e nunca prometa prazo de entrega. Se o cliente perguntar sobre disponibilidade, diga que a equipe confirma.",
+		);
+	} else {
+		rules.push(
+			'- O catálogo traz "disponibilidade" por item. DISPONIVEL significa que há saldo agora, e não reserva. ESGOTADO você pode informar como falta. NAO_RASTREADO significa que a empresa não controla saldo desse item: não afirme nem negue a disponibilidade, diga que a equipe confirma.',
+			estoque.visibilidade === "QUANTIDADE"
+				? '- Você pode informar a "quantidade" quando ela vier no resultado, sempre como saldo do momento e nunca como reserva. Item sem esse campo não tem saldo conhecido.'
+				: "- Nunca informe a quantidade exata em estoque, mesmo que o cliente insista. Fale apenas em termos de ter ou não ter.",
+		);
+	}
+
+	if (estoque.excedente === "BLOQUEAR") {
+		rules.push(
+			"- Pedido acima do saldo não gera orçamento. Se a ferramenta recusar por falta de saldo, não tente de novo com a mesma quantidade: ofereça a quantidade possível ou encaminhe para a equipe.",
+		);
+	}
+	if (estoque.excedente === "AVISAR") {
+		rules.push(
+			"- Quando o orçamento for criado com aviso de falta de saldo, avise o cliente na mesma mensagem em que confirma o orçamento. Não deixe para depois.",
+		);
+	}
+
+	return rules;
+}
+
 export function buildAgentSystemPrompt({
 	instrucoes,
 	capacidades,
@@ -61,8 +99,11 @@ export function buildAgentSystemPrompt({
 	if (has("produtos.consultar")) {
 		conditionalRules.push(
 			capacidades.comercial.precos.visiveis
-				? "- Consulte o catálogo antes de citar produto ou preço. Use somente o preço retornado pela ferramenta. Produto ativo não significa estoque disponível ou reservado."
+				? "- Consulte o catálogo antes de citar produto ou preço. Use somente o preço retornado pela ferramenta. Item sem o campo de preço está sem preço cadastrado: não estime valor, pergunte ou encaminhe."
 				: "- Consulte o catálogo antes de citar produtos. Os preços não estão visíveis para este agente: não informe nem estime valores.",
+			// A regra de estoque fica **fora** do branch de preços: uma organização que esconde preços
+			// continua precisando que o agente não invente disponibilidade.
+			...buildStockRules(capacidades.comercial.estoque),
 			// A consulta anterior é uma amostra ranqueada de 10 itens, não o catálogo. Responder um
 			// filtro novo com ela já custou 4 opções mais baratas omitidas de um cliente real.
 			"- Cada resultado do catálogo é uma amostra parcial da consulta que você fez. Quando o cliente acrescentar ou mudar qualquer filtro (faixa de preço, potência, cor, tamanho), consulte de novo — nunca responda pela lista da consulta anterior.",
@@ -135,7 +176,10 @@ Devolva:
 O contexto pode trazer um bloco [CATALOGO_INTERNO] com os produtos da sua última consulta e os IDs
 para chamar ferramentas. É uma amostra parcial daquela consulta, não o catálogo da empresa: use os
 IDs, nunca os copie para a mensagem do cliente, e não responda por ele uma pergunta que pede
-filtro diferente — nesse caso, consulte o catálogo de novo.`);
+filtro diferente — nesse caso, consulte o catálogo de novo.
+
+Esse bloco não carrega disponibilidade, e de propósito: saldo muda entre uma mensagem e a seguinte.
+Para falar de estoque, consulte o catálogo neste turno.`);
 
 	return parts.join("\n\n");
 }

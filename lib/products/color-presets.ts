@@ -29,11 +29,7 @@ export const COLOR_UNKNOWN_HEX = "#737373";
 const COLOR_PRESET_BY_NORMALIZED_NAME = new Map(COLOR_PRESETS.map((preset) => [normalizeColorName(preset.nome), preset]));
 
 export function normalizeColorName(nome: string) {
-	return nome
-		.trim()
-		.toLowerCase()
-		.normalize("NFD")
-		.replace(/\p{M}/gu, "");
+	return nome.trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
 }
 
 export function resolveColorHexFromName(nome: string): string | null {

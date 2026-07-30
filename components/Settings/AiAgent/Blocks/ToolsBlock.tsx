@@ -11,7 +11,16 @@ type ToolsBlockProps = {
 	updateAttendanceSettings: TUseInternalAiAgentState["updateAttendanceSettings"];
 	updatePrices: TUseInternalAiAgentState["updatePrices"];
 	updateQuotes: TUseInternalAiAgentState["updateQuotes"];
-	diagnosticoComercial: { itensAtivos: number; aptos: number; semPreco: number; semCusto: number; comAdicionais: number };
+	updateStock: TUseInternalAiAgentState["updateStock"];
+	diagnosticoComercial: {
+		itensAtivos: number;
+		aptos: number;
+		semPreco: number;
+		semCusto: number;
+		comAdicionais: number;
+		semRastreamento: number;
+		esgotados: number;
+	};
 };
 
 /**
@@ -59,8 +68,10 @@ export default function ToolsBlock({
 	updateAttendanceSettings,
 	updatePrices,
 	updateQuotes,
+	updateStock,
 }: ToolsBlockProps) {
 	const { ferramentas, comercial, limites, atendimento } = state.agente.capacidades;
+	const stockHidden = comercial.estoque.visibilidade === "OCULTO";
 
 	return (
 		<div className="flex w-full flex-col gap-6">
@@ -84,9 +95,8 @@ export default function ToolsBlock({
 				<div className="flex flex-col gap-1">
 					<h3 className="text-xs font-medium uppercase tracking-tight text-muted-foreground">RECURSOS COMERCIAIS</h3>
 					<p className="text-xs text-muted-foreground">
-						{diagnosticoComercial.aptos} de {diagnosticoComercial.itensAtivos} itens ativos estão aptos para orçamento.{" "}
-						{diagnosticoComercial.semPreco} sem preço, {diagnosticoComercial.semCusto} sem custo cadastrado e{" "}
-						{diagnosticoComercial.comAdicionais} com adicionais ainda não suportados.
+						{diagnosticoComercial.aptos} de {diagnosticoComercial.itensAtivos} itens ativos estão aptos para orçamento. {diagnosticoComercial.semPreco} sem
+						preço, {diagnosticoComercial.semCusto} sem custo cadastrado e {diagnosticoComercial.comAdicionais} com adicionais ainda não suportados.
 					</p>
 				</div>
 
@@ -100,6 +110,49 @@ export default function ToolsBlock({
 						onCheckedChange={(checked) => updatePrices({ visiveis: checked })}
 						aria-label="Exibir preços de venda"
 					/>
+				</div>
+
+				<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+					<div className="flex flex-col gap-1">
+						<SelectInput
+							label="O QUE O AGENTE DIZ SOBRE ESTOQUE"
+							value={comercial.estoque.visibilidade}
+							resetOptionLabel="Selecione uma opção"
+							options={[
+								{ id: "OCULTO", value: "OCULTO", label: "Nada — a equipe confirma" },
+								{ id: "DISPONIBILIDADE", value: "DISPONIBILIDADE", label: "Se tem ou não tem" },
+								{ id: "QUANTIDADE", value: "QUANTIDADE", label: "Quantidade exata em estoque" },
+							]}
+							handleChange={(value) => updateStock({ visibilidade: value as "OCULTO" | "DISPONIBILIDADE" | "QUANTIDADE" })}
+							onReset={() => updateStock({ visibilidade: "OCULTO" })}
+						/>
+						<p className="text-xs text-muted-foreground">
+							Itens sem controle de saldo nunca são apresentados como disponíveis nem em falta. Hoje {diagnosticoComercial.semRastreamento} de{" "}
+							{diagnosticoComercial.itensAtivos} itens ativos não têm rastreamento de estoque e {diagnosticoComercial.esgotados} estão com saldo zerado.
+						</p>
+					</div>
+
+					<div className="flex flex-col gap-1">
+						<SelectInput
+							label="QUANDO O PEDIDO PASSAR DO SALDO"
+							value={comercial.estoque.excedente}
+							resetOptionLabel="Selecione uma ação"
+							options={[
+								{ id: "PERMITIR", value: "PERMITIR", label: "Seguir sem conferir" },
+								// Avisar exige que o agente possa falar de estoque — a opção sai da lista em vez
+								// de ser rebaixada em silêncio depois da escolha.
+								...(stockHidden ? [] : [{ id: "AVISAR", value: "AVISAR", label: "Criar e avisar o cliente" }]),
+								{ id: "BLOQUEAR", value: "BLOQUEAR", label: "Não criar o orçamento" },
+							]}
+							handleChange={(value) => updateStock({ excedente: value as "PERMITIR" | "AVISAR" | "BLOQUEAR" })}
+							onReset={() => updateStock({ excedente: "PERMITIR" })}
+						/>
+						<p className="text-xs text-muted-foreground">
+							{stockHidden
+								? 'Avisar o cliente exige que o agente possa falar de estoque. Escolha uma opção acima de "Nada".'
+								: "Vale para os orçamentos criados pelo agente. Itens sem controle de saldo nunca bloqueiam."}
+						</p>
+					</div>
 				</div>
 
 				{ferramentas["orcamentos.criar"]?.habilitada ? (

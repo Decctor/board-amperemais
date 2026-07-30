@@ -5,11 +5,15 @@ import {
 	createWordSimilarityExpression,
 	extractSearchTokens,
 } from "@/lib/search";
+import { resolveProductAvailability, resolveVariantAvailability } from "@/lib/products/availability";
+import type { TAiAgentEstoqueConfig } from "@/schemas/ai-agents";
+import type { TProductStockDeductionModeEnum } from "@/schemas/enums";
 import { products, productVariants } from "@/services/drizzle/schema";
 import { and, asc, count, desc, eq, exists, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import z from "zod";
 import { findProductGroupByName, listActiveProductGroups } from "../shared/product-groups";
 import { defineAgentTool } from "./define-tool";
+import { formatAvailabilityForClient } from "./product-availability";
 import { normalizeProductQueryInput } from "./product-query-policy";
 import type { TAgentToolContext } from "./types";
 
@@ -44,23 +48,45 @@ type TFoundProduct = {
 	unidade: string;
 	precoVenda: number | null;
 	descricao: string | null;
-	variantes: Array<{ id: string; nome: string; codigo: string | null; precoVenda: number }>;
+	quantidade: number | null;
+	rastreamentoEstoqueAtivo: boolean | null;
+	baixaEstoqueModo: TProductStockDeductionModeEnum | null;
+	variantes: Array<{
+		id: string;
+		nome: string;
+		codigo: string | null;
+		precoVenda: number;
+		quantidade: number | null;
+		rastreamentoEstoqueAtivo: boolean | null;
+	}>;
 };
 
-function formatProducts(found: TFoundProduct[], pricesVisible: boolean) {
+/**
+ * Campos sensíveis são **omitidos**, nunca nulos.
+ *
+ * Vale para o preço e para o estoque pela mesma razão: `preco: null` e `quantidade: null` chegam ao
+ * modelo como zero, e um zero inventado é a origem do bug em que o agente nega um produto que
+ * existe. Sem o campo, não há o que alucinar — ele pergunta ou consulta.
+ */
+function formatProducts(
+	found: TFoundProduct[],
+	{ pricesVisible, stockVisibility }: { pricesVisible: boolean; stockVisibility: TAiAgentEstoqueConfig["visibilidade"] },
+) {
 	return found.map((product) => ({
 		produtoId: product.id,
 		nome: product.nome,
 		codigo: product.codigo,
 		grupo: product.grupo,
 		unidade: product.unidade,
-		...(pricesVisible ? { preco: product.precoVenda } : {}),
+		...(pricesVisible && product.precoVenda !== null ? { preco: product.precoVenda } : {}),
+		...formatAvailabilityForClient(resolveProductAvailability(product), stockVisibility),
 		descricao: product.descricao,
 		variacoes: product.variantes.map((variant) => ({
 			produtoVarianteId: variant.id,
 			nome: variant.nome,
 			codigo: variant.codigo,
 			...(pricesVisible ? { preco: variant.precoVenda } : {}),
+			...formatAvailabilityForClient(resolveVariantAvailability(variant, product), stockVisibility),
 		})),
 	}));
 }
@@ -137,11 +163,22 @@ async function fetchRankedProducts({
 
 	const rows = await db.query.products.findMany({
 		where: and(eq(products.organizacaoId, organizacaoId), inArray(products.id, ids)),
-		columns: { id: true, nome: true, codigo: true, grupo: true, unidade: true, precoVenda: true, descricao: true },
+		columns: {
+			id: true,
+			nome: true,
+			codigo: true,
+			grupo: true,
+			unidade: true,
+			precoVenda: true,
+			descricao: true,
+			quantidade: true,
+			rastreamentoEstoqueAtivo: true,
+			baixaEstoqueModo: true,
+		},
 		with: {
 			variantes: {
 				where: activeOnly ? (variante, { eq: equals }) => equals(variante.ativo, true) : undefined,
-				columns: { id: true, nome: true, codigo: true, precoVenda: true },
+				columns: { id: true, nome: true, codigo: true, precoVenda: true, quantidade: true, rastreamentoEstoqueAtivo: true },
 				limit: 20,
 			},
 		},
@@ -181,7 +218,15 @@ Lendo a resposta:
 - "correspondenciaAproximada": true significa que nada casou exatamente e estes são os mais
   parecidos — confirme com o cliente antes de assumir o produto.
 - Resultado vazio prova apenas que os filtros não casaram, nunca que a empresa não vende o item.
-  Antes de dizer ao cliente que não temos, refaça a busca sem filtros (ou com visao="GRUPOS").`,
+  Antes de dizer ao cliente que não temos, refaça a busca sem filtros (ou com visao="GRUPOS").
+- Campo ausente significa dado não disponível, nunca zero. Sem "preco", o item está sem preço
+  cadastrado: não estime valor. Sem "disponibilidade", você não tem informação de estoque.
+
+Lendo a disponibilidade (quando o campo vem):
+- "DISPONIVEL": há saldo agora. Não é reserva — o saldo pode mudar até o cliente fechar.
+- "ESGOTADO": o saldo está zerado. Pode informar a falta.
+- "NAO_RASTREADO": a empresa não controla saldo desse item. Não afirme que tem nem que faltou;
+  se o cliente insistir na disponibilidade, diga que a equipe confirma.`,
 	inputSchema: z.object({
 		termo: z.string().min(2).optional().describe("Palavras-chave curtas do nome do produto/variação, ou o código por prefixo."),
 		grupo: z.string().min(1).optional().describe("Restringe a uma categoria/grupo de produtos (grafia exata da lista de grupos do contexto)."),
@@ -208,6 +253,7 @@ Lendo a resposta:
 			console.warn(`[AI_AGENT] faixaPreco descartada (nenhum pedido do cliente na janela recente). Run ${context.run.id}.`);
 		}
 		const pricesVisible = context.capacidades.comercial.precos.visiveis;
+		const stockVisibility = context.capacidades.comercial.estoque.visibilidade;
 		if (!pricesVisible && queryInput.faixaPreco) {
 			return {
 				success: false,
@@ -325,7 +371,7 @@ Lendo a resposta:
 						result: {
 							totalEncontrado: approximate.length,
 							correspondenciaAproximada: true,
-							produtos: formatProducts(approximate, pricesVisible),
+							produtos: formatProducts(approximate, { pricesVisible, stockVisibility }),
 						},
 					};
 				}
@@ -358,7 +404,7 @@ Lendo a resposta:
 			result: {
 				totalEncontrado,
 				...(normalized.faixaPrecoIgnorada ? { faixaPrecoIgnorada: true } : {}),
-				produtos: formatProducts(found, pricesVisible),
+				produtos: formatProducts(found, { pricesVisible, stockVisibility }),
 			},
 		};
 	},

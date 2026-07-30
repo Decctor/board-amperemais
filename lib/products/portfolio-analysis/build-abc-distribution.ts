@@ -8,7 +8,9 @@ export function classifyProductAbc(revenue: number, accumulatedBefore: number, t
 	return "C";
 }
 
-export function assignAbcClasses(products: { productId: string; revenue: number; cost: number; quantity: number; saleCount: number }[]): TProductWithPeriodMetrics[] {
+export function assignAbcClasses(
+	products: { productId: string; revenue: number; cost: number; quantity: number; saleCount: number }[],
+): TProductWithPeriodMetrics[] {
 	const sorted = [...products].sort((a, b) => b.revenue - a.revenue);
 	const totalRevenue = sorted.reduce((acc, product) => acc + product.revenue, 0);
 	let accumulated = 0;

@@ -77,10 +77,32 @@ export const AiAgentOrcamentosConfigSchema = z
 	.default({});
 export type TAiAgentOrcamentosConfig = z.infer<typeof AiAgentOrcamentosConfigSchema>;
 
+/**
+ * Política de estoque do agente, em dois eixos deliberadamente ortogonais: dá para não contar o
+ * número ao cliente e ainda assim barrar o orçamento de 500 unidades de um item com 3 em estoque.
+ *
+ * `visibilidade` tem três níveis (e não o booleano dos preços) porque o espaço de decisão é maior:
+ * muita empresa aceita dizer "está em falta" mas não quer expor "temos 3" — isso revela porte de
+ * estoque e desatualiza muito mais rápido que preço.
+ *
+ * Os defaults preservam o comportamento anterior byte por byte: nenhum campo de estoque no payload
+ * e nenhuma checagem no orçamento. `excedente` **não pode** ter `AVISAR` como default, porque a
+ * combinação com `visibilidade: "OCULTO"` é barrada no `superRefine` e um default inválido
+ * derrubaria `parseJsonbWithFallback`, cujo fallback é justamente `schema.parse(undefined)`.
+ */
+export const AiAgentEstoqueConfigSchema = z
+	.object({
+		visibilidade: z.enum(["OCULTO", "DISPONIBILIDADE", "QUANTIDADE"]).default("OCULTO"),
+		excedente: z.enum(["BLOQUEAR", "AVISAR", "PERMITIR"]).default("PERMITIR"),
+	})
+	.default({});
+export type TAiAgentEstoqueConfig = z.infer<typeof AiAgentEstoqueConfigSchema>;
+
 export const AiAgentComercialConfigSchema = z
 	.object({
 		precos: AiAgentPrecosConfigSchema,
 		orcamentos: AiAgentOrcamentosConfigSchema,
+		estoque: AiAgentEstoqueConfigSchema,
 	})
 	.default({});
 export type TAiAgentComercialConfig = z.infer<typeof AiAgentComercialConfigSchema>;
@@ -136,6 +158,15 @@ export const AiAgentCapacidadesSchema = z
 				code: z.ZodIssueCode.custom,
 				message: "A transferência para atendente precisa estar habilitada para usar essa política de bloqueio.",
 				path: ["comercial", "orcamentos", "bloqueio"],
+			});
+		}
+		// Avisar sobre um saldo que o agente não pode mencionar produz resposta vaga ("acho que não
+		// tem tudo"): ou ele explica o que falta, ou bloqueia, ou permite em silêncio.
+		if (capabilities.comercial.estoque.excedente === "AVISAR" && capabilities.comercial.estoque.visibilidade === "OCULTO") {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Avisar sobre o estoque exige que a disponibilidade esteja visível para o agente.",
+				path: ["comercial", "estoque", "excedente"],
 			});
 		}
 	})

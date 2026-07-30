@@ -117,8 +117,7 @@ export default function AgentRunDrawer({ runId, closeModal }: AgentRunDrawerProp
 										{toolCall.operacao ? (
 											<div className="flex flex-col gap-1 rounded-md bg-muted px-3 py-2 text-xs">
 												<span>
-													Operação: <strong>{toolCall.operacao.tipo}</strong> · {toolCall.operacao.status} ·{" "}
-													{toolCall.operacao.chamadas.length} tentativa(s)
+													Operação: <strong>{toolCall.operacao.tipo}</strong> · {toolCall.operacao.status} · {toolCall.operacao.chamadas.length} tentativa(s)
 												</span>
 												{toolCall.operacao.recursoTipo === "VENDA" && toolCall.operacao.recursoId ? (
 													<Link

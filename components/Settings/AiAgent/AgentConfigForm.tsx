@@ -29,6 +29,7 @@ export default function AgentConfigForm() {
 		updateAttendanceSettings,
 		updatePrices,
 		updateQuotes,
+		updateStock,
 		toggleTool,
 		addKnowledgeBlock,
 		updateKnowledgeBlock,
@@ -90,6 +91,7 @@ export default function AgentConfigForm() {
 					updateAttendanceSettings={updateAttendanceSettings}
 					updatePrices={updatePrices}
 					updateQuotes={updateQuotes}
+					updateStock={updateStock}
 				/>
 			</div>
 
