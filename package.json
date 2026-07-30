@@ -48,7 +48,10 @@
 		"brand:export": "tsx ./scripts/export-brand-asset.ts",
 		"parse:congelatte": "tsx ./scripts/parse-congelatte-recipes.ts",
 		"map:congelatte": "tsx ./scripts/congelatte-map-products.ts",
-		"migrate:congelatte": "tsx ./scripts/congelatte-migrate.ts"
+		"migrate:congelatte": "tsx ./scripts/congelatte-migrate.ts",
+		"ai:runs-report": "tsx ./scripts/analyze-ai-agent-runs.ts",
+		"ai:agent-instructions": "tsx ./scripts/update-ai-agent-default-instructions.ts",
+		"ai:agent-conversation": "tsx ./scripts/test-ai-agent-conversation.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/react": "^2.0.78",

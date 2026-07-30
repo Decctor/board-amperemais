@@ -154,49 +154,61 @@ async function fetchRankedProducts({
 
 export const productsTool = defineAgentTool({
 	name: "produtos.consultar",
-	description: `Consulta o catálogo de produtos da empresa.
+	description: `Consulta o catálogo da empresa. É a única fonte de verdade sobre o que existe, como se
+chama e quanto custa.
 
-Use visao="LISTA" (padrão) para ver produtos com ID, nome, código, grupo e variações. Preços de
-venda aparecem somente quando a política comercial do agente permite.
-Use visao="GRUPOS" para ver as categorias de produto com a contagem de cada uma — útil quando o
-cliente pergunta "o que vocês vendem?".
+visao="LISTA" (padrão) devolve produtos com produtoId, nome, código, grupo, variações e preço
+(quando a política comercial do agente expõe preços).
+visao="GRUPOS" devolve as categorias com a contagem de cada uma — use quando o cliente pergunta
+"o que vocês vendem?".
 
-Filtros disponíveis (combináveis, todos opcionais):
-- termo: busca por nome do produto ou das variações (ignora acentos e maiúsculas; as palavras
-  podem aparecer em qualquer ordem) ou por código (prefixo). Prefira palavras-chave curtas
-  ("vinho tinto") a frases inteiras.
-- grupo: restringe a uma categoria. Use exatamente um dos grupos listados na seção "Grupos de
-  produtos do catálogo" do seu contexto; a comparação ignora acentos e maiúsculas.
-- precoMin / precoMax: faixa de preço de venda. Use SOMENTE quando o cliente pedir uma faixa de
-  preço explícita ("até 300 reais", "entre 100 e 200"). Para buscar sem limite de preço, OMITA
-  os dois campos — nunca envie 0, 0.01 ou outro valor simbólico no lugar de "sem limite".
-- apenasAtivos: por padrão true; use false apenas para consultar itens desativados.
-- limite: quantos produtos retornar (máximo 50).
+Exemplos:
+- "quanto custa um chuveiro 127V?" → { termo: "chuveiro 127", grupo: "CHUVEIRO E DUCHAS" }
+- "tem algum até 300 reais?" → { termo: "chuveiro", grupo: "CHUVEIRO E DUCHAS", faixaPreco: { max: 300, origem: "PEDIDA_PELO_CLIENTE" } }
+- "o que vocês vendem?" → { visao: "GRUPOS" }
 
-Os resultados vêm ordenados por relevância ao termo. A resposta traz "totalEncontrado" — se for
-maior que o limite, refine os filtros em vez de pedir mais páginas. Quando nada casa com o termo,
-a ferramenta pode devolver os produtos mais parecidos com "correspondenciaAproximada": true —
-nesse caso, confirme com o cliente antes de assumir que é o produto certo. Nunca invente preços
-ou disponibilidade: informe apenas o que vier daqui.`,
+Como buscar:
+- termo: palavras-chave curtas ("chuveiro 127", "vinho tinto"), não frases. Ignora acentos e
+  maiúsculas, aceita as palavras em qualquer ordem e também casa código por prefixo.
+- grupo: uma das grafias exatas da seção "Grupos de produtos do catálogo" do seu contexto.
+- faixaPreco: apenas quando o cliente disser um valor. Para buscar sem limite de preço, omita o
+  objeto inteiro — não existe faixa "sem limite".
+- limite: até 50 produtos por consulta (padrão 10).
+
+Lendo a resposta:
+- "totalEncontrado" maior que o limite significa que há mais produtos: refine os filtros em vez
+  de pedir páginas.
+- "correspondenciaAproximada": true significa que nada casou exatamente e estes são os mais
+  parecidos — confirme com o cliente antes de assumir o produto.
+- Resultado vazio prova apenas que os filtros não casaram, nunca que a empresa não vende o item.
+  Antes de dizer ao cliente que não temos, refaça a busca sem filtros (ou com visao="GRUPOS").`,
 	inputSchema: z.object({
-		termo: z.string().min(2).optional().describe("Busca pelo nome do produto/variação ou pelo código (prefixo)."),
-		grupo: z.string().min(1).optional().describe("Restringe a uma categoria/grupo de produtos (grafia da lista de grupos do contexto)."),
-		precoMin: z.number().min(0).optional().describe("Preço de venda mínimo. Só envie se o cliente pediu faixa de preço; nunca envie 0."),
-		precoMax: z
-			.number()
-			.positive("O preço máximo deve ser maior que zero.")
+		termo: z.string().min(2).optional().describe("Palavras-chave curtas do nome do produto/variação, ou o código por prefixo."),
+		grupo: z.string().min(1).optional().describe("Restringe a uma categoria/grupo de produtos (grafia exata da lista de grupos do contexto)."),
+		faixaPreco: z
+			.object({
+				min: z.number().positive("O preço mínimo deve ser maior que zero.").optional().describe("Piso em reais, quando o cliente deu um valor mínimo."),
+				max: z.number().positive("O preço máximo deve ser maior que zero.").optional().describe("Teto em reais, quando o cliente deu um valor máximo."),
+				origem: z.literal("PEDIDA_PELO_CLIENTE").describe('Declara que a faixa saiu da fala do cliente. Único valor aceito: "PEDIDA_PELO_CLIENTE".'),
+			})
+			.refine((range) => range.min !== undefined || range.max !== undefined, "Informe min, max ou os dois.")
+			.refine((range) => range.min === undefined || range.max === undefined || range.min <= range.max, "O preço mínimo não pode ser maior que o máximo.")
 			.optional()
-			.describe("Preço de venda máximo. Só envie se o cliente pediu faixa de preço; para 'sem limite', OMITA o campo."),
+			.describe('Faixa de preço pedida pelo cliente ("até 300 reais", "entre 100 e 200"). Omita quando ele não falou de valores.'),
 		apenasAtivos: z.boolean().optional().describe("Considerar apenas produtos ativos. Padrão: true."),
 		limite: z.number().int().min(1).max(50).optional().describe("Máximo de produtos retornados. Padrão: 10."),
 		visao: z.enum(["LISTA", "GRUPOS"]).optional().describe("LISTA para produtos, GRUPOS para as categorias disponíveis."),
 	}),
 	async execute(input, context) {
 		const { db, organizacaoId } = context;
-		const normalized = normalizeProductQueryInput(input, context.turn.ultimaMensagemCliente);
+		const normalized = normalizeProductQueryInput(input, context.turn.mensagensRecentesCliente);
 		const queryInput = normalized.input;
+		if (normalized.faixaPrecoIgnorada) {
+			// Alarme de regressão do contrato: com `faixaPreco` declarativa, isto deveria ser raro.
+			console.warn(`[AI_AGENT] faixaPreco descartada (nenhum pedido do cliente na janela recente). Run ${context.run.id}.`);
+		}
 		const pricesVisible = context.capacidades.comercial.precos.visiveis;
-		if (!pricesVisible && (queryInput.precoMin !== undefined || queryInput.precoMax !== undefined)) {
+		if (!pricesVisible && queryInput.faixaPreco) {
 			return {
 				success: false,
 				message: "A consulta por faixa de preço não está disponível para este agente.",
@@ -216,8 +228,8 @@ ou disponibilidade: informe apenas o que vier daqui.`,
 		if (queryInput.grupo) scopeConditions.push(createSimplifiedEqualityCondition(products.grupo, queryInput.grupo));
 
 		const priceConditions = [];
-		if (typeof queryInput.precoMin === "number" && queryInput.precoMin > 0) priceConditions.push(gte(products.precoVenda, queryInput.precoMin));
-		if (typeof queryInput.precoMax === "number") priceConditions.push(lte(products.precoVenda, queryInput.precoMax));
+		if (typeof queryInput.faixaPreco?.min === "number") priceConditions.push(gte(products.precoVenda, queryInput.faixaPreco.min));
+		if (typeof queryInput.faixaPreco?.max === "number") priceConditions.push(lte(products.precoVenda, queryInput.faixaPreco.max));
 
 		// Condições sem o termo: são a base da consulta principal e da passada de aproximação.
 		const baseConditions = [...scopeConditions, ...priceConditions];
@@ -283,7 +295,7 @@ ou disponibilidade: informe apenas o que vier daqui.`,
 					const faixaTexto = minimo !== null && maximo !== null ? `, com preços entre R$ ${minimo.toFixed(2)} e R$ ${maximo.toFixed(2)}` : "";
 					return {
 						success: false,
-						message: `A faixa de preço informada não retornou nada, mas existem ${totalForaDaFaixa} produto(s) para os demais filtros${faixaTexto}. Se o cliente não pediu uma faixa de preço, refaça a consulta OMITINDO precoMin e precoMax.`,
+						message: `A faixa de preço informada não retornou nada, mas existem ${totalForaDaFaixa} produto(s) para os demais filtros${faixaTexto}. Refaça a consulta com uma faixa compatível com esses valores, ou omita faixaPreco se o cliente não pediu limite de preço.`,
 						result: {
 							codigo: "FILTRO_PRECO_EXCLUIU_TUDO",
 							totalForaDaFaixa,
@@ -341,13 +353,11 @@ ou disponibilidade: informe apenas o que vier daqui.`,
 		return {
 			success: true,
 			message: `${found.length} de ${totalEncontrado} produto(s) retornado(s).${
-				normalized.filtrosIgnorados.length > 0
-					? ` Os filtros ${normalized.filtrosIgnorados.join(" e ")} foram ignorados porque o cliente não pediu uma faixa de preço.`
-					: ""
+				normalized.faixaPrecoIgnorada ? " A faixaPreco enviada foi ignorada porque o cliente não pediu limite de preço nesta conversa." : ""
 			}`,
 			result: {
 				totalEncontrado,
-				...(normalized.filtrosIgnorados.length > 0 ? { filtrosIgnorados: normalized.filtrosIgnorados } : {}),
+				...(normalized.faixaPrecoIgnorada ? { faixaPrecoIgnorada: true } : {}),
 				produtos: formatProducts(found, pricesVisible),
 			},
 		};

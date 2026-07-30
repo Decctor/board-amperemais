@@ -75,10 +75,7 @@ export async function claimAgentOperation(input: TClaimInput): Promise<TAgentOpe
 		.where(
 			and(
 				eq(aiAgentOperations.id, existing.id),
-				or(
-					eq(aiAgentOperations.status, "FALHA_REPETIVEL"),
-					and(eq(aiAgentOperations.status, "PROCESSANDO"), lte(aiAgentOperations.leaseAte, now)),
-				),
+				or(eq(aiAgentOperations.status, "FALHA_REPETIVEL"), and(eq(aiAgentOperations.status, "PROCESSANDO"), lte(aiAgentOperations.leaseAte, now))),
 			),
 		)
 		.returning();

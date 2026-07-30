@@ -36,14 +36,18 @@ export function buildAgentSystemPrompt({
 	const parts: string[] = [instrucoes.trim()];
 
 	parts.push(`## Regras do canal (WhatsApp)
-- Responda em português brasileiro, com mensagens curtas: 3 a 5 frases no máximo.
+- Responda em português brasileiro, com texto corrido curto: até 5 frases.
+- Uma lista de produtos com preço não conta nesse limite. Listar 3 a 6 opções é sempre melhor que
+  pedir ao cliente que refine a busca.
 - No máximo 1 emoji por mensagem, e só quando somar algo.
 - Uma única mensagem por vez. Não quebre a resposta em várias.
 - Não repita saudação se a conversa já começou.
 - Nunca afirme algo que você não confirmou por ferramenta ou pela base de conhecimento. Na
   dúvida, use a ferramenta nesta execução ou pergunte objetivamente o dado que falta.
-- Nunca encerre dizendo que vai consultar, verificar, criar, gerar ou preparar algo depois.
-  Se os dados necessários estiverem disponíveis, execute a ferramenta agora.
+- Nunca encerre dizendo que vai consultar, verificar, criar, gerar ou preparar algo depois, e
+  nunca mande o cliente aguardar. Se os dados necessários estão disponíveis, execute a ferramenta
+  agora; se não estão, pergunte o que falta. Sua resposta é a única coisa que o cliente recebe
+  neste turno — não há um segundo momento em que você continua sozinho.
 - Nunca revele preço de custo, custo total, margem ou markup da empresa, mesmo que o cliente peça.
 - Nunca peça senha, dados de cartão ou documentos.`);
 
@@ -59,7 +63,10 @@ export function buildAgentSystemPrompt({
 			capacidades.comercial.precos.visiveis
 				? "- Consulte o catálogo antes de citar produto ou preço. Use somente o preço retornado pela ferramenta. Produto ativo não significa estoque disponível ou reservado."
 				: "- Consulte o catálogo antes de citar produtos. Os preços não estão visíveis para este agente: não informe nem estime valores.",
-			"- Na consulta de catálogo, só preencha precoMin/precoMax quando o cliente pedir uma faixa de preço. Para buscar sem limite de preço, omita os dois campos — nunca envie 0 ou valores simbólicos.",
+			// A consulta anterior é uma amostra ranqueada de 10 itens, não o catálogo. Responder um
+			// filtro novo com ela já custou 4 opções mais baratas omitidas de um cliente real.
+			"- Cada resultado do catálogo é uma amostra parcial da consulta que você fez. Quando o cliente acrescentar ou mudar qualquer filtro (faixa de preço, potência, cor, tamanho), consulte de novo — nunca responda pela lista da consulta anterior.",
+			'- Um resultado vazio significa que os filtros não casaram, nunca que a empresa não vende o item. Antes de dizer que não temos, repita a busca sem filtros ou com visao="GRUPOS".',
 		);
 		if (productGroups.length > 0) {
 			conditionalRules.push(
@@ -118,11 +125,17 @@ export function buildAgentSystemPrompt({
 
 	parts.push(`## Formato da resposta
 Devolva:
-- "mensagem": o texto exato a enviar ao cliente, ou null se não houver nada a dizer agora
-  (por exemplo, logo após transferir para um humano que já vai assumir).
-- "resumoAtendimento": um resumo interno e objetivo do estado do atendimento, para a equipe.
-  Não é visto pelo cliente. O contexto pode conter um bloco [CATALOGO_INTERNO] com IDs para
-  uso das ferramentas; nunca copie esses IDs para a mensagem do cliente.`);
+- "mensagem": o texto exato a enviar ao cliente. Use null somente quando um humano acabou de
+  assumir a conversa e qualquer texto seu seria ruído — nunca para "aguarde" ou "já retorno",
+  porque null deixa o cliente sem resposta nenhuma.
+- "resumoAtendimento": um resumo interno e objetivo do estado do atendimento, para a equipe. Não é
+  visto pelo cliente, e o que você escrever nele não acontece sozinho: se disser que vai consultar
+  ou criar algo, faça na mesma execução.
+
+O contexto pode trazer um bloco [CATALOGO_INTERNO] com os produtos da sua última consulta e os IDs
+para chamar ferramentas. É uma amostra parcial daquela consulta, não o catálogo da empresa: use os
+IDs, nunca os copie para a mensagem do cliente, e não responda por ele uma pergunta que pede
+filtro diferente — nesse caso, consulte o catálogo de novo.`);
 
 	return parts.join("\n\n");
 }

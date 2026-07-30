@@ -16,7 +16,12 @@ export type TAgentToolContext = {
 	agent: { id: string; nome: string };
 	run: { id: string; gatilho: TAiAgentRunGatilhoEnum; mensagemGatilhoId: string | null };
 	chat: { id: string; clienteId: string };
-	turn: { ultimaMensagemCliente: string };
+	/**
+	 * Mensagens recentes do cliente, da mais nova para a mais antiga. É uma janela, e não só a
+	 * última mensagem, porque pedido e cobrança chegam em turnos separados ("quero até 500
+	 * reais" → "quais são?") — ver `normalizeProductQueryInput`.
+	 */
+	turn: { mensagensRecentesCliente: string[] };
 	capacidades: TAiAgentCapacidades;
 	toolCall?: { id: string };
 	operation?: { id: string; tipo: TAiAgentOperationTypeEnum };

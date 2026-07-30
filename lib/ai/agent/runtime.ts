@@ -8,7 +8,7 @@ import { eq } from "drizzle-orm";
 import z from "zod";
 import { resolveLanguageModel } from "../providers/language";
 import { normalizeAiUsage } from "../providers/usage";
-import { AgentDailyRunLimitError, AgentInactiveError } from "../shared/errors";
+import { AgentDailyRunLimitError, AgentInactiveError, formatAgentErrorChain } from "../shared/errors";
 import { parseJsonbWithFallback } from "../shared/json";
 import { listActiveProductGroups } from "../shared/product-groups";
 import { isToolEnabled } from "../tools/guards";
@@ -24,11 +24,20 @@ import { shouldRetryDeferredAction } from "./turn-validation";
 type TDb = DB | DBTransaction;
 const STRUCTURED_OUTPUT_FALLBACK_MODEL = "openai/gpt-5-mini";
 
+/**
+ * Quantas mensagens do cliente as ferramentas recebem para interpretar o pedido. Cobre o vaivém
+ * típico entre o pedido ("até 500 reais") e a cobrança ("quais são?") sem arrastar um filtro que
+ * o cliente já abandonou.
+ */
+const RECENT_CLIENT_MESSAGES_WINDOW = 5;
+
 const TurnOutputSchema = z.object({
 	mensagem: z
 		.string()
 		.nullable()
-		.describe("Mensagem a enviar ao cliente no WhatsApp: 3 a 5 frases curtas, no máximo 1 emoji. null quando não houver nada a enviar agora."),
+		.describe(
+			"Mensagem a enviar ao cliente no WhatsApp: até 5 frases (listas de produtos com preço não contam), no máximo 1 emoji. null somente quando um humano acabou de assumir a conversa.",
+		),
 	resumoAtendimento: z.string().describe("Resumo interno do estado do atendimento, para a equipe. Não é visto pelo cliente."),
 });
 
@@ -53,7 +62,7 @@ function combineUsage(usages: Array<Partial<LanguageModelUsage> | undefined>): P
 }
 
 function formatRunError(error: unknown): string {
-	if (!NoObjectGeneratedError.isInstance(error)) return error instanceof Error ? error.message : String(error);
+	if (!NoObjectGeneratedError.isInstance(error)) return formatAgentErrorChain(error);
 	const cause = error.cause instanceof Error ? error.cause.message : error.cause ? String(error.cause) : null;
 	return [error.message, error.finishReason ? `finishReason=${error.finishReason}` : null, cause ? `causa=${cause}` : null]
 		.filter(Boolean)
@@ -116,11 +125,12 @@ export async function prepareAgentExecution({
 		},
 		contextoEntradaSnapshot: chatContext,
 	});
-	const latestClientMessage =
-		chatContext.conversa
-			.slice()
-			.reverse()
-			.find((message) => message.autor === "Cliente")?.texto ?? "";
+	const recentClientMessages = chatContext.conversa
+		.slice()
+		.reverse()
+		.filter((message) => message.autor === "Cliente")
+		.slice(0, RECENT_CLIENT_MESSAGES_WINDOW)
+		.map((message) => message.texto);
 
 	return {
 		run,
@@ -132,7 +142,7 @@ export async function prepareAgentExecution({
 			// mensagem gatilho e o próprio run assume esse papel.
 			run: { id: run.id, gatilho, mensagemGatilhoId: mensagemGatilhoId ?? null },
 			chat: { id: chatId, clienteId },
-			turn: { ultimaMensagemCliente: latestClientMessage },
+			turn: { mensagensRecentesCliente: recentClientMessages },
 			capacidades,
 		},
 		systemPrompt: buildAgentSystemPrompt({
@@ -168,13 +178,7 @@ export async function executeAgentTurn(prepared: TPreparedAgentExecution): Promi
 		const usages: Array<Partial<LanguageModelUsage> | undefined> = [];
 		const usedModels: string[] = [];
 
-		const generate = async ({
-			modelConfig,
-			prompt,
-		}: {
-			modelConfig: ReturnType<typeof AiAgentModeloConfigSchema.parse>;
-			prompt: string;
-		}) => {
+		const generate = async ({ modelConfig, prompt }: { modelConfig: ReturnType<typeof AiAgentModeloConfigSchema.parse>; prompt: string }) => {
 			usedModels.push(modelConfig.modelo);
 			const loopAgent = new ToolLoopAgent({
 				model: resolveLanguageModel(modelConfig),
@@ -192,18 +196,13 @@ export async function executeAgentTurn(prepared: TPreparedAgentExecution): Promi
 			return result;
 		};
 
-		const generateWithFallback = async (
-			prompt: string,
-			preferredConfig: ReturnType<typeof AiAgentModeloConfigSchema.parse> = modeloConfig,
-		) => {
+		const generateWithFallback = async (prompt: string, preferredConfig: ReturnType<typeof AiAgentModeloConfigSchema.parse> = modeloConfig) => {
 			try {
 				return await generate({ modelConfig: preferredConfig, prompt });
 			} catch (error) {
 				if (!NoObjectGeneratedError.isInstance(error) || preferredConfig.modelo === STRUCTURED_OUTPUT_FALLBACK_MODEL) throw error;
 				usages.push(error.usage);
-				console.warn(
-					`[AI_AGENT] Saída estruturada inválida no modelo ${preferredConfig.modelo}; repetindo com ${STRUCTURED_OUTPUT_FALLBACK_MODEL}.`,
-				);
+				console.warn(`[AI_AGENT] Saída estruturada inválida no modelo ${preferredConfig.modelo}; repetindo com ${STRUCTURED_OUTPUT_FALLBACK_MODEL}.`);
 				return generate({
 					modelConfig: { ...preferredConfig, modelo: STRUCTURED_OUTPUT_FALLBACK_MODEL },
 					prompt: `${prompt}\n\nA tentativa anterior não respeitou o formato estruturado exigido. Responda exatamente no schema solicitado.`,
@@ -211,12 +210,19 @@ export async function executeAgentTurn(prepared: TPreparedAgentExecution): Promi
 			}
 		};
 
+		const calledToolsOf = (generation: { steps: Array<{ toolCalls: unknown[] }> }) =>
+			generation.steps.flatMap((step) => step.toolCalls.map((toolCall) => (toolCall as { toolName: string }).toolName));
+
 		let result = await generateWithFallback(prepared.turnPrompt);
 		let output = result.output;
 		if (!output) throw new Error("O agente não produziu uma resposta estruturada.");
 
-		if (shouldRetryDeferredAction(output.mensagem, result.steps.flatMap((step) => step.toolCalls.map((toolCall) => toolCall.toolName)))) {
+		if (shouldRetryDeferredAction({ ...output, calledTools: calledToolsOf(result) })) {
 			const rejectedMessage = output.mensagem;
+			// Alarme de regressão do prompt: as regras do canal já dizem que não há segundo momento.
+			console.warn(
+				`[AI_AGENT] Turno rejeitado por promessa sem execução (run ${run.id}, modelo ${modeloConfig.modelo}): ${JSON.stringify(rejectedMessage)}`,
+			);
 			result = await generateWithFallback(
 				`${prepared.turnPrompt}
 
@@ -229,7 +235,7 @@ Execute a ferramenta nesta execução ou pergunte objetivamente o único dado qu
 			);
 			output = result.output;
 			if (!output) throw new Error("O agente não produziu uma resposta estruturada após a correção.");
-			if (shouldRetryDeferredAction(output.mensagem, result.steps.flatMap((step) => step.toolCalls.map((toolCall) => toolCall.toolName)))) {
+			if (shouldRetryDeferredAction({ ...output, calledTools: calledToolsOf(result) })) {
 				throw new Error("O agente tentou encerrar novamente com uma promessa de ação sem executar ferramenta.");
 			}
 		}

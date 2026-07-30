@@ -95,9 +95,7 @@ export default function ViewConnectionPhone({ context, closeMenu }: ViewConnecti
 			actionIsLoading={isDisconnecting}
 			stateIsLoading={false}
 			closeMenu={closeMenu}
-			dialogVariant="fit"
 			drawerVariant="md"
-			dialogContentClassName="w-[min(100vw-2rem,34rem)] max-w-[min(100vw-2rem,34rem)]"
 			drawerContentClassName="max-h-[90dvh]"
 		>
 			<div className="flex flex-col gap-4 px-1">

@@ -41,8 +41,9 @@ export const AI_AGENT_MODEL_CATALOG: TAiAgentModelCatalogEntry[] = [
 		fornecedor: "DeepSeek",
 		fornecedorSlug: "deepseek",
 		perfil: "ECONOMICO",
-		descricao: "Melhor custo-benefício para atendimento: rápido, bom em português e com chamada de ferramentas confiável.",
-		recomendado: true,
+		// Perdeu o selo em julho/2026: nos testes de atendimento ele preenchia filtros de
+		// ferramenta com valores inventados e encerrava turnos prometendo ações sem executá-las.
+		descricao: "Rápido, barato e bom em português, mas descuidado com filtros de ferramentas. Evite quando o agente cria orçamentos.",
 		precoEntrada: 0.14,
 		precoSaida: 0.28,
 		janelaContexto: 1_000_000,
@@ -94,13 +95,25 @@ export const AI_AGENT_MODEL_CATALOG: TAiAgentModelCatalogEntry[] = [
 
 	// --- EQUILIBRADO: o meio do caminho para atendimento com orçamentos ---
 	{
+		id: "deepseek/deepseek-v4-pro",
+		nome: "DeepSeek V4 Pro",
+		fornecedor: "DeepSeek",
+		fornecedorSlug: "deepseek",
+		perfil: "EQUILIBRADO",
+		descricao:
+			"O melhor equilíbrio testado para vender pelo WhatsApp: cuidadoso com ferramentas e barato. Atenção: o preço varia com a região de execução e pode ser até 4x o valor exibido.",
+		recomendado: true,
+		precoEntrada: 0.435,
+		precoSaida: 0.87,
+		janelaContexto: 1_000_000,
+	},
+	{
 		id: "openai/gpt-5-mini",
 		nome: "GPT-5 mini",
 		fornecedor: "OpenAI",
 		fornecedorSlug: "openai",
 		perfil: "EQUILIBRADO",
-		descricao: "Uso de ferramentas e saída estruturada muito confiáveis. Indicado quando o agente cria orçamentos.",
-		recomendado: true,
+		descricao: "Uso de ferramentas e saída estruturada muito confiáveis. É também o modelo de resgate quando outro falha o formato.",
 		precoEntrada: 0.25,
 		precoSaida: 2,
 		janelaContexto: 400_000,
@@ -114,17 +127,6 @@ export const AI_AGENT_MODEL_CATALOG: TAiAgentModelCatalogEntry[] = [
 		descricao: "Respostas rápidas sem etapa de raciocínio, com contexto de 1 milhão de tokens.",
 		precoEntrada: 0.2,
 		precoSaida: 0.5,
-		janelaContexto: 1_000_000,
-	},
-	{
-		id: "deepseek/deepseek-v4-pro",
-		nome: "DeepSeek V4 Pro",
-		fornecedor: "DeepSeek",
-		fornecedorSlug: "deepseek",
-		perfil: "EQUILIBRADO",
-		descricao: "Mais capaz que o Flash. Atenção: o preço varia com a região de execução e pode ser até 4x o valor exibido.",
-		precoEntrada: 0.435,
-		precoSaida: 0.87,
 		janelaContexto: 1_000_000,
 	},
 	{

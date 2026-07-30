@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { claimAgentOperation } from "../operations/claim";
 import { hashAgentOperationInput } from "../operations/hash";
 import { completeAgentOperation, failAgentOperation } from "../operations/lifecycle";
+import { formatAgentErrorChain } from "../shared/errors";
 import { cashbackTool } from "./cashback";
 import { couponsTool } from "./coupons";
 import { customerPurchasesTool } from "./customer-purchases";
@@ -155,7 +156,7 @@ export async function executeAgentTool({
 		}
 		await context.db
 			.update(aiAgentToolCalls)
-			.set({ status: "FALHA", erro: error instanceof Error ? error.message : String(error) })
+			.set({ status: "FALHA", erro: formatAgentErrorChain(error) })
 			.where(eq(aiAgentToolCalls.id, toolCall.id));
 		throw error;
 	}

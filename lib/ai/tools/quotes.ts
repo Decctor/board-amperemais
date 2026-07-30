@@ -6,21 +6,23 @@ import z from "zod";
 import { defineAgentTool } from "./define-tool";
 import type { TAgentToolContext, TAgentToolOutput } from "./types";
 
-export const QuoteInputSchema = z.object({
-	itens: z
-		.array(
-			z
-				.object({
-					produtoId: z.string().min(1).describe("ID exato do produto retornado pela consulta de catálogo."),
-					produtoVarianteId: z.string().min(1).optional().nullable().describe("ID exato da variação escolhida, quando houver."),
-					quantidade: z.number().positive().describe("Quantidade solicitada pelo cliente."),
-				})
-				.strict(),
-		)
-		.min(1)
-		.max(50),
-	observacoes: z.string().max(500).optional().describe("Observação curta informada pelo cliente para o orçamento."),
-}).strict();
+export const QuoteInputSchema = z
+	.object({
+		itens: z
+			.array(
+				z
+					.object({
+						produtoId: z.string().min(1).describe("ID exato do produto retornado pela consulta de catálogo."),
+						produtoVarianteId: z.string().min(1).optional().nullable().describe("ID exato da variação escolhida, quando houver."),
+						quantidade: z.number().positive().describe("Quantidade solicitada pelo cliente."),
+					})
+					.strict(),
+			)
+			.min(1)
+			.max(50),
+		observacoes: z.string().max(500).optional().describe("Observação curta informada pelo cliente para o orçamento."),
+	})
+	.strict();
 
 async function inTransaction<T>(database: DB | DBTransaction, callback: (tx: DBTransaction) => Promise<T>): Promise<T> {
 	if ("transaction" in database && typeof database.transaction === "function") return database.transaction(callback);
