@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { assertChatAccess } from "@/lib/chats/access";
+import { AI_ASSIGNMENT_BLOCK_MESSAGES, resolveAiAssignmentAvailability } from "@/lib/chats/ai-assignment";
 import { markChatAnswered } from "@/lib/chats/attendance-state";
 import { deliverChatMessage, loadChatForSending, renderTemplatePlainContent, resolveApprovedTemplate } from "@/lib/chats/outgoing-message";
 import { getChatMediaUrl, uploadChatMedia } from "@/lib/files-storage/chat-media";
@@ -102,6 +103,22 @@ async function getChatMessages({ session, input }: { session: TAuthUserSession; 
 		orderBy: (fields, { desc: orderDesc }) => [orderDesc(fields.dataAtribuicao)],
 	});
 
+	// Disponibilidade do agente para esta conversa. Vem junto com a thread de propósito: é por
+	// chat (depende do número de entrada), então uma query própria no cliente seria uma chamada
+	// por conversa aberta. A rota de atribuição revalida com o mesmo resolvedor.
+	const disponibilidadeIa = await resolveAiAssignmentAvailability(db, {
+		organizacaoId,
+		chatId: input.chatId,
+		configuracao: session.membership?.organizacao.configuracao,
+	});
+	const atendimentoIa = disponibilidadeIa.disponivel
+		? { disponivel: true as const, agenteNome: disponibilidadeIa.agenteNome, motivoIndisponivel: null }
+		: {
+				disponivel: false as const,
+				agenteNome: null,
+				motivoIndisponivel: AI_ASSIGNMENT_BLOCK_MESSAGES[disponibilidadeIa.motivo],
+			};
+
 	const cursorDate = input.cursorDataEnvio ? new Date(input.cursorDataEnvio) : null;
 	const messages = await db.query.chatMessages.findMany({
 		where: and(
@@ -128,6 +145,7 @@ async function getChatMessages({ session, input }: { session: TAuthUserSession; 
 				...chat,
 				conexaoTipo: chat.whatsappConexao?.tipoConexao ?? null,
 				atendimentoAtivo: atendimentoAtivo ?? null,
+				atendimentoIa,
 			},
 			items,
 			nextCursor: hasMoreOlder && oldest ? { dataEnvio: oldest.dataEnvio.toISOString(), id: oldest.id } : null,

@@ -141,6 +141,12 @@ export async function markChatAnswered(
  * está `EXTERNO` a IA fica fora e o hub mostra "Atendido pelo telefone".
  *
  * Se um usuário do hub já é o dono, a resposta pelo celular **não** rouba a conversa dele.
+ *
+ * A assimetria é consciente: um ticket `AGENTE` **é** roubado, mesmo quando um humano entregou
+ * a conversa à IA de propósito (`assignChatAttendanceToAgent`). O echo significa que alguém já
+ * respondeu ao cliente pelo celular; preservar a atribuição para a IA continuar respondendo em
+ * paralelo produziria duas respostas para a mesma mensagem, que é o pior defeito possível aqui.
+ * Perder a decisão do humano é o preço, e ele é menor.
  */
 export async function markChatAttendedExternally(
 	db: TAttendanceDb,
@@ -252,14 +258,16 @@ export async function assignChatAttendance(
 }
 
 /**
- * A IA reivindica um atendimento sem dono.
+ * A IA reivindica um atendimento sem dono, a partir do webhook.
  *
  * Compare-and-set: o UPDATE só casa enquanto o ticket segue `NAO_ATRIBUIDO`. Se um humano
  * (ou o telefone) assumiu no intervalo, zero linhas casam e a função devolve `null` — a IA
- * deve recuar sem enviar nada. Este é o único caminho pelo qual a IA pega um chat da fila.
+ * deve recuar sem enviar nada. Este é o caminho pelo qual a IA **pega** um chat da fila; para
+ * o humano que entrega a conversa a ela existe `assignChatAttendanceToAgent`.
  *
- * `agenteId` é nulo enquanto não existe tabela de agentes: `AGENTE` + id nulo significa
- * "a IA da organização", habilitada por `whatsapp_connection_phones.permitir_atendimento_ia`.
+ * `atribuidoPorUsuarioId` é zerado de propósito: em um ticket `AGENTE` ele é o discriminador
+ * entre "a IA pegou da fila" (nulo) e "um humano passou pra IA" (preenchido). Sem o reset, um
+ * ticket que já passou por um humano manteria o campo e o sinal mentiria.
  */
 export async function claimChatAttendanceForAgent(
 	db: TAttendanceDb,
@@ -274,6 +282,7 @@ export async function claimChatAttendanceForAgent(
 			responsavelTipo: "AGENTE",
 			responsavelUsuarioId: null,
 			responsavelAgenteId: input.agenteId ?? null,
+			atribuidoPorUsuarioId: null,
 			dataAtribuicao: now,
 			status: pending?.needsResponse ? "ABERTO" : "EM_ATENDIMENTO",
 			dataLiberacao: null,
@@ -289,6 +298,62 @@ export async function claimChatAttendanceForAgent(
 		.returning();
 
 	return claimed ?? null;
+}
+
+/**
+ * Um humano do hub entrega o atendimento ao agente de IA.
+ *
+ * Contraparte de `claimChatAttendanceForAgent`, com três diferenças conscientes:
+ *
+ * 1. **Sem compare-and-set.** A sobrescrita é o objetivo — quem chama já provou posse ou
+ *    gestão (`mayManageAssignment`), como em `assignChatAttendance`.
+ * 2. **Não abre atendimento.** Usa `getCurrentChatAttendance` em vez de `ensureCurrentAttendance`:
+ *    entregar ao agente é decidir sobre uma conversa em curso, não criar um ticket. Sem
+ *    atendimento ativo a função devolve `null` e a rota responde 409.
+ * 3. **Grava `atribuidoPorUsuarioId`.** É o que distingue este caminho do claim da fila.
+ *
+ * Quem barra os estados de origem inválidos (o telefone, em `EXTERNO`) é a rota: aqui a
+ * conversa já está decidida.
+ */
+export async function assignChatAttendanceToAgent(
+	db: TAttendanceDb,
+	input: {
+		organizacaoId: string;
+		chatId: string;
+		agenteId: string;
+		atribuidoPorUsuarioId: string;
+		motivo?: string | null;
+		prioridade?: TChatAssignmentPriority | null;
+		now?: Date;
+	},
+) {
+	const now = input.now ?? new Date();
+	const current = await getCurrentChatAttendance(db, input);
+	if (!current) return null;
+
+	const pending = await getChatPendingState(db, input);
+
+	const [updated] = await db
+		.update(chatAssignments)
+		.set({
+			responsavelTipo: "AGENTE",
+			responsavelUsuarioId: null,
+			responsavelAgenteId: input.agenteId,
+			atribuidoPorUsuarioId: input.atribuidoPorUsuarioId,
+			// O alvo de transferência é sempre um usuário; deixá-lo preenchido faria o painel
+			// exibir o humano da transferência anterior como responsável desta conversa.
+			transferidoParaUsuarioId: null,
+			transferenciaMotivo: input.motivo ?? null,
+			// A prioridade é do atendimento, não de quem o conduz: sobrevive à troca de responsável.
+			prioridade: input.prioridade ?? current.prioridade,
+			dataAtribuicao: now,
+			status: pending?.needsResponse ? "ABERTO" : current.status === "ABERTO" ? "EM_ATENDIMENTO" : current.status,
+			dataLiberacao: null,
+		})
+		.where(eq(chatAssignments.id, current.id))
+		.returning();
+
+	return updated ?? null;
 }
 
 export async function transferChatAttendance(
@@ -342,6 +407,9 @@ export async function releaseChatAttendance(
 			responsavelTipo: "NAO_ATRIBUIDO",
 			responsavelUsuarioId: null,
 			responsavelAgenteId: null,
+			// Volta para a fila sem rastro de quem atribuiu: se a IA reivindicar depois, o campo
+			// preenchido faria o ticket parecer entregue por um humano (ver `claimChatAttendanceForAgent`).
+			atribuidoPorUsuarioId: null,
 			status: pending?.needsResponse ? "ABERTO" : current.status,
 			dataLiberacao: now,
 			transferenciaMotivo: input.motivo ?? null,
