@@ -80,8 +80,8 @@ export function PointOfInteractionLinksAndHelpers({ organization }: PointOfInter
 	}, [organization.id, linkFlow]);
 
 	return (
-		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs md:h-full md:min-h-0 md:overflow-y-auto">
-			<div className="flex flex-col">
+		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs md:h-full md:min-h-0">
+			<div className="flex flex-col shrink-0">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xs font-medium tracking-tight uppercase">UTILITÁRIOS</h1>
 					<div className="flex items-center gap-2">
@@ -115,76 +115,79 @@ export function PointOfInteractionLinksAndHelpers({ organization }: PointOfInter
 					</button>
 				))}
 			</div>
-			{linkFlow === "signup" ? (
-				<p className="text-[0.65rem] text-muted-foreground text-center -mt-1.5">
-					Cadastro e consulta do clube de benefícios — ideal para QR codes em mesas e para o link pessoal do atendente.
-				</p>
-			) : null}
+			{/* Cabeçalho e alternador ficam fixos; apenas os links e materiais rolam. */}
+			<div className="flex flex-col gap-3 md:flex-1 md:min-h-0 md:overflow-y-auto md:pr-1">
+				{linkFlow === "signup" ? (
+					<p className="text-[0.65rem] text-muted-foreground text-center">
+						Cadastro e consulta do clube de benefícios — ideal para QR codes em mesas e para o link pessoal do atendente.
+					</p>
+				) : null}
 
-			{flowLinks.map((link) => (
-				<div key={link.key} className="w-full flex flex-col gap-1.5">
-					<h1 className="text-xs font-medium tracking-tight uppercase">{link.title}</h1>
-					<div className="bg-primary/10 flex aspect-square w-[35%] self-center items-center justify-center overflow-hidden rounded-md">
-						{qrDataUrls[link.path] ? (
-							<img src={qrDataUrls[link.path]} alt={`QR Code — ${link.title}`} className="h-full w-full object-contain" />
-						) : (
-							<p className="text-foreground/70 text-center text-[0.6rem] font-medium uppercase">Gerando QR...</p>
-						)}
-					</div>
-					<div className="w-full flex items-center justify-center">
-						<div className="flex items-center gap-3 px-2 py-1 rounded-lg bg-primary/10 text-foreground">
-							<p className="text-xs font-medium tracking-tight">{link.label}</p>
-							<div className="flex items-center gap-1.5">
-								<Button
-									onClick={() => copyToClipboard(getAbsolutePoiUrl(link.path))}
-									size="fit"
-									className="flex items-center justify-center p-2 rounded-lg"
-									variant={"ghost-brand"}
-								>
-									<Copy className="w-4 h-4 min-w-4 min-h-4" />
-								</Button>
-								<Button size="fit" className="flex items-center justify-center p-2 rounded-lg" variant={"brand"} asChild>
-									<Link href={link.path}>
-										<ExternalLink className="w-4 h-4 min-w-4 min-h-4" />
-									</Link>
-								</Button>
+				{flowLinks.map((link) => (
+					<div key={link.key} className="w-full flex flex-col gap-1.5">
+						<h1 className="text-xs font-medium tracking-tight uppercase">{link.title}</h1>
+						<div className="bg-primary/10 flex aspect-square w-[35%] self-center items-center justify-center overflow-hidden rounded-md">
+							{qrDataUrls[link.path] ? (
+								<img src={qrDataUrls[link.path]} alt={`QR Code — ${link.title}`} className="h-full w-full object-contain" />
+							) : (
+								<p className="text-foreground/70 text-center text-[0.6rem] font-medium uppercase">Gerando QR...</p>
+							)}
+						</div>
+						<div className="w-full flex items-center justify-center">
+							<div className="flex items-center gap-3 px-2 py-1 rounded-lg bg-primary/10 text-foreground">
+								<p className="text-xs font-medium tracking-tight">{link.label}</p>
+								<div className="flex items-center gap-1.5">
+									<Button
+										onClick={() => copyToClipboard(getAbsolutePoiUrl(link.path))}
+										size="fit"
+										className="flex items-center justify-center p-2 rounded-lg"
+										variant={"ghost-brand"}
+									>
+										<Copy className="w-4 h-4 min-w-4 min-h-4" />
+									</Button>
+									<Button size="fit" className="flex items-center justify-center p-2 rounded-lg" variant={"brand"} asChild>
+										<Link href={link.path}>
+											<ExternalLink className="w-4 h-4 min-w-4 min-h-4" />
+										</Link>
+									</Button>
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
-			))}
+				))}
 
-			<div className="w-full flex flex-col gap-1.5 mt-2 pt-4 border-t border-border">
-				<h1 className="text-xs font-medium tracking-tight uppercase">MATERIAL PARA DISPLAY</h1>
-				<p className="text-[0.65rem] text-muted-foreground mb-2">Display pronto para impressão no formato A5 para engajar seus clientes.</p>
-				<div className="w-full flex items-center justify-center">
-					<Button variant={"ghost-brand"} className="flex items-center gap-1.5" asChild>
-						<Link href={`/point-of-interaction-display/${organization.id}`} target="_blank">
-							<ExternalLink className="w-4 h-4" />
-							ABRIR DISPLAY
-						</Link>
-					</Button>
+				<div className="w-full flex flex-col gap-1.5 mt-2 pt-4 border-t border-border">
+					<h1 className="text-xs font-medium tracking-tight uppercase">MATERIAL PARA DISPLAY</h1>
+					<p className="text-[0.65rem] text-muted-foreground mb-2">Display pronto para impressão no formato A5 para engajar seus clientes.</p>
+					<div className="w-full flex items-center justify-center">
+						<Button variant={"ghost-brand"} className="flex items-center gap-1.5" asChild>
+							<Link href={`/point-of-interaction-display/${organization.id}`} target="_blank">
+								<ExternalLink className="w-4 h-4" />
+								ABRIR DISPLAY
+							</Link>
+						</Button>
+					</div>
 				</div>
-			</div>
 
-			<div className="w-full flex flex-col gap-1.5 mt-2 pt-4 border-t border-border">
-				<h1 className="text-xs font-medium tracking-tight uppercase">PLAYBOOK DE USO</h1>
-				<p className="text-[0.65rem] text-muted-foreground mb-2">
-					Guia passo a passo (A4, imprimível em PDF) dos fluxos kiosk e mobile para treinar a equipe.
-				</p>
-				<div className="w-full flex items-center justify-center gap-2 flex-wrap">
-					<Button variant={"ghost-brand"} className="flex items-center gap-1.5" asChild>
-						<Link href={`/point-of-interaction-playbook/${organization.id}`} target="_blank">
-							<BookOpen className="w-4 h-4" />
-							ABRIR PLAYBOOK
-						</Link>
-					</Button>
-					<Button variant={"ghost-brand"} className="flex items-center gap-1.5" asChild>
-						<Link href={`/point-of-interaction-playbook/${organization.id}/summary`} target="_blank">
-							<FileText className="w-4 h-4" />
-							RESUMO (1 PÁGINA)
-						</Link>
-					</Button>
+				<div className="w-full flex flex-col gap-1.5 mt-2 pt-4 border-t border-border">
+					<h1 className="text-xs font-medium tracking-tight uppercase">PLAYBOOK DE USO</h1>
+					<p className="text-[0.65rem] text-muted-foreground mb-2">
+						Guia passo a passo (A4, imprimível em PDF) dos fluxos kiosk e mobile para treinar a equipe.
+					</p>
+					<div className="w-full flex items-center justify-center gap-2 flex-wrap">
+						<Button variant={"ghost-brand"} className="flex items-center gap-1.5" asChild>
+							<Link href={`/point-of-interaction-playbook/${organization.id}`} target="_blank">
+								<BookOpen className="w-4 h-4" />
+								ABRIR PLAYBOOK
+							</Link>
+						</Button>
+						<Button variant={"ghost-brand"} className="flex items-center gap-1.5" asChild>
+							<Link href={`/point-of-interaction-playbook/${organization.id}/summary`} target="_blank">
+								<FileText className="w-4 h-4" />
+								RESUMO (1 PÁGINA)
+							</Link>
+						</Button>
+					</div>
 				</div>
 			</div>
 		</div>
