@@ -58,27 +58,27 @@ export async function claimChatForAi({
 }
 
 /**
- * Aguarda o debounce e reconfirma que a resposta ainda faz sentido.
+ * Reconfirma que responder ainda faz sentido, sobre os fatos da conversa.
  *
- * Aborta se o cliente mandou outra mensagem no intervalo (a mais nova dispara o próprio
- * ciclo, e responder à antiga produziria duas respostas), se alguém já respondeu, ou se o
- * atendimento deixou de ser da IA enquanto esperávamos.
+ * Aborta se o cliente mandou outra mensagem depois da que disparou (a mais nova dispara o
+ * próprio ciclo, e responder à antiga produziria duas respostas), se alguém já respondeu, ou
+ * se o atendimento deixou de ser da IA.
+ *
+ * Separado do debounce de propósito: o gatilho por webhook precisa esperar antes de conferir,
+ * mas o gatilho do hub (um humano entregando a conversa ao agente) não tem rajada de mensagens
+ * para agrupar — precisa das mesmas verificações, sem a espera.
  */
-export async function waitAndConfirmAiResponse({
+export async function confirmAiResponseStillValid({
 	organizacaoId,
 	chatId,
 	messageId,
 	messageDate,
-	delayMs = AI_RESPONSE_DELAY_MS,
 }: {
 	organizacaoId: string;
 	chatId: string;
 	messageId: string;
 	messageDate: Date;
-	delayMs?: number;
 }): Promise<TAiTriggerDecision> {
-	await sleep(delayMs);
-
 	const ultimaDoCliente = await db.query.chatMessages.findFirst({
 		where: and(eq(chatMessages.chatId, chatId), eq(chatMessages.autorTipo, "CLIENTE")),
 		orderBy: [desc(chatMessages.dataEnvio), desc(chatMessages.id)],
@@ -101,6 +101,27 @@ export async function waitAndConfirmAiResponse({
 	if (atual?.responsavelTipo !== "AGENTE") return { shouldRespond: false, reason: "O atendimento deixou de ser da IA." };
 
 	return { shouldRespond: true };
+}
+
+/**
+ * Aguarda o debounce e reconfirma que a resposta ainda faz sentido. Caminho do webhook: agrupa
+ * a rajada de mensagens do cliente e só então confere os fatos.
+ */
+export async function waitAndConfirmAiResponse({
+	organizacaoId,
+	chatId,
+	messageId,
+	messageDate,
+	delayMs = AI_RESPONSE_DELAY_MS,
+}: {
+	organizacaoId: string;
+	chatId: string;
+	messageId: string;
+	messageDate: Date;
+	delayMs?: number;
+}): Promise<TAiTriggerDecision> {
+	await sleep(delayMs);
+	return confirmAiResponseStillValid({ organizacaoId, chatId, messageId, messageDate });
 }
 
 export { AI_RESPONSE_DELAY_MS };

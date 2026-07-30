@@ -1,12 +1,19 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { getErrorMessage } from "@/lib/errors";
 import { PRIORITY_META, STATUS_META } from "./attendance-meta";
 import { cn } from "@/lib/utils";
 import { updateChatAssignment } from "@/lib/mutations/chats";
-import { useChatTransferTargets, type TChatAttendance } from "@/lib/queries/chats";
+import { useChatTransferTargets, type TChatAttendance, type TChatMessagesPage } from "@/lib/queries/chats";
 import type { TChatAssignmentPriority, TChatAssignmentStatus } from "@/schemas/enums";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, LogOut, Smartphone, Sparkles, UserPlus } from "lucide-react";
@@ -16,6 +23,7 @@ import { toast } from "sonner";
 type ChatAssignmentActionsProps = {
 	chatId: string;
 	atendimento: TChatAttendance;
+	atendimentoIa: TChatMessagesPage["chat"]["atendimentoIa"];
 	currentUserId: string;
 	/**
 	 * Header da thread: só posse e roteamento (assumir/liberar/transferir). Status e
@@ -25,13 +33,22 @@ type ChatAssignmentActionsProps = {
 	compact?: boolean;
 };
 
-export function ChatAssignmentActions({ chatId, atendimento, currentUserId, compact = false }: ChatAssignmentActionsProps) {
+export function ChatAssignmentActions({ chatId, atendimento, atendimentoIa, currentUserId, compact = false }: ChatAssignmentActionsProps) {
 	const queryClient = useQueryClient();
 	const [transferMenuOpen, setTransferMenuOpen] = useState(false);
 	const { data: transferTargets } = useChatTransferTargets({ enabled: transferMenuOpen });
 
 	const isOwner = atendimento?.responsavelTipo === "USUARIO" && atendimento.responsavelUsuarioId === currentUserId;
 	const isFree = !atendimento || atendimento.responsavelTipo === "NAO_ATRIBUIDO";
+
+	// O telefone não é um destino: aquele estado só nasce do echo do WhatsApp Business, e a IA
+	// não deve responder em paralelo com quem está no celular. Sai do telefone assumindo.
+	const agentBlockedByPhone = atendimento?.responsavelTipo === "EXTERNO";
+	const agentIsCurrent = atendimento?.responsavelTipo === "AGENTE";
+	const agentReason = agentBlockedByPhone
+		? "Assuma o atendimento do telefone antes de direcioná-lo ao agente"
+		: (atendimentoIa.motivoIndisponivel ?? null);
+	const canAssignToAgent = atendimentoIa.disponivel && !agentBlockedByPhone && !agentIsCurrent;
 
 	const { mutate, isPending } = useMutation({
 		mutationFn: updateChatAssignment,
@@ -93,9 +110,30 @@ export function ChatAssignmentActions({ chatId, atendimento, currentUserId, comp
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" className="max-h-64 overflow-y-auto">
+					{/* O agente vem primeiro e é irmão das pessoas: transferir é escolher um
+					    responsável, e a IA é um dos responsáveis possíveis. */}
+					<DropdownMenuLabel className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Agente de IA</DropdownMenuLabel>
+					<DropdownMenuItem
+						className="gap-2"
+						disabled={!canAssignToAgent}
+						onClick={() => mutate({ acao: "transferir", chatId, destino: { tipo: "AGENTE" } })}
+					>
+						<Sparkles className="h-3.5 w-3.5 shrink-0" />
+						<span className="flex min-w-0 flex-col">
+							<span className="truncate">{atendimentoIa.agenteNome ?? "Agente de atendimento"}</span>
+							{agentIsCurrent && <span className="text-[10px] text-muted-foreground">Já é o responsável</span>}
+							{!agentIsCurrent && agentReason && <span className="text-[10px] text-muted-foreground">{agentReason}</span>}
+						</span>
+					</DropdownMenuItem>
+
+					<DropdownMenuSeparator />
+					<DropdownMenuLabel className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Atendentes</DropdownMenuLabel>
 					{(transferTargets ?? []).length === 0 && <DropdownMenuItem disabled>Nenhum usuário disponível</DropdownMenuItem>}
 					{(transferTargets ?? []).map((target) => (
-						<DropdownMenuItem key={target.id} onClick={() => mutate({ acao: "transferir", chatId, usuarioDestinoId: target.id })}>
+						<DropdownMenuItem
+							key={target.id}
+							onClick={() => mutate({ acao: "transferir", chatId, destino: { tipo: "USUARIO", usuarioDestinoId: target.id } })}
+						>
 							{target.nome}
 						</DropdownMenuItem>
 					))}
