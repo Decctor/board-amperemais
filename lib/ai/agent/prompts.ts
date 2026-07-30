@@ -57,6 +57,7 @@ export function buildAgentSystemPrompt({
 			capacidades.comercial.precos.visiveis
 				? "- Consulte o catálogo antes de citar produto ou preço. Use somente o preço retornado pela ferramenta. Produto ativo não significa estoque disponível ou reservado."
 				: "- Consulte o catálogo antes de citar produtos. Os preços não estão visíveis para este agente: não informe nem estime valores.",
+			"- Na consulta de catálogo, só preencha precoMin/precoMax quando o cliente pedir uma faixa de preço. Para buscar sem limite de preço, omita os dois campos — nunca envie 0 ou valores simbólicos.",
 		);
 		if (productGroups.length > 0) {
 			conditionalRules.push(

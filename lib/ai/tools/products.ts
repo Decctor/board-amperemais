@@ -166,8 +166,9 @@ Filtros disponíveis (combináveis, todos opcionais):
   ("vinho tinto") a frases inteiras.
 - grupo: restringe a uma categoria. Use exatamente um dos grupos listados na seção "Grupos de
   produtos do catálogo" do seu contexto; a comparação ignora acentos e maiúsculas.
-- precoMin / precoMax: faixa de preço de venda. Use somente quando o cliente pedir por faixa de
-  preço — omita os dois nos demais casos.
+- precoMin / precoMax: faixa de preço de venda. Use SOMENTE quando o cliente pedir uma faixa de
+  preço explícita ("até 300 reais", "entre 100 e 200"). Para buscar sem limite de preço, OMITA
+  os dois campos — nunca envie 0, 0.01 ou outro valor simbólico no lugar de "sem limite".
 - apenasAtivos: por padrão true; use false apenas para consultar itens desativados.
 - limite: quantos produtos retornar (máximo 50).
 
@@ -179,8 +180,12 @@ ou disponibilidade: informe apenas o que vier daqui.`,
 	inputSchema: z.object({
 		termo: z.string().min(2).optional().describe("Busca pelo nome do produto/variação ou pelo código (prefixo)."),
 		grupo: z.string().min(1).optional().describe("Restringe a uma categoria/grupo de produtos (grafia da lista de grupos do contexto)."),
-		precoMin: z.number().min(0).optional().describe("Preço de venda mínimo. Só envie se o cliente citou uma faixa de preço."),
-		precoMax: z.number().positive("O preço máximo deve ser maior que zero.").optional().describe("Preço de venda máximo, maior que zero. Só envie se o cliente citou uma faixa de preço."),
+		precoMin: z.number().min(0).optional().describe("Preço de venda mínimo. Só envie se o cliente pediu faixa de preço; nunca envie 0."),
+		precoMax: z
+			.number()
+			.positive("O preço máximo deve ser maior que zero.")
+			.optional()
+			.describe("Preço de venda máximo. Só envie se o cliente pediu faixa de preço; para 'sem limite', OMITA o campo."),
 		apenasAtivos: z.boolean().optional().describe("Considerar apenas produtos ativos. Padrão: true."),
 		limite: z.number().int().min(1).max(50).optional().describe("Máximo de produtos retornados. Padrão: 10."),
 		visao: z.enum(["LISTA", "GRUPOS"]).optional().describe("LISTA para produtos, GRUPOS para as categorias disponíveis."),
@@ -200,20 +205,22 @@ ou disponibilidade: informe apenas o que vier daqui.`,
 		const activeOnly = input.apenasAtivos ?? true;
 		const termo = input.termo?.trim();
 
+		// Escopo (tenant/ativo/grupo) separado da faixa de preço: quando a busca dá vazio, é a
+		// faixa de preço o filtro que o modelo mais manda errado — e o diagnóstico precisa
+		// reconsultar o escopo sem ela para apontar o culpado.
+		const scopeConditions = [eq(products.organizacaoId, organizacaoId)];
+		if (activeOnly) scopeConditions.push(eq(products.ativo, true));
+		if (input.grupo) scopeConditions.push(createSimplifiedEqualityCondition(products.grupo, input.grupo));
+
+		const priceConditions = [];
+		if (typeof input.precoMin === "number" && input.precoMin > 0) priceConditions.push(gte(products.precoVenda, input.precoMin));
+		if (typeof input.precoMax === "number") priceConditions.push(lte(products.precoVenda, input.precoMax));
+
 		// Condições sem o termo: são a base da consulta principal e da passada de aproximação.
-		const baseConditions = [eq(products.organizacaoId, organizacaoId)];
-		if (activeOnly) baseConditions.push(eq(products.ativo, true));
-		if (input.grupo) baseConditions.push(createSimplifiedEqualityCondition(products.grupo, input.grupo));
-		if (typeof input.precoMin === "number") baseConditions.push(gte(products.precoVenda, input.precoMin));
-		if (typeof input.precoMax === "number") baseConditions.push(lte(products.precoVenda, input.precoMax));
+		const baseConditions = [...scopeConditions, ...priceConditions];
 
-		const conditions = [...baseConditions];
-		if (termo) {
-			const termCondition = buildTermCondition({ db, organizacaoId, termo, activeOnly });
-			if (termCondition) conditions.push(termCondition);
-		}
-
-		const where = and(...conditions);
+		const termCondition = termo ? buildTermCondition({ db, organizacaoId, termo, activeOnly }) : undefined;
+		const where = and(...baseConditions, ...(termCondition ? [termCondition] : []));
 
 		if (view === "GRUPOS") {
 			const groups = await db
@@ -248,6 +255,37 @@ ou disponibilidade: informe apenas o que vier daqui.`,
 						success: false,
 						message: `O grupo "${input.grupo}" não existe no catálogo. Refaça a consulta usando um dos grupos disponíveis.`,
 						result: { codigo: "GRUPO_INEXISTENTE", gruposDisponiveis: groups.map((group) => group.grupo) },
+					};
+				}
+			}
+
+			// Faixa de preço que excluiu tudo: reconsulta o mesmo escopo sem ela. Se existem
+			// produtos, o culpado é o filtro de preço — devolvemos a faixa real para o modelo se
+			// corrigir, em vez de um vazio que ele interpreta como "não vendemos isso". (Só
+			// alcançável com preços visíveis: o guard no topo já barrou o filtro caso contrário.)
+			if (priceConditions.length > 0) {
+				const scopeWhere = and(...scopeConditions, ...(termCondition ? [termCondition] : []));
+				const [scopeRow] = await db
+					.select({
+						total: count(),
+						precoMinimo: sql<number | null>`MIN(${products.precoVenda})`,
+						precoMaximo: sql<number | null>`MAX(${products.precoVenda})`,
+					})
+					.from(products)
+					.where(scopeWhere);
+				const totalForaDaFaixa = Number(scopeRow?.total ?? 0);
+				if (totalForaDaFaixa > 0) {
+					const minimo = scopeRow?.precoMinimo ?? null;
+					const maximo = scopeRow?.precoMaximo ?? null;
+					const faixaTexto = minimo !== null && maximo !== null ? `, com preços entre R$ ${minimo.toFixed(2)} e R$ ${maximo.toFixed(2)}` : "";
+					return {
+						success: false,
+						message: `A faixa de preço informada não retornou nada, mas existem ${totalForaDaFaixa} produto(s) para os demais filtros${faixaTexto}. Se o cliente não pediu uma faixa de preço, refaça a consulta OMITINDO precoMin e precoMax.`,
+						result: {
+							codigo: "FILTRO_PRECO_EXCLUIU_TUDO",
+							totalForaDaFaixa,
+							faixaPrecoDisponivel: { minimo, maximo },
+						},
 					};
 				}
 			}
