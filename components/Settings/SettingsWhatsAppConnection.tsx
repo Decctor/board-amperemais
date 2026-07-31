@@ -34,13 +34,6 @@ export default function SettingsWhatsAppConnection({ user }: SettingsWhatsAppCon
 
 	return (
 		<div className="flex h-full grow flex-col gap-3">
-			<div className="border-border flex w-full flex-col items-center justify-between border-b pb-2 lg:flex-row">
-				<div className="flex flex-col">
-					<h1 className="text-lg font-bold">Conexão com o WhatsApp</h1>
-					<p className="text-foreground/60 text-sm">Gerencie a conexão do WhatsApp</p>
-				</div>
-			</div>
-
 			{isPending ? (
 				<div className="flex w-full items-center justify-center py-8">
 					<Loader2 className="text-foreground/60 h-6 w-6 animate-spin" />

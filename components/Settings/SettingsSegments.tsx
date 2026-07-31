@@ -1,4 +1,3 @@
-import Settings from "@/app/dashboard/settings/page";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { useRFMConfigQuery } from "@/lib/queries/configs";

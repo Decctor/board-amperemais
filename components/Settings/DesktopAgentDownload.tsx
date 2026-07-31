@@ -26,7 +26,7 @@ export default function DesktopAgentDownload() {
 					<MonitorDown className="h-5 w-5" />
 				</div>
 				<div className="flex flex-col gap-0.5">
-					<h3 className="text-sm font-bold tracking-tight">Agente desktop para Windows</h3>
+					<h3 className="text-sm font-bold tracking-tight">Agente de Periféricos</h3>
 					<p className="text-xs text-muted-foreground">
 						Versão {version.versao} · {sizeMb} MB
 						{version.dataPublicacao ? ` · publicada em ${formatDateAsLocale(version.dataPublicacao)}` : null}

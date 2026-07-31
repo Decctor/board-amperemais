@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { Bot, ListChecks, MessageSquare } from "lucide-react";
-import { useState } from "react";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 import AgentConfigForm from "./AiAgent/AgentConfigForm";
 import AgentPlayground from "./AiAgent/AgentPlayground";
 import AgentRunsList from "./AiAgent/AgentRunsList";
@@ -11,7 +11,8 @@ type SettingsAiAgentProps = {
 	membership: NonNullable<TAuthUserSession["membership"]>;
 };
 
-type TAiAgentTab = "configuracao" | "execucoes" | "playground";
+const AI_AGENT_TABS = ["configuracao", "execucoes", "playground"] as const;
+type TAiAgentTab = (typeof AI_AGENT_TABS)[number];
 
 const TABS: Array<{ value: TAiAgentTab; label: string; icon: typeof Bot }> = [
 	{ value: "configuracao", label: "CONFIGURAÇÃO", icon: Bot },
@@ -20,7 +21,8 @@ const TABS: Array<{ value: TAiAgentTab; label: string; icon: typeof Bot }> = [
 ];
 
 export default function SettingsAiAgent({ membership }: SettingsAiAgentProps) {
-	const [tab, setTab] = useState<TAiAgentTab>("configuracao");
+	// Na URL e não em estado local: uma execução investigada é um link que se manda para a equipe.
+	const [tab, setTab] = useQueryState("tab", parseAsStringLiteral(AI_AGENT_TABS).withDefault("configuracao"));
 
 	// Mesma capability que os webhooks checam antes de executar o agente: configurar um
 	// recurso que não vai rodar seria uma promessa vazia.
@@ -38,15 +40,7 @@ export default function SettingsAiAgent({ membership }: SettingsAiAgentProps) {
 		);
 	}
 
-	if (!membership.permissoes.empresa.visualizar) {
-		return (
-			<div className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-border px-4 py-12 text-center">
-				<p className="text-sm font-medium">Você não tem permissão para ver o agente de IA</p>
-				<p className="text-xs text-muted-foreground">Peça a um administrador da organização o acesso de visualização da empresa.</p>
-			</div>
-		);
-	}
-
+	// A permissão de visualização é checada no shell de configurações, que também trava o item no rail.
 	return (
 		<div className="flex w-full flex-col gap-6">
 			<div className="flex items-center gap-2 border-b pb-3">

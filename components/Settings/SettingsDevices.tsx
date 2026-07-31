@@ -3,10 +3,10 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { type TAccessPrincipalListItem, useAccessPrincipals } from "@/lib/queries/access";
 import { type TPrintJobListItem, useAgentPrintJobs } from "@/lib/queries/desktop-agent";
-import { cn } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import type { TPrintJobStatusEnum } from "@/schemas/enums";
 import { useQueryClient } from "@tanstack/react-query";
-import { AppWindow, KeyRound, Monitor, Pencil, Plus, Printer, RefreshCw, TabletSmartphone } from "lucide-react";
+import { AppWindow, KeyRound, Monitor, Pencil, Plus, Presentation, Printer, RefreshCw, TabletSmartphone } from "lucide-react";
 import { useState } from "react";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
@@ -33,10 +33,18 @@ export default function SettingsDevices({ user: _user, membership }: SettingsDev
 
 	return (
 		<div className="flex w-full flex-col gap-3">
-			<div className="flex items-center justify-between gap-2">
-				<p className="text-sm text-muted-foreground">
-					Tablets, kiosks e agentes desktop vinculados à sua organização — Ponto de Interação e periféricos como impressoras.
-				</p>
+			<DesktopAgentDownload />
+
+			<div className="flex flex-wrap items-center justify-end gap-2">
+				<Button
+					variant="ghost"
+					size="sm"
+					className="flex items-center gap-2 whitespace-nowrap"
+					onClick={() => copyToClipboard(`${process.env.NEXT_PUBLIC_APP_URL}/point-of-interaction/${membership.organizacao.id}`)}
+				>
+					<Presentation className="h-4 w-4 min-h-4 min-w-4" />
+					COPIAR LINK DO PONTO DE INTERAÇÃO
+				</Button>
 				{canManage ? (
 					<Button size="sm" className="flex items-center gap-2 whitespace-nowrap" onClick={() => setNewEnrollmentModalIsOpen(true)}>
 						<Plus className="h-4 w-4 min-h-4 min-w-4" />
@@ -44,8 +52,6 @@ export default function SettingsDevices({ user: _user, membership }: SettingsDev
 					</Button>
 				) : null}
 			</div>
-
-			<DesktopAgentDownload />
 
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
@@ -57,8 +63,8 @@ export default function SettingsDevices({ user: _user, membership }: SettingsDev
 					<div className="flex flex-col gap-1">
 						<h2 className="text-base font-bold tracking-tight">Nenhum dispositivo ativado</h2>
 						<p className="max-w-md text-sm text-muted-foreground">
-							Gere um código de ativação, digite-o no tablet ou kiosk e o dispositivo passa a operar o Ponto de Interação com credencial
-							própria, que você pode revogar a qualquer momento.
+							Gere um código de ativação, digite-o no tablet ou kiosk e o dispositivo passa a operar o Ponto de Interação com credencial própria, que você
+							pode revogar a qualquer momento.
 						</p>
 					</div>
 					{canManage ? (
@@ -81,10 +87,7 @@ export default function SettingsDevices({ user: _user, membership }: SettingsDev
 			{isSuccess && principals.some((principal) => principal.tipo === "AGENTE_DESKTOP") ? <PrintJobsPanel /> : null}
 
 			{newEnrollmentModalIsOpen ? (
-				<NewAccessEnrollment
-					closeModal={() => setNewEnrollmentModalIsOpen(false)}
-					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
-				/>
+				<NewAccessEnrollment closeModal={() => setNewEnrollmentModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
 			) : null}
 			{controlPrincipalId ? (
 				<ControlAccessPrincipal
@@ -227,9 +230,7 @@ function PrintJobRow({ job }: { job: TPrintJobListItem }) {
 			<div className="flex min-w-0 flex-col gap-0.5">
 				<div className="flex items-center gap-2">
 					<span className="text-xs font-semibold">{PRINT_JOB_FINALIDADE_LABELS[job.finalidade] ?? job.finalidade}</span>
-					<span className={cn("rounded-full border px-2 py-0.5 text-[0.6rem] font-bold tracking-widest", statusMeta.className)}>
-						{statusMeta.label}
-					</span>
+					<span className={cn("rounded-full border px-2 py-0.5 text-[0.6rem] font-bold tracking-widest", statusMeta.className)}>{statusMeta.label}</span>
 				</div>
 				<span className="truncate text-xs text-muted-foreground">
 					{formatDateAsLocale(job.dataInsercao, true)}

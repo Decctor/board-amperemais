@@ -71,7 +71,7 @@ export default function SalesEmptyState({ organizationId, organizationConfig }: 
 									<h3 className="font-semibold mb-1">Recurso Bloqueado</h3>
 									<p className="text-sm text-muted-foreground mb-4">Faça upgrade do seu plano para automatizar suas vendas.</p>
 									<Button variant="outline" size="sm" className="w-full gap-2" asChild>
-										<Link href="/dashboard/settings?view=subscription">
+										<Link href="/dashboard/settings?view=organization">
 											Ver planos <ArrowRight className="w-3 h-3" />
 										</Link>
 									</Button>

@@ -513,6 +513,8 @@ const UpdateOrganizationConfigSchema = z
 	.optional();
 
 const UpdateOrganizationInputSchema = z.object({
+	// Opcional: uma seção de configurações que só edita `configuracao` não tem por que enviar um
+	// objeto vazio de campos raiz só para satisfazer o schema.
 	organization: OrganizationSchema.omit({
 		dataInsercao: true,
 		assinaturaPlano: true,
@@ -523,7 +525,9 @@ const UpdateOrganizationInputSchema = z.object({
 		poiQrCodeKioskDataUrl: true,
 		poiQrCodeMobileDataUrl: true,
 		dataOnboardingConclusao: true,
-	}).partial(),
+	})
+		.partial()
+		.optional(),
 	configuracao: UpdateOrganizationConfigSchema,
 });
 export type TUpdateOrganizationInput = z.infer<typeof UpdateOrganizationInputSchema>;
@@ -561,6 +565,9 @@ async function updateOrganization({ input, session }: { input: TUpdateOrganizati
 		};
 		updatePayload = { ...updatePayload, configuracao: mergedConfig };
 	}
+
+	// Sem nada para gravar o UPDATE sairia sem SET e estouraria no driver.
+	if (Object.keys(updatePayload).length === 0) throw new createHttpError.BadRequest("Nenhum dado informado para atualizar a organização.");
 
 	const updatedOrganization = await db
 		.update(organizations)

@@ -3,9 +3,7 @@
 import type { TGetUsersOutputById, TUpdateUserInput } from "@/app/api/users/route";
 import TextInput from "@/components/Inputs/TextInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { uploadFile } from "@/lib/files-storage";
@@ -13,11 +11,13 @@ import { formatDateForInputValue, formatDateOnInputChange, formatToCEP, formatTo
 import { updateProfile } from "@/lib/mutations/users";
 import { useUserById } from "@/lib/queries/users";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Camera, CircleUser, Loader2, MapPin, Save, Undo2, User as UserIcon } from "lucide-react";
+import { Camera, CircleUser, Loader2, MapPin, User as UserIcon } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
 import DateInput from "../Inputs/DateInput";
+import { SettingsFormCard, SettingsFormSection } from "./SettingsFormCard";
+import SettingsSectionActions from "./SettingsSectionActions";
 
 type SettingsProfileProps = {
 	sessionUser: TAuthUserSession["user"];
@@ -120,26 +120,8 @@ function SettingsProfileContent({ user, callbacks }: SettingsProfileContentProps
 	};
 
 	return (
-		<div className="flex w-full flex-col gap-6">
-			{/* Header Section */}
-			<div className="flex flex-col lg:flex-row items-center justify-between border-b pb-4">
-				<div className="space-y-1">
-					<h2 className="text-xl font-semibold tracking-tight">Meu Perfil</h2>
-					<p className="text-sm text-muted-foreground">Gerencie suas informações pessoais e de contato.</p>
-				</div>
-				<div className="flex items-center gap-2">
-					<Button variant="ghost" size="sm" onClick={handleReset} disabled={isPending} className="flex items-center gap-2">
-						<Undo2 className="h-4 w-4" />
-						RESTAURAR
-					</Button>
-					<Button size="sm" onClick={() => updateUserMutation()} disabled={isPending} className="flex items-center gap-2">
-						{isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-						SALVAR ALTERAÇÕES
-					</Button>
-				</div>
-			</div>
-
-			<SectionWrapper title="INFORMAÇÕES PESSOAIS" icon={<UserIcon className="h-4 w-4" />}>
+		<SettingsFormCard footer={<SettingsSectionActions isSaving={isPending} onReset={handleReset} onSave={() => updateUserMutation()} />}>
+			<SettingsFormSection title="INFORMAÇÕES PESSOAIS" icon={<UserIcon className="h-4 w-4" />}>
 				<div className="flex flex-col md:flex-row gap-8">
 					{/* Avatar Upload */}
 					<div className="flex flex-col gap-2 items-center md:items-start min-w-fit">
@@ -220,9 +202,9 @@ function SettingsProfileContent({ user, callbacks }: SettingsProfileContentProps
 						</div>
 					</div>
 				</div>
-			</SectionWrapper>
+			</SettingsFormSection>
 
-			<SectionWrapper title="ENDEREÇO" icon={<MapPin className="h-4 w-4" />}>
+			<SettingsFormSection title="ENDEREÇO" icon={<MapPin className="h-4 w-4" />}>
 				<div className="w-full flex flex-col items-center lg:flex-row gap-2">
 					<div className="w-full lg:w-1/3">
 						<TextInput
@@ -285,7 +267,7 @@ function SettingsProfileContent({ user, callbacks }: SettingsProfileContentProps
 						/>
 					</div>
 				</div>
-			</SectionWrapper>
-		</div>
+			</SettingsFormSection>
+		</SettingsFormCard>
 	);
 }
