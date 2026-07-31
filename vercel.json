@@ -1,4 +1,15 @@
 {
+	"functions": {
+		"app/api/queues/ai-chat-turn/route.ts": {
+			"experimentalTriggers": [
+				{
+					"type": "queue/v2beta",
+					"topic": "ai-chat-turns",
+					"retryAfterSeconds": 30
+				}
+			]
+		}
+	},
 	"crons": [
 		{
 			"path": "/api/cron/meta-capi-purchases",
