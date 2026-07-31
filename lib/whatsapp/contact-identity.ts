@@ -12,73 +12,73 @@ import { and, eq, sql } from "drizzle-orm";
  * webhooks. Quando a Meta os omitir, a resolução por BSUID já estará populada.
  *
  * Ordem de resolução:
- * 1. `(organizacaoId, whatsappUserId)` — a chave garantida. Telefone divergente no webhook
+ * 1. `(organizationId, whatsappUserId)` — a chave garantida. Telefone divergente no webhook
  *    significa troca de número (o BSUID regenera junto): o cadastro é atualizado.
- * 2. `(organizacaoId, telefoneBase)` — fallback; o acerto grava o BSUID (backfill orgânico).
+ * 2. `(organizationId, telefoneBase)` — fallback; o acerto grava o BSUID (backfill orgânico).
  * 3. Cria o cliente com `canalAquisicao: "WHATSAPP"`.
  *
  * Concorrência: `pg_advisory_xact_lock` por chave de identidade — o padrão do
  * `smb-contacts-sync`. Webhooks concorrentes do mesmo contato serializam aqui em vez de criar
  * dois clientes; não há (nem pode haver, pela base atual) constraint única em `telefoneBase`.
  */
-export type TResolvedWhatsappClient = { clientId: string; telefone: string | null; isNew: boolean };
+export type TResolvedWhatsappClient = { clientId: string; phoneNumber: string | null; isNew: boolean };
 
 export async function resolveWhatsappClient(input: {
-	organizacaoId: string;
-	telefone?: string | null;
+	organizationId: string;
+	phoneNumber?: string | null;
 	whatsappUserId?: string | null;
 	profileName?: string | null;
 }): Promise<TResolvedWhatsappClient | null> {
-	const telefone = input.telefone?.trim() || null;
+	const phoneNumber = input.phoneNumber?.trim() || null;
 	const whatsappUserId = input.whatsappUserId?.trim() || null;
 	// Sem telefone e sem BSUID não há identidade resolvível.
-	if (!telefone && !whatsappUserId) return null;
+	if (!phoneNumber && !whatsappUserId) return null;
 
-	const telefoneBase = telefone ? formatPhoneAsBase(telefone) : null;
+	const phoneBase = phoneNumber ? formatPhoneAsBase(phoneNumber) : null;
 
 	return db.transaction(async (tx) => {
-		const lockKey = `whatsapp-client:${input.organizacaoId}:${whatsappUserId ?? telefoneBase}`;
+		const lockKey = `whatsapp-client:${input.organizationId}:${whatsappUserId ?? phoneBase}`;
 		await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`);
 
 		if (whatsappUserId) {
 			const byUserId = await tx.query.clients.findFirst({
-				where: and(eq(clients.organizacaoId, input.organizacaoId), eq(clients.whatsappUserId, whatsappUserId)),
+				where: and(eq(clients.organizacaoId, input.organizationId), eq(clients.whatsappUserId, whatsappUserId)),
 				columns: { id: true, telefone: true, telefoneBase: true },
 			});
 			if (byUserId) {
-				if (telefone && telefoneBase && byUserId.telefoneBase !== telefoneBase) {
-					await tx.update(clients).set({ telefone, telefoneBase }).where(eq(clients.id, byUserId.id));
-					return { clientId: byUserId.id, telefone, isNew: false };
+				if (phoneNumber && phoneBase && byUserId.telefoneBase !== phoneBase) {
+					await tx.update(clients).set({ telefone: phoneNumber, telefoneBase: phoneBase }).where(eq(clients.id, byUserId.id));
+					return { clientId: byUserId.id, phoneNumber, isNew: false };
 				}
-				return { clientId: byUserId.id, telefone: byUserId.telefone || telefone, isNew: false };
+				return { clientId: byUserId.id, phoneNumber: byUserId.telefone || phoneNumber, isNew: false };
 			}
 		}
 
-		if (telefoneBase) {
+		if (phoneBase) {
 			const byPhone = await tx.query.clients.findFirst({
-				where: and(eq(clients.organizacaoId, input.organizacaoId), eq(clients.telefoneBase, telefoneBase)),
+				where: and(eq(clients.organizacaoId, input.organizationId), eq(clients.telefoneBase, phoneBase)),
 				columns: { id: true, telefone: true, whatsappUserId: true },
 			});
 			if (byPhone) {
 				if (whatsappUserId && byPhone.whatsappUserId !== whatsappUserId) {
 					await tx.update(clients).set({ whatsappUserId }).where(eq(clients.id, byPhone.id));
 				}
-				return { clientId: byPhone.id, telefone: byPhone.telefone || telefone, isNew: false };
+				return { clientId: byPhone.id, phoneNumber: byPhone.telefone || phoneNumber, isNew: false };
 			}
 		}
 
 		const [created] = await tx
 			.insert(clients)
 			.values({
-				organizacaoId: input.organizacaoId,
-				nome: input.profileName?.trim() || telefone || "Contato de WhatsApp",
-				telefone: telefone ?? "",
-				telefoneBase: telefoneBase ?? "",
+				organizacaoId: input.organizationId,
+				nome: input.profileName?.trim() || phoneNumber || "Contato de WhatsApp",
+				telefone: phoneNumber ?? "",
+				telefoneBase: phoneBase ?? "",
 				whatsappUserId,
 				canalAquisicao: "WHATSAPP",
 			})
 			.returning({ id: clients.id });
 
-		return { clientId: created.id, telefone, isNew: true };
+		return { clientId: created.id, phoneNumber, isNew: true };
 	});
 }

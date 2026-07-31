@@ -330,8 +330,8 @@ async function applyCandidate(candidate: TBackfillCandidate): Promise<"created" 
 
 	const organizacaoId = connectionPhone.conexao.organizacaoId;
 	const resolvedClient = await resolveWhatsappClient({
-		organizacaoId,
-		telefone: candidate.kind === "incoming" ? candidate.message.fromPhoneNumber : candidate.message.toPhoneNumber,
+		organizationId: organizacaoId,
+		phoneNumber: candidate.kind === "incoming" ? candidate.message.fromPhoneNumber : candidate.message.toPhoneNumber,
 		whatsappUserId: candidate.kind === "incoming" ? candidate.message.whatsappUserId : candidate.message.toUserId,
 		profileName: candidate.kind === "incoming" ? candidate.message.profileName : null,
 	});

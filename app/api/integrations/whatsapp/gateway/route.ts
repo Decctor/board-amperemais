@@ -257,8 +257,8 @@ async function handleIncomingMessage(body: Extract<WebhookBody, { event: "messag
 	// ESTÁGIO 1 — IDENTIDADE, sem gate: a base de contatos cresce com o tráfego mesmo para
 	// organizações sem hub. O Gateway Interno não tem BSUID — identidade só por telefone.
 	const resolvedClient = await resolveWhatsappClient({
-		organizacaoId,
-		telefone: data.author.phoneNumber,
+		organizationId: organizacaoId,
+		phoneNumber: data.author.phoneNumber,
 		profileName: data.author.name,
 	});
 	if (!resolvedClient) {

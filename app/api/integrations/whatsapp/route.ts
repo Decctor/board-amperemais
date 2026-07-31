@@ -446,8 +446,8 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 	// ESTÁGIO 1 — IDENTIDADE, sem gate: a base de contatos e o BSUID crescem com o tráfego
 	// de WhatsApp mesmo para organizações sem hub de atendimentos.
 	const resolvedClient = await resolveWhatsappClient({
-		organizacaoId,
-		telefone: incomingMessage.fromPhoneNumber,
+		organizationId: organizacaoId,
+		phoneNumber: incomingMessage.fromPhoneNumber,
 		whatsappUserId: incomingMessage.whatsappUserId,
 		profileName: incomingMessage.profileName,
 	});
@@ -602,8 +602,8 @@ async function handleMessageEcho(body: WebhookBody): Promise<void> {
 
 	// ESTÁGIO 1 — IDENTIDADE, sem gate: o destinatário de um echo também é contato da base.
 	const resolvedClient = await resolveWhatsappClient({
-		organizacaoId,
-		telefone: messageEcho.toPhoneNumber,
+		organizationId: organizacaoId,
+		phoneNumber: messageEcho.toPhoneNumber,
 		whatsappUserId: messageEcho.toUserId,
 	});
 	if (!resolvedClient) {
