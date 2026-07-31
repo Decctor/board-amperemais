@@ -18,6 +18,7 @@
 6. [Fase 4 — Extração do turno de IA (`ai-turn-runner` + `dispatch`)](#fase-4--extração-do-turno-de-ia-ai-turn-runner--dispatch)
 7. [Fase 5 — Vercel Queues como transporte do turno](#fase-5--vercel-queues-como-transporte-do-turno)
 8. [Fase 6 — Encerramento automático de atendimentos inativos](#fase-6--encerramento-automático-de-atendimentos-inativos)
+8b. [Fase 7 — Pipeline de identidade WhatsApp](#fase-7--pipeline-de-identidade-whatsapp)
 9. [Caminho futuro — Workflows e resumo por IA no encerramento](#9-caminho-futuro--workflows-e-resumo-por-ia-no-encerramento)
 10. [Riscos e mitigações](#10-riscos-e-mitigações)
 11. [Plano de validação](#11-plano-de-validação)
@@ -538,6 +539,60 @@ Horário: com limiar de 36h, um cron diário faria o encerramento efetivo variar
 - **Estatísticas** (`chats-stats`, quadro 0055): tickets encerrados por inatividade entram nas contagens de encerramento com `resultado: "INATIVIDADE"` — filtrável, e deixa de inflar o "em atendimento" eterno.
 - **IA**: um chat cujo ticket foi encerrado volta ao estado "sem atendimento ativo"; se o cliente escrever de novo, `claimChatAttendanceForAgent` disputa um ticket novo `NAO_ATRIBUIDO` — comportamento idêntico ao de um chat novo, que é o desejado.
 - **`AGUARDANDO_CLIENTE`/`AGUARDANDO_INTERNO`**: também são encerrados quando estagnados — 36 horas sem nenhuma mensagem nas duas direções esgota a espera; se a pausa combinada for maior que isso, a mensagem que a retomar abre episódio novo com o histórico intacto no chat.
+
+---
+
+## Fase 7 — Pipeline de identidade WhatsApp
+
+O gate `hubAtendimentos` estava cedo demais nos webhooks de mensagem: organizações sem hub
+perdiam a criação de clientes e o business-scoped user ID (BSUID) da Meta. O webhook vira um
+pipeline de três estágios com gates independentes — um estágio nunca é bloqueado pelo gate de
+um estágio posterior:
+
+```
+parse (identidade completa: user_id, wa_id, from, from_user_id, profileName)
+├─ Estágio 1 — IDENTIDADE (sempre, sem gate): resolveWhatsappClient
+├─ Estágio 2 — CONVERSA (gate hubAtendimentos): chat, mensagem, mídia, janela, atendimento
+└─ Estágio 3 — AUTONOMIA (gates de IA): dispatchAiTurn   ← já extraído na Fase 4
+```
+
+Fatos da Meta que dirigem a modelagem: `contacts[].user_id`/`messages[].from_user_id` vêm em
+todo webhook desde abril/2026; o escopo é por portfólio (um BSUID por usuário por portfólio),
+regenera na troca de número; e `from`/`wa_id` **podem ser omitidos** (regra de 30 dias,
+usernames) — o BSUID é a única chave garantida. Decisão: **coluna em `clients`, não tabela de
+identidades** — organizações têm na prática um portfólio; multi-portfólio real migra a coluna
+para uma tabela depois, sem perda.
+
+### 7.1 Migration `drizzle/0058_client_whatsapp_user_id.sql`
+
+```sql
+ALTER TABLE "ampmais_clients" ADD COLUMN "whatsapp_user_id" varchar(255);
+CREATE UNIQUE INDEX "idx_clients_org_whatsapp_user_id"
+	ON "ampmais_clients" ("organizacao_id", "whatsapp_user_id")
+	WHERE "whatsapp_user_id" IS NOT NULL;
+```
+
+### 7.2 Parser tolerante à omissão (`lib/whatsapp/parsing.ts`)
+
+`parseWebhookIncomingMessage` extrai `whatsappUserId` (`contacts[].user_id ??
+messages[].from_user_id`) e devolve `fromPhoneNumber: string | null`; o echo idem para
+`toPhoneNumber`/`toUserId`. Sem telefone **e** sem BSUID não há identidade — o handler recua.
+
+### 7.3 `resolveWhatsappClient` (`lib/whatsapp/contact-identity.ts`)
+
+Resolver canônico que consolida os quatro find-or-create duplicados (incoming Meta, echo,
+gateway, backfill). Ordem: (1) por `(organizacaoId, whatsappUserId)` — acerto com telefone
+divergente = troca de número, atualiza o cadastro; (2) fallback por `(organizacaoId,
+telefoneBase)` — o acerto grava o BSUID (backfill orgânico); (3) cria com `canalAquisicao:
+"WHATSAPP"`. Concorrência por `pg_advisory_xact_lock` por chave de identidade, o padrão já
+provado no `smb-contacts-sync` — sem constraint nova em `telefoneBase` (a base atual pode ter
+duplicatas; problema à parte).
+
+### 7.4 Webhooks reordenados
+
+Identidade roda incondicionalmente para incoming **e** echo (o destinatário de um echo também
+é contato da base) nos dois webhooks; `hasHubAccess` passa a guardar apenas o estágio 2. O
+gateway interno não tem BSUID, mas usa o mesmo resolver e a mesma reordenação.
 
 ---
 
