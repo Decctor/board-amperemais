@@ -62,8 +62,8 @@ export type TUpsertIfoodItemInput = z.infer<typeof UpsertIfoodItemInputSchema>;
 async function upsertIfoodItemService({ input, session }: { input: TUpsertIfoodItemInput; session: TAuthUserSession }) {
 	const organizacaoId = session.membership?.organizacao.id as string;
 	const context = await resolveIfoodManagementContext({ organizacaoId, merchantId: input.merchantId });
-	await upsertIfoodItem(context.client, input.merchantId, input.item);
-	return { data: { ok: true }, message: "Item salvo com sucesso no iFood." };
+	const result = await upsertIfoodItem(context.client, input.merchantId, input.item);
+	return { data: result, message: "Item salvo com sucesso no iFood." };
 }
 export type TUpsertIfoodItemOutput = Awaited<ReturnType<typeof upsertIfoodItemService>>;
 

@@ -34,12 +34,26 @@ export type TIfoodItemUpsertPayload = {
 	} | null;
 };
 
-export async function upsertIfoodItem(client: AxiosInstance, merchantId: string, payload: TIfoodItemUpsertPayload): Promise<void> {
+/**
+ * PUT /items — cria/atualiza item + produto base numa chamada só ("FullItemDto").
+ *
+ * O iFood exige que `item.id` e `item.productId` venham SEMPRE preenchidos (UUIDs gerados pelo
+ * cliente na criação — se já existirem na base, vira update). Omiti-los responde
+ * 400 "FullItemDto is not valid". A imagem do produto vai no campo `imagePath` (retorno do
+ * upload de imagem), não `image`.
+ */
+export async function upsertIfoodItem(
+	client: AxiosInstance,
+	merchantId: string,
+	payload: TIfoodItemUpsertPayload,
+): Promise<{ itemId: string; productId: string }> {
 	try {
-		const productId = payload.produtoId ?? undefined;
+		const itemId = payload.itemId ?? crypto.randomUUID();
+		const productId = payload.produtoId ?? crypto.randomUUID();
 		await client.put(catalogUrl(merchantId, "/items"), {
 			item: {
-				id: payload.itemId ?? undefined,
+				id: itemId,
+				type: "DEFAULT",
 				productId,
 				categoryId: payload.categoriaId,
 				status: payload.status,
@@ -56,11 +70,14 @@ export async function upsertIfoodItem(client: AxiosInstance, merchantId: string,
 							id: productId,
 							name: payload.produto.nome,
 							description: payload.produto.descricao ?? undefined,
-							image: payload.produto.imagemPath ?? undefined,
+							imagePath: payload.produto.imagemPath ?? undefined,
 						},
 					]
 				: [],
+			optionGroups: [],
+			options: [],
 		});
+		return { itemId, productId };
 	} catch (error) {
 		mapIfoodError("upsertIfoodItem", error);
 	}
