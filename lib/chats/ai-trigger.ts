@@ -1,4 +1,5 @@
 import { claimChatAttendanceForAgent, getCurrentChatAttendance } from "@/lib/chats/attendance-state";
+import type { TAiAgentRunGatilhoEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { chatMessages } from "@/services/drizzle/schema";
 import { and, desc, eq, gt, inArray } from "drizzle-orm";
@@ -22,10 +23,6 @@ import { and, desc, eq, gt, inArray } from "drizzle-orm";
  */
 
 const AI_RESPONSE_DELAY_MS = 5000;
-
-function sleep(ms: number) {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 export type TAiTriggerDecision = { shouldRespond: true } | { shouldRespond: false; reason: string };
 
@@ -104,24 +101,60 @@ export async function confirmAiResponseStillValid({
 }
 
 /**
- * Aguarda o debounce e reconfirma que a resposta ainda faz sentido. Caminho do webhook: agrupa
- * a rajada de mensagens do cliente e só então confere os fatos.
+ * Última checagem antes de entregar a mensagem produzida por uma run.
+ *
+ * A run de LLM leva dezenas de segundos e não pode ser cancelada em andamento; este é o único
+ * ponto de corte depois que ela termina. Reusa as consultas do confirm pré-run — a janela
+ * perigosa cai da duração da run para os milissegundos entre esta checagem e o envio.
+ *
+ * A semântica varia por gatilho: CHAT_MENSAGEM ancora na mensagem que disparou o ciclo;
+ * ATRIBUICAO_HUB não tem mensagem gatilho e ancora no início da run; PLAYGROUND é síncrono
+ * e sem concorrência — sempre entrega.
  */
-export async function waitAndConfirmAiResponse({
+export async function confirmAiDeliveryStillValid({
 	organizacaoId,
 	chatId,
-	messageId,
-	messageDate,
-	delayMs = AI_RESPONSE_DELAY_MS,
+	gatilho,
+	mensagemGatilhoId,
+	runStartedAt,
 }: {
 	organizacaoId: string;
 	chatId: string;
-	messageId: string;
-	messageDate: Date;
-	delayMs?: number;
+	gatilho: TAiAgentRunGatilhoEnum;
+	mensagemGatilhoId: string | null;
+	runStartedAt: Date;
 }): Promise<TAiTriggerDecision> {
-	await sleep(delayMs);
-	return confirmAiResponseStillValid({ organizacaoId, chatId, messageId, messageDate });
+	if (gatilho === "PLAYGROUND") return { shouldRespond: true };
+
+	if (gatilho === "CHAT_MENSAGEM" && mensagemGatilhoId) {
+		const gatilhoMsg = await db.query.chatMessages.findFirst({
+			where: and(eq(chatMessages.id, mensagemGatilhoId), eq(chatMessages.organizacaoId, organizacaoId)),
+			columns: { id: true, dataEnvio: true },
+		});
+		if (!gatilhoMsg) return { shouldRespond: false, reason: "Mensagem gatilho não encontrada." };
+		return confirmAiResponseStillValid({ organizacaoId, chatId, messageId: gatilhoMsg.id, messageDate: gatilhoMsg.dataEnvio });
+	}
+
+	const entradaPosterior = await db.query.chatMessages.findFirst({
+		where: and(eq(chatMessages.chatId, chatId), eq(chatMessages.autorTipo, "CLIENTE"), gt(chatMessages.dataEnvio, runStartedAt)),
+		columns: { id: true },
+	});
+	if (entradaPosterior) return { shouldRespond: false, reason: "Chegou mensagem do cliente durante a run." };
+
+	const respostaPosterior = await db.query.chatMessages.findFirst({
+		where: and(
+			eq(chatMessages.chatId, chatId),
+			inArray(chatMessages.autorTipo, ["USUÁRIO", "AI", "BUSINESS-APP"]),
+			gt(chatMessages.dataEnvio, runStartedAt),
+		),
+		columns: { id: true },
+	});
+	if (respostaPosterior) return { shouldRespond: false, reason: "A conversa já foi respondida durante a run." };
+
+	const atual = await getCurrentChatAttendance(db, { organizacaoId, chatId });
+	if (atual?.responsavelTipo !== "AGENTE") return { shouldRespond: false, reason: "O atendimento deixou de ser da IA." };
+
+	return { shouldRespond: true };
 }
 
 export { AI_RESPONSE_DELAY_MS };

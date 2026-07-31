@@ -1,7 +1,7 @@
 import type { TChatAssignmentPriority, TChatAssignmentStatus } from "@/schemas/enums";
 import type { DB, DBTransaction } from "@/services/drizzle";
 import { chatAssignments, chats } from "@/services/drizzle/schema";
-import { and, eq, isNull, notInArray, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, notInArray, or, sql } from "drizzle-orm";
 
 /**
  * Camada canônica do estado de atendimento de um chat.
@@ -442,6 +442,43 @@ export async function changeChatAttendanceStatus(
 		.returning();
 
 	return updated ?? null;
+}
+
+/**
+ * Encerra em lote os atendimentos ativos sem atividade no chat há mais tempo que o corte.
+ *
+ * O caso motivador é o EXTERNO: atendimento feito pelo telefone nunca passa pelo hub e o
+ * ticket ficaria ativo para sempre. Fecha qualquer responsável — a próxima mensagem do
+ * cliente abre um episódio novo via ensureCurrentAttendance, que é a fronteira correta.
+ *
+ * Set-based de propósito: uma varredura por chamada, sem loop por linha. Devolve as linhas
+ * encerradas — ponto de acoplamento do incremento futuro de resumo por IA no encerramento.
+ *
+ * `encerradoPorUsuarioId` fica intocado e `dataResolucao` não é gravada: encerramento por
+ * inatividade não é resolução, e o par (resultado INATIVIDADE, encerradoPor nulo) é o que
+ * distingue o fechamento automático do manual nas estatísticas.
+ */
+export async function closeStaleChatAttendances(db: TAttendanceDb, input: { inactiveSince: Date; now?: Date }) {
+	const now = input.now ?? new Date();
+
+	const staleChats = db.select({ id: chats.id }).from(chats).where(lt(chats.ultimaMensagemData, input.inactiveSince));
+
+	return db
+		.update(chatAssignments)
+		.set({
+			status: "ENCERRADO",
+			// Não sobrescreve um resultado que a IA ou o hub já tenham gravado.
+			resultado: sql`COALESCE(${chatAssignments.resultado}, 'INATIVIDADE')`,
+			dataEncerramento: now,
+			dataLiberacao: now,
+		})
+		.where(and(notInArray(chatAssignments.status, CLOSED_ATTENDANCE_STATUSES), inArray(chatAssignments.chatId, staleChats)))
+		.returning({
+			id: chatAssignments.id,
+			chatId: chatAssignments.chatId,
+			organizacaoId: chatAssignments.organizacaoId,
+			responsavelTipo: chatAssignments.responsavelTipo,
+		});
 }
 
 /**

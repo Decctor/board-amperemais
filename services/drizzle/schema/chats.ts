@@ -319,7 +319,11 @@ export const chatMessages = newTable(
 	},
 	(table) => [
 		index("idx_chat_messages_chat_timeline").on(table.chatId, table.dataEnvio.desc(), table.id.desc()),
-		index("idx_chat_messages_whatsapp_message_id").on(table.whatsappMessageId),
+		// Idempotência de webhook (0057): reentregas da Meta conflitam em vez de duplicar a
+		// mensagem. wamid na frente para servir também os lookups por wamid puro dos status.
+		uniqueIndex("idx_chat_messages_whatsapp_message_id_org")
+			.on(table.whatsappMessageId, table.organizacaoId)
+			.where(sql`${table.whatsappMessageId} is not null`),
 		index("idx_chat_messages_cliente_mensagem_id").on(table.clienteMensagemId),
 		index("idx_chat_messages_organizacao_data_envio").on(table.organizacaoId, table.dataEnvio.desc()),
 	],

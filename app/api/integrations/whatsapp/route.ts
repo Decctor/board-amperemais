@@ -1,11 +1,9 @@
 import { appApiHandler } from "@/lib/app-api";
-import { createMetaCloudDeliverer } from "@/lib/ai/agent/delivery";
 import { ensureOrganizationAgent } from "@/lib/ai/agent/provisioning";
-import { respondToChatWithAgent } from "@/lib/ai/agent/respond-to-chat";
 import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProcessing, handleAIVideoProcessing } from "@/lib/ai/ai-media-processing";
 import { lockConnectedWhatsappPhone, mergeMessageTemplatePhoneMetadataSql } from "@/lib/db-utils";
 import { downloadAndStoreWhatsappMedia } from "@/lib/files-storage/chat-media";
-import { formatPhoneAsBase } from "@/lib/formatting";
+import { resolveWhatsappClient } from "@/lib/whatsapp/contact-identity";
 import { updateInteractionDeliveryState } from "@/lib/interactions/delivery-state";
 import {
 	buildWhatsappTemplateSyncPatch,
@@ -42,7 +40,8 @@ import {
 } from "@/lib/whatsapp/smb-message-history-sync";
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
 import type { TMessageTemplateMetadata } from "@/schemas/message-templates";
-import { claimChatForAi, waitAndConfirmAiResponse } from "@/lib/chats/ai-trigger";
+import { AI_RESPONSE_DELAY_MS } from "@/lib/chats/ai-trigger";
+import { dispatchAiTurn } from "@/lib/chats/ai-turn-dispatch";
 import {
 	applyProviderDeliveryStatus,
 	mapProviderStatusToDeliveryStatus,
@@ -52,11 +51,11 @@ import {
 } from "@/lib/chats/incoming-message";
 import { db } from "@/services/drizzle";
 import { chatMessages } from "@/services/drizzle/schema/chats";
-import { clients } from "@/services/drizzle/schema/clients";
 import { interactions } from "@/services/drizzle/schema/interactions";
 import { messageTemplates } from "@/services/drizzle/schema/message-templates";
 import { whatsappConnectionPhones } from "@/services/drizzle/schema/whatsapp-connections";
 import { supabaseClient } from "@/services/supabase";
+import { waitUntil } from "@vercel/functions";
 import { and, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -112,7 +111,10 @@ async function postWhatsappWebhookRoute(req: NextRequest) {
 	console.log("[INFO] [WHATSAPP_WEBHOOK] [POST] Incoming webhook message:", JSON.stringify(body, null, 2));
 
 	if (body.object === "whatsapp_business_account") {
-		await processWebhookAsync(body);
+		// A Meta reentrega quando o 200 demora — e o processamento inclui debounce e run de
+		// LLM. Todo o trabalho sai da request, como o webhook do Gateway Interno já faz; as
+		// reentregas residuais são inócuas graças ao índice de wamid (0057).
+		waitUntil(processWebhookAsync(body));
 		return NextResponse.json({ success: true }, { status: 200 });
 	}
 
@@ -435,45 +437,32 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 		return;
 	}
 
-	// Check if hubAtendimentos access is enabled
-	const hasHubAccess = connectionPhone.conexao.organizacao?.configuracao?.recursos?.hubAtendimentos?.acesso ?? false;
-	if (!hasHubAccess) {
-		console.log("[WHATSAPP_WEBHOOK] hubAtendimentos disabled, skipping message insertion for:", incomingMessage.whatsappPhoneNumberId);
-		return;
-	}
-
 	const organizacaoId = connectionPhone.conexao.organizacaoId;
 	const whatsappToken = connectionPhone.conexao.token!; // Meta Cloud API connections always have token
 	const whatsappConexaoId = connectionPhone.conexaoId;
 	const whatsappConexaoTelefoneId = connectionPhone.id;
 	const allowsAIService = connectionPhone.permitirAtendimentoIa;
-	// Find or create client
-	let clientId: string | null = null;
-	const phoneBase = formatPhoneAsBase(incomingMessage.fromPhoneNumber);
 
-	const existingClient = await db.query.clients.findFirst({
-		where: (fields, { and, eq }) => and(eq(fields.telefoneBase, phoneBase), eq(fields.organizacaoId, organizacaoId)),
+	// ESTÁGIO 1 — IDENTIDADE, sem gate: a base de contatos e o BSUID crescem com o tráfego
+	// de WhatsApp mesmo para organizações sem hub de atendimentos.
+	const resolvedClient = await resolveWhatsappClient({
+		organizationId: organizacaoId,
+		phoneNumber: incomingMessage.fromPhoneNumber,
+		whatsappUserId: incomingMessage.whatsappUserId,
+		profileName: incomingMessage.profileName,
 	});
-
-	if (existingClient) {
-		clientId = existingClient.id;
-	} else {
-		const [newClient] = await db
-			.insert(clients)
-			.values({
-				organizacaoId,
-				nome: incomingMessage.profileName,
-				telefone: incomingMessage.fromPhoneNumber,
-				telefoneBase: phoneBase,
-				canalAquisicao: "WHATSAPP",
-			})
-			.returning({ id: clients.id });
-		clientId = newClient.id;
-		console.log("[WHATSAPP_WEBHOOK] New client created:", clientId);
+	if (!resolvedClient) {
+		console.warn("[WHATSAPP_WEBHOOK] Mensagem sem identidade resolvível (sem telefone e sem BSUID):", incomingMessage.whatsappMessageId);
+		return;
 	}
+	if (resolvedClient.isNew) console.log("[WHATSAPP_WEBHOOK] New client created:", resolvedClient.clientId);
+	const clientId = resolvedClient.clientId;
 
-	if (!clientId) {
-		console.warn("[WHATSAPP_WEBHOOK] Cannot process message without client ID");
+	// ESTÁGIO 2 — CONVERSA: daqui em diante é acompanhamento de mensagens, o que o hub gate
+	// de fato governa.
+	const hasHubAccess = connectionPhone.conexao.organizacao?.configuracao?.recursos?.hubAtendimentos?.acesso ?? false;
+	if (!hasHubAccess) {
+		console.log("[WHATSAPP_WEBHOOK] hubAtendimentos disabled, skipping message insertion for:", incomingMessage.whatsappPhoneNumberId);
 		return;
 	}
 
@@ -533,6 +522,13 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 		now: new Date(incomingMessage.timestamp),
 	});
 
+	// Reentrega da Meta: a mensagem já existe e todo o downstream (contador, pendência,
+	// transcrição, gatilho de IA) já rodou na primeira entrega.
+	if (!insertedMessage) {
+		console.log("[WHATSAPP_WEBHOOK] Mensagem duplicada ignorada:", incomingMessage.whatsappMessageId);
+		return;
+	}
+
 	console.log("[WHATSAPP_WEBHOOK] Message created from:", incomingMessage.fromPhoneNumber);
 
 	// A transcrição/OCR de mídia é independente do atendimento: roda mesmo que a IA não
@@ -558,40 +554,16 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 		return;
 	}
 
-	// A IA reivindica o atendimento em vez de nascer dona dele. Se um humano assumiu a
-	// conversa, o claim não casa e ela recua sem gerar resposta.
-	const claim = await claimChatForAi({ organizacaoId, chatId, agenteId: agent.id });
-	if (!claim.shouldRespond) {
-		console.log("[WHATSAPP_WEBHOOK] IA não assumiu o atendimento:", claim.reason);
-		return;
-	}
-
-	const confirmation = await waitAndConfirmAiResponse({
-		organizacaoId,
-		chatId,
-		messageId: insertedMessage.messageId,
-		messageDate: insertedMessage.dataEnvio,
-		delayMs: agent.capacidades?.atendimento?.atrasoRespostaMs,
-	});
-	if (!confirmation.shouldRespond) {
-		console.log("[WHATSAPP_WEBHOOK] Resposta da IA abortada:", confirmation.reason);
-		return;
-	}
-
-	try {
-		const result = await respondToChatWithAgent({
+	// Debounce, claim, confirmação e run vivem no runner — o webhook só despacha.
+	await dispatchAiTurn(
+		{
 			organizacaoId,
 			chatId,
-			gatilho: "CHAT_MENSAGEM",
 			mensagemGatilhoId: insertedMessage.messageId,
-			deliver: createMetaCloudDeliverer({ organizacaoId, chatId }),
-		});
-		console.log("[WHATSAPP_WEBHOOK] Execução do agente concluída:", result.runId);
-	} catch (error) {
-		// A execução falha fica registrada em `ai_agent_runs` com o erro; nada é enviado ao
-		// cliente — mensagem genérica de desculpas só esconderia o problema.
-		console.error("[WHATSAPP_WEBHOOK] Falha na execução do agente de IA:", error);
-	}
+			mensagemGatilhoDataEnvio: insertedMessage.dataEnvio.toISOString(),
+		},
+		{ delayMs: agent.capacidades?.atendimento?.atrasoRespostaMs ?? AI_RESPONSE_DELAY_MS },
+	);
 }
 
 /**
@@ -623,43 +595,29 @@ async function handleMessageEcho(body: WebhookBody): Promise<void> {
 		return;
 	}
 
-	// Check if hubAtendimentos access is enabled
-	const hasHubAccess = connectionPhone.conexao.organizacao?.configuracao?.recursos?.hubAtendimentos?.acesso ?? false;
-	if (!hasHubAccess) {
-		console.log("[WHATSAPP_WEBHOOK] [ECHO] hubAtendimentos disabled, skipping message echo insertion");
-		return;
-	}
-
 	const organizacaoId = connectionPhone.conexao.organizacaoId;
 	const whatsappToken = connectionPhone.conexao.token!; // Meta Cloud API connections always have token
 	const whatsappConexaoId = connectionPhone.conexaoId;
 	const whatsappConexaoTelefoneId = connectionPhone.id;
 
-	// Find or create client (recipient)
-	const phoneBase = formatPhoneAsBase(messageEcho.toPhoneNumber);
-	let clientId: string | null = null;
-
-	const existingClient = await db.query.clients.findFirst({
-		where: (fields, { and, eq }) => and(eq(fields.telefoneBase, phoneBase), eq(fields.organizacaoId, organizacaoId)),
+	// ESTÁGIO 1 — IDENTIDADE, sem gate: o destinatário de um echo também é contato da base.
+	const resolvedClient = await resolveWhatsappClient({
+		organizationId: organizacaoId,
+		phoneNumber: messageEcho.toPhoneNumber,
+		whatsappUserId: messageEcho.toUserId,
 	});
-
-	if (existingClient) {
-		clientId = existingClient.id;
-	} else {
-		const [newClient] = await db
-			.insert(clients)
-			.values({
-				organizacaoId,
-				nome: messageEcho.toPhoneNumber,
-				telefone: messageEcho.toPhoneNumber,
-				telefoneBase: phoneBase,
-				canalAquisicao: "WHATSAPP",
-			})
-			.returning({ id: clients.id });
-		clientId = newClient.id;
+	if (!resolvedClient) {
+		console.warn("[WHATSAPP_WEBHOOK] [ECHO] Echo sem identidade resolvível (sem telefone e sem BSUID):", messageEcho.whatsappMessageId);
+		return;
 	}
+	const clientId = resolvedClient.clientId;
 
-	if (!clientId) return;
+	// ESTÁGIO 2 — CONVERSA (gate do hub).
+	const hasHubAccess = connectionPhone.conexao.organizacao?.configuracao?.recursos?.hubAtendimentos?.acesso ?? false;
+	if (!hasHubAccess) {
+		console.log("[WHATSAPP_WEBHOOK] [ECHO] hubAtendimentos disabled, skipping message echo insertion");
+		return;
+	}
 
 	const { chatId } = await resolveIncomingChat({
 		organizacaoId,
@@ -701,7 +659,7 @@ async function handleMessageEcho(body: WebhookBody): Promise<void> {
 
 	// O echo marca o atendimento como EXTERNO ("atendido pelo telefone") — mas apenas se
 	// nenhum humano do hub já for o dono, o que markChatAttendedExternally garante.
-	await persistOutboundNonHubMessage({
+	const insertedEcho = await persistOutboundNonHubMessage({
 		organizacaoId,
 		chatId,
 		clienteId: clientId,
@@ -712,6 +670,10 @@ async function handleMessageEcho(body: WebhookBody): Promise<void> {
 		midia: mediaData ? { ...mediaData, whatsappMediaId: messageEcho.mediaId } : null,
 		now: new Date(messageEcho.timestamp),
 	});
+	if (!insertedEcho) {
+		console.log("[WHATSAPP_WEBHOOK] [ECHO] Echo duplicado ignorado:", messageEcho.whatsappMessageId);
+		return;
+	}
 
 	console.log("[WHATSAPP_WEBHOOK] [ECHO] Message echo created to:", messageEcho.toPhoneNumber);
 }
