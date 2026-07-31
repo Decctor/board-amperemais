@@ -33,22 +33,22 @@ export type TAiTriggerDecision = { shouldRespond: true } | { shouldRespond: fals
  * episódio da própria IA que ainda não encerrou.
  */
 export async function claimChatForAi({
-	organizacaoId,
+	organizationId,
 	chatId,
-	agenteId,
+	agentId,
 }: {
-	organizacaoId: string;
+	organizationId: string;
 	chatId: string;
-	agenteId: string;
+	agentId: string;
 }): Promise<TAiTriggerDecision> {
-	const atual = await getCurrentChatAttendance(db, { organizacaoId, chatId });
+	const atual = await getCurrentChatAttendance(db, { organizacaoId: organizationId, chatId });
 
 	if (atual?.responsavelTipo === "USUARIO") return { shouldRespond: false, reason: "Atendimento com responsável humano." };
 	if (atual?.responsavelTipo === "EXTERNO") return { shouldRespond: false, reason: "Atendimento em andamento pelo telefone." };
 	// Já é da IA: o episódio segue, não precisa reivindicar de novo.
 	if (atual?.responsavelTipo === "AGENTE") return { shouldRespond: true };
 
-	const claimed = await claimChatAttendanceForAgent(db, { organizacaoId, chatId, agenteId });
+	const claimed = await claimChatAttendanceForAgent(db, { organizacaoId: organizationId, chatId, agenteId: agentId });
 	if (!claimed) return { shouldRespond: false, reason: "Atendimento assumido por outra parte durante o claim." };
 
 	return { shouldRespond: true };
@@ -66,12 +66,12 @@ export async function claimChatForAi({
  * para agrupar — precisa das mesmas verificações, sem a espera.
  */
 export async function confirmAiResponseStillValid({
-	organizacaoId,
+	organizationId,
 	chatId,
 	messageId,
 	messageDate,
 }: {
-	organizacaoId: string;
+	organizationId: string;
 	chatId: string;
 	messageId: string;
 	messageDate: Date;
@@ -94,7 +94,7 @@ export async function confirmAiResponseStillValid({
 	if (respostaPosterior) return { shouldRespond: false, reason: "A conversa já foi respondida." };
 
 	// Reconfirma a posse antes de gastar tokens: o humano pode ter assumido no intervalo.
-	const atual = await getCurrentChatAttendance(db, { organizacaoId, chatId });
+	const atual = await getCurrentChatAttendance(db, { organizacaoId: organizationId, chatId });
 	if (atual?.responsavelTipo !== "AGENTE") return { shouldRespond: false, reason: "O atendimento deixou de ser da IA." };
 
 	return { shouldRespond: true };
@@ -112,27 +112,27 @@ export async function confirmAiResponseStillValid({
  * e sem concorrência — sempre entrega.
  */
 export async function confirmAiDeliveryStillValid({
-	organizacaoId,
+	organizationId,
 	chatId,
-	gatilho,
-	mensagemGatilhoId,
+	trigger,
+	triggerMessageId,
 	runStartedAt,
 }: {
-	organizacaoId: string;
+	organizationId: string;
 	chatId: string;
-	gatilho: TAiAgentRunGatilhoEnum;
-	mensagemGatilhoId: string | null;
+	trigger: TAiAgentRunGatilhoEnum;
+	triggerMessageId: string | null;
 	runStartedAt: Date;
 }): Promise<TAiTriggerDecision> {
-	if (gatilho === "PLAYGROUND") return { shouldRespond: true };
+	if (trigger === "PLAYGROUND") return { shouldRespond: true };
 
-	if (gatilho === "CHAT_MENSAGEM" && mensagemGatilhoId) {
-		const gatilhoMsg = await db.query.chatMessages.findFirst({
-			where: and(eq(chatMessages.id, mensagemGatilhoId), eq(chatMessages.organizacaoId, organizacaoId)),
+	if (trigger === "CHAT_MENSAGEM" && triggerMessageId) {
+		const triggerMessage = await db.query.chatMessages.findFirst({
+			where: and(eq(chatMessages.id, triggerMessageId), eq(chatMessages.organizacaoId, organizationId)),
 			columns: { id: true, dataEnvio: true },
 		});
-		if (!gatilhoMsg) return { shouldRespond: false, reason: "Mensagem gatilho não encontrada." };
-		return confirmAiResponseStillValid({ organizacaoId, chatId, messageId: gatilhoMsg.id, messageDate: gatilhoMsg.dataEnvio });
+		if (!triggerMessage) return { shouldRespond: false, reason: "Mensagem gatilho não encontrada." };
+		return confirmAiResponseStillValid({ organizationId, chatId, messageId: triggerMessage.id, messageDate: triggerMessage.dataEnvio });
 	}
 
 	const entradaPosterior = await db.query.chatMessages.findFirst({
@@ -151,7 +151,7 @@ export async function confirmAiDeliveryStillValid({
 	});
 	if (respostaPosterior) return { shouldRespond: false, reason: "A conversa já foi respondida durante a run." };
 
-	const atual = await getCurrentChatAttendance(db, { organizacaoId, chatId });
+	const atual = await getCurrentChatAttendance(db, { organizacaoId: organizationId, chatId });
 	if (atual?.responsavelTipo !== "AGENTE") return { shouldRespond: false, reason: "O atendimento deixou de ser da IA." };
 
 	return { shouldRespond: true };

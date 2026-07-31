@@ -46,8 +46,10 @@ export async function respondToChatWithAgent({
 	deliver: TAgentMessageDeliverer;
 	database?: TDb;
 }): Promise<TRespondToChatResult> {
-	const prepared = await prepareAgentExecution({ organizacaoId, chatId, gatilho, mensagemGatilhoId, database });
+	// Antes do prepare: uma mensagem que chegue durante a montagem do contexto pode ficar de
+	// fora dele — a âncora precisa cobrir essa janela também.
 	const runStartedAt = new Date();
+	const prepared = await prepareAgentExecution({ organizacaoId, chatId, gatilho, mensagemGatilhoId, database });
 	const output = await executeAgentTurn(prepared);
 
 	let messageId: string | null = null;
@@ -56,14 +58,14 @@ export async function respondToChatWithAgent({
 		// outra mensagem durante o turno, a run dela responde — entregar esta produziria uma
 		// resposta gerada sem a última mensagem no contexto, e duas respostas no total.
 		const delivery = await confirmAiDeliveryStillValid({
-			organizacaoId,
+			organizationId: organizacaoId,
 			chatId,
-			gatilho,
-			mensagemGatilhoId: mensagemGatilhoId ?? null,
+			trigger: gatilho,
+			triggerMessageId: mensagemGatilhoId ?? null,
 			runStartedAt,
 		});
 		if (!delivery.shouldRespond) {
-			await markAgentRunCancelled(database, { runId: prepared.run.id, motivo: delivery.reason });
+			await markAgentRunCancelled(database, { runId: prepared.run.id, reason: delivery.reason });
 			console.log("[AI_AGENT] Entrega cancelada:", delivery.reason);
 			// O resumo também não grava: veio de um contexto que a conversa já superou.
 			return { runId: prepared.run.id, mensagem: null, messageId: null, resumoAtendimento: "" };

@@ -50,7 +50,7 @@ export async function triggerAgentTurnFromHub({
 		if (!ultimaDoCliente) return;
 
 		const confirmation = await confirmAiResponseStillValid({
-			organizacaoId,
+			organizationId: organizacaoId,
 			chatId,
 			messageId: ultimaDoCliente.id,
 			messageDate: ultimaDoCliente.dataEnvio,

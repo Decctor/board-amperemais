@@ -13,10 +13,10 @@ import { z } from "zod";
  * banco antes de qualquer envio, então um turno reentregue ou fora de ordem recua sozinho.
  */
 const AiTurnQueueMessageSchema = z.object({
-	organizacaoId: z.string({ invalid_type_error: "Tipo inválido para o id da organização." }),
+	organizationId: z.string({ invalid_type_error: "Tipo inválido para o id da organização." }),
 	chatId: z.string({ invalid_type_error: "Tipo inválido para o id do chat." }),
-	mensagemGatilhoId: z.string({ invalid_type_error: "Tipo inválido para o id da mensagem gatilho." }),
-	mensagemGatilhoDataEnvio: z.string({ invalid_type_error: "Tipo inválido para a data da mensagem gatilho." }),
+	triggerMessageId: z.string({ invalid_type_error: "Tipo inválido para o id da mensagem gatilho." }),
+	triggerMessageSentAt: z.string({ invalid_type_error: "Tipo inválido para a data da mensagem gatilho." }),
 });
 
 export const runtime = "nodejs";

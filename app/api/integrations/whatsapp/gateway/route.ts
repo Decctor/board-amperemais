@@ -368,10 +368,10 @@ async function handleIncomingMessage(body: Extract<WebhookBody, { event: "messag
 	// entrega é resolvido pelo runner via resolveChatDeliverer, a partir da conexão do chat.
 	await dispatchAiTurn(
 		{
-			organizacaoId,
+			organizationId: organizacaoId,
 			chatId,
-			mensagemGatilhoId: insertedMessage.messageId,
-			mensagemGatilhoDataEnvio: insertedMessage.dataEnvio.toISOString(),
+			triggerMessageId: insertedMessage.messageId,
+			triggerMessageSentAt: insertedMessage.dataEnvio.toISOString(),
 		},
 		{ delayMs: agent.capacidades?.atendimento?.atrasoRespostaMs ?? AI_RESPONSE_DELAY_MS },
 	);

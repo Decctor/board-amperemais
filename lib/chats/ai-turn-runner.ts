@@ -15,33 +15,33 @@ import { db } from "@/services/drizzle";
  * Pressupõe o debounce já cumprido (sleep no transporte inline, delaySeconds na fila).
  */
 export type TAiTurnPayload = {
-	organizacaoId: string;
+	organizationId: string;
 	chatId: string;
-	mensagemGatilhoId: string;
+	triggerMessageId: string;
 	// ISO string: o payload atravessa JSON (fila) sem perder tipo.
-	mensagemGatilhoDataEnvio: string;
+	triggerMessageSentAt: string;
 };
 
 export async function runAiTurnForMessage(payload: TAiTurnPayload): Promise<void> {
-	const agent = await ensureOrganizationAgent(db, payload.organizacaoId);
+	const agent = await ensureOrganizationAgent(db, payload.organizationId);
 	if (agent.status !== "ATIVO") {
-		console.log("[AI_TURN] Agente de IA pausado para a organização:", payload.organizacaoId);
+		console.log("[AI_TURN] Agente de IA pausado para a organização:", payload.organizationId);
 		return;
 	}
 
 	// Claim depois do debounce: mais perto da entrega, menor a janela para responder por
 	// cima de um humano que assumiu durante a espera.
-	const claim = await claimChatForAi({ organizacaoId: payload.organizacaoId, chatId: payload.chatId, agenteId: agent.id });
+	const claim = await claimChatForAi({ organizationId: payload.organizationId, chatId: payload.chatId, agentId: agent.id });
 	if (!claim.shouldRespond) {
 		console.log("[AI_TURN] IA não assumiu o atendimento:", claim.reason);
 		return;
 	}
 
 	const confirmation = await confirmAiResponseStillValid({
-		organizacaoId: payload.organizacaoId,
+		organizationId: payload.organizationId,
 		chatId: payload.chatId,
-		messageId: payload.mensagemGatilhoId,
-		messageDate: new Date(payload.mensagemGatilhoDataEnvio),
+		messageId: payload.triggerMessageId,
+		messageDate: new Date(payload.triggerMessageSentAt),
 	});
 	if (!confirmation.shouldRespond) {
 		console.log("[AI_TURN] Resposta da IA abortada:", confirmation.reason);
@@ -50,7 +50,7 @@ export async function runAiTurnForMessage(payload: TAiTurnPayload): Promise<void
 
 	// Sem canal de entrega não há turno: gastar tokens numa resposta que não sai é pior
 	// do que não responder.
-	const deliver = await resolveChatDeliverer({ organizacaoId: payload.organizacaoId, chatId: payload.chatId });
+	const deliver = await resolveChatDeliverer({ organizacaoId: payload.organizationId, chatId: payload.chatId });
 	if (!deliver) {
 		console.warn("[AI_TURN] Sem canal de entrega para o chat:", payload.chatId);
 		return;
@@ -58,10 +58,10 @@ export async function runAiTurnForMessage(payload: TAiTurnPayload): Promise<void
 
 	try {
 		const result = await respondToChatWithAgent({
-			organizacaoId: payload.organizacaoId,
+			organizacaoId: payload.organizationId,
 			chatId: payload.chatId,
 			gatilho: "CHAT_MENSAGEM",
-			mensagemGatilhoId: payload.mensagemGatilhoId,
+			mensagemGatilhoId: payload.triggerMessageId,
 			deliver,
 		});
 		console.log("[AI_TURN] Execução do agente concluída:", result.runId);

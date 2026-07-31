@@ -11,6 +11,6 @@ export async function sendAiTurnToQueue(payload: TAiTurnPayload, { delayMs }: { 
 		delaySeconds: Math.max(1, Math.round(delayMs / 1000)),
 		// Uma publicação por mensagem do cliente, mesmo que o webhook seja reentregue entre o
 		// persist e o publish. Segunda linha de defesa atrás do índice de wamid (0057).
-		idempotencyKey: `ai-turn-${payload.mensagemGatilhoId}`,
+		idempotencyKey: `ai-turn-${payload.triggerMessageId}`,
 	});
 }

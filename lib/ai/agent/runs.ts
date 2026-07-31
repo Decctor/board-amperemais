@@ -60,8 +60,8 @@ export async function failAgentRun(db: TDb, input: { runId: string; erro: string
  * Sobrescreve o CONCLUIDO do turno de propósito — o estado final relevante é "não
  * entregue", e `uso` preserva o custo já gasto.
  */
-export async function markAgentRunCancelled(db: TDb, input: { runId: string; motivo: string }) {
-	await db.update(aiAgentRuns).set({ status: "CANCELADO", erro: input.motivo, dataFim: new Date() }).where(eq(aiAgentRuns.id, input.runId));
+export async function markAgentRunCancelled(db: TDb, input: { runId: string; reason: string }) {
+	await db.update(aiAgentRuns).set({ status: "CANCELADO", erro: input.reason, dataFim: new Date() }).where(eq(aiAgentRuns.id, input.runId));
 }
 
 /** Vínculo canônico execução → mensagem entregue ao cliente. */

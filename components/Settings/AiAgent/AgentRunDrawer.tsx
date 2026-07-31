@@ -56,13 +56,13 @@ export default function AgentRunDrawer({ runId, closeModal }: AgentRunDrawerProp
 						<div className="flex flex-col">
 							<SectionLabel>STATUS</SectionLabel>
 							<span
-							className={cn(
-								"text-sm font-bold",
-								run.status === "CONCLUIDO" && "text-emerald-600",
-								run.status === "FALHA" && "text-destructive",
-								run.status === "CANCELADO" && "text-muted-foreground",
-							)}
-						>
+								className={cn(
+									"text-sm font-bold",
+									run.status === "CONCLUIDO" && "text-emerald-600",
+									run.status === "FALHA" && "text-destructive",
+									run.status === "CANCELADO" && "text-muted-foreground",
+								)}
+							>
 								{run.status}
 							</span>
 						</div>
