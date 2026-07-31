@@ -50,7 +50,7 @@ O dedupe do history-sync (`lib/whatsapp/smb-message-history-sync.ts:405`) já us
 4. **Claim se move para depois do debounce.** Hoje o claim acontece antes do sleep; movê-lo para o início do turno (no consumer/runner) o aproxima da entrega e reduz a janela em que um humano assume e a IA responde por cima. O CAS do claim já torna a mudança segura.
 5. **Cancelamento é estado observável.** Run supersedida vira `status: "CANCELADO"` em `ai_agent_runs` (valor novo no enum de aplicação; a coluna é `varchar + $type`, sem `ALTER TYPE`). Tokens já gastos ficam registrados em `uso`.
 6. **Escopo do índice único**: `(whatsapp_message_id, organizacao_id)`, parcial em `whatsapp_message_id IS NOT NULL`. `wamid` na frente para o índice servir também os lookups por `wamid` puro de `applyProviderDeliveryStatus`, substituindo o índice não-único atual.
-7. **Encerramento por inatividade fecha qualquer atendimento ativo, de qualquer responsável.** O caso motivador é o `EXTERNO` (telefone), mas tickets `AGENTE`, `NAO_ATRIBUIDO` e `USUARIO` parados sofrem do mesmo problema — e encerrá-los cria a fronteira de episódio correta: a próxima mensagem do cliente abre um ticket novo via `ensureCurrentAttendance`, em vez de reanimar um atendimento de semanas atrás. Um único limiar de inatividade (7 dias sobre `chats.ultimaMensagemData`), inclusive para tickets com pendência do cliente: depois de 7 dias a janela de 24h está morta há muito tempo e o ticket não representa mais um atendimento em curso. O encerramento automático é distinguível do manual por `resultado: "INATIVIDADE"` + `encerradoPorUsuarioId` nulo.
+7. **Encerramento por inatividade fecha qualquer atendimento ativo, de qualquer responsável.** O caso motivador é o `EXTERNO` (telefone), mas tickets `AGENTE`, `NAO_ATRIBUIDO` e `USUARIO` parados sofrem do mesmo problema — e encerrá-los cria a fronteira de episódio correta: a próxima mensagem do cliente abre um ticket novo via `ensureCurrentAttendance`, em vez de reanimar um atendimento antigo. Um único limiar de inatividade, **36 horas** sobre `chats.ultimaMensagemData`, inclusive para tickets com pendência do cliente: 36h de silêncio total nas duas direções já ultrapassou a janela de 24h da Meta e atravessa qualquer madrugada/fim de expediente sem falso positivo — 12h não atravessaria (cliente escreve às 20h, equipe responderia às 8h do dia seguinte). O valor é uma constante de aplicação, pensada para virar configuração por organização depois. O encerramento automático é distinguível do manual por `resultado: "INATIVIDADE"` + `encerradoPorUsuarioId` nulo.
 8. **A mutação em lote vive em `attendance-state.ts`.** A invariante do módulo — nenhum `db.update(chatAssignments)` fora da camada canônica — vale também para o cron.
 9. **Fora de escopo**: transcrição de mídia via fila (follow-up natural, mesma topologia), Workflows e resumo por IA no encerramento (ver seção 9), envio do hub, `pages/api`, limiar de inatividade configurável por organização (incremento simples se houver demanda).
 
@@ -503,8 +503,13 @@ export async function closeStaleChatAttendances(db: TAttendanceDb, input: { inac
 Mesmo esqueleto de `invalidate-chat-windows` (`assertCronAuthorized` + `appApiHandler`):
 
 ```typescript
-/** Sete dias sem qualquer mensagem no chat: o atendimento não está mais em curso. */
-const STALE_ATTENDANCE_INACTIVITY_MS = 7 * 24 * 60 * 60 * 1000;
+/**
+ * 36h sem qualquer mensagem no chat: o atendimento não está mais em curso. Curto o bastante
+ * para o quadro refletir a realidade no dia seguinte; longo o bastante para atravessar uma
+ * madrugada sem encerrar uma conversa que a equipe responderia de manhã (ver Decisão 7).
+ * Constante por enquanto; candidata natural a configuração por organização.
+ */
+const STALE_ATTENDANCE_INACTIVITY_MS = 36 * 60 * 60 * 1000;
 
 async function closeStaleAttendances() {
 	const now = new Date();
@@ -523,16 +528,16 @@ export type TCloseStaleAttendancesOutput = Awaited<ReturnType<typeof closeStaleA
 `vercel.json`, junto aos crons existentes:
 
 ```json
-{ "path": "/api/cron/close-stale-attendances", "schedule": "30 3 * * *" }
+{ "path": "/api/cron/close-stale-attendances", "schedule": "0 * * * *" }
 ```
 
-Diário e fora do horário comercial basta: a granularidade relevante do limiar é dias, e rodar de madrugada evita que a rajada de eventos realtime da primeira execução (que encerrará o backlog histórico de uma vez) concorra com o uso do hub.
+Horário: com limiar de 36h, um cron diário faria o encerramento efetivo variar entre 36h e 60h; rodando de hora em hora (padrão já usado por `process-interactions` e afins) o ticket encerra perto do corte real. Depois da primeira execução — que encerra o backlog histórico de uma vez — cada varredura fecha um punhado de tickets, sem rajada de realtime.
 
 ### 6.3 Interações com o restante do módulo
 
 - **Estatísticas** (`chats-stats`, quadro 0055): tickets encerrados por inatividade entram nas contagens de encerramento com `resultado: "INATIVIDADE"` — filtrável, e deixa de inflar o "em atendimento" eterno.
 - **IA**: um chat cujo ticket foi encerrado volta ao estado "sem atendimento ativo"; se o cliente escrever de novo, `claimChatAttendanceForAgent` disputa um ticket novo `NAO_ATRIBUIDO` — comportamento idêntico ao de um chat novo, que é o desejado.
-- **`AGUARDANDO_CLIENTE`/`AGUARDANDO_INTERNO`**: também são encerrados quando estagnados — sete dias sem nenhuma mensagem esgota qualquer espera legítima.
+- **`AGUARDANDO_CLIENTE`/`AGUARDANDO_INTERNO`**: também são encerrados quando estagnados — 36 horas sem nenhuma mensagem nas duas direções esgota a espera; se a pausa combinada for maior que isso, a mensagem que a retomar abre episódio novo com o histórico intacto no chat.
 
 ---
 
@@ -579,8 +584,8 @@ Por que a topologia é a mesma da Fase 5 e por que fila (e não o próprio cron)
 | Claim movido para depois do debounce muda o momento em que o hub mostra "IA atendendo" | Aceito e desejável: o ticket só vira da IA quando ela de fato vai responder. Comunicar no changelog interno |
 | `waitUntil` no webhook Meta: erro após o 200 não é reentregue pela Meta | Mesmo trade-off já aceito no gateway; com a fila ativa, o trecho crítico (turno de IA) tem retry próprio |
 | Dois transportes ativos durante o rollout (deploy antigo drena a própria fila) | Tópicos são particionados por deployment na Vercel — os deployments não consomem mensagens um do outro |
-| Primeira execução do cron de inatividade encerra o backlog histórico de uma vez (rajada de realtime + salto nas estatísticas de encerramento) | Agendado de madrugada; encerramentos automáticos são filtráveis por `resultado: "INATIVIDADE"` nas análises. Se o backlog for muito grande, rodar a primeira varredura manualmente via script antes de ativar o cron |
-| Cron encerra um atendimento que o operador considerava vivo (ex.: espera longa combinada com o cliente) | Limiar generoso (7 dias **sem nenhuma mensagem**, em qualquer direção); qualquer mensagem nova reabre episódio limpo. Limiar por organização fica como incremento se houver demanda real |
+| Primeira execução do cron de inatividade encerra o backlog histórico de uma vez (rajada de realtime + salto nas estatísticas de encerramento) | Rodar a primeira varredura manualmente via script, fora do horário comercial, antes de ativar o cron; encerramentos automáticos são filtráveis por `resultado: "INATIVIDADE"` nas análises. Depois disso cada varredura horária fecha um punhado de tickets |
+| Cron encerra um atendimento que o operador considerava vivo (ex.: espera longa combinada com o cliente) | O limiar de 36h exige silêncio **nas duas direções** e atravessa madrugadas/fins de expediente; qualquer mensagem nova reabre episódio limpo com o histórico intacto no chat. Limiar por organização fica como incremento se o valor curto gerar atrito real |
 
 ---
 
