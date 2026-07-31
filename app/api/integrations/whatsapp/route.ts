@@ -1,7 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
-import { createMetaCloudDeliverer } from "@/lib/ai/agent/delivery";
 import { ensureOrganizationAgent } from "@/lib/ai/agent/provisioning";
-import { respondToChatWithAgent } from "@/lib/ai/agent/respond-to-chat";
 import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProcessing, handleAIVideoProcessing } from "@/lib/ai/ai-media-processing";
 import { lockConnectedWhatsappPhone, mergeMessageTemplatePhoneMetadataSql } from "@/lib/db-utils";
 import { downloadAndStoreWhatsappMedia } from "@/lib/files-storage/chat-media";
@@ -42,7 +40,8 @@ import {
 } from "@/lib/whatsapp/smb-message-history-sync";
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
 import type { TMessageTemplateMetadata } from "@/schemas/message-templates";
-import { claimChatForAi, waitAndConfirmAiResponse } from "@/lib/chats/ai-trigger";
+import { AI_RESPONSE_DELAY_MS } from "@/lib/chats/ai-trigger";
+import { dispatchAiTurn } from "@/lib/chats/ai-turn-dispatch";
 import {
 	applyProviderDeliveryStatus,
 	mapProviderStatusToDeliveryStatus,
@@ -569,40 +568,16 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 		return;
 	}
 
-	// A IA reivindica o atendimento em vez de nascer dona dele. Se um humano assumiu a
-	// conversa, o claim não casa e ela recua sem gerar resposta.
-	const claim = await claimChatForAi({ organizacaoId, chatId, agenteId: agent.id });
-	if (!claim.shouldRespond) {
-		console.log("[WHATSAPP_WEBHOOK] IA não assumiu o atendimento:", claim.reason);
-		return;
-	}
-
-	const confirmation = await waitAndConfirmAiResponse({
-		organizacaoId,
-		chatId,
-		messageId: insertedMessage.messageId,
-		messageDate: insertedMessage.dataEnvio,
-		delayMs: agent.capacidades?.atendimento?.atrasoRespostaMs,
-	});
-	if (!confirmation.shouldRespond) {
-		console.log("[WHATSAPP_WEBHOOK] Resposta da IA abortada:", confirmation.reason);
-		return;
-	}
-
-	try {
-		const result = await respondToChatWithAgent({
+	// Debounce, claim, confirmação e run vivem no runner — o webhook só despacha.
+	await dispatchAiTurn(
+		{
 			organizacaoId,
 			chatId,
-			gatilho: "CHAT_MENSAGEM",
 			mensagemGatilhoId: insertedMessage.messageId,
-			deliver: createMetaCloudDeliverer({ organizacaoId, chatId }),
-		});
-		console.log("[WHATSAPP_WEBHOOK] Execução do agente concluída:", result.runId);
-	} catch (error) {
-		// A execução falha fica registrada em `ai_agent_runs` com o erro; nada é enviado ao
-		// cliente — mensagem genérica de desculpas só esconderia o problema.
-		console.error("[WHATSAPP_WEBHOOK] Falha na execução do agente de IA:", error);
-	}
+			mensagemGatilhoDataEnvio: insertedMessage.dataEnvio.toISOString(),
+		},
+		{ delayMs: agent.capacidades?.atendimento?.atrasoRespostaMs ?? AI_RESPONSE_DELAY_MS },
+	);
 }
 
 /**

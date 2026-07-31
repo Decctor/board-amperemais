@@ -1,7 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
-import { createInternalGatewayDeliverer } from "@/lib/ai/agent/delivery";
 import { ensureOrganizationAgent } from "@/lib/ai/agent/provisioning";
-import { respondToChatWithAgent } from "@/lib/ai/agent/respond-to-chat";
 import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProcessing, handleAIVideoProcessing } from "@/lib/ai/ai-media-processing";
 import { lockConnectedWhatsappPhone, mergeMessageTemplatePhoneMetadataSql, missingMessageTemplatePhoneMetadataCondition } from "@/lib/db-utils";
 import { uploadChatMedia } from "@/lib/files-storage/chat-media";
@@ -10,7 +8,8 @@ import { updateInteractionDeliveryState } from "@/lib/interactions/delivery-stat
 import { downloadMedia } from "@/lib/whatsapp/internal-gateway";
 import { type AppWhatsappStatus, mapWhatsAppStatusToAppStatus } from "@/lib/whatsapp/parsing";
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
-import { claimChatForAi, waitAndConfirmAiResponse } from "@/lib/chats/ai-trigger";
+import { AI_RESPONSE_DELAY_MS } from "@/lib/chats/ai-trigger";
+import { dispatchAiTurn } from "@/lib/chats/ai-turn-dispatch";
 import {
 	applyProviderDeliveryStatus,
 	mapProviderStatusToDeliveryStatus,
@@ -382,37 +381,17 @@ async function handleIncomingMessage(body: Extract<WebhookBody, { event: "messag
 		return;
 	}
 
-	const claim = await claimChatForAi({ organizacaoId, chatId, agenteId: agent.id });
-	if (!claim.shouldRespond) {
-		console.log("[INTERNAL_WHATSAPP_WEBHOOK] IA não assumiu o atendimento:", claim.reason);
-		return;
-	}
-
-	const confirmation = await waitAndConfirmAiResponse({
-		organizacaoId,
-		chatId,
-		messageId: insertedMessage.messageId,
-		messageDate: insertedMessage.dataEnvio,
-		delayMs: agent.capacidades?.atendimento?.atrasoRespostaMs,
-	});
-	if (!confirmation.shouldRespond) {
-		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Resposta da IA abortada:", confirmation.reason);
-		return;
-	}
-
-	try {
-		const result = await respondToChatWithAgent({
+	// Debounce, claim, confirmação e run vivem no runner — o webhook só despacha. O canal de
+	// entrega é resolvido pelo runner via resolveChatDeliverer, a partir da conexão do chat.
+	await dispatchAiTurn(
+		{
 			organizacaoId,
 			chatId,
-			gatilho: "CHAT_MENSAGEM",
 			mensagemGatilhoId: insertedMessage.messageId,
-			deliver: createInternalGatewayDeliverer({ organizacaoId, chatId, sessaoId: sessionId }),
-		});
-		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Execução do agente concluída:", result.runId);
-	} catch (error) {
-		// A execução falha fica registrada em `ai_agent_runs` com o erro; nada é enviado ao cliente.
-		console.error("[INTERNAL_WHATSAPP_WEBHOOK] Falha na execução do agente de IA:", error);
-	}
+			mensagemGatilhoDataEnvio: insertedMessage.dataEnvio.toISOString(),
+		},
+		{ delayMs: agent.capacidades?.atendimento?.atrasoRespostaMs ?? AI_RESPONSE_DELAY_MS },
+	);
 }
 
 const INTERACTION_STATUS_MAPPING: Record<AppWhatsappStatus, TInteractionsStatusEnum> = {

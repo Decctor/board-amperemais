@@ -24,10 +24,6 @@ import { and, desc, eq, gt, inArray } from "drizzle-orm";
 
 const AI_RESPONSE_DELAY_MS = 5000;
 
-function sleep(ms: number) {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export type TAiTriggerDecision = { shouldRespond: true } | { shouldRespond: false; reason: string };
 
 /**
@@ -159,27 +155,6 @@ export async function confirmAiDeliveryStillValid({
 	if (atual?.responsavelTipo !== "AGENTE") return { shouldRespond: false, reason: "O atendimento deixou de ser da IA." };
 
 	return { shouldRespond: true };
-}
-
-/**
- * Aguarda o debounce e reconfirma que a resposta ainda faz sentido. Caminho do webhook: agrupa
- * a rajada de mensagens do cliente e só então confere os fatos.
- */
-export async function waitAndConfirmAiResponse({
-	organizacaoId,
-	chatId,
-	messageId,
-	messageDate,
-	delayMs = AI_RESPONSE_DELAY_MS,
-}: {
-	organizacaoId: string;
-	chatId: string;
-	messageId: string;
-	messageDate: Date;
-	delayMs?: number;
-}): Promise<TAiTriggerDecision> {
-	await sleep(delayMs);
-	return confirmAiResponseStillValid({ organizacaoId, chatId, messageId, messageDate });
 }
 
 export { AI_RESPONSE_DELAY_MS };
