@@ -57,6 +57,7 @@ import { interactions } from "@/services/drizzle/schema/interactions";
 import { messageTemplates } from "@/services/drizzle/schema/message-templates";
 import { whatsappConnectionPhones } from "@/services/drizzle/schema/whatsapp-connections";
 import { supabaseClient } from "@/services/supabase";
+import { waitUntil } from "@vercel/functions";
 import { and, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -112,7 +113,10 @@ async function postWhatsappWebhookRoute(req: NextRequest) {
 	console.log("[INFO] [WHATSAPP_WEBHOOK] [POST] Incoming webhook message:", JSON.stringify(body, null, 2));
 
 	if (body.object === "whatsapp_business_account") {
-		await processWebhookAsync(body);
+		// A Meta reentrega quando o 200 demora — e o processamento inclui debounce e run de
+		// LLM. Todo o trabalho sai da request, como o webhook do Gateway Interno já faz; as
+		// reentregas residuais são inócuas graças ao índice de wamid (0057).
+		waitUntil(processWebhookAsync(body));
 		return NextResponse.json({ success: true }, { status: 200 });
 	}
 
