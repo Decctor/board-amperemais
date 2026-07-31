@@ -7,6 +7,15 @@ import z from "zod";
 
 export const IFOOD_CATALOG_BASE_URL = "https://merchant-api.ifood.com.br/catalog/v2.0";
 
+/**
+ * Restrições de imagem da Catalog API: apenas PNG/JPG e corpo de requisição de no máximo 5MB.
+ * Como a imagem viaja em base64 (inflando ~33%), o arquivo cru precisa caber em 3/4 desse teto.
+ */
+export const IFOOD_IMAGE_ALLOWED_TYPES = ["image/png", "image/jpeg"];
+export const IFOOD_IMAGE_MAX_BODY_BYTES = 5 * 1024 * 1024;
+export const IFOOD_IMAGE_MAX_SIZE_BYTES = Math.floor((IFOOD_IMAGE_MAX_BODY_BYTES * 3) / 4);
+export const IFOOD_IMAGE_MAX_SIZE_LABEL = "3,7MB";
+
 /** CDN pública de imagens de catálogo do iFood. */
 export function buildIfoodCatalogImageUrl(imagePath: string | null) {
 	if (!imagePath) return null;

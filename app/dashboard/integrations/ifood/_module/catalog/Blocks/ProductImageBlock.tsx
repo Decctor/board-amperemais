@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
-import { buildIfoodCatalogImageUrl } from "@/lib/integrations/ifood/catalog-types";
+import { buildIfoodCatalogImageUrl, IFOOD_IMAGE_MAX_SIZE_LABEL } from "@/lib/integrations/ifood/catalog-types";
 import { uploadIfoodImage } from "@/lib/mutations/ifood";
 import { useMutation } from "@tanstack/react-query";
 import { ImageIcon, Upload } from "lucide-react";
@@ -45,7 +45,7 @@ export function ProductImageBlock({ merchantId, imagemPath, onUploaded }: Produc
 			)}
 			<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 				<span className="text-sm font-medium text-foreground">Imagem do produto</span>
-				<span className="text-xs text-muted-foreground">PNG ou JPG, até 10MB.</span>
+				<span className="text-xs text-muted-foreground">PNG ou JPG, até {IFOOD_IMAGE_MAX_SIZE_LABEL}.</span>
 			</div>
 			<input
 				ref={fileInputRef}

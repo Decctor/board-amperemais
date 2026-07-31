@@ -1,14 +1,12 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { IFOOD_IMAGE_ALLOWED_TYPES, IFOOD_IMAGE_MAX_SIZE_BYTES, IFOOD_IMAGE_MAX_SIZE_LABEL } from "@/lib/integrations/ifood/catalog-types";
 import { resolveIfoodManagementContext } from "@/lib/integrations/ifood/context";
 import { uploadIfoodImage } from "@/lib/integrations/ifood/image";
 import { canManageIntegrations } from "@/lib/integrations/mask";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
-
-const IFOOD_IMAGE_ALLOWED_TYPES = ["image/png", "image/jpeg"];
-const IFOOD_IMAGE_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
 const UploadIfoodImageInputSchema = z.object({
 	merchantId: z
@@ -49,7 +47,8 @@ async function uploadIfoodImageRoute(request: NextRequest) {
 	const file = formData.get("file");
 	if (!(file instanceof File)) throw new createHttpError.BadRequest("Arquivo de imagem não informado.");
 	if (!IFOOD_IMAGE_ALLOWED_TYPES.includes(file.type)) throw new createHttpError.BadRequest("Formato de imagem inválido. Envie um arquivo PNG ou JPG.");
-	if (file.size > IFOOD_IMAGE_MAX_SIZE_BYTES) throw new createHttpError.BadRequest("Imagem muito grande. O tamanho máximo é de 10MB.");
+	if (file.size > IFOOD_IMAGE_MAX_SIZE_BYTES)
+		throw new createHttpError.BadRequest(`Imagem muito grande. O tamanho máximo aceito pelo iFood é de ${IFOOD_IMAGE_MAX_SIZE_LABEL}.`);
 
 	const result = await uploadIfoodImageService({ input, file, organizacaoId });
 	return NextResponse.json(result);
