@@ -14,6 +14,7 @@ const STATUS_FILTERS: Array<{ value: TAiAgentRunStatusEnum | null; label: string
 	{ value: null, label: "TODAS" },
 	{ value: "CONCLUIDO", label: "CONCLUÍDAS" },
 	{ value: "FALHA", label: "COM FALHA" },
+	{ value: "CANCELADO", label: "CANCELADAS" },
 ];
 
 export default function AgentRunsList() {
@@ -64,6 +65,7 @@ export default function AgentRunsList() {
 											"text-xs font-bold",
 											run.status === "CONCLUIDO" && "text-emerald-600",
 											run.status === "FALHA" && "text-destructive",
+											run.status === "CANCELADO" && "text-muted-foreground",
 											(run.status === "RODANDO" || run.status === "PENDENTE") && "text-amber-600",
 										)}
 									>

@@ -1,8 +1,9 @@
+import { confirmAiDeliveryStillValid } from "@/lib/chats/ai-trigger";
 import { updateChatAttendanceSummary } from "@/lib/chats/attendance-state";
 import type { TAiAgentRunGatilhoEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import type { DB, DBTransaction } from "@/services/drizzle";
-import { linkAgentRunMessage } from "./runs";
+import { linkAgentRunMessage, markAgentRunCancelled } from "./runs";
 import { executeAgentTurn, prepareAgentExecution } from "./runtime";
 
 type TDb = DB | DBTransaction;
@@ -46,10 +47,28 @@ export async function respondToChatWithAgent({
 	database?: TDb;
 }): Promise<TRespondToChatResult> {
 	const prepared = await prepareAgentExecution({ organizacaoId, chatId, gatilho, mensagemGatilhoId, database });
+	const runStartedAt = new Date();
 	const output = await executeAgentTurn(prepared);
 
 	let messageId: string | null = null;
 	if (output.mensagem?.trim()) {
+		// A run não é cancelável em andamento; este é o ponto de corte. Se o cliente mandou
+		// outra mensagem durante o turno, a run dela responde — entregar esta produziria uma
+		// resposta gerada sem a última mensagem no contexto, e duas respostas no total.
+		const delivery = await confirmAiDeliveryStillValid({
+			organizacaoId,
+			chatId,
+			gatilho,
+			mensagemGatilhoId: mensagemGatilhoId ?? null,
+			runStartedAt,
+		});
+		if (!delivery.shouldRespond) {
+			await markAgentRunCancelled(database, { runId: prepared.run.id, motivo: delivery.reason });
+			console.log("[AI_AGENT] Entrega cancelada:", delivery.reason);
+			// O resumo também não grava: veio de um contexto que a conversa já superou.
+			return { runId: prepared.run.id, mensagem: null, messageId: null, resumoAtendimento: "" };
+		}
+
 		const delivered = await deliver({
 			mensagem: output.mensagem.trim(),
 			runId: prepared.run.id,

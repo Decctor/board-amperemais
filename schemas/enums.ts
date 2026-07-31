@@ -497,7 +497,8 @@ export const AiAgentStatusEnum = z.enum(["ATIVO", "PAUSADO"]);
 export type TAiAgentStatusEnum = z.infer<typeof AiAgentStatusEnum>;
 
 // Ciclo de vida de uma execução (run) do agente.
-export const AiAgentRunStatusEnum = z.enum(["PENDENTE", "RODANDO", "CONCLUIDO", "FALHA"]);
+// CANCELADO = o turno concluiu, mas a entrega foi abortada pela revalidação (run supersedida).
+export const AiAgentRunStatusEnum = z.enum(["PENDENTE", "RODANDO", "CONCLUIDO", "FALHA", "CANCELADO"]);
 export type TAiAgentRunStatusEnum = z.infer<typeof AiAgentRunStatusEnum>;
 
 // O que originou a execução. PLAYGROUND roda o mesmo pipeline, sem envio externo.

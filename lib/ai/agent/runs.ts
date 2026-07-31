@@ -55,6 +55,15 @@ export async function failAgentRun(db: TDb, input: { runId: string; erro: string
 	await db.update(aiAgentRuns).set({ status: "FALHA", erro: input.erro, dataFim: new Date() }).where(eq(aiAgentRuns.id, input.runId));
 }
 
+/**
+ * Run supersedida: o turno terminou, mas a revalidação pré-entrega abortou o envio.
+ * Sobrescreve o CONCLUIDO do turno de propósito — o estado final relevante é "não
+ * entregue", e `uso` preserva o custo já gasto.
+ */
+export async function markAgentRunCancelled(db: TDb, input: { runId: string; motivo: string }) {
+	await db.update(aiAgentRuns).set({ status: "CANCELADO", erro: input.motivo, dataFim: new Date() }).where(eq(aiAgentRuns.id, input.runId));
+}
+
 /** Vínculo canônico execução → mensagem entregue ao cliente. */
 export async function linkAgentRunMessage(db: TDb, input: { runId: string; mensagemId: string }) {
 	await db.update(aiAgentRuns).set({ mensagemEnviadaId: input.mensagemId }).where(eq(aiAgentRuns.id, input.runId));
