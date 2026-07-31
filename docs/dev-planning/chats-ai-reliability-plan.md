@@ -1,6 +1,6 @@
 # Chats & Atendimento IA — Confiabilidade — Plano de Implementação
 
-> **Status**: implementado (fases 1–6 nesta branch). Pendências operacionais: aplicar a migration 0057, habilitar Vercel Queues no time e ativar `AI_TURN_TRANSPORT=queue` conforme a seção de rollout; primeira varredura do cron de inatividade via chamada manual fora do horário comercial.
+> **Status**: implementado (fases 1–7 nesta branch). Pendências operacionais: aplicar as migrations 0057 e 0058, habilitar Vercel Queues no time e ativar `AI_TURN_TRANSPORT=queue` conforme a seção de rollout; primeira varredura do cron de inatividade via chamada manual fora do horário comercial.
 > **Origem**: duplicação de mensagens recebidas via webhook e respostas duplicadas/defasadas em runs concorrentes de IA, observadas em produção.
 > **Princípio norteador**: o banco de dados é a fonte de verdade dos fluxos assíncronos. Toda entrega é *at-least-once* (webhooks da Meta, Vercel Queues); a idempotência vive em constraints e compare-and-sets no Postgres, nunca na esperança de entrega única.
 > **Escopo desta iniciativa**: idempotência de mensagens por `wamid`, revalidação pós-run antes da entrega, ack imediato do webhook Meta, migração do turno de IA para Vercel Queues e encerramento automático de atendimentos inativos. **Fora de escopo**: mover a transcrição de mídia para fila, migrar para Vercel Workflows, tocar no fluxo de envio do hub, resumo por IA no encerramento automático (incremento futuro documentado na seção 9) — ver [Decisões](#2-decisões-fechadas).
