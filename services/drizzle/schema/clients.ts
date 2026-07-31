@@ -28,6 +28,10 @@ export const clients = newTable(
 		// Communication
 		telefone: text("telefone").notNull().default(""),
 		telefoneBase: text("telefone_base").notNull().default(""),
+		// Business-scoped user ID (BSUID) da Meta (0058): identidade garantida do contato no
+		// WhatsApp — `from`/`wa_id` podem ser omitidos dos webhooks, o BSUID nunca. Escopo por
+		// portfólio de negócios; regenera se o usuário trocar de número.
+		whatsappUserId: varchar("whatsapp_user_id", { length: 255 }),
 		email: text("email"),
 		// Socials
 		websiteUrl: text("website_url"),
@@ -88,6 +92,10 @@ export const clients = newTable(
 	(table) => ({
 		// ...existing indices...
 		nomeIndex: index("idx_clients_nome").using("gist", sql`unaccent_immutable(lower(${table.nome})) gist_trgm_ops`),
+		// Lookup do webhook quando `from`/`wa_id` vêm omitidos, e unicidade da identidade (0058).
+		orgWhatsappUserIdUnique: uniqueIndex("idx_clients_org_whatsapp_user_id")
+			.on(table.organizacaoId, table.whatsappUserId)
+			.where(sql`${table.whatsappUserId} is not null`),
 		telefoneIndex: index("idx_clients_telefone").using("gist", sql`${table.telefoneBase} gist_trgm_ops`),
 		emailIndex: index("idx_clients_email").using("gist", sql`lower(${table.email}) gist_trgm_ops`),
 		rfmTituloIdx: index("idx_clients_rfm_titulo").on(table.analiseRFMTitulo),

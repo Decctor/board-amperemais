@@ -165,7 +165,10 @@ export function parseStatusUpdate(statusPayload: unknown): ParsedStatusUpdate | 
 type ParsedIncomingMessage = {
 	whatsappPhoneNumberId: string;
 	whatsappMessageId: string;
-	fromPhoneNumber: string;
+	/** Null quando a Meta omite `from`/`wa_id` (regra de 30 dias, usernames) — o BSUID assume. */
+	fromPhoneNumber: string | null;
+	/** Business-scoped user ID (`contacts[].user_id` / `messages[].from_user_id`): a chave garantida. */
+	whatsappUserId: string | null;
 	profileName: string;
 	messageType: "text" | "image" | "video" | "audio" | "document";
 	textContent?: string;
@@ -244,10 +247,13 @@ export function parseWebhookIncomingMessage(webhookPayload: unknown): ParsedInco
 				return null;
 		}
 
+		const from = (message.from as string | undefined) || (contact?.wa_id as string | undefined);
+
 		return {
 			whatsappPhoneNumberId: whatsappPhoneNumberId || "",
 			whatsappMessageId: message.id as string,
-			fromPhoneNumber: formatWhatsappIdAsPhone(message.from as string),
+			fromPhoneNumber: from ? formatWhatsappIdAsPhone(from) : null,
+			whatsappUserId: (contact?.user_id as string | undefined) || (message.from_user_id as string | undefined) || null,
 			profileName: (profile?.name as string) || "Cliente",
 			messageType: messageType as "text" | "image" | "video" | "audio" | "document",
 			textContent,
@@ -524,8 +530,11 @@ export function parseTemplateCategoryUpdate(webhookPayload: unknown): ParsedTemp
 type ParsedMessageEcho = {
 	whatsappPhoneNumberId: string;
 	whatsappMessageId: string;
-	fromPhoneNumber: string; // Business phone number (sender)
-	toPhoneNumber: string; // Client phone number (recipient)
+	fromPhoneNumber: string | null; // Business phone number (sender)
+	/** Null quando a Meta omite `to` — o BSUID do destinatário assume. */
+	toPhoneNumber: string | null; // Client phone number (recipient)
+	/** Business-scoped user ID do destinatário (`message.to_user_id`), quando presente. */
+	toUserId: string | null;
 	messageType: "text" | "image" | "video" | "audio" | "document";
 	textContent?: string;
 	mediaId?: string;
@@ -615,11 +624,15 @@ export function parseWebhookMessageEcho(webhookPayload: unknown): ParsedMessageE
 				return null;
 		}
 
+		const from = message.from as string | undefined;
+		const to = message.to as string | undefined;
+
 		return {
 			whatsappPhoneNumberId: whatsappPhoneNumberId || "",
 			whatsappMessageId: message.id as string,
-			fromPhoneNumber: formatWhatsappIdAsPhone(message.from as string),
-			toPhoneNumber: formatWhatsappIdAsPhone(message.to as string),
+			fromPhoneNumber: from ? formatWhatsappIdAsPhone(from) : null,
+			toPhoneNumber: to ? formatWhatsappIdAsPhone(to) : null,
+			toUserId: (message.to_user_id as string | undefined) || null,
 			messageType: messageType as "text" | "image" | "video" | "audio" | "document",
 			textContent,
 			mediaId,

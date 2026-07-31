@@ -2,12 +2,12 @@ import "dotenv/config";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { formatPhoneAsBase } from "@/lib/formatting";
 import { persistIncomingClientMessage, persistOutboundNonHubMessage, resolveIncomingChat } from "@/lib/chats/incoming-message";
+import { resolveWhatsappClient } from "@/lib/whatsapp/contact-identity";
 import { downloadAndStoreWhatsappMedia } from "@/lib/files-storage/chat-media";
 import { parseWebhookIncomingMessage, parseWebhookMessageEcho } from "@/lib/whatsapp/parsing";
 import { connection, db } from "@/services/drizzle";
-import { chatMessages, chats, clients } from "@/services/drizzle/schema";
+import { chatMessages, chats } from "@/services/drizzle/schema";
 import { eq, inArray, sql } from "drizzle-orm";
 
 const WEBHOOK_LOG_PREFIX = "[INFO] [WHATSAPP_WEBHOOK] [POST] Incoming webhook message: ";
@@ -308,7 +308,7 @@ async function persistOlderCandidate({
 	}
 }
 
-async function applyCandidate(candidate: TBackfillCandidate): Promise<"created" | "already-exists" | "hub-disabled"> {
+async function applyCandidate(candidate: TBackfillCandidate): Promise<"created" | "already-exists" | "hub-disabled" | "no-identity"> {
 	if (await messageAlreadyExists(candidate.message.whatsappMessageId)) return "already-exists";
 
 	const connectionPhone = await db.query.whatsappConnectionPhones.findFirst({
@@ -329,27 +329,14 @@ async function applyCandidate(candidate: TBackfillCandidate): Promise<"created" 
 	if (!hasHubAccess) return "hub-disabled";
 
 	const organizacaoId = connectionPhone.conexao.organizacaoId;
-	const clientPhone = candidate.kind === "incoming" ? candidate.message.fromPhoneNumber : candidate.message.toPhoneNumber;
-	const phoneBase = formatPhoneAsBase(clientPhone);
-	const existingClient = await db.query.clients.findFirst({
-		where: (fields, { and, eq }) => and(eq(fields.telefoneBase, phoneBase), eq(fields.organizacaoId, organizacaoId)),
-		columns: { id: true },
+	const resolvedClient = await resolveWhatsappClient({
+		organizacaoId,
+		telefone: candidate.kind === "incoming" ? candidate.message.fromPhoneNumber : candidate.message.toPhoneNumber,
+		whatsappUserId: candidate.kind === "incoming" ? candidate.message.whatsappUserId : candidate.message.toUserId,
+		profileName: candidate.kind === "incoming" ? candidate.message.profileName : null,
 	});
-
-	let clientId = existingClient?.id;
-	if (!clientId) {
-		const [newClient] = await db
-			.insert(clients)
-			.values({
-				organizacaoId,
-				nome: candidate.kind === "incoming" ? candidate.message.profileName : clientPhone,
-				telefone: clientPhone,
-				telefoneBase: phoneBase,
-				canalAquisicao: "WHATSAPP",
-			})
-			.returning({ id: clients.id });
-		clientId = newClient.id;
-	}
+	if (!resolvedClient) return "no-identity";
+	const clientId = resolvedClient.clientId;
 
 	const { chatId } = await resolveIncomingChat({
 		organizacaoId,
