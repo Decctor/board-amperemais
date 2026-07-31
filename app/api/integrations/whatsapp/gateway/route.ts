@@ -353,6 +353,12 @@ async function handleIncomingMessage(body: Extract<WebhookBody, { event: "messag
 		metadados: { gatewayInterno: { sessaoId: sessionId } },
 	});
 
+	// Reentrega do gateway: a mensagem já existe e todo o downstream já rodou na primeira entrega.
+	if (!insertedMessage) {
+		console.log("[INTERNAL_WHATSAPP_WEBHOOK] Mensagem duplicada ignorada:", data.whatsappMessageId);
+		return;
+	}
+
 	console.log("[INTERNAL_WHATSAPP_WEBHOOK] Message created from:", data.author.phoneNumber);
 
 	if (mediaData && midiaTipo !== "TEXTO") {

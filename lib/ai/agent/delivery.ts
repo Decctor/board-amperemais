@@ -74,6 +74,8 @@ export function createMetaCloudDeliverer({ organizacaoId, chatId }: TDelivererPa
 			midia: null,
 			metadados: { aiAgente: { runId, agenteId } },
 		});
+		// null = wamid já persistido por outra via (o webhook de echo chegou primeiro).
+		if (!inserted) return { messageId: null };
 
 		if (!whatsappMessageId) {
 			await applyProviderDeliveryStatus({ statusEntrega: "FALHA", chatMessageId: inserted.messageId });
@@ -106,6 +108,8 @@ export function createInternalGatewayDeliverer({ organizacaoId, chatId, sessaoId
 			midia: null,
 			metadados: { gatewayInterno: { sessaoId }, aiAgente: { runId, agenteId } },
 		});
+		// Sem wamid não há alvo de conflito; o null aqui é impossível, mas o tipo exige o guard.
+		if (!inserted) return { messageId: null };
 
 		if (!chat.whatsappConexao?.gatewaySessaoId || chat.whatsappConexao.gatewayStatus !== "connected" || !chat.cliente?.telefone) {
 			console.warn("[AI_AGENT] [DELIVERY] Gateway interno indisponível:", chatId);
@@ -177,6 +181,6 @@ export function createPlaygroundDeliverer({ organizacaoId, chatId }: TDelivererP
 			metadados: { aiAgente: { runId, agenteId } },
 		});
 
-		return { messageId: inserted.messageId };
+		return { messageId: inserted?.messageId ?? null };
 	};
 }

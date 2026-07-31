@@ -533,6 +533,13 @@ async function handleIncomingMessage(body: WebhookBody): Promise<void> {
 		now: new Date(incomingMessage.timestamp),
 	});
 
+	// Reentrega da Meta: a mensagem já existe e todo o downstream (contador, pendência,
+	// transcrição, gatilho de IA) já rodou na primeira entrega.
+	if (!insertedMessage) {
+		console.log("[WHATSAPP_WEBHOOK] Mensagem duplicada ignorada:", incomingMessage.whatsappMessageId);
+		return;
+	}
+
 	console.log("[WHATSAPP_WEBHOOK] Message created from:", incomingMessage.fromPhoneNumber);
 
 	// A transcrição/OCR de mídia é independente do atendimento: roda mesmo que a IA não
@@ -701,7 +708,7 @@ async function handleMessageEcho(body: WebhookBody): Promise<void> {
 
 	// O echo marca o atendimento como EXTERNO ("atendido pelo telefone") — mas apenas se
 	// nenhum humano do hub já for o dono, o que markChatAttendedExternally garante.
-	await persistOutboundNonHubMessage({
+	const insertedEcho = await persistOutboundNonHubMessage({
 		organizacaoId,
 		chatId,
 		clienteId: clientId,
@@ -712,6 +719,10 @@ async function handleMessageEcho(body: WebhookBody): Promise<void> {
 		midia: mediaData ? { ...mediaData, whatsappMediaId: messageEcho.mediaId } : null,
 		now: new Date(messageEcho.timestamp),
 	});
+	if (!insertedEcho) {
+		console.log("[WHATSAPP_WEBHOOK] [ECHO] Echo duplicado ignorado:", messageEcho.whatsappMessageId);
+		return;
+	}
 
 	console.log("[WHATSAPP_WEBHOOK] [ECHO] Message echo created to:", messageEcho.toPhoneNumber);
 }

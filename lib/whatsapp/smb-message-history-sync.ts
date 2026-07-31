@@ -458,7 +458,14 @@ async function upsertHistoryMessage({
 			dataEnvio: messageDate,
 			whatsappEcho: isBusinessMessage,
 		})
+		// Rede de segurança do find-then-insert acima: um webhook ao vivo pode inserir o mesmo
+		// wamid entre a leitura e este insert — o índice 0057 faz a corrida conflitar aqui.
+		.onConflictDoNothing({
+			target: [chatMessages.whatsappMessageId, chatMessages.organizacaoId],
+			where: sql`${chatMessages.whatsappMessageId} is not null`,
+		})
 		.returning({ id: chatMessages.id, dataEnvio: chatMessages.dataEnvio });
+	if (!insertedMessage) return { inserted: false, updated: false };
 
 	const shouldUpdateLastMessage = !chat.ultimaMensagemData || chat.ultimaMensagemData <= messageDate;
 	if (shouldUpdateLastMessage) {

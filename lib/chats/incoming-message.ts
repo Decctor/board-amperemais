@@ -84,6 +84,9 @@ type TPersistIncomingParams = {
 /**
  * Mensagem recebida do cliente: persiste, atualiza a denormalização do chat, renova a
  * janela de 24h e reabre a pendência do atendimento.
+ *
+ * Devolve `null` quando a mensagem já existe (reentrega do provedor, índice 0057): nesse
+ * caso todo o efeito colateral já aconteceu na primeira entrega e nada downstream deve rodar.
  */
 export async function persistIncomingClientMessage(input: TPersistIncomingParams) {
 	const now = input.now ?? new Date();
@@ -110,7 +113,13 @@ export async function persistIncomingClientMessage(input: TPersistIncomingParams
 			metadados: input.metadados ?? null,
 			dataEnvio: now,
 		})
+		.onConflictDoNothing({
+			target: [chatMessages.whatsappMessageId, chatMessages.organizacaoId],
+			where: sql`${chatMessages.whatsappMessageId} is not null`,
+		})
 		.returning({ id: chatMessages.id, dataEnvio: chatMessages.dataEnvio });
+
+	if (!inserted) return null;
 
 	await db
 		.update(chats)
@@ -146,6 +155,9 @@ type TPersistOutboundParams = Omit<TPersistIncomingParams, "tipoConexao"> & {
  *
  * No caso do echo, o atendimento passa a `EXTERNO` — mas apenas se ainda não houver um
  * humano do hub como dono, que é o que `markChatAttendedExternally` garante.
+ *
+ * Devolve `null` quando o wamid já existe (reentrega de echo, ou echo de uma mensagem que
+ * outra via já persistiu): o skip silencioso é o comportamento correto.
  */
 export async function persistOutboundNonHubMessage(input: TPersistOutboundParams) {
 	const now = input.now ?? new Date();
@@ -173,7 +185,13 @@ export async function persistOutboundNonHubMessage(input: TPersistOutboundParams
 			metadados: input.metadados ?? null,
 			dataEnvio: now,
 		})
+		.onConflictDoNothing({
+			target: [chatMessages.whatsappMessageId, chatMessages.organizacaoId],
+			where: sql`${chatMessages.whatsappMessageId} is not null`,
+		})
 		.returning({ id: chatMessages.id, dataEnvio: chatMessages.dataEnvio });
+
+	if (!inserted) return null;
 
 	await db
 		.update(chats)
