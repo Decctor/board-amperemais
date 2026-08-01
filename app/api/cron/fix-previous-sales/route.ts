@@ -54,6 +54,7 @@ async function getFixPreviousSalesRoute(_req: NextRequest) {
 		importedSalesCount: result.summaries.reduce((total, summary) => total + summary.importedSalesCount, 0),
 		createdSalesCount: result.summaries.reduce((total, summary) => total + summary.createdSalesCount, 0),
 		updatedSalesCount: result.summaries.reduce((total, summary) => total + summary.updatedSalesCount, 0),
+		unchangedSalesCount: result.summaries.reduce((total, summary) => total + summary.unchangedSalesCount, 0),
 		cashbackTransactionsCount: result.summaries.reduce((total, summary) => total + summary.cashbackTransactionsCount, 0),
 	});
 

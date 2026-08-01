@@ -30,6 +30,7 @@ import {
 	couponRedemptions,
 	couponTargets,
 	coupons,
+	externalEvents,
 	financialAccounts,
 	financialOpenFinanceConnections,
 	financialReconciliationMatches,
@@ -163,6 +164,12 @@ export async function deleteAllOrganizationData({
 	// --- Atendimento / conversas ---
 	await trx.delete(chatMessages).where(eq(chatMessages.organizacaoId, organizationId));
 	await trx.delete(chatAssignments).where(eq(chatAssignments.organizacaoId, organizationId));
+
+	// --- Inbox de eventos externos (webhooks) ---
+	// Payloads contêm dados pessoais (telefone, nome, conteúdo de mensagem). Só as linhas
+	// carimbadas com a organização saem aqui; as com organizacao_id null (ownership ambíguo)
+	// caem na retenção de 30 dias do cron retention-cleanup.
+	await trx.delete(externalEvents).where(eq(externalEvents.organizacaoId, organizationId));
 
 	// --- Marketing / campanhas (vínculos) ---
 	await trx.delete(campaignConversions).where(eq(campaignConversions.organizacaoId, organizationId));

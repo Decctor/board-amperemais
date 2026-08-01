@@ -264,6 +264,11 @@ export async function processDataCollectingV2Effects({
 	const balancesByClientId = new Map(existingBalances.map((balance) => [balance.clienteId, balance]));
 
 	for (const persistedSale of persistedSales) {
+		// Assinatura igual = o import deste exato estado já commitou e os efeitos dele já rodaram.
+		// O guard é obrigatório (não otimização): `nowCanceled` é estado, não transição — sem ele,
+		// uma venda cancelada inalterada dispararia reverseSaleCashback a cada run.
+		if (persistedSale.skipped) continue;
+
 		let saleCashbackAccumulation: TSaleCashbackAccumulation | null = null;
 
 		if (options.processConversionAttribution && persistedSale.becameValid && persistedSale.clientId) {

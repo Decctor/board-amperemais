@@ -14,8 +14,7 @@ import { eq } from "drizzle-orm";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-const SCRIPT_NAME = "SYNC-BLING-COLLECTING";
-const DEFAULT_ORGANIZATION_ID = "2658876a-d365-4e37-ba1e-5a63239cf98f";
+const SCRIPT_NAME = "SYNC-DATA-COLLECTING";
 const DATA_COLLECTING_TIMEZONE = process.env.DATA_COLLECTING_TIMEZONE ?? "America/Sao_Paulo";
 
 type TScriptOptions = {
@@ -82,13 +81,14 @@ function printHelp() {
 
 	console.log(`
 Uso:
-  npm run sync:bling-collecting -- [--org=<organizationId>] [--start=<ISO>] [--end=<ISO>] --cashback=<process|skip> --campaigns=<process|skip> --conversion-attribution=<process|skip> [--process-immediate-interactions] [--out=<path>]
+  npm run sync:data-collecting -- --org=<organizationId> [--start=<ISO>] [--end=<ISO>] --cashback=<process|skip> --campaigns=<process|skip> --conversion-attribution=<process|skip> [--process-immediate-interactions] [--out=<path>]
 
-Executa o mesmo pipeline de app/api/cron/data-collecting/route.ts via runDataCollectingV2,
-buscando vendas no Bling e inserindo/atualizando no banco.
+Executa o mesmo pipeline de app/api/cron/data-collecting/route.ts via runDataCollectingV2
+para UMA organização, com qualquer conector configurado (Bling etc.), buscando vendas na
+fonte e inserindo/atualizando no banco.
 
 Padrões:
-  --org     ${DEFAULT_ORGANIZATION_ID}
+  --org     obrigatório
   --start   ${defaultWindow.startDate.toISOString()} (início do mês atual em ${DATA_COLLECTING_TIMEZONE})
   --end     ${defaultWindow.endDate.toISOString()} (fim do dia atual em ${DATA_COLLECTING_TIMEZONE})
 
@@ -97,23 +97,24 @@ Aliases:
   --startDate
   --endDate
 
-Exemplo para sincronizar só vendas do mês, sem efeitos colaterais:
-  npm run sync:bling-collecting -- --cashback=skip --campaigns=skip --conversion-attribution=skip
+Exemplo para sincronizar só vendas do dia, sem efeitos colaterais (loop de validação do
+skip por assinatura: rodar duas vezes seguidas e comparar updated vs unchanged):
+  npm run sync:data-collecting -- --org=<orgId> --start=<hojeT00:00> --cashback=skip --campaigns=skip --conversion-attribution=skip
 
 Exemplo espelhando o cron (com campanhas/cashback):
-  npm run sync:bling-collecting -- --cashback=process --campaigns=process --conversion-attribution=process
+  npm run sync:data-collecting -- --org=<orgId> --cashback=process --campaigns=process --conversion-attribution=process
 
 Observações:
   --cashback, --campaigns e --conversion-attribution são obrigatórios.
-  --out salva o payload bruto do Bling (batch.raw) em JSON após a sincronização.
-  Use --out sem valor para salvar em tmp/bling-sync-raw-<org>-<timestamp>.json.
+  --out salva o payload bruto do conector (batch.raw) em JSON após a sincronização.
+  Use --out sem valor para salvar em tmp/data-collecting-raw-<org>-<timestamp>.json.
   Por padrão, interações imediatas não são processadas.
   Use --process-immediate-interactions apenas com --campaigns=process.
 `);
 }
 
 function getDefaultRawOutputPath(organizationId: string) {
-	return path.join("tmp", `bling-sync-raw-${organizationId.slice(0, 8)}-${dayjs().format("YYYY-MM-DD-HHmmss")}.json`);
+	return path.join("tmp", `data-collecting-raw-${organizationId.slice(0, 8)}-${dayjs().format("YYYY-MM-DD-HHmmss")}.json`);
 }
 
 async function saveRawOutput({
@@ -162,7 +163,8 @@ function parseOptions(): TScriptOptions | null {
 	if (hasFlag("help") || process.argv.includes("-h")) return null;
 
 	const defaultWindow = getDefaultWindow();
-	const organizationId = getFirstArgValue(["org", "orgId", "organizationId"]) ?? process.env.BLING_TEST_ORGANIZATION_ID ?? DEFAULT_ORGANIZATION_ID;
+	const organizationId = getFirstArgValue(["org", "orgId", "organizationId"]);
+	if (!organizationId) throw new Error("Informe --org=<organizationId>.");
 	const startDate = parseDateArg(["start", "startDate"], defaultWindow.startDate);
 	const endDate = parseDateArg(["end", "endDate"], defaultWindow.endDate);
 
@@ -190,7 +192,8 @@ function parseOptions(): TScriptOptions | null {
 	};
 }
 
-async function assertBlingOrganization(organizationId: string) {
+/** Mesmo gate do runDataCollectingV2: integração configurada e coerente, seja qual for o conector. */
+async function assertOrganizationWithIntegration(organizationId: string) {
 	const organization = await db.query.organizations.findFirst({
 		where: eq(organizations.id, organizationId),
 		columns: {
@@ -202,9 +205,11 @@ async function assertBlingOrganization(organizationId: string) {
 	});
 
 	if (!organization) throw new Error(`Organização não encontrada: ${organizationId}`);
-	if (organization.integracaoTipo !== "BLING") throw new Error(`Organização não está conectada ao Bling: ${organizationId}`);
-	if (!organization.integracaoConfiguracao || organization.integracaoConfiguracao.tipo !== "BLING") {
-		throw new Error(`Configuração Bling inválida para organização: ${organizationId}`);
+	if (!organization.integracaoTipo) throw new Error(`Organização sem integração configurada: ${organizationId}`);
+	if (!organization.integracaoConfiguracao || organization.integracaoConfiguracao.tipo !== organization.integracaoTipo) {
+		throw new Error(
+			`Configuração de integração inválida para organização ${organizationId}: tipo=${organization.integracaoTipo}, configuracao.tipo=${organization.integracaoConfiguracao?.tipo ?? "ausente"}`,
+		);
 	}
 
 	return organization;
@@ -217,6 +222,7 @@ function printSummary(result: Awaited<ReturnType<typeof runDataCollectingV2>>) {
 			importedSalesCount: summary.importedSalesCount,
 			createdSalesCount: summary.createdSalesCount,
 			updatedSalesCount: summary.updatedSalesCount,
+			unchangedSalesCount: summary.unchangedSalesCount,
 			createdClientsCount: summary.createdClientsCount,
 			createdProductsCount: summary.createdProductsCount,
 			createdSellersCount: summary.createdSellersCount,
@@ -238,11 +244,12 @@ async function main() {
 	}
 
 	const startedAt = Date.now();
-	const organization = await assertBlingOrganization(options.organizationId);
+	const organization = await assertOrganizationWithIntegration(options.organizationId);
 
-	console.log(`[${SCRIPT_NAME}] Iniciando sincronização Bling`, {
+	console.log(`[${SCRIPT_NAME}] Iniciando sincronização`, {
 		organizationId: options.organizationId,
 		organizationName: organization.nome,
+		source: organization.integracaoTipo,
 		startDate: options.startDate.toISOString(),
 		endDate: options.endDate.toISOString(),
 		processImmediateInteractions: options.processImmediateInteractions,
@@ -285,7 +292,7 @@ async function main() {
 
 void main()
 	.catch((error) => {
-		console.error(`[${SCRIPT_NAME}] Falha ao sincronizar dados do Bling.`);
+		console.error(`[${SCRIPT_NAME}] Falha ao sincronizar dados.`);
 		if (error?.isAxiosError) {
 			console.error({
 				message: error.message,

@@ -77,6 +77,14 @@ export type TPersistedSaleForEffects = {
 	becameValid: boolean;
 	nowCanceled: boolean;
 	/**
+	 * Assinatura da projeção de persistência bateu com a carimbada — nenhuma escrita foi
+	 * feita NESTE sync. Assinatura igual prova que a transação de import deste exato estado
+	 * já commitou antes, então os efeitos (que são por-transição, mas `nowCanceled` é estado)
+	 * devem ignorar a venda: sem isso, uma venda cancelada inalterada dispararia a reversão
+	 * de cashback a cada run.
+	 */
+	skipped: boolean;
+	/**
 	 * Venda de canal gerenciado entregue com `policy.fiscal` ligada — candidata à emissão fiscal
 	 * automática. O disparo acontece APÓS o commit da organização (a emissão lê via `db` e não
 	 * enxergaria o estado pré-commit); a elegibilidade completa é re-checada lá (idempotente).
@@ -106,7 +114,10 @@ export type TDataCollectingV2RunSummary = {
 	source: TCanonicalImportBatch["source"];
 	importedSalesCount: number;
 	createdSalesCount: number;
+	/** Escritas reais: existentes com assinatura divergente (exclui as puladas). */
 	updatedSalesCount: number;
+	/** Existentes puladas por assinatura igual (nenhuma escrita neste sync). */
+	unchangedSalesCount: number;
 	createdClientsCount: number;
 	createdProductsCount: number;
 	createdSellersCount: number;
