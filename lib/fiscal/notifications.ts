@@ -1,4 +1,5 @@
 import { formatToMoney } from "@/lib/formatting";
+import { appRoutes } from "@/lib/navigation/routes";
 import { resend } from "@/services/resend";
 import { db } from "@/services/drizzle";
 import { organizationMembers } from "@/services/drizzle/schema";
@@ -57,7 +58,7 @@ export async function notifyFiscalEmissionFailure({ organization, sale, errorMes
 		const recipients = await listFiscalNotificationRecipients(organization);
 		if (recipients.length === 0) return;
 
-		const fiscalUrl = `${getAppBaseUrl()}/dashboard/operational/fiscal`;
+		const fiscalUrl = `${getAppBaseUrl()}${appRoutes.fiscal()}`;
 		const safeOrganizationName = escapeHtml(organization.nome);
 		const safeError = escapeHtml(errorMessage);
 		const safeSaleId = escapeHtml(sale.id);

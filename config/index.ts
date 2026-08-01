@@ -292,47 +292,47 @@ export const AppSubscriptionPlans: {
 		routes: {
 			dashboard: {
 				accessible: false,
-				redirectTo: "/dashboard/commercial/cashback-programs",
+				redirectTo: "/dashboard/growth/cashback",
 			},
-			"/dashboard/commercial/sales": {
+			"/dashboard/sales": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/segments": {
+			"/dashboard/customers/segments": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/clients": {
+			"/dashboard/customers": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/partners": {
+			"/dashboard/management/partners": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/products": {
+			"/dashboard/catalog/products": {
 				accessible: false,
-				redirectTo: "/dashboard/commercial/products",
+				redirectTo: "/dashboard/catalog/products",
 			},
-			"/dashboard/commercial/campaigns": {
+			"/dashboard/growth/campaigns": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/cashback-programs": {
+			"/dashboard/growth/cashback": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/team/sellers": {
+			"/dashboard/management/sellers": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/team/goals": {
+			"/dashboard/management/goals": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/chats": {
+			"/dashboard/channels/whatsapp": {
 				accessible: false,
-				redirectTo: "/dashboard/commercial/campaigns",
+				redirectTo: "/dashboard/growth/campaigns",
 			},
 			"/dashboard/settings": {
 				accessible: true,
@@ -413,45 +413,45 @@ export const AppSubscriptionPlans: {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/sales": {
+			"/dashboard/sales": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/segments": {
+			"/dashboard/customers/segments": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/clients": {
+			"/dashboard/customers": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/partners": {
+			"/dashboard/management/partners": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/products": {
+			"/dashboard/catalog/products": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/campaigns": {
+			"/dashboard/growth/campaigns": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/cashback-programs": {
+			"/dashboard/growth/cashback": {
 				accessible: true,
-				redirectTo: "/dashboard/commercial/cashback-programs",
+				redirectTo: "/dashboard/growth/cashback",
 			},
-			"/dashboard/team/sellers": {
-				accessible: true,
-				redirectTo: null,
-			},
-			"/dashboard/team/goals": {
+			"/dashboard/management/sellers": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/chats": {
+			"/dashboard/management/goals": {
+				accessible: true,
+				redirectTo: null,
+			},
+			"/dashboard/channels/whatsapp": {
 				accessible: false,
-				redirectTo: "/dashboard/commercial/campaigns",
+				redirectTo: "/dashboard/growth/campaigns",
 			},
 			"/dashboard/settings": {
 				accessible: true,
@@ -540,43 +540,43 @@ export const AppSubscriptionPlans: {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/sales": {
+			"/dashboard/sales": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/segments": {
+			"/dashboard/customers/segments": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/clients": {
+			"/dashboard/customers": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/partners": {
+			"/dashboard/management/partners": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/products": {
+			"/dashboard/catalog/products": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/campaigns": {
+			"/dashboard/growth/campaigns": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/commercial/cashback-programs": {
+			"/dashboard/growth/cashback": {
 				accessible: true,
-				redirectTo: "/dashboard/commercial/cashback-programs",
+				redirectTo: "/dashboard/growth/cashback",
 			},
-			"/dashboard/team/sellers": {
-				accessible: true,
-				redirectTo: null,
-			},
-			"/dashboard/team/goals": {
+			"/dashboard/management/sellers": {
 				accessible: true,
 				redirectTo: null,
 			},
-			"/dashboard/chats": {
+			"/dashboard/management/goals": {
+				accessible: true,
+				redirectTo: null,
+			},
+			"/dashboard/channels/whatsapp": {
 				accessible: true,
 				redirectTo: null,
 			},
@@ -695,77 +695,77 @@ export const AppRoutes = [
 		description: "Visão geral das principais métricas do seu negócio",
 	},
 	{
-		path: "/dashboard/commercial/point-of-interaction",
+		path: "/dashboard/sales/point-of-interaction",
 		title: "Ponto de Interação",
 		description: "Painel de acompanhamento e gestão do seu ponto de interação.",
 	},
 	{
-		path: "/dashboard/commercial/sales",
+		path: "/dashboard/sales",
 		title: "Vendas",
 		description: "Listagem das vendas realizadas",
 	},
 	{
-		path: "/dashboard/commercial/sales/new-sale",
+		path: "/dashboard/sales/new",
 		title: "Nova Venda",
 		description: "Cadastro de nova venda.",
 	},
 	{
-		path: "/dashboard/commercial/tabs",
+		path: "/dashboard/sales/service-accounts",
 		title: "Mesas & Comandas",
 		description: "Contas abertas por mesa ou comanda, com as rodadas em andamento.",
 	},
 	{
-		path: "/dashboard/commercial/cash-sessions",
+		path: "/dashboard/sales/cash-sessions",
 		title: "Caixa",
 		description: "Abertura, conferência e fechamento das sessões de caixa.",
 	},
 	{
-		path: "/dashboard/commercial/segments",
+		path: "/dashboard/customers/segments",
 		title: "Segmentações",
 		description: "Visualização da matriz RFM de clientes.",
 	},
 	{
-		path: "/dashboard/commercial/clients",
+		path: "/dashboard/customers",
 		title: "Clientes",
 		description: "Painel detalhadado do seu portfólio de clientes.",
 	},
 	{
-		path: "/dashboard/commercial/partners",
+		path: "/dashboard/management/partners",
 		title: "Parceiros",
 		description: "Painel detalhadado dos seus parceiros comerciais.",
 	},
 	{
-		path: "/dashboard/commercial/products",
+		path: "/dashboard/catalog/products",
 		title: "Produtos",
 		description: "Painel detalhadado dos seus produtos.",
 	},
 	{
-		path: "/dashboard/commercial/campaigns",
+		path: "/dashboard/growth/campaigns",
 		title: "Campanhas",
 		description: "Painel de acompanhamento e gestão das campanhas de vendas.",
 	},
 	{
-		path: "/dashboard/commercial/cashback-programs",
+		path: "/dashboard/growth/cashback",
 		title: "Programas de Cashback",
 		description: "Painel de acompanhamento e gestão do seu programa de cashback.",
 	},
 	{
-		path: "/dashboard/commercial/coupons",
+		path: "/dashboard/growth/coupons",
 		title: "Cupons",
 		description: "Painel de acompanhamento e gestão dos cupons de desconto.",
 	},
 	{
-		path: "/dashboard/commercial/shop",
+		path: "/dashboard/catalog/store",
 		title: "Loja Digital",
 		description: "Painel de acompanhamento e gestão da sua loja digital.",
 	},
 	{
-		path: "/dashboard/commercial/audiences",
+		path: "/dashboard/growth/audiences",
 		title: "Públicos",
 		description: "Painel de acompanhamento e gestão de públicos.",
 	},
 	{
-		path: "/dashboard/commercial/marketing",
+		path: "/dashboard/channels/paid-media",
 		title: "Marketing",
 		description: "Painel de acompanhamento e gestão de marketing.",
 	},
@@ -775,52 +775,52 @@ export const AppRoutes = [
 		description: "Conexões com ERPs e canais de venda do seu negócio.",
 	},
 	{
-		path: "/dashboard/team/client-portfolios",
+		path: "/dashboard/customers/portfolios",
 		title: "Carteira de Clientes",
 		description: "Quem abordar, o que oferecer e por quê — sua carteira do dia.",
 	},
 	{
-		path: "/dashboard/team/sellers",
+		path: "/dashboard/management/sellers",
 		title: "Vendedores",
 		description: "Painel detalhadado dos seus vendedores.",
 	},
 	{
-		path: "/dashboard/team/goals",
+		path: "/dashboard/management/goals",
 		title: "Metas",
 		description: "Painel de acompanhamento e gestão das metas de vendas.",
 	},
 	{
-		path: "/dashboard/chats",
+		path: "/dashboard/channels/whatsapp",
 		title: "Conversas",
 		description: "Hub de atendimento com os clientes.",
 	},
 	{
-		path: "/dashboard/operational/productions",
+		path: "/dashboard/production",
 		title: "Produções",
 		description: "Painel de acompanhamento e gestão das produções do seu negócio.",
 	},
 	{
-		path: "/dashboard/operational/stocks",
+		path: "/dashboard/inventory",
 		title: "Estoque",
 		description: "Visão operacional do estoque: saldo, movimentação e lotes ativos dos seus produtos.",
 	},
 	{
-		path: "/dashboard/operational/stocks/lots",
+		path: "/dashboard/inventory/lots",
 		title: "Lotes de Estoque",
 		description: "Painel de acompanhamento e gestão dos lotes de estoque do seu negócio.",
 	},
 	{
-		path: "/dashboard/operational/finances",
+		path: "/dashboard/finance",
 		title: "Finanças",
 		description: "Painel de acompanhamento e gestão das finanças do seu negócio.",
 	},
 	{
-		path: "/dashboard/operational/fiscal",
+		path: "/dashboard/fiscal",
 		title: "Fiscal",
 		description: "Painel de acompanhamento e gestão do seu recursos fiscais.",
 	},
 	{
-		path: "/dashboard/operational/purchases",
+		path: "/dashboard/purchases",
 		title: "Compras",
 		description: "Painel de acompanhamento e gestão das compras do seu negócio.",
 	},

@@ -72,7 +72,7 @@ async function getOnboardingQuality({ session }: { session: TAuthUserSession }):
 		title: "Traga sua base de clientes",
 		description: "Cadastre pelo menos 10 clientes para ativar campanhas com mais impacto.",
 		completed: hasEnoughClients,
-		actionUrl: "/dashboard/commercial/clients",
+		actionUrl: "/dashboard/customers",
 		actionLabel: "Cadastrar",
 		applicable: true,
 	});
@@ -126,7 +126,7 @@ async function getOnboardingQuality({ session }: { session: TAuthUserSession }):
 		title: "Personalize seu programa de cashback",
 		description: "Ajuste as configurações do programa para refletir a realidade do seu negócio.",
 		completed: hasCustomizedCashbackProgram,
-		actionUrl: "/dashboard/commercial/cashback-programs",
+		actionUrl: "/dashboard/growth/cashback",
 		actionLabel: "Personalizar",
 		applicable: true,
 	});

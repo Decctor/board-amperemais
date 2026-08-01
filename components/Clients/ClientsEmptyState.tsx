@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, FileSpreadsheet, Sparkles, Users } from "lucide-react";
 import Link from "next/link";
 import { FaWhatsapp } from "react-icons/fa6";
+import { appRoutes } from "@/lib/navigation/routes";
 
 export default function ClientsEmptyState() {
 	const containerVariants = {
@@ -73,7 +74,7 @@ export default function ClientsEmptyState() {
 							style={{ backgroundColor: "#24549C" }}
 							asChild
 						>
-							<Link href="/dashboard/commercial/clients/bulk-insert">
+							<Link href={appRoutes.customers.import()}>
 								Ir para importação
 								<ArrowRight className="w-4 h-4 ml-1" />
 							</Link>

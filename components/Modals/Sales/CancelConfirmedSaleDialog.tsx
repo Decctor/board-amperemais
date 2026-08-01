@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
+import { appRoutes } from "@/lib/navigation/routes";
 import { formatToMoney } from "@/lib/formatting";
 import { cancelConfirmedSale } from "@/lib/mutations/pos";
 import { SALES_FULFILLMENT_QUERY_KEY } from "@/lib/queries/sales-fulfillment";
@@ -102,7 +103,7 @@ export function CancelConfirmedSaleDialog({
 							fiscais ficariam dessincronizados.
 						</p>
 						<Button variant="outline" asChild>
-							<Link href={`/dashboard/commercial/sales/${saleId}`}>VER DOCUMENTOS DA VENDA</Link>
+							<Link href={appRoutes.sales.details(saleId)}>VER DOCUMENTOS DA VENDA</Link>
 						</Button>
 					</div>
 				) : (

@@ -1,5 +1,8 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { appRoutes } from "@/lib/navigation/routes";
+import type { TDashboardCapability } from "@/lib/access/capabilities";
+import { filterNavigationItems } from "@/lib/access/navigation";
 import {
 	BadgePercent,
 	Banknote,
@@ -15,8 +18,9 @@ import {
 	Megaphone,
 	MessageCircle,
 	Package,
-	PackageSearch,
 	Plug,
+	ReceiptText,
+	Settings2,
 	ShoppingCart,
 	Store,
 	Target,
@@ -30,12 +34,20 @@ import AppSidebarContentGroup from "./AppSidebarContentGroup";
 import AppSidebarFooter from "./AppSidebarFooter";
 import AppSidebarHeader from "./AppSidebarHeader";
 
+export type TSidebarAccessContext = {
+	organization: NonNullable<TAuthUserSession["membership"]>["organizacao"];
+	permissions: NonNullable<TAuthUserSession["membership"]>["permissoes"];
+};
+
 export type TSidebarConfigItem = {
 	group: string;
 	items: TSidebarItem[];
 };
 
 export type TSidebarItem = {
+	id: string;
+	capability?: TDashboardCapability;
+	activeMatch?: "exact" | "prefix";
 	title: string;
 	url: string | null;
 	icon: React.ReactNode;
@@ -44,231 +56,295 @@ export type TSidebarItem = {
 
 type TSidebarConfigItemWithAccess = {
 	group: string;
-	items: TSidebarItemWithAccess[];
+	items: TSidebarItem[];
 };
 
-type TSidebarItemWithAccess = TSidebarItem & {
-	checkAccess: (organization: NonNullable<TAuthUserSession["membership"]>["organizacao"]) => boolean;
-};
 const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 	{
 		group: "Geral",
 		items: [
 			{
+				id: "dashboard",
+				capability: "dashboard",
+				activeMatch: "exact",
 				title: "Dashboard",
-				url: "/dashboard",
-				icon: <Home className="w-4 h-4" />,
+				url: appRoutes.dashboard(),
+				icon: <Home className="size-4" />,
 				items: null,
-				checkAccess: () => true,
-			},
-			{
-				title: "Campanhas de Vendas",
-				url: "/dashboard/commercial/campaigns",
-				icon: <Megaphone className="w-4 h-4" />,
-				items: null,
-				checkAccess: () => true,
-			},
-			{
-				title: "Integrações",
-				url: "/dashboard/integrations",
-				icon: <Plug className="w-4 h-4" />,
-				items: null,
-				checkAccess: () => true,
 			},
 		],
 	},
 	{
-		group: "Comercial",
+		group: "Vendas",
 		items: [
 			{
-				title: "Carteira de Clientes",
-				url: "/dashboard/team/client-portfolios",
-				icon: <CalendarCheck className="w-4 h-4" />,
-				items: null,
-				checkAccess: (org) => org.configuracao.preferencias.carteirasClientes?.habilitado ?? false,
-			},
-			{
-				title: "Ponto de Interação",
-				url: "/dashboard/commercial/point-of-interaction",
-				icon: <CirclePlay className="w-4 h-4" />,
-				items: null,
-				checkAccess: () => true,
-			},
-			{
+				id: "sales",
+				capability: "sales",
 				title: "Vendas",
-				url: "/dashboard/commercial/sales",
-				icon: <ShoppingCart className="w-4 h-4" />,
-				items: null,
-				checkAccess: () => true,
-			},
-			{
-				title: "Caixa",
-				url: "/dashboard/commercial/cash-sessions",
-				icon: <Banknote className="w-4 h-4" />,
-				items: null,
-				checkAccess: (org) => org.configuracao.preferencias.sessoesVenda?.habilitado ?? false,
-			},
-			{
-				title: "Mesas & Comandas",
-				url: "/dashboard/commercial/tabs",
-				icon: <UtensilsCrossed className="w-4 h-4" />,
-				items: null,
-				checkAccess: (org) => org.configuracao.recursos.erp.acesso && (org.configuracao.preferencias.contasAtendimento?.habilitado ?? false),
-			},
-			{
-				title: "Matriz RFM",
-				url: "/dashboard/commercial/segments",
-				icon: <Grid3X3 className="w-4 h-4" />,
-				items: null,
-				checkAccess: () => true,
-			},
-			{
-				title: "Clientes",
-				url: "/dashboard/commercial/clients",
-				icon: <UsersRound className="w-4 h-4" />,
-				items: null,
-				checkAccess: () => true,
-			},
-			{
-				title: "Vendedores",
-				url: "/dashboard/team/sellers",
-				icon: <UserRound className="w-4 h-4" />,
-				items: null,
-				checkAccess: () => true,
-			},
-			{
-				title: "Parceiros",
-				url: "/dashboard/commercial/partners",
-				icon: <Handshake className="w-4 h-4" />,
-				items: null,
-				checkAccess: () => true,
-			},
-			{
-				title: "Produtos",
-				url: "/dashboard/commercial/products",
-				icon: <Package className="w-4 h-4" />,
-				items: null,
-				checkAccess: () => true,
+				url: null,
+				icon: <ShoppingCart className="size-4" />,
+				items: [
+					{
+						id: "sales-history",
+						capability: "sales",
+						activeMatch: "exact",
+						title: "Histórico",
+						url: appRoutes.sales.root(),
+						icon: <ReceiptText className="size-4" />,
+						items: null,
+					},
+					{
+						id: "sales-orders",
+						capability: "orders",
+						title: "Pedidos",
+						url: appRoutes.sales.orders(),
+						icon: <Boxes className="size-4" />,
+						items: null,
+					},
+					{
+						id: "sales-cash",
+						capability: "cashSessions",
+						title: "Caixa",
+						url: appRoutes.sales.cashSessions(),
+						icon: <Banknote className="size-4" />,
+						items: null,
+					},
+					{
+						id: "service-accounts",
+						capability: "serviceAccounts",
+						title: "Mesas e comandas",
+						url: appRoutes.sales.serviceAccounts(),
+						icon: <UtensilsCrossed className="size-4" />,
+						items: null,
+					},
+					{
+						id: "approvals",
+						capability: "approvals",
+						title: "Aprovações",
+						url: appRoutes.approvals(),
+						icon: <ReceiptText className="size-4" />,
+						items: null,
+					},
+				],
 			},
 		],
 	},
 	{
-		group: "Turbine suas Vendas",
+		group: "Operação",
 		items: [
 			{
-				title: "Metas",
-				url: "/dashboard/team/goals",
-				icon: <Goal className="w-4 h-4" />,
+				id: "preparation",
+				capability: "preparation",
+				title: "Preparo",
+				url: appRoutes.operations.preparation(),
+				icon: <Package className="size-4" />,
 				items: null,
-				checkAccess: () => true,
-			},
-
-			{
-				title: "Programas de Cashback",
-				url: "/dashboard/commercial/cashback-programs",
-				icon: <BadgePercent className="w-4 h-4" />,
-				items: null,
-				checkAccess: () => true,
 			},
 			{
-				title: "Cupons",
-				url: "/dashboard/commercial/coupons",
-				icon: <Ticket className="w-4 h-4" />,
-				items: null,
-				checkAccess: () => true,
-			},
-			{
-				title: "Loja Digital",
-				url: "/dashboard/commercial/shop",
-				icon: <Store className="w-4 h-4" />,
-				items: null,
-				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
-			},
-			{
-				title: "Meta Ads",
-				url: "/dashboard/commercial/marketing",
-				icon: <Target className="w-4 h-4" />,
-				items: null,
-				checkAccess: () => true,
-			},
-			{
-				title: "Públicos",
-				url: "/dashboard/commercial/audiences",
-				icon: <UsersRound className="w-4 h-4" />,
-				items: null,
-				checkAccess: () => true,
-			},
-		],
-	},
-
-	{
-		group: "Atendimentos",
-		items: [
-			{
-				title: "Whatsapp Hub",
-				url: "/dashboard/chats",
-				icon: <MessageCircle className="w-4 h-4" />,
-				items: null,
-				checkAccess: (org) => org.configuracao.recursos.hubAtendimentos.acesso,
-			},
-		],
-	},
-	{
-		group: "Operacional",
-		items: [
-			{
+				id: "purchases",
+				capability: "purchases",
 				title: "Compras",
-				url: "/dashboard/operational/purchases",
-				icon: <ShoppingCart className="w-4 h-4" />,
+				url: appRoutes.purchases(),
+				icon: <ShoppingCart className="size-4" />,
 				items: null,
-				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
 			},
 			{
+				id: "production",
+				capability: "production",
 				title: "Produções",
-				url: "/dashboard/operational/productions",
-				icon: <Factory className="w-4 h-4" />,
+				url: appRoutes.production(),
+				icon: <Factory className="size-4" />,
 				items: null,
-				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
 			},
 			{
+				id: "products",
+				capability: "products",
+				title: "Produtos",
+				url: appRoutes.catalog.products(),
+				icon: <Package className="size-4" />,
+				items: null,
+			},
+			{
+				id: "inventory",
+				capability: "inventory",
 				title: "Estoque",
-				url: "/dashboard/operational/stocks",
-				icon: <Boxes className="w-4 h-4" />,
+				url: appRoutes.inventory.root(),
+				icon: <Boxes className="size-4" />,
 				items: null,
-				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
+			},
+		],
+	},
+	{
+		group: "Relacionamento",
+		items: [
+			{
+				id: "customers",
+				capability: "customers",
+				title: "Clientes",
+				url: appRoutes.customers.root(),
+				icon: <UsersRound className="size-4" />,
+				items: null,
 			},
 			{
-				title: "Lotes",
-				url: "/dashboard/operational/stocks/lots",
-				icon: <PackageSearch className="w-4 h-4" />,
+				id: "customer-portfolios",
+				capability: "portfolios",
+				title: "Carteiras",
+				url: appRoutes.customers.portfolios(),
+				icon: <CalendarCheck className="size-4" />,
 				items: null,
-				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
 			},
 			{
+				id: "segments",
+				capability: "segments",
+				title: "Matriz RFM",
+				url: appRoutes.customers.segments(),
+				icon: <Grid3X3 className="size-4" />,
+				items: null,
+			},
+			{
+				id: "campaigns",
+				capability: "campaigns",
+				title: "Campanhas",
+				url: appRoutes.growth.campaigns(),
+				icon: <Megaphone className="size-4" />,
+				items: null,
+			},
+			{
+				id: "audiences",
+				capability: "audiences",
+				title: "Públicos",
+				url: appRoutes.growth.audiences(),
+				icon: <UsersRound className="size-4" />,
+				items: null,
+			},
+			{
+				id: "cashback",
+				capability: "cashback",
+				title: "Cashback",
+				url: appRoutes.growth.cashback(),
+				icon: <BadgePercent className="size-4" />,
+				items: null,
+			},
+			{
+				id: "coupons",
+				capability: "coupons",
+				title: "Cupons",
+				url: appRoutes.growth.coupons(),
+				icon: <Ticket className="size-4" />,
+				items: null,
+			},
+		],
+	},
+	{
+		group: "Gestão",
+		items: [
+			{
+				id: "finance",
+				capability: "finance",
 				title: "Financeiro",
-				url: "/dashboard/operational/finances",
-				icon: <Wallet className="w-4 h-4" />,
+				url: appRoutes.finance(),
+				icon: <Wallet className="size-4" />,
 				items: null,
-				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
 			},
 			{
+				id: "fiscal",
+				capability: "fiscal",
 				title: "Fiscal",
-				url: "/dashboard/operational/fiscal",
-				icon: <BookText className="w-4 h-4" />,
+				url: appRoutes.fiscal(),
+				icon: <BookText className="size-4" />,
 				items: null,
-				checkAccess: (org) => org.configuracao.recursos.erp.acesso,
+			},
+			{
+				id: "goals",
+				capability: "goals",
+				title: "Metas",
+				url: appRoutes.management.goals(),
+				icon: <Goal className="size-4" />,
+				items: null,
+			},
+			{
+				id: "sellers",
+				capability: "sellers",
+				title: "Vendedores",
+				url: appRoutes.management.sellers(),
+				icon: <UserRound className="size-4" />,
+				items: null,
+			},
+			{
+				id: "partners",
+				capability: "partners",
+				title: "Parceiros",
+				url: appRoutes.management.partners(),
+				icon: <Handshake className="size-4" />,
+				items: null,
+			},
+		],
+	},
+	{
+		group: "Canais",
+		items: [
+			{
+				id: "whatsapp",
+				capability: "whatsapp",
+				title: "WhatsApp Hub",
+				url: appRoutes.channels.whatsapp(),
+				icon: <MessageCircle className="size-4" />,
+				items: null,
+			},
+			{
+				id: "point-of-interaction",
+				capability: "pointOfInteraction",
+				title: "Ponto de interação",
+				url: appRoutes.sales.pointOfInteraction(),
+				icon: <CirclePlay className="size-4" />,
+				items: null,
+			},
+			{
+				id: "digital-store",
+				capability: "store",
+				title: "Loja digital",
+				url: appRoutes.catalog.store(),
+				icon: <Store className="size-4" />,
+				items: null,
+			},
+			{
+				id: "paid-media",
+				capability: "paidMedia",
+				title: "Mídia paga",
+				url: appRoutes.channels.paidMedia(),
+				icon: <Target className="size-4" />,
+				items: null,
+			},
+		],
+	},
+	{
+		group: "Sistema",
+		items: [
+			{
+				id: "integrations",
+				capability: "integrations",
+				title: "Integrações",
+				url: appRoutes.integrations(),
+				icon: <Plug className="size-4" />,
+				items: null,
+			},
+			{
+				id: "settings",
+				capability: "settings",
+				title: "Configurações",
+				url: appRoutes.settings(),
+				icon: <Settings2 className="size-4" />,
+				items: null,
 			},
 		],
 	},
 ];
-function filterSidebarConfig(
-	config: TSidebarConfigItemWithAccess[],
-	organization: NonNullable<TAuthUserSession["membership"]>["organizacao"],
-): TSidebarConfigItem[] {
+
+function filterSidebarConfig(config: TSidebarConfigItemWithAccess[], context: TSidebarAccessContext): TSidebarConfigItem[] {
 	return config
 		.map((group) => ({
 			group: group.group,
-			items: group.items.filter((item) => item.checkAccess(organization)).map(({ checkAccess: _checkAccess, ...rest }) => rest),
+			items: filterNavigationItems(group.items, context).filter((item) => item.url !== null || (item.items?.length ?? 0) > 0),
 		}))
 		.filter((group) => group.items.length > 0);
 }
@@ -276,12 +352,14 @@ function filterSidebarConfig(
 export function AppSidebar({
 	user,
 	organization,
+	permissions,
 	...props
 }: React.ComponentProps<typeof Sidebar> & {
 	user: TAuthUserSession["user"];
 	organization: NonNullable<TAuthUserSession["membership"]>["organizacao"];
+	permissions: NonNullable<TAuthUserSession["membership"]>["permissoes"];
 }) {
-	const filteredConfig = filterSidebarConfig(SidebarConfig, organization);
+	const filteredConfig = filterSidebarConfig(SidebarConfig, { organization, permissions });
 	return (
 		<Sidebar variant="inset" collapsible="icon" {...props}>
 			<SidebarHeader>

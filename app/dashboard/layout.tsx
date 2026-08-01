@@ -28,7 +28,7 @@ const MainLayout = async ({ children }: { children: ReactNode }) => {
 	return (
 		// data-app-shell aciona o clamp de scroll do documento em globals.css.
 		<SidebarProvider data-app-shell="" className="font-raleway h-svh overflow-hidden">
-			<AppSidebar user={user.user} organization={user.membership.organizacao} />
+			<AppSidebar user={user.user} organization={user.membership.organizacao} permissions={user.membership.permissoes} />
 			<Suspense fallback={<LoadingComponent />}>
 				<SidebarInset className="overflow-y-auto p-6 flex flex-col gap-3">
 					<OrgColorsProvider
