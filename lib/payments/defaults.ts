@@ -12,6 +12,7 @@ export type TResolvedPaymentMethodDefault = {
 	dataPrevisao: string | null;
 	totalParcelas: number | null;
 	contaFinanceiraPadraoId: string | null;
+	contaFinanceiraEditavel: boolean;
 	parcelasDisponiveis: number[];
 };
 
@@ -19,6 +20,7 @@ const DEFAULT_PAYMENT_METHOD_CONFIG: TPaymentMethodDefaultsConfig = {
 	suportado: false,
 	contaFinanceiraPadraoId: null,
 	contaFinanceiraPadraoKey: null,
+	contaFinanceiraEditavel: false,
 	efetivacaoTipoPadrao: "IMEDIATA",
 	delayDiasPadrao: 0,
 	parcelamento: {
@@ -117,6 +119,8 @@ export function getOrganizationPaymentMethodDefault({
 		dataPrevisao,
 		totalParcelas: null,
 		contaFinanceiraPadraoId: config.contaFinanceiraPadraoId,
+		// Organizações anteriores ao campo não têm a chave no jsonb (que não é parseado na leitura).
+		contaFinanceiraEditavel: config.contaFinanceiraEditavel ?? false,
 		parcelasDisponiveis: getPaymentInstallmentsOptions(config),
 	};
 }

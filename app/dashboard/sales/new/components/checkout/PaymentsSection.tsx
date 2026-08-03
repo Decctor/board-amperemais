@@ -16,7 +16,7 @@ import { formatToMoney } from "@/lib/formatting";
 import type { ClassifiedPayment } from "@/lib/sales/utils";
 import type { TUseSaleState } from "@/state-hooks/use-sale-state";
 import { SalePaymentMethodsOptions } from "@/utils/select-options";
-import { CalendarClock, Check, CheckCheck, Clock, Plus, Wallet, X } from "lucide-react";
+import { CalendarClock, Check, CheckCheck, Clock, Landmark, Plus, Wallet, X } from "lucide-react";
 import { useMemo } from "react";
 
 type PaymentsSectionProps = {
@@ -37,6 +37,11 @@ function PaymentCard({ saleState, payment }: PaymentCardProps) {
 	const supportedMethodOptions = SalePaymentMethodsOptions.filter((method) => saleState.organizationPaymentMethodsConfig[method.value]?.suportado);
 	const installmentOptions = getPaymentInstallmentsOptions(paymentMethodConfig);
 	const shouldShowInstallments = installmentOptions.length > 0;
+	// Conta financeira: só aparece nos métodos configurados como editáveis (ex.: PIX recebido em
+	// conta diferente nas vendas B2B). A padrão já vem selecionada.
+	const accountOptions = saleState.organizationFinancialAccounts;
+	const shouldShowAccount = (paymentMethodConfig?.contaFinanceiraEditavel ?? false) && accountOptions.length > 0;
+	const selectedAccount = accountOptions.find((account) => account.id === payment.contaFinanceiraId);
 	return (
 		<div className="w-full flex flex-col gap-2 rounded-lg border px-2 py-2">
 			<div className="flex items-center gap-1.5 justify-between">
@@ -113,8 +118,32 @@ function PaymentCard({ saleState, payment }: PaymentCardProps) {
 				</div>
 			</div>
 
-			{shouldShowInstallments || payment.efetivacaoTipo === "PENDENTE" ? (
-				<div className="w-full flex justify-end items-center gap-3">
+			{shouldShowAccount || shouldShowInstallments || payment.efetivacaoTipo === "PENDENTE" ? (
+				<div className="w-full flex flex-wrap justify-end items-center gap-x-3 gap-y-1">
+					{/* Ordem do modificador mais estrutural para o mais temporal: onde cai → como divide → quando entra. */}
+					{shouldShowAccount ? (
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5 text-[0.7rem] min-w-0">
+									<Landmark className="w-3.5 h-3.5 shrink-0" />
+									{/* O nome é dado do usuário: preserva a capitalização que a organização escreveu. */}
+									<span className="truncate max-w-[11rem]">{selectedAccount?.nome ?? "DEFINIR CONTA"}</span>
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								<DropdownMenuLabel>CONTA FINANCEIRA</DropdownMenuLabel>
+								<DropdownMenuSeparator />
+								{accountOptions.map((account) => (
+									<DropdownMenuItem key={account.id} onClick={() => saleState.updatePagamento(payment.id, { contaFinanceiraId: account.id })}>
+										<div className="flex items-center gap-2 w-full justify-between">
+											{account.nome}
+											{account.id === payment.contaFinanceiraId ? <Check className="w-4 h-4" /> : null}
+										</div>
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					) : null}
 					{shouldShowInstallments ? (
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
@@ -191,10 +220,7 @@ export default function PaymentsSection({ saleState, pagamentosEfetivados }: Pay
 						const methodLabel = SalePaymentMethodsOptions.find((method) => method.value === payment.metodo)?.label ?? payment.metodo;
 						const installmentLabel = payment.parcela && payment.totalParcelas ? ` ${payment.parcela}/${payment.totalParcelas}` : "";
 						return (
-							<div
-								key={payment.id}
-								className="w-full flex items-center justify-between rounded-lg border border-green-600/25 bg-green-500/10 px-2 py-1.5"
-							>
+							<div key={payment.id} className="w-full flex items-center justify-between rounded-lg border border-green-600/25 bg-green-500/10 px-2 py-1.5">
 								<div className="flex items-center gap-1.5 text-xs font-semibold text-green-700 dark:text-green-400 uppercase">
 									<CheckCheck className="w-3 h-3 min-w-3 min-h-3" />
 									{methodLabel}

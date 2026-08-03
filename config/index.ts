@@ -200,6 +200,7 @@ const DEFAULT_PAYMENT_METHOD_CONFIGURATION: TOrganizationConfiguration["defaults
 	suportado: false,
 	contaFinanceiraPadraoId: null,
 	contaFinanceiraPadraoKey: null,
+	contaFinanceiraEditavel: false,
 	efetivacaoTipoPadrao: "IMEDIATA",
 	delayDiasPadrao: 0,
 	parcelamento: {
@@ -708,6 +709,21 @@ export const AppRoutes = [
 		path: "/dashboard/sales/new",
 		title: "Nova Venda",
 		description: "Cadastro de nova venda.",
+	},
+	{
+		path: "/dashboard/sales/orders",
+		title: "Pedidos",
+		description: "Controle de pedidos realizados.",
+	},
+	{
+		path: "/dashboard/operations/preparation",
+		title: "Preparo",
+		description: "Acompanhamento dos pedidos em preparo.",
+	},
+	{
+		path: "/dashboard/approvals",
+		title: "Aprovações",
+		description: "Revisão e decisão de solicitações pendentes.",
 	},
 	{
 		path: "/dashboard/sales/service-accounts",

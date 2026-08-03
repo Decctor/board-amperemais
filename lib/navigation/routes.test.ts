@@ -5,8 +5,8 @@ import { appRoutes } from "./routes";
 test("builds canonical sale routes", () => {
 	assert.equal(appRoutes.sales.root(), "/dashboard/sales");
 	assert.equal(appRoutes.sales.details("sale-1"), "/dashboard/sales/sale-1");
-	assert.equal(appRoutes.sales.edit("sale-1"), "/dashboard/sales/sale-1/edit");
-	assert.equal(appRoutes.sales.checkout("sale-1"), "/dashboard/sales/sale-1/checkout");
+	assert.equal(appRoutes.sales.edit("sale-1"), "/dashboard/sales/edit/sale-1");
+	assert.equal(appRoutes.sales.checkout("sale-1"), "/dashboard/sales/checkout/sale-1");
 });
 
 test("keeps provider-neutral growth and channel routes", () => {

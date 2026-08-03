@@ -82,6 +82,20 @@ function PaymentMethodCard({ methodOption, methodData, financialAccountOptions, 
 						onReset={() => update({ contaFinanceiraPadraoId: null, contaFinanceiraPadraoKey: null })}
 					/>
 
+					<div className="flex items-center justify-between gap-3">
+						<div className="flex flex-col">
+							<span className="text-foreground/80 text-sm font-medium tracking-tight">EDITÁVEL NA VENDA</span>
+							<span className="text-muted-foreground text-xs">
+								Permite ao operador trocar a conta deste método no PDV. A conta padrão segue pré-selecionada.
+							</span>
+						</div>
+						<Switch
+							checked={methodData.contaFinanceiraEditavel ?? false}
+							onCheckedChange={(checked) => editable && update({ contaFinanceiraEditavel: checked })}
+							disabled={!editable}
+						/>
+					</div>
+
 					<div className="flex flex-col gap-1">
 						<h3 className="text-foreground/80 text-sm font-medium tracking-tight">EFETIVAÇÃO PADRÃO</h3>
 						<div className="flex items-center gap-2">

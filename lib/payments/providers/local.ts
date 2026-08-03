@@ -40,7 +40,7 @@ export class LocalPaymentProvider implements IPaymentProvider {
 						.values({
 							organizacaoId: input.organizacaoId,
 							lancamentoContabilId: input.lancamentoContabilId,
-							contaFinanceiraId: pagamento.contaFinanceiraPadraoId ?? null,
+							contaFinanceiraId: pagamento.contaFinanceiraId ?? null,
 							sessaoVendaId: input.sessaoVendaId ?? null,
 							titulo: buildTransactionTitle(pagamento.metodo, pagamento.observacoes),
 							tipo: "ENTRADA",
@@ -77,7 +77,7 @@ export class LocalPaymentProvider implements IPaymentProvider {
 				.values({
 					organizacaoId: input.organizacaoId,
 					lancamentoContabilId: input.lancamentoContabilId,
-					contaFinanceiraId: pagamento.contaFinanceiraPadraoId ?? null,
+					contaFinanceiraId: pagamento.contaFinanceiraId ?? null,
 					sessaoVendaId: input.sessaoVendaId ?? null,
 					titulo: buildTransactionTitle(pagamento.metodo, pagamento.observacoes),
 					tipo: "ENTRADA",

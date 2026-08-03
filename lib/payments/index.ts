@@ -5,6 +5,7 @@ export {
 	getOrganizationPaymentMethodsConfig,
 	getPaymentInstallmentsOptions,
 } from "./defaults";
+export { getSelectableFinancialAccounts, resolvePaymentFinancialAccounts } from "./resolve-payment-financial-account";
 import { LocalPaymentProvider } from "./providers/local";
 import type { IPaymentProvider } from "./types";
 

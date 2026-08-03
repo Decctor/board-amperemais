@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
+import { CheckoutPaymentSplitSchema, resolvePaymentFinancialAccounts } from "@/lib/payments";
 import { resolveActiveSalesSession } from "@/lib/sales-sessions";
 import { authorizeSaleDiscount, computeSaleAggregatedDiscount, consumeSaleDiscountApproval } from "@/lib/sales/sale-discount-authorization";
 import {
@@ -83,7 +83,6 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		throw new createHttpError.BadRequest("Conta contabil invalida para esta organizacao.");
 	}
 
-	const organizationPaymentMethodDefaults = getOrganizationPaymentMethodsConfig(organization.configuracao);
 	const shopMetadata = saleDraft.rascunhoMetadados as {
 		shop?: {
 			cashbackResgateSolicitado?: number;
@@ -135,25 +134,12 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		aprovacaoId: input.descontoAprovacaoId,
 	});
 
+	const salePayments = await resolvePaymentFinancialAccounts({ organization, payments: input.pagamentos });
+
 	const confirmationInput: TProcessSaleConfirmationInput = {
 		organization,
 		saleId: input.id,
-		salePayments: input.pagamentos.map((pagamento) => {
-			const methodDefaults = organizationPaymentMethodDefaults[pagamento.metodo];
-			if (!methodDefaults?.suportado) {
-				throw new createHttpError.BadRequest(`O metodo de pagamento ${pagamento.metodo} nao esta habilitado para esta organizacao.`);
-			}
-
-			return {
-				metodo: pagamento.metodo,
-				valor: pagamento.valor,
-				totalParcelas: pagamento.totalParcelas ?? undefined,
-				efetivacaoTipo: pagamento.efetivacaoTipo,
-				dataPrevisao: pagamento.dataPrevisao ?? undefined,
-				observacoes: pagamento.observacoes ?? undefined,
-				contaFinanceiraPadraoId: methodDefaults.contaFinanceiraPadraoId ?? null,
-			};
-		}),
+		salePayments,
 		saleAuthorId: session.user.id,
 		saleClientId: input.clienteId,
 		saleCashbackProgramId: effectiveCashbackProgramaId,

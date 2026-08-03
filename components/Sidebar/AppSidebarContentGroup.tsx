@@ -45,11 +45,12 @@ function AppSidebarContentGroupItem({ item }: { item: TSidebarItem }) {
 	const { state, setOpen } = useSidebar();
 	const childIsActive = item.items?.some((subItem) => isPathActive(pathname, subItem.url, subItem.activeMatch)) ?? false;
 	const itemIsActive = isPathActive(pathname, item.url, item.activeMatch);
-	const [isOpen, setIsOpen] = useState(childIsActive);
+	const routeIsActive = childIsActive || itemIsActive;
+	const [isOpen, setIsOpen] = useState(routeIsActive);
 
 	useEffect(() => {
-		if (childIsActive) setIsOpen(true);
-	}, [childIsActive]);
+		if (routeIsActive) setIsOpen(true);
+	}, [routeIsActive]);
 
 	if (item.items && item.items.length > 0) {
 		return (

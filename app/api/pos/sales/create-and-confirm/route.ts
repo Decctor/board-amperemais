@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
+import { CheckoutPaymentSplitSchema, resolvePaymentFinancialAccounts } from "@/lib/payments";
 import {
 	type TAdmittedSaleReward,
 	admitSaleRewardRedemption,
@@ -157,8 +157,6 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 	if (!accountingEntryDebitAccountId || !accountingEntryCreditAccountId) {
 		throw new createHttpError.InternalServerError("A organizacao nao possui contas padrao de vendas configuradas.");
 	}
-	const organizationPaymentMethodDefaults = getOrganizationPaymentMethodsConfig(organization.configuracao);
-
 	const productCostMap = new Map(produtosResult.map((p) => [p.id, p.precoCusto ?? 0]));
 	const variantCostMap = new Map(variantesResult.map((v) => [v.id, v.precoCusto ?? 0]));
 
@@ -204,22 +202,7 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 			return sum + custo * item.quantidade;
 		}, 0) + (validatedReward?.prize.precoCusto ?? 0);
 
-	const salePayments = input.pagamentos.map((payment) => {
-		const methodDefaults = organizationPaymentMethodDefaults[payment.metodo];
-		if (!methodDefaults?.suportado) {
-			throw new createHttpError.BadRequest(`O método de pagamento ${payment.metodo} não está habilitado para esta organização.`);
-		}
-
-		return {
-			metodo: payment.metodo,
-			valor: payment.valor,
-			totalParcelas: payment.totalParcelas ?? undefined,
-			efetivacaoTipo: payment.efetivacaoTipo,
-			dataPrevisao: payment.dataPrevisao ?? undefined,
-			observacoes: payment.observacoes ?? undefined,
-			contaFinanceiraPadraoId: methodDefaults.contaFinanceiraPadraoId ?? null,
-		};
-	});
+	const salePayments = await resolvePaymentFinancialAccounts({ organization, payments: input.pagamentos });
 	const idExterno = `POS-${Date.now()}`;
 
 	const transactionResult = await db.transaction(async (tx) => {

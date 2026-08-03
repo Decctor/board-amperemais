@@ -15,11 +15,13 @@ import {
 	Grid3X3,
 	Handshake,
 	Home,
+	Kanban,
 	Megaphone,
 	MessageCircle,
 	Package,
 	Plug,
 	ReceiptText,
+	ScanBarcode,
 	Settings2,
 	ShoppingCart,
 	Store,
@@ -81,9 +83,18 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				id: "sales",
 				capability: "sales",
 				title: "Vendas",
-				url: null,
+				// Ownership path keeps the group active for details, creation, import, edit, and checkout routes.
+				url: appRoutes.sales.root(),
 				icon: <ShoppingCart className="size-4" />,
 				items: [
+					{
+						id: "new-sale",
+						capability: "newSale",
+						title: "Nova venda",
+						url: appRoutes.sales.new(),
+						icon: <ScanBarcode className="size-4" />,
+						items: null,
+					},
 					{
 						id: "sales-history",
 						capability: "sales",
@@ -98,7 +109,7 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 						capability: "orders",
 						title: "Pedidos",
 						url: appRoutes.sales.orders(),
-						icon: <Boxes className="size-4" />,
+						icon: <Kanban className="size-4" />,
 						items: null,
 					},
 					{

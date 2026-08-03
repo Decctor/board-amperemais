@@ -1,6 +1,7 @@
 import { getCurrentSession } from "@/lib/authentication/session";
 import { isOrganizationAutoFiscalCapable } from "@/lib/fiscal/auto-emission-capability";
 import { getFiscalSettings } from "@/lib/fiscal/settings";
+import { getSelectableFinancialAccounts } from "@/lib/payments";
 import { db } from "@/services/drizzle";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { Metadata } from "next";
@@ -21,11 +22,13 @@ export default async function NewSale() {
 	// return redirect("/dashboard");
 	// DISABLED FOR NOW
 	const organizationId = sessionUser.membership.organizacao.id;
-	const [organizationCashbackProgram, fiscalSettings] = await Promise.all([
+	const organizationConfiguration = sessionUser.membership.organizacao.configuracao as TOrganizationConfiguration;
+	const [organizationCashbackProgram, fiscalSettings, organizationFinancialAccounts] = await Promise.all([
 		db.query.cashbackPrograms.findFirst({
 			where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
 		}),
 		getFiscalSettings(organizationId),
+		getSelectableFinancialAccounts({ organizationId, configuracao: organizationConfiguration }),
 	]);
 
 	if (sessionUser.membership.organizacao.configuracao.recursos.erp.acesso === false) {
@@ -39,7 +42,8 @@ export default async function NewSale() {
 	return (
 		<NewSalePage
 			organizationCashbackProgram={organizationCashbackProgram ?? null}
-			organizationConfiguration={sessionUser.membership.organizacao.configuracao as TOrganizationConfiguration}
+			organizationConfiguration={organizationConfiguration}
+			organizationFinancialAccounts={organizationFinancialAccounts}
 			organizationAutoFiscalEmission={fiscalSettings.fiscalEmissaoAutomatica}
 			organizationAutoFiscalCapable={isOrganizationAutoFiscalCapable(fiscalSettings)}
 			canEmitFiscal={sessionUser.membership.permissoes.fiscal.emitir}

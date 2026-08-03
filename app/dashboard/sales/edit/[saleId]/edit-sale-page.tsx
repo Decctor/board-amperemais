@@ -19,7 +19,7 @@ import { SALES_FULFILLMENT_QUERY_KEY } from "@/lib/queries/sales-fulfillment";
 import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
-import { type TUseSaleState, useSaleState } from "@/state-hooks/use-sale-state";
+import { type TSaleFinancialAccountOption, type TUseSaleState, useSaleState } from "@/state-hooks/use-sale-state";
 import { isAxiosError } from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, PencilLine, ShoppingCart } from "lucide-react";
@@ -77,6 +77,7 @@ type EditSalePageProps = {
 	saleId: string;
 	organizationCashbackProgram: TCashbackProgramEntity | null;
 	organizationConfiguration: TOrganizationConfiguration;
+	organizationFinancialAccounts: TSaleFinancialAccountOption[];
 	organizationAutoFiscalEmission: boolean;
 	organizationAutoFiscalCapable: boolean;
 	canEmitFiscal: boolean;
@@ -86,6 +87,7 @@ export default function EditSalePage({
 	saleId,
 	organizationCashbackProgram,
 	organizationConfiguration,
+	organizationFinancialAccounts,
 	organizationAutoFiscalEmission,
 	organizationAutoFiscalCapable,
 	canEmitFiscal,
@@ -98,20 +100,21 @@ export default function EditSalePage({
 	const [viewMode, setViewMode] = useState<ProductViewMode>("grid");
 	const [builderProduct, setBuilderProduct] = useState<TGetPOSProductsOutput["data"]["products"][number] | null>(null);
 	const [isCheckoutSheetOpen, setIsCheckoutSheetOpen] = useState(false);
-	const saleState = useSaleState({ organizationConfig: organizationConfiguration });
+	const saleState = useSaleState({ organizationConfig: organizationConfiguration, contasFinanceiras: organizationFinancialAccounts });
 
 	const { data: saleForEdit, isLoading, isError, error, queryKey: saleForEditQueryKey } = useSaleForEdit({ saleId });
 
 	// Hidratação única por venda: o operador não perde o carrinho editado em refetches (ex.: após 409).
 	const hydratedSaleIdRef = useRef<string | null>(null);
 	const resetState = saleState.resetState;
+	const methodsConfig = saleState.organizationPaymentMethodsConfig;
 	useEffect(() => {
 		if (!saleForEdit) return;
 		if (hydratedSaleIdRef.current === saleForEdit.venda.id) return;
 		if (saleForEdit.editabilidade.nivel !== "TOTAL") return;
 		hydratedSaleIdRef.current = saleForEdit.venda.id;
-		resetState(mapSaleForEditToSaleState(saleForEdit));
-	}, [saleForEdit, resetState]);
+		resetState(mapSaleForEditToSaleState(saleForEdit, { methodsConfig }));
+	}, [saleForEdit, resetState, methodsConfig]);
 
 	// IDs hidratados que saíram do carrinho → linhas `deletar` no submit.
 	const deletedItemIds = useMemo(() => {
@@ -313,7 +316,7 @@ export default function EditSalePage({
 							</Button>
 						) : null}
 						<Button variant="outline" asChild>
-								<Link href={appRoutes.sales.details(saleId)}>VER DETALHES DA VENDA</Link>
+							<Link href={appRoutes.sales.details(saleId)}>VER DETALHES DA VENDA</Link>
 						</Button>
 					</div>
 				</div>

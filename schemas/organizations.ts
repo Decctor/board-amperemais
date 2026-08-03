@@ -59,6 +59,9 @@ export const OrganizationPaymentMethodDefaultsSchema = z.object({
 	}),
 	contaFinanceiraPadraoId: z.string({ invalid_type_error: "Tipo não válido para a conta financeira padrão." }).nullable(),
 	contaFinanceiraPadraoKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta financeira padrão." }).nullable(),
+	// Quando true, o operador pode trocar a conta financeira do pagamento no PDV (a padrão vem
+	// pré-selecionada). Organizações existentes não têm a chave no jsonb — daí o default.
+	contaFinanceiraEditavel: z.boolean({ invalid_type_error: "Tipo não válido para se a conta financeira é editável na venda." }).default(false),
 	efetivacaoTipoPadrao: PaymentEffectivenessTypeEnum,
 	delayDiasPadrao: z.number({ invalid_type_error: "Tipo não válido para o delay padrão em dias." }).int().nullable(),
 	parcelamento: z.object({
@@ -326,7 +329,7 @@ export const OrganizationSchema = z.object({
 	fiscalProvedor: z.enum(["MANUAL", "SPEDY"]).optional().nullable(),
 	fiscalEmissaoAutomatica: z
 		.boolean({
-			invalid_type_error: "Tipo nao valido para a emissao automatica fiscal.",
+			invalid_type_error: "Tipo não válido para a emissão automatica fiscal.",
 		})
 		.default(false),
 	fiscalConfiguracao: OrganizationFiscalConfigSchema.optional().nullable(),

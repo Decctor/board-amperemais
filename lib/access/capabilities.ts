@@ -5,6 +5,7 @@ import { canViewFinances } from "@/lib/permissions/finances";
 export const dashboardCapabilities = {
 	dashboard: "dashboard",
 	sales: "sales",
+	newSale: "newSale",
 	cashSessions: "cashSessions",
 	orders: "orders",
 	preparation: "preparation",
@@ -61,6 +62,8 @@ export function canAccessDashboardCapability(capability: TDashboardCapability, c
 			return true;
 		case "sales":
 			return permissions.vendas.visualizar;
+		case "newSale":
+			return erp && permissions.vendas.visualizar;
 		case "cashSessions":
 			return permissions.vendas.visualizar && organization.configuracao.preferencias.sessoesVenda?.habilitado === true;
 		case "orders":

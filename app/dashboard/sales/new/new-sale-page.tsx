@@ -14,7 +14,7 @@ import { useActiveSalesSession } from "@/lib/queries/sales-sessions";
 import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
-import { type TUseSaleState, getDefaultSaleState, useSaleState } from "@/state-hooks/use-sale-state";
+import { type TSaleFinancialAccountOption, type TUseSaleState, getDefaultSaleState, useSaleState } from "@/state-hooks/use-sale-state";
 import { useMutation } from "@tanstack/react-query";
 import { ShoppingCart } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -64,6 +64,7 @@ function getSaleSuccessSnapshot(saleState: TUseSaleState) {
 type NewSalePageProps = {
 	organizationCashbackProgram: TCashbackProgramEntity | null;
 	organizationConfiguration: TOrganizationConfiguration;
+	organizationFinancialAccounts: TSaleFinancialAccountOption[];
 	organizationAutoFiscalEmission: boolean;
 	organizationAutoFiscalCapable: boolean;
 	canEmitFiscal: boolean;
@@ -71,6 +72,7 @@ type NewSalePageProps = {
 export default function NewSalePage({
 	organizationCashbackProgram,
 	organizationConfiguration,
+	organizationFinancialAccounts,
 	organizationAutoFiscalEmission,
 	organizationAutoFiscalCapable,
 	canEmitFiscal,
@@ -82,7 +84,7 @@ export default function NewSalePage({
 	const [isCheckoutSheetOpen, setIsCheckoutSheetOpen] = useState(false);
 	const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
 	const [isContextSheetOpen, setIsContextSheetOpen] = useState(false);
-	const saleState = useSaleState({ organizationConfig: organizationConfiguration });
+	const saleState = useSaleState({ organizationConfig: organizationConfiguration, contasFinanceiras: organizationFinancialAccounts });
 
 	// Sessões de venda (caixa): resolve a sessão aberta do vendedor selecionado (escopo OPERADOR).
 	const sessoesConfig = organizationConfiguration.preferencias.sessoesVenda;
