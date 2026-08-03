@@ -1,0 +1,469 @@
+# Migração das integrações de fonte de dados para a tabela `integrations`
+
+> Status: planejamento para revisão. Nenhuma linha de código escrita ainda.
+> Origem: o modelo atual — config de integração inline em `organizations` — permite **uma única
+> fonte de dados por organização**. Food services que têm ERP próprio **e** vendem no iFood não
+> cabem nele. Este plano migra as integrações de ERP/marketplace para a tabela `integrations`
+> (criada em `docs/dev-planning/meta-ads-e-fundacao-integrations.md`), onde cada conexão é uma
+> linha com config `jsonb` própria.
+>
+> **Este plano reverte explicitamente a "Decisão fechada #1" do documento da fundação** ("a
+> fundação é aditiva, não substitui o ERP inline"). O comentário em
+> `services/drizzle/schema/integrations.ts:15-16` que documenta essa decisão deve ser atualizado
+> na entrega.
+
+---
+
+## 1. Estado atual (as-is)
+
+### 1.1 O modelo antigo — colunas em `organizations`
+
+`services/drizzle/schema/organizations.ts:49-56`:
+
+| Coluna | Tipo | Papel real hoje |
+|---|---|---|
+| `integracaoTipo` | `organizationIntegrationTypeEnum` (`ONLINE-SOFTWARE`, `CARDAPIO-WEB`, `NUVEM-SHOP`, `IFOOD`, `BLING`) | Discriminante da única integração. **Slot único**: conectar Bling sobrescreve um iFood existente. |
+| `integracaoConfiguracao` | `jsonb $type<TOrganizationIntegrationConfig>` (`schemas/organizations.ts:6-54`) | Credenciais + config (tokens OAuth, merchantIds, storeId…). Viaja **crua e sem máscara na sessão** até o browser. |
+| `integracaoDataUltimaSincronizacao` | `timestamp` | **Morta**: só é escrita como `null` nos callbacks de conexão; nenhum código grava data real. O "última sincronização" do Settings é permanentemente vazio. |
+| `dadosViaIntegracoes` | `boolean` | **Write-only**: escrita `true` pelos 4 callbacks OAuth, nunca lida. |
+| `dadosViaERP` | `boolean` | **Morta**: nunca escrita `true`, nunca lida fora de defaults de state hooks. |
+| `dadosViaPDI` | `boolean` | Escrita no onboarding (`app/onboarding/onboarding-page.tsx:189`), lida só como default de formulário. |
+| `origemDadosPadrao` | `RECEPTOR \| ERP` | Modo de **processamento** (receptor burro vs ERP completo — `docs/ERP-IMPLEMENTATION.md`). Conceito ortogonal à conexão. |
+
+Invariantes implícitos do modelo antigo:
+
+1. **Um slot por org** — last-write-wins nos callbacks OAuth.
+2. **Coerência dupla** — `integracaoConfiguracao.tipo` deve igualar `integracaoTipo`; o gate é
+   repetido em 5 lugares (`lib/data-collecting-v2/index.ts:261`, `lib/integrations/ifood/context.ts:43`,
+   `lib/data-connectors/catalog-sync.ts:26,39`, `app/api/webhooks/ifood/route.ts:59`,
+   `scripts/sync-data-collecting.ts:209`) e, quando viola, **pula a org silenciosamente**.
+3. **`!integracaoTipo` = "o POI é dono das vendas"** — o gate semântico mais pesado do sistema
+   (ver §3.2).
+
+### 1.2 A tabela nova — `integrations`
+
+`services/drizzle/schema/integrations.ts`. Já entrega tudo que o modelo antigo não tem:
+
+- Múltiplas linhas por org, com `apelido` e `refExterno` para desambiguar conexões do mesmo tipo.
+- `status` (`CONECTADO | EXPIRADO | ERRO`) + `ultimoErro` + `dataUltimaSincronizacao` **realmente
+  mantidos** (`lib/integrations/meta/ads/config.ts:48-51`).
+- Unique `(organizacaoId, tipo, refExterno)` contra conexão duplicada.
+- Mascaramento de segredos (`lib/integrations/mask.ts`) e permissões (`canViewIntegrations` /
+  `canManageIntegrations`).
+- CRUD genérico (`app/api/integrations/route.ts` — GET/PATCH/DELETE), hooks
+  (`lib/queries/integrations.ts`), e uma UI multi-conexão comprovada
+  (`app/dashboard/channels/paid-media/marketing-page.tsx`).
+
+O que falta para ela absorver fontes de dados:
+
+1. Os 5 valores de ERP/marketplace no `integrationTypeEnum` (hoje só `META_ADS | META_CAPI | TRACKING`).
+2. As 5 variantes correspondentes na união `TIntegrationConfig` (`schemas/integrations.ts`).
+3. Um caminho de **criação** para tipos de credencial manual (hoje só o callback do Meta insere).
+4. Um sucessor para os três papéis que `integracaoTipo` acumula (ver §3).
+
+---
+
+## 2. Mapa completo de consumidores dos campos antigos
+
+Levantamento exaustivo (52 arquivos). Organizado por superfície; cada item precisa de um destino
+no plano.
+
+### 2.1 Pipeline de coleta (cron `data-collecting`)
+
+| Arquivo | Uso |
+|---|---|
+| `app/api/cron/data-collecting/route.ts:9` | Só delega para `runDataCollectingV2()` — zero campos. |
+| `lib/data-collecting-v2/index.ts:95-105` | `loadOrganizations()` carrega **todas** as orgs (sem WHERE) com `{id, integracaoTipo, integracaoConfiguracao, configuracao}`. |
+| `lib/data-collecting-v2/index.ts:260-261` | Gate de seleção **em JS**: pula org sem tipo/config ou com tipo≠config.tipo (silencioso). |
+| `lib/data-collecting-v2/index.ts:264-271` | Passa só o `config` jsonb para `processOrganization` — 1 config → 1 batch → 1 summary por org. |
+| `lib/data-collecting-v2/index.ts:286,291,321` | `integracaoTipo` em logs/erros. |
+| `lib/data-collecting-v2/index.ts:44-50` | Janela é sempre o dia corrente; **`integracaoDataUltimaSincronizacao` não é cursor** — idempotência vem de `sale-signature.ts`. |
+| `lib/data-collecting-v2/types.ts:101,107,114` | `integrationType`/`source` escalares por org. |
+| `lib/data-collecting-v2/validation.ts:19-68` | Snapshot de validação chaveado por `{organizationId, source}`. |
+| `lib/data-connectors/types.ts:6` | `TDataConnectorKind = NonNullable<TOrganizationEntity["integracaoTipo"]>` — o tipo do conector é **derivado da coluna deprecada**. |
+| `lib/data-connectors/types.ts:182-191` | Conectores recebem `{organizationId, config: TOrganizationIntegrationConfig, window}` — nunca a linha da org. |
+| `lib/data-connectors/index.ts:13-55` | Dispatch por `config.tipo` (o discriminante do jsonb, não a coluna). |
+| `lib/data-connectors/catalog-sync.ts:12-53` | Relê a org e ramifica CARDAPIO-WEB vs NUVEM-SHOP. |
+| `app/api/cron/products-syncing/route.ts:25-49` | Único WHERE SQL real: `inArray(integracaoTipo, ["CARDAPIO-WEB","NUVEM-SHOP"])`. Obs.: **não está registrado no `vercel.json`** (trigger manual/externo hoje). |
+
+**Escritas de refresh de token** — todas clobbering do jsonb inteiro da org, fora da transação
+por-org do cron (hazard de lost-update com múltiplas integrações):
+
+- `lib/data-connectors/bling/client.ts:141-146` (`getValidBlingConfig`)
+- `lib/data-connectors/ifood/client.ts:136-141` (`getValidIfoodConfig`)
+- `lib/data-connectors/ifood/sandbox.ts:143-148` (refresh sandbox, gated pelo placeholder `__IFOOD_SANDBOX_PLACEHOLDER__`)
+- `lib/integrations/ifood/context.ts:61-64` (backfill de `merchantIds` descobertos)
+
+### 2.2 POI `new-transaction` — o gate semântico
+
+`app/api/point-of-interaction/new-transaction/route.ts`. Um único campo antigo lido:
+`integracaoTipo` (linhas 245, 273, 284, 923). A linha carregadora de significado:
+
+```ts
+// :273
+const transactionRequiresSaleProcessing = !program.organizacao.integracaoTipo;
+```
+
+Quando a org **não tem** integração, a transação POI cria a venda interna (`:688-801`,
+`processamentoOrigem: "INTERNO"`), roda atribuição de conversão, atualiza metadados de compra do
+cliente, back-linka `vendaId` em transações de cashback/cupom, e habilita os gatilhos
+`QUANTIDADE-TOTAL-COMPRAS`/`VALOR-TOTAL-COMPRAS`. Quando **tem**, nada disso acontece — a venda
+"virá pela integração". Não existe código de reconciliação POI↔venda importada; a divisão é por
+convenção (`acumuloPermitirViaPontoIntegracao` vs `acumuloPermitirViaIntegracao` no programa de
+cashback, mutuamente exclusivos só por default de UI — `NewCashbackProgram.tsx:38-39`).
+
+### 2.3 Webhooks
+
+| Arquivo | Uso |
+|---|---|
+| `app/api/webhooks/ifood/route.ts:50-71` | Resolve merchant→org com `findMany where integracaoTipo='IFOOD'` + scan linear de `config.merchantIds`. Keep-alive (`:73-82`) monta o set de merchants online — **a homologação iFood depende disso**. Em evento de pedido, dispara `runDataCollectingV2({organizationIds})`. |
+| `lib/integrations/nuvemshop/webhook-notifications.ts:39-59` | Webhooks LGPD: acha org por `integracaoTipo='NUVEM-SHOP'` + match de `config.storeId`. |
+
+### 2.4 Conexão / desconexão (escritores do slot único)
+
+Todos escrevem o mesmo bloco de 4 campos `{integracaoTipo, integracaoConfiguracao,
+integracaoDataUltimaSincronizacao: null, dadosViaIntegracoes: true}`, sobrescrevendo qualquer
+conexão anterior:
+
+- `app/api/integrations/nuvemshop/auth/callback/route.ts:73-92`
+- `app/api/integrations/bling/auth/callback/route.ts:37-45`
+- `app/api/integrations/ifood/auth/complete/route.ts:38-57`
+- `app/api/integrations/ifood/sandbox/route.ts:16-24`
+- `components/Modals/Integrations/ConfigureIntegration.tsx:80-85` — credencial manual
+  (ONLINE-SOFTWARE / CARDAPIO-WEB) via `updateOrganization` genérico. Obs.:
+  `UpdateOrganizationSchema` (`schemas/organizations.ts:302-328`) aceita esses campos de qualquer
+  cliente autenticado — remover na limpeza.
+- `components/Settings/SettingsIntegration.tsx:127-141` — desconectar = os 3 campos para `null` +
+  `window.location.reload()`.
+
+### 2.5 Sessão e UI
+
+`lib/authentication/types.ts:40-42` + `lib/authentication/session.ts:104-106,147-149`: a sessão
+embute `integracaoTipo`, `integracaoConfiguracao` (**tokens crus, sem máscara, entregues a todo
+client component**) e `integracaoDataUltimaSincronizacao`. Consumidores:
+
+| Consumidor | Lê | Para quê |
+|---|---|---|
+| `components/Settings/SettingsIntegration.tsx:111-193,254-258` | os 3 | Card "integração ativa" (slot único), grid de provedores, modal de config. |
+| `app/dashboard/integrations/integrations-page.tsx:25,37` | `integracaoTipo` | `isConnected` por card — só um card pode aparecer conectado. |
+| `app/dashboard/integrations/ifood/ifood-page.tsx:28` + `IfoodConnectionGate.tsx` | `integracaoTipo` | Gate do módulo iFood. |
+| `components/Modals/CashbackPrograms/NewCashbackProgram.tsx:38-39,84` e `ControlCashbackProgram.tsx:106` | `integracaoTipo` | Defaults `acumuloPermitirViaIntegracao: !!tipo` / `acumuloPermitirViaPontoIntegracao: !tipo` + prop `userOrgHasIntegration`. |
+| `components/Modals/Organizations/Blocks/Summary.tsx:75` | `integracaoTipo` | Campo "Integração ativa" no admin. |
+| `app/onboarding/*` (`page.tsx:50-51`, `onboarding-page.tsx:47-48,189`, `DataSourceStage.tsx:35,62-66`, `ConclusionStage.tsx:15`) | `integracaoTipo`, `dadosViaPDI` | Retomada pós-OAuth, badge "Integração X conectada", resumo de fonte de dados (single-valued). |
+| `app/api/organizations/onboarding-quality/route.ts:105` | ambos | Passo "Configurar integração" do checklist. |
+| `app/api/integrations/settings/route.ts:35,41` | `integracaoTipo` | Eco no payload (a escrita real desse route é `configuracao.preferencias.integracaoERP`, que **não** migra). |
+| `state-hooks/use-organization-state.tsx` e `use-organization-onboarding-state.tsx` | todos | Defaults de formulário (não ramificam). |
+| `lib/integrations/ifood/context.ts:37-70` | ambos | Resolver de contexto iFood (gate 404 → UI de conexão; refresh; backfill de merchantIds). |
+
+### 2.6 Scripts (leem credenciais direto da org)
+
+`scripts/sync-data-collecting.ts:196-216`, `scripts/test-bling-fetch.ts:89-98,250-255` (também
+**escreve** refresh), `scripts/test-ifood-import.ts:86-99`, `scripts/ifood-homologation-polling.ts:45-58`,
+`utils/scripts/{sync-org-sales-history, sync-online-sale-dates, sync-cardapio-web-manual-collecting,
+sync-cardapio-web-clients, compare-db-to-cardapio, sync-organization-manual-collecting,
+sync-nuvemshop-manual-collecting, test-nuvemshop-fetch}.ts` — todos resolvem
+`integracaoConfiguracao` (± assert de `integracaoTipo`). `test-nuvemshop-fetch.ts:101-104` loga a
+config crua (vazamento de segredo em log — corrigir de carona).
+
+---
+
+## 3. Modelo alvo (to-be)
+
+### 3.1 Schema
+
+**`integrationTypeEnum`** ganha os 5 valores de fonte de dados, **mantendo a grafia hifenizada
+legada**:
+
+```ts
+export const integrationTypeEnum = pgEnum("integration_type", [
+	"META_ADS", "META_CAPI", "TRACKING",
+	// Fontes de dados (migradas de organizationIntegrationTypeEnum):
+	"ONLINE-SOFTWARE", "CARDAPIO-WEB", "NUVEM-SHOP", "IFOOD", "BLING",
+]);
+```
+
+> Trade-off assumido: mistura duas grafias no mesmo enum. Em troca, o backfill copia o jsonb
+> **byte a byte** (o discriminante `tipo` já bate), e zero código de conector/dispatch/schema é
+> reescrito (`lib/data-connectors/index.ts` ramifica por `config.tipo === "CARDAPIO-WEB"` etc.).
+> Renomear para underscore exigiria reescrever discriminantes em ~20 arquivos + UPDATE de dados —
+> custo alto, ganho estético. Enum values viajam como dado; grafia legada é dado legado.
+
+**`TIntegrationConfig`** (`schemas/integrations.ts`): mover as 5 variantes de
+`OrganizationIntegrationConfigSchema` (`schemas/organizations.ts:6-54`) para a união, sem mudar
+shape. `TOrganizationIntegrationConfig` passa a ser um alias deprecado até a fase de limpeza.
+
+**Novo módulo `lib/integrations/data-sources.ts`** — o sucessor dos três papéis de
+`integracaoTipo`:
+
+```ts
+export const DATA_SOURCE_INTEGRATION_TYPES = [
+	"ONLINE-SOFTWARE", "CARDAPIO-WEB", "NUVEM-SHOP", "IFOOD", "BLING",
+] as const;
+export type TDataSourceIntegrationType = (typeof DATA_SOURCE_INTEGRATION_TYPES)[number];
+
+// (a) "existe fonte de dados ativa?" — sucessor do gate do POI e dos defaults de cashback
+export async function organizationHasActiveDataSource({ executor, organizationId }): Promise<boolean>;
+
+// (c) "quais configs carrego para a org X?" — sucessor do loadOrganizations do cron
+export async function getActiveDataSourceIntegrations({ executor, organizationId? }): Promise<TIntegrationEntity[]>;
+```
+
+O papel (b) — "de qual org é este merchant/store?" — vira consulta por `tipo` + `refExterno`
+(Nuvemshop) ou por `tipo` + scan dos `merchantIds` das linhas IFOOD (iFood; ver decisão D3).
+
+**`refExterno` por tipo** (preenchido no connect/backfill):
+
+| Tipo | `refExterno` |
+|---|---|
+| `NUVEM-SHOP` | `String(storeId)` — habilita lookup indexado no webhook LGPD |
+| `CARDAPIO-WEB` | `merchantId` |
+| `IFOOD` | `null` (merchants ficam em `configuracao.merchantIds`; ver D3) |
+| `BLING` | `null` (a config não carrega id de conta) |
+| `ONLINE-SOFTWARE` | `null` |
+
+Como o unique `(organizacaoId, tipo, refExterno)` não deduplica `NULL`s no Postgres, a
+unicidade "uma conexão ativa por tipo" durante a transição é **garantida em nível de aplicação**
+no serviço de criação (ver D5).
+
+**`sales.integracaoId`** (nova coluna, `varchar` FK → `integrations.id`, `onDelete: "set null"`,
+nullable): gravada por `lib/data-collecting-v2/sync-sales.ts` em toda venda importada.
+Observabilidade ("de qual conexão veio esta venda") e fundação para o dedupe multi-fonte (D4).
+Vendas históricas ficam `null`.
+
+### 3.2 Sucessores semânticos
+
+| Hoje | Passa a ser |
+|---|---|
+| `transactionRequiresSaleProcessing = !org.integracaoTipo` (POI `:273`) | `!(await organizationHasActiveDataSource(...))`. Org com ERP **e** iFood continua `false` (fontes externas donas das vendas). Org só com `META_ADS` conta como **sem** fonte — o helper filtra por `DATA_SOURCE_INTEGRATION_TYPES` + `ativo`. |
+| Seleção de orgs do cron (JS gate `:260-261`) | `getActiveDataSourceIntegrations()` → **loop por integração**, não por org. Org com 2 fontes roda 2 batches. O gate de coerência tipo↔config.tipo morre (uma linha só tem um `tipo`). |
+| WHERE do products-syncing | `inArray(integrations.tipo, ["CARDAPIO-WEB","NUVEM-SHOP"]) AND ativo` — pode rodar por linha. |
+| merchant→org do webhook iFood | `findMany(integrations, where tipo='IFOOD' AND ativo)` + scan de `configuracao.merchantIds` (menos linhas que o scan de orgs atual). |
+| storeId→org do webhook Nuvemshop | Lookup direto por `(tipo='NUVEM-SHOP', refExterno=String(storeId))` — indexado. |
+| Refresh de token (clobber do jsonb da org) | `db.update(integrations).set({ configuracao }).where(eq(integrations.id, integrationId))` — row-scoped; o hazard de lost-update entre integrações desaparece. Falha de refresh grava `status: "EXPIRADO"` + `ultimoErro`. |
+| `integracaoDataUltimaSincronizacao` (morta) | O cron passa a gravar `integrations.dataUltimaSincronizacao` + `status`/`ultimoErro` **por linha ao fim de cada run** — o "última sincronização" do Settings finalmente funciona. |
+| Sessão com config crua | A sessão **perde** os 3 campos e ganha um resumo leve e sem segredos: `integracoes: Array<{ id, tipo, ativo, status }>`. Config completa (mascarada) só via `GET /api/integrations`. |
+| `TDataConnectorKind` derivado da coluna | Re-ancorado em `TDataSourceIntegrationType`. |
+| `TCanonicalImportBatch`/summaries com `source` escalar por org | Ganham `integrationId`; `validation.ts` chaveia snapshot por `integrationId`. |
+
+### 3.3 Criação para tipos de credencial manual
+
+Hoje só o callback do Meta insere em `integrations`. Adicionar **POST `/api/integrations`** (4
+partes, `canManageIntegrations`): valida `configuracao` pela união discriminada, deriva
+`refExterno`, aplica o guard de unicidade (D5), `status: "CONECTADO"`. É o destino do modal
+`ConfigureIntegration` (ONLINE-SOFTWARE / CARDAPIO-WEB) e do sandbox iFood.
+
+---
+
+## 4. Decisões
+
+### Fechadas (propostas deste plano)
+
+- **D1 — Grafia do enum**: manter valores hifenizados legados no `integrationTypeEnum` (§3.1).
+- **D2 — Sem dual-write**: cutover em release única com backfill imediatamente antes do deploy
+  (§5). Dual-write divergiria no primeiro refresh de token; colunas antigas ficam **congeladas**
+  como rollback até a fase de limpeza.
+- **D3 — iFood: uma linha por conexão, não por merchant**: `merchantIds[]` continua dentro da
+  config (é um token set para N merchants). Uma linha por merchant duplicaria tokens e o refresh.
+  Follow-up possível: índice GIN em `configuracao->'merchantIds'` se o scan pesar.
+- **D4 — Identidade de venda continua `(organizacaoId, idExterno)`**: mudar a chave de match quebra
+  o histórico. Mitigação nesta entrega: gravar `sales.integracaoId` e **logar/alertar colisão**
+  (venda encontrada por `idExterno` com `integracaoId` divergente e não-nulo). Unique
+  `(organizacaoId, integracaoId, idExterno)` fica para quando o multi-fonte estiver rodando e o
+  risco real medido (ids do iFood são UUIDs, Bling/Online numéricos — colisão improvável, não
+  impossível).
+- **D5 — Invariante de transição**: guard de aplicação "no máximo 1 linha **ativa** por
+  `(organizacaoId, tipo)` de fonte de dados" no POST/callbacks. Preserva o comportamento atual e
+  deixa a liberação de N conexões do mesmo tipo como decisão de produto posterior — o schema já
+  suporta.
+- **D6 — Destino dos flags**: `dadosViaERP` e `dadosViaIntegracoes` **morrem** (write-only/mortos).
+  `dadosViaPDI` **fica** (onboarding ainda escreve/lê). `origemDadosPadrao` **fica** — é modo de
+  processamento (RECEPTOR/ERP), não conexão; fora do escopo.
+- **D7 — DDL manual**: toda migração SQL é aplicada pelo usuário via
+  `scripts/apply-sql-migration.ts` (diretiva vigente — não rodar `drizzle push`/DDL direto no
+  banco). `ALTER TYPE ... ADD VALUE` não roda dentro de transação — script separado do backfill.
+
+### Abertas (não bloqueiam a migração)
+
+- Quando liberar na UI múltiplas conexões do mesmo tipo (ex.: duas contas iFood)? Comercial.
+- Acúmulo de cashback **por integração** (hoje `acumuloPermitirViaIntegracao` é binário no
+  programa: com ERP + iFood, vendas das duas fontes acumulam). Se um food service quiser cashback
+  só no balcão e não no iFood, precisa de config por conexão — follow-up.
+- Cursor incremental por integração (`dataUltimaSincronizacao` como watermark real em vez de
+  janela dia-corrente). Hoje não existe; a tabela nova torna trivial no futuro.
+
+---
+
+## 5. Plano de execução por fases
+
+### Fase 0 — Fundação de schema e serviços (sem mudança de comportamento)
+
+1. `services/drizzle/schema/enums.ts`: +5 valores em `integrationTypeEnum` (D1).
+2. `schemas/integrations.ts`: mover as 5 variantes de config para `IntegrationConfigSchema`;
+   atualizar `schemas/enums.ts` (`IntegrationTipoEnum`).
+3. `services/drizzle/schema/sales.ts`: coluna `integracaoId` (D4).
+4. `lib/integrations/data-sources.ts`: constante + helpers (§3.1).
+5. `POST /api/integrations` (§3.3) + `maskConfig` cobrindo os novos tipos (garantir que
+   `accessToken`/`refreshToken`/`apiKey`/`token` das novas variantes são mascarados).
+6. SQL (manual, D7): `ALTER TYPE integration_type ADD VALUE ...` ×5; `ALTER TABLE ampmais_sales
+   ADD COLUMN integracao_id ...`.
+
+*Aceite*: deploy sem nenhuma mudança visível; typecheck dos arquivos tocados limpo (baseline de
+~300 erros pré-existentes — verificar filtrando `tsc` pelos arquivos alterados).
+
+### Fase 1 — Backfill (SQL manual, idempotente)
+
+```sql
+INSERT INTO ampmais_integrations
+	(id, organizacao_id, tipo, ativo, apelido, ref_externo, configuracao, status, data_insercao)
+SELECT
+	gen_random_uuid(),
+	o.id,
+	o.integracao_tipo::text::integration_type,
+	true,
+	NULL,
+	CASE o.integracao_tipo::text
+		WHEN 'NUVEM-SHOP'   THEN (o.integracao_configuracao->>'storeId')
+		WHEN 'CARDAPIO-WEB' THEN (o.integracao_configuracao->>'merchantId')
+		ELSE NULL
+	END,
+	o.integracao_configuracao,
+	'CONECTADO',
+	now()
+FROM ampmais_organizations o
+WHERE o.integracao_tipo IS NOT NULL
+	AND o.integracao_configuracao IS NOT NULL
+	AND (o.integracao_configuracao->>'tipo') = o.integracao_tipo::text
+	AND NOT EXISTS (
+		SELECT 1 FROM ampmais_integrations i
+		WHERE i.organizacao_id = o.id AND i.tipo::text = o.integracao_tipo::text
+	);
+```
+
+- A condição `config->>'tipo' = integracao_tipo` replica o gate de coerência: orgs incoerentes
+  **já são invisíveis para o cron hoje** — não backfillar, mas **listar num SELECT de auditoria**
+  antes (`WHERE integracao_tipo IS NOT NULL AND (config nulo OU tipo divergente)`) e tratar caso
+  a caso.
+- Rodável a qualquer momento e re-rodável (guard `NOT EXISTS`). Executar imediatamente antes do
+  deploy da Fase 2 para minimizar a janela de tokens divergentes (um refresh de token entre
+  backfill e deploy deixa o token novo só na org — ver risco R6).
+
+### Fase 2 — Cutover de leitores e escritores (uma release)
+
+Ordem interna sugerida (tudo na mesma release; itens agrupados por superfície):
+
+**Pipeline**
+1. `lib/data-collecting-v2/index.ts`: `loadOrganizations` → `getActiveDataSourceIntegrations`
+   (join com org para `configuracao` da org); loop por integração; remover gate `:260-261`;
+   passar `integrationId` adiante; ao fim de cada run, gravar `dataUltimaSincronizacao` +
+   `status`/`ultimoErro` na linha.
+2. `lib/data-collecting-v2/types.ts` + `validation.ts` + `sync-sales.ts`: `integrationId` no
+   batch/summary/snapshot; gravar `sales.integracaoId`; log de colisão (D4).
+3. `lib/data-connectors/types.ts`: `TDataConnectorKind` re-ancorado; `TDataConnectorFetchInput`
+   ganha `integrationId`; config tipada pela união nova.
+4. Refresh de token row-scoped: `bling/client.ts`, `ifood/client.ts`, `ifood/sandbox.ts`,
+   `lib/integrations/ifood/context.ts` (assinaturas passam a receber `integrationId`).
+5. `app/api/cron/products-syncing/route.ts` + `lib/data-connectors/catalog-sync.ts`: seleção e
+   resolução via tabela nova.
+
+**Gates e webhooks**
+6. POI `new-transaction/route.ts:245,273,284,923`: `organizationHasActiveDataSource` (uma query a
+   mais por transação; se pesar, embutir como EXISTS na query do programa).
+7. `app/api/webhooks/ifood/route.ts`: `loadConnectedIfoodOrganizations` via tabela nova.
+   **Validar keep-alive/homologação depois do deploy** (R2).
+8. `lib/integrations/nuvemshop/webhook-notifications.ts`: lookup por `refExterno`.
+9. `lib/integrations/ifood/context.ts`: resolver por linha IFOOD ativa da org (404 igual);
+   backfill de `merchantIds` row-scoped.
+
+**Conexão/desconexão**
+10. Callbacks Bling/Nuvemshop/iFood/sandbox: upsert em `integrations` (reconnect = update da
+    linha existente do tipo: config nova, `status: 'CONECTADO'`, `ultimoErro: null`). **Parar de
+    escrever os 4 campos antigos.**
+11. `ConfigureIntegration.tsx` → `POST /api/integrations`; desconectar em
+    `SettingsIntegration.tsx` → `DELETE /api/integrations?id=`.
+
+**Sessão e UI**
+12. `lib/authentication/{types,session}.ts`: remover os 3 campos; adicionar `integracoes` resumido
+    (§3.2). Corrige o vazamento de tokens para o browser.
+13. Consumidores de sessão (§2.5): `integrations-page` (isConnected por tipo a partir do resumo ou
+    de `useIntegrations()`), `ifood-page`/gate, `SettingsIntegration` (agora lista N conexões — o
+    padrão multi-conexão da paid-media page é o precedente), cashback modals
+    (`userOrgHasIntegration` = resumo contém tipo de fonte de dados ativo), `Summary.tsx`,
+    onboarding (server query em `page.tsx` passa a consultar `integrations`; badge/resumo listam
+    N), `onboarding-quality/route.ts:105`, `app/api/integrations/settings/route.ts` (eco de tipo).
+14. State hooks: remover defaults dos campos que morrem (manter `dadosViaPDI`).
+
+*Aceite da Fase 2*: cron importa vendas de uma org com **duas** integrações ativas (ex.: BLING +
+IFOOD em staging/sandbox); POI de org com integração continua sem criar venda; POI de org sem
+fonte continua criando; webhook iFood resolve merchant e keep-alive responde; Settings mostra as
+duas conexões com "última sincronização" preenchendo; nenhum token aparece em resposta de API nem
+na sessão.
+
+### Fase 3 — Scripts e documentação
+
+15. Scripts (§2.6): trocar a resolução de credenciais por um helper comum
+    (`getActiveDataSourceIntegrations` + filtro por tipo; scripts que assumem um tipo específico
+    passam a aceitar `--integration-id` quando a org tiver mais de uma). Corrigir o log de config
+    crua em `test-nuvemshop-fetch.ts`.
+16. Docs: atualizar `docs/DATA-COLLECTING-INTEGRATION.md` (§ "Adding New Integrations" descreve o
+    fluxo antigo e um write de last-sync que não existe mais), o comentário "Aditiva: NÃO
+    substitui..." em `services/drizzle/schema/integrations.ts:15-16` e o §0.1 do doc da fundação
+    (nota de que a decisão foi revertida por este plano).
+
+### Fase 4 — Limpeza (após janela de observação; sugerido ≥2 semanas de produção estável)
+
+17. SQL manual: `ALTER TABLE ampmais_organizations DROP COLUMN integracao_tipo,
+    integracao_configuracao, integracao_data_ultima_sincronizacao, dados_via_erp,
+    dados_via_integracoes;` + `DROP TYPE organization_integration_type;`.
+18. Código: remover colunas do Drizzle schema, `OrganizationIntegrationConfigSchema` +
+    `TOrganizationIntegrationConfig` + campos do `OrganizationSchema`/`UpdateOrganizationSchema`
+    (fecha a brecha de escrita via update genérico), `OrganizationIntegrationTypeEnum` de
+    `schemas/enums.ts`, resquícios nos state hooks, e o modal morto `ViewIntegration.tsx` (ação é
+    `console.log`). O compilador aponta qualquer leitor esquecido — é o fail-fast desejado para
+    scripts não migrados.
+
+---
+
+## 6. Matriz de riscos e regressões
+
+| # | Risco | Onde | Mitigação |
+|---|---|---|---|
+| R1 | POI passa a criar venda interna para org que tem integração (dupla venda + dupla campanha + duplo cashback) — ou o inverso | `new-transaction:273` | O helper filtra `DATA_SOURCE_INTEGRATION_TYPES` + `ativo=true`. Teste explícito: org só com META_ADS ⇒ POI cria venda; org com fonte ativa ⇒ não cria. Atenção ao caso `ativo=false` (fonte desativada temporariamente): hoje o slot preenchido bloqueia o POI; no modelo novo, desativar a integração **reabilita** o POI — comportamento novo, correto, mas comunicar. |
+| R2 | Homologação/keep-alive iFood quebra (merchant set vazio) | `webhooks/ifood/route.ts:73-82` | Backfill preserva `merchantIds` no jsonb; validar com `scripts/ifood-homologation-polling.ts` migrado logo após o deploy. |
+| R3 | Colisão de `idExterno` entre duas fontes da mesma org (venda A sobrescreve venda B, cashback errado) | `sync-sales.ts:278-290` | D4: `sales.integracaoId` + log de colisão desde o dia 1 do multi-fonte; unique composto quando houver dado real. |
+| R4 | Duplo acúmulo de cashback com 2 fontes (iFood + ERP ambos acumulam via `acumuloPermitirViaIntegracao`) | `lib/data-collecting-v2/effects.ts:249,294` | Comportamento *esperado* no modelo binário atual — documentar na entrega; controle por integração é follow-up (§4 abertas). |
+| R5 | Sessão muda de shape e algum consumidor não mapeado quebra em runtime | `lib/authentication/types.ts` | A remoção dos campos é erro de compilação em todo consumidor tipado — rodar `tsc` filtrado nos tocados; grep final por `integracaoTipo`/`integracaoConfiguracao` deve retornar zero fora de schema deprecado. |
+| R6 | Refresh de token entre o backfill e o deploy da Fase 2 deixa token válido só na coluna antiga → primeira sync da linha nova falha com 401 | janela de cutover | Janela mínima (backfill + deploy na sequência); os conectores Bling/iFood já re-refresham com o `refreshToken` (que não rotaciona no refresh do Bling e rotaciona no iFood — para iFood, refazer backfill se houver sync entre os passos, ou aceitar 1 ciclo de erro + reconexão). Monitorar `status='EXPIRADO'` pós-deploy. |
+| R7 | Orgs com tipo↔config incoerentes ficam sem integração após a migração | gate `:260-261` | Elas **já** estão quebradas silenciosamente hoje. SELECT de auditoria pré-backfill; decidir caso a caso (reconectar ou limpar). |
+| R8 | OAuth em voo durante o deploy (state cookie emitido antes, callback depois) | callbacks | Callback novo grava na tabela nova — resultado correto. Sem ação. |
+| R9 | Cron e webhook iFood rodando concorrentes refresham a mesma linha (lost-update do token na própria linha) | refresh row-scoped | Mesmo risco que já existe hoje no slot da org; refresh condicional (`WHERE configuracao->>'accessToken' = :tokenAntigo`) é hardening opcional. |
+| R10 | `products-syncing` não está no `vercel.json` — migrar o WHERE sem perceber que o trigger é manual | `app/api/cron/products-syncing` | Apenas registrar o fato; decidir separadamente se entra no `vercel.json`. |
+| R11 | Scripts não migrados rodando contra colunas congeladas (dados velhos silenciosos) na janela Fase 2→4 | `utils/scripts/*` | Janela curta + Fase 4 dropa as colunas e o compilador acusa; scripts críticos (homologação iFood) migram na Fase 2/3. |
+
+---
+
+## 7. Validação
+
+- **Unit**: helpers de `lib/integrations/data-sources.ts`; upsert de reconexão; guard D5;
+  mascaramento das novas variantes de config.
+- **Integração (staging)**: org com BLING + IFOOD sandbox ativos → 1 run do cron gera 2 batches,
+  2 `dataUltimaSincronizacao`; desativar uma linha e confirmar que só a outra roda.
+- **POI**: matriz org × {sem integração, fonte ativa, fonte inativa, só META_ADS} × venda
+  criada/não criada.
+- **Webhook iFood**: keep-alive com N merchants de M orgs; evento de pedido dispara coleta da org
+  certa.
+- **Homologação iFood** com o script migrado.
+- **Segurança**: resposta de `GET /api/integrations`, sessão serializada e logs sem nenhum token
+  cru.
+- **Typecheck**: baseline tem ~300 erros pré-existentes — validar com `tsc` filtrado pelos
+  arquivos tocados; `oxlint` por arquivo.
+
+---
+
+## 8. Fora de escopo
+
+- `origemDadosPadrao` / modo ERP (`docs/ERP-IMPLEMENTATION.md`) — inalterado.
+- `configuracao.preferencias.integracaoERP` (`app/api/integrations/settings/route.ts`) — é
+  preferência de comportamento, não conexão; fica onde está.
+- Cashback por integração, cursor incremental, múltiplas conexões do mesmo tipo na UI, índice GIN
+  de `merchantIds` — follow-ups listados em §4.
+- Integrações de marketing (META_ADS/CAPI/audiences) — intocadas; só compartilham a tabela.

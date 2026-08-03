@@ -1,248 +1,510 @@
 "use client";
 
-import CashSessionBar from "@/components/CashSessions/CashSessionBar";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
-import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import { DiscountApproval } from "@/components/Modals/Sales/DiscountApproval";
 import { Button } from "@/components/ui/button";
-import type { TAuthUserSession } from "@/lib/authentication/types";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
+import type { TAutoEmissionExceptions } from "@/lib/fiscal/auto-emission-policy";
 import { getErrorMessage } from "@/lib/errors";
+import { formatToMoney } from "@/lib/formatting";
+import { useIsMobile } from "@/lib/hooks/use-mobile";
+import { confirmSale, updateSaleDraft } from "@/lib/mutations/pos";
 import { appRoutes } from "@/lib/navigation/routes";
-import { cancelSaleDraft, confirmSale, updateSaleDraft } from "@/lib/mutations/pos";
-import { useSaleDraft } from "@/lib/queries/pos";
+import { evaluateDiscount } from "@/lib/permissions/discounts";
+import { useSaleDiscountContext } from "@/lib/queries/action-approvals";
+import { usePOSGroups, usePOSProducts, useSaleDraft } from "@/lib/queries/pos";
 import { useActiveSalesSession } from "@/lib/queries/sales-sessions";
-import { useCheckoutState } from "@/state-hooks/use-checkout-state";
+import { mapSaleDraftToSaleState } from "@/lib/sales/map-sale-draft-to-sale-state";
+import type { TOrganizationConfiguration } from "@/schemas/organizations";
+import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
+import { type TSaleFinancialAccountOption, type TUseSaleState, useSaleState } from "@/state-hooks/use-sale-state";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ArrowLeft, PanelLeftClose, PanelLeftOpen, ShoppingCart } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import CheckoutSteps from "./components/CheckoutSteps";
-import ConfirmationStep from "./components/ConfirmationStep";
-import DeliveryStep from "./components/DeliveryStep";
-import PaymentStep from "./components/PaymentStep";
-import ReviewStep from "./components/ReviewStep";
+import CheckoutPanel from "../../new/components/CheckoutPanel";
+import ProductBuilderModal from "../../new/components/ProductBuilderModal";
+import SaleSuccessPanel from "../../new/components/SaleSuccessPanel";
+import CategoriesBar from "../../new/components/composition/CategoriesBar";
+import PaginationBlock from "../../new/components/composition/PaginationBlock";
+import ProductsGridBlock from "../../new/components/composition/ProductsGridBlock";
+import SearchBlock from "../../new/components/composition/SearchBlock";
+import ViewModeToggle, { type ProductViewMode } from "../../new/components/composition/ViewModeToggle";
+import PricingDriftBanner from "./components/PricingDriftBanner";
+
+/**
+ * Postura de abertura do catálogo, derivada de como o rascunho chegou.
+ *
+ * Um rascunho retomado do PDV é uma composição em andamento e abre com o catálogo à mão. Orçamento,
+ * loja digital e hub chegam prontos: a tarefa ali é conferir e confirmar, não montar, e um catálogo
+ * ocupando metade da tela é ruído para quem está num desk convertendo cotações.
+ */
+function resolveInitialCatalogState(rascunhoMetadados: unknown): boolean {
+	if (!rascunhoMetadados || typeof rascunhoMetadados !== "object") return false;
+	const origem = (rascunhoMetadados as { origem?: { tipo?: string } }).origem;
+	return origem?.tipo === "POS";
+}
+
+function mapItemsToApi(saleState: TUseSaleState) {
+	return saleState.state.itens.map((item) => ({
+		id: item.itemId ?? null,
+		produtoId: item.produtoId,
+		produtoVarianteId: item.produtoVarianteId,
+		nome: item.nome,
+		codigo: item.codigo,
+		imagemUrl: item.imagemUrl,
+		quantidade: item.quantidade,
+		valorUnitarioBase: item.valorUnitarioBase,
+		valorModificadores: item.valorModificadores,
+		valorUnitarioFinal: item.valorUnitarioFinal,
+		valorTotalBruto: item.valorTotalBruto,
+		valorDesconto: item.valorDesconto,
+		valorTotalLiquido: item.valorTotalLiquido,
+		modificadores: item.modificadores,
+	}));
+}
 
 type CheckoutPageProps = {
-	user: TAuthUserSession["user"];
-	membership: NonNullable<TAuthUserSession["membership"]>;
 	saleId: string;
+	organizationCashbackProgram: TCashbackProgramEntity | null;
+	organizationConfiguration: TOrganizationConfiguration;
+	organizationFinancialAccounts: TSaleFinancialAccountOption[];
+	organizationAutoFiscalEmission: boolean;
+	organizationAutoFiscalCapable: boolean;
+	autoEmissionExceptions: TAutoEmissionExceptions;
+	canEmitFiscal: boolean;
 };
 
-export default function CheckoutPage({ user: _user, membership, saleId }: CheckoutPageProps) {
+export default function CheckoutPage({
+	saleId,
+	organizationCashbackProgram,
+	organizationConfiguration,
+	organizationFinancialAccounts,
+	organizationAutoFiscalEmission,
+	organizationAutoFiscalCapable,
+	autoEmissionExceptions,
+	canEmitFiscal,
+}: CheckoutPageProps) {
 	const router = useRouter();
+	const isMobile = useIsMobile();
+	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+	const [searchValue, setSearchValue] = useState("");
+	const [viewMode, setViewMode] = useState<ProductViewMode>("grid");
+	const [builderProduct, setBuilderProduct] = useState<TGetPOSProductsOutput["data"]["products"][number] | null>(null);
+	const [isCheckoutSheetOpen, setIsCheckoutSheetOpen] = useState(false);
+	const [isCatalogOpen, setIsCatalogOpen] = useState(false);
 
-	// Load draft sale from DB
-	const { data: sale, isLoading, isError, error } = useSaleDraft({ saleId });
+	const { data: draftData, isLoading, isError, error } = useSaleDraft({ saleId });
+	const draft = draftData?.sale;
+	const pricing = draftData?.pricing;
+	const saleState = useSaleState({ organizationConfig: organizationConfiguration, contasFinanceiras: organizationFinancialAccounts });
 
-	// Sessões de venda (caixa): a venda se liga ao caixa aberto do vendedor da venda.
-	const sessoesConfig = membership.organizacao.configuracao.preferencias.sessoesVenda;
+	const {
+		data: productsData,
+		isLoading: productsLoading,
+		isError: productsError,
+		error: productsErrorData,
+		filters,
+		updateFilters,
+	} = usePOSProducts();
+	const { data: groupsData, isLoading: groupsLoading } = usePOSGroups();
+
+	// Hidratação única por rascunho: refetches não descartam o carrinho que o operador já editou.
+	const hydratedSaleIdRef = useRef<string | null>(null);
+	const resetState = saleState.resetState;
+	useEffect(() => {
+		if (!draft) return;
+		if (hydratedSaleIdRef.current === draft.id) return;
+		if (draft.statusVenda !== "ORCAMENTO") return;
+		hydratedSaleIdRef.current = draft.id;
+		resetState(mapSaleDraftToSaleState(draft));
+		setIsCatalogOpen(resolveInitialCatalogState(draft.rascunhoMetadados));
+	}, [draft, resetState]);
+
+	/**
+	 * Divergência viva: o servidor diz quanto cada item vale hoje, e comparamos contra o carrinho em
+	 * mãos, não contra o rascunho carregado. Assim "atualizar preços" limpa o bloqueio na hora e
+	 * remover um item fora de catálogo também resolve, sem esperar refetch.
+	 *
+	 * Itens adicionados aqui não entram: nasceram do catálogo atual.
+	 */
+	const pricingDrift = useMemo(() => {
+		if (!pricing) return null;
+		const driftPorItemId = new Map(pricing.itens.map((item) => [item.itemId, item]));
+
+		const linhas = saleState.state.itens
+			.map((cartItem) => {
+				const drift = cartItem.itemId ? driftPorItemId.get(cartItem.itemId) : undefined;
+				if (!drift) return null;
+				if (drift.indisponivel) return drift;
+				const aindaDivergente = Math.abs(cartItem.valorUnitarioFinal - (drift.valorUnitarioAtual ?? 0)) > 0.01;
+				return aindaDivergente ? { ...drift, valorUnitarioSalvo: cartItem.valorUnitarioFinal } : null;
+			})
+			.filter((linha): linha is NonNullable<typeof linha> => linha !== null);
+
+		if (linhas.length === 0) return null;
+		const algumIndisponivel = linhas.some((linha) => linha.indisponivel);
+		return {
+			itens: linhas,
+			algumDivergente: true,
+			algumIndisponivel,
+			totalBrutoSalvo: linhas.reduce((sum, linha) => sum + linha.valorUnitarioSalvo * linha.quantidade, 0),
+			totalBrutoAtual: algumIndisponivel ? null : linhas.reduce((sum, linha) => sum + (linha.valorUnitarioAtual ?? 0) * linha.quantidade, 0),
+		};
+	}, [pricing, saleState.state.itens]);
+
+	const handleReprice = useCallback(() => {
+		if (!pricingDrift) return;
+		saleState.repriceItems(
+			pricingDrift.itens
+				.filter((item) => !item.indisponivel)
+				.map((item) => ({
+					itemId: item.itemId,
+					valorUnitarioBase: item.valorUnitarioBaseAtual ?? 0,
+					valorModificadores: item.valorModificadoresAtual ?? 0,
+				})),
+		);
+		toast.success("Preços atualizados com o catálogo.");
+	}, [pricingDrift, saleState]);
+
+	// Turno de caixa: mesma regra do PDV — a venda se liga ao caixa aberto do vendedor.
+	const sessoesConfig = organizationConfiguration.preferencias.sessoesVenda;
 	const cashEnabled = !!sessoesConfig?.habilitado;
 	const cashObrigatorio = !!sessoesConfig?.obrigatorio;
-	const saleItemsTotal = sale?.itens.reduce((sum, item) => sum + item.valorVendaTotalLiquido, 0) ?? 0;
-	const draftMetadata = sale?.rascunhoMetadados as { descontoGeral?: number; cashbackResgate?: number } | null | undefined;
-	const initialCashbackResgate = draftMetadata?.cashbackResgate ?? 0;
-	const initialDescontoGeral = draftMetadata?.descontoGeral ?? Math.max(0, (sale?.descontosTotal ?? 0) - initialCashbackResgate);
-
-	// Checkout state
-	const checkoutState = useCheckoutState({
-		valorTotal: saleItemsTotal,
-		clienteId: sale?.clienteId ?? null,
-		initialState: {
-			vendedorId: sale?.vendedorId,
-			vendedorNome: sale?.vendedorNome,
-		},
-	});
-
-	const { session: activeSession, isLoading: cashLoading } = useActiveSalesSession({
-		vendedorId: checkoutState.state.vendedorId,
-		enabled: cashEnabled,
-	});
+	const { session: activeSession } = useActiveSalesSession({ vendedorId: saleState.state.vendedorId, enabled: cashEnabled });
 	const cashBlockingConfirm = cashEnabled && cashObrigatorio && !activeSession;
 
-	// Hydrate checkout state when sale loads
+	// Teto de desconto: feedback imediato aqui, enforcement autoritativo na rota.
+	const { data: discountContext } = useSaleDiscountContext({ vendedorId: saleState.state.vendedorId ?? null });
+	const discountAuthority = discountContext?.authority ?? null;
+	const descontoAgregado = useMemo(
+		() => ({
+			valorBase: saleState.subtotalAvaliavel,
+			descontoTotal: saleState.state.descontoGeral + saleState.totalDescontoItensAvaliavel,
+		}),
+		[saleState.subtotalAvaliavel, saleState.state.descontoGeral, saleState.totalDescontoItensAvaliavel],
+	);
+	const discountRequiresApproval = discountAuthority
+		? evaluateDiscount({ authority: discountAuthority, ...descontoAgregado }) === "REQUER_APROVACAO"
+		: false;
+	const [isDiscountApprovalOpen, setIsDiscountApprovalOpen] = useState(false);
+	const [discountApproval, setDiscountApproval] = useState<{ id: string; valorBase: number; descontoTotal: number } | null>(null);
 	useEffect(() => {
-		if (sale) {
-			checkoutState.resetState({
-				step: 1,
-				vendedorId: sale.vendedorId ?? null,
-				vendedorNome: sale.vendedorNome ?? null,
-				descontoGeral: initialDescontoGeral,
-				acrescimoGeral: sale.acrescimosTotal ?? 0,
-				observacoes: sale.observacoes ?? "",
-				entregaModalidade: sale.entregaModalidade ?? "PRESENCIAL",
-				entregaLocalizacaoId: sale.entregaLocalizacaoId ?? null,
-				comandaNumero: sale.comandaNumero ?? null,
-				pagamentos: [],
-				cashbackResgate: initialCashbackResgate,
-				cashbackProgramaId: null,
-			});
+		if (!discountApproval) return;
+		if (discountApproval.valorBase !== descontoAgregado.valorBase || discountApproval.descontoTotal !== descontoAgregado.descontoTotal) {
+			setDiscountApproval(null);
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [sale?.id]);
+	}, [discountApproval, descontoAgregado]);
 
-	// Confirm mutation
 	const { mutate: confirm, isPending: isConfirming } = useMutation({
 		mutationKey: ["confirm-sale", saleId],
-		mutationFn: confirmSale,
-		onSuccess: (data) => {
-			toast.success(data.message);
-			if (data.data.fiscal.status === "ERRO") {
-				toast.warning(`Venda confirmada, mas a emissao fiscal falhou: ${data.data.fiscal.error}`);
-			}
-		router.push(appRoutes.sales.new());
-		},
-		onError: (err) => {
-			toast.error(getErrorMessage(err));
-		},
-	});
-
-	// Cancel mutation
-	const { mutate: cancel, isPending: isCancelling } = useMutation({
-		mutationKey: ["cancel-sale", saleId],
-		mutationFn: () => cancelSaleDraft(saleId),
-		onSuccess: () => {
-			toast.success("Rascunho cancelado.");
-		router.push(appRoutes.sales.new());
-		},
-		onError: (err) => {
-			toast.error(getErrorMessage(err));
-		},
-	});
-
-	// Save draft updates before moving between steps
-	const saveDraftUpdates = async () => {
-		try {
+		mutationFn: async (descontoAprovacaoId: string | null) => {
+			// Itens e metadados precisam estar persistidos antes de confirmar: a confirmação lê o
+			// rascunho gravado, não o payload. Se o PUT falhar, a confirmação nem chega a acontecer.
 			await updateSaleDraft({
 				id: saleId,
-				vendedorId: checkoutState.state.vendedorId,
-				vendedorNome: checkoutState.state.vendedorNome,
-				entregaModalidade: checkoutState.state.entregaModalidade,
-				entregaLocalizacaoId: checkoutState.state.entregaLocalizacaoId,
-				comandaNumero: checkoutState.state.comandaNumero,
-				observacoes: checkoutState.state.observacoes,
-				descontosTotal: checkoutState.state.descontoGeral > 0 ? checkoutState.state.descontoGeral : null,
-				acrescimosTotal: checkoutState.state.acrescimoGeral > 0 ? checkoutState.state.acrescimoGeral : null,
-				cashbackResgate: checkoutState.state.cashbackResgate,
-				rascunhoMetadados: {
-					...(sale?.rascunhoMetadados && typeof sale.rascunhoMetadados === "object" ? sale.rascunhoMetadados : {}),
-					descontoGeral: checkoutState.state.descontoGeral,
-					cashbackResgate: checkoutState.state.cashbackResgate,
+				vendedorId: saleState.state.vendedorId,
+				vendedorNome: saleState.state.vendedorNome,
+				entregaModalidade: saleState.state.entregaModalidade,
+				entregaLocalizacaoId: saleState.state.entregaLocalizacaoId,
+				comandaNumero: saleState.state.comandaNumero,
+				observacoes: saleState.state.observacoes || null,
+				descontosTotal: saleState.state.descontoGeral > 0 ? saleState.state.descontoGeral : null,
+				acrescimosTotal: saleState.state.acrescimoGeral > 0 ? saleState.state.acrescimoGeral : null,
+				cashbackResgate: saleState.state.cashbackResgate,
+				cupomResgate: saleState.state.cupomResgate,
+				emissaoFiscalAutomatica: saleState.state.emissaoFiscalAutomatica,
+				rascunhoMetadados: (draft?.rascunhoMetadados as Record<string, unknown> | null) ?? {},
+				itens: mapItemsToApi(saleState),
+			});
+
+			return confirmSale({
+				id: saleId,
+				clienteId: saleState.state.cliente?.id ?? null,
+				pagamentos: saleState.state.pagamentos.map((payment) => ({
+					metodo: payment.metodo,
+					valor: payment.valor,
+					totalParcelas: payment.totalParcelas,
+					efetivacaoTipo: payment.efetivacaoTipo,
+					dataPrevisao: payment.dataPrevisao,
+					observacoes: payment.observacoes,
+					contaFinanceiraId: payment.contaFinanceiraId,
+				})),
+				cashbackResgate: saleState.state.cashbackResgate,
+				cashbackProgramaId: organizationCashbackProgram?.id ?? null,
+				sessaoVendaId: activeSession?.id ?? null,
+				descontoAprovacaoId,
+			});
+		},
+		onSuccess: (data) => {
+			if (data.data.fiscal.status === "ERRO") {
+				toast.warning(`Venda confirmada, mas a emissão fiscal falhou: ${data.data.fiscal.error}`);
+			} else {
+				toast.success(data.message);
+			}
+			setDiscountApproval(null);
+			saleState.setSuccess({
+				mode: "FINALIZADA",
+				saleId,
+				title: "Venda confirmada com sucesso",
+				description: "O orçamento virou venda: pagamento registrado e financeiro lançado.",
+				valorFinal: saleState.valorFinal,
+				itemCount: saleState.itemCount,
+				clienteNome: saleState.state.cliente?.nome ?? null,
+				vendedorNome: saleState.state.vendedorNome ?? null,
+				entregaModalidade: saleState.state.entregaModalidade,
+				pagamentos: saleState.state.pagamentos.map((payment) => ({ metodo: payment.metodo, valor: payment.valor })),
+				troco: saleState.troco,
+				fiscal: {
+					status: data.data.fiscal.status,
+					error: data.data.fiscal.status === "ERRO" ? data.data.fiscal.error : null,
 				},
 			});
-		} catch {
-			// Silent - draft update failure shouldn't block navigation
-		}
-	};
+		},
+		onError: (mutationError) => toast.error(getErrorMessage(mutationError)),
+	});
 
-	const handleNextStep = async () => {
-		if (!checkoutState.canProceedFromStep(checkoutState.state.step)) {
-			toast.error("Complete os campos obrigatórios antes de prosseguir.");
+	// Um CTA desabilitado sem explicação manda o operador procurar o problema no lugar errado.
+	const finalizeBlockedReason = pricingDrift?.algumIndisponivel
+		? "Remova os itens fora do catálogo para confirmar."
+		: pricingDrift
+			? "Atualize os preços para confirmar."
+			: cashBlockingConfirm
+				? "Nenhum caixa aberto para o vendedor desta venda."
+				: null;
+
+	const handleFinalizeSale = () => {
+		if (finalizeBlockedReason) {
+			toast.error(finalizeBlockedReason);
 			return;
 		}
-		await saveDraftUpdates();
-		checkoutState.nextStep();
-	};
-
-	const handleConfirm = () => {
-		if (!sale) return;
-		if (cashBlockingConfirm) {
-			toast.error("Nenhum caixa aberto para o vendedor desta venda. Abra o caixa para confirmar.");
+		if (discountRequiresApproval && !discountApproval) {
+			setIsDiscountApprovalOpen(true);
 			return;
 		}
-		confirm({
-			id: saleId,
-			clienteId: sale.cliente?.id ?? null,
-			pagamentos: checkoutState.state.pagamentos.map((p) => ({
-				metodo: p.metodo,
-				valor: p.valor,
-				totalParcelas: p.totalParcelas,
-				efetivacaoTipo: p.efetivacaoTipo,
-				dataPrevisao: p.dataPrevisao,
-				observacoes: p.observacoes,
-			})),
-			cashbackResgate: checkoutState.state.cashbackResgate,
-			cashbackProgramaId: checkoutState.state.cashbackProgramaId,
-			sessaoVendaId: activeSession?.id ?? null,
-		});
+		confirm(discountApproval?.id ?? null);
 	};
 
-	if (isLoading) return <LoadingComponent />;
-	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
-	if (!sale) return <ErrorComponent msg="Venda não encontrada." />;
+	const handleSearchChange = useCallback(
+		(value: string) => {
+			setSearchValue(value);
+			updateFilters({ search: value, page: 1 });
+		},
+		[updateFilters],
+	);
 
-	if (sale.statusVenda !== "ORCAMENTO") {
-		return <ErrorComponent msg={`Esta venda não está em modo rascunho (status: ${sale.statusVenda}).`} />;
+	const handleGroupSelect = useCallback(
+		(group: string | null) => {
+			setSelectedGroup(group);
+			updateFilters({ group, page: 1 });
+		},
+		[updateFilters],
+	);
+
+	const handleProductClick = useCallback(
+		(product: TGetPOSProductsOutput["data"]["products"][number]) => {
+			if (product.variantes.length > 0 || product.addOnsReferencias.length > 0) {
+				setBuilderProduct(product);
+				return;
+			}
+			saleState.addItem({
+				tempId: crypto.randomUUID(),
+				produtoId: product.id,
+				produtoVarianteId: null,
+				nome: product.nome,
+				codigo: product.codigo,
+				imagemUrl: product.imagemCapaUrl,
+				quantidade: 1,
+				valorUnitarioBase: product.precoVenda ?? 0,
+				valorModificadores: 0,
+				valorUnitarioFinal: product.precoVenda ?? 0,
+				valorTotalBruto: product.precoVenda ?? 0,
+				valorDesconto: 0,
+				valorTotalLiquido: product.precoVenda ?? 0,
+				modificadores: [],
+			});
+		},
+		[saleState],
+	);
+
+	if (saleState.state.success) {
+		return <SaleSuccessPanel success={saleState.state.success} onStartNewSale={() => router.push(appRoutes.sales.new())} />;
 	}
 
-	const STEP_LABELS = ["Revisão", "Entrega", "Pagamento", "Confirmação"];
-
-	return (
-		<div className="w-full min-h-[calc(100vh-4rem)] flex flex-col p-4 gap-6">
-			{/* Header */}
-			<div className="flex items-center justify-between">
+	// A casca aparece antes dos dados: o operador reconhece a tela em vez de encarar um spinner.
+	if (isLoading) {
+		return (
+			<div className="flex h-[calc(100vh-8rem)] w-full flex-col gap-3 p-4">
 				<div className="flex items-center gap-3">
-					<Button variant="ghost" size="icon" onClick={() => router.push(appRoutes.sales.new())}>
-						<ArrowLeft className="w-5 h-5" />
-					</Button>
-					<div>
-						<h1 className="text-xl font-black">CHECKOUT</h1>
-						<p className="text-sm text-muted-foreground">Venda #{sale.idExterno}</p>
+					<div className="h-9 w-9 animate-pulse rounded-lg bg-muted" />
+					<div className="flex flex-col gap-1.5">
+						<div className="h-5 w-32 animate-pulse rounded bg-muted" />
+						<div className="h-3.5 w-48 animate-pulse rounded bg-muted" />
 					</div>
 				</div>
+				<div className="flex min-h-0 flex-1 gap-3">
+					<div className="mx-auto w-full max-w-3xl rounded-xl border border-border/70 bg-muted/45 p-3">
+						<div className="flex flex-col gap-2">
+							{Array.from({ length: 6 }).map((_, index) => (
+								// biome-ignore lint/suspicious/noArrayIndexKey: esqueleto estático, sem identidade
+								<div key={index} className="h-14 animate-pulse rounded-lg bg-muted" />
+							))}
+						</div>
+					</div>
+				</div>
+			</div>
+		);
+	}
+	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;
+	if (!draft) return <ErrorComponent msg="Venda não encontrada." />;
 
-				<Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => cancel()} disabled={isCancelling}>
-					<X className="w-4 h-4 mr-1" />
-					Cancelar Venda
+	if (draft.statusVenda !== "ORCAMENTO") {
+		return (
+			<div className="flex h-[calc(100vh-8rem)] w-full flex-col items-center justify-center gap-4 p-4 text-center">
+				<h2 className="text-lg font-black">ESTA VENDA JÁ FOI FINALIZADA</h2>
+				<p className="text-sm text-muted-foreground">O orçamento #{draft.idExterno} não está mais em rascunho, então não há checkout a fazer.</p>
+				<div className="flex items-center gap-2">
+					<Button variant="outline" onClick={() => router.push(appRoutes.sales.root())}>
+						VER VENDAS
+					</Button>
+					<Button onClick={() => router.push(appRoutes.sales.new())}>NOVA VENDA</Button>
+				</div>
+			</div>
+		);
+	}
+
+	const checkoutPanel = (
+		<CheckoutPanel
+			organizationCashbackProgram={organizationCashbackProgram}
+			saleState={saleState}
+			organizationAutoFiscalEmission={organizationAutoFiscalEmission}
+			organizationAutoFiscalCapable={organizationAutoFiscalCapable}
+			autoEmissionExceptions={autoEmissionExceptions}
+			canEmitFiscal={canEmitFiscal}
+			discountAuthority={discountAuthority}
+			onCreateDraft={() => {}}
+			onFinalizeSale={handleFinalizeSale}
+			isFinalizingSale={isConfirming}
+			hideDraftAction
+			finalizeBlockedReason={finalizeBlockedReason}
+			beforeActions={pricingDrift ? <PricingDriftBanner pricing={pricingDrift} onReprice={handleReprice} /> : null}
+		/>
+	);
+
+	return (
+		<div className="flex h-[calc(100vh-8rem)] w-full flex-col gap-3 p-4">
+			<div className="flex items-center gap-3">
+				<Button variant="ghost" size="icon" onClick={() => router.push(appRoutes.sales.root())} aria-label="Voltar">
+					<ArrowLeft className="h-5 w-5" />
+				</Button>
+				<div className="min-w-0 flex-1">
+					<h1 className="text-xl font-black">CHECKOUT</h1>
+					<p className="truncate text-sm text-muted-foreground">
+						Orçamento #{draft.idExterno} · {formatToMoney(saleState.valorFinal)}
+					</p>
+				</div>
+				<Button variant="outline" size="sm" className="gap-1.5" onClick={() => setIsCatalogOpen((open) => !open)}>
+					{isCatalogOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+					{isCatalogOpen ? "OCULTAR CATÁLOGO" : "ADICIONAR ITENS"}
 				</Button>
 			</div>
 
-			{cashEnabled ? (
-				<CashSessionBar
-					session={activeSession}
-					isLoading={cashLoading}
-					vendedorId={checkoutState.state.vendedorId}
-					exigirFundoTroco={!!sessoesConfig?.exigirFundoTroco}
-					conferenciaCega={!!sessoesConfig?.conferenciaCega}
-				/>
-			) : null}
+			<div className="flex min-h-0 flex-1 gap-3">
+				{isCatalogOpen ? (
+					<div className="flex min-w-0 flex-1 flex-col gap-4 rounded-xl bg-background">
+						<div className="flex shrink-0 flex-col gap-3">
+							<div className="flex items-center gap-2">
+								<div className="flex-1">
+									<SearchBlock searchValue={searchValue} onSearchChange={handleSearchChange} isLoading={productsLoading} />
+								</div>
+								<ViewModeToggle value={viewMode} onChange={setViewMode} />
+							</div>
+							{groupsLoading ? null : (
+								<CategoriesBar
+									groups={groupsData?.groups ?? []}
+									selectedGroup={selectedGroup}
+									onGroupSelect={handleGroupSelect}
+									isLoading={productsLoading}
+								/>
+							)}
+						</div>
 
-			{/* Step Indicator */}
-			<CheckoutSteps currentStep={checkoutState.state.step} stepLabels={STEP_LABELS} />
+						<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1 pb-20 lg:pb-0">
+							<ProductsGridBlock
+								productsData={productsData}
+								isLoading={productsLoading}
+								isError={productsError}
+								error={productsErrorData}
+								viewMode={viewMode}
+								onProductClick={handleProductClick}
+							/>
+							{productsData ? (
+								<PaginationBlock
+									currentPage={productsData.currentPage}
+									totalPages={productsData.totalPages}
+									isLoading={productsLoading}
+									onPrevious={() => updateFilters({ page: Math.max(1, filters.page - 1) })}
+									onNext={() => updateFilters({ page: Math.min(productsData.totalPages, filters.page + 1) })}
+								/>
+							) : null}
+						</div>
+					</div>
+				) : null}
 
-			{/* Step Content */}
-			<div className="flex-1 max-w-4xl mx-auto w-full">
-				{checkoutState.state.step === 1 && <ReviewStep sale={{ ...sale, valorTotal: saleItemsTotal }} checkoutState={checkoutState} />}
+				<div
+					className={`hidden shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/45 lg:block ${isCatalogOpen ? "w-[420px]" : "mx-auto w-full max-w-3xl"}`}
+				>
+					<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 h-full overflow-y-auto p-3">{checkoutPanel}</div>
+				</div>
 
-				{checkoutState.state.step === 2 && <DeliveryStep sale={sale} checkoutState={checkoutState} />}
+				{isMobile ? (
+					<div className="fixed right-4 bottom-4 z-50 lg:hidden">
+						<Sheet open={isCheckoutSheetOpen} onOpenChange={setIsCheckoutSheetOpen}>
+							<SheetTrigger asChild>
+								<Button className="rounded-full px-4 shadow-lg">
+									<ShoppingCart className="mr-2 h-4 w-4" /> CHECKOUT ({saleState.itemCount})
+								</Button>
+							</SheetTrigger>
+							<SheetContent
+								side="bottom"
+								className="flex h-[92dvh] max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-2xl p-0 data-[side=bottom]:h-[92dvh]"
+							>
+								<SheetHeader className="shrink-0 border-b p-4 text-left">
+									<SheetTitle className="text-lg font-black">CHECKOUT</SheetTitle>
+									<SheetDescription>Confira itens e pagamentos e confirme a venda.</SheetDescription>
+								</SheetHeader>
+								<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+									{checkoutPanel}
+								</div>
+							</SheetContent>
+						</Sheet>
+					</div>
+				) : null}
 
-				{checkoutState.state.step === 3 && <PaymentStep sale={{ valorTotal: saleItemsTotal, clienteId: sale.clienteId }} checkoutState={checkoutState} />}
+				{builderProduct ? <ProductBuilderModal product={builderProduct} onAddToCart={saleState.addItem} onClose={() => setBuilderProduct(null)} /> : null}
 
-				{checkoutState.state.step === 4 && <ConfirmationStep sale={{ ...sale, valorTotal: saleItemsTotal }} checkoutState={checkoutState} />}
-			</div>
-
-			{/* Navigation Footer */}
-			<div className="max-w-4xl mx-auto w-full flex items-center justify-between gap-4 pt-4 border-t">
-				<Button variant="outline" size="lg" onClick={() => checkoutState.prevStep()} disabled={checkoutState.state.step === 1} className="gap-2">
-					<ChevronLeft className="w-4 h-4" />
-					Voltar
-				</Button>
-
-				{checkoutState.state.step < 4 ? (
-					<Button size="lg" onClick={handleNextStep} className="gap-2">
-						Próximo
-						<ChevronRight className="w-4 h-4" />
-					</Button>
-				) : (
-					<Button
-						size="lg"
-						onClick={handleConfirm}
-						disabled={isConfirming || !checkoutState.pagamentoCompleto || cashBlockingConfirm}
-						className="gap-2 bg-green-600 hover:bg-green-700"
-					>
-						<Check className="w-4 h-4" />
-						{isConfirming ? "PROCESSANDO..." : cashBlockingConfirm ? "ABRA O CAIXA" : "CONFIRMAR VENDA"}
-					</Button>
-				)}
+				{isDiscountApprovalOpen ? (
+					<DiscountApproval
+						vendedorId={saleState.state.vendedorId ?? null}
+						valorBase={descontoAgregado.valorBase}
+						descontoTotal={descontoAgregado.descontoTotal}
+						limiteSolicitante={
+							discountAuthority && discountAuthority.limiteTipo
+								? { tipo: discountAuthority.limiteTipo, valor: discountAuthority.limiteValor }
+								: discountAuthority && !discountAuthority.aplicar
+									? { tipo: null, valor: 0 }
+									: null
+						}
+						closeModal={() => setIsDiscountApprovalOpen(false)}
+						onApproved={(approvalRequestId) => {
+							setDiscountApproval({ id: approvalRequestId, ...descontoAgregado });
+							setIsDiscountApprovalOpen(false);
+							confirm(approvalRequestId);
+						}}
+					/>
+				) : null}
 			</div>
 		</div>
 	);

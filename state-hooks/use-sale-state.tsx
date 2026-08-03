@@ -260,6 +260,37 @@ export const useSaleState = ({ initialState, organizationConfig, contasFinanceir
 		setState((prev) => ({ ...prev, itens: prev.itens.filter((item) => item.tempId !== tempId || !!item.recompensaId) }));
 	}, []);
 
+	/**
+	 * Traz os itens do carrinho para os preços vigentes do catálogo, casando por `itemId`.
+	 *
+	 * O desconto em valor absoluto é preservado (foi uma decisão comercial sobre aquele item), apenas
+	 * limitado ao novo bruto — um preço que caiu não pode deixar o líquido negativo. Itens de
+	 * recompensa ficam de fora: o preço deles é o do resgate, não o do catálogo.
+	 */
+	const repriceItems = useCallback((precos: { itemId: string; valorUnitarioBase: number; valorModificadores: number }[]) => {
+		const precoPorItemId = new Map(precos.map((preco) => [preco.itemId, preco]));
+		setState((prev) => ({
+			...prev,
+			itens: prev.itens.map((item) => {
+				if (item.recompensaId) return item;
+				const preco = item.itemId ? precoPorItemId.get(item.itemId) : undefined;
+				if (!preco) return item;
+				const valorUnitarioFinal = preco.valorUnitarioBase + preco.valorModificadores;
+				const valorTotalBruto = valorUnitarioFinal * item.quantidade;
+				const valorDesconto = Math.min(item.valorDesconto, valorTotalBruto);
+				return {
+					...item,
+					valorUnitarioBase: preco.valorUnitarioBase,
+					valorModificadores: preco.valorModificadores,
+					valorUnitarioFinal,
+					valorTotalBruto,
+					valorDesconto,
+					valorTotalLiquido: valorTotalBruto - valorDesconto,
+				};
+			}),
+		}));
+	}, []);
+
 	const clearCart = useCallback(() => {
 		setState((prev) => {
 			// Itens de recompensa só existem no modo edição (a recompensa já foi resgatada e está
@@ -519,6 +550,7 @@ export const useSaleState = ({ initialState, organizationConfig, contasFinanceir
 		addItem,
 		updateItemQuantity,
 		removeItem,
+		repriceItems,
 		clearCart,
 		setDescontoGeral,
 		setAcrescimoGeral,

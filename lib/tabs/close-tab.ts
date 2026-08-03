@@ -18,6 +18,7 @@ type TCloseTabPaymentInput = {
 	efetivacaoTipo: "IMEDIATA" | "PENDENTE";
 	dataPrevisao?: string | null;
 	observacoes?: string | null;
+	contaFinanceiraId?: string | null;
 };
 
 export type TCloseTabInput = {

@@ -1,4 +1,4 @@
-import { getOrganizationPaymentMethodsConfig } from "@/lib/payments/defaults";
+import { resolvePaymentFinancialAccounts } from "@/lib/payments";
 import { saleHasLiveFiscalDocument } from "@/lib/sales/sale-editability";
 import {
 	buildPaymentTransactionTitle,
@@ -22,6 +22,7 @@ export type PatchSaleFulfillmentEntregaInput = {
 export type PatchSaleFulfillmentPagamentoInput = {
 	transacaoId: string;
 	metodo: TPaymentMethodEnum;
+	contaFinanceiraId?: string | null;
 };
 
 export type ProcessSaleFulfillmentCorrectionInput =
@@ -92,7 +93,7 @@ async function loadCorrectableSale(organizationId: string, saleId: string) {
 	return sale;
 }
 
-async function patchEntrega({
+async function patchDelivery({
 	organization,
 	saleId,
 	entrega,
@@ -130,14 +131,38 @@ async function patchEntrega({
 	};
 }
 
-async function patchPagamento({
+/**
+ * Conta financeira de um pagamento corrigido na expedição.
+ *
+ * Quando o método não muda, a conta atual é a verdade: ela pode ter sido escolhida pelo operador no
+ * PDV, e sobrescrevê-la com a padrão do método seria perder o dado sem que ninguém pedisse. Quando o
+ * método muda, a conta antiga pertencia a outro método e a padrão do novo prevalece — mantendo a
+ * conta atual como último recurso para métodos sem padrão configurado.
+ */
+export function resolvePatchedFinancialAccountId({
+	escolhaExplicita,
+	contaResolvida,
+	contaAtual,
+	metodoInalterado,
+}: {
+	escolhaExplicita: string | null;
+	contaResolvida: string | null;
+	contaAtual: string | null;
+	metodoInalterado: boolean;
+}): string | null {
+	if (escolhaExplicita) return contaResolvida;
+	if (metodoInalterado) return contaAtual;
+	return contaResolvida ?? contaAtual;
+}
+
+async function patchPayment({
 	organization,
 	saleId,
-	pagamento,
+	payment,
 }: {
 	organization: TOrganizationEntity;
 	saleId: string;
-	pagamento: PatchSaleFulfillmentPagamentoInput;
+	payment: PatchSaleFulfillmentPagamentoInput;
 }) {
 	const sale = await loadCorrectableSale(organization.id, saleId);
 
@@ -155,7 +180,7 @@ async function patchPagamento({
 	);
 
 	const classification = classifySalePaymentTransactions(rawTransactions);
-	const target = classification.todas.find((payment) => payment.id === pagamento.transacaoId);
+	const target = classification.todas.find((p) => p.id === payment.transacaoId);
 	if (!target) {
 		throw new createHttpError.NotFound("Transação não encontrada nesta venda.");
 	}
@@ -163,29 +188,43 @@ async function patchPagamento({
 		throw new createHttpError.BadRequest(target.motivoNaoEditavel ?? "Esta transação não pode ser alterada.");
 	}
 
-	const paymentMethodsConfig = getOrganizationPaymentMethodsConfig(organization.configuracao);
-	const methodConfig = paymentMethodsConfig[pagamento.metodo];
-	if (!methodConfig?.suportado) {
-		throw new createHttpError.BadRequest(`O método de pagamento ${pagamento.metodo} não está habilitado para esta organização.`);
-	}
-
 	const sourceTransaction = sale.lancamentosContabeis
 		.flatMap((entry) => entry.transacoesFinanceiras)
-		.find((transaction) => transaction.id === pagamento.transacaoId);
+		.find((transaction) => transaction.id === payment.transacaoId);
 	if (!sourceTransaction) {
 		throw new createHttpError.NotFound("Transação não encontrada nesta venda.");
 	}
+
+	// Valida método habilitado e, quando informada, a conta escolhida (posse + conta ativa).
+	const [resolvedPayment] = await resolvePaymentFinancialAccounts({
+		organization,
+		payments: [
+			{
+				metodo: payment.metodo,
+				valor: sourceTransaction.valor,
+				efetivacaoTipo: "IMEDIATA",
+				contaFinanceiraId: payment.contaFinanceiraId ?? null,
+			},
+		],
+	});
+
+	const contaFinanceiraId = resolvePatchedFinancialAccountId({
+		escolhaExplicita: payment.contaFinanceiraId ?? null,
+		contaResolvida: resolvedPayment.contaFinanceiraId ?? null,
+		contaAtual: sourceTransaction.contaFinanceiraId,
+		metodoInalterado: sourceTransaction.metodo === payment.metodo,
+	});
 
 	const observacoes = extractPaymentObservacoesFromTitle(sourceTransaction.titulo);
 
 	await db
 		.update(financialTransactions)
 		.set({
-			metodo: pagamento.metodo,
-			contaFinanceiraId: methodConfig.contaFinanceiraPadraoId ?? sourceTransaction.contaFinanceiraId,
-			titulo: buildPaymentTransactionTitle(pagamento.metodo, observacoes),
+			metodo: payment.metodo,
+			contaFinanceiraId,
+			titulo: buildPaymentTransactionTitle(payment.metodo, observacoes),
 		})
-		.where(and(eq(financialTransactions.id, pagamento.transacaoId), eq(financialTransactions.organizacaoId, organization.id)));
+		.where(and(eq(financialTransactions.id, payment.transacaoId), eq(financialTransactions.organizacaoId, organization.id)));
 
 	const updated = await loadCorrectableSale(organization.id, saleId);
 	return {
@@ -196,17 +235,17 @@ async function patchPagamento({
 
 export async function processSaleFulfillmentCorrection(input: ProcessSaleFulfillmentCorrectionInput) {
 	if ("entrega" in input) {
-		return patchEntrega({
+		return patchDelivery({
 			organization: input.organization,
 			saleId: input.saleId,
 			entrega: input.entrega,
 		});
 	}
 
-	return patchPagamento({
+	return patchPayment({
 		organization: input.organization,
 		saleId: input.saleId,
-		pagamento: input.pagamento,
+		payment: input.pagamento,
 	});
 }
 

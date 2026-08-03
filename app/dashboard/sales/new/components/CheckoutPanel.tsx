@@ -39,6 +39,11 @@ type CheckoutPanelProps = {
 	isFinalizingSale?: boolean;
 	onOpenContext?: () => void;
 	edit?: CheckoutPanelEditContext | null;
+	// Bloqueios que não vêm do carrinho (caixa fechado, preços defasados no checkout de orçamento).
+	finalizeBlockedReason?: string | null;
+	hideDraftAction?: boolean;
+	// Conteúdo acima das ações — hoje o aviso de preços defasados do checkout.
+	beforeActions?: React.ReactNode;
 };
 
 export default function CheckoutPanel({
@@ -55,6 +60,9 @@ export default function CheckoutPanel({
 	isFinalizingSale,
 	onOpenContext,
 	edit,
+	finalizeBlockedReason,
+	hideDraftAction,
+	beforeActions,
 }: CheckoutPanelProps) {
 	const [isVinculationMenuOpen, setIsVinculationMenuOpen] = useState(false);
 	const [isNewLocationOpen, setIsNewLocationOpen] = useState(false);
@@ -131,6 +139,7 @@ export default function CheckoutPanel({
 					autoEmissionExceptions={autoEmissionExceptions}
 					canEmitFiscal={canEmitFiscal}
 				/>
+				{beforeActions}
 				<ActionsSection
 					saleState={saleState}
 					onCreateDraft={onCreateDraft}
@@ -138,6 +147,8 @@ export default function CheckoutPanel({
 					isCreatingDraft={isCreatingDraft}
 					isFinalizingSale={isFinalizingSale}
 					editMode={!!edit}
+					finalizeBlockedReason={finalizeBlockedReason}
+					hideDraftAction={hideDraftAction}
 				/>
 			</div>
 
