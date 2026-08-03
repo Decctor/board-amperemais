@@ -14,7 +14,7 @@ const ANCHOR_LINKS: { label: string; href: string; isRoute?: boolean }[] = [
 	{ label: "Funcionalidades", href: "#inventario" },
 	{ label: "Segmentos", href: "/segmentos", isRoute: true },
 	{ label: "Planos", href: "#saldo" },
-	{ label: "Parcerias", href: "/partnerships", isRoute: true },
+	// { label: "Parcerias", href: "/partnerships", isRoute: true },
 ];
 
 export function LedgerNavbar() {

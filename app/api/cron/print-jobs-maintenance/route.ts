@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 // Manutenção diária da fila de impressão (plano: ciclo de vida do job):
 // 1. PROCESSANDO com lease vencida e tentativas esgotadas → ERRO (reimpressão é decisão humana);
 // 2. PENDENTE (ou PROCESSANDO retomável) além do TTL → EXPIRADO;
-// 3. purga de jobs terminais com mais de 90 dias (mesma retenção do access-cleanup).
+// 3. purga de jobs terminais com mais de 90 dias (mesma retenção do retention-cleanup).
 const PURGE_RETENTION_DAYS = 90;
 const TERMINAL_STATUSES = ["IMPRESSO", "ERRO", "CANCELADO", "EXPIRADO"] as const;
 

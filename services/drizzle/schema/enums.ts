@@ -466,3 +466,11 @@ export const accessCredentialTypeEnum = pgEnum("access_credential_type", ["TOKEN
 
 // O `tipo` de access_events NÃO é pgEnum de propósito (mesmo racional de action approvals):
 // é varchar + z.enum no app para que novos eventos não custem migração de enum no Postgres.
+
+// ============================================================================
+// EVENTOS EXTERNOS (docs/dev-planning/sync-skip-and-webhook-inbox-plan.md)
+// ============================================================================
+
+// A `origem` de external_events NÃO é pgEnum de propósito (mesmo racional de access_events):
+// é varchar + z.enum no app para que novas origens (Stripe, iFood…) não custem migração.
+export const externalEventProcessingStatusEnum = pgEnum("external_event_processing_status", ["RECEBIDO", "PROCESSADO", "FALHOU"]);

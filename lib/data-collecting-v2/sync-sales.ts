@@ -12,6 +12,7 @@ import { FIRST_PARTY_ACCOUNT_KEYS } from "@/lib/finances/first-party-accounts";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import { clients, saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
 import { and, eq, inArray } from "drizzle-orm";
+import { computeSaleImportSignature } from "./sale-signature";
 import { getCanonicalClientResolutionKey, resolveClientForCanonicalSale } from "./sync-auxiliary-entities";
 import type { TDataCollectingV2Executor, TPersistedSaleForEffects, TResolvedAuxiliaryEntities, TResolvedClientForImport } from "./types";
 
@@ -146,33 +147,40 @@ function buildSaleValues({
 	};
 }
 
-async function insertSaleItems({
-	tx,
+type TResolvedSaleItemRow = {
+	values: Omit<typeof saleItems.$inferInsert, "vendaId">;
+	modificadores: Omit<typeof saleItemModifiers.$inferInsert, "itemVendaId">[];
+};
+
+/**
+ * Projeção de persistência dos itens: exatamente as linhas que `insertSaleItems` gravaria.
+ * É insumo tanto da inserção quanto da assinatura de importação — construir uma vez garante
+ * que a assinatura nunca diverge do que é escrito (inclusive na resolução de
+ * produto/variante/modificador, que depende do estado da plataforma e pode mudar entre runs
+ * sem o payload da fonte mudar).
+ */
+function buildSaleItemRows({
 	batch,
 	context,
-	saleId,
 	clientId,
 	items,
 }: {
-	tx: TDataCollectingV2Executor;
 	batch: TCanonicalImportBatch;
 	context: TResolvedAuxiliaryEntities;
-	saleId: string;
 	clientId: string | null;
 	items: TCanonicalSaleItem[];
-}) {
+}): TResolvedSaleItemRow[] {
+	const rows: TResolvedSaleItemRow[] = [];
 	for (const item of items) {
 		const target = resolveSaleItemTarget(context, item);
 		if (!target) continue;
 
 		// Snapshot dos eixos da variante no momento da venda (robusto a rename/delete posterior).
-		const metadados = target.opcoes.length > 0 ? { ...(item.metadata ?? {}), opcoes: target.opcoes } : item.metadata;
+		const metadados = target.opcoes.length > 0 ? { ...item.metadata, opcoes: target.opcoes } : item.metadata;
 
-		const inserted = await tx
-			.insert(saleItems)
-			.values({
+		rows.push({
+			values: {
 				organizacaoId: batch.organizationId,
-				vendaId: saleId,
 				clienteId: clientId,
 				produtoId: target.produtoId,
 				produtoVarianteId: target.produtoVarianteId,
@@ -184,18 +192,28 @@ async function insertSaleItems({
 				valorVendaTotalLiquido: item.netSaleValue,
 				valorCustoTotal: item.totalCostValue,
 				metadados,
-			})
-			.returning({ id: saleItems.id });
-
-		for (const modifier of item.modifiers ?? []) {
-			await tx.insert(saleItemModifiers).values({
-				itemVendaId: inserted[0].id,
-				opcaoId: context.productAddOnOptionsByExternalId.get(modifier.optionExternalId),
+			},
+			modificadores: (item.modifiers ?? []).map((modifier) => ({
+				opcaoId: context.productAddOnOptionsByExternalId.get(modifier.optionExternalId) ?? null,
 				nome: modifier.name ?? modifier.optionExternalId,
 				quantidade: modifier.quantity,
 				valorUnitario: modifier.unitValue,
 				valorTotal: modifier.quantity * modifier.unitValue,
-			});
+			})),
+		});
+	}
+	return rows;
+}
+
+async function insertSaleItems({ tx, saleId, rows }: { tx: TDataCollectingV2Executor; saleId: string; rows: TResolvedSaleItemRow[] }) {
+	for (const row of rows) {
+		const inserted = await tx
+			.insert(saleItems)
+			.values({ ...row.values, vendaId: saleId })
+			.returning({ id: saleItems.id });
+
+		for (const modificador of row.modificadores) {
+			await tx.insert(saleItemModifiers).values({ ...modificador, itemVendaId: inserted[0].id });
 		}
 	}
 }
@@ -265,6 +283,7 @@ export async function syncSales({
 						valorTotal: true,
 						statusVenda: true,
 						statusAtendimento: true,
+						assinaturaExterna: true,
 					},
 				})
 			: [];
@@ -313,17 +332,33 @@ export async function syncSales({
 		// idempotente em todo sync, cobrindo também entregas feitas pelo board entre syncs).
 		let effectiveAttendanceStatus = saleValues.statusAtendimento;
 
+		const itemRows = buildSaleItemRows({ batch, context, clientId, items: sale.items });
+		const externalSignature = computeSaleImportSignature({
+			saleValues,
+			resolvedItems: itemRows,
+			saleItemRewritePolicy: batch.policies.saleItemRewritePolicy,
+		});
+		// Assinatura igual prova que a transação de import deste exato estado já commitou —
+		// nenhuma escrita é necessária. Canal gerenciado nunca pula: applyManagedSaleDeliveryEffects
+		// roda em todo sync por design (rede de segurança para entregas feitas pelo board).
+		const skipped = !!existingSale && !saleIsManaged && existingSale.assinaturaExterna === externalSignature;
+
 		if (!existingSale) {
 			isNewSale = true;
 			console.log(`[SYNC_SALES] Creating new sale of ${sale.sourceSaleId} (${sale.occurredAt.toISOString()})...`);
-			const inserted = await tx.insert(sales).values(saleValues).returning({ id: sales.id });
+			const inserted = await tx
+				.insert(sales)
+				.values({ ...saleValues, assinaturaExterna: externalSignature })
+				.returning({ id: sales.id });
 			saleId = inserted[0].id;
-			await insertSaleItems({ tx, batch, context, saleId, clientId, items: sale.items });
+			await insertSaleItems({ tx, saleId, rows: itemRows });
+		} else if (skipped) {
+			saleId = existingSale.id;
 		} else {
 			saleId = existingSale.id;
 			console.log(`[SYNC_SALES] Updating existing sale of ${sale.sourceSaleId} (${sale.occurredAt.toISOString()})...`);
 
-			const updateValues = { ...saleValues };
+			const updateValues = { ...saleValues, assinaturaExterna: externalSignature };
 			if (saleIsManaged) {
 				// Eixo comercial nunca regride por evento atrasado (ex.: PLACED replayed após CFM).
 				if (!updateValues.statusVenda && existingSale.statusVenda) updateValues.statusVenda = existingSale.statusVenda;
@@ -343,7 +378,7 @@ export async function syncSales({
 			await tx.update(sales).set(updateValues).where(eq(sales.id, existingSale.id));
 			if (batch.policies.saleItemRewritePolicy === "REPLACE_ON_EVERY_SYNC") {
 				await tx.delete(saleItems).where(and(eq(saleItems.vendaId, existingSale.id), eq(saleItems.organizacaoId, batch.organizationId)));
-				await insertSaleItems({ tx, batch, context, saleId, clientId, items: sale.items });
+				await insertSaleItems({ tx, saleId, rows: itemRows });
 			}
 		}
 
@@ -387,8 +422,11 @@ export async function syncSales({
 
 		const isFirstPurchase =
 			!!client && client.isNew && becameValid && !!clientKey && firstValidSaleByClientKey.get(clientKey)?.sourceSaleId === sale.sourceSaleId;
+		// `!skipped` é cinto-e-suspensório: assinatura igual implica becameValid=false (a natureza
+		// e o valor persistidos vieram deste mesmo estado), mas métricas de cliente incrementam —
+		// um disparo duplicado aqui corromperia totais silenciosamente.
 		const totals =
-			client && becameValid
+			client && becameValid && !skipped
 				? await updateClientMetrics({ tx, client, sale, saleId, isFirstPurchase })
 				: { totalPurchaseCount: null, totalPurchaseValue: null, previousTotalPurchaseCount: null, previousTotalPurchaseValue: null };
 
@@ -404,6 +442,7 @@ export async function syncSales({
 			previouslyValid,
 			becameValid,
 			nowCanceled,
+			skipped,
 			managedFiscalEmissionCandidate: saleIsDelivered && !!erp && erp.policy.fiscal,
 			newTotalPurchaseCount: totals.totalPurchaseCount,
 			newTotalPurchaseValue: totals.totalPurchaseValue,

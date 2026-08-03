@@ -33,7 +33,7 @@ export default function LandingPage() {
 				<LedgerFeatures />
 				<LedgerIntegrations />
 				<LedgerPricing />
-				<LedgerPartnershipProgram />
+				{/* <LedgerPartnershipProgram /> */}
 				<LedgerFAQ />
 				<LedgerClosingCTA />
 			</main>

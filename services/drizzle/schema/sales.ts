@@ -87,6 +87,10 @@ export const sales = newTable(
 		// taxas do canal) — insumo do fiscal (fase 5) e da conciliação de repasse (fase 4b).
 		// null em vendas internas/conectores sem detalhamento.
 		integracaoMetadados: jsonb("integracao_metadados").$type<TSaleIntegrationMetadata>(),
+		// Assinatura da última projeção de persistência importada pelo data-collecting (formato
+		// "v1:<sha256>"). Assinatura igual = a fonte não mudou = sync pula as escritas da venda.
+		// null = venda nunca carimbada (legado ou interna) — tratada como alterada no próximo sync.
+		assinaturaExterna: text("assinatura_externa"),
 	},
 	(table) => ({
 		clientIdIdx: index("idx_sales_client_id").on(table.clienteId),

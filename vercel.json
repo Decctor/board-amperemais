@@ -88,7 +88,7 @@
 			"schedule": "45 2 * * *"
 		},
 		{
-			"path": "/api/cron/access-cleanup",
+			"path": "/api/cron/retention-cleanup",
 			"schedule": "0 6 * * 0"
 		},
 		{
