@@ -230,11 +230,15 @@ nullable): gravada por `lib/data-collecting-v2/sync-sales.ts` em toda venda impo
 Observabilidade ("de qual conexão veio esta venda") e fundação para o dedupe multi-fonte (D4).
 Vendas históricas ficam `null`.
 
+**`organizations.poiConfiguracao`** (nova coluna, `jsonb $type<TOrganizationPoiConfig>`): config
+própria do Ponto de Interação (§3.4, D8). Nesta entrega carrega só o flag explícito de registro
+de vendas; é o destino da consolidação futura das demais capacidades do POI.
+
 ### 3.2 Sucessores semânticos
 
 | Hoje | Passa a ser |
 |---|---|
-| `transactionRequiresSaleProcessing = !org.integracaoTipo` (POI `:273`) | `!(await organizationHasActiveDataSource(...))`. Org com ERP **e** iFood continua `false` (fontes externas donas das vendas). Org só com `META_ADS` conta como **sem** fonte — o helper filtra por `DATA_SOURCE_INTEGRATION_TYPES` + `ativo`. |
+| `transactionRequiresSaleProcessing = !org.integracaoTipo` (POI `:273`) | `organizations.poiConfiguracao.vendas.registroAtivo` — **config explícita, não derivação** (§3.4, D8). O backfill grava o snapshot do comportamento atual (`true` ⇔ org sem integração). `organizationHasActiveDataSource` continua existindo para defaults de cashback e sinalização de UI, mas o POI não deriva mais nada dele. |
 | Seleção de orgs do cron (JS gate `:260-261`) | `getActiveDataSourceIntegrations()` → **loop por integração**, não por org. Org com 2 fontes roda 2 batches. O gate de coerência tipo↔config.tipo morre (uma linha só tem um `tipo`). |
 | WHERE do products-syncing | `inArray(integrations.tipo, ["CARDAPIO-WEB","NUVEM-SHOP"]) AND ativo` — pode rodar por linha. |
 | merchant→org do webhook iFood | `findMany(integrations, where tipo='IFOOD' AND ativo)` + scan de `configuracao.merchantIds` (menos linhas que o scan de orgs atual). |
@@ -251,6 +255,57 @@ Hoje só o callback do Meta insere em `integrations`. Adicionar **POST `/api/int
 partes, `canManageIntegrations`): valida `configuracao` pela união discriminada, deriva
 `refExterno`, aplica o guard de unicidade (D5), `status: "CONECTADO"`. É o destino do modal
 `ConfigureIntegration` (ONLINE-SOFTWARE / CARDAPIO-WEB) e do sandbox iFood.
+
+### 3.4 O POI deixa de ser fallback implícito e vira canal configurável
+
+O Ponto de Interação nasceu como interface do cliente final com o clube de benefícios
+(tablet/QR), mas acumula papéis:
+
+1. interação com o clube — perfil, saldo, acompanhamento (universal);
+2. resgate de cashback (quase universal — exceto orgs em modo ERP, onde o resgate é embutido no
+   PDV/Shop);
+3. **entrada de vendas/cadastro** — só quando a org não tem integração;
+4. acúmulo na transação.
+
+O papel 3 é hoje **derivado** (`!integracaoTipo`), e as demais capacidades são governadas por
+configs espalhadas em entidades diferentes (`poiConfirmacaoValorObrigatoria` na org,
+`acumuloPermitirViaPontoIntegracao` / `acumuloPermitirViaIntegracao` no programa de cashback).
+Duas consequências:
+
+- o "emaranhado": cada ajuste de comportamento do POI mexe numa entidade diferente, e o fluxo de
+  `new-transaction` vira uma teia de flags cruzados;
+- casos legítimos são **inexprimíveis**: uma loja de roupas com ERP digital integrado, mas sem
+  integração para vendas de balcão, deveria poder usar o POI como ponto de coleta local. Hoje é
+  impossível — qualquer integração ativa desliga o registro de vendas do POI por derivação.
+
+Modelo alvo: **`organizations.poiConfiguracao`**, seguindo o precedente da casa de uma coluna
+jsonb por preocupação (`fiscalConfiguracao`, `pagamentoConfiguracao`):
+
+```ts
+// schemas/organizations.ts
+export const OrganizationPoiConfigSchema = z.object({
+	// Sucessor EXPLÍCITO de `transactionRequiresSaleProcessing = !integracaoTipo`.
+	vendas: z.object({
+		registroAtivo: z.boolean({ invalid_type_error: "Tipo não válido para o registro de vendas do POI." }),
+	}),
+	// Consolidação futura (fora desta entrega, ver §8): resgate, confirmação de valor
+	// (migra de poiConfirmacaoValorObrigatoria), QR codes, perfil.
+});
+export type TOrganizationPoiConfig = z.infer<typeof OrganizationPoiConfigSchema>;
+```
+
+Por que **não** uma linha `tipo: "POI"` em `integrations`: o POI não é conexão com plataforma
+externa — não tem OAuth, token, `status`/`refExterno` nem sincronização. Forçá-lo na tabela
+compraria a simetria "POI é mais uma fonte" ao custo de esvaziar a semântica das colunas. A
+simetria que importa — "quais canais alimentam vendas nesta org?" — é obtida no ponto de
+leitura: **fontes de venda = integrações de dados ativas ∪ (POI se `vendas.registroAtivo`)**.
+
+Nesta entrega entra só `vendas.registroAtivo`, com backfill = snapshot do comportamento atual
+(`integracao_tipo IS NULL`). Isso é *menos* arriscado do que trocar um booleano derivado por
+outro derivado: o gate vira dado explícito, decidido uma vez na migração, e
+desativar/reativar/trocar uma integração **deixa de flipar silenciosamente o comportamento do
+POI**. O caso da loja de roupas passa a ser um toggle. A consolidação das demais capacidades é
+follow-up staged (§8) — a coluna já nasce no lugar certo para recebê-las.
 
 ---
 
@@ -281,6 +336,10 @@ partes, `canManageIntegrations`): valida `configuracao` pela união discriminada
 - **D7 — DDL manual**: toda migração SQL é aplicada pelo usuário via
   `scripts/apply-sql-migration.ts` (diretiva vigente — não rodar `drizzle push`/DDL direto no
   banco). `ALTER TYPE ... ADD VALUE` não roda dentro de transação — script separado do backfill.
+- **D8 — Gate do POI vira config explícita**: `poiConfiguracao.vendas.registroAtivo` substitui a
+  derivação `!integracaoTipo` (§3.4). Backfill preserva o comportamento atual. Consequência a
+  comunicar: **desconectar a última integração não reabilita o registro de vendas do POI
+  automaticamente** — o fluxo de desconexão na UI deve avisar/oferecer o toggle (ver R12).
 
 ### Abertas (não bloqueiam a migração)
 
@@ -301,11 +360,13 @@ partes, `canManageIntegrations`): valida `configuracao` pela união discriminada
 2. `schemas/integrations.ts`: mover as 5 variantes de config para `IntegrationConfigSchema`;
    atualizar `schemas/enums.ts` (`IntegrationTipoEnum`).
 3. `services/drizzle/schema/sales.ts`: coluna `integracaoId` (D4).
-4. `lib/integrations/data-sources.ts`: constante + helpers (§3.1).
-5. `POST /api/integrations` (§3.3) + `maskConfig` cobrindo os novos tipos (garantir que
+4. `services/drizzle/schema/organizations.ts` + `schemas/organizations.ts`: coluna
+   `poiConfiguracao` + `OrganizationPoiConfigSchema` (§3.4).
+5. `lib/integrations/data-sources.ts`: constante + helpers (§3.1).
+6. `POST /api/integrations` (§3.3) + `maskConfig` cobrindo os novos tipos (garantir que
    `accessToken`/`refreshToken`/`apiKey`/`token` das novas variantes são mascarados).
-6. SQL (manual, D7): `ALTER TYPE integration_type ADD VALUE ...` ×5; `ALTER TABLE ampmais_sales
-   ADD COLUMN integracao_id ...`.
+7. SQL (manual, D7): `ALTER TYPE integration_type ADD VALUE ...` ×5; `ALTER TABLE ampmais_sales
+   ADD COLUMN integracao_id ...`; `ALTER TABLE ampmais_organizations ADD COLUMN poi_configuracao jsonb`.
 
 *Aceite*: deploy sem nenhuma mudança visível; typecheck dos arquivos tocados limpo (baseline de
 ~300 erros pré-existentes — verificar filtrando `tsc` pelos arquivos alterados).
@@ -339,13 +400,25 @@ WHERE o.integracao_tipo IS NOT NULL
 	);
 ```
 
+Backfill do gate do POI (D8 — snapshot do comportamento atual):
+
+```sql
+UPDATE ampmais_organizations
+SET poi_configuracao = jsonb_build_object(
+	'vendas', jsonb_build_object('registroAtivo', integracao_tipo IS NULL)
+)
+WHERE poi_configuracao IS NULL;
+```
+
 - A condição `config->>'tipo' = integracao_tipo` replica o gate de coerência: orgs incoerentes
   **já são invisíveis para o cron hoje** — não backfillar, mas **listar num SELECT de auditoria**
   antes (`WHERE integracao_tipo IS NOT NULL AND (config nulo OU tipo divergente)`) e tratar caso
-  a caso.
-- Rodável a qualquer momento e re-rodável (guard `NOT EXISTS`). Executar imediatamente antes do
-  deploy da Fase 2 para minimizar a janela de tokens divergentes (um refresh de token entre
-  backfill e deploy deixa o token novo só na org — ver risco R6).
+  a caso. Obs.: para o backfill do POI essas orgs recebem `registroAtivo: false` (o
+  `integracao_tipo` preenchido bloqueia o POI hoje, mesmo com config quebrada) — coerente com o
+  comportamento vigente.
+- Rodável a qualquer momento e re-rodável (guards `NOT EXISTS` / `IS NULL`). Executar
+  imediatamente antes do deploy da Fase 2 para minimizar a janela de tokens divergentes (um
+  refresh de token entre backfill e deploy deixa o token novo só na org — ver risco R6).
 
 ### Fase 2 — Cutover de leitores e escritores (uma release)
 
@@ -366,8 +439,11 @@ Ordem interna sugerida (tudo na mesma release; itens agrupados por superfície):
    resolução via tabela nova.
 
 **Gates e webhooks**
-6. POI `new-transaction/route.ts:245,273,284,923`: `organizationHasActiveDataSource` (uma query a
-   mais por transação; se pesar, embutir como EXISTS na query do programa).
+6. POI `new-transaction/route.ts:245,273,284,923`: `transactionRequiresSaleProcessing` passa a
+   ler `poiConfiguracao.vendas.registroAtivo` (D8) — a coluna entra no `columns` da relação
+   `organizacao` já carregada em `:239-250`; zero queries extras. Fallback para orgs com
+   `poiConfiguracao` nula (criadas entre deploy e backfill): tratar `null` como
+   "sem fonte ativa ⇒ registra" via `organizationHasActiveDataSource` — removível na Fase 4.
 7. `app/api/webhooks/ifood/route.ts`: `loadConnectedIfoodOrganizations` via tabela nova.
    **Validar keep-alive/homologação depois do deploy** (R2).
 8. `lib/integrations/nuvemshop/webhook-notifications.ts`: lookup por `refExterno`.
@@ -379,24 +455,34 @@ Ordem interna sugerida (tudo na mesma release; itens agrupados por superfície):
     linha existente do tipo: config nova, `status: 'CONECTADO'`, `ultimoErro: null`). **Parar de
     escrever os 4 campos antigos.**
 11. `ConfigureIntegration.tsx` → `POST /api/integrations`; desconectar em
-    `SettingsIntegration.tsx` → `DELETE /api/integrations?id=`.
+    `SettingsIntegration.tsx` → `DELETE /api/integrations?id=`. Ao desconectar a **última** fonte
+    de dados ativa, a UI avisa que o POI não voltará a registrar vendas sozinho e oferece ligar
+    `poiConfiguracao.vendas.registroAtivo` (R12). Expor o toggle do POI na UI de settings
+    (novo bloco "Ponto de Interação" ou o existente de POI, se houver) — é ele que destrava o
+    caso "ERP integrado + coleta local via POI".
 
 **Sessão e UI**
 12. `lib/authentication/{types,session}.ts`: remover os 3 campos; adicionar `integracoes` resumido
     (§3.2). Corrige o vazamento de tokens para o browser.
 13. Consumidores de sessão (§2.5): `integrations-page` (isConnected por tipo a partir do resumo ou
     de `useIntegrations()`), `ifood-page`/gate, `SettingsIntegration` (agora lista N conexões — o
-    padrão multi-conexão da paid-media page é o precedente), cashback modals
-    (`userOrgHasIntegration` = resumo contém tipo de fonte de dados ativo), `Summary.tsx`,
-    onboarding (server query em `page.tsx` passa a consultar `integrations`; badge/resumo listam
-    N), `onboarding-quality/route.ts:105`, `app/api/integrations/settings/route.ts` (eco de tipo).
+    padrão multi-conexão da paid-media page é o precedente), cashback modals (defaults deixam de
+    derivar de `integracaoTipo`: `acumuloPermitirViaIntegracao` default = há fonte de dados
+    ativa; `acumuloPermitirViaPontoIntegracao` default = `poiConfiguracao.vendas.registroAtivo` —
+    e os dois podem ser verdadeiros juntos no cenário multi-canal), `Summary.tsx`, onboarding
+    (server query em `page.tsx` passa a consultar `integrations`; badge/resumo listam N; o passo
+    POI do onboarding passa a escrever `poiConfiguracao.vendas.registroAtivo: true` junto de
+    `dadosViaPDI`), `onboarding-quality/route.ts:105`, `app/api/integrations/settings/route.ts`
+    (eco de tipo). Criação de organização passa a gravar `poiConfiguracao` default
+    (`registroAtivo: true` — org nova sem integração se comporta como hoje).
 14. State hooks: remover defaults dos campos que morrem (manter `dadosViaPDI`).
 
 *Aceite da Fase 2*: cron importa vendas de uma org com **duas** integrações ativas (ex.: BLING +
 IFOOD em staging/sandbox); POI de org com integração continua sem criar venda; POI de org sem
-fonte continua criando; webhook iFood resolve merchant e keep-alive responde; Settings mostra as
-duas conexões com "última sincronização" preenchendo; nenhum token aparece em resposta de API nem
-na sessão.
+fonte continua criando; **org com integração ativa + `registroAtivo: true` tem os dois canais
+gerando vendas** (o caso loja-de-roupas); webhook iFood resolve merchant e keep-alive responde;
+Settings mostra as duas conexões com "última sincronização" preenchendo; nenhum token aparece em
+resposta de API nem na sessão.
 
 ### Fase 3 — Scripts e documentação
 
@@ -427,7 +513,7 @@ na sessão.
 
 | # | Risco | Onde | Mitigação |
 |---|---|---|---|
-| R1 | POI passa a criar venda interna para org que tem integração (dupla venda + dupla campanha + duplo cashback) — ou o inverso | `new-transaction:273` | O helper filtra `DATA_SOURCE_INTEGRATION_TYPES` + `ativo=true`. Teste explícito: org só com META_ADS ⇒ POI cria venda; org com fonte ativa ⇒ não cria. Atenção ao caso `ativo=false` (fonte desativada temporariamente): hoje o slot preenchido bloqueia o POI; no modelo novo, desativar a integração **reabilita** o POI — comportamento novo, correto, mas comunicar. |
+| R1 | Backfill do gate do POI errado ⇒ POI cria venda interna para org que não deveria (dupla venda + dupla campanha + duplo cashback) — ou para de criar onde deveria | `new-transaction:273` + backfill D8 | O gate deixa de ser derivado em runtime (D8) — o risco concentra-se no snapshot do backfill, auditável com um SELECT antes/depois (`registroAtivo` deve igualar `integracao_tipo IS NULL` org a org). Teste matriz: org só com META_ADS ⇒ `registroAtivo: true` ⇒ POI cria venda; org com fonte ativa ⇒ `false` ⇒ não cria; org com fonte + `registroAtivo: true` explícito ⇒ ambos os canais criam (intencional; validar que não há dupla contagem da *mesma* venda — canais cobrem vendas distintas por definição). |
 | R2 | Homologação/keep-alive iFood quebra (merchant set vazio) | `webhooks/ifood/route.ts:73-82` | Backfill preserva `merchantIds` no jsonb; validar com `scripts/ifood-homologation-polling.ts` migrado logo após o deploy. |
 | R3 | Colisão de `idExterno` entre duas fontes da mesma org (venda A sobrescreve venda B, cashback errado) | `sync-sales.ts:278-290` | D4: `sales.integracaoId` + log de colisão desde o dia 1 do multi-fonte; unique composto quando houver dado real. |
 | R4 | Duplo acúmulo de cashback com 2 fontes (iFood + ERP ambos acumulam via `acumuloPermitirViaIntegracao`) | `lib/data-collecting-v2/effects.ts:249,294` | Comportamento *esperado* no modelo binário atual — documentar na entrega; controle por integração é follow-up (§4 abertas). |
@@ -438,6 +524,7 @@ na sessão.
 | R9 | Cron e webhook iFood rodando concorrentes refresham a mesma linha (lost-update do token na própria linha) | refresh row-scoped | Mesmo risco que já existe hoje no slot da org; refresh condicional (`WHERE configuracao->>'accessToken' = :tokenAntigo`) é hardening opcional. |
 | R10 | `products-syncing` não está no `vercel.json` — migrar o WHERE sem perceber que o trigger é manual | `app/api/cron/products-syncing` | Apenas registrar o fato; decidir separadamente se entra no `vercel.json`. |
 | R11 | Scripts não migrados rodando contra colunas congeladas (dados velhos silenciosos) na janela Fase 2→4 | `utils/scripts/*` | Janela curta + Fase 4 dropa as colunas e o compilador acusa; scripts críticos (homologação iFood) migram na Fase 2/3. |
+| R12 | Org desconecta a última integração e o POI **não** volta a registrar vendas (hoje voltava automaticamente, por derivação) ⇒ vendas de balcão somem até alguém perceber | fluxo de desconexão | Mudança comportamental intencional do D8, mas precisa de rede: a UI de desconexão avisa e oferece ligar `registroAtivo` na hora (Fase 2, item 11); Settings exibe alerta permanente quando a org está sem **nenhum** canal de vendas (nem fonte ativa, nem POI registrando). |
 
 ---
 
@@ -447,8 +534,9 @@ na sessão.
   mascaramento das novas variantes de config.
 - **Integração (staging)**: org com BLING + IFOOD sandbox ativos → 1 run do cron gera 2 batches,
   2 `dataUltimaSincronizacao`; desativar uma linha e confirmar que só a outra roda.
-- **POI**: matriz org × {sem integração, fonte ativa, fonte inativa, só META_ADS} × venda
-  criada/não criada.
+- **POI**: matriz `registroAtivo` × {sem integração, fonte ativa, fonte inativa, só META_ADS,
+  `poiConfiguracao` nula (fallback)} × venda criada/não criada; caso multi-canal (fonte ativa +
+  `registroAtivo: true`) com verificação de cashback/campanhas corretos em cada canal.
 - **Webhook iFood**: keep-alive com N merchants de M orgs; evento de pedido dispara coleta da org
   certa.
 - **Homologação iFood** com o script migrado.
@@ -466,4 +554,10 @@ na sessão.
   preferência de comportamento, não conexão; fica onde está.
 - Cashback por integração, cursor incremental, múltiplas conexões do mesmo tipo na UI, índice GIN
   de `merchantIds` — follow-ups listados em §4.
+- **Consolidação completa da config do POI** — migrar para `poiConfiguracao` as capacidades hoje
+  espalhadas: `poiConfirmacaoValorObrigatoria`, `poiQrCode*DataUrl`, resgate habilitado/embutido
+  (cenário ERP), acúmulo na transação (hoje `acumuloPermitirViaPontoIntegracao` no programa de
+  cashback), perfil do cliente final. Esta entrega só cria a coluna e move o gate de vendas
+  (§3.4); o restante é um plano próprio, idealmente logo após, aproveitando que o emaranhado de
+  `new-transaction` estará com um flag a menos.
 - Integrações de marketing (META_ADS/CAPI/audiences) — intocadas; só compartilham a tabela.
