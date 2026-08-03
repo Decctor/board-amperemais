@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { DiscountApproval } from "@/components/Modals/Sales/DiscountApproval";
 import { getErrorMessage } from "@/lib/errors";
+import type { TAutoEmissionExceptions } from "@/lib/fiscal/auto-emission-policy";
 import { formatToMoney } from "@/lib/formatting";
 import { useIsMobile } from "@/lib/hooks/use-mobile";
 import { editConfirmedSale } from "@/lib/mutations/pos";
@@ -80,6 +81,7 @@ type EditSalePageProps = {
 	organizationFinancialAccounts: TSaleFinancialAccountOption[];
 	organizationAutoFiscalEmission: boolean;
 	organizationAutoFiscalCapable: boolean;
+	autoEmissionExceptions: TAutoEmissionExceptions;
 	canEmitFiscal: boolean;
 };
 
@@ -90,6 +92,7 @@ export default function EditSalePage({
 	organizationFinancialAccounts,
 	organizationAutoFiscalEmission,
 	organizationAutoFiscalCapable,
+	autoEmissionExceptions,
 	canEmitFiscal,
 }: EditSalePageProps) {
 	const router = useRouter();
@@ -393,6 +396,7 @@ export default function EditSalePage({
 							saleState={saleState}
 							organizationAutoFiscalEmission={organizationAutoFiscalEmission}
 							organizationAutoFiscalCapable={organizationAutoFiscalCapable}
+							autoEmissionExceptions={autoEmissionExceptions}
 							canEmitFiscal={canEmitFiscal}
 							discountAuthority={discountAuthority}
 							onCreateDraft={() => {}}
@@ -425,6 +429,7 @@ export default function EditSalePage({
 										saleState={saleState}
 										organizationAutoFiscalEmission={organizationAutoFiscalEmission}
 										organizationAutoFiscalCapable={organizationAutoFiscalCapable}
+										autoEmissionExceptions={autoEmissionExceptions}
 										canEmitFiscal={canEmitFiscal}
 										discountAuthority={discountAuthority}
 										onCreateDraft={() => {}}

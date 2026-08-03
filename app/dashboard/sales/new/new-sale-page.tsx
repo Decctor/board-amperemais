@@ -6,6 +6,7 @@ import CashSessionBar from "@/components/CashSessions/CashSessionBar";
 import CashSessionGate from "@/components/CashSessions/CashSessionGate";
 import { DiscountApproval } from "@/components/Modals/Sales/DiscountApproval";
 import { getErrorMessage } from "@/lib/errors";
+import type { TAutoEmissionExceptions } from "@/lib/fiscal/auto-emission-policy";
 import { createAndConfirmSale, createSaleDraft, updateSaleDraft } from "@/lib/mutations/pos";
 import { evaluateDiscount } from "@/lib/permissions/discounts";
 import { useSaleDiscountContext } from "@/lib/queries/action-approvals";
@@ -67,6 +68,7 @@ type NewSalePageProps = {
 	organizationFinancialAccounts: TSaleFinancialAccountOption[];
 	organizationAutoFiscalEmission: boolean;
 	organizationAutoFiscalCapable: boolean;
+	autoEmissionExceptions: TAutoEmissionExceptions;
 	canEmitFiscal: boolean;
 };
 export default function NewSalePage({
@@ -75,6 +77,7 @@ export default function NewSalePage({
 	organizationFinancialAccounts,
 	organizationAutoFiscalEmission,
 	organizationAutoFiscalCapable,
+	autoEmissionExceptions,
 	canEmitFiscal,
 }: NewSalePageProps) {
 	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -431,6 +434,7 @@ export default function NewSalePage({
 							saleState={saleState}
 							organizationAutoFiscalEmission={organizationAutoFiscalEmission}
 							organizationAutoFiscalCapable={organizationAutoFiscalCapable}
+							autoEmissionExceptions={autoEmissionExceptions}
 							canEmitFiscal={canEmitFiscal}
 							discountAuthority={discountAuthority}
 							onCreateDraft={handleCreateDraft}
@@ -463,6 +467,7 @@ export default function NewSalePage({
 									saleState={saleState}
 									organizationAutoFiscalEmission={organizationAutoFiscalEmission}
 									organizationAutoFiscalCapable={organizationAutoFiscalCapable}
+									autoEmissionExceptions={autoEmissionExceptions}
 									canEmitFiscal={canEmitFiscal}
 									discountAuthority={discountAuthority}
 									onCreateDraft={handleCreateDraft}

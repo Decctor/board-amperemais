@@ -1,4 +1,5 @@
 import { getErrorMessage } from "@/lib/errors";
+import { resolveAutoEmissionException } from "@/lib/fiscal/auto-emission-policy";
 import { enqueueFiscalDocument } from "@/lib/fiscal/documents";
 import { resolveEmissionDocumentType } from "@/lib/fiscal/document-type";
 import { notifyFiscalEmissionFailure } from "@/lib/fiscal/notifications";
@@ -64,6 +65,18 @@ export async function processSaleAutomaticFiscalEmissionIfEligible({
 	// Override por venda (tri-state): null herda a preferência da organização; true/false é decisão explícita.
 	const emissaoAutomaticaEfetiva = sale.emissaoFiscalAutomatica ?? organization.fiscalEmissaoAutomatica;
 	if (!emissaoAutomaticaEfetiva) return { status: "NAO_SOLICITADO" as const, reason: "EMISSAO_AUTOMATICA_DESATIVADA" as const };
+
+	// Exceções valem só quando a venda herda a preferência — override explícito (true) força a emissão.
+	if (sale.emissaoFiscalAutomatica == null) {
+		const metodos = financialState.transactions
+			.filter(
+				(transaction) =>
+					transaction.tipo === "ENTRADA" && !["CANCELADO", "ESTORNADO"].includes(transaction.provedorStatus ?? "") && transaction.valor > 0,
+			)
+			.map((transaction) => transaction.metodo);
+		const exception = resolveAutoEmissionException({ metodos, excecoes: organization.fiscalConfiguracao?.emissaoAutomatica?.excecoes });
+		if (exception) return { status: "NAO_SOLICITADO" as const, reason: exception };
+	}
 
 	const isManagedSale = sale.processamentoOrigem === "EXTERNO" && isManagedFulfillmentSaleModel(sale.modelo);
 	const isPaidForFiscal = financialState.isFullyPaid || (isManagedSale && isManagedSaleCustomerPaid({ financialState, saleTotal: sale.valorTotal }));

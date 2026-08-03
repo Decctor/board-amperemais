@@ -5,27 +5,37 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
 	AlertTriangle,
 	BadgeCheck,
+	Banknote,
+	Barcode,
 	BookText,
 	Calendar,
 	Check,
 	CheckCheck,
 	CircleCheck,
+	CircleEllipsis,
 	CircleX,
 	Clock,
+	CreditCard,
 	FileIcon,
 	FileText,
 	Flag,
+	Gift,
 	Globe,
 	Hash,
+	HelpCircle,
+	Landmark,
 	MapPin,
 	MoreHorizontal,
+	NotebookPen,
 	PencilIcon,
 	Percent,
 	Plus,
+	QrCode,
 	Receipt,
 	RefreshCcw,
 	Save,
 	Settings,
+	Ticket,
 	User,
 	Zap,
 } from "lucide-react";
@@ -77,6 +87,7 @@ import type {
 	TFiscalDocumentTypeEnum,
 	TFiscalOperationConsumerPresenceEnum,
 	TFiscalOperationFinalityEnum,
+	TPaymentMethodEnum,
 } from "@/schemas/enums";
 import NewFiscalOperationProfile from "@/components/Modals/FiscalOperationProfile/NewFiscalOperationProfile";
 import ControlFiscalOperationProfile from "@/components/Modals/FiscalOperationProfile/ControlFiscalOperationProfile";
@@ -726,6 +737,9 @@ function FiscalConfigurationsView({ organizationId, userHasFiscalConfigurePermis
 					</div>
 					<Switch checked={state.fiscalEmissaoAutomatica} onCheckedChange={(checked) => updateSettings({ fiscalEmissaoAutomatica: checked })} />
 				</div>
+				{state.fiscalEmissaoAutomatica ? (
+					<AutoEmissionPaymentMethodExceptions fiscalConfig={state.fiscalConfiguracao} updateFiscalConfig={updateFiscalConfig} />
+				) : null}
 			</SectionWrapper>
 
 			<CompanyBasicInformation
@@ -737,6 +751,65 @@ function FiscalConfigurationsView({ organizationId, userHasFiscalConfigurePermis
 			<CompanyFiscalSeries />
 			<CompanyFiscalOperationProfiles />
 			<CompanyFiscalTaxGroups />
+		</div>
+	);
+}
+
+const AUTO_EMISSION_PAYMENT_METHOD_OPTIONS: Array<{ value: TPaymentMethodEnum; label: string; icon: typeof Banknote }> = [
+	{ value: "DINHEIRO", label: "Dinheiro", icon: Banknote },
+	{ value: "PIX", label: "PIX", icon: QrCode },
+	{ value: "CARTAO_CREDITO", label: "Cartão de crédito", icon: CreditCard },
+	{ value: "CARTAO_DEBITO", label: "Cartão de débito", icon: CreditCard },
+	{ value: "BOLETO", label: "Boleto", icon: Barcode },
+	{ value: "TRANSFERENCIA", label: "Transferência", icon: Landmark },
+	{ value: "CASHBACK", label: "Cashback", icon: Gift },
+	{ value: "VALE", label: "Vale", icon: Ticket },
+	{ value: "A_DEFINIR", label: "A definir", icon: HelpCircle },
+	{ value: "FIADO_NOTA", label: "Fiado (nota)", icon: NotebookPen },
+	{ value: "OUTRO", label: "Outro", icon: CircleEllipsis },
+];
+
+type AutoEmissionPaymentMethodExceptionsProps = {
+	fiscalConfig: TUseInternalFiscalSettingsState["state"]["fiscalConfiguracao"];
+	updateFiscalConfig: TUseInternalFiscalSettingsState["updateFiscalConfig"];
+};
+function AutoEmissionPaymentMethodExceptions({ fiscalConfig, updateFiscalConfig }: AutoEmissionPaymentMethodExceptionsProps) {
+	const pagamentoExclusivo = fiscalConfig.emissaoAutomatica.excecoes.pagamentoExclusivo;
+
+	const toggleMethod = (metodo: TPaymentMethodEnum, emitir: boolean) => {
+		const next = emitir ? pagamentoExclusivo.filter((item) => item !== metodo) : [...new Set([...pagamentoExclusivo, metodo])];
+		updateFiscalConfig({ emissaoAutomatica: { excecoes: { pagamentoExclusivo: next } } });
+	};
+
+	return (
+		<div className="space-y-3 rounded-lg border p-4">
+			<div>
+				<Label>EMISSÃO POR MÉTODO DE PAGAMENTO</Label>
+				<p className="text-sm text-muted-foreground">
+					A emissão automática é pausada quando a venda for paga <span className="font-semibold">somente</span> com métodos desativados abaixo — um mix
+					com qualquer método ativo emite normalmente.
+				</p>
+			</div>
+			<div className="divide-y rounded-lg border">
+				{AUTO_EMISSION_PAYMENT_METHOD_OPTIONS.map((method) => {
+					const Icon = method.icon;
+					const emitir = !pagamentoExclusivo.includes(method.value);
+					return (
+						<div key={method.value} className="flex items-center justify-between gap-3 px-3 py-2.5">
+							<div className="flex items-center gap-3">
+								<span className="flex size-8 items-center justify-center rounded-lg bg-muted">
+									<Icon className="size-4" />
+								</span>
+								<div>
+									<p className="text-sm font-semibold">{method.label}</p>
+									{!emitir ? <p className="text-xs text-muted-foreground">Não emite quando for a única forma de pagamento.</p> : null}
+								</div>
+							</div>
+							<Switch checked={emitir} onCheckedChange={(checked) => toggleMethod(method.value, checked)} />
+						</div>
+					);
+				})}
+			</div>
 		</div>
 	);
 }

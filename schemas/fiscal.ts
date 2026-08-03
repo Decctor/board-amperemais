@@ -12,6 +12,7 @@ import {
 	FiscalPisCofinsCstEnum,
 	FiscalProductOriginEnum,
 	FiscalTaxRuleScopeEnum,
+	PaymentMethodEnum,
 } from "./enums";
 
 export const FiscalAddressSchema = z.object({
@@ -134,6 +135,18 @@ export const OrganizationFiscalConfigSchema = z.object({
 		.default({ NFCE: null, NFE: null }),
 	// DF-e (notas recebidas): registrar ciencia automaticamente ao receber novas notas (destrava XML completo).
 	dfeAutoCiencia: z.boolean({ invalid_type_error: "Tipo não valido para a flag de auto-ciencia DF-e." }).default(true),
+	emissaoAutomatica: z
+		.object({
+			// Exceções combinadas por OR: qualquer condição que casar suprime a emissão automática
+			// (a emissão manual e o override explícito por venda continuam disponíveis).
+			excecoes: z
+				.object({
+					// Não emitir quando a venda for paga exclusivamente com estes métodos — mix com método fora da lista emite.
+					pagamentoExclusivo: z.array(PaymentMethodEnum, { invalid_type_error: "Tipo não valido para os métodos de pagamento exclusivo." }).default([]),
+				})
+				.default({ pagamentoExclusivo: [] }),
+		})
+		.default({ excecoes: { pagamentoExclusivo: [] } }),
 });
 export type TOrganizationFiscalConfig = z.infer<typeof OrganizationFiscalConfigSchema>;
 

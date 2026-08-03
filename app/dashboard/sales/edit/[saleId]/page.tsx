@@ -1,5 +1,6 @@
 import { getCurrentSession } from "@/lib/authentication/session";
 import { appRoutes } from "@/lib/navigation/routes";
+import { EMPTY_AUTO_EMISSION_EXCEPTIONS } from "@/lib/fiscal/auto-emission-policy";
 import { isOrganizationAutoFiscalCapable } from "@/lib/fiscal/auto-emission-capability";
 import { getFiscalSettings } from "@/lib/fiscal/settings";
 import { getSelectableFinancialAccounts } from "@/lib/payments";
@@ -49,6 +50,7 @@ export default async function EditSale({ params }: { params: Promise<{ saleId: s
 			organizationFinancialAccounts={organizationFinancialAccounts}
 			organizationAutoFiscalEmission={fiscalSettings.fiscalEmissaoAutomatica}
 			organizationAutoFiscalCapable={isOrganizationAutoFiscalCapable(fiscalSettings)}
+			autoEmissionExceptions={fiscalSettings.fiscalConfiguracao?.emissaoAutomatica?.excecoes ?? EMPTY_AUTO_EMISSION_EXCEPTIONS}
 			canEmitFiscal={sessionUser.membership.permissoes.fiscal.emitir}
 		/>
 	);

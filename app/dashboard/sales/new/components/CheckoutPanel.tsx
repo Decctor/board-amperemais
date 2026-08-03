@@ -1,6 +1,7 @@
 import ClientVinculationMenu from "@/components/Clients/ClientVinculationMenu";
 import SelectInput from "@/components/Inputs/SelectInput";
 import { NewClientLocation } from "@/components/Modals/Clients/Locations/NewClientLocation";
+import type { TAutoEmissionExceptions } from "@/lib/fiscal/auto-emission-policy";
 import type { TDiscountAuthority } from "@/lib/permissions/discounts";
 import { useClientLocations } from "@/lib/queries/clients/locations";
 import type { ClassifiedPayment } from "@/lib/sales/utils";
@@ -29,6 +30,7 @@ type CheckoutPanelProps = {
 	saleState: TUseSaleState;
 	organizationAutoFiscalEmission: boolean;
 	organizationAutoFiscalCapable: boolean;
+	autoEmissionExceptions: TAutoEmissionExceptions;
 	canEmitFiscal: boolean;
 	discountAuthority?: TDiscountAuthority | null;
 	onCreateDraft: () => void;
@@ -44,6 +46,7 @@ export default function CheckoutPanel({
 	saleState,
 	organizationAutoFiscalEmission,
 	organizationAutoFiscalCapable,
+	autoEmissionExceptions,
 	canEmitFiscal,
 	discountAuthority,
 	onCreateDraft,
@@ -125,6 +128,7 @@ export default function CheckoutPanel({
 					saleState={saleState}
 					organizationAutoFiscalEmission={organizationAutoFiscalEmission}
 					organizationAutoFiscalCapable={organizationAutoFiscalCapable}
+					autoEmissionExceptions={autoEmissionExceptions}
 					canEmitFiscal={canEmitFiscal}
 				/>
 				<ActionsSection
