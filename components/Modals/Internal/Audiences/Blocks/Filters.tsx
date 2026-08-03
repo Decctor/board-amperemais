@@ -1,7 +1,7 @@
 "use client";
 
-import LocationEditor from "@/app/dashboard/commercial/campaigns/_module/shared/form/Blocks/FilterEditors/LocationEditor";
-import TopBuyersProductEditor from "@/app/dashboard/commercial/campaigns/_module/shared/form/Blocks/FilterEditors/TopBuyersProductEditor";
+import LocationEditor from "@/app/dashboard/growth/campaigns/_module/shared/form/Blocks/FilterEditors/LocationEditor";
+import TopBuyersProductEditor from "@/app/dashboard/growth/campaigns/_module/shared/form/Blocks/FilterEditors/TopBuyersProductEditor";
 import { AnimatedSpinner } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";

@@ -3,6 +3,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { useAiAgentRunById } from "@/lib/queries/ai-agents";
 import { cn } from "@/lib/utils";
 import { formatDateAsLocale } from "@/lib/formatting";
+import { appRoutes } from "@/lib/navigation/routes";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
 
@@ -128,7 +129,7 @@ export default function AgentRunDrawer({ runId, closeModal }: AgentRunDrawerProp
 												</span>
 												{toolCall.operacao.recursoTipo === "VENDA" && toolCall.operacao.recursoId ? (
 													<Link
-														href={`/dashboard/commercial/sales/${toolCall.operacao.recursoId}`}
+										href={appRoutes.sales.details(toolCall.operacao.recursoId)}
 														className="font-medium text-primary underline-offset-4 hover:underline"
 													>
 														Abrir orçamento

@@ -13,6 +13,7 @@ import {
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatNameAsInitials } from "@/lib/formatting";
+import { appRoutes } from "@/lib/navigation/routes";
 import { ChevronsUpDown, LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
 import SubscriptionBadge from "./SubscriptionBadge";
@@ -74,7 +75,7 @@ export default function AppSidebarFooter({
 						<DropdownMenuGroup>
 							<DropdownMenuItem>
 								<SidebarMenuButton asChild>
-									<Link href="/dashboard/settings">
+									<Link href={appRoutes.settings()}>
 										<UserRound />
 										Configurações
 									</Link>

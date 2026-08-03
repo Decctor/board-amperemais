@@ -109,6 +109,9 @@ const PatchSalesFulfillmentEntregaSchema = z.object({
 const PatchSalesFulfillmentPagamentoSchema = z.object({
 	transacaoId: z.string({ required_error: "ID da transação não informado." }),
 	metodo: PaymentMethodEnum,
+	// Só aceita em métodos com contaFinanceiraEditavel; ausente mantém a conta atual quando o
+	// método não muda, ou cai na padrão do novo método quando muda.
+	contaFinanceiraId: z.string({ invalid_type_error: "Tipo não válido para a conta financeira." }).optional().nullable(),
 });
 
 const PatchSalesFulfillmentInputSchema = z

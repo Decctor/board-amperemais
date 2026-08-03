@@ -218,7 +218,7 @@ function FieldMappingMockup({ name }: MockupProps) {
 // 4. Imported sales → retention
 // ----------------------------------------------------------------------------
 
-// Mirrors the real sale card (app/dashboard/commercial/sales) — same layout:
+// Mirrors the real sale card (app/dashboard/sales) — same layout:
 // client + meta chips, cashback/total badges, item count, seller footer. Adds
 // a partner-logo "via {name}" chip that the product card doesn't have.
 function ImportedSalesMockup({ logo, name }: MockupProps) {

@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
+import { CheckoutPaymentSplitSchema, resolvePaymentFinancialAccounts } from "@/lib/payments";
 import { resolveActiveSalesSession } from "@/lib/sales-sessions";
 import { resolveSaleEditability } from "@/lib/sales/sale-editability";
 import { authorizeSaleDiscount, computeSaleAggregatedDiscount } from "@/lib/sales/sale-discount-authorization";
@@ -256,22 +256,7 @@ async function editConfirmedSale({ input, session }: { input: TEditConfirmedSale
 		aprovacaoId: input.descontoAprovacaoId,
 	});
 
-	const organizationPaymentMethodDefaults = getOrganizationPaymentMethodsConfig(organization.configuracao);
-	const salePayments = input.pagamentos.map((payment) => {
-		const methodDefaults = organizationPaymentMethodDefaults[payment.metodo];
-		if (!methodDefaults?.suportado) {
-			throw new createHttpError.BadRequest(`O método de pagamento ${payment.metodo} não está habilitado para esta organização.`);
-		}
-		return {
-			metodo: payment.metodo,
-			valor: payment.valor,
-			totalParcelas: payment.totalParcelas ?? undefined,
-			efetivacaoTipo: payment.efetivacaoTipo,
-			dataPrevisao: payment.dataPrevisao ?? undefined,
-			observacoes: payment.observacoes ?? undefined,
-			contaFinanceiraPadraoId: methodDefaults.contaFinanceiraPadraoId ?? null,
-		};
-	});
+	const salePayments = await resolvePaymentFinancialAccounts({ organization, payments: input.pagamentos });
 
 	const result = await db.transaction((tx) =>
 		processConfirmedSaleEditInTransaction({

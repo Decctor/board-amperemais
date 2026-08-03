@@ -4,6 +4,7 @@ import type { TGetCampaignConversionsOutputItems } from "@/app/api/campaigns/con
 import ClientHoverCard from "@/components/Clients/ClientHoverCard";
 import { Chip } from "@/components/ui/chip";
 import { formatDateAsLocale, formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { appRoutes } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
 import { Calendar, Clock, RefreshCw, TrendingDown, TrendingUp, UserPlus, UserRound } from "lucide-react";
 import Link from "next/link";
@@ -51,7 +52,7 @@ function CampaignConversionCardCampaignLink() {
 		<div className="border-border flex items-center gap-2 border-b pb-1.5">
 			<span className="shrink-0 text-[0.6rem] font-medium text-muted-foreground uppercase">Campanha</span>
 			<Link
-				href={`/dashboard/commercial/campaigns/id/${campaign.id}`}
+				href={appRoutes.growth.campaign(campaign.id)}
 				className="min-w-0 truncate text-[0.7rem] font-semibold text-foreground hover:underline"
 			>
 				{campaign.titulo}

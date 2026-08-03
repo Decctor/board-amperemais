@@ -14,6 +14,7 @@ import { createQuote } from "@/lib/mutations/sales";
 import { usePOSProducts } from "@/lib/queries/pos";
 import { getClientOpenQuotesQueryKey } from "@/lib/queries/sales";
 import { cn } from "@/lib/utils";
+import { appRoutes } from "@/lib/navigation/routes";
 import { useInternalQuoteState } from "@/state-hooks/use-internal-quote-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, ExternalLink, Loader2, Minus, Package, Plus, Search, ShoppingBag, Trash2 } from "lucide-react";
@@ -255,7 +256,7 @@ export function ChatQuoteBuilder({ open, onOpenChange, clientId, chatId, clientN
 								</Button>
 							)}
 							<Button asChild variant="outline">
-								<a href={`/dashboard/commercial/sales/checkout/${createdQuote.orcamentoId}`} target="_blank" rel="noopener noreferrer">
+								<a href={appRoutes.sales.checkout(createdQuote.orcamentoId)} target="_blank" rel="noopener noreferrer">
 									<ShoppingBag className="size-4" />
 									Abrir checkout
 									<ExternalLink className="size-3 opacity-60" />

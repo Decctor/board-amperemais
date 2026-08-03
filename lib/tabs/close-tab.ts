@@ -1,4 +1,4 @@
-import { getOrganizationPaymentMethodsConfig } from "@/lib/payments";
+import { resolvePaymentFinancialAccounts } from "@/lib/payments";
 import {
 	type TProcessSaleConfirmationInput,
 	processSaleConfirmationInTransaction,
@@ -18,6 +18,7 @@ type TCloseTabPaymentInput = {
 	efetivacaoTipo: "IMEDIATA" | "PENDENTE";
 	dataPrevisao?: string | null;
 	observacoes?: string | null;
+	contaFinanceiraId?: string | null;
 };
 
 export type TCloseTabInput = {
@@ -42,15 +43,7 @@ const CLOSE_BLOCKING_ORDER_STATUSES = ["NAO_INICIADO", "EM_PREPARO", "PRONTO", "
  *    exatamente uma vez; a baixa embutida usa o delta por item (pedidos ja entregues = no-op);
  * 4. tab -> FECHADA com valorTotal congelado (update condicional como segunda guarda).
  */
-export async function closeTab({
-	organization,
-	userId,
-	input,
-}: {
-	organization: TOrganizationEntity;
-	userId: string;
-	input: TCloseTabInput;
-}) {
+export async function closeTab({ organization, userId, input }: { organization: TOrganizationEntity; userId: string; input: TCloseTabInput }) {
 	if (input.pagamentos.length === 0) throw new createHttpError.BadRequest("Informe os pagamentos do fechamento.");
 
 	const organizationSaleDefaults = organization.configuracao.defaults.contabilidade.lancamentosPadrao.vendas;
@@ -79,22 +72,7 @@ export async function closeTab({
 		}
 	}
 
-	const organizationPaymentMethodDefaults = getOrganizationPaymentMethodsConfig(organization.configuracao);
-	const salePayments = input.pagamentos.map((pagamento) => {
-		const methodDefaults = organizationPaymentMethodDefaults[pagamento.metodo];
-		if (!methodDefaults?.suportado) {
-			throw new createHttpError.BadRequest(`O metodo de pagamento ${pagamento.metodo} nao esta habilitado para esta organizacao.`);
-		}
-		return {
-			metodo: pagamento.metodo,
-			valor: pagamento.valor,
-			totalParcelas: pagamento.totalParcelas ?? undefined,
-			efetivacaoTipo: pagamento.efetivacaoTipo,
-			dataPrevisao: pagamento.dataPrevisao ?? undefined,
-			observacoes: pagamento.observacoes ?? undefined,
-			contaFinanceiraPadraoId: methodDefaults.contaFinanceiraPadraoId ?? null,
-		};
-	});
+	const salePayments = await resolvePaymentFinancialAccounts({ organization, payments: input.pagamentos });
 
 	let confirmationInput: TProcessSaleConfirmationInput | null = null;
 

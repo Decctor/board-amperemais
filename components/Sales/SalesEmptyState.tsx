@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { appRoutes } from "@/lib/navigation/routes";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import { motion } from "framer-motion";
@@ -71,7 +72,7 @@ export default function SalesEmptyState({ organizationId, organizationConfig }: 
 									<h3 className="font-semibold mb-1">Recurso Bloqueado</h3>
 									<p className="text-sm text-muted-foreground mb-4">Faça upgrade do seu plano para automatizar suas vendas.</p>
 									<Button variant="outline" size="sm" className="w-full gap-2" asChild>
-										<Link href="/dashboard/settings?view=organization">
+									<Link href={`${appRoutes.settings()}?view=organization`}>
 											Ver planos <ArrowRight className="w-3 h-3" />
 										</Link>
 									</Button>
@@ -103,7 +104,7 @@ export default function SalesEmptyState({ organizationId, organizationConfig }: 
 								asChild
 								disabled={!hasIntegrationAccess}
 							>
-								<Link href="/dashboard/settings?view=integration">
+								<Link href={`${appRoutes.settings()}?view=integration`}>
 									Configurar integração
 									<ArrowRight className="w-4 h-4 ml-1" />
 								</Link>
@@ -182,7 +183,7 @@ export default function SalesEmptyState({ organizationId, organizationConfig }: 
 								style={{ backgroundColor: "#24549C" }}
 								asChild
 							>
-								<Link href="/dashboard/commercial/sales/bulk-insert">
+								<Link href={appRoutes.sales.import()}>
 									Importar vendas
 									<ArrowRight className="w-4 h-4 ml-1" />
 								</Link>

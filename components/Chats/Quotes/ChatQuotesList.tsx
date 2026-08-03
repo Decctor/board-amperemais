@@ -6,6 +6,7 @@ import { formatToMoney } from "@/lib/formatting";
 import { cancelSaleDraft } from "@/lib/mutations/pos";
 import { getClientOpenQuotesQueryKey, type TClientOpenQuote } from "@/lib/queries/sales";
 import { cn } from "@/lib/utils";
+import { appRoutes } from "@/lib/navigation/routes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CornerUpLeft, ExternalLink, Loader2, ShoppingBag, X } from "lucide-react";
 import { toast } from "sonner";
@@ -89,7 +90,7 @@ function QuoteRow({
 					<Button asChild variant="outline" size="xs" className="text-[11px]">
 						{/* Nova aba: quem fecha um orçamento está no meio de um atendimento, e perder a
 						    conversa para navegar até o checkout custa mais que o ganho. */}
-						<a href={`/dashboard/commercial/sales/checkout/${quote.id}`} target="_blank" rel="noopener noreferrer">
+						<a href={appRoutes.sales.checkout(quote.id)} target="_blank" rel="noopener noreferrer">
 							<ShoppingBag className="size-3" />
 							Abrir checkout
 							<ExternalLink className="size-2.5 opacity-60" />

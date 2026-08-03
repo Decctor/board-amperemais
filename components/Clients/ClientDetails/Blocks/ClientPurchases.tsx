@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import { appRoutes } from "@/lib/navigation/routes";
 import {
 	formatInteractiveDateRangeSummary,
 	formatInteractiveNumberRangeSummary,
@@ -502,7 +503,7 @@ function SaleCard({ sale }: { sale: TGetSalesOutputByClientId["sales"][number] }
 			)}
 			<div className="w-full flex items-center justify-end">
 				<Button variant="link" className="flex items-center gap-1.5" size="sm" asChild>
-					<Link href={`/dashboard/commercial/sales/${sale.id}`}>
+					<Link href={appRoutes.sales.details(sale.id)}>
 						<Info className="w-3 min-w-3 h-3 min-h-3" />
 						DETALHES
 					</Link>

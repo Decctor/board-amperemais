@@ -2,8 +2,9 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { resolveSaleFiscalEmissionOverride } from "@/lib/sales/sale-fiscal-emission-override";
-import { validateSaleItemsPricing } from "@/lib/sales/sale-pricing-validation";
+import { computeSaleItemsPricingDrift, validateSaleItemsPricing } from "@/lib/sales/sale-pricing-validation";
 import { admitSaleRewardRedemption, buildSaleRewardDraftSnapshot, parseSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-redemption";
+import { syncDraftItems } from "@/lib/sales/drafts/sync-draft-items";
 import { AppliedCouponSchema } from "@/schemas/coupons";
 import { db } from "@/services/drizzle";
 import { saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
@@ -96,6 +97,11 @@ const UpdateSaleDraftInputSchema = z.object({
 	rascunhoMetadados: z.unknown().optional().nullable(),
 	// Override tri-state da emissão fiscal automática. Ausente = não altera; null = herda a organização.
 	emissaoFiscalAutomatica: z.boolean({ invalid_type_error: "Tipo não válido para emissão fiscal automática." }).optional().nullable(),
+	// Ausente = não mexe nos itens (o PDV salva rascunho sem reenviá-los). Presente = a lista passa a
+	// ser a verdade do rascunho: linhas com `id` são atualizadas, sem `id` inseridas, ausentes removidas.
+	itens: z
+		.array(CartItemInputSchema.extend({ id: z.string({ invalid_type_error: "Tipo não válido para ID do item." }).optional().nullable() }))
+		.optional(),
 });
 export type TUpdateSaleDraftInput = z.infer<typeof UpdateSaleDraftInputSchema>;
 
@@ -327,8 +333,23 @@ async function getSaleDraft({ input, session }: { input: { id: string }; session
 	// os totais são recalculados pelo módulo de tabs e o fechamento é a única confirmação.
 	if (sale.tabId) throw new createHttpError.BadRequest("Esta venda pertence a uma conta de atendimento. Gerencie-a pelo board de Mesas & Comandas.");
 
+	// O checkout precisa saber, antes de confirmar, se os preços congelados no rascunho ainda valem.
+	const pricing = await computeSaleItemsPricingDrift({
+		orgId,
+		itens: sale.itens.map((item) => ({
+			id: item.id,
+			nome: item.produtoVariante?.nome ?? item.produto?.nome ?? "Item",
+			produtoId: item.produtoId,
+			produtoVarianteId: item.produtoVarianteId,
+			quantidade: item.quantidade,
+			valorVendaUnitario: item.valorVendaUnitario,
+			valorVendaTotalBruto: item.valorVendaTotalBruto,
+			modificadores: item.adicionais.map((mod) => ({ opcaoId: mod.opcaoId, quantidade: mod.quantidade })),
+		})),
+	});
+
 	return {
-		data: { sale },
+		data: { sale, pricing },
 		message: "Venda encontrada.",
 	};
 }
@@ -370,7 +391,18 @@ async function updateSaleDraft({ input, session }: { input: TUpdateSaleDraftInpu
 				})
 			: undefined;
 
-	const valorBaseItens = existing.itens.reduce((sum, item) => sum + item.valorVendaTotalLiquido, 0);
+	// Itens reenviados são recalculados contra o catálogo antes de virarem verdade do rascunho —
+	// mesma régua da criação, para que o líquido enviado nunca contorne o teto de desconto.
+	if (input.itens) {
+		if (input.itens.length === 0 && !parseSaleRewardDraftSnapshot(existing.rascunhoMetadados) && !input.recompensaResgate) {
+			throw new createHttpError.BadRequest("O rascunho precisa de pelo menos um item.");
+		}
+		await validateSaleItemsPricing({ orgId, itens: input.itens });
+	}
+
+	const valorBaseItens = input.itens
+		? input.itens.reduce((sum, item) => sum + item.valorTotalLiquido, 0)
+		: existing.itens.reduce((sum, item) => sum + item.valorVendaTotalLiquido, 0);
 	const descontosGerais = input.descontosTotal ?? 0;
 	const cupomDesconto = input.cupomResgate?.valorDesconto ?? 0;
 	const descontosVenda = descontosGerais + cupomDesconto + input.cashbackResgate;
@@ -420,26 +452,33 @@ async function updateSaleDraft({ input, session }: { input: TUpdateSaleDraftInpu
 		}
 	}
 
-	await db
-		.update(sales)
-		.set({
-			vendedorId: input.vendedorId,
-			vendedorNome: input.vendedorNome ?? undefined,
-			entregaModalidade: input.entregaModalidade ?? undefined,
-			entregaLocalizacaoId: input.entregaLocalizacaoId,
-			comandaNumero: input.comandaNumero,
-			observacoes: input.observacoes,
-			valorTotal: Math.max(0, valorBaseItens - descontosVenda + acrescimosVenda),
-			descontosTotal: descontosVenda > 0 ? descontosVenda : null,
-			acrescimosTotal: input.acrescimosTotal,
-			rascunhoMetadados: {
-				...((input.rascunhoMetadados as Record<string, unknown> | null) ?? {}),
-				cupom: input.cupomResgate ?? null,
-				recompensa: recompensaPersistida,
-			},
-			emissaoFiscalAutomatica,
-		})
-		.where(eq(sales.id, input.id));
+	await db.transaction(async (tx) => {
+		// Itens e totais precisam cair juntos: um rascunho com itens novos e `valorTotal` antigo
+		// confirmaria com o valor errado.
+		const itemTotals = input.itens ? await syncDraftItems({ tx, orgId, saleId: input.id, clienteId: existing.clienteId, itens: input.itens }) : null;
+
+		await tx
+			.update(sales)
+			.set({
+				vendedorId: input.vendedorId,
+				vendedorNome: input.vendedorNome ?? undefined,
+				entregaModalidade: input.entregaModalidade ?? undefined,
+				entregaLocalizacaoId: input.entregaLocalizacaoId,
+				comandaNumero: input.comandaNumero,
+				observacoes: input.observacoes,
+				valorTotal: Math.max(0, valorBaseItens - descontosVenda + acrescimosVenda),
+				descontosTotal: descontosVenda > 0 ? descontosVenda : null,
+				acrescimosTotal: input.acrescimosTotal,
+				...(itemTotals ? { custoTotal: itemTotals.custoTotal } : {}),
+				rascunhoMetadados: {
+					...((input.rascunhoMetadados as Record<string, unknown> | null) ?? {}),
+					cupom: input.cupomResgate ?? null,
+					recompensa: recompensaPersistida,
+				},
+				emissaoFiscalAutomatica,
+			})
+			.where(eq(sales.id, input.id));
+	});
 
 	return {
 		data: { saleId: input.id },

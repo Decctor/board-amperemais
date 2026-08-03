@@ -4,7 +4,11 @@ import {
 	getDefaultCheckoutPaymentSplit,
 	isCheckoutPaymentSplitValid,
 } from "@/lib/payments/schemas";
-import { getOrganizationPaymentMethodDefault, getOrganizationPaymentMethodsConfig } from "@/lib/payments/defaults";
+import {
+	getOrganizationPaymentMethodDefault,
+	getOrganizationPaymentMethodsConfig,
+	type TResolvedPaymentMethodDefault,
+} from "@/lib/payments/defaults";
 import type { TDeliveryModeEnum } from "@/schemas/enums";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import { useCallback, useMemo, useState } from "react";
@@ -172,9 +176,13 @@ export type TSaleDraftMetadata = z.infer<typeof SaleDraftMetadataSchema>;
 export type TSaleState = z.infer<typeof SaleStateSchema>;
 export type TSaleSuccess = NonNullable<TSaleState["success"]>;
 
+export type TSaleFinancialAccountOption = { id: string; nome: string };
+
 type UseSaleStateProps = {
 	initialState?: Partial<TSaleState>;
 	organizationConfig?: Pick<TOrganizationConfiguration, "defaults"> | null;
+	// Contas ativas da organização, usadas apenas pelos métodos com contaFinanceiraEditavel.
+	contasFinanceiras?: TSaleFinancialAccountOption[];
 };
 
 export function getDefaultSaleState(initialState?: Partial<TSaleState>): TSaleState {
@@ -200,7 +208,7 @@ export function getDefaultSaleState(initialState?: Partial<TSaleState>): TSaleSt
 	};
 }
 
-export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateProps = {}) => {
+export const useSaleState = ({ initialState, organizationConfig, contasFinanceiras }: UseSaleStateProps = {}) => {
 	const [state, setState] = useState<TSaleState>(() => getDefaultSaleState(initialState));
 	const organizationPaymentMethodsConfig = useMemo(() => getOrganizationPaymentMethodsConfig(organizationConfig), [organizationConfig]);
 
@@ -252,6 +260,37 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		setState((prev) => ({ ...prev, itens: prev.itens.filter((item) => item.tempId !== tempId || !!item.recompensaId) }));
 	}, []);
 
+	/**
+	 * Traz os itens do carrinho para os preços vigentes do catálogo, casando por `itemId`.
+	 *
+	 * O desconto em valor absoluto é preservado (foi uma decisão comercial sobre aquele item), apenas
+	 * limitado ao novo bruto — um preço que caiu não pode deixar o líquido negativo. Itens de
+	 * recompensa ficam de fora: o preço deles é o do resgate, não o do catálogo.
+	 */
+	const repriceItems = useCallback((precos: { itemId: string; valorUnitarioBase: number; valorModificadores: number }[]) => {
+		const precoPorItemId = new Map(precos.map((preco) => [preco.itemId, preco]));
+		setState((prev) => ({
+			...prev,
+			itens: prev.itens.map((item) => {
+				if (item.recompensaId) return item;
+				const preco = item.itemId ? precoPorItemId.get(item.itemId) : undefined;
+				if (!preco) return item;
+				const valorUnitarioFinal = preco.valorUnitarioBase + preco.valorModificadores;
+				const valorTotalBruto = valorUnitarioFinal * item.quantidade;
+				const valorDesconto = Math.min(item.valorDesconto, valorTotalBruto);
+				return {
+					...item,
+					valorUnitarioBase: preco.valorUnitarioBase,
+					valorModificadores: preco.valorModificadores,
+					valorUnitarioFinal,
+					valorTotalBruto,
+					valorDesconto,
+					valorTotalLiquido: valorTotalBruto - valorDesconto,
+				};
+			}),
+		}));
+	}, []);
+
 	const clearCart = useCallback(() => {
 		setState((prev) => {
 			// Itens de recompensa só existem no modo edição (a recompensa já foi resgatada e está
@@ -301,6 +340,19 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		setState((prev) => ({ ...prev, comandaNumero }));
 	}, []);
 
+	// Pré-seleção da conta padrão: só quando o método é editável E a conta padrão ainda está entre as
+	// ativas. Uma conta desativada depois de virar padrão do método deixaria um id morto no state,
+	// que o servidor recusaria no fechamento — melhor cair em "DEFINIR CONTA" e deixar o operador escolher.
+	const resolveSeedContaFinanceiraId = useCallback(
+		(paymentDefaults: TResolvedPaymentMethodDefault) => {
+			if (!paymentDefaults.contaFinanceiraEditavel) return null;
+			const padraoId = paymentDefaults.contaFinanceiraPadraoId;
+			if (!padraoId) return null;
+			return (contasFinanceiras ?? []).some((conta) => conta.id === padraoId) ? padraoId : null;
+		},
+		[contasFinanceiras],
+	);
+
 	const addPagamento = useCallback(
 		(pagamento?: Partial<Omit<TCheckoutPaymentSplit, "id">>) => {
 			const metodo = pagamento?.metodo ?? "DINHEIRO";
@@ -317,12 +369,13 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 						efetivacaoTipo: paymentDefaults.efetivacaoTipo,
 						dataPrevisao: paymentDefaults.dataPrevisao,
 						totalParcelas: paymentDefaults.totalParcelas,
+						contaFinanceiraId: resolveSeedContaFinanceiraId(paymentDefaults),
 						...pagamento,
 					}),
 				],
 			}));
 		},
-		[organizationConfig],
+		[organizationConfig, resolveSeedContaFinanceiraId],
 	);
 
 	const removePagamento = useCallback((id: string) => {
@@ -351,6 +404,8 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 									efetivacaoTipo: nextPaymentDefaults.efetivacaoTipo,
 									dataPrevisao: nextPaymentDefaults.dataPrevisao,
 									totalParcelas: nextPaymentDefaults.totalParcelas,
+									// Trocar o método reseta a conta: a escolhida para PIX não vale para DINHEIRO.
+									contaFinanceiraId: resolveSeedContaFinanceiraId(nextPaymentDefaults),
 								}
 							: {}),
 						...updates,
@@ -359,7 +414,7 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 				}),
 			}));
 		},
-		[organizationConfig],
+		[organizationConfig, resolveSeedContaFinanceiraId],
 	);
 
 	const setCupomResgate = useCallback((cupomResgate: TSaleAppliedCoupon | null) => {
@@ -495,6 +550,7 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		addItem,
 		updateItemQuantity,
 		removeItem,
+		repriceItems,
 		clearCart,
 		setDescontoGeral,
 		setAcrescimoGeral,
@@ -532,6 +588,7 @@ export const useSaleState = ({ initialState, organizationConfig }: UseSaleStateP
 		getDraftMetadata,
 		resetState,
 		organizationPaymentMethodsConfig,
+		organizationFinancialAccounts: contasFinanceiras ?? [],
 	};
 };
 

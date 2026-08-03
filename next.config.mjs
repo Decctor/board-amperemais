@@ -43,16 +43,6 @@ const nextConfig = {
 			},
 			// A página de lotes foi movida para dentro do módulo de Estoque.
 			{
-				source: "/dashboard/operational/stock-lots",
-				destination: "/dashboard/operational/stocks/lots",
-				permanent: true,
-			},
-			{
-				source: "/dashboard/operational/stock-lots/:path*",
-				destination: "/dashboard/operational/stocks/lots/:path*",
-				permanent: true,
-			},
-			{
 				source: "/casos-de-uso",
 				destination: "/segmentos",
 				permanent: true,

@@ -10,6 +10,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { useChatClientContext, type TChatMessagesPage } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
+import { appRoutes } from "@/lib/navigation/routes";
 import {
 	Activity,
 	ArrowDownLeft,
@@ -390,7 +391,7 @@ function ClientTab({
 								{/* Nova aba: quem abre a venda está no meio de um atendimento e
 								    perder a conversa para navegar seria pior que o ganho. */}
 								<a
-									href={`/dashboard/commercial/sales/${compra.id}`}
+									href={appRoutes.sales.details(compra.id)}
 									target="_blank"
 									rel="noopener noreferrer"
 									className="flex flex-col gap-0.5 rounded-lg bg-muted/60 p-2 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"

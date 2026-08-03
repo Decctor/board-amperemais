@@ -19,6 +19,9 @@ export const CheckoutPaymentSplitSchema = z.object({
 	efetivacaoTipo: PaymentEffectivenessTypeEnum.default("IMEDIATA"),
 	dataPrevisao: z.string({ invalid_type_error: "Tipo não válido para data de previsão." }).optional().nullable(),
 	observacoes: z.string({ invalid_type_error: "Tipo não válido para observações." }).optional().nullable(),
+	// Conta escolhida pelo operador. `null` significa "usar a conta padrão do método" — só vem
+	// preenchida quando o método tem contaFinanceiraEditavel.
+	contaFinanceiraId: z.string({ invalid_type_error: "Tipo não válido para a conta financeira." }).optional().nullable(),
 });
 
 export type TCheckoutPaymentSplit = z.infer<typeof CheckoutPaymentSplitSchema>;
@@ -36,6 +39,7 @@ export function getDefaultCheckoutPaymentSplit(overrides?: Partial<Omit<TCheckou
 		efetivacaoTipo: overrides?.efetivacaoTipo ?? "IMEDIATA",
 		dataPrevisao: overrides?.dataPrevisao ?? getTodayDateInputValue(),
 		observacoes: overrides?.observacoes ?? null,
+		contaFinanceiraId: overrides?.contaFinanceiraId ?? null,
 	};
 }
 

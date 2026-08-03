@@ -1,4 +1,5 @@
 import { getAppBaseUrl } from "@/lib/organizations/poi-qr-codes";
+import { appRoutes } from "@/lib/navigation/routes";
 import { db } from "@/services/drizzle";
 import { inArray } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -86,7 +87,7 @@ export async function getProductStockLotLabels({
 
 			const productName = lot.produtoVariante?.nome ?? lot.produto.nome;
 			const productCode = lot.produtoVariante?.codigo ?? lot.produto.codigo;
-			const lotUrl = `${baseUrl}/dashboard/operational/stocks/lots/${lot.id}`;
+			const lotUrl = `${baseUrl}${appRoutes.inventory.lot(lot.id)}`;
 			const qrCodeDataUrl = await QRCode.toDataURL(lotUrl, STOCK_LOT_LABEL_QR_CODE_OPTIONS);
 
 			return {

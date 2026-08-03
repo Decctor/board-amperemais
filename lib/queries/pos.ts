@@ -4,6 +4,7 @@ import type { TGetPOSGroupsOutput } from "@/app/api/pos/groups/route";
 import type { TGetPOSProductsInput, TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import type { TGetPOSTopProductsOutput } from "@/app/api/pos/top-products/route";
 import type { TGetCrossSellOutput } from "@/app/api/pos/cross-sell/route";
+import type { TGetPOSFinancialAccountsOutput } from "@/app/api/pos/financial-accounts/route";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import axios from "axios";
@@ -105,7 +106,9 @@ async function fetchSaleDraft(saleId: string) {
 	const { data } = await axios.get<TGetSaleDraftOutput>(`/api/pos/sales?id=${saleId}`);
 	const result = data.data.sale;
 	if (!result) throw new Error("Rascunho de venda não encontrado.");
-	return result;
+	// A precificação viaja junto: o checkout precisa saber se os preços congelados ainda valem antes
+	// de deixar confirmar, e a comparação com o catálogo é server-side.
+	return { sale: result, pricing: data.data.pricing };
 }
 
 export function useSaleDraft({ saleId }: { saleId: string }) {
@@ -168,6 +171,28 @@ export function usePOSCrossSellProducts({ clientId, basketProductIds }: { client
 			enabled: !!clientId,
 			placeholderData: keepPreviousData, // keep prior suggestions visible while refetching
 			staleTime: 60 * 1000,
+		}),
+		queryKey,
+	};
+}
+
+// ============================================================================
+// Contas financeiras ofertáveis nas telas de operação (fechamento de conta, expedição)
+// ============================================================================
+
+async function fetchPOSFinancialAccounts() {
+	const { data } = await axios.get<TGetPOSFinancialAccountsOutput>("/api/pos/financial-accounts");
+	return data.data;
+}
+
+export function usePOSFinancialAccounts() {
+	const queryKey = ["pos-financial-accounts"];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: fetchPOSFinancialAccounts,
+			// Contas e configuração de métodos mudam em Configurações, não durante o atendimento.
+			staleTime: 5 * 60 * 1000,
 		}),
 		queryKey,
 	};

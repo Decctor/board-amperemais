@@ -51,6 +51,7 @@ export type TOnboardingFinancialAccountNode = {
 export type TOnboardingPaymentMethodDefault = {
 	suportado: boolean;
 	contaFinanceiraPadraoKey: string | null;
+	contaFinanceiraEditavel?: boolean;
 	efetivacaoTipoPadrao: "IMEDIATA" | "PENDENTE";
 	delayDiasPadrao: number | null;
 	parcelamento: {
@@ -318,6 +319,7 @@ export function buildOrganizationPaymentMethodDefaults(financialAccountIdsByKey:
 					suportado: config.suportado,
 					contaFinanceiraPadraoId: config.contaFinanceiraPadraoKey ? (financialAccountIdsByKey.get(config.contaFinanceiraPadraoKey) ?? null) : null,
 					contaFinanceiraPadraoKey: config.contaFinanceiraPadraoKey,
+					contaFinanceiraEditavel: config.contaFinanceiraEditavel ?? false,
 					efetivacaoTipoPadrao: config.efetivacaoTipoPadrao,
 					delayDiasPadrao: config.delayDiasPadrao,
 					parcelamento: {

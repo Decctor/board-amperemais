@@ -1,7 +1,8 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { CheckoutPaymentSplitSchema, getOrganizationPaymentMethodsConfig } from "@/lib/payments";
+import { CheckoutPaymentSplitSchema, resolvePaymentFinancialAccounts } from "@/lib/payments";
+import { computeSaleItemsPricingDrift } from "@/lib/sales/sale-pricing-validation";
 import { resolveActiveSalesSession } from "@/lib/sales-sessions";
 import { authorizeSaleDiscount, computeSaleAggregatedDiscount, consumeSaleDiscountApproval } from "@/lib/sales/sale-discount-authorization";
 import {
@@ -44,7 +45,22 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 			where: and(eq(sales.id, input.id), eq(sales.organizacaoId, orgId)),
 			columns: { id: true, rascunhoMetadados: true, vendedorId: true, clienteId: true, descontosTotal: true, custoTotal: true, tabId: true },
 			with: {
-				itens: { columns: { valorVendaTotalBruto: true, valorTotalDesconto: true } },
+				itens: {
+					columns: {
+						id: true,
+						produtoId: true,
+						produtoVarianteId: true,
+						quantidade: true,
+						valorVendaUnitario: true,
+						valorVendaTotalBruto: true,
+						valorTotalDesconto: true,
+					},
+					with: {
+						adicionais: { columns: { opcaoId: true, quantidade: true } },
+						produto: { columns: { nome: true } },
+						produtoVariante: { columns: { nome: true } },
+					},
+				},
 			},
 		}),
 	]);
@@ -54,6 +70,29 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 	// Venda de conta de atendimento so e confirmada pelo fechamento da tab (lib/tabs/close-tab),
 	// que garante lock, pedidos resolvidos, delta de estoque e sessao de caixa de quem fecha.
 	if (saleDraft.tabId) throw new createHttpError.BadRequest("Esta venda pertence a uma conta de atendimento. Feche a conta para confirma-la.");
+
+	// Preços congelados no rascunho precisam valer no momento da confirmação: um orçamento antigo
+	// confirmado ao preço de semanas atrás é perda de margem silenciosa. O checkout mostra a
+	// divergência e oferece a atualização antes de chegar aqui; esta guarda fecha o caminho.
+	const pricing = await computeSaleItemsPricingDrift({
+		orgId,
+		itens: saleDraft.itens.map((item) => ({
+			id: item.id,
+			nome: item.produtoVariante?.nome ?? item.produto?.nome ?? "Item",
+			produtoId: item.produtoId,
+			produtoVarianteId: item.produtoVarianteId,
+			quantidade: item.quantidade,
+			valorVendaUnitario: item.valorVendaUnitario,
+			valorVendaTotalBruto: item.valorVendaTotalBruto,
+			modificadores: item.adicionais.map((mod) => ({ opcaoId: mod.opcaoId, quantidade: mod.quantidade })),
+		})),
+	});
+	if (pricing.algumIndisponivel) {
+		throw new createHttpError.BadRequest("Há itens que saíram do catálogo. Revise o carrinho antes de confirmar.");
+	}
+	if (pricing.algumDivergente) {
+		throw new createHttpError.BadRequest("Os preços deste orçamento mudaram no catálogo. Atualize os preços antes de confirmar.");
+	}
 
 	// Sessões de venda (caixa): enforcement opcional/obrigatório + validação da sessão informada pelo cliente.
 	const sessaoObrigatoria = organization.configuracao.preferencias.sessoesVenda?.obrigatorio ?? false;
@@ -83,7 +122,6 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		throw new createHttpError.BadRequest("Conta contabil invalida para esta organizacao.");
 	}
 
-	const organizationPaymentMethodDefaults = getOrganizationPaymentMethodsConfig(organization.configuracao);
 	const shopMetadata = saleDraft.rascunhoMetadados as {
 		shop?: {
 			cashbackResgateSolicitado?: number;
@@ -135,25 +173,12 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		aprovacaoId: input.descontoAprovacaoId,
 	});
 
+	const salePayments = await resolvePaymentFinancialAccounts({ organization, payments: input.pagamentos });
+
 	const confirmationInput: TProcessSaleConfirmationInput = {
 		organization,
 		saleId: input.id,
-		salePayments: input.pagamentos.map((pagamento) => {
-			const methodDefaults = organizationPaymentMethodDefaults[pagamento.metodo];
-			if (!methodDefaults?.suportado) {
-				throw new createHttpError.BadRequest(`O metodo de pagamento ${pagamento.metodo} nao esta habilitado para esta organizacao.`);
-			}
-
-			return {
-				metodo: pagamento.metodo,
-				valor: pagamento.valor,
-				totalParcelas: pagamento.totalParcelas ?? undefined,
-				efetivacaoTipo: pagamento.efetivacaoTipo,
-				dataPrevisao: pagamento.dataPrevisao ?? undefined,
-				observacoes: pagamento.observacoes ?? undefined,
-				contaFinanceiraPadraoId: methodDefaults.contaFinanceiraPadraoId ?? null,
-			};
-		}),
+		salePayments,
 		saleAuthorId: session.user.id,
 		saleClientId: input.clienteId,
 		saleCashbackProgramId: effectiveCashbackProgramaId,

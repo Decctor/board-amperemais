@@ -5,6 +5,7 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/lib/errors";
+import { appRoutes } from "@/lib/navigation/routes";
 import { formatDateAsLocale, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { useSalesFulfillmentById } from "@/lib/queries/sales-fulfillment";
 import { cn } from "@/lib/utils";
@@ -318,7 +319,7 @@ function SaleActionsFooter({
 	const showCancel = !!canDeleteSales && editability.cancelamentoDisponivel;
 	if (!showEdit && !showCancel) return null;
 
-	const editHref = editability.rascunho ? `/dashboard/commercial/sales/checkout/${sale.id}` : `/dashboard/commercial/sales/edit/${sale.id}`;
+	const editHref = editability.rascunho ? appRoutes.sales.checkout(sale.id) : appRoutes.sales.edit(sale.id);
 	const editIsEnabled = editability.nivel === "TOTAL" || editability.rascunho;
 
 	return (

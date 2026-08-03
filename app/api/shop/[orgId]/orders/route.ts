@@ -560,7 +560,8 @@ async function createShopOrder(request: NextRequest) {
 					efetivacaoTipo: "PENDENTE",
 					dataPrevisao: new Date(),
 					observacoes: input.pagamento.observacoes ?? metadata.pagamento.descricao,
-					contaFinanceiraPadraoId: paymentDefaults.contaFinanceiraPadraoId ?? null,
+					// Loja digital não tem operador para escolher conta — sempre a padrão do método.
+					contaFinanceiraId: paymentDefaults.contaFinanceiraPadraoId ?? null,
 				},
 			],
 			saleAuthorId: null,

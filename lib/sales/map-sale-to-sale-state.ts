@@ -2,6 +2,10 @@ import type { TGetSaleForEditOutput } from "@/app/api/pos/sales/edit/route";
 import { POS_REWARD_SALE_ITEM_ORIGIN, type TSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-redemption";
 import type { TCartItem, TCartItemModifier, TSaleState } from "@/state-hooks/use-sale-state";
 import type { TCheckoutPaymentSplit } from "@/lib/payments/schemas";
+import type { TOrganizationConfiguration } from "@/schemas/organizations";
+import type { TPaymentMethodEnum } from "@/schemas/enums";
+
+type TOrganizationPaymentMethodsConfig = TOrganizationConfiguration["defaults"]["pagamentos"]["metodos"];
 
 /**
  * Hidrata o estado do POS (`useSaleState`) a partir de uma venda persistida (GET /api/pos/sales/edit).
@@ -31,7 +35,28 @@ function toDateInputValue(value: Date | string | null | undefined): string | nul
 	return parsed.toISOString().slice(0, 10);
 }
 
-function mapItemToCartItem(item: TSaleForEditData["venda"]["itens"][number]): TCartItem {
+/**
+ * Estrutural de propósito: a mesma linha de `saleItems` chega por dois reads com seleções de
+ * colunas diferentes (edição de venda confirmada e leitura de rascunho). Amarrar ao tipo de um
+ * deles obrigaria a duplicar o mapeamento para o outro.
+ */
+export type TMappableSaleItem = {
+	id: string;
+	produtoId: string;
+	produtoVarianteId?: string | null;
+	quantidade: number;
+	quantidadeEntregue?: number | null;
+	valorVendaUnitario: number;
+	valorVendaTotalBruto: number;
+	valorTotalDesconto: number;
+	valorVendaTotalLiquido: number;
+	metadados?: unknown;
+	produto?: { nome?: string | null; codigo?: string | null; imagemCapaUrl?: string | null } | null;
+	produtoVariante?: { nome?: string | null; codigo?: string | null } | null;
+	adicionais: { opcaoId?: string | null; nome: string; quantidade: number; valorUnitario: number; valorTotal: number }[];
+};
+
+export function mapItemToCartItem(item: TMappableSaleItem): TCartItem {
 	const snapshot =
 		item.metadados && typeof item.metadados === "object" && !Array.isArray(item.metadados) ? (item.metadados as TItemMetadataSnapshot) : null;
 
@@ -67,8 +92,18 @@ function mapItemToCartItem(item: TSaleForEditData["venda"]["itens"][number]): TC
 	};
 }
 
-/** Colapsa as transações pendentes (editáveis) em splits do checkout; parcelas do mesmo grupo viram um split só. */
-function mapPendingPaymentsToSplits(pagamentos: TSaleForEditData["pagamentos"]): TCheckoutPaymentSplit[] {
+/**
+ * Colapsa as transações pendentes (editáveis) em splits do checkout; parcelas do mesmo grupo viram
+ * um split só.
+ *
+ * A conta gravada só é reidratada em métodos com `contaFinanceiraEditavel` — nos demais o split
+ * mantém `null` ("usar a padrão do método"), que é o único valor que o servidor aceita ali.
+ */
+function mapPendingPaymentsToSplits(
+	pagamentos: TSaleForEditData["pagamentos"],
+	methodsConfig: TOrganizationPaymentMethodsConfig,
+): TCheckoutPaymentSplit[] {
+	const contaEditavel = (metodo: TPaymentMethodEnum) => methodsConfig[metodo]?.contaFinanceiraEditavel ?? false;
 	const pending = pagamentos.todas.filter((payment) => payment.editavel);
 	const splits: TCheckoutPaymentSplit[] = [];
 	const groupedIds = new Set<string>();
@@ -86,6 +121,8 @@ function mapPendingPaymentsToSplits(pagamentos: TSaleForEditData["pagamentos"]):
 			efetivacaoTipo: "PENDENTE",
 			dataPrevisao: toDateInputValue(groupPending[0]?.dataPrevisao),
 			observacoes: null,
+			// Preserva a conta já gravada — reeditar a venda não pode reverter para a padrão do método.
+			contaFinanceiraId: contaEditavel(payment.metodo) ? (payment.contaFinanceiraId ?? null) : null,
 		});
 	}
 
@@ -98,13 +135,17 @@ function mapPendingPaymentsToSplits(pagamentos: TSaleForEditData["pagamentos"]):
 			efetivacaoTipo: "PENDENTE",
 			dataPrevisao: toDateInputValue(payment.dataPrevisao),
 			observacoes: null,
+			contaFinanceiraId: contaEditavel(payment.metodo) ? (payment.contaFinanceiraId ?? null) : null,
 		});
 	}
 
 	return splits;
 }
 
-export function mapSaleForEditToSaleState(data: TSaleForEditData): Partial<TSaleState> {
+export function mapSaleForEditToSaleState(
+	data: TSaleForEditData,
+	{ methodsConfig }: { methodsConfig: TOrganizationPaymentMethodsConfig },
+): Partial<TSaleState> {
 	const venda = data.venda;
 	const draftMetadata =
 		venda.rascunhoMetadados && typeof venda.rascunhoMetadados === "object" && !Array.isArray(venda.rascunhoMetadados)
@@ -135,7 +176,7 @@ export function mapSaleForEditToSaleState(data: TSaleForEditData): Partial<TSale
 		entregaModalidade: (venda.entregaModalidade as TSaleState["entregaModalidade"] | null) ?? "PRESENCIAL",
 		entregaLocalizacaoId: venda.entregaLocalizacaoId ?? null,
 		comandaNumero: venda.comandaNumero ?? null,
-		pagamentos: mapPendingPaymentsToSplits(data.pagamentos),
+		pagamentos: mapPendingPaymentsToSplits(data.pagamentos, methodsConfig),
 		pagamentosEfetivadosTotal: data.editabilidade.valorMinimoEdicao,
 		cashbackResgate,
 		cupomResgate: data.cupomResgatado

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { getErrorMessage } from "@/lib/errors";
 import { formatCashbackValue, formatDateAsLocale, getCashbackUnitLabel, formatToMoney } from "@/lib/formatting";
+import { appRoutes } from "@/lib/navigation/routes";
 import { useCashbackProgram, useCashbackProgramTransactionsByClientId, useClientCashbackBalance } from "@/lib/queries/cashback-programs";
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, BadgePercent, History, TrendingDown, TrendingUp } from "lucide-react";
@@ -226,7 +227,7 @@ function TransactionCard({
 				{transaction.venda && (
 					<div className="pt-4 flex items-center justify-center">
 						<Button size="sm" variant="ghost" className="w-full gap-2" asChild>
-							<Link href={`/dashboard/commercial/sales/${transaction.venda.id}`}>
+					<Link href={appRoutes.sales.details(transaction.venda.id)}>
 								VER VENDA
 								<ArrowUpRight className="h-4 w-4" />
 							</Link>

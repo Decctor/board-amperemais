@@ -3,6 +3,7 @@
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { formatLocation } from "@/lib/formatting";
 import { useClientById } from "@/lib/queries/clients";
+import { appRoutes } from "@/lib/navigation/routes";
 import { CodeIcon, IdCardIcon, InfoIcon, Mail, MapPinIcon, Phone, PhoneIcon, TagIcon, UserRound } from "lucide-react";
 import { MailIcon } from "lucide-react";
 import Link from "next/link";
@@ -84,7 +85,7 @@ export default function ClientHoverCard({ clientId, children }: ClientHoverCardP
 							<div className="h-px w-full bg-border" />
 							<div className="w-full flex items-center justify-center">
 								<Button variant="ghost" size="xs" className="flex items-center gap-1.5 w-fit" asChild>
-									<Link href={`/dashboard/commercial/clients/id/${client.id}`}>
+					<Link href={appRoutes.customers.details(client.id)}>
 										<InfoIcon className="w-3 h-3 min-w-3 min-h-3" />
 										VER PERFIL
 									</Link>

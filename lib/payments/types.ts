@@ -8,7 +8,8 @@ export type TPaymentSplit = {
 	efetivacaoTipo: "IMEDIATA" | "PENDENTE";
 	dataPrevisao?: string | Date | null;
 	observacoes?: string | null;
-	contaFinanceiraPadraoId?: string | null;
+	// Conta já resolvida (escolha do operador ou padrão do método) — ver resolvePaymentFinancialAccounts.
+	contaFinanceiraId?: string | null;
 };
 
 export type TProcessPaymentsInput = {

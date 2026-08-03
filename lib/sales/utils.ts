@@ -128,6 +128,7 @@ export type SalePaymentTransactionInput = {
 	dataEfetivacao?: Date | string | null;
 	dataPrevisao?: Date | string | null;
 	provedorStatus?: string | null;
+	contaFinanceiraId?: string | null;
 };
 
 export type ClassifiedPayment = {
@@ -142,6 +143,7 @@ export type ClassifiedPayment = {
 	editavel: boolean;
 	motivoNaoEditavel: string | null;
 	grupoParcelasId: string | null;
+	contaFinanceiraId: string | null;
 };
 
 export type PaymentClassification = {
@@ -210,6 +212,7 @@ export function classifySalePaymentTransactions(transactions: SalePaymentTransac
 			editavel: motivoNaoEditavel == null,
 			motivoNaoEditavel,
 			grupoParcelasId: resolveInstallmentGroupId(transaction),
+			contaFinanceiraId: transaction.contaFinanceiraId ?? null,
 		};
 	});
 

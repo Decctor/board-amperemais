@@ -67,7 +67,7 @@ export default async function PointOfInteraction({
 				{session?.membership?.organizacao.id === orgId ? (
 					<div className="w-full flex items-center justify-center">
 						<Button size="sm" asChild>
-							<Link href={"/dashboard/commercial/cashback-programs"}>
+							<Link href={"/dashboard/growth/cashback"}>
 								<Plus className="w-4 h-4" />
 								CONFIGURAR PROGRAMA DE CASHBACK
 							</Link>
