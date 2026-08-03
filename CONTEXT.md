@@ -25,3 +25,25 @@ Venda interna em `ORCAMENTO` que agrega os `saleItems` de todos os pedidos de um
 ### Configuracao de atendimento (`serviceSettings`)
 
 Politicas por organizacao que definem se pontos e contas estao habilitados, como a conta e identificada, se o ponto e obrigatorio, quantas contas podem ficar abertas por ponto e como solicitacoes publicas sao aceitas. Presets de UI como "Somente mesas" e "Somente comandas" sao traducoes dessas politicas, nao entidades do dominio.
+
+## Fidelidade
+
+### Clube de beneficios (`benefitClub`)
+
+Identidade institucional duravel que governa organizacoes participantes, membros e programas de fidelidade. O caso mono-organizacao e um clube com uma unica participante.
+
+### Programa de fidelidade (`loyaltyProgram`)
+
+Contrato economico vigente do clube. Opera exclusivamente com cashback ou pontos e define politicas e recompensas uniformes para todas as organizacoes participantes.
+
+### Membro do clube (`loyaltyMember`)
+
+Identidade do consumidor no escopo do clube, reconhecida por telefone verificado. Pode se vincular a diferentes cadastros locais de cliente e possui uma unica conta por programa.
+
+### Lote de credito (`loyaltyCreditLot`)
+
+Credito consumivel com quantidade original, organizacao emissora e eventual expiracao. Debitos registram alocacoes imutaveis contra um ou mais lotes na ordem de expiracao e criacao.
+
+### Compensacao de fidelidade (`loyaltySettlementEntry`)
+
+Posicao economica imutavel que identifica quanto uma organizacao deve pagar ou receber por emissao, resgate, expiracao, ajuste ou reversao no programa.
