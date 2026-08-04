@@ -5,6 +5,7 @@ import { fetchCardapioWebOrdersWithDetails } from "@/lib/data-connectors/cardapi
 import { extractAllCardapioWebData, MappedCardapioWebSale } from "@/lib/data-connectors/cardapio-web/mappers";
 import { TCardapioWebConfig } from "@/lib/data-connectors/cardapio-web/types";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
+import { getScriptDataSourceIntegration } from "@/utils/scripts/get-data-source-integration";
 import { connection, db } from "@/services/drizzle";
 import {
 	cashbackProgramBalances,
@@ -1546,33 +1547,36 @@ async function handleOnlineSoftwareImportation({ organizationId, config, startDa
 	}
 }
 export async function syncOrganizationSalesHistory(options: TScriptOptions) {
-	const config = await db.query.organizations.findFirst({
+	const organization = await db.query.organizations.findFirst({
 		where: (fields, { eq: equals }) => equals(fields.id, options.organizationId),
 		columns: {
 			nome: true,
-			integracaoConfiguracao: true,
 		},
 	});
+	if (!organization) throw new Error(`Organização não encontrada: ${options.organizationId}.`);
 
-	if (!config?.integracaoConfiguracao) {
-		throw new Error(`Configuração de integração não encontrada para a organização ${options.organizationId}.`);
-	}
+	const integration = await getScriptDataSourceIntegration({
+		organizationId: options.organizationId,
+		types: ["CARDAPIO-WEB", "ONLINE-SOFTWARE"],
+	});
+
 	console.log("Running sync for organization:", {
 		organizationId: options.organizationId,
-		organizationName: config.nome,
+		organizationName: organization.nome,
+		integrationId: integration.id,
 	});
-	if (config.integracaoConfiguracao.tipo === "CARDAPIO-WEB") {
+	if (integration.configuracao.tipo === "CARDAPIO-WEB") {
 		await handleCardapioWebImportation({
 			organizationId: options.organizationId,
-			config: config.integracaoConfiguracao as TCardapioWebConfig,
+			config: integration.configuracao as TCardapioWebConfig,
 			startDate: options.startDate,
 			endDate: options.endDate,
 			dryRun: options.dryRun,
 		});
-	} else if (config.integracaoConfiguracao.tipo === "ONLINE-SOFTWARE") {
+	} else if (integration.configuracao.tipo === "ONLINE-SOFTWARE") {
 		await handleOnlineSoftwareImportation({
 			organizationId: options.organizationId,
-			config: { ...config.integracaoConfiguracao, serverUrl: "http://onlineitba.ddns.com.br/pdc/apirestweb/vends/listvends.php" } as {
+			config: { ...integration.configuracao, serverUrl: "http://onlineitba.ddns.com.br/pdc/apirestweb/vends/listvends.php" } as {
 				tipo: "ONLINE-SOFTWARE";
 				token: string;
 				serverUrl: string;

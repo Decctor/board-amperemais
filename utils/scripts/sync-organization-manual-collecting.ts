@@ -1,6 +1,7 @@
 import "@/utils/scripts/load-next-env";
 
 import { runDataCollectingV2, type TDataCollectingV2EffectsOptions } from "@/lib/data-collecting-v2";
+import { getActiveDataSourceIntegrations } from "@/lib/integrations/data-sources";
 import { connection, db } from "@/services/drizzle";
 import { organizations } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -108,20 +109,17 @@ async function assertOrganizationIntegration(organizationId: string) {
 		columns: {
 			id: true,
 			nome: true,
-			integracaoTipo: true,
-			integracaoConfiguracao: true,
 		},
 	});
 
 	if (!organization) throw new Error(`Organização não encontrada: ${organizationId}`);
-	if (!organization.integracaoTipo || !organization.integracaoConfiguracao) {
-		throw new Error(`Organização sem integração configurada: ${organizationId}`);
-	}
-	if (organization.integracaoConfiguracao.tipo !== organization.integracaoTipo) {
-		throw new Error(`Configuração de integração inválida para organização: ${organizationId}`);
+
+	const activeIntegrations = await getActiveDataSourceIntegrations({ executor: db, organizationId });
+	if (activeIntegrations.length === 0) {
+		throw new Error(`Organização sem fonte de dados ativa em integrations: ${organizationId}`);
 	}
 
-	return organization;
+	return { ...organization, integracoes: activeIntegrations };
 }
 
 async function main() {
@@ -137,7 +135,7 @@ async function main() {
 	console.log(`[${SCRIPT_NAME}] Iniciando sincronização manual`, {
 		organizationId: options.organizationId,
 		organizationName: organization.nome,
-		integrationType: organization.integracaoTipo,
+		integrationTypes: organization.integracoes.map((integration) => `${integration.tipo} (${integration.id})`),
 		startDate: options.startDate.toISOString(),
 		endDate: options.endDate.toISOString(),
 		processImmediateInteractions: options.processImmediateInteractions,

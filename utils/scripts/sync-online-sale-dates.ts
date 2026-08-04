@@ -1,5 +1,6 @@
 import "@/utils/scripts/load-next-env";
 
+import { getScriptDataSourceIntegration } from "@/utils/scripts/get-data-source-integration";
 import { connection, db } from "@/services/drizzle";
 import { sales, utils } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -312,27 +313,25 @@ async function handleOnlineSoftwareImportation({ organizationId, config, startDa
 	}
 }
 export async function syncOrganizationSalesHistory(options: TScriptOptions) {
-	const config = await db.query.organizations.findFirst({
+	const organization = await db.query.organizations.findFirst({
 		where: (fields, { eq: equals }) => equals(fields.id, options.organizationId),
 		columns: {
 			nome: true,
-			integracaoConfiguracao: true,
 		},
 	});
+	if (!organization) throw new Error(`Organização não encontrada: ${options.organizationId}.`);
 
-	if (!config?.integracaoConfiguracao) {
-		throw new Error(`Configuração de integração não encontrada para a organização ${options.organizationId}.`);
-	}
+	const integration = await getScriptDataSourceIntegration({ organizationId: options.organizationId, types: ["ONLINE-SOFTWARE"] });
+
 	console.log("Running sync for organization:", {
 		organizationId: options.organizationId,
-		organizationName: config.nome,
+		organizationName: organization.nome,
+		integrationId: integration.id,
 	});
-	if (config.integracaoConfiguracao.tipo === "CARDAPIO-WEB") {
-		console.log("Not applicable for this script");
-	} else if (config.integracaoConfiguracao.tipo === "ONLINE-SOFTWARE") {
+	if (integration.configuracao.tipo === "ONLINE-SOFTWARE") {
 		await handleOnlineSoftwareImportation({
 			organizationId: options.organizationId,
-			config: { ...config.integracaoConfiguracao, serverUrl: "https://onlinesoftware.com.br/planodecontas/apirestweb/vends/listvends.php" } as {
+			config: { ...integration.configuracao, serverUrl: "https://onlinesoftware.com.br/planodecontas/apirestweb/vends/listvends.php" } as {
 				tipo: "ONLINE-SOFTWARE";
 				token: string;
 				serverUrl: string;

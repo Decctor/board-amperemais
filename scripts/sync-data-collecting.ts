@@ -4,6 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { runDataCollectingV2, type TDataCollectingV2EffectsOptions } from "@/lib/data-collecting-v2";
+import { getActiveDataSourceIntegrations } from "@/lib/integrations/data-sources";
 import { connection, db } from "@/services/drizzle";
 import { organizations } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -192,27 +193,22 @@ function parseOptions(): TScriptOptions | null {
 	};
 }
 
-/** Mesmo gate do runDataCollectingV2: integração configurada e coerente, seja qual for o conector. */
+/** Mesmo gate do runDataCollectingV2: ao menos uma fonte de dados ativa em `integrations`. */
 async function assertOrganizationWithIntegration(organizationId: string) {
 	const organization = await db.query.organizations.findFirst({
 		where: eq(organizations.id, organizationId),
 		columns: {
 			id: true,
 			nome: true,
-			integracaoTipo: true,
-			integracaoConfiguracao: true,
 		},
 	});
 
 	if (!organization) throw new Error(`Organização não encontrada: ${organizationId}`);
-	if (!organization.integracaoTipo) throw new Error(`Organização sem integração configurada: ${organizationId}`);
-	if (!organization.integracaoConfiguracao || organization.integracaoConfiguracao.tipo !== organization.integracaoTipo) {
-		throw new Error(
-			`Configuração de integração inválida para organização ${organizationId}: tipo=${organization.integracaoTipo}, configuracao.tipo=${organization.integracaoConfiguracao?.tipo ?? "ausente"}`,
-		);
-	}
 
-	return organization;
+	const activeIntegrations = await getActiveDataSourceIntegrations({ executor: db, organizationId });
+	if (activeIntegrations.length === 0) throw new Error(`Organização sem fonte de dados ativa em integrations: ${organizationId}`);
+
+	return { ...organization, integracoes: activeIntegrations };
 }
 
 function printSummary(result: Awaited<ReturnType<typeof runDataCollectingV2>>) {
@@ -249,7 +245,7 @@ async function main() {
 	console.log(`[${SCRIPT_NAME}] Iniciando sincronização`, {
 		organizationId: options.organizationId,
 		organizationName: organization.nome,
-		source: organization.integracaoTipo,
+		sources: organization.integracoes.map((integration) => `${integration.tipo} (${integration.id})`),
 		startDate: options.startDate.toISOString(),
 		endDate: options.endDate.toISOString(),
 		processImmediateInteractions: options.processImmediateInteractions,

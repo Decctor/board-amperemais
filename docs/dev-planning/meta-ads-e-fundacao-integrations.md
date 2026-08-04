@@ -15,10 +15,13 @@
 
 Estas decisões já estão tomadas e o resto do documento as assume:
 
-1. **A fundação é aditiva.** A integração de ERP/fonte de dados atual — inline em
-   `organizations.integracaoTipo` + `organizations.integracaoConfiguracao` — **não é tocada** nesta
-   entrega. A nova tabela `integrations` cobre integrações de **marketing/parceiros** (Meta Ads,
-   CAPI, tracking, futuros). Uma eventual migração do ERP para a tabela nova é escopo separado.
+1. ~~**A fundação é aditiva.**~~ **REVERTIDA** pela migração das fontes de dados
+   (`docs/dev-planning/data-source-integrations-migration-plan.md`): as integrações de
+   ERP/marketplace (ONLINE-SOFTWARE, CARDAPIO-WEB, NUVEM-SHOP, IFOOD, BLING) **migraram** para a
+   tabela `integrations` — inclusive com N conexões ativas do mesmo tipo por organização. As
+   colunas inline `organizations.integracaoTipo`/`integracaoConfiguracao` estão congeladas até a
+   fase de limpeza daquele plano. (Texto original: "a integração de ERP/fonte de dados atual não é
+   tocada nesta entrega; a tabela nova cobre só marketing/parceiros".)
 2. **Uma linha por conexão.** Cada conta de anúncios da Meta = uma linha em `integrations`
    (`tipo = 'META_ADS'`). É exatamente o modelo do Control (`partner_integrations`), adaptado à
    multitenância por `organizacaoId`.

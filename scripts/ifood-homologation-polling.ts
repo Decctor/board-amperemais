@@ -2,11 +2,9 @@ import "@/utils/scripts/load-next-env";
 
 import { runDataCollectingV2 } from "@/lib/data-collecting-v2";
 import { acknowledgeIfoodEvents, createIfoodClient, getValidIfoodConfig, pollIfoodEvents } from "@/lib/data-connectors/ifood";
-import type { TIfoodConfig } from "@/lib/data-connectors/ifood/types";
+import { getActiveDataSourceIntegrations } from "@/lib/integrations/data-sources";
 import { connection, db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { eq } from "drizzle-orm";
 
 const DEFAULT_ORGANIZATION_ID = "59c2b238-bc21-4710-b47b-db6e2a380079";
 const DEFAULT_INTERVAL_SECONDS = 30;
@@ -29,8 +27,9 @@ Uso:
   npm run ifood:homologation-polling -- [--org=<organizationId>] [--interval=<segundos>] [--no-ack] [--collect]
 
 Opções:
-  --org         ID da organização conectada ao iFood. Padrão: ${DEFAULT_ORGANIZATION_ID}
-  --interval    Intervalo entre pollings em segundos. Padrão: ${DEFAULT_INTERVAL_SECONDS} (recomendado pelo iFood).
+  --org             ID da organização conectada ao iFood. Padrão: ${DEFAULT_ORGANIZATION_ID}
+  --integration-id  ID da linha de integrations (obrigatório quando a organização tem mais de uma conexão iFood ativa).
+  --interval        Intervalo entre pollings em segundos. Padrão: ${DEFAULT_INTERVAL_SECONDS} (recomendado pelo iFood).
   --no-ack      Não envia acknowledgment dos eventos recebidos (deixa os eventos para o pipeline normal).
   --collect     Em vez de só polling+ACK, roda o pipeline completo de ingestão (runDataCollectingV2)
                 a cada iteração — os pedidos entram no banco e aparecem no painel de pedidos em ~30s.
@@ -40,22 +39,20 @@ Encerre com Ctrl+C.
 `);
 }
 
-async function getConfigFromOrganization(organizationId: string): Promise<TIfoodConfig> {
-	const organization = await db.query.organizations.findFirst({
-		where: eq(organizations.id, organizationId),
-		columns: {
-			integracaoTipo: true,
-			integracaoConfiguracao: true,
-		},
-	});
-
-	if (!organization) throw new Error(`Organização não encontrada: ${organizationId}`);
-	if (organization.integracaoTipo !== "IFOOD") throw new Error(`Organização não está conectada ao iFood: ${organizationId}`);
-	if (!organization.integracaoConfiguracao || organization.integracaoConfiguracao.tipo !== "IFOOD") {
-		throw new Error(`Configuração iFood inválida para organização: ${organizationId}`);
+async function getIfoodIntegration(organizationId: string, integrationId: string | null) {
+	const rows = await getActiveDataSourceIntegrations({ executor: db, organizationId, types: ["IFOOD"] });
+	if (!rows.length) throw new Error(`Organização não está conectada ao iFood: ${organizationId}`);
+	if (integrationId) {
+		const row = rows.find((candidate) => candidate.id === integrationId);
+		if (!row) throw new Error(`Conexão iFood ${integrationId} não encontrada/ativa para a organização ${organizationId}`);
+		return row;
 	}
-
-	return organization.integracaoConfiguracao;
+	if (rows.length > 1) {
+		throw new Error(
+			`Organização ${organizationId} tem ${rows.length} conexões iFood ativas — informe --integration-id=<id>. Opções: ${rows.map((row) => row.id).join(", ")}`,
+		);
+	}
+	return rows[0];
 }
 
 function sleep(milliseconds: number) {
@@ -66,11 +63,13 @@ let shouldStop = false;
 
 async function runPollingLoop({
 	organizationId,
+	integrationId,
 	intervalSeconds,
 	sendAck,
 	collect,
 }: {
 	organizationId: string;
+	integrationId: string | null;
 	intervalSeconds: number;
 	sendAck: boolean;
 	collect: boolean;
@@ -92,8 +91,9 @@ async function runPollingLoop({
 				});
 				if (result.errors.length) console.error("[IFOOD_HOMOLOGATION_POLLING] Erros na ingestão", result.errors);
 			} else {
-				const config = await getConfigFromOrganization(organizationId);
-				const validConfig = await getValidIfoodConfig({ organizationId, config });
+				const integration = await getIfoodIntegration(organizationId, integrationId);
+				if (integration.configuracao.tipo !== "IFOOD") throw new Error(`Configuração iFood inválida na integração ${integration.id}`);
+				const validConfig = await getValidIfoodConfig({ integrationId: integration.id, config: integration.configuracao });
 				const client = createIfoodClient(validConfig);
 				const events = await pollIfoodEvents(client, { merchantIds: validConfig.merchantIds });
 
@@ -134,12 +134,13 @@ async function main() {
 	}
 
 	const organizationId = getArgValue("org") ?? process.env.IFOOD_TEST_ORGANIZATION_ID ?? DEFAULT_ORGANIZATION_ID;
+	const integrationId = getArgValue("integration-id");
 	const intervalSeconds = Number(getArgValue("interval") ?? DEFAULT_INTERVAL_SECONDS);
 	if (!Number.isFinite(intervalSeconds) || intervalSeconds < 5) throw new Error(`Intervalo inválido: ${getArgValue("interval")}`);
 	const sendAck = !hasFlag("no-ack");
 	const collect = hasFlag("collect");
 
-	console.log("[IFOOD_HOMOLOGATION_POLLING] Iniciando polling contínuo", { organizationId, intervalSeconds, sendAck, collect });
+	console.log("[IFOOD_HOMOLOGATION_POLLING] Iniciando polling contínuo", { organizationId, integrationId, intervalSeconds, sendAck, collect });
 	console.log("[IFOOD_HOMOLOGATION_POLLING] O aplicativo fica ONLINE no iFood enquanto este script estiver rodando. Encerre com Ctrl+C.");
 
 	process.on("SIGINT", () => {
@@ -147,7 +148,7 @@ async function main() {
 		shouldStop = true;
 	});
 
-	await runPollingLoop({ organizationId, intervalSeconds, sendAck, collect });
+	await runPollingLoop({ organizationId, integrationId, intervalSeconds, sendAck, collect });
 }
 
 main()

@@ -5,11 +5,9 @@ import path from "node:path";
 
 import { runDataCollectingV2 } from "@/lib/data-collecting-v2";
 import { fetchIfoodImportBatch } from "@/lib/data-connectors/ifood";
-import type { TIfoodConfig } from "@/lib/data-connectors/ifood/types";
+import { getActiveDataSourceIntegrations } from "@/lib/integrations/data-sources";
 import { connection, db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { eq } from "drizzle-orm";
 
 const DEFAULT_ORGANIZATION_ID = "59c2b238-bc21-4710-b47b-db6e2a380079";
 
@@ -17,6 +15,7 @@ type TScriptMode = "fetch" | "collect";
 
 type TScriptOptions = {
 	organizationId: string;
+	integrationId: string | null;
 	startDate: Date;
 	endDate: Date;
 	outputPath: string | null;
@@ -72,6 +71,7 @@ function parseOptions(): TScriptOptions {
 
 	return {
 		organizationId: getArgValue("org") ?? process.env.IFOOD_TEST_ORGANIZATION_ID ?? DEFAULT_ORGANIZATION_ID,
+		integrationId: getArgValue("integration-id"),
 		startDate: parseDateArg("start", now.startOf("day").toDate()),
 		endDate: parseDateArg("end", now.toDate()),
 		outputPath: getArgValue("out"),
@@ -81,22 +81,20 @@ function parseOptions(): TScriptOptions {
 	};
 }
 
-async function getConfigFromOrganization(organizationId: string): Promise<TIfoodConfig> {
-	const organization = await db.query.organizations.findFirst({
-		where: eq(organizations.id, organizationId),
-		columns: {
-			integracaoTipo: true,
-			integracaoConfiguracao: true,
-		},
-	});
-
-	if (!organization) throw new Error(`Organização não encontrada: ${organizationId}`);
-	if (organization.integracaoTipo !== "IFOOD") throw new Error(`Organização não está conectada ao iFood: ${organizationId}`);
-	if (!organization.integracaoConfiguracao || organization.integracaoConfiguracao.tipo !== "IFOOD") {
-		throw new Error(`Configuração iFood inválida para organização: ${organizationId}`);
+async function getIfoodIntegration(organizationId: string, integrationId: string | null) {
+	const rows = await getActiveDataSourceIntegrations({ executor: db, organizationId, types: ["IFOOD"] });
+	if (!rows.length) throw new Error(`Organização não está conectada ao iFood: ${organizationId}`);
+	if (integrationId) {
+		const row = rows.find((candidate) => candidate.id === integrationId);
+		if (!row) throw new Error(`Conexão iFood ${integrationId} não encontrada/ativa para a organização ${organizationId}`);
+		return row;
 	}
-
-	return organization.integracaoConfiguracao;
+	if (rows.length > 1) {
+		throw new Error(
+			`Organização ${organizationId} tem ${rows.length} conexões iFood ativas — informe --integration-id=<id>. Opções: ${rows.map((row) => row.id).join(", ")}`,
+		);
+	}
+	return rows[0];
 }
 
 function printFetchSummary(batch: Awaited<ReturnType<typeof fetchIfoodImportBatch>>) {
@@ -148,17 +146,20 @@ async function saveOutput({ outputPath, raw, value }: { outputPath: string | nul
 }
 
 async function runFetchMode(options: TScriptOptions) {
-	const config = await getConfigFromOrganization(options.organizationId);
+	const integration = await getIfoodIntegration(options.organizationId, options.integrationId);
+	if (integration.configuracao.tipo !== "IFOOD") throw new Error(`Configuração iFood inválida na integração ${integration.id}`);
 	console.log("[IFOOD_IMPORT_TEST] Buscando eventos e pedidos", {
 		organizationId: options.organizationId,
-		merchantIds: config.merchantIds,
+		integrationId: integration.id,
+		merchantIds: integration.configuracao.merchantIds,
 		startDate: options.startDate.toISOString(),
 		endDate: options.endDate.toISOString(),
 	});
 
 	const batch = await fetchIfoodImportBatch({
 		organizationId: options.organizationId,
-		config,
+		integrationId: integration.id,
+		config: integration.configuracao,
 		window: {
 			startDate: options.startDate,
 			endDate: options.endDate,

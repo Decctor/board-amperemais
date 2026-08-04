@@ -617,28 +617,33 @@ export type T[ERPName]Sale = z.infer<typeof [ERPName]SaleSchema>
 
 ### Step 2: Add Integration Configuration Type
 
-Update the organization schema to include the new integration type:
+Data-source connections live in the `integrations` table (one row per connection, N active
+connections of the same type per organization are supported). Add the new variant to the
+discriminated union in `schemas/integrations.ts` and the new value to the Drizzle/Zod enums:
 
 ```typescript
-// schemas/organizations.ts
+// schemas/integrations.ts
 
-export const OrganizationIntegrationConfigSchema = z.discriminatedUnion("tipo", [
-    // Existing integrations
-    z.object({
-        tipo: z.literal("ONLINE-SOFTWARE"),
-        token: z.string()
-    }),
+export const [ErpName]IntegrationConfigSchema = z.object({
+    tipo: z.literal("[ERP-NAME]"),
+    apiKey: z.string(),
+    apiSecret: z.string().optional(),
+    baseUrl: z.string().optional(),
+    // Add ERP-specific config fields
+});
 
-    // NEW: Add your integration
-    z.object({
-        tipo: z.literal("[ERP-NAME]"),
-        apiKey: z.string(),
-        apiSecret: z.string().optional(),
-        baseUrl: z.string().optional(),
-        // Add ERP-specific config fields
-    })
-])
+// Add it to DataSourceIntegrationConfigSchema and IntegrationConfigSchema unions.
 ```
+
+Also register the type in:
+
+- `services/drizzle/schema/enums.ts` → `integrationTypeEnum` (requires a manual
+  `ALTER TYPE integration_type ADD VALUE` migration, applied via `scripts/apply-sql-migration.ts`);
+- `schemas/enums.ts` → `IntegrationTipoEnum` and `DataSourceIntegrationTipoEnum`;
+- `lib/integrations/data-sources.ts` → `DATA_SOURCE_INTEGRATION_TYPES` (this is what makes the
+  cron pick the connection up) and `deriveDataSourceRefExterno` (return the provider's stable
+  account id, when it has one);
+- `lib/integrations/mask.ts` → `maskIntegrationConfig` (mask every secret of the new variant).
 
 ### Step 3: Create Data Connector
 
@@ -728,61 +733,39 @@ function mapStatusToValidity(status: string): boolean {
 }
 ```
 
-### Step 5: Update Cronjob Handler
+### Step 5: Register the Connector in the Dispatcher
 
-Add the new integration to the main handler:
+The cron (`app/api/cron/data-collecting/route.ts` → `runDataCollectingV2`) loads the **active
+data-source rows from `integrations`** via `getActiveDataSourceIntegrations` and runs **one batch
+per connection** (an organization with N connections runs N batches). You don't touch the cron —
+you register the connector in the dispatcher:
 
 ```typescript
-// app/api/cron/data-collecting/route.ts
+// lib/data-connectors/index.ts
 
-import { fetch[ERPName]Sales } from "@/lib/data-connectors/[erp-name]"
-import { mapToInternalFormat } from "@/lib/data-connectors/[erp-name]/mapper"
+async function fetchConnectorBatch(input: TDataConnectorFetchInput) {
+    // ...existing branches...
 
-// In the main handler, add a new case
-async function handleDataCollecting() {
-    const organizations = await db.query.organizations.findMany({
-        where: isNotNull(organizations.integracaoTipo)
-    })
-
-    for (const organization of organizations) {
-        try {
-            if (organization.integracaoTipo === "ONLINE-SOFTWARE") {
-                await handleOnlineSoftwareImportation(organization)
-            }
-            // NEW: Add your integration handler
-            else if (organization.integracaoTipo === "[ERP-NAME]") {
-                await handle[ERPName]Importation(organization)
-            }
-        } catch (error) {
-            // Log error and continue
-        }
+    if (input.config.tipo === "[ERP-NAME]") {
+        return fetch[ErpName]ImportBatch({
+            organizationId: input.organizationId,
+            // integrationId identifies the `integrations` row — token refreshes are row-scoped:
+            // update THAT row's `configuracao`, never the organization.
+            integrationId: input.integrationId,
+            config: input.config,
+            window: input.window,
+        })
     }
-}
-
-async function handle[ERPName]Importation(organization: Organization) {
-    const config = organization.integracaoConfiguracao as [ERPName]Config
-
-    // Fetch sales from ERP
-    const erpSales = await fetch[ERPName]Sales(
-        config,
-        dayjs().startOf("day").toDate(),
-        dayjs().endOf("day").toDate()
-    )
-
-    // Process each sale
-    for (const erpSale of erpSales) {
-        const sale = mapToInternalFormat(erpSale)
-
-        // Use existing sync logic (see below)
-        await processSale(organization, sale)
-    }
-
-    // Update last sync timestamp
-    await db.update(organizations)
-        .set({ integracaoDataUltimaSincronizacao: new Date() })
-        .where(eq(organizations.id, organization.id))
 }
 ```
+
+Bookkeeping the pipeline does for you, per connection row:
+
+- `integrations.dataUltimaSincronizacao`, `status` and `ultimoErro` are written at the end of each
+  run (success → `CONECTADO`; failure → `ERRO`; failed token refresh → `EXPIRADO`);
+- every imported sale is stamped with `sales.integracaoId` (provenance). A sale found by the same
+  `idExterno` but owned by another connection is **not** touched (fail-closed collision, reported
+  in the run summary).
 
 ### Step 6: Reuse Existing Sync Logic
 
@@ -845,21 +828,32 @@ Before deploying a new integration:
 
 ### Core Tables
 
-#### `organizations`
+#### `integrations` (data-source connections)
 
 ```typescript
 {
-    id: string (PK)
-    integracaoTipo: "ONLINE-SOFTWARE" | "[NEW-TYPE]" | null
-    integracaoConfiguracao: {
+    id: string (PK)                       // Provenance target of sales.integracaoId
+    organizacaoId: string (FK)
+    tipo: "ONLINE-SOFTWARE" | "CARDAPIO-WEB" | "NUVEM-SHOP" | "IFOOD" | "BLING" | "[NEW-TYPE]" | ...
+    ativo: boolean                        // Soft delete: disconnect sets false + dataDesativacao
+    apelido: string | null                // Disambiguates N connections of the same type
+    refExterno: string | null             // Stable external account id (storeId, merchantId...)
+    configuracao: {
         tipo: string
         token?: string
         apiKey?: string
-        // Integration-specific fields
+        // Integration-specific fields (Zod discriminated union in schemas/integrations.ts)
     }
-    integracaoDataUltimaSincronizacao: timestamp
+    status: "CONECTADO" | "EXPIRADO" | "ERRO"
+    ultimoErro: string | null
+    dataUltimaSincronizacao: timestamp    // Written by the pipeline after each run
+    dataDesativacao: timestamp | null
 }
 ```
+
+> The legacy inline columns (`organizations.integracaoTipo`/`integracaoConfiguracao`/
+> `integracaoDataUltimaSincronizacao`) are frozen and pending removal — see
+> `docs/dev-planning/data-source-integrations-migration-plan.md`.
 
 #### `clients`
 
@@ -1120,8 +1114,9 @@ Available time blocks for scheduled interactions:
 #### 1. Sales not syncing
 
 **Check:**
-- Organization has `integracaoTipo` set
-- `integracaoConfiguracao` has valid credentials
+- Organization has an ACTIVE row in `integrations` (`ativo = true`, data-source `tipo`)
+- The row's `configuracao` has valid credentials and `configuracao.tipo` matches the row's `tipo`
+- The row's `status`/`ultimoErro` (EXPIRADO = token refresh failing; ERRO = last run failed)
 - ERP API is accessible and returning data
 - Schema validation is passing (check logs in `utils` table)
 

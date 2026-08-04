@@ -1,6 +1,7 @@
 import "@/utils/scripts/load-next-env";
 
 import { runDataCollectingV2 } from "@/lib/data-collecting-v2";
+import { getScriptDataSourceIntegration } from "@/utils/scripts/get-data-source-integration";
 import { connection, db } from "@/services/drizzle";
 import { organizations } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -89,16 +90,11 @@ async function assertNuvemshopOrganization(organizationId: string) {
 		columns: {
 			id: true,
 			nome: true,
-			integracaoTipo: true,
-			integracaoConfiguracao: true,
 		},
 	});
 
 	if (!organization) throw new Error(`Organização não encontrada: ${organizationId}`);
-	if (organization.integracaoTipo !== "NUVEM-SHOP") throw new Error(`Organização não está conectada à Nuvem Shop: ${organizationId}`);
-	if (!organization.integracaoConfiguracao || organization.integracaoConfiguracao.tipo !== "NUVEM-SHOP") {
-		throw new Error(`Configuração Nuvem Shop inválida para organização: ${organizationId}`);
-	}
+	await getScriptDataSourceIntegration({ organizationId, types: ["NUVEM-SHOP"] });
 
 	return organization;
 }
