@@ -6,109 +6,89 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { type ChartConfig, ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { formatDecimalPlaces, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
 import { useGoalsStats } from "@/lib/queries/goals";
-import type { TGetGoalsStatsHistoricoItem } from "@/app/api/goals/stats/route";
-import { AnimatePresence, motion } from "framer-motion";
-import { BadgeDollarSign, CheckCircle2, ShoppingCart, Target, UserPlus } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import type { TGetGoalsStatsActiveGoal, TGetGoalsStatsHistoricoItem } from "@/app/api/goals/stats/route";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { BadgeDollarSign, CheckCircle2, ChevronDown, ChevronUp, Target } from "lucide-react";
+import { parseAsStringEnum, useQueryState } from "nuqs";
+import { useState } from "react";
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts";
+import GoalPaceChip from "./GoalPaceChip";
+import GoalPaceCurveChart from "./GoalPaceCurveChart";
+import GoalPaceHero, { type TGoalPaceUnit } from "./GoalPaceHero";
 
-type ActiveGoalBarProps = {
-	label: string;
-	icon: React.ReactNode;
-	valueHit: number;
-	valueGoal: number;
-	formattedHit: string;
-	formattedGoal: string;
-	color: string;
-};
-function ActiveGoalBar({ label, icon, valueHit, valueGoal, formattedHit, formattedGoal, color }: ActiveGoalBarProps) {
-	const percentage = valueGoal > 0 ? Math.min((valueHit / valueGoal) * 100, 100) : 0;
-	const displayPercent = valueGoal > 0 ? (valueHit / valueGoal) * 100 : 0;
-	const isOver = displayPercent > 100;
+/**
+ * Dashboard de metas em três níveis de revelação.
+ *
+ * Nível 1 é o herói: o que hoje pede e se a meta está adiantada ou atrasada — a resposta que o
+ * lojista abre o app para ter, sem um clique. Nível 2 é o controle segmentado dia/semana/mês, que
+ * troca o recorte sem trocar de tela. Nível 3 fica atrás de um expandir: a curva acumulada e o
+ * detalhamento por vendedor, que só interessam a quem já viu o número de cima e quer entender.
+ */
 
-	return (
-		<div className="flex flex-col gap-1.5">
-			<div className="flex items-center justify-between gap-2">
-				<div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-					{icon}
-					<span className="uppercase tracking-tight font-medium text-xs">{label}</span>
-				</div>
-				<div className="flex items-center gap-2">
-					<span className={`text-sm font-bold ${isOver ? "text-green-600" : "text-foreground"}`}>{formatDecimalPlaces(displayPercent)}%</span>
-					<span className="text-xs text-muted-foreground">
-						{formattedHit} / {formattedGoal}
-					</span>
-				</div>
-			</div>
-			<div className="w-full h-3 bg-muted rounded-full overflow-hidden">
-				<motion.div
-					className="h-full rounded-full"
-					style={{ backgroundColor: isOver ? "#16a34a" : color }}
-					initial={{ width: 0 }}
-					animate={{ width: `${percentage}%` }}
-					transition={{ duration: 1, ease: "easeOut" }}
-				/>
-			</div>
-		</div>
-	);
-}
-
-function CustomHistoricoTooltip({
-	active,
-	payload,
-	label,
-}: {
-	active?: boolean;
-	payload?: Array<{ value: number; name: string; color: string }>;
-	label?: string;
-}) {
+function HistoricoTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number; name: string; color: string }[]; label?: string }) {
 	if (!active || !payload?.length) return null;
 	return (
-		<div className="bg-background border border-border rounded-lg p-3 shadow-lg text-xs">
-			<p className="font-semibold mb-2">{label}</p>
-			{payload.map((p, i) => (
-				<div key={i.toString()} className="flex items-center gap-2">
-					<div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
-					<span className="text-muted-foreground">{p.name}:</span>
-					<span className="font-semibold">{formatToMoney(p.value)}</span>
+		<div className="rounded-lg border border-border bg-background p-3 text-xs shadow-lg">
+			<p className="mb-2 font-bold">{label}</p>
+			{payload.map((item) => (
+				<div key={item.name} className="flex items-center gap-2">
+					<span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
+					<span className="text-muted-foreground">{item.name}:</span>
+					<span className="font-bold tabular-nums">{formatToMoney(item.value)}</span>
 				</div>
 			))}
 		</div>
 	);
 }
 
-type SellerProgressRowProps = {
-	vendedor: {
-		id: string;
-		vendedorId: string;
-		objetivoValor: number;
-		realizadoValor: number;
-		vendedor: { nome: string; avatarUrl: string | null };
-	};
+type SellerPaceRowProps = {
+	vendedor: TGetGoalsStatsActiveGoal["vendedores"][number];
+	ritmo: TGetGoalsStatsActiveGoal["ritmo"] | null;
+	unit: TGoalPaceUnit;
 };
-function SellerProgressRow({ vendedor }: SellerProgressRowProps) {
-	const percentage = vendedor.objetivoValor > 0 ? Math.min((vendedor.realizadoValor / vendedor.objetivoValor) * 100, 100) : 0;
-	const displayPercent = vendedor.objetivoValor > 0 ? (vendedor.realizadoValor / vendedor.objetivoValor) * 100 : 0;
+
+function SellerPaceRow({ vendedor, ritmo, unit }: SellerPaceRowProps) {
+	const { colors } = useOrgColors();
+	const sellerRitmo = ritmo?.vendedores.find((item) => item.vendedorId === vendedor.vendedorId) ?? null;
+
+	const meta =
+		unit === "DIA"
+			? (sellerRitmo?.metaDia?.valor ?? null)
+			: unit === "SEMANA"
+				? (sellerRitmo?.metaSemana?.valor ?? null)
+				: vendedor.objetivoValor;
+	const realizado =
+		unit === "DIA" ? (sellerRitmo?.realizadoDia.valor ?? 0) : unit === "SEMANA" ? (sellerRitmo?.realizadoSemana.valor ?? 0) : vendedor.realizadoValor;
+
+	const hasGoal = typeof meta === "number" && meta > 0;
+	const percent = hasGoal ? (realizado / meta) * 100 : 0;
+
 	return (
 		<div className="flex items-center gap-3">
-			<Avatar className="w-6 h-6 min-w-6 min-h-6 shrink-0">
-				<AvatarFallback className="text-[0.5rem]">{formatNameAsInitials(vendedor.vendedor.nome)}</AvatarFallback>
+			<Avatar className="h-7 w-7 min-h-7 min-w-7 shrink-0">
+				<AvatarImage src={vendedor.vendedor.avatarUrl ?? undefined} />
+				<AvatarFallback className="text-[0.55rem]">{formatNameAsInitials(vendedor.vendedor.nome)}</AvatarFallback>
 			</Avatar>
-			<div className="flex-1 min-w-0">
-				<div className="flex items-center justify-between mb-0.5">
-					<span className="text-xs font-medium truncate">{vendedor.vendedor.nome}</span>
-					<span className={`text-xs font-bold shrink-0 ml-2 ${displayPercent >= 100 ? "text-green-600" : "text-foreground"}`}>
-						{formatDecimalPlaces(displayPercent)}%
+			<div className="flex min-w-0 flex-1 flex-col gap-1">
+				<div className="flex items-baseline justify-between gap-2">
+					<span className="truncate text-xs font-bold">{vendedor.vendedor.nome}</span>
+					<span className="shrink-0 text-[0.68rem] tabular-nums text-muted-foreground">
+						<strong className={cn("font-bold", percent >= 100 ? "text-success" : "text-foreground")}>{formatToMoney(realizado)}</strong>
+						{hasGoal ? ` de ${formatToMoney(meta)}` : null}
 					</span>
 				</div>
-				<div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+				<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
 					<motion.div
-						className="h-full rounded-full bg-primary"
-						initial={{ width: 0 }}
-						animate={{ width: `${percentage}%` }}
-						transition={{ duration: 0.8, ease: "easeOut" }}
+						className="h-full w-full origin-left rounded-full"
+						style={{ backgroundColor: percent >= 100 ? "var(--color-success)" : colors.primary }}
+						initial={{ transform: "scaleX(0)" }}
+						animate={{ transform: `scaleX(${Math.min(1, percent / 100)})` }}
+						transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
 					/>
 				</div>
 			</div>
+			{sellerRitmo ? <GoalPaceChip situacao={sellerRitmo.situacao} diferenca={sellerRitmo.diferenca} size="sm" className="shrink-0" /> : null}
 		</div>
 	);
 }
@@ -116,17 +96,19 @@ function SellerProgressRow({ vendedor }: SellerProgressRowProps) {
 export default function GoalsDashboardView() {
 	const { colors } = useOrgColors();
 	const { data, isLoading } = useGoalsStats();
+	const [unit, setUnit] = useQueryState("unidade", parseAsStringEnum<TGoalPaceUnit>(["DIA", "SEMANA", "MES"]).withDefault("DIA"));
+	const [detailsAreOpen, setDetailsAreOpen] = useState(false);
 
 	if (isLoading) {
 		return (
-			<div className="w-full flex flex-col gap-3 animate-pulse">
-				<div className="w-full h-48 rounded-xl bg-muted" />
-				<div className="w-full grid grid-cols-3 gap-3">
-					<div className="h-24 rounded-xl bg-muted" />
-					<div className="h-24 rounded-xl bg-muted" />
-					<div className="h-24 rounded-xl bg-muted" />
+			<div className="flex w-full animate-pulse flex-col gap-4 py-2">
+				<div className="h-64 w-full rounded-2xl bg-muted" />
+				<div className="grid w-full grid-cols-1 gap-3 lg:grid-cols-3">
+					<div className="h-24 rounded-2xl bg-muted" />
+					<div className="h-24 rounded-2xl bg-muted" />
+					<div className="h-24 rounded-2xl bg-muted" />
 				</div>
-				<div className="w-full h-64 rounded-xl bg-muted" />
+				<div className="h-64 w-full rounded-2xl bg-muted" />
 			</div>
 		);
 	}
@@ -145,139 +127,105 @@ export default function GoalsDashboardView() {
 
 	const chartConfig = {
 		Realizado: { label: "Realizado", color: colors.primary },
-		Objetivo: { label: "Objetivo", color: "hsl(var(--muted-foreground))" },
+		Objetivo: { label: "Objetivo", color: "var(--color-muted-foreground)" },
 	} satisfies ChartConfig;
 
-	return (
-		<div className="w-full flex flex-col gap-4 py-2">
-			{/* Active goal card */}
-			<AnimatePresence mode="wait">
-				{activeGoal ? (
-					<motion.div
-						key="active-goal"
-						initial={{ opacity: 0, y: -8 }}
-						animate={{ opacity: 1, y: 0 }}
-						exit={{ opacity: 0, y: -8 }}
-						transition={{ duration: 0.3 }}
-						className="bg-card border border-border rounded-xl px-5 py-5 shadow-2xs flex flex-col gap-4"
-					>
-						<div className="flex items-center gap-2">
-							<span className="px-2 py-0.5 rounded-full text-[0.65rem] font-bold tracking-wide bg-blue-100 text-blue-700 border border-blue-200">
-								META ATIVA
-							</span>
-							<p className="text-xs text-muted-foreground">
-								{new Date(activeGoal.dataInicio).toLocaleDateString("pt-BR")} → {new Date(activeGoal.dataFim).toLocaleDateString("pt-BR")}
-							</p>
-						</div>
-						<div className="flex flex-col gap-3">
-							<ActiveGoalBar
-								label="Valor vendido"
-								icon={<BadgeDollarSign className="w-4 h-4" />}
-								valueHit={activeGoal.realizadoValor}
-								valueGoal={activeGoal.objetivoValor}
-								formattedHit={formatToMoney(activeGoal.realizadoValor)}
-								formattedGoal={formatToMoney(activeGoal.objetivoValor)}
-								color={colors.primary}
-							/>
-							{activeGoal.objetivoQtdeVendas ? (
-								<ActiveGoalBar
-									label="Qtde de vendas"
-									icon={<ShoppingCart className="w-4 h-4" />}
-									valueHit={activeGoal.realizadoQtdeVendas}
-									valueGoal={activeGoal.objetivoQtdeVendas}
-									formattedHit={formatDecimalPlaces(activeGoal.realizadoQtdeVendas)}
-									formattedGoal={formatDecimalPlaces(activeGoal.objetivoQtdeVendas)}
-									color="#f59e0b"
-								/>
-							) : null}
-							{activeGoal.objetivoNovosClientes ? (
-								<ActiveGoalBar
-									label="Novos clientes"
-									icon={<UserPlus className="w-4 h-4" />}
-									valueHit={activeGoal.realizadoNovosClientes}
-									valueGoal={activeGoal.objetivoNovosClientes}
-									formattedHit={formatDecimalPlaces(activeGoal.realizadoNovosClientes)}
-									formattedGoal={formatDecimalPlaces(activeGoal.objetivoNovosClientes)}
-									color="#8b5cf6"
-								/>
-							) : null}
-						</div>
-						{activeGoal.vendedores.length > 0 ? (
-							<div className="border-t border-border/60 pt-3 flex flex-col gap-2">
-								<p className="text-[0.65rem] text-muted-foreground uppercase font-semibold tracking-wider">Por vendedor</p>
-								{activeGoal.vendedores.map((v) => (
-									<SellerProgressRow key={v.id} vendedor={v} />
-								))}
-							</div>
-						) : null}
-					</motion.div>
-				) : (
-					<motion.div
-						key="no-active"
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						className="bg-muted/30 border border-dashed border-border rounded-xl px-5 py-8 flex flex-col items-center gap-2 text-center"
-					>
-						<Target className="w-8 h-8 text-muted-foreground" />
-						<p className="text-sm font-medium text-muted-foreground">Nenhuma meta ativa no momento</p>
-						<p className="text-xs text-muted-foreground/70">Crie uma meta com a data de início e fim cobrindo o período atual.</p>
-					</motion.div>
-				)}
-			</AnimatePresence>
+	const hasDetails = Boolean(activeGoal?.ritmo) || (activeGoal?.vendedores.length ?? 0) > 0;
 
-			{/* KPI cards */}
-			<div className="w-full flex items-start flex-col lg:flex-row gap-3">
-				<StatUnitCard
-					title="TOTAL DE METAS"
-					icon={<Target className="w-4 h-4 min-w-4 min-h-4" />}
-					current={{ value: totalMetas, format: (n) => formatDecimalPlaces(n) }}
-					className="w-full lg:w-1/3"
-				/>
+	return (
+		<div className="flex w-full flex-col gap-4 py-2">
+			{activeGoal ? (
+				<div className="flex w-full flex-col gap-3">
+					<GoalPaceHero goal={activeGoal} unit={unit} onUnitChange={setUnit} />
+
+					{hasDetails ? (
+						<>
+							<button
+								type="button"
+								onClick={() => setDetailsAreOpen((value) => !value)}
+								aria-expanded={detailsAreOpen}
+								className="flex w-fit items-center gap-1.5 self-start rounded-lg px-2 py-1 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
+							>
+								{detailsAreOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+								{detailsAreOpen ? "Ocultar detalhamento" : "Ver curva e vendedores"}
+							</button>
+
+							{detailsAreOpen ? (
+								<div className="flex w-full flex-col gap-5 rounded-2xl border border-border bg-card p-5 shadow-2xs">
+									{activeGoal.ritmo ? (
+										<GoalPaceCurveChart curva={activeGoal.ritmo.curva} origemDistribuicao={activeGoal.ritmo.origemDistribuicao} />
+									) : null}
+									{activeGoal.vendedores.length > 0 ? (
+										<div className="flex flex-col gap-3 border-t border-border/60 pt-4">
+											<h3 className="text-xs font-extrabold uppercase tracking-[0.08em]">
+												Por vendedor {unit === "DIA" ? "· hoje" : unit === "SEMANA" ? "· esta semana" : "· período"}
+											</h3>
+											<div className="flex flex-col gap-3">
+												{activeGoal.vendedores.map((vendedor) => (
+													<SellerPaceRow key={vendedor.id} vendedor={vendedor} ritmo={activeGoal.ritmo} unit={unit} />
+												))}
+											</div>
+										</div>
+									) : null}
+								</div>
+							) : null}
+						</>
+					) : null}
+				</div>
+			) : (
+				<div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center">
+					<Target className="h-8 w-8 text-muted-foreground" />
+					<p className="text-sm font-bold">Nenhuma meta ativa no momento</p>
+					<p className="max-w-[46ch] text-xs text-muted-foreground">
+						Crie uma meta cobrindo o período atual e o painel passa a mostrar quanto hoje precisa vender para o mês fechar.
+					</p>
+				</div>
+			)}
+
+			<div className="grid w-full grid-cols-1 gap-3 lg:grid-cols-3">
+				<StatUnitCard title="TOTAL DE METAS" icon={<Target className="h-4 w-4 min-h-4 min-w-4" />} current={{ value: totalMetas, format: (n) => formatDecimalPlaces(n) }} />
 				<StatUnitCard
 					title="METAS CONCLUÍDAS"
-					icon={<CheckCircle2 className="w-4 h-4 min-w-4 min-h-4" />}
+					icon={<CheckCircle2 className="h-4 w-4 min-h-4 min-w-4" />}
 					current={{ value: metasConcluidas, format: (n) => formatDecimalPlaces(n) }}
-					className="w-full lg:w-1/3"
 				/>
 				<StatUnitCard
 					title="MÉDIA DE CONCLUSÃO"
-					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					icon={<BadgeDollarSign className="h-4 w-4 min-h-4 min-w-4" />}
 					current={{ value: mediaPercentual, format: (n) => `${formatDecimalPlaces(n)}%` }}
-					className="w-full lg:w-1/3"
 				/>
 			</div>
 
-			{/* Historical chart */}
 			{historico.length > 0 ? (
-				<div className="bg-card border border-border rounded-xl px-4 py-4 shadow-2xs flex flex-col gap-3">
-					<h2 className="text-xs font-medium tracking-tight uppercase">HISTÓRICO DE METAS — VALOR</h2>
+				<div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-2xs">
+					<h2 className="text-xs font-extrabold uppercase tracking-[0.08em]">Histórico de metas — valor</h2>
 					<ChartContainer config={chartConfig} className="h-56 w-full">
 						<BarChart data={chartData} barCategoryGap="30%" barGap={4}>
-							<CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+							<CartesianGrid vertical={false} stroke="var(--color-border)" strokeOpacity={0.6} />
 							<XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-							<YAxis tickFormatter={(v) => formatToMoney(v)} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={72} />
-							<ChartTooltip content={<CustomHistoricoTooltip />} />
-							<Bar dataKey="Objetivo" fill="hsl(var(--muted))" radius={[4, 4, 0, 0]} />
+							<YAxis tickFormatter={(value) => formatToMoney(value)} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={78} />
+							<ChartTooltip content={<HistoricoTooltip />} />
+							<Bar dataKey="Objetivo" fill="var(--color-muted)" radius={[4, 4, 0, 0]} />
 							<Bar dataKey="Realizado" radius={[4, 4, 0, 0]}>
-								{chartData.map((entry, index) => (
-									<Cell key={`cell-${index}`} fill={entry.Realizado >= entry.Objetivo ? "#16a34a" : colors.primary} />
+								{chartData.map((entry) => (
+									<Cell key={entry.label} fill={entry.Realizado >= entry.Objetivo ? "var(--color-success)" : colors.primary} />
 								))}
 							</Bar>
 						</BarChart>
 					</ChartContainer>
-					<div className="flex items-center gap-4 text-xs text-muted-foreground">
-						<div className="flex items-center gap-1.5">
-							<div className="w-3 h-3 rounded-sm bg-muted" />
-							<span>Objetivo</span>
-						</div>
-						<div className="flex items-center gap-1.5">
-							<div className="w-3 h-3 rounded-sm" style={{ backgroundColor: colors.primary }} />
-							<span>Realizado</span>
-						</div>
-						<div className="flex items-center gap-1.5">
-							<div className="w-3 h-3 rounded-sm bg-green-600" />
-							<span>Meta batida</span>
-						</div>
+					<div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+						<span className="flex items-center gap-1.5">
+							<span className="h-3 w-3 rounded-sm bg-muted" />
+							Objetivo
+						</span>
+						<span className="flex items-center gap-1.5">
+							<span className="h-3 w-3 rounded-sm" style={{ backgroundColor: colors.primary }} />
+							Realizado
+						</span>
+						<span className="flex items-center gap-1.5">
+							<span className="h-3 w-3 rounded-sm bg-success" />
+							Meta batida
+						</span>
 					</div>
 				</div>
 			) : null}
