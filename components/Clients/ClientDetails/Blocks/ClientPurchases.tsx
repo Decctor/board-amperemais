@@ -18,6 +18,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { useSales } from "@/lib/queries/sales";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { cn } from "@/lib/utils";
+import { SalesIntegrationPill } from "@/components/Sales/SalesIntegrationPill";
 import dayjs from "dayjs";
 import {
 	ArrowRight,
@@ -310,6 +311,7 @@ function SaleCard({ sale }: { sale: TGetSalesOutputByClientId["sales"][number] }
 							<Tag className="w-3 h-3" />
 							<span>{sale.natureza}</span>
 						</div>
+						<SalesIntegrationPill integracao={sale.integracao} />
 					</div>
 				</div>
 

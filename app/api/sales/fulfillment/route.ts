@@ -19,6 +19,7 @@ const ACTIVE_ATTENDANCE_STATUSES = ["NAO_INICIADO", "EM_PREPARO", "PRONTO", "EM_
 const DELIVERED_VISIBILITY_DAYS = 2;
 
 const SALE_FULFILLMENT_WITH = {
+	integracao: { columns: { tipo: true, apelido: true } },
 	cliente: { columns: { id: true, nome: true, telefone: true } },
 	documentosFiscais: { columns: { statusInterno: true, dataInsercao: true } },
 	lancamentosContabeis: {
@@ -248,6 +249,7 @@ async function getSalesFulfillment({ input, orgId, policy }: { input: TGetSalesF
 						dataVenda: true,
 					},
 					with: {
+						integracao: { columns: { tipo: true, apelido: true } },
 						cliente: { columns: { id: true, nome: true, telefone: true } },
 						itens: { columns: { id: true } },
 					},
@@ -261,6 +263,7 @@ async function getSalesFulfillment({ input, orgId, policy }: { input: TGetSalesF
 				entregaModalidade: sale.entregaModalidade,
 				observacoes: sale.observacoes,
 				dataVenda: sale.dataVenda,
+				integracao: sale.integracao,
 				cliente: sale.cliente,
 				quantidadeItens: sale.itens.length,
 				canal: "IFOOD" as const,

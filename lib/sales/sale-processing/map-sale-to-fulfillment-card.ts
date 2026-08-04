@@ -2,7 +2,7 @@ import { isManagedFulfillmentSaleModel } from "@/lib/sales/fulfillment-channels/
 import { resolveSaleEditability } from "@/lib/sales/sale-editability";
 import { classifySalePaymentTransactions, extractPaymentObservacoesFromTitle, type SalePaymentTransactionInput } from "@/lib/sales/utils";
 import { computeSaleFinancialStatus, computeSaleFiscalStatus } from "@/lib/sales/utils";
-import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
+import type { TIntegrationTipoEnum, TSaleAttendanceStatusEnum } from "@/schemas/enums";
 
 type SaleFulfillmentRow = {
 	id: string;
@@ -18,6 +18,7 @@ type SaleFulfillmentRow = {
 	modelo?: string | null;
 	processamentoOrigem?: string | null;
 	tabId?: string | null;
+	integracao?: { tipo: TIntegrationTipoEnum; apelido: string | null } | null;
 	cliente: { id: string; nome: string; telefone: string | null } | null;
 	documentosFiscais: { statusInterno: string | null; dataInsercao: Date }[];
 	lancamentosContabeis: {
@@ -59,6 +60,7 @@ export function mapSaleRowToFulfillmentCard(sale: SaleFulfillmentRow) {
 		statusAtendimento: sale.statusAtendimento,
 		// Canal de fulfillment gerenciado (ex.: iFood). Null = venda interna/fluxo local puro.
 		integracaoCanal: sale.processamentoOrigem === "EXTERNO" && isManagedFulfillmentSaleModel(sale.modelo) ? ("IFOOD" as const) : null,
+		integracao: sale.integracao ?? null,
 		entregaModalidade: sale.entregaModalidade,
 		comandaNumero: sale.comandaNumero,
 		clienteId: sale.clienteId,

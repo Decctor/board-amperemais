@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { SalesIntegrationPill } from "@/components/Sales/SalesIntegrationPill";
 
 type SalesPageProps = {
 	organization: NonNullable<TAuthUserSession["membership"]>["organizacao"];
@@ -68,8 +69,8 @@ export default function SalesPage({ organization, canEditSales }: SalesPageProps
 			<SalesHistoryView canEditSales={canEditSales} />
 		</div>
 	);
-	}
-	/*
+}
+/*
 
 	// Organizações sem o módulo de ERP não veem a interface de abas: só o histórico.
 	return (
@@ -307,6 +308,7 @@ function SaleCard({ sale, canEditSales }: { sale: TGetSalesOutputDefault["sales"
 						<SaleChip icon={<Package className="w-3 h-3" />}>
 							{sale.itens.length} {sale.itens.length === 1 ? "item" : "itens"}
 						</SaleChip>
+						<SalesIntegrationPill integracao={sale.integracao} />
 						<SaleErpSummaryChips sale={sale} />
 					</div>
 				</div>
@@ -505,8 +507,7 @@ function SaleCardActionsMenu({ sale, canEditSales }: { sale: TGetSalesOutputDefa
 	// Habilitação otimista: as linhas da lista não carregam transações/documentos, então a página
 	// de edição (GET autoritativo) renderiza a recusa com a razão quando a política não permitir.
 	const saleIsInternal = sale.processamentoOrigem === "INTERNO";
-	const editHref =
-		sale.statusVenda === "ORCAMENTO" ? appRoutes.sales.checkout(sale.id) : appRoutes.sales.edit(sale.id);
+	const editHref = sale.statusVenda === "ORCAMENTO" ? appRoutes.sales.checkout(sale.id) : appRoutes.sales.edit(sale.id);
 	const canOpenEdit = canEditSales && saleIsInternal && (sale.statusVenda === "CONFIRMADA" || sale.statusVenda === "ORCAMENTO");
 
 	const { mutate: printCupom, isPending: printIsPending } = useMutation({

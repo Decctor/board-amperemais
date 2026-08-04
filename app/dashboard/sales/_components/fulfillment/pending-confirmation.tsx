@@ -9,6 +9,7 @@ import { formatToMoney } from "@/lib/formatting";
 import { postFulfillmentOrderConfirmation } from "@/lib/mutations/sales";
 import { useFulfillmentOrderCancellationReasons } from "@/lib/queries/sales-fulfillment";
 import { cn } from "@/lib/utils";
+import { SalesIntegrationPill } from "@/components/Sales/SalesIntegrationPill";
 import { useMutation } from "@tanstack/react-query";
 import { CircleCheck, CircleUser, Package, Store, Truck, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -146,7 +147,7 @@ function PendingConfirmationMenu({
 							<div className="flex items-center justify-between gap-2 flex-wrap">
 								<div className="flex items-center gap-2">
 									<h3 className="text-sm font-bold tracking-tight">#{order.displayId ?? order.orderId}</h3>
-									<span className="rounded-md bg-[#EA1D2C]/10 px-1.5 py-0.5 text-[0.6rem] font-bold text-[#EA1D2C]">iFood</span>
+									<SalesIntegrationPill integracao={order.integracao} />
 									{deliveryMeta ? (
 										<span className="inline-flex items-center gap-1 rounded-md bg-secondary px-1.5 py-0.5 text-[0.65rem] text-muted-foreground">
 											<deliveryMeta.icon className="h-3 w-3" />

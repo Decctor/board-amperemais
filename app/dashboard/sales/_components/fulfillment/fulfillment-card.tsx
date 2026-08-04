@@ -16,6 +16,7 @@ import { QuickActionRow } from "./quick-actions/QuickActionRow";
 import { cn } from "@/lib/utils";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
+import { SalesIntegrationPill } from "@/components/Sales/SalesIntegrationPill";
 import type { DraggableAttributes, DraggableSyntheticListeners } from "@dnd-kit/core";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -142,9 +143,7 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 					<div className="flex min-w-0 items-center gap-1.5">
 						<CircleUser className="h-3.5 w-3.5 shrink-0 text-foreground/60" />
 						<span className="truncate text-sm font-bold tracking-tight">{card.cliente?.nome ?? "Ao consumidor"}</span>
-						{card.integracaoCanal === "IFOOD" ? (
-							<span className="shrink-0 rounded-md bg-[#EA1D2C]/10 px-1.5 py-0.5 text-[0.6rem] font-bold tracking-tight text-[#EA1D2C]">iFood</span>
-						) : null}
+						<SalesIntegrationPill integracao={card.integracao} className="max-w-[8.5rem]" />
 					</div>
 					<span className="truncate text-[11px] text-muted-foreground">#{card.idExterno}</span>
 				</div>

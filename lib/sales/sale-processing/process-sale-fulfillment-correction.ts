@@ -56,6 +56,7 @@ async function loadCorrectableSale(organizationId: string, saleId: string) {
 			tabId: true,
 		},
 		with: {
+			integracao: { columns: { tipo: true, apelido: true } },
 			cliente: { columns: { id: true, nome: true, telefone: true } },
 			documentosFiscais: { columns: { statusInterno: true, dataInsercao: true } },
 			lancamentosContabeis: {

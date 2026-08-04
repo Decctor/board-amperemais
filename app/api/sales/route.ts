@@ -288,6 +288,12 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 		const sale = await db.query.sales.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.id, id), eq(fields.organizacaoId, userOrgId)),
 			with: {
+				integracao: {
+					columns: {
+						tipo: true,
+						apelido: true,
+					},
+				},
 				cliente: {
 					columns: {
 						id: true,
@@ -506,6 +512,12 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	const salesResult = await db.query.sales.findMany({
 		where: and(...conditions),
 		with: {
+			integracao: {
+				columns: {
+					tipo: true,
+					apelido: true,
+				},
+			},
 			cliente: {
 				columns: {
 					id: true,
