@@ -182,8 +182,25 @@ export default function SettingsFinances({ membership }: SettingsFinancesProps) 
 	const [draft, setDraft] = useState<TFinancesDraft | null>(null);
 
 	useEffect(() => {
-		if (organization)
-			setDraft({ contabilidade: organization.configuracao.defaults.contabilidade, pagamentos: organization.configuracao.defaults.pagamentos });
+		if (organization) {
+			const contabilidade = organization.configuracao.defaults.contabilidade;
+			setDraft({
+				contabilidade: {
+					...contabilidade,
+					lancamentosPadrao: {
+						...contabilidade.lancamentosPadrao,
+						// Configs persistidas antes do bloco existir não passaram pelo default do Zod.
+						perdasEstoque: contabilidade.lancamentosPadrao.perdasEstoque ?? {
+							debitoContaId: null,
+							debitoContaKey: null,
+							creditoContaId: null,
+							creditoContaKey: null,
+						},
+					},
+				},
+				pagamentos: organization.configuracao.defaults.pagamentos,
+			});
+		}
 	}, [organization]);
 
 	const accountChartsOptions = useMemo<TAccountOption[]>(
@@ -215,7 +232,10 @@ export default function SettingsFinances({ membership }: SettingsFinancesProps) 
 
 	const canEdit = membership.permissoes.empresa.editar;
 
-	function updateAccounting(tipo: "vendas" | "compras", partial: Partial<TOrganizationDefaults["contabilidade"]["lancamentosPadrao"]["vendas"]>) {
+	function updateAccounting(
+		tipo: "vendas" | "compras" | "perdasEstoque",
+		partial: Partial<TOrganizationDefaults["contabilidade"]["lancamentosPadrao"]["vendas"]>,
+	) {
 		setDraft((current) =>
 			current
 				? {
@@ -254,11 +274,13 @@ export default function SettingsFinances({ membership }: SettingsFinancesProps) 
 		>
 			<SettingsFormSection title="LANÇAMENTOS CONTÁBEIS PADRÃO" icon={<Calculator className="h-4 w-4" />}>
 				<p className="text-muted-foreground text-xs">Contas de débito e crédito usadas na geração automática de lançamentos.</p>
-				{(["vendas", "compras"] as const).map((tipo) => {
+				{(["vendas", "compras", "perdasEstoque"] as const).map((tipo) => {
 					const entry = draft.contabilidade.lancamentosPadrao[tipo];
 					return (
 						<div key={tipo} className="border-border bg-muted/20 flex flex-col gap-3 rounded-lg border p-4">
-							<span className="text-foreground text-xs font-semibold tracking-wider uppercase">{tipo === "vendas" ? "Vendas" : "Compras"}</span>
+							<span className="text-foreground text-xs font-semibold tracking-wider uppercase">
+								{tipo === "vendas" ? "Vendas" : tipo === "compras" ? "Compras" : "Perdas de Estoque"}
+							</span>
 							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 								<SelectInput
 									label="CONTA DE DÉBITO PADRÃO"

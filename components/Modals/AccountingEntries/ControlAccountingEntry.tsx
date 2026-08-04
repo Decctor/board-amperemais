@@ -95,7 +95,8 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 	const originTypeConfig = AccountingEntryOriginTypeOptions.find((option) => option.value === originType);
 	const canEditAccountingFields = originType === "MANUAL";
 	const canEditTransactions = originType === "MANUAL" || originType === "VENDA" || originType === "COMPRA";
-	const canEditAnnotations = originType === "MANUAL" || originType === "VENDA" || originType === "COMPRA" || originType === "ESTORNO";
+	const canEditAnnotations =
+		originType === "MANUAL" || originType === "VENDA" || originType === "COMPRA" || originType === "ESTORNO" || originType === "PERDA_ESTOQUE";
 
 	return (
 		<ResponsiveMenu
@@ -141,6 +142,12 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 				{originType === "ESTORNO" ? (
 						<p className="text-xs text-muted-foreground">
 							Este lançamento registra um estorno. Os dados contábeis e financeiros ficam em modo leitura; apenas anotações podem ser ajustadas.
+						</p>
+					) : null}
+					{originType === "PERDA_ESTOQUE" ? (
+						<p className="text-xs text-muted-foreground">
+							Este lançamento foi gerado pelo descarte de um lote de estoque. Os dados contábeis ficam em modo leitura; apenas anotações podem ser
+							ajustadas.
 						</p>
 					) : null}
 				</div>

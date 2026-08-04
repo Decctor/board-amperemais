@@ -14,6 +14,7 @@ import {
 	paymentMethodEnum,
 } from "./enums";
 import { organizations } from "./organizations";
+import { productStockLots } from "./products";
 import { sales } from "./sales";
 import { salesSessions } from "./sales-sessions";
 import { users } from "./users";
@@ -83,6 +84,8 @@ export const accountingEntries = newTable(
 			.references(() => organizations.id, { onDelete: "cascade" })
 			.notNull(),
 		vendaId: varchar("venda_id", { length: 255 }).references(() => sales.id, { onDelete: "set null" }),
+		// Lote de estoque que originou o lançamento (perdas/descartes — origem PERDA_ESTOQUE).
+		loteId: varchar("lote_id", { length: 255 }).references((): AnyPgColumn => productStockLots.id, { onDelete: "set null" }),
 		origemTipo: accountingEntryOriginTypeEnum("origem_tipo").notNull(),
 		titulo: text("titulo").notNull(),
 		anotacoes: text("anotacoes"),
@@ -101,6 +104,7 @@ export const accountingEntries = newTable(
 	(table) => ({
 		organizacaoIdIdx: index("idx_accounting_entries_organizacao_id").on(table.organizacaoId),
 		vendaIdIdx: index("idx_accounting_entries_venda_id").on(table.vendaId),
+		loteIdIdx: index("idx_accounting_entries_lote_id").on(table.loteId),
 		dataCompetenciaIdx: index("idx_accounting_entries_data_competencia").on(table.dataCompetencia),
 		origemTipoIdx: index("idx_accounting_entries_origem_tipo").on(table.origemTipo),
 	}),
@@ -114,6 +118,10 @@ export const accountingEntriesRelations = relations(accountingEntries, ({ one, m
 	venda: one(sales, {
 		fields: [accountingEntries.vendaId],
 		references: [sales.id],
+	}),
+	lote: one(productStockLots, {
+		fields: [accountingEntries.loteId],
+		references: [productStockLots.id],
 	}),
 	contaDebito: one(accountsCharts, {
 		fields: [accountingEntries.idContaDebito],

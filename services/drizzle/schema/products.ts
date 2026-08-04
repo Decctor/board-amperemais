@@ -13,6 +13,7 @@ import { saleItems, sales } from "./sales";
 import { users } from "./users";
 import { purchaseItems, purchases } from "./purchases";
 import { productFiscalProfiles } from "./fiscal";
+import { accountingEntries } from "./financial";
 import { clients } from "./clients";
 import { productionInputs, productionOutputs, productions } from "./productions";
 
@@ -385,7 +386,8 @@ export const productStockLots = newTable(
 	}),
 );
 
-export const productStockLotsRelations = relations(productStockLots, ({ one }) => ({
+export const productStockLotsRelations = relations(productStockLots, ({ one, many }) => ({
+	lancamentosContabeis: many(accountingEntries),
 	organizacao: one(organizations, {
 		fields: [productStockLots.organizacaoId],
 		references: [organizations.id],

@@ -6,6 +6,7 @@ import TextareaInput from "@/components/Inputs/TextareaInput";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { getErrorMessage } from "@/lib/errors";
+import { formatToMoney } from "@/lib/formatting";
 import { discardProductStockLot } from "@/lib/mutations/product-stock-lots";
 import { useMutation } from "@tanstack/react-query";
 import { PackageX, Trash2 } from "lucide-react";
@@ -27,6 +28,8 @@ export default function DiscardStockLot({ stockLot, closeModal, callbacks }: Dis
 	const [quantity, setQuantity] = useState(stockLot.quantidadeAtual);
 	const [reason, setReason] = useState("");
 	const productName = stockLot.produtoVariante?.nome ?? stockLot.produto?.nome ?? "Produto sem nome";
+	const unitCost = stockLot.produtoVariante ? stockLot.produtoVariante.precoCusto : stockLot.produto?.precoCusto;
+	const estimatedLossValue = unitCost != null && unitCost > 0 && quantity > 0 ? unitCost * quantity : null;
 
 	const { mutate, isPending } = useMutation({
 		mutationKey: ["discard-product-stock-lot", stockLot.id],
@@ -72,6 +75,11 @@ export default function DiscardStockLot({ stockLot, closeModal, callbacks }: Dis
 			<ResponsiveMenuSection title="Descarte" icon={<Trash2 className="h-4 w-4" />}>
 				<NumberInput label="Quantidade" placeholder="Informe a quantidade descartada" value={quantity} handleChange={setQuantity} required />
 				<TextareaInput label="Motivo" placeholder="Ex.: Produto vencido, perda operacional, avaria..." value={reason} handleChange={setReason} required />
+				<p className="text-xs text-muted-foreground">
+					{estimatedLossValue != null
+						? `O descarte gera um lançamento contábil de perda de estoque no valor estimado de ${formatToMoney(estimatedLossValue)} (custo unitário atual × quantidade).`
+						: "O descarte gera um lançamento contábil de perda de estoque valorado pelo custo do produto. Sem custo conhecido, apenas a movimentação de estoque é registrada."}
+				</p>
 			</ResponsiveMenuSection>
 		</ResponsiveMenu>
 	);

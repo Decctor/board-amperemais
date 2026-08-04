@@ -76,6 +76,7 @@ import {
 	MessageCircle,
 	Mail,
 	Users,
+	PackageX,
 } from "lucide-react";
 
 export const CommunityCourseStatusOptions: {
@@ -589,6 +590,16 @@ export const AccountingEntryOriginTypeOptions: {
 		colors: {
 			text: "text-purple-600",
 			background: "bg-purple-200",
+		},
+	},
+	{
+		id: 6,
+		label: "PERDA DE ESTOQUE",
+		value: "PERDA_ESTOQUE",
+		icon: <PackageX className="w-4 h-4" />,
+		colors: {
+			text: "text-orange-600",
+			background: "bg-orange-200",
 		},
 	},
 ];

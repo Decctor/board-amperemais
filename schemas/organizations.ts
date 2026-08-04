@@ -80,6 +80,19 @@ export const OrganizationDefaultsSchema = z.object({
 					creditoContaId: null,
 					creditoContaKey: null,
 				}),
+			perdasEstoque: z
+				.object({
+					debitoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de débito padrão de perdas de estoque." }).nullable(),
+					debitoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de débito padrão de perdas de estoque." }).nullable(),
+					creditoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de crédito padrão de perdas de estoque." }).nullable(),
+					creditoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de crédito padrão de perdas de estoque." }).nullable(),
+				})
+				.default({
+					debitoContaId: null,
+					debitoContaKey: null,
+					creditoContaId: null,
+					creditoContaKey: null,
+				}),
 		}),
 	}),
 	pagamentos: z.object({
