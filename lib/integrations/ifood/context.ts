@@ -103,8 +103,7 @@ export async function resolveIfoodManagementContext({
 			// manualmente (desativar uma das linhas). Não desativamos automaticamente.
 			const discoveredSet = new Set(merchantIds);
 			const overlapping = rows.find(
-				(row) =>
-					row.id !== integration.id && row.configuracao.tipo === "IFOOD" && row.configuracao.merchantIds.some((id) => discoveredSet.has(id)),
+				(row) => row.id !== integration.id && row.configuracao.tipo === "IFOOD" && row.configuracao.merchantIds.some((id) => discoveredSet.has(id)),
 			);
 			if (overlapping) {
 				console.warn("[IFOOD_CONTEXT] Merchants descobertos colidem com outra conexão ativa da organização — mesma conta conectada duas vezes?", {

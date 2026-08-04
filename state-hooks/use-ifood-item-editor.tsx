@@ -172,6 +172,20 @@ export function useIfoodItemEditor({
 					descricao: state.produto.descricao,
 					imagemPath: state.produto.imagemPath,
 				},
+				// Reenviados sem alteração: o `PUT /items` reescreve o item inteiro, e omitir os
+				// horários apagaria em silêncio a agenda configurada no Portal do Parceiro. Editar
+				// horário pela nossa UI ainda não existe — preservar é o mínimo.
+				horarios: item.horarios.map((horario) => ({
+					inicio: horario.inicio ?? "00:00",
+					fim: horario.fim ?? "23:59",
+					segunda: horario.segunda,
+					terca: horario.terca,
+					quarta: horario.quarta,
+					quinta: horario.quinta,
+					sexta: horario.sexta,
+					sabado: horario.sabado,
+					domingo: horario.domingo,
+				})),
 				contextModifiers: state.canais.map((canal) => ({
 					contexto: canal.contexto,
 					preco: canal.preco,

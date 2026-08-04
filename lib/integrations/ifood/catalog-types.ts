@@ -109,6 +109,51 @@ const IfoodItemPriceResponseSchema = z
 	})
 	.passthrough();
 
+/**
+ * Janela de disponibilidade do item por dia da semana — o "agendamento de disponibilidade" que a
+ * página de guias do iFood não documenta, mas que a API devolve e a homologação cobra. Item novo
+ * nasce com um turno 00:00–23:59 em todos os dias.
+ */
+const IfoodShiftResponseSchema = z
+	.object({
+		startTime: NullableString,
+		endTime: NullableString,
+		monday: z.boolean().optional().nullable(),
+		tuesday: z.boolean().optional().nullable(),
+		wednesday: z.boolean().optional().nullable(),
+		thursday: z.boolean().optional().nullable(),
+		friday: z.boolean().optional().nullable(),
+		saturday: z.boolean().optional().nullable(),
+		sunday: z.boolean().optional().nullable(),
+	})
+	.passthrough();
+
+export type TIfoodItemShiftDTO = {
+	inicio: string | null;
+	fim: string | null;
+	segunda: boolean;
+	terca: boolean;
+	quarta: boolean;
+	quinta: boolean;
+	sexta: boolean;
+	sabado: boolean;
+	domingo: boolean;
+};
+
+export function mapIfoodItemShift(shift: z.infer<typeof IfoodShiftResponseSchema>): TIfoodItemShiftDTO {
+	return {
+		inicio: shift.startTime,
+		fim: shift.endTime,
+		segunda: !!shift.monday,
+		terca: !!shift.tuesday,
+		quarta: !!shift.wednesday,
+		quinta: !!shift.thursday,
+		sexta: !!shift.friday,
+		sabado: !!shift.saturday,
+		domingo: !!shift.sunday,
+	};
+}
+
 const IfoodContextModifierResponseSchema = z
 	.object({
 		catalogContext: NullableString,
@@ -129,7 +174,9 @@ const IfoodItemResponseSchema = z
 		index: NullableNumber,
 		price: IfoodItemPriceResponseSchema.optional().nullable(),
 		imagePath: NullableString,
+		categoryId: NullableString,
 		contextModifiers: z.array(IfoodContextModifierResponseSchema).optional().nullable(),
+		shifts: z.array(IfoodShiftResponseSchema).optional().nullable(),
 	})
 	.passthrough();
 
@@ -416,8 +463,9 @@ export const IfoodItemFlatResponseSchema = z
 		status: NullableString,
 		price: IfoodItemPriceResponseSchema.optional().nullable(),
 		imagePath: NullableString,
-		// O `flat` devolve o item ora aninhado em `item`, ora na raiz — os canais seguem o mesmo item.
+		// O `flat` devolve o item ora aninhado em `item`, ora na raiz — canais e horários seguem o item.
 		contextModifiers: z.array(IfoodContextModifierResponseSchema).optional().nullable(),
+		shifts: z.array(IfoodShiftResponseSchema).optional().nullable(),
 		products: z.array(IfoodProductResponseSchema).optional().nullable(),
 		optionGroups: z.array(IfoodFlatOptionGroupResponseSchema).optional().nullable(),
 		options: z.array(IfoodFlatOptionResponseSchema).optional().nullable(),
@@ -457,6 +505,8 @@ export type TIfoodItemFlatDTO = {
 	imagemUrl: string | null;
 	gruposComplementos: TIfoodFlatOptionGroupDTO[];
 	canais: TIfoodContextModifierDTO[];
+	/** Janelas de disponibilidade por dia da semana. Vazio = sem restrição declarada. */
+	horarios: TIfoodItemShiftDTO[];
 };
 
 /**
@@ -504,7 +554,9 @@ export function mapIfoodItemFlat(payload: z.infer<typeof IfoodItemFlatResponseSc
 	return {
 		id: item.id ?? payload.id,
 		produtoId: item.productId ?? produtoBase?.id ?? null,
-		categoriaId: payload.categoryId ?? null,
+		// O `/flat` devolve o `categoryId` DENTRO de `item`; ler só da raiz fazia a categoria chegar
+		// vazia na página de detalhe enquanto a listagem (que conhece a categoria pela árvore) a mostrava.
+		categoriaId: item.categoryId ?? payload.categoryId ?? null,
 		nome: produtoBase?.name ?? item.name ?? payload.name,
 		descricao: produtoBase?.description ?? item.description ?? payload.description,
 		codigoExterno: item.externalCode ?? payload.externalCode,
@@ -515,6 +567,7 @@ export function mapIfoodItemFlat(payload: z.infer<typeof IfoodItemFlatResponseSc
 		imagemUrl: buildIfoodCatalogImageUrl(imagePath),
 		gruposComplementos: grupos,
 		canais: (item.contextModifiers ?? []).map(mapIfoodContextModifier),
+		horarios: (item.shifts ?? []).map(mapIfoodItemShift),
 	};
 }
 

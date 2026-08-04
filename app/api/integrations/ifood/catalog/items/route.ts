@@ -139,6 +139,21 @@ const IfoodItemContextModifierInputSchema = z.object({
 	codigoExterno: z.string({ invalid_type_error: "Tipo inválido para o código externo no canal." }).optional().nullable(),
 });
 
+/** `HH:mm` — o iFood recusa qualquer outro formato de horário. */
+const HORARIO_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+const IfoodItemShiftInputSchema = z.object({
+	inicio: z.string({ required_error: "Horário de início não informado." }).regex(HORARIO_REGEX, "Horário de início deve estar no formato HH:mm."),
+	fim: z.string({ required_error: "Horário de fim não informado." }).regex(HORARIO_REGEX, "Horário de fim deve estar no formato HH:mm."),
+	segunda: z.boolean({ invalid_type_error: "Tipo inválido para segunda-feira." }),
+	terca: z.boolean({ invalid_type_error: "Tipo inválido para terça-feira." }),
+	quarta: z.boolean({ invalid_type_error: "Tipo inválido para quarta-feira." }),
+	quinta: z.boolean({ invalid_type_error: "Tipo inválido para quinta-feira." }),
+	sexta: z.boolean({ invalid_type_error: "Tipo inválido para sexta-feira." }),
+	sabado: z.boolean({ invalid_type_error: "Tipo inválido para sábado." }),
+	domingo: z.boolean({ invalid_type_error: "Tipo inválido para domingo." }),
+});
+
 const UpsertIfoodItemInputSchema = z.object({
 	merchantId: z
 		.string({
@@ -187,6 +202,7 @@ const UpsertIfoodItemInputSchema = z.object({
 			.nullable(),
 		gruposComplementos: z.array(IfoodItemOptionGroupInputSchema).optional().nullable(),
 		contextModifiers: z.array(IfoodItemContextModifierInputSchema).optional().nullable(),
+		horarios: z.array(IfoodItemShiftInputSchema).optional().nullable(),
 	}),
 });
 export type TUpsertIfoodItemInput = z.infer<typeof UpsertIfoodItemInputSchema>;

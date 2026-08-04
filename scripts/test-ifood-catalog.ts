@@ -365,10 +365,44 @@ async function run({
 	keep,
 	cleanup,
 	pizza,
-}: { organizationId: string; confirm: boolean; keep: boolean; cleanup: boolean; pizza: boolean }) {
+}: {
+	organizationId: string;
+	confirm: boolean;
+	keep: boolean;
+	cleanup: boolean;
+	pizza: boolean;
+}) {
 	await printTokenDiagnostics(organizationId);
 	const { client, merchantId } = await resolveContext(organizationId);
 	console.log(`\n[IFOOD_CATALOG_TEST] Loja: ${merchantId}\n`);
+
+	// Diagnóstico: imprime a resposta CRUA de GET /items/{id}/flat. Existe porque o mapeamento
+	// esconde campos ausentes atrás de `null`, e "veio null" e "não veio" pedem correções diferentes.
+	const dumpItem = getArgValue("dump-item");
+	if (dumpItem !== null) {
+		const catalogosParaDump = await getIfoodCatalogs(client, merchantId);
+		const categorias = await listIfoodCategories(client, merchantId, { catalogId: catalogosParaDump[0].id });
+		const itens = categorias.flatMap((categoria) => categoria.itens.map((item) => ({ item, categoria })));
+		const alvo = dumpItem ? itens.find((entrada) => entrada.item.id === dumpItem) : itens[0];
+		if (!alvo?.item.id) {
+			console.log("Nenhum item encontrado para inspecionar.");
+			return;
+		}
+
+		console.log(`\nItem pela LISTAGEM (dentro da categoria "${alvo.categoria.nome}" / ${alvo.categoria.id}):`);
+		console.log(JSON.stringify(alvo.item, null, 2));
+
+		const bruto = await client.get(`https://merchant-api.ifood.com.br/catalog/v2.0/merchants/${merchantId}/items/${alvo.item.id}/flat`);
+		console.log("\nResposta CRUA de /items/{id}/flat:");
+		console.log(JSON.stringify(bruto.data, null, 2).slice(0, 4000));
+
+		const mapeado = await getIfoodItemFlat(client, merchantId, alvo.item.id);
+		console.log("\nDTO mapeado (o que a página de detalhe recebe):");
+		console.log(JSON.stringify({ categoriaId: mapeado.categoriaId, horarios: mapeado.horarios, canais: mapeado.canais }, null, 2));
+		check("categoria resolvida no /flat", !!mapeado.categoriaId, `listagem: ${alvo.categoria.id} · flat: ${mapeado.categoriaId}`);
+		check("categoria bate com a da listagem", mapeado.categoriaId === alvo.categoria.id);
+		return;
+	}
 
 	if (cleanup) {
 		const catalogosParaLimpar = await getIfoodCatalogs(client, merchantId);
@@ -542,6 +576,46 @@ async function run({
 			const vazou = flat.canais.some((canal) => canal.contexto?.toUpperCase() === contextoInexistente);
 			check(`contexto ${contextoInexistente} (que a loja não tem) segue ausente na releitura`, !vazou);
 		}
+
+		// -- 4d. Horários do item (shifts) ---------------------------------------
+		// O `PUT /items` reescreve o item inteiro. Se `shifts` não for reenviado, a agenda que o
+		// lojista configurou some sem aviso — é o tipo de perda que ninguém percebe até o item
+		// parar de aparecer no horário certo.
+		console.log("\n4d. Janela de disponibilidade do item (shifts)");
+		// Item criado pela API nasce SEM janela declarada (sem restrição de horário). Itens criados
+		// pelo Portal do Parceiro nascem com uma janela 00:00–23:59 em todos os dias.
+		checkEqual("item novo nasce sem restrição de horário", 0, flat.horarios.length);
+
+		// O iFood recusa atualizar um item recém-gravado com "is being concurrently modified": a
+		// escrita anterior ainda está sendo processada do lado deles.
+		await sleep(5000);
+
+		const almoco = {
+			inicio: "11:00",
+			fim: "15:00",
+			segunda: true,
+			terca: true,
+			quarta: true,
+			quinta: true,
+			sexta: true,
+			sabado: false,
+			domingo: false,
+		};
+		await upsertIfoodItem(client, merchantId, {
+			itemId,
+			produtoId: productId,
+			categoriaId: categoria.id,
+			status: "AVAILABLE",
+			preco: precoInicial,
+			codigoExterno: codigoExternoItem,
+			produto: { nome: `[TESTE] X-Burguer ${sufixo}`, descricao: "Item criado pelo script de homologação." },
+			gruposComplementos: grupos,
+			horarios: [almoco],
+		});
+		const comHorario = await getIfoodItemFlat(client, merchantId, itemId);
+		checkEqual("janela personalizada gravou o início", "11:00", comHorario.horarios[0]?.inicio ?? null);
+		checkEqual("  gravou o fim", "15:00", comHorario.horarios[0]?.fim ?? null);
+		checkEqual("  sábado desligado", false, comHorario.horarios[0]?.sabado ?? null);
 
 		// -- 4c. Inventário -------------------------------------------------------
 		console.log("\n4c. Inventário (estoque do produto)");

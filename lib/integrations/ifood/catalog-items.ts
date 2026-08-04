@@ -93,6 +93,23 @@ export type TIfoodItemUpsertPayload = {
 	gruposComplementos?: TIfoodItemOptionGroupPayload[] | null;
 	/** Preço/status por canal. Ausente = não mexe; `[]` = todos os canais herdam a raiz. */
 	contextModifiers?: TIfoodItemContextModifierPayload[] | null;
+	/**
+	 * Janelas de disponibilidade por dia da semana. Precisa ser REENVIADO em toda atualização: o
+	 * `PUT /items` reescreve o item inteiro, e omitir isto apaga a agenda que o lojista configurou.
+	 */
+	horarios?: TIfoodItemShiftPayload[] | null;
+};
+
+export type TIfoodItemShiftPayload = {
+	inicio: string;
+	fim: string;
+	segunda: boolean;
+	terca: boolean;
+	quarta: boolean;
+	quinta: boolean;
+	sexta: boolean;
+	sabado: boolean;
+	domingo: boolean;
 };
 
 /**
@@ -121,7 +138,8 @@ export async function upsertIfoodItem(
 		// O `FullItemDto` é PLANO: três listas que se referenciam por id. A árvore (item → grupos →
 		// opções → grupos de 3º nível, no combo) é expressa por `products[].optionGroups`, que carrega
 		// min/max/index/associationType do vínculo. Achatamos a árvore aqui.
-		const gruposAchatados: (TIfoodItemOptionGroupPayload & { id: string; opcoes: (TIfoodItemOptionPayload & { id: string; produtoId: string })[] })[] = [];
+		const gruposAchatados: (TIfoodItemOptionGroupPayload & { id: string; opcoes: (TIfoodItemOptionPayload & { id: string; produtoId: string })[] })[] =
+			[];
 		/** Vínculos produto → grupos, na forma de objeto que o iFood exige. */
 		const vinculosPorProduto = new Map<string, { id: string; min: number; max: number; index?: number; associationType?: "MAIN" }[]>();
 
@@ -191,6 +209,19 @@ export async function upsertIfoodItem(
 				// `status` é OBRIGATÓRIO em cada modifier (400 "ItemContextModifierDto[0] status must
 				// be one of..." sem ele), então um canal que só muda o preço repete o status do item —
 				// que é exatamente o que "herdar" significa aqui.
+				shifts: payload.horarios
+					? payload.horarios.map((horario) => ({
+							startTime: horario.inicio,
+							endTime: horario.fim,
+							monday: horario.segunda,
+							tuesday: horario.terca,
+							wednesday: horario.quarta,
+							thursday: horario.quinta,
+							friday: horario.sexta,
+							saturday: horario.sabado,
+							sunday: horario.domingo,
+						}))
+					: undefined,
 				contextModifiers: payload.contextModifiers
 					? payload.contextModifiers
 							.filter((modifier) => modifier.preco != null || modifier.status != null || modifier.codigoExterno)
