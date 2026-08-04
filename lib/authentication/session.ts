@@ -1,11 +1,11 @@
 "use server";
 import { SESSION_COOKIE_NAME, checkSubscriptionStatus } from "@/config";
 import { db } from "@/services/drizzle";
-import { type TAuthSessionEntity, authSessions } from "@/services/drizzle/schema";
+import { type TAuthSessionEntity, authSessions, organizationMembers } from "@/services/drizzle/schema";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { encodeBase32LowerCaseNoPadding, encodeHexLowerCase } from "@oslojs/encoding";
 import dayjs from "dayjs";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import type { TAuthSessionIntegrationSummary, TAuthUserSession } from "./types";
 
@@ -229,6 +229,66 @@ export const getCurrentSessionUncached = async () => {
 
 	const sessionResult = await validateSession(token);
 	return sessionResult;
+};
+
+/**
+ * Resolve só o recorte de tenant da sessão: `{ usuarioId, organizacaoId }`.
+ *
+ * `validateSession` faz quatro idas ao banco em série (sessão, usuário, membership + organização,
+ * integrações) e monta o objeto inteiro de organização — cores, QR codes do POI, configuração
+ * fiscal, resumo de integrações. Endpoints de digitação (busca de cliente, busca de produto)
+ * rodam a cada tecla e só precisam do `organizacaoId`; pagar aquele custo em cima de cada busca
+ * domina o tempo de resposta.
+ *
+ * Aqui é uma consulta só, com o join do membership. As invariantes de sessão que importam para
+ * autorização são preservadas: token conferido por hash, expiração verificada, tenant confirmado
+ * por membership existente.
+ *
+ * O que fica de fora, de propósito: a renovação da expiração e o fallback de "sessão sem
+ * organização ativa" (que grava `organizacao_ativa_id`). São escritas — não cabem numa rota de
+ * leitura chamada a cada tecla. Quando não há organização ativa, caímos no caminho completo, que
+ * as executa.
+ */
+export const getCurrentSessionTenant = async (): Promise<{ usuarioId: string; organizacaoId: string } | null> => {
+	const cookieStore = await cookies();
+
+	const token = cookieStore.get(SESSION_COOKIE_NAME)?.value ?? null;
+	if (token === null) return null;
+
+	const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
+
+	const [row] = await db
+		.select({
+			usuarioId: authSessions.usuarioId,
+			dataExpiracao: authSessions.dataExpiracao,
+			organizacaoAtivaId: authSessions.organizacaoAtivaId,
+			membershipOrganizacaoId: organizationMembers.organizacaoId,
+		})
+		.from(authSessions)
+		.leftJoin(
+			organizationMembers,
+			and(eq(organizationMembers.usuarioId, authSessions.usuarioId), eq(organizationMembers.organizacaoId, authSessions.organizacaoAtivaId)),
+		)
+		.where(eq(authSessions.id, sessionId))
+		.limit(1);
+
+	if (!row) return null;
+	if (Date.now() > new Date(row.dataExpiracao).getTime()) return null;
+
+	// Sem organização ativa gravada: o caminho completo escolhe a membership mais recente e a
+	// persiste. Raro (só até a primeira resolução da sessão) e não vale duplicar aqui.
+	if (!row.organizacaoAtivaId) {
+		const fullSession = await validateSession(token);
+		const organizacaoId = fullSession?.membership?.organizacao.id;
+		if (!fullSession || !organizacaoId) return null;
+		return { usuarioId: fullSession.session.usuarioId, organizacaoId };
+	}
+
+	// `organizacao_ativa_id` sozinho não autoriza nada: sem membership correspondente, o vínculo
+	// foi revogado depois que a sessão foi criada.
+	if (!row.membershipOrganizacaoId) return null;
+
+	return { usuarioId: row.usuarioId, organizacaoId: row.membershipOrganizacaoId };
 };
 
 type SetSessionCookieParams = {

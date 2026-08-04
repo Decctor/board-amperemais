@@ -5,7 +5,7 @@ import type { TGetClientStatsInput, TGetClientStatsOutput } from "@/app/api/clie
 import type { TGetClientsGraphInput, TGetClientsGraphOutput } from "@/app/api/clients/stats/graph/route";
 import type { TGetClientsOverallStatsInput, TGetClientsOverallStatsOutput } from "@/app/api/clients/stats/overall/route";
 import type { TGetClientsRankingInput, TGetClientsRankingOutput } from "@/app/api/clients/stats/ranking/route";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useCallback, useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
@@ -112,9 +112,15 @@ export async function fetchClientsBySearch({ search }: { search: string }) {
 type UseClientsBySearchParams = {
 	initialSearch?: string;
 };
+// 1200ms era tempo morto puro: o usuário terminava de digitar e ficava mais de um segundo olhando
+// para a tela antes de a requisição sequer sair. Com a busca indexada (migration 0064) e a sessão
+// resolvida numa consulta só, o servidor responde rápido o bastante para o intervalo padrão de
+// busca-enquanto-digita.
+const CLIENT_SEARCH_DEBOUNCE_IN_MS = 300;
+
 export function useClientsBySearch({ initialSearch = "" }: UseClientsBySearchParams) {
 	const [search, setSearch] = useState(initialSearch);
-	const debouncedParams = useDebounceMemo({ search }, 1200);
+	const debouncedParams = useDebounceMemo({ search }, CLIENT_SEARCH_DEBOUNCE_IN_MS);
 	const queryKey = ["clients-by-search", debouncedParams.search];
 	const debouncedSearch = debouncedParams.search;
 	const isSearchPending = search.trim() !== debouncedSearch.trim();
@@ -128,6 +134,12 @@ export function useClientsBySearch({ initialSearch = "" }: UseClientsBySearchPar
 			queryKey,
 			queryFn: () => fetchClientsBySearch({ search: debouncedParams.search }),
 			enabled: debouncedParams.search.trim().length >= 2,
+			// Mantém a lista anterior enquanto o termo novo carrega. Sem isso, cada tecla esvazia o
+			// resultado e o menu pisca entre "encontrados" e o formulário de cadastro.
+			placeholderData: keepPreviousData,
+			// Reabrir o menu para o mesmo termo (fluxo comum: vincular, desfazer, vincular de novo)
+			// passa a reaproveitar o resultado em vez de ir ao banco.
+			staleTime: 60 * 1000,
 		}),
 		queryKey,
 		search,

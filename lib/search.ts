@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
-import { formatPhoneAsBase } from "./formatting";
+import { formatPhoneAsBase, formatStringAsOnlyDigits } from "./formatting";
 
 export function createSimplifiedSearchCondition(column: PgColumn, term: string) {
 	const lowerTerm = term.toLowerCase();
@@ -53,6 +53,34 @@ export function createSimplifiedPhoneSearchCondition(column: PgColumn, term: str
         )`;
 	}
 	return sql`${column} LIKE '%' || ${term} || '%'`;
+}
+
+/**
+ * Variante de ramo único de `createSimplifiedPhoneSearchCondition` para colunas que guardam apenas
+ * dígitos (`clients.telefone_base`). Normaliza o termo do lado da aplicação em vez de emitir dois
+ * `LIKE`: um `OR` interno obriga o planner a varrer o índice trigram duas vezes, e o segundo ramo
+ * — o termo cru, com máscara — nunca casa contra uma coluna sem máscara.
+ *
+ * `formatPhoneAsBase` só resolve com o número completo (>= 10 dígitos); em digitação parcial
+ * caímos nos dígitos crus, que é o prefixo correto de uma coluna já normalizada.
+ */
+export function createDigitsOnlyPhoneSearchCondition(column: PgColumn, term: string) {
+	const phoneBase = formatPhoneAsBase(term);
+	const searchTerm = phoneBase || formatStringAsOnlyDigits(term);
+	return sql`${column} LIKE '%' || ${searchTerm} || '%'`;
+}
+
+/**
+ * Busca por conteúdo em coluna cujo valor é gravado com máscara (`clients.cpf_cnpj` guarda
+ * "123.456.789-01"). Reduz os dois lados a dígitos, para que o termo digitado case
+ * independentemente da pontuação.
+ *
+ * A expressão precisa ser idêntica à do índice `idx_clients_cpf_cnpj_digits_trgm` (migration
+ * 0064) — inclusive o `coalesce` — ou o planner não a reconhece e volta ao Seq Scan.
+ */
+export function createSimplifiedDigitsSearchCondition(column: PgColumn, term: string) {
+	const digits = formatStringAsOnlyDigits(term);
+	return sql`regexp_replace(coalesce(${column}, ''), '[^0-9]', '', 'g') LIKE '%' || ${digits} || '%'`;
 }
 
 export function createSimplifiedEmailSearchCondition(column: PgColumn, term: string) {

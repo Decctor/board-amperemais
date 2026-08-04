@@ -91,14 +91,26 @@ export const clients = newTable(
 	},
 	(table) => ({
 		// ...existing indices...
-		nomeIndex: index("idx_clients_nome").using("gist", sql`unaccent_immutable(lower(${table.nome})) gist_trgm_ops`),
+		// Full-text por nome: usado por /api/sales, /api/sales/simplified-search e
+		// /api/exportation/clients (`to_tsvector('portuguese', nome) @@ plainto_tsquery(...)`).
+		// Não atende busca parcial `LIKE '%termo%'` — para isso existe `idx_clients_nome_trgm`.
+		nomeFullTextIndex: index("idx_clients_nome").using("gin", sql`to_tsvector('portuguese', ${table.nome})`),
 		// Lookup do webhook quando `from`/`wa_id` vêm omitidos, e unicidade da identidade (0058).
 		orgWhatsappUserIdUnique: uniqueIndex("idx_clients_org_whatsapp_user_id")
 			.on(table.organizacaoId, table.whatsappUserId)
 			.where(sql`${table.whatsappUserId} is not null`),
-		telefoneIndex: index("idx_clients_telefone").using("gist", sql`${table.telefoneBase} gist_trgm_ops`),
-		emailIndex: index("idx_clients_email").using("gist", sql`lower(${table.email}) gist_trgm_ops`),
+		// Trigramas para a busca parcial de `/api/clients/search` e `/api/clients` (migration 0064).
+		// Cada expressão casa literalmente com o helper correspondente em lib/search.ts — divergir
+		// aqui faz o planner descartar o índice e voltar ao Seq Scan.
+		nomeTrigramIndex: index("idx_clients_nome_trgm").using("gin", sql`unaccent_immutable(lower(${table.nome})) gin_trgm_ops`),
+		telefoneBaseTrigramIndex: index("idx_clients_telefone_base_trgm").using("gin", sql`${table.telefoneBase} gin_trgm_ops`),
+		cpfCnpjDigitsTrigramIndex: index("idx_clients_cpf_cnpj_digits_trgm").using(
+			"gin",
+			sql`regexp_replace(coalesce(${table.cpfCnpj}, ''), '[^0-9]', '', 'g') gin_trgm_ops`,
+		),
+		emailTrigramIndex: index("idx_clients_email_trgm").using("gin", sql`lower(${table.email}) gin_trgm_ops`),
 		rfmTituloIdx: index("idx_clients_rfm_titulo").on(table.analiseRFMTitulo),
+		organizacaoIdIdx: index("idx_clients_organizacao_id").on(table.organizacaoId),
 		orgPrimeiraCompraIdx: index("idx_clients_org_primeira_compra").on(table.organizacaoId, table.primeiraCompraData),
 	}),
 );
