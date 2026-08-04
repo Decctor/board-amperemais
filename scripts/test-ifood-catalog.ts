@@ -1,7 +1,9 @@
 import "@/utils/scripts/load-next-env";
 
 import { createIfoodClient, getValidIfoodConfig } from "@/lib/data-connectors/ifood/client";
-import type { TIfoodConfig } from "@/lib/data-connectors/ifood/types";
+import { IfoodConfigSchema, type TIfoodConfig } from "@/lib/data-connectors/ifood/types";
+import { getActiveDataSourceIntegrations } from "@/lib/integrations/data-sources";
+import { IfoodCatalogContextEnum, type TIfoodCatalogContextEnum } from "@/schemas/enums";
 import {
 	batchUpdateIfoodProductsPrice,
 	createIfoodCategory,
@@ -13,11 +15,10 @@ import {
 	listIfoodCategories,
 } from "@/lib/integrations/ifood/catalog";
 import { deleteIfoodItemFromCategory, upsertIfoodItem } from "@/lib/integrations/ifood/catalog-items";
+import { deleteIfoodProductsInventory, getIfoodProductInventory, setIfoodProductInventory } from "@/lib/integrations/ifood/inventory";
 import { getIfoodMerchantsList } from "@/lib/integrations/ifood/merchant";
 import { connection, db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
 import type { AxiosInstance } from "axios";
-import { eq } from "drizzle-orm";
 
 /**
  * Exercita a Catalog API v2.0 de ponta a ponta contra uma loja real, para descobrir erro de payload
@@ -62,8 +63,9 @@ Opções:
   --confirm   Executa as ESCRITAS. Sem esta flag o script só faz as leituras e mostra o que faria.
   --keep      Não apaga a categoria e o item criados (útil para inspecionar no Portal do Parceiro).
   --cleanup   Só varre o catálogo removendo categorias [TESTE] deixadas por execuções anteriores.
-  --probe     Manda o PUT /items cru e imprime a resposta de erro INTEIRA do iFood (o mapeamento
-              normal descarta os \`details\`, que é justamente onde estão os campos recusados).
+  --probe-item Manda variantes do PUT /items cru e imprime a resposta de erro INTEIRA do iFood (o
+              mapeamento normal descarta os \`details\`, que é justamente onde estão os campos
+              recusados). Encerra depois das variantes, sem rodar o roteiro completo.
 
 O que é criado leva o prefixo [TESTE] no nome, e é removido no fim salvo --keep — inclusive quando
 o roteiro falha no meio.
@@ -95,31 +97,38 @@ function checkEqual(nome: string, esperado: unknown, recebido: unknown) {
 
 /** Imprime validade e escopo do token — o primeiro lugar a olhar quando a escrita dá 401 e a leitura não. */
 async function printTokenDiagnostics(organizationId: string) {
-	const organization = await db.query.organizations.findFirst({
-		where: eq(organizations.id, organizationId),
-		columns: { integracaoConfiguracao: true },
-	});
-	const config = organization?.integracaoConfiguracao as Record<string, unknown> | undefined;
-	console.log("\nDiagnóstico do token:");
-	console.log(`  expiresAt:   ${String(config?.expiresAt)}`);
-	console.log(`  tokenType:   ${String(config?.tokenType)}`);
-	console.log(`  merchantIds: ${JSON.stringify(config?.merchantIds)}`);
-	console.log(`  scope:       ${JSON.stringify(config?.scope)}`);
+	const rows = await getActiveDataSourceIntegrations({ executor: db, organizationId, types: ["IFOOD"] });
+	console.log("\nDiagnóstico das conexões iFood:");
+	if (!rows.length) {
+		console.log("  Nenhuma conexão iFood ativa.");
+		return;
+	}
+	for (const row of rows) {
+		const config = row.configuracao as Record<string, unknown>;
+		console.log(`  conexão ${row.id}${row.apelido ? ` (${row.apelido})` : ""} — status ${row.status}`);
+		console.log(`    expiresAt:   ${String(config?.expiresAt)}`);
+		console.log(`    tokenType:   ${String(config?.tokenType)}`);
+		console.log(`    merchantIds: ${JSON.stringify(config?.merchantIds)}`);
+		console.log(`    scope:       ${JSON.stringify(config?.scope)}`);
+	}
 }
 
+/**
+ * A conexão mora em `integrations` (uma linha por conta conectada), não mais nos campos inline da
+ * organização. O refresh de token é row-scoped, então o `integrationId` precisa viajar junto.
+ */
 async function resolveContext(organizationId: string): Promise<{ client: AxiosInstance; merchantId: string }> {
-	const organization = await db.query.organizations.findFirst({
-		where: eq(organizations.id, organizationId),
-		columns: { integracaoTipo: true, integracaoConfiguracao: true },
-	});
-
-	if (!organization) throw new Error(`Organização não encontrada: ${organizationId}`);
-	if (organization.integracaoTipo !== "IFOOD") throw new Error(`Organização não está conectada ao iFood: ${organizationId}`);
-	if (!organization.integracaoConfiguracao || organization.integracaoConfiguracao.tipo !== "IFOOD") {
-		throw new Error(`Configuração iFood inválida para organização: ${organizationId}`);
+	const rows = await getActiveDataSourceIntegrations({ executor: db, organizationId, types: ["IFOOD"] });
+	if (!rows.length) throw new Error(`Organização não tem conexão iFood ativa: ${organizationId}`);
+	if (rows.length > 1) {
+		throw new Error(`Organização tem ${rows.length} conexões iFood ativas — o script não escolhe sozinho. Desative as extras antes de testar.`);
 	}
 
-	const config: TIfoodConfig = await getValidIfoodConfig({ organizationId, config: organization.integracaoConfiguracao });
+	const integration = rows[0];
+	const parsedConfig = IfoodConfigSchema.safeParse(integration.configuracao);
+	if (!parsedConfig.success) throw new Error(`Configuração iFood inválida na conexão ${integration.id}.`);
+
+	const config: TIfoodConfig = await getValidIfoodConfig({ integrationId: integration.id, config: parsedConfig.data });
 	const client = createIfoodClient(config);
 
 	const merchantId = config.merchantIds[0] ?? (await getIfoodMerchantsList(client))[0]?.id;
@@ -247,19 +256,7 @@ async function probeFullItemDto({ client, merchantId, categoriaId }: { client: A
 	}
 }
 
-async function run({
-	organizationId,
-	confirm,
-	keep,
-	cleanup,
-	probe,
-}: {
-	organizationId: string;
-	confirm: boolean;
-	keep: boolean;
-	cleanup: boolean;
-	probe: boolean;
-}) {
+async function run({ organizationId, confirm, keep, cleanup }: { organizationId: string; confirm: boolean; keep: boolean; cleanup: boolean }) {
 	await printTokenDiagnostics(organizationId);
 	const { client, merchantId } = await resolveContext(organizationId);
 	console.log(`\n[IFOOD_CATALOG_TEST] Loja: ${merchantId}\n`);
@@ -280,6 +277,11 @@ async function run({
 	const versao = await getIfoodCatalogVersion(client, merchantId).catch(() => null);
 	check("Catálogo está na versão 2", versao === "V2", `versão reportada: ${versao ?? "desconhecida"}`);
 	if (versao === "V1") throw new Error("Catálogo na V1: a gestão por API exige upgrade para V2 antes de testar escrita.");
+
+	const contextosDaLoja = catalogos
+		.flatMap((item) => item.contextos)
+		.map((contexto) => contexto.toUpperCase())
+		.filter((contexto): contexto is TIfoodCatalogContextEnum => IfoodCatalogContextEnum.safeParse(contexto).success);
 
 	const categoriasAntes = await listIfoodCategories(client, merchantId, { catalogId: catalogo.id });
 	check(
@@ -310,7 +312,9 @@ async function run({
 	check("POST categoria devolveu id", !!categoria?.id, categoria?.id ?? "sem id");
 	if (!categoria?.id) throw new Error("Categoria não foi criada — interrompendo.");
 
-	if (probe) {
+	// `--probe-item` isola só o FullItemDto e encerra; `--probe` segue o roteiro normal ligando os
+	// probes embutidos (inventário, por ora), que precisam de um item criado para existir.
+	if (hasFlag("probe-item")) {
 		console.log("\n[PROBE] Variantes do FullItemDto (resposta crua do iFood)");
 		try {
 			await probeFullItemDto({ client, merchantId, categoriaId: categoria.id });
@@ -329,8 +333,7 @@ async function run({
 		console.log("\n3. Criação de item com dois grupos de complementos");
 		const codigoExternoItem = `TESTE_ITEM_${sufixo}`;
 		const precoInicial = 49.9;
-		const precoIndoor = 39.9;
-		const precoWhitelabel = 44.9;
+		const precoCanal = 39.9;
 		const grupos = [
 			{
 				nome: "Ponto da carne",
@@ -355,13 +358,15 @@ async function run({
 			},
 		];
 
-		// Canais: um sobrescreve preço e status, outro só preço, o terceiro herda tudo — cobre os
-		// três comportamentos de `contextModifiers` numa chamada só.
-		const canais = [
-			{ contexto: "INDOOR" as const, preco: precoIndoor, status: "UNAVAILABLE" as const, codigoExterno: null },
-			{ contexto: "WHITELABEL" as const, preco: precoWhitelabel, status: null, codigoExterno: null },
-			{ contexto: "DEFAULT" as const, preco: null, status: null, codigoExterno: null },
-		];
+		// Canais: sobrescrevemos o preço em CADA contexto que a loja realmente tem. Mandar um
+		// contexto que a loja não possui não dá erro — o iFood aceita e descarta em silêncio —, então
+		// testar contra os contextos reais é a única asserção que significa alguma coisa.
+		const canais = contextosDaLoja.map((contexto, indice) => ({
+			contexto,
+			preco: indice === 0 ? precoCanal : precoCanal - 5,
+			status: "AVAILABLE" as const,
+			codigoExterno: null,
+		}));
 
 		const { itemId, productId } = await upsertIfoodItem(client, merchantId, {
 			categoriaId: categoria.id,
@@ -402,17 +407,52 @@ async function run({
 		}
 
 		// -- 4b. Canais (contextModifiers) ---------------------------------------
-		console.log("\n4b. Canais de venda (contextModifiers)");
-		const canalIndoor = flat.canais.find((canal) => canal.contexto?.toUpperCase() === "INDOOR");
-		const canalWhitelabel = flat.canais.find((canal) => canal.contexto?.toUpperCase() === "WHITELABEL");
-
-		check("canal INDOOR voltou na releitura", !!canalIndoor, canalIndoor ? JSON.stringify(canalIndoor) : `veio: ${JSON.stringify(flat.canais)}`);
-		if (canalIndoor) {
-			checkEqual("  preço em INDOOR", precoIndoor, canalIndoor.preco);
-			checkEqual("  status em INDOOR", "UNAVAILABLE", canalIndoor.status?.toUpperCase() ?? null);
+		console.log(`\n4b. Canais de venda (contextModifiers) — a loja tem: ${contextosDaLoja.join(", ") || "nenhum"}`);
+		for (const canalEnviado of canais) {
+			const canalLido = flat.canais.find((canal) => canal.contexto?.toUpperCase() === canalEnviado.contexto);
+			check(`canal ${canalEnviado.contexto} voltou na releitura`, !!canalLido, canalLido ? undefined : `veio: ${JSON.stringify(flat.canais)}`);
+			if (canalLido) {
+				checkEqual(`  preço em ${canalEnviado.contexto}`, canalEnviado.preco, canalLido.preco);
+				checkEqual(`  status em ${canalEnviado.contexto}`, canalEnviado.status, canalLido.status?.toUpperCase() ?? null);
+			}
 		}
-		check("canal WHITELABEL voltou na releitura", !!canalWhitelabel, canalWhitelabel ? JSON.stringify(canalWhitelabel) : "não encontrado");
-		if (canalWhitelabel) checkEqual("  preço em WHITELABEL", precoWhitelabel, canalWhitelabel.preco);
+
+		// Comportamento conhecido, não bug: contexto que a loja não tem é aceito e sumido. Fixamos
+		// aqui para que uma mudança futura do iFood apareça como falha em vez de passar batido.
+		const contextoInexistente = (["INDOOR", "WHITELABEL", "DEFAULT"] as const).find((contexto) => !contextosDaLoja.includes(contexto));
+		if (contextoInexistente) {
+			const vazou = flat.canais.some((canal) => canal.contexto?.toUpperCase() === contextoInexistente);
+			check(`contexto ${contextoInexistente} (que a loja não tem) segue ausente na releitura`, !vazou);
+		}
+
+		// -- 4c. Inventário -------------------------------------------------------
+		console.log("\n4c. Inventário (estoque do produto)");
+		const semEstoque = await getIfoodProductInventory(client, merchantId, productId);
+		checkEqual("produto novo nasce sem controle de estoque", null, semEstoque.quantidade);
+
+		// A leitura do inventário é eventualmente consistente — logo após o POST ela ainda devolve o
+		// valor anterior. Relemos até bater ou estourar o teto.
+		async function lerEstoqueAte(esperado: number | null) {
+			let lido: number | null = null;
+			for (let tentativa = 1; tentativa <= 8; tentativa++) {
+				lido = (await getIfoodProductInventory(client, merchantId, productId)).quantidade;
+				if (lido === esperado) return { lido, tentativas: tentativa };
+				await sleep(2000);
+			}
+			return { lido, tentativas: 8 };
+		}
+
+		await setIfoodProductInventory(client, merchantId, { produtoId: productId, quantidade: 7 });
+		const comEstoque = await lerEstoqueAte(7);
+		check("estoque definido volta na leitura", comEstoque.lido === 7, `veio ${comEstoque.lido} após ${comEstoque.tentativas} leitura(s)`);
+
+		await deleteIfoodProductsInventory(client, merchantId, [productId]);
+		const estoqueRemovido = await lerEstoqueAte(null);
+		check(
+			"estoque removido volta a ser sem limite",
+			estoqueRemovido.lido === null,
+			`veio ${estoqueRemovido.lido} após ${estoqueRemovido.tentativas} leitura(s)`,
+		);
 
 		// -- 5. Lote de preço -----------------------------------------------------
 		console.log("\n5. Atualização de preço em lote + acompanhamento do batch");
@@ -487,10 +527,9 @@ async function main() {
 	const confirm = hasFlag("confirm");
 	const keep = hasFlag("keep");
 	const cleanup = hasFlag("cleanup");
-	const probe = hasFlag("probe");
 
-	console.log("[IFOOD_CATALOG_TEST] Iniciando", { organizationId, confirm, keep, cleanup, probe });
-	await run({ organizationId, confirm, keep, cleanup, probe });
+	console.log("[IFOOD_CATALOG_TEST] Iniciando", { organizationId, confirm, keep, cleanup, probeItem: hasFlag("probe-item") });
+	await run({ organizationId, confirm, keep, cleanup });
 
 	if (!checks.length) return;
 	const falhas = checks.filter((item) => !item.ok);

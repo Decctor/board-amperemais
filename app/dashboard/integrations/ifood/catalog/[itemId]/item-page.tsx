@@ -16,9 +16,11 @@ import { useIfoodItemEditor } from "@/state-hooks/use-ifood-item-editor";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Package } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { IfoodCatalogContextEnum } from "@/schemas/enums";
+import { useEffect, useMemo, useState } from "react";
 import { ProductChannelsBlock } from "../../_module/catalog/Blocks/ProductChannelsBlock";
 import { ProductImageBlock } from "../../_module/catalog/Blocks/ProductImageBlock";
+import { ProductInventoryBlock } from "../../_module/catalog/Blocks/ProductInventoryBlock";
 import { ProductOptionGroupsBlock } from "../../_module/catalog/Blocks/ProductOptionGroupsBlock";
 
 type IfoodCatalogItemPageProps = {
@@ -67,6 +69,15 @@ function ItemEditor({ merchantId, item, canManage, queryKey }: ItemEditorProps) 
 
 	const categoriesQuery = useIfoodCategories({ merchantId, catalogId });
 	const categorias = categoriesQuery.data ?? [];
+
+	// Canais que a loja de fato possui. O iFood descarta em silêncio um modifier de contexto que a
+	// loja não tem, então oferecer os três a uma loja só-delivery seria promessa vazia.
+	const contextosDaLoja = useMemo(() => {
+		const contextos = (catalogsQuery.data?.catalogos ?? []).flatMap((catalogo) => catalogo.contextos);
+		return contextos
+			.map((contexto) => IfoodCatalogContextEnum.safeParse(contexto.toUpperCase()))
+			.flatMap((parsed) => (parsed.success ? [parsed.data] : []));
+	}, [catalogsQuery.data]);
 
 	// Avisa antes de perder o rascunho num fechamento de aba — o iFood não guarda rascunho.
 	useEffect(() => {
@@ -156,10 +167,13 @@ function ItemEditor({ merchantId, item, canManage, queryKey }: ItemEditorProps) 
 					</div>
 				</SectionWrapper>
 
+				<ProductInventoryBlock merchantId={merchantId} produtoId={item.produtoId} canManage={canManage} />
+
 				<ProductChannelsBlock
 					canais={editor.state.canais}
 					precoPadrao={editor.state.produto.preco}
 					editable={canManage}
+					contextosDisponiveis={contextosDaLoja}
 					onUpdateCanal={editor.updateCanal}
 				/>
 

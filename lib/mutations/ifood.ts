@@ -31,6 +31,7 @@ import type {
 	TPatchIfoodOptionsInput,
 	TPatchIfoodOptionsOutput,
 } from "@/app/api/integrations/ifood/catalog/options/route";
+import type { TSetIfoodInventoryInput, TSetIfoodInventoryOutput } from "@/app/api/integrations/ifood/catalog/inventory/route";
 import type { TBatchUpdateIfoodProductsInput, TBatchUpdateIfoodProductsOutput } from "@/app/api/integrations/ifood/catalog/products/batch/route";
 import type {
 	TCreateIfoodProductInput,
@@ -113,6 +114,11 @@ export async function upsertIfoodItem(input: TUpsertIfoodItemInput) {
 
 export async function patchIfoodItem(input: TPatchIfoodItemInput) {
 	const { data } = await axios.patch<TPatchIfoodItemOutput>("/api/integrations/ifood/catalog/items", input);
+	return data;
+}
+
+export async function setIfoodInventory(input: TSetIfoodInventoryInput) {
+	const { data } = await axios.put<TSetIfoodInventoryOutput>("/api/integrations/ifood/catalog/inventory", input);
 	return data;
 }
 

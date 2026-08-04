@@ -1,5 +1,6 @@
 import type { TGetIfoodCategoriesOutput } from "@/app/api/integrations/ifood/catalog/categories/route";
 import type { TGetIfoodItemOutput } from "@/app/api/integrations/ifood/catalog/items/route";
+import type { TGetIfoodInventoryOutput } from "@/app/api/integrations/ifood/catalog/inventory/route";
 import type { TGetIfoodBatchOutput } from "@/app/api/integrations/ifood/catalog/products/batch/route";
 import type { TGetIfoodOptionGroupsOutput } from "@/app/api/integrations/ifood/catalog/option-groups/route";
 import type { TGetIfoodProductsOutput } from "@/app/api/integrations/ifood/catalog/products/route";
@@ -140,6 +141,26 @@ export function useIfoodCategories({ merchantId, catalogId }: { merchantId: stri
 export async function fetchIfoodBatchStatus({ merchantId, batchId }: { merchantId: string; batchId: string }) {
 	const { data } = await axios.get<TGetIfoodBatchOutput>(`/api/integrations/ifood/catalog/products/batch?merchantId=${merchantId}&batchId=${batchId}`);
 	return data.data;
+}
+
+async function fetchIfoodInventory({ merchantId, produtoId }: { merchantId: string; produtoId: string }) {
+	const { data } = await axios.get<TGetIfoodInventoryOutput>(
+		`/api/integrations/ifood/catalog/inventory?merchantId=${merchantId}&produtoId=${produtoId}`,
+	);
+	return data.data;
+}
+
+export function useIfoodInventory({ merchantId, produtoId }: { merchantId: string | null; produtoId: string | null }) {
+	const queryKey = ["ifood-inventory", merchantId, produtoId];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchIfoodInventory({ merchantId: merchantId as string, produtoId: produtoId as string }),
+			enabled: !!merchantId && !!produtoId,
+			retry: false,
+		}),
+		queryKey,
+	};
 }
 
 async function fetchIfoodItemById({ merchantId, itemId }: { merchantId: string; itemId: string }) {

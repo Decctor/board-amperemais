@@ -7,7 +7,7 @@ import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { formatToMoney } from "@/lib/formatting";
 import { SPREADSHEET_TABLE_ATTR, type SpreadsheetGridBounds } from "@/lib/spreadsheet-navigation";
 import { cn } from "@/lib/utils";
-import { IFOOD_CATALOG_CONTEXT_LABELS, type TIfoodCatalogStatusEnum } from "@/schemas/enums";
+import { IFOOD_CATALOG_CONTEXT_LABELS, type TIfoodCatalogContextEnum, type TIfoodCatalogStatusEnum } from "@/schemas/enums";
 import type { TIfoodChannelState } from "@/state-hooks/use-internal-ifood-product-state";
 import { Store } from "lucide-react";
 
@@ -52,6 +52,12 @@ type ProductChannelsBlockProps = {
 	precoPadrao: number | null;
 	editable?: boolean;
 	embedded?: boolean;
+	/**
+	 * Contextos que a loja realmente tem (vindos de `GET /catalogs`). Quando informado, só esses
+	 * aparecem — o iFood ACEITA e descarta em silêncio um modifier de canal que a loja não possui,
+	 * então oferecer os três a uma loja só-delivery prometeria algo que nunca acontece.
+	 */
+	contextosDisponiveis?: TIfoodCatalogContextEnum[] | null;
 	onUpdateCanal: (contexto: TIfoodChannelState["contexto"], canal: Partial<TIfoodChannelState>) => void;
 };
 
@@ -62,13 +68,23 @@ type ProductChannelsBlockProps = {
  * diferente do preço na entrega. A UI mostra o valor herdado como placeholder para que o lojista
  * veja o que vai valer sem precisar preencher.
  */
-export function ProductChannelsBlock({ canais, precoPadrao, editable = true, embedded = false, onUpdateCanal }: ProductChannelsBlockProps) {
-	const gridBounds: SpreadsheetGridBounds = { rowCount: canais.length, colCount: CHANNEL_GRID_COL_COUNT };
+export function ProductChannelsBlock({
+	canais,
+	precoPadrao,
+	editable = true,
+	embedded = false,
+	contextosDisponiveis,
+	onUpdateCanal,
+}: ProductChannelsBlockProps) {
+	const canaisVisiveis = contextosDisponiveis?.length ? canais.filter((canal) => contextosDisponiveis.includes(canal.contexto)) : canais;
+	const gridBounds: SpreadsheetGridBounds = { rowCount: canaisVisiveis.length, colCount: CHANNEL_GRID_COL_COUNT };
 
 	const content = (
 		<div className="flex w-full flex-col gap-2">
 			<p className="text-xs text-muted-foreground">
-				O mesmo item pode ter preço e disponibilidade diferentes em cada canal. Deixe em branco para herdar o valor do item.
+				{canaisVisiveis.length === 1
+					? "Esta loja vende por um canal só. Preço e disponibilidade aqui valem para ele."
+					: "O mesmo item pode ter preço e disponibilidade diferentes em cada canal. Deixe em branco para herdar o valor do item."}
 			</p>
 
 			<div {...{ [SPREADSHEET_TABLE_ATTR]: "true" }} className="flex w-full flex-col">
@@ -85,7 +101,7 @@ export function ProductChannelsBlock({ canais, precoPadrao, editable = true, emb
 				</div>
 
 				<div className="flex w-full flex-col bg-background">
-					{canais.map((canal, indice) => (
+					{canaisVisiveis.map((canal, indice) => (
 						<div key={canal.contexto} className={cn("border-t border-border", indice % 2 === 1 && "bg-muted/10")}>
 							<div className={cn(CHANNEL_DESKTOP_ROW, "min-h-11 py-1 text-xs")}>
 								<p className="min-w-0 truncate px-1 font-medium text-foreground">{IFOOD_CATALOG_CONTEXT_LABELS[canal.contexto]}</p>

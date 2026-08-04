@@ -143,13 +143,17 @@ export async function upsertIfoodItem(
 				},
 				// Só entram os canais que de fato sobrescrevem algo: mandar um modifier vazio faria o
 				// canal herdar `undefined` em vez de herdar a raiz.
+				//
+				// `status` é OBRIGATÓRIO em cada modifier (400 "ItemContextModifierDto[0] status must
+				// be one of..." sem ele), então um canal que só muda o preço repete o status do item —
+				// que é exatamente o que "herdar" significa aqui.
 				contextModifiers: payload.contextModifiers
 					? payload.contextModifiers
 							.filter((modifier) => modifier.preco != null || modifier.status != null || modifier.codigoExterno)
 							.map((modifier) => ({
 								catalogContext: modifier.contexto,
 								price: modifier.preco != null ? { value: modifier.preco } : undefined,
-								status: modifier.status ?? undefined,
+								status: modifier.status ?? payload.status,
 								externalCode: modifier.codigoExterno || undefined,
 							}))
 					: undefined,
@@ -230,6 +234,12 @@ export async function updateIfoodOptionGroup(client: AxiosInstance, merchantId: 
 	}
 }
 
+/**
+ * PATCH /optionGroups/status — pausa/reativa um grupo inteiro. O id vai no CORPO, não no caminho
+ * (`/optionGroups/{id}/status` não é o endpoint documentado).
+ *
+ * Prefira pausar opções individuais quando o grupo ainda deve aparecer com as demais disponíveis.
+ */
 export async function patchIfoodOptionGroupStatus(
 	client: AxiosInstance,
 	merchantId: string,
@@ -237,7 +247,7 @@ export async function patchIfoodOptionGroupStatus(
 	status: TIfoodCatalogStatusEnum,
 ): Promise<void> {
 	try {
-		await client.patch(catalogUrl(merchantId, `/optionGroups/${optionGroupId}/status`), { status });
+		await client.patch(catalogUrl(merchantId, "/optionGroups/status"), { optionGroupId, status });
 	} catch (error) {
 		mapIfoodError("patchIfoodOptionGroupStatus", error);
 	}

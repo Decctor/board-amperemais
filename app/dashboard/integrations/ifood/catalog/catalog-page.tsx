@@ -34,7 +34,10 @@ export default function IfoodCatalogPage({ membership, initialMerchantId }: Ifoo
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const canManage = canManageIntegrations(membership.permissoes);
-	const isConnected = membership.organizacao.integracaoTipo === "IFOOD";
+	// A conexão vive em `integrations` (uma linha por conta conectada). Os campos inline antigos
+	// (`integracaoTipo`) saíram da sessão — ler deles fazia esta página gritar "conecte sua loja"
+	// mesmo com o iFood conectado.
+	const isConnected = membership.organizacao.integracoes.some((integracao) => integracao.tipo === "IFOOD" && integracao.ativo);
 
 	const merchantsQuery = useIfoodMerchants({ enabled: isConnected });
 	const merchants = merchantsQuery.data ?? [];

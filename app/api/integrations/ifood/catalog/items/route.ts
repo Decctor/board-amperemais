@@ -130,7 +130,11 @@ const IfoodItemOptionGroupInputSchema = z
 
 const IfoodItemContextModifierInputSchema = z.object({
 	contexto: IfoodCatalogContextEnum,
-	preco: z.number({ invalid_type_error: "Tipo inválido para o preço no canal." }).min(0, "Preço no canal não pode ser negativo.").optional().nullable(),
+	preco: z
+		.number({ invalid_type_error: "Tipo inválido para o preço no canal." })
+		.min(0, "Preço no canal não pode ser negativo.")
+		.optional()
+		.nullable(),
 	status: IfoodCatalogStatusEnum.optional().nullable(),
 	codigoExterno: z.string({ invalid_type_error: "Tipo inválido para o código externo no canal." }).optional().nullable(),
 });
