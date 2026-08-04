@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { inOperationTimezone } from "@/lib/operation-timezone";
 import { SalesGeneralStatsFiltersSchema, type TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 
 import { db } from "@/services/drizzle";
@@ -423,47 +424,47 @@ async function getSalesGroupedStats({ filters, organizacaoId }: GetSalesParams) 
 	// Grouping by day of the month
 	const resultsByDayOfMonth = await db
 		.select({
-			dia: sql<number>`EXTRACT(DAY FROM ${sales.dataVenda})`,
+			dia: sql<number>`EXTRACT(DAY FROM ${inOperationTimezone(sales.dataVenda)})`,
 			qtde: count(sales.id),
 			total: sum(sales.valorTotal),
 		})
 		.from(sales)
 		.where(and(...conditions, isNotNull(sales.dataVenda)))
-		.groupBy(sql`EXTRACT(DAY FROM ${sales.dataVenda})`);
+		.groupBy(sql`EXTRACT(DAY FROM ${inOperationTimezone(sales.dataVenda)})`);
 
 	// Grouping by month
 	const resultsByMonth = await db
 		.select({
-			mes: sql<number>`EXTRACT(MONTH FROM ${sales.dataVenda})`,
+			mes: sql<number>`EXTRACT(MONTH FROM ${inOperationTimezone(sales.dataVenda)})`,
 			qtde: count(sales.id),
 			total: sum(sales.valorTotal),
 		})
 		.from(sales)
 		.where(and(...conditions, isNotNull(sales.dataVenda)))
-		.groupBy(sql`EXTRACT(MONTH FROM ${sales.dataVenda})`);
+		.groupBy(sql`EXTRACT(MONTH FROM ${inOperationTimezone(sales.dataVenda)})`);
 
 	// Grouping by day of the week (0 = Sunday, 6 = Saturday)
 	const resultsByDayOfWeek = await db
 		.select({
-			diaSemana: sql<number>`EXTRACT(DOW FROM ${sales.dataVenda})`,
+			diaSemana: sql<number>`EXTRACT(DOW FROM ${inOperationTimezone(sales.dataVenda)})`,
 			qtde: count(sales.id),
 			total: sum(sales.valorTotal),
 		})
 		.from(sales)
 		.where(and(...conditions, isNotNull(sales.dataVenda)))
-		.groupBy(sql`EXTRACT(DOW FROM ${sales.dataVenda})`);
+		.groupBy(sql`EXTRACT(DOW FROM ${inOperationTimezone(sales.dataVenda)})`);
 
 	// Heatmap: grouping by day of week + hour (0 = Sunday, 6 = Saturday; hora 0-23)
 	const resultsByDayOfWeekAndHour = await db
 		.select({
-			diaSemana: sql<number>`EXTRACT(DOW FROM ${sales.dataVenda})`,
-			hora: sql<number>`EXTRACT(HOUR FROM ${sales.dataVenda})`,
+			diaSemana: sql<number>`EXTRACT(DOW FROM ${inOperationTimezone(sales.dataVenda)})`,
+			hora: sql<number>`EXTRACT(HOUR FROM ${inOperationTimezone(sales.dataVenda)})`,
 			qtde: count(sales.id),
 			total: sum(sales.valorTotal),
 		})
 		.from(sales)
 		.where(and(...conditions, isNotNull(sales.dataVenda)))
-		.groupBy(sql`EXTRACT(DOW FROM ${sales.dataVenda})`, sql`EXTRACT(HOUR FROM ${sales.dataVenda})`);
+		.groupBy(sql`EXTRACT(DOW FROM ${inOperationTimezone(sales.dataVenda)})`, sql`EXTRACT(HOUR FROM ${inOperationTimezone(sales.dataVenda)})`);
 
 	const resultsByChannel = await db
 		.select({

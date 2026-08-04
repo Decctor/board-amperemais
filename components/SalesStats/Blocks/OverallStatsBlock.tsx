@@ -1,5 +1,7 @@
+import GoalPaceChip from "@/components/Goals/GoalPaceChip";
 import { useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { GoalTrackingBar } from "@/components/Stats/GoalTrackingBar";
+import { useGoalsStats } from "@/lib/queries/goals";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
@@ -33,9 +35,12 @@ function OverallStatsBlock({ user, userMembership, userOrg, generalQueryParams }
 	return (
 		<div className="w-full flex flex-col gap-2 py-2">
 			<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
-				<div className="flex items-center justify-between">
+				<div className="flex flex-wrap items-center justify-between gap-2">
 					<h1 className="text-xs font-medium tracking-tight uppercase">ACOMPANHAMENTO DE META DO PERÍODO</h1>
-					<VscDiffAdded size={12} />
+					<div className="flex items-center gap-2">
+						<ActiveGoalPaceChip />
+						<VscDiffAdded size={12} />
+					</div>
 				</div>
 				<div className="w-full flex items-center justify-center p-2">
 					<GoalTrackingBar
@@ -55,6 +60,21 @@ function OverallStatsBlock({ user, userMembership, userOrg, generalQueryParams }
 			)}
 		</div>
 	);
+}
+
+/**
+ * O veredito de ritmo da meta ativa, ao lado da barra de acompanhamento.
+ *
+ * A barra mostra o quanto do período já foi feito; o chip diz se isso é bom para o dia de hoje —
+ * é a informação que falta para a barra virar decisão. Fica silencioso quando não há meta ativa,
+ * porque um período sem meta não tem ritmo a comparar.
+ */
+function ActiveGoalPaceChip() {
+	const { data } = useGoalsStats();
+	const ritmo = data?.activeGoal?.ritmo;
+	if (!ritmo) return null;
+
+	return <GoalPaceChip situacao={ritmo.situacao} diferenca={ritmo.diferenca} size="sm" />;
 }
 
 export default OverallStatsBlock;

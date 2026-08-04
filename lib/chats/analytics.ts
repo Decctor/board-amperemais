@@ -1,3 +1,4 @@
+import { OPERATION_TIMEZONE } from "@/lib/operation-timezone";
 import { sql, type SQL } from "drizzle-orm";
 
 /**
@@ -18,7 +19,7 @@ import { sql, type SQL } from "drizzle-orm";
  */
 
 /** Fuso das agregações por dia e do heatmap. Fixo até existir fuso por organização. */
-export const CHAT_ANALYTICS_TIMEZONE = "America/Sao_Paulo";
+export const CHAT_ANALYTICS_TIMEZONE = OPERATION_TIMEZONE;
 
 /** Meta de primeira resposta. Constante única — vira configuração da organização depois. */
 export const CHAT_FIRST_RESPONSE_TARGET_MINUTES = 15;
@@ -80,22 +81,7 @@ export function safeRatio(numerator: number, denominator: number) {
 	return numerator / denominator;
 }
 
-/**
- * Converte um `timestamp` (sem fuso, guardando UTC) para o horário local da operação.
- *
- * A dupla conversão não é redundância. As colunas de data do módulo são `timestamp without
- * time zone` alimentadas por `now()` sob `TimeZone = UTC`, ou seja: valores UTC sem fuso
- * declarado. Um `AT TIME ZONE 'America/Sao_Paulo'` sozinho **interpretaria** o valor como
- * horário de São Paulo e o deslocaria para o lado errado — um atendimento das 21h UTC
- * (18h local) cairia às 00h do dia seguinte em vez de às 18h, jogando movimento do fim da
- * tarde para a madrugada do dia errado.
- *
- * O primeiro `AT TIME ZONE 'UTC'` declara o fuso que o valor já tem; o segundo converte
- * para o fuso da operação.
- */
-export function inOperationTimezone(column: SQL | unknown): SQL {
-	return sql`((${column}) at time zone 'UTC' at time zone ${CHAT_ANALYTICS_TIMEZONE})`;
-}
+export { inOperationTimezone } from "@/lib/operation-timezone";
 
 /** `now()` como `timestamp` UTC sem fuso, para comparar com as colunas do módulo. */
 export function nowAsNaiveUtc(): SQL {

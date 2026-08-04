@@ -8,6 +8,8 @@ import {
 	getEvenlySpacedDates,
 	getYearStringsBetweenDates,
 } from "@/lib/dates";
+import { resolveGoalShareForWindow } from "@/lib/goals/pacing";
+import { buildOrganizationPacingCurve } from "@/lib/goals/resolve-active-goal-pacing";
 import { SalesGraphFilterSchema, type TSalesGraphFilters } from "@/schemas/query-params-utils";
 
 import { db } from "@/services/drizzle";
@@ -263,60 +265,38 @@ type GetSalesGoalProps = {
 	before: string;
 	organizacaoId: string;
 };
+
+/**
+ * Parcela das metas da organização que cai dentro da janela filtrada.
+ *
+ * A repartição passa pela curva de ritmo, não por regra de três em dias corridos: uma janela de
+ * segunda a sexta numa loja que fatura no fim de semana recebia meta demais, e a versão anterior
+ * ainda contava os dias com `+1` num ramo e sem no outro.
+ *
+ * A query busca metas que **cruzam** a janela — a versão anterior só pegava metas cujo início ou
+ * fim caísse dentro dela, então uma meta trimestral desaparecia ao filtrar um mês do meio.
+ */
 async function getSalesGoal({ after, before, organizacaoId }: GetSalesGoalProps) {
-	const ajustedAfter = after;
-	const ajustedBefore = dayjs(before).endOf("day").toISOString();
-	try {
-		const goals = await db.query.goals.findMany({
-			where: (fields, { and, or, gte, lte, eq }) =>
-				and(
-					eq(fields.organizacaoId, organizacaoId),
-					or(
-						and(gte(fields.dataInicio, new Date(ajustedAfter)), lte(fields.dataInicio, new Date(ajustedBefore))),
-						and(gte(fields.dataFim, new Date(ajustedAfter)), lte(fields.dataFim, new Date(ajustedBefore))),
-					),
-				),
-		});
+	const janela = { inicio: dayjs(after).startOf("day").toDate(), fim: dayjs(before).endOf("day").toDate() };
 
-		console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goals: ", goals);
-		const applicableSaleGoal = goals.reduce((acc, current) => {
-			const afterDatetime = new Date(after).getTime();
-			const beforeDatetime = new Date(before).getTime();
+	const applicableGoals = await db.query.goals.findMany({
+		where: (fields, { and, eq, gte, lte }) =>
+			and(eq(fields.organizacaoId, organizacaoId), lte(fields.dataInicio, janela.fim), gte(fields.dataFim, janela.inicio)),
+	});
+	if (applicableGoals.length === 0) return 0;
 
-			const monthStartDatetime = new Date(current.dataInicio).getTime();
-			const monthEndDatetime = new Date(current.dataFim).getTime();
+	const agora = new Date();
+	const shares = await Promise.all(
+		applicableGoals.map(async (goal) => {
+			const curva = await buildOrganizationPacingCurve({
+				organizacaoId,
+				dataInicio: goal.dataInicio,
+				dataFim: goal.dataFim,
+				agora,
+			});
+			return goal.objetivoValor * resolveGoalShareForWindow({ curva, janela });
+		}),
+	);
 
-			const days = Math.abs(dayjs(current.dataFim).diff(dayjs(current.dataInicio), "days")) + 1;
-
-			if (
-				(afterDatetime < monthStartDatetime && beforeDatetime < monthStartDatetime) ||
-				(afterDatetime > monthEndDatetime && beforeDatetime > monthEndDatetime)
-			) {
-				console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal not applicable: ", { current });
-				return acc;
-			}
-			if (afterDatetime <= monthStartDatetime && beforeDatetime >= monthEndDatetime) {
-				// Caso o período de filtro da query compreenda o mês inteiro
-				console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal applicable for all period: ", { current });
-				return acc + current.objetivoValor;
-			}
-			if (beforeDatetime > monthEndDatetime) {
-				const applicableDays = dayjs(current.dataFim).diff(dayjs(after), "days");
-
-				console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal applicable for partial period: ", { current, applicableDays, days });
-				return acc + (current.objetivoValor * applicableDays) / days;
-			}
-
-			const applicableDays = dayjs(before).diff(dayjs(current.dataInicio), "days") + 1;
-
-			console.log("[INFO] [GET_OVERALL_SALE_GOAL] Goal applicable for partial period: ", { current, applicableDays, days });
-
-			return acc + (current.objetivoValor * applicableDays) / days;
-		}, 0);
-
-		return applicableSaleGoal;
-	} catch (error) {
-		console.log("Error getting overall sale goal", error);
-		throw error;
-	}
+	return shares.reduce((acc, share) => acc + share, 0);
 }
