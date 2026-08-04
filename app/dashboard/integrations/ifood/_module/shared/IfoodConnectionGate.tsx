@@ -8,7 +8,7 @@ import { useState, type ReactNode } from "react";
 import { IfoodConnectMenu } from "../connect/IfoodConnectMenu";
 
 type IfoodConnectionGateProps = {
-	/** A organização tem o iFood como integração ativa (`integracaoTipo === "IFOOD"`). */
+	/** A organização tem ao menos uma conexão iFood ativa em `integrations`. */
 	isConnected: boolean;
 	/** Erro da query base (lojas). 401 → conexão expirada; 404 → não conectado. */
 	error?: unknown;

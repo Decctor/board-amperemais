@@ -12,7 +12,12 @@ export function ConclusionStage({ state, onComplete, isCompleting }: ConclusionS
 	const cashbackLabel = state.cashback.ativo
 		? `Ativo · ${state.cashback.acumuloTipo === "PERCENTUAL" ? `${state.cashback.acumuloValor}%` : `R$ ${state.cashback.acumuloValor}`} de volta`
 		: "Não ativado por enquanto";
-	const dataSourceLabel = state.dataSource.mode === "POI" ? "Ponto de Interação" : state.organization.integracaoTipo ?? "Integração";
+	const dataSourceLabel =
+		state.dataSource.mode === "POI"
+			? "Ponto de Interação"
+			: state.dataSource.integracoesConectadas.length > 0
+				? state.dataSource.integracoesConectadas.join(", ")
+				: "Integração";
 
 	return (
 		<div className="flex h-full flex-col gap-6">

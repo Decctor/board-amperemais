@@ -10,6 +10,8 @@ import z from "zod";
 
 export const BLING_OAUTH_STATE_COOKIE_NAME = "bling_oauth_state";
 export const BLING_OAUTH_REDIRECT_COOKIE_NAME = "bling_oauth_redirect";
+// Reconexão explícita (D9): id da linha de `integrations` a reativar, carregado no fluxo OAuth.
+export const BLING_OAUTH_RECONNECT_COOKIE_NAME = "bling_oauth_reconnect_integration";
 
 const CreateBlingAuthorizationInputSchema = z.object({});
 export type TCreateBlingAuthorizationInput = z.infer<typeof CreateBlingAuthorizationInputSchema>;
@@ -45,6 +47,17 @@ async function createBlingAuthorizationRoute(request: NextRequest) {
 
 	const cookieStore = await cookies();
 	persistOAuthRedirect(cookieStore, BLING_OAUTH_REDIRECT_COOKIE_NAME, request.nextUrl.searchParams.get("redirectTo"));
+
+	const reconnectIntegrationId = request.nextUrl.searchParams.get("reconnectIntegrationId");
+	if (reconnectIntegrationId) {
+		cookieStore.set(BLING_OAUTH_RECONNECT_COOKIE_NAME, reconnectIntegrationId, {
+			secure: true,
+			path: "/",
+			httpOnly: true,
+			maxAge: 60 * 10,
+			sameSite: "lax",
+		});
+	}
 
 	const input = CreateBlingAuthorizationInputSchema.parse({});
 	const url = await createBlingAuthorization(input);

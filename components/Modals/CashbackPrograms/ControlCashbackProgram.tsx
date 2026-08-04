@@ -3,6 +3,7 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { updateCashbackProgram } from "@/lib/mutations/cashback-programs";
+import { DataSourceIntegrationTipoEnum, type TDataSourceIntegrationTipoEnum } from "@/schemas/enums";
 import { useCashbackProgramState } from "@/state-hooks/use-cashback-program-state";
 import { useMutation } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -27,6 +28,9 @@ type EditCashbackProgramProps = {
 };
 
 export default function EditCashbackProgram({ user, userOrg, cashbackProgram, closeModal, callbacks }: EditCashbackProgramProps) {
+	const userOrgHasActiveDataSource = userOrg.integracoes.some(
+		(integration) => integration.ativo && DataSourceIntegrationTipoEnum.options.includes(integration.tipo as TDataSourceIntegrationTipoEnum),
+	);
 	const {
 		state,
 		updateCashbackProgram: updateState,
@@ -103,7 +107,7 @@ export default function EditCashbackProgram({ user, userOrg, cashbackProgram, cl
 		>
 			<CashbackProgramsGeneralBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateState} />
 			<CashbackProgramsAccumulationBlock
-				userOrgHasIntegration={!!userOrg.integracaoTipo}
+				userOrgHasIntegration={userOrgHasActiveDataSource}
 				cashbackProgram={state.cashbackProgram}
 				updateCashbackProgram={updateState}
 			/>

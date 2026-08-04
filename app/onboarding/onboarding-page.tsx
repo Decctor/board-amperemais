@@ -31,22 +31,26 @@ import { OnboardingLayout } from "./_components/OnboardingLayout";
 import { WhatsappConnectionStage } from "./_components/WhatsappConnectionStage";
 import { ONBOARDING_STAGE_COOKIE, ONBOARDING_STAGES, type TOnboardingStage } from "./_lib/stages";
 
-type ExistingOrganization = Pick<
-	TOrganizationEntity,
-	| "id"
-	| "nome"
-	| "cnpj"
-	| "email"
-	| "telefone"
-	| "logoUrl"
-	| "atuacaoNicho"
-	| "atuacaoCanais"
-	| "tamanhoBaseClientes"
-	| "plataformasUtilizadas"
-	| "origemLead"
-	| "dadosViaPDI"
-	| "integracaoTipo"
-> | null;
+type ExistingOrganization =
+	| (Pick<
+			TOrganizationEntity,
+			| "id"
+			| "nome"
+			| "cnpj"
+			| "email"
+			| "telefone"
+			| "logoUrl"
+			| "atuacaoNicho"
+			| "atuacaoCanais"
+			| "tamanhoBaseClientes"
+			| "plataformasUtilizadas"
+			| "origemLead"
+			| "dadosViaPDI"
+	  > & {
+			/** Tipos das conexões de fonte de dados ativas em `integrations` (podem ser N). */
+			integracoesAtivas: string[];
+	  })
+	| null;
 
 type OnboardingPageProps = {
 	user: TAuthUserSession["user"];
@@ -186,7 +190,10 @@ export function OnboardingPage({ user, initialStage, existingOrganization }: Onb
 			return false;
 		}
 		if (state.dataSource.mode === "POI") {
-			await updateOrganization({ organization: { dadosViaPDI: true, origemDadosPadrao: "RECEPTOR" } });
+			// Registro de vendas do POI é config explícita (D8) — a escolha do onboarding a grava.
+			await updateOrganization({
+				organization: { dadosViaPDI: true, origemDadosPadrao: "RECEPTOR", poiConfiguracao: { vendas: { registroAtivo: true } } },
+			});
 		}
 		return true;
 	}

@@ -5,27 +5,24 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { buildIfoodSandboxIntegrationConfig, isIfoodSandboxEnabled } from "@/lib/data-connectors/ifood/sandbox";
+import { connectDataSourceIntegration } from "@/lib/integrations/data-sources";
 import { db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
-import { eq } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 
-async function connectIfoodSandbox({ organizationId }: { organizationId: string }) {
+async function connectIfoodSandbox({ organizationId, autorId }: { organizationId: string; autorId: string }) {
 	const integrationConfig = await buildIfoodSandboxIntegrationConfig();
 
-	await db
-		.update(organizations)
-		.set({
-			integracaoTipo: "IFOOD",
-			integracaoConfiguracao: integrationConfig,
-			integracaoDataUltimaSincronizacao: null,
-			dadosViaIntegracoes: true,
-		})
-		.where(eq(organizations.id, organizationId));
+	const { integration } = await connectDataSourceIntegration({
+		executor: db,
+		organizationId,
+		config: integrationConfig,
+		autorId,
+	});
 
 	return {
 		data: {
 			integracaoTipo: "IFOOD" as const,
+			integrationId: integration.id,
 			merchantIds: integrationConfig.merchantIds,
 		},
 		message: "Integração iFood sandbox conectada com sucesso.",
@@ -46,7 +43,7 @@ async function connectIfoodSandboxRoute(_request: NextRequest) {
 		return NextResponse.json({ error: "Você precisa estar vinculado a uma organização para conectar o iFood sandbox." }, { status: 400 });
 	}
 
-	const result = await connectIfoodSandbox({ organizationId });
+	const result = await connectIfoodSandbox({ organizationId, autorId: session.user.id });
 
 	return NextResponse.json(result);
 }

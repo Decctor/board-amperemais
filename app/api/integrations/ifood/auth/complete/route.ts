@@ -1,9 +1,8 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { exchangeIfoodAuthorizationCode } from "@/lib/data-connectors/ifood";
+import { connectDataSourceIntegration } from "@/lib/integrations/data-sources";
 import { db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
-import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import z from "zod";
@@ -18,16 +17,20 @@ const CompleteIfoodAuthorizationInputSchema = z.object({
 		})
 		.trim()
 		.min(1, "Código de autorização do iFood não informado."),
+	// Reconexão explícita (D9): id da linha de `integrations` a reativar.
+	reconnectIntegrationId: z.string({ invalid_type_error: "Tipo inválido para o ID da conexão a reconectar." }).optional().nullable(),
 });
 export type TCompleteIfoodAuthorizationInput = z.infer<typeof CompleteIfoodAuthorizationInputSchema>;
 
 async function completeIfoodAuthorization({
 	input,
 	organizationId,
+	autorId,
 	authorizationCodeVerifier,
 }: {
 	input: TCompleteIfoodAuthorizationInput;
 	organizationId: string;
+	autorId: string;
 	authorizationCodeVerifier: string;
 }) {
 	const token = await exchangeIfoodAuthorizationCode({
@@ -46,19 +49,18 @@ async function completeIfoodAuthorization({
 		authorizedAt: new Date().toISOString(),
 	};
 
-	await db
-		.update(organizations)
-		.set({
-			integracaoTipo: "IFOOD",
-			integracaoConfiguracao: integrationConfig,
-			integracaoDataUltimaSincronizacao: null,
-			dadosViaIntegracoes: true,
-		})
-		.where(eq(organizations.id, organizationId));
+	const { integration } = await connectDataSourceIntegration({
+		executor: db,
+		organizationId,
+		config: integrationConfig,
+		autorId,
+		reconnectIntegrationId: input.reconnectIntegrationId,
+	});
 
 	return {
 		data: {
 			integracaoTipo: "IFOOD" as const,
+			integrationId: integration.id,
 		},
 		message: "Integração iFood conectada com sucesso.",
 	};
@@ -85,6 +87,7 @@ async function completeIfoodAuthorizationRoute(request: NextRequest) {
 	const result = await completeIfoodAuthorization({
 		input,
 		organizationId,
+		autorId: session.user.id,
 		authorizationCodeVerifier,
 	});
 
