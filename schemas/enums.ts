@@ -193,13 +193,22 @@ export type TCommunityContentStatusEnum = z.infer<typeof CommunityContentStatusE
 // FINANCIAL / ERP
 // ============================================================================
 
-export const FinancialAccountTypeEnum = z.enum(["CAIXA", "BANCO", "CARTEIRA_DIGITAL"]);
+export const FinancialAccountTypeEnum = z.enum(["CAIXA", "BANCO", "CARTEIRA_DIGITAL", "CARTAO_CREDITO", "INVESTIMENTO", "OUTRO"]);
 export type TFinancialAccountTypeEnum = z.infer<typeof FinancialAccountTypeEnum>;
-export const BankAccountTypeEnum = z.enum(["CORRENTE", "POUPANCA"]);
+export const BankAccountTypeEnum = z.enum(["CORRENTE", "POUPANCA", "PAGAMENTO"]);
 export type TBankAccountTypeEnum = z.infer<typeof BankAccountTypeEnum>;
 export const FinancialTransactionTypeEnum = z.enum(["ENTRADA", "SAIDA"]);
 export type TFinancialTransactionTypeEnum = z.infer<typeof FinancialTransactionTypeEnum>;
-export const AccountingEntryOriginTypeEnum = z.enum(["VENDA", "COMPRA", "MANUAL", "ESTORNO", "TRANSFERENCIA", "CONCILIACAO", "PERDA_ESTOQUE"]);
+export const AccountingEntryOriginTypeEnum = z.enum([
+	"VENDA",
+	"COMPRA",
+	"MANUAL",
+	"ESTORNO",
+	"TRANSFERENCIA",
+	"CONCILIACAO",
+	"PERDA_ESTOQUE",
+	"RECORRENCIA",
+]);
 export type TAccountingEntryOriginTypeEnum = z.infer<typeof AccountingEntryOriginTypeEnum>;
 export const FinancialStatementOriginEnum = z.enum(["ARQUIVO", "OPEN_FINANCE"]);
 export type TFinancialStatementOriginEnum = z.infer<typeof FinancialStatementOriginEnum>;

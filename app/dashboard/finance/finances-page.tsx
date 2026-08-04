@@ -9,13 +9,14 @@ import FinancesAccountingEntriesView from "./finances-page-accounting-entries";
 import FinancesTransactionsView from "./finances-page-transactions";
 import FinancesAccountsView from "./finances-page-financial-accounts";
 import FinancesReconciliationView from "./finances-page-reconciliation";
+import { canCreateFinances, canEditFinances } from "@/lib/permissions/finances";
 
 type FinancesPageProps = {
 	user: TAuthUserSession["user"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
 };
 
-export default function FinancesPage(_props: FinancesPageProps) {
+export default function FinancesPage({ membership }: FinancesPageProps) {
 	const [viewMode, setViewMode] = useQueryState(
 		"view",
 		parseAsStringEnum(["stats", "accounting-entries", "financial-transactions", "financial-accounts", "reconciliation"]),
@@ -56,7 +57,7 @@ export default function FinancesPage(_props: FinancesPageProps) {
 					<FinancesTransactionsView />
 				</TabsContent>
 				<TabsContent value="financial-accounts" className="flex flex-col gap-3">
-					<FinancesAccountsView />
+					<FinancesAccountsView canCreateAccounts={canCreateFinances(membership.permissoes)} canEditAccounts={canEditFinances(membership.permissoes)} />
 				</TabsContent>
 				<TabsContent value="reconciliation" className="flex flex-col gap-3">
 					<FinancesReconciliationView />

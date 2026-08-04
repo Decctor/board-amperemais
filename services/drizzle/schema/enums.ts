@@ -192,9 +192,16 @@ export const communityContentStatusEnum = pgEnum("community_content_status", ["R
 // FINANCIAL / ERP
 // ============================================================================
 
-export const financialAccountTypeEnum = pgEnum("financial_account_type", ["CAIXA", "BANCO", "CARTEIRA_DIGITAL"]);
+export const financialAccountTypeEnum = pgEnum("financial_account_type", [
+	"CAIXA",
+	"BANCO",
+	"CARTEIRA_DIGITAL",
+	"CARTAO_CREDITO",
+	"INVESTIMENTO",
+	"OUTRO",
+]);
 
-export const bankAccountTypeEnum = pgEnum("bank_account_type", ["CORRENTE", "POUPANCA"]);
+export const bankAccountTypeEnum = pgEnum("bank_account_type", ["CORRENTE", "POUPANCA", "PAGAMENTO"]);
 
 export const financialTransactionTypeEnum = pgEnum("financial_transaction_type", ["ENTRADA", "SAIDA"]);
 
@@ -206,6 +213,7 @@ export const accountingEntryOriginTypeEnum = pgEnum("accounting_entry_origin_typ
 	"TRANSFERENCIA",
 	"CONCILIACAO",
 	"PERDA_ESTOQUE",
+	"RECORRENCIA",
 ]);
 
 // ============================================================================

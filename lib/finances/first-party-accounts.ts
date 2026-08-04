@@ -1,6 +1,7 @@
 import type { DBTransaction } from "@/services/drizzle";
 import { financialAccounts, type TFinancialAccount } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
+import { getDefaultFinancialAccountConfiguration } from "./financial-account-configuration";
 
 /**
  * Contas financeiras "first-party": criadas e gerenciadas pelo sistema, identificadas por uma
@@ -42,6 +43,7 @@ export async function ensureFirstPartyFinancialAccount(
 			descricao: blueprint.descricao,
 			tipo: blueprint.tipo,
 			chaveSistema: key,
+			configuracao: getDefaultFinancialAccountConfiguration(blueprint.tipo),
 			saldoInicial: 0,
 			dataSaldoInicial: new Date(),
 		})

@@ -4,15 +4,18 @@ import AccountingEntryAccountsBlock from "@/components/Modals/AccountingEntries/
 import AccountingEntryFinancialTransactionsBlock from "@/components/Modals/AccountingEntries/Blocks/FinancialTransactions";
 import AccountingEntryGeneralBlock from "@/components/Modals/AccountingEntries/Blocks/General";
 import AccountingEntryValuesBlock from "@/components/Modals/AccountingEntries/Blocks/Values";
+import { AccountingEntryRecurrenceBlock } from "@/components/Modals/AccountingEntries/Blocks/Recurrence";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
-import { updateAccountingEntry } from "@/lib/mutations/finances";
+import { createFinancialRecurringRule, updateAccountingEntry, updateFinancialRecurringRule } from "@/lib/mutations/finances";
 import { useAccountingEntryById } from "@/lib/queries/finances";
 import { useInternalAccountingEntryState } from "@/state-hooks/use-internal-accounting-entry-state";
 import { AccountingEntryOriginTypeOptions } from "@/utils/select-options";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Info } from "lucide-react";
 import { useEffect } from "react";
+import { useState } from "react";
+import type { TFinancialRecurringRuleConfig } from "@/schemas/financial-recurring";
 import { toast } from "sonner";
 
 type ControlAccountingEntryProps = {
@@ -39,6 +42,7 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 		redefineState,
 		resetState,
 	} = useInternalAccountingEntryState({ initialState: { entryId } });
+	const [recurrenceConfig, setRecurrenceConfig] = useState<TFinancialRecurringRuleConfig | null>(null);
 
 	useEffect(() => {
 		if (!entryData) return;
@@ -67,11 +71,31 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 				totalParcelas: transaction.totalParcelas,
 			})),
 		});
+		const rule = entryData.recorrenciaRegra;
+		setRecurrenceConfig(
+			rule
+				? {
+						...rule.config,
+						inicio: new Date(rule.config.inicio),
+						fim: rule.config.fim ? new Date(rule.config.fim) : null,
+					}
+				: null,
+		);
 	}, [entryData, redefineState]);
 
 	const { mutate, isPending } = useMutation({
 		mutationKey: ["update-accounting-entry", entryId],
-		mutationFn: updateAccountingEntry,
+		mutationFn: async ({ entryPayload, config }: { entryPayload: typeof state; config: TFinancialRecurringRuleConfig | null }) => {
+			const result = await updateAccountingEntry(entryPayload);
+			const existingRuleId = entryData?.recorrenciaRegra?.id;
+			if (config) {
+				if (existingRuleId) await updateFinancialRecurringRule({ ruleId: existingRuleId, config, status: "ATIVA" });
+				else await createFinancialRecurringRule({ accountingEntryId: entryId, config });
+			} else if (existingRuleId) {
+				await updateFinancialRecurringRule({ ruleId: existingRuleId, status: "ENCERRADA" });
+			}
+			return result;
+		},
 		onMutate: async () => {
 			await queryClient.cancelQueries({ queryKey });
 			callbacks?.onMutate?.();
@@ -80,7 +104,9 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 			callbacks?.onSuccess?.();
 			toast.success(data.message);
 			resetState();
+			setRecurrenceConfig(null);
 			void queryClient.invalidateQueries({ queryKey: ["finances-accounting-entries"] });
+			void queryClient.invalidateQueries({ queryKey: ["finances-recurring-rules"] });
 			void queryClient.invalidateQueries({ queryKey });
 			closeModal();
 		},
@@ -104,7 +130,7 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 			menuDescription="Ajuste os dados do lançamento e suas transações financeiras vinculadas."
 			menuActionButtonText="SALVAR LANÇAMENTO"
 			menuCancelButtonText="CANCELAR"
-			actionFunction={() => mutate(state)}
+			actionFunction={() => mutate({ entryPayload: state, config: recurrenceConfig })}
 			actionIsLoading={isPending}
 			stateIsLoading={isLoading}
 			stateError={isError ? getErrorMessage(error) : null}
@@ -134,20 +160,19 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 						</p>
 					) : null}
 					{originType === "COMPRA" ? (
-					<p className="text-xs text-muted-foreground">
-						Este lançamento foi gerado por uma compra. Os dados contábeis principais são controlados pela compra; por aqui você pode ajustar anotações e
-						transações financeiras.
-					</p>
-				) : null}
-				{originType === "ESTORNO" ? (
+						<p className="text-xs text-muted-foreground">
+							Este lançamento foi gerado por uma compra. Os dados contábeis principais são controlados pela compra; por aqui você pode ajustar anotações e
+							transações financeiras.
+						</p>
+					) : null}
+					{originType === "ESTORNO" ? (
 						<p className="text-xs text-muted-foreground">
 							Este lançamento registra um estorno. Os dados contábeis e financeiros ficam em modo leitura; apenas anotações podem ser ajustadas.
 						</p>
 					) : null}
 					{originType === "PERDA_ESTOQUE" ? (
 						<p className="text-xs text-muted-foreground">
-							Este lançamento foi gerado pelo descarte de um lote de estoque. Os dados contábeis ficam em modo leitura; apenas anotações podem ser
-							ajustadas.
+							Este lançamento foi gerado pelo descarte de um lote de estoque. Os dados contábeis ficam em modo leitura; apenas anotações podem ser ajustadas.
 						</p>
 					) : null}
 				</div>
@@ -170,6 +195,9 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 				redefineFinancialTransactions={redefineFinancialTransactions}
 				editable={canEditTransactions}
 			/>
+			{originType === "MANUAL" ? (
+				<AccountingEntryRecurrenceBlock config={recurrenceConfig} onChange={setRecurrenceConfig} editable={canEditAccountingFields} />
+			) : null}
 		</ResponsiveMenu>
 	);
 }

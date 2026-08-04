@@ -85,6 +85,67 @@ export type TAccountingEntry = z.infer<typeof AccountingEntrySchema>;
 // FINANCIAL ACCOUNTS (Contas Financeiras)
 // ============================================================================
 
+const FinancialAccountConfigurationBankSchema = z.object({
+	categoria: z.literal("BANCO"),
+	tipo: BankAccountTypeEnum.optional().nullable(),
+	codigo: z.string({ invalid_type_error: "Tipo não válido para o código do banco." }).optional().nullable(),
+	nome: z.string({ invalid_type_error: "Tipo não válido para o nome do banco." }).optional().nullable(),
+	agencia: z.string({ invalid_type_error: "Tipo não válido para a agência." }).optional().nullable(),
+	contaNumero: z.string({ invalid_type_error: "Tipo não válido para o número da conta." }).optional().nullable(),
+	contaDigito: z.string({ invalid_type_error: "Tipo não válido para o dígito da conta." }).optional().nullable(),
+});
+
+const FinancialAccountConfigurationCashSchema = z.object({
+	categoria: z.literal("CAIXA"),
+});
+
+const FinancialAccountConfigurationDigitalWalletSchema = z.object({
+	categoria: z.literal("CARTEIRA_DIGITAL"),
+	integracaoAtiva: z.boolean({ invalid_type_error: "Tipo não válido para integração ativa." }).optional(),
+	ultimaSincronizacao: z
+		.string({ invalid_type_error: "Tipo não válido para a última sincronização." })
+		.datetime({ message: "Tipo não válido para a última sincronização." })
+		.optional()
+		.nullable(),
+});
+
+const FinancialAccountConfigurationCreditCardSchema = z.object({
+	categoria: z.literal("CARTAO_CREDITO"),
+	limiteCredito: z.number({ invalid_type_error: "Tipo não válido para o limite de crédito." }).nonnegative().optional().nullable(),
+	diaFechamentoFatura: z
+		.number({ required_error: "Dia de fechamento da fatura não informado.", invalid_type_error: "Tipo não válido para o dia de fechamento da fatura." })
+		.int()
+		.min(1)
+		.max(31),
+	diaVencimentoFatura: z
+		.number({ required_error: "Dia de vencimento da fatura não informado.", invalid_type_error: "Tipo não válido para o dia de vencimento da fatura." })
+		.int()
+		.min(1)
+		.max(31),
+	contaPagamentoPadraoId: z.string({ invalid_type_error: "Tipo não válido para a conta de pagamento padrão." }).optional().nullable(),
+	taxaJurosMensal: z.number({ invalid_type_error: "Tipo não válido para a taxa de juros mensal." }).nonnegative().optional().nullable(),
+	taxaMulta: z.number({ invalid_type_error: "Tipo não válido para a taxa de multa." }).nonnegative().optional().nullable(),
+	taxaFixa: z.number({ invalid_type_error: "Tipo não válido para a taxa fixa." }).nonnegative().optional().nullable(),
+});
+
+const FinancialAccountConfigurationInvestmentSchema = z.object({
+	categoria: z.literal("INVESTIMENTO"),
+});
+
+const FinancialAccountConfigurationOtherSchema = z.object({
+	categoria: z.literal("OUTRO"),
+});
+
+export const FinancialAccountConfigurationSchema = z.discriminatedUnion("categoria", [
+	FinancialAccountConfigurationBankSchema,
+	FinancialAccountConfigurationCashSchema,
+	FinancialAccountConfigurationDigitalWalletSchema,
+	FinancialAccountConfigurationCreditCardSchema,
+	FinancialAccountConfigurationInvestmentSchema,
+	FinancialAccountConfigurationOtherSchema,
+]);
+export type TFinancialAccountConfiguration = z.infer<typeof FinancialAccountConfigurationSchema>;
+
 export const FinancialAccountSchema = z.object({
 	organizacaoId: z.string({
 		required_error: "ID da organizacao nao informado.",
@@ -96,6 +157,7 @@ export const FinancialAccountSchema = z.object({
 	}),
 	descricao: z.string({ invalid_type_error: "Tipo nao valido para a descricao da conta financeira." }).optional().nullable(),
 	tipo: FinancialAccountTypeEnum,
+	chaveSistema: z.string({ invalid_type_error: "Tipo não válido para a chave de sistema." }).optional().nullable(),
 	moeda: z.string({ invalid_type_error: "Tipo nao valido para a moeda da conta financeira." }).default("BRL"),
 	ativo: z.boolean({ invalid_type_error: "Tipo nao valido para o status ativo da conta financeira." }).default(true),
 	contaContabilId: z.string({ invalid_type_error: "Tipo nao valido para o ID da conta contabil vinculada." }).optional().nullable(),
@@ -112,6 +174,7 @@ export const FinancialAccountSchema = z.object({
 		})
 		.datetime({ message: "Tipo nao valido para a data do saldo inicial." })
 		.transform((val) => new Date(val)),
+	configuracao: FinancialAccountConfigurationSchema,
 	codigoBanco: z.string({ invalid_type_error: "Tipo nao valido para o codigo do banco." }).optional().nullable(),
 	nomeBanco: z.string({ invalid_type_error: "Tipo nao valido para o nome do banco." }).optional().nullable(),
 	agencia: z.string({ invalid_type_error: "Tipo nao valido para a agencia." }).optional().nullable(),

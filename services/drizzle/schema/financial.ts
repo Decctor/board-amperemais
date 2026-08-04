@@ -1,5 +1,18 @@
-import { relations } from "drizzle-orm";
-import { type AnyPgColumn, boolean, doublePrecision, foreignKey, index, integer, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import {
+	type AnyPgColumn,
+	boolean,
+	doublePrecision,
+	foreignKey,
+	index,
+	integer,
+	jsonb,
+	text,
+	timestamp,
+	uniqueIndex,
+	varchar,
+} from "drizzle-orm/pg-core";
+import type { TFinancialAccountConfiguration } from "@/schemas/financial";
 import { newTable } from "./common";
 import {
 	accountChartNatureEnum,
@@ -98,6 +111,9 @@ export const accountingEntries = newTable(
 		valor: doublePrecision("valor").notNull(),
 		valorPrevisto: doublePrecision("valor_previsto"),
 		dataCompetencia: timestamp("data_competencia").notNull(),
+		recorrenciaRegraId: varchar("recorrencia_regra_id", { length: 255 }),
+		recorrenciaInstanciaData: timestamp("recorrencia_instancia_data"),
+		recorrenciaGeradoEm: timestamp("recorrencia_gerado_em"),
 		autorId: varchar("autor_id", { length: 255 }).references(() => users.id),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	},
@@ -107,6 +123,9 @@ export const accountingEntries = newTable(
 		loteIdIdx: index("idx_accounting_entries_lote_id").on(table.loteId),
 		dataCompetenciaIdx: index("idx_accounting_entries_data_competencia").on(table.dataCompetencia),
 		origemTipoIdx: index("idx_accounting_entries_origem_tipo").on(table.origemTipo),
+		recurrenceInstanceUniqueIdx: uniqueIndex("uq_accounting_entries_recurrence_instance")
+			.on(table.recorrenciaRegraId, table.recorrenciaInstanciaData)
+			.where(sql`${table.recorrenciaRegraId} IS NOT NULL AND ${table.recorrenciaInstanciaData} IS NOT NULL`),
 	}),
 );
 
@@ -170,6 +189,7 @@ export const financialAccounts = newTable(
 		contaContabilId: varchar("conta_contabil_id", { length: 255 }).references(() => accountsCharts.id),
 		saldoInicial: doublePrecision("saldo_inicial").default(0).notNull(),
 		dataSaldoInicial: timestamp("data_saldo_inicial").notNull(),
+		configuracao: jsonb("configuracao").$type<TFinancialAccountConfiguration>().notNull(),
 		// Bank details (optional)
 		codigoBanco: varchar("codigo_banco", { length: 10 }),
 		nomeBanco: varchar("nome_banco", { length: 255 }),

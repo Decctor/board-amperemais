@@ -19,6 +19,7 @@ import { captureServerEvent } from "@/lib/analytics/posthog-server";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { getDealWithAvailableLicense, linkOrganizationToDeal } from "@/lib/deals";
+import { getDefaultFinancialAccountConfiguration } from "@/lib/finances/financial-account-configuration";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { OrganizationConfigurationSchema, OrganizationDefaultsSchema, OrganizationSchema } from "@/schemas/organizations";
 import { db } from "@/services/drizzle";
@@ -128,6 +129,7 @@ async function seedDefaultFinancialAccounts({
 				contaContabilId: node.contaContabilKey ? (accountIdsByKey.get(node.contaContabilKey) ?? null) : null,
 				saldoInicial: node.saldoInicial,
 				dataSaldoInicial: new Date(),
+				configuracao: getDefaultFinancialAccountConfiguration(node.tipo),
 			})
 			.returning({ id: financialAccounts.id });
 

@@ -2,14 +2,19 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { canCreateFinances, canEditFinances, canViewFinances } from "@/lib/permissions/finances";
+import { getCreditCardForecastDate } from "@/lib/finances/credit-card";
+import { getNextRecurringOccurrence } from "@/lib/finances/recurrence";
 import { db, type DBTransaction } from "@/services/drizzle";
-import { accountingEntries, accountsCharts, financialAccounts, financialTransactions } from "@/services/drizzle/schema";
+import { accountingEntries, accountsCharts, financialAccounts, financialRecurringRules, financialTransactions } from "@/services/drizzle/schema";
 import { AccountingEntrySchema, FinancialTransactionSchema } from "@/schemas/financial";
+import { FinancialRecurringRuleConfigSchema } from "@/schemas/financial-recurring";
 import { AccountingEntryOriginTypeEnum, TAccountingEntryOriginTypeEnum } from "@/schemas/enums";
+import type { TFinancialAccountConfiguration } from "@/schemas/financial";
 import { and, count, eq, gte, ilike, inArray, lte } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
+import dayjs from "dayjs";
 
 const GetAccountingEntriesInputSchema = z.object({
 	id: z
@@ -69,9 +74,15 @@ async function getAccountingEntries({ input, session }: { input: TGetAccountingE
 		});
 		if (!entry) throw new createHttpError.NotFound("Lançamento contábil não encontrado.");
 
+		const recorrenciaRegra = entry.recorrenciaRegraId
+			? await db.query.financialRecurringRules.findFirst({
+					where: and(eq(financialRecurringRules.id, entry.recorrenciaRegraId), eq(financialRecurringRules.organizacaoId, userOrgId)),
+				})
+			: null;
+
 		return {
 			data: {
-				byId: entry,
+				byId: { ...entry, recorrenciaRegra },
 				default: null,
 			},
 			message: "Lançamento contábil recuperado com sucesso.",
@@ -169,6 +180,7 @@ const FinancialTransactionMutationSchema = FinancialTransactionSchema.pick({
 const CreateAccountingEntryInputSchema = z.object({
 	entry: AccountingEntryMutationSchema,
 	entryFinancialTransactions: z.array(FinancialTransactionMutationSchema).default([]),
+	recurrenceRule: FinancialRecurringRuleConfigSchema.optional().nullable(),
 });
 export type TCreateAccountingEntryInput = z.infer<typeof CreateAccountingEntryInputSchema>;
 
@@ -293,25 +305,41 @@ async function validateAccountingEntryRelations({
 	if (!creditAccount) throw new createHttpError.NotFound("Conta de crédito não encontrada.");
 
 	const financialAccountIds = Array.from(new Set(transactions.map((transaction) => transaction.contaFinanceiraId).filter(Boolean))) as string[];
-	if (financialAccountIds.length === 0) return;
+	const accountById = new Map<string, { id: string; tipo: string; configuracao: TFinancialAccountConfiguration }>();
+	if (financialAccountIds.length === 0) return accountById;
 
+	const accounts = await tx.query.financialAccounts.findMany({
+		where: and(eq(financialAccounts.organizacaoId, orgId), inArray(financialAccounts.id, financialAccountIds)),
+		columns: { id: true, tipo: true, configuracao: true },
+	});
+	for (const account of accounts) accountById.set(account.id, account);
 	for (const accountId of financialAccountIds) {
-		const account = await tx.query.financialAccounts.findFirst({
-			where: and(eq(financialAccounts.id, accountId), eq(financialAccounts.organizacaoId, orgId)),
-			columns: { id: true },
-		});
-		if (!account) throw new createHttpError.NotFound("Conta financeira não encontrada.");
+		if (!accountById.has(accountId)) throw new createHttpError.NotFound("Conta financeira não encontrada.");
 	}
+	return accountById;
 }
 
-function getTransactionValues(transaction: TAccountingEntryTransactionInput) {
+function getTransactionValues(
+	transaction: TAccountingEntryTransactionInput,
+	{
+		account,
+		referenceDate,
+	}: {
+		account?: { tipo: string; configuracao: TFinancialAccountConfiguration };
+		referenceDate: Date;
+	},
+) {
+	const dataPrevisao =
+		account?.tipo === "CARTAO_CREDITO" && account.configuracao.categoria === "CARTAO_CREDITO"
+			? getCreditCardForecastDate(referenceDate, account.configuracao)
+			: transaction.dataPrevisao;
 	return {
 		contaFinanceiraId: transaction.contaFinanceiraId ?? null,
 		titulo: transaction.titulo,
 		tipo: transaction.tipo,
 		valor: transaction.valor,
 		metodo: transaction.metodo,
-		dataPrevisao: transaction.dataPrevisao,
+		dataPrevisao,
 		dataEfetivacao: transaction.dataEfetivacao ?? null,
 		parcela: transaction.parcela ?? null,
 		totalParcelas: transaction.totalParcelas ?? null,
@@ -326,7 +354,7 @@ async function createAccountingEntry({ input, session }: { input: TCreateAccount
 	validateTransactionTotal({ entryValue: input.entry.valor, transactions: input.entryFinancialTransactions });
 
 	const transactionReturn = await db.transaction(async (tx) => {
-		await validateAccountingEntryRelations({
+		const accountById = await validateAccountingEntryRelations({
 			tx,
 			orgId,
 			entry: input.entry,
@@ -359,9 +387,55 @@ async function createAccountingEntry({ input, session }: { input: TCreateAccount
 					organizacaoId: orgId,
 					lancamentoContabilId: createdEntry.id,
 					autorId: session.user.id,
-					...getTransactionValues(transaction),
+					...getTransactionValues(transaction, {
+						account: accountById.get(transaction.contaFinanceiraId ?? ""),
+						referenceDate: input.entry.dataCompetencia,
+					}),
 				})),
 			);
+		}
+
+		if (input.recurrenceRule) {
+			const config = input.recurrenceRule;
+			const templateTransacoes = input.entryFinancialTransactions.map((transaction) => {
+				const account = transaction.contaFinanceiraId ? accountById.get(transaction.contaFinanceiraId) : undefined;
+				return {
+					contaFinanceiraId: transaction.contaFinanceiraId ?? null,
+					titulo: transaction.titulo,
+					tipo: transaction.tipo,
+					valor: transaction.valor,
+					metodo: transaction.metodo,
+					diaPrevisao: account?.tipo === "CARTAO_CREDITO" ? null : dayjs(transaction.dataPrevisao).date(),
+					previsaoModo: account?.tipo === "CARTAO_CREDITO" ? ("INFERIR_PELA_CONTA" as const) : ("DIA_FIXO" as const),
+				};
+			});
+			const [createdRule] = await tx
+				.insert(financialRecurringRules)
+				.values({
+					organizacaoId: orgId,
+					autorId: session.user.id,
+					lancamentoContabilOrigemId: createdEntry.id,
+					status: "ATIVA",
+					config,
+					templateLancamento: {
+						titulo: input.entry.titulo,
+						anotacoes: input.entry.anotacoes ?? null,
+						idContaDebito: input.entry.idContaDebito,
+						idContaCredito: input.entry.idContaCredito,
+						valor: input.entry.valor,
+						valorPrevisto: input.entry.valorPrevisto ?? null,
+						dataCompetencia: input.entry.dataCompetencia,
+					},
+					templateTransacoes,
+					proximaGeracaoEm: getNextRecurringOccurrence(input.entry.dataCompetencia, config),
+					gerarAte: config.fim ?? null,
+				})
+				.returning({ id: financialRecurringRules.id });
+			if (!createdRule) throw new createHttpError.InternalServerError("Não foi possível criar a regra de recorrência.");
+			await tx
+				.update(accountingEntries)
+				.set({ recorrenciaRegraId: createdRule.id, recorrenciaInstanciaData: input.entry.dataCompetencia })
+				.where(eq(accountingEntries.id, createdEntry.id));
 		}
 
 		return createdEntry.id;
@@ -399,8 +473,7 @@ async function updateAccountingEntry({ input, session }: { input: TUpdateAccount
 	const canUpdateAccountingFields = existingEntry.origemTipo === "MANUAL";
 	// Lançamentos de venda e de compra têm os dados contábeis controlados pela origem, mas a programação
 	// de pagamento pode ser ajustada aqui — é onde o time financeiro trabalha.
-	const canUpdateTransactions =
-		existingEntry.origemTipo === "MANUAL" || existingEntry.origemTipo === "VENDA" || existingEntry.origemTipo === "COMPRA";
+	const canUpdateTransactions = existingEntry.origemTipo === "MANUAL" || existingEntry.origemTipo === "VENDA" || existingEntry.origemTipo === "COMPRA";
 
 	if (canUpdateAccountingFields) {
 		validateTransactionTotal({ entryValue: input.entry.valor, transactions: input.entryFinancialTransactions });
@@ -445,7 +518,7 @@ async function updateAccountingEntry({ input, session }: { input: TUpdateAccount
 
 		if (!canUpdateTransactions) return updatedEntry.id;
 
-		await validateAccountingEntryRelations({
+		const accountById = await validateAccountingEntryRelations({
 			tx,
 			orgId,
 			entry: existingEntry,
@@ -469,7 +542,12 @@ async function updateAccountingEntry({ input, session }: { input: TUpdateAccount
 			if (transaction.id) {
 				await tx
 					.update(financialTransactions)
-					.set(getTransactionValues(transaction))
+					.set(
+						getTransactionValues(transaction, {
+							account: accountById.get(transaction.contaFinanceiraId ?? ""),
+							referenceDate: input.entry.dataCompetencia,
+						}),
+					)
 					.where(
 						and(
 							eq(financialTransactions.id, transaction.id),
@@ -484,7 +562,10 @@ async function updateAccountingEntry({ input, session }: { input: TUpdateAccount
 				organizacaoId: orgId,
 				lancamentoContabilId: input.entryId,
 				autorId: session.user.id,
-				...getTransactionValues(transaction),
+				...getTransactionValues(transaction, {
+					account: accountById.get(transaction.contaFinanceiraId ?? ""),
+					referenceDate: input.entry.dataCompetencia,
+				}),
 			});
 		}
 

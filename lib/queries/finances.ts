@@ -1,8 +1,9 @@
 import { TGetFinancesOverallStatsInput, TGetFinancesOverallStatsOutput } from "@/app/api/finances/stats/route";
 import { TGetAccountingEntriesInput, TGetAccountingEntriesOutput } from "@/app/api/finances/accounting-entries/route";
 import { TGetFinancialTransactionsOutput } from "@/app/api/finances/financial-transactions/route";
-import { TGetFinancialAccountsOutput } from "@/app/api/finances/financial-accounts/route";
+import { TGetFinancialAccountsOutput, TGetFinancialAccountsOutputById } from "@/app/api/finances/financial-accounts/route";
 import { TGetFinancialAccountGraphOutput } from "@/app/api/finances/financial-accounts/graph/route";
+import { TGetRecurringRulesOutput } from "@/app/api/finances/recurring-rules/route";
 import axios from "axios";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -267,6 +268,25 @@ export function useFinancesAccounts({ initialFilters }: UseFinancesAccountsParam
 	};
 }
 
+async function fetchFinancialAccountById(accountId: string) {
+	const searchParams = new URLSearchParams({ id: accountId });
+	const { data } = await axios.get<TGetFinancialAccountsOutput>(`/api/finances/financial-accounts?${searchParams.toString()}`);
+	const account = data.data.byId;
+	if (!account) throw new Error("Oops, houve um erro ao buscar a conta financeira.");
+	return account as TGetFinancialAccountsOutputById;
+}
+
+export function useFinancialAccountById(accountId: string) {
+	return {
+		...useQuery({
+			queryKey: ["finances-financial-account-by-id", accountId],
+			queryFn: () => fetchFinancialAccountById(accountId),
+			enabled: !!accountId,
+		}),
+		queryKey: ["finances-financial-account-by-id", accountId],
+	};
+}
+
 // ============================================================================
 // FINANCIAL ACCOUNT GRAPH
 // ============================================================================
@@ -301,4 +321,21 @@ export function useFinancialAccountGraph({ contaFinanceiraId, startDate, endDate
 		queryFn: () => fetchFinancialAccountGraph({ contaFinanceiraId, startDate, endDate }),
 		enabled: !!contaFinanceiraId,
 	});
+}
+
+async function fetchFinancialRecurringRules(ruleId?: string | null) {
+	const searchParams = new URLSearchParams();
+	if (ruleId) searchParams.set("id", ruleId);
+	const { data } = await axios.get<TGetRecurringRulesOutput>(`/api/finances/recurring-rules?${searchParams.toString()}`);
+	return data.data;
+}
+
+export function useFinancialRecurringRules(ruleId?: string | null) {
+	return {
+		...useQuery({
+			queryKey: ["finances-recurring-rules", ruleId ?? "list"],
+			queryFn: () => fetchFinancialRecurringRules(ruleId),
+		}),
+		queryKey: ["finances-recurring-rules", ruleId ?? "list"],
+	};
 }

@@ -4,7 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getBestNumberOfPointsBetweenDates, getDateBuckets, getEvenlySpacedDates } from "@/lib/dates";
 import { canViewFinances } from "@/lib/permissions/finances";
 import { db } from "@/services/drizzle";
-import { financialTransactions } from "@/services/drizzle/schema";
+import { financialAccounts, financialTransactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { and, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -111,6 +111,11 @@ async function getGraphDataForPeriod({
 async function getFinancialAccountGraph({ input, session }: { input: TGetFinancialAccountGraphInput; session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const account = await db.query.financialAccounts.findFirst({
+		where: and(eq(financialAccounts.id, input.contaFinanceiraId), eq(financialAccounts.organizacaoId, userOrgId)),
+		columns: { id: true },
+	});
+	if (!account) throw new createHttpError.NotFound("Conta financeira não encontrada.");
 
 	const period = {
 		after: input.startDate ?? dayjs().subtract(30, "days").startOf("day").toDate(),

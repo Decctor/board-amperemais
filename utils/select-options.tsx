@@ -69,6 +69,7 @@ import {
 	Truck,
 	Building2,
 	BriefcaseBusiness,
+	TrendingUp,
 	Star,
 	Heart,
 	BadgeCheck,
@@ -534,6 +535,33 @@ export const FinancialAccountTypeOptions: {
 		colors: { text: "text-purple-600", background: "bg-purple-200" },
 		renderIcon: (className: string) => <Wallet className={className} />,
 	},
+	{
+		id: 4,
+		label: "CARTÃO DE CRÉDITO",
+		value: "CARTAO_CREDITO",
+		icon: <CreditCard className="w-4 h-4" />,
+		className: "bg-red-200 text-red-600 border border-red-600 hover:bg-red-100 hover:text-red-500 hover:border-red-500",
+		colors: { text: "text-red-600", background: "bg-red-200" },
+		renderIcon: (className: string) => <CreditCard className={className} />,
+	},
+	{
+		id: 5,
+		label: "INVESTIMENTO",
+		value: "INVESTIMENTO",
+		icon: <TrendingUp className="w-4 h-4" />,
+		className: "bg-amber-200 text-amber-700 border border-amber-600 hover:bg-amber-100 hover:text-amber-600 hover:border-amber-500",
+		colors: { text: "text-amber-700", background: "bg-amber-200" },
+		renderIcon: (className: string) => <TrendingUp className={className} />,
+	},
+	{
+		id: 6,
+		label: "OUTRO",
+		value: "OUTRO",
+		icon: <Wallet className="w-4 h-4" />,
+		className: "bg-gray-200 text-gray-600 border border-gray-600 hover:bg-gray-100 hover:text-gray-500 hover:border-gray-500",
+		colors: { text: "text-gray-600", background: "bg-gray-200" },
+		renderIcon: (className: string) => <Wallet className={className} />,
+	},
 ];
 export const AccountingEntryOriginTypeOptions: {
 	id: number;
@@ -600,6 +628,16 @@ export const AccountingEntryOriginTypeOptions: {
 		colors: {
 			text: "text-orange-600",
 			background: "bg-orange-200",
+		},
+	},
+	{
+		id: 7,
+		label: "RECORRÊNCIA",
+		value: "RECORRENCIA",
+		icon: <Clock className="w-4 h-4" />,
+		colors: {
+			text: "text-indigo-600",
+			background: "bg-indigo-200",
 		},
 	},
 ];

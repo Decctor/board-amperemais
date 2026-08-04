@@ -4,12 +4,15 @@ import AccountingEntryAccountsBlock from "@/components/Modals/AccountingEntries/
 import AccountingEntryFinancialTransactionsBlock from "@/components/Modals/AccountingEntries/Blocks/FinancialTransactions";
 import AccountingEntryGeneralBlock from "@/components/Modals/AccountingEntries/Blocks/General";
 import AccountingEntryValuesBlock from "@/components/Modals/AccountingEntries/Blocks/Values";
+import { AccountingEntryRecurrenceBlock } from "@/components/Modals/AccountingEntries/Blocks/Recurrence";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
 import { createAccountingEntry } from "@/lib/mutations/finances";
+import type { TFinancialRecurringRuleConfig } from "@/schemas/financial-recurring";
 import { useInternalAccountingEntryState } from "@/state-hooks/use-internal-accounting-entry-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useState } from "react";
 
 type NewAccountingEntryProps = {
 	closeModal: () => void;
@@ -33,16 +36,27 @@ export default function NewAccountingEntry({ closeModal, callbacks }: NewAccount
 		resetState,
 		getCreatePayload,
 	} = useInternalAccountingEntryState();
+	const [recurrenceConfig, setRecurrenceConfig] = useState<TFinancialRecurringRuleConfig | null>(null);
 
 	const { mutate, isPending } = useMutation({
 		mutationKey: ["create-accounting-entry"],
-		mutationFn: createAccountingEntry,
+		mutationFn: async ({
+			entryPayload,
+			config,
+		}: {
+			entryPayload: ReturnType<typeof getCreatePayload>;
+			config: TFinancialRecurringRuleConfig | null;
+		}) => {
+			return createAccountingEntry({ ...entryPayload, recurrenceRule: config });
+		},
 		onMutate: () => callbacks?.onMutate?.(),
 		onSuccess: (data) => {
 			callbacks?.onSuccess?.();
 			toast.success(data.message);
 			resetState();
+			setRecurrenceConfig(null);
 			void queryClient.invalidateQueries({ queryKey: ["finances-accounting-entries"] });
+			void queryClient.invalidateQueries({ queryKey: ["finances-recurring-rules"] });
 			closeModal();
 		},
 		onError: (error) => {
@@ -58,7 +72,7 @@ export default function NewAccountingEntry({ closeModal, callbacks }: NewAccount
 			menuDescription="Preencha os dados do lançamento e, se necessário, vincule as transações financeiras."
 			menuActionButtonText="CRIAR LANÇAMENTO"
 			menuCancelButtonText="CANCELAR"
-			actionFunction={() => mutate(getCreatePayload())}
+			actionFunction={() => mutate({ entryPayload: getCreatePayload(), config: recurrenceConfig })}
 			actionIsLoading={isPending}
 			stateIsLoading={false}
 			closeMenu={closeModal}
@@ -75,6 +89,7 @@ export default function NewAccountingEntry({ closeModal, callbacks }: NewAccount
 				removeFinancialTransaction={removeFinancialTransaction}
 				redefineFinancialTransactions={redefineFinancialTransactions}
 			/>
+			<AccountingEntryRecurrenceBlock config={recurrenceConfig} onChange={setRecurrenceConfig} />
 		</ResponsiveMenu>
 	);
 }
