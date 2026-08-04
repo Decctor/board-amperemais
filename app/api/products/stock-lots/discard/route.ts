@@ -1,9 +1,10 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { resolveAccountingDefaultAccountIds } from "@/lib/finances/resolve-accounting-default-accounts";
 import { applyStockMovement, isStockTrackingActive } from "@/lib/stock/apply-stock-movement";
-import { db } from "@/services/drizzle";
-import { productStockLots } from "@/services/drizzle/schema";
+import { db, type DBTransaction } from "@/services/drizzle";
+import { accountingEntries, productStockLots, type TProductStockLot } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -35,6 +36,38 @@ function getSessionWithOrg(session: TAuthUserSession | null) {
 	return session;
 }
 
+/**
+ * Custo unitário usado para valorar a perda: o custo médio móvel corrente do produto/variante
+ * (mesma base do custeio do sistema) e, quando a organização nunca registrou custo, o custo de
+ * origem do lote (item da compra que o criou). Lotes de produção sem custo médio ficam sem valor
+ * (as saídas de produção não congelam custo unitário do produto final).
+ */
+async function resolveDiscardUnitCost({ trx, organizationId, stockLot }: { trx: DBTransaction; organizationId: string; stockLot: TProductStockLot }) {
+	if (stockLot.produtoVarianteId) {
+		const variant = await trx.query.productVariants.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.id, stockLot.produtoVarianteId ?? ""), eq(fields.organizacaoId, organizationId)),
+			columns: { precoCusto: true },
+		});
+		if (variant?.precoCusto != null) return variant.precoCusto;
+	} else {
+		const product = await trx.query.products.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.id, stockLot.produtoId), eq(fields.organizacaoId, organizationId)),
+			columns: { precoCusto: true },
+		});
+		if (product?.precoCusto != null) return product.precoCusto;
+	}
+
+	if (stockLot.compraItemId) {
+		const purchaseItem = await trx.query.purchaseItems.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.id, stockLot.compraItemId ?? ""), eq(fields.organizacaoId, organizationId)),
+			columns: { valorUnitarioLiquido: true, valorUnitarioBruto: true },
+		});
+		if (purchaseItem) return purchaseItem.valorUnitarioLiquido ?? purchaseItem.valorUnitarioBruto ?? null;
+	}
+
+	return null;
+}
+
 async function discardProductStockLot({ input, session }: { input: TDiscardProductStockLotInput; session: TAuthUserSession }) {
 	const organizationId = session.membership?.organizacao.id;
 	const userId = session.user.id;
@@ -61,6 +94,8 @@ async function discardProductStockLot({ input, session }: { input: TDiscardProdu
 		const nextQuantity = stockLot.quantidadeAtual - input.quantidade;
 		const nextStatus = nextQuantity <= 0 ? "DESCARTADO" : stockLot.status;
 
+		const unitCost = await resolveDiscardUnitCost({ trx: tx, organizationId, stockLot });
+
 		await applyStockMovement({
 			trx: tx,
 			organizationId,
@@ -70,7 +105,7 @@ async function discardProductStockLot({ input, session }: { input: TDiscardProdu
 			signedQuantity: -input.quantidade,
 			movementType: "DESCARTE",
 			reason: input.motivo,
-			unitCost: null,
+			unitCost,
 			links: {
 				loteId: stockLot.id,
 				producaoId: stockLot.producaoId,
@@ -89,11 +124,49 @@ async function discardProductStockLot({ input, session }: { input: TDiscardProdu
 
 		if (!updatedLot?.id) throw new createHttpError.InternalServerError("Erro ao descartar lote.");
 
+		// Lançamento contábil da perda: débito em despesa de perdas, crédito baixando o ativo de
+		// estoques. Evento não-caixa — nasce sem transações financeiras. Sem custo conhecido não há
+		// o que valorar: um lançamento de valor zero é ruído contábil.
+		const lossValue = unitCost != null && unitCost > 0 ? Math.round(unitCost * input.quantidade * 100) / 100 : null;
+		let lossAccountingEntryId: string | null = null;
+		if (lossValue != null && lossValue > 0) {
+			const { debitAccountId, creditAccountId } = await resolveAccountingDefaultAccountIds({
+				trx: tx,
+				orgId: organizationId,
+				kind: "perdasEstoque",
+				autoProvisionFromSeed: true,
+			});
+			const [entry] = await tx
+				.insert(accountingEntries)
+				.values({
+					organizacaoId: organizationId,
+					loteId: stockLot.id,
+					origemTipo: "PERDA_ESTOQUE",
+					titulo: `DESCARTE LOTE ${stockLot.codigoLote ?? `#${stockLot.id}`}`,
+					anotacoes: input.motivo,
+					idContaDebito: debitAccountId,
+					idContaCredito: creditAccountId,
+					valor: lossValue,
+					dataCompetencia: new Date(),
+					autorId: userId,
+				})
+				.returning({ id: accountingEntries.id });
+			lossAccountingEntryId = entry?.id ?? null;
+			if (!lossAccountingEntryId) throw new createHttpError.InternalServerError("Erro ao criar lançamento contábil da perda.");
+		}
+
 		return {
 			data: {
 				discardedId: updatedLot.id,
+				perda: {
+					lancamentoContabilId: lossAccountingEntryId,
+					valor: lossValue,
+					custoUnitario: unitCost,
+				},
 			},
-			message: "Descarte de lote registrado com sucesso.",
+			message: lossAccountingEntryId
+				? "Descarte de lote registrado com sucesso. Lançamento contábil de perda gerado."
+				: "Descarte de lote registrado com sucesso. Sem custo conhecido para o produto, nenhum lançamento contábil de perda foi gerado.",
 		};
 	});
 }

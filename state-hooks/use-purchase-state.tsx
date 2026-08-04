@@ -73,6 +73,7 @@ export const PurchaseStateSchema = z.object({
 	lancamentoContabil: AccountingEntrySchema.omit({
 		organizacaoId: true,
 		vendaId: true,
+		loteId: true,
 		origemTipo: true,
 		idContaDebito: true,
 		idContaCredito: true,

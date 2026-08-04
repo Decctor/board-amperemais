@@ -205,6 +205,7 @@ export const accountingEntryOriginTypeEnum = pgEnum("accounting_entry_origin_typ
 	"ESTORNO",
 	"TRANSFERENCIA",
 	"CONCILIACAO",
+	"PERDA_ESTOQUE",
 ]);
 
 // ============================================================================

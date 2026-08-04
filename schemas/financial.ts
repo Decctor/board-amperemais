@@ -45,6 +45,7 @@ export const AccountingEntrySchema = z.object({
 		invalid_type_error: "Tipo nao valido para o ID da organizacao.",
 	}),
 	vendaId: z.string({ invalid_type_error: "Tipo nao valido para o ID da venda." }).optional().nullable(),
+	loteId: z.string({ invalid_type_error: "Tipo nao valido para o ID do lote." }).optional().nullable(),
 	origemTipo: AccountingEntryOriginTypeEnum,
 	titulo: z.string({
 		required_error: "Titulo do lancamento contabil nao informado.",

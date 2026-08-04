@@ -117,8 +117,8 @@ async function getProductStockLots({ input, session }: { input: TGetProductStock
 		db.query.productStockLots.findMany({
 			where: and(...conditions),
 			with: {
-				produto: { columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true } },
-				produtoVariante: { columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true } },
+				produto: { columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true, precoCusto: true } },
+				produtoVariante: { columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true, precoCusto: true } },
 				producao: { columns: { id: true, titulo: true } },
 				compra: { columns: { id: true, titulo: true } },
 			},

@@ -1,4 +1,4 @@
-import { getDefaultAccountChartCodeByKey, RecompraCRMDefaultAccountingDefaults } from "@/config/onboarding";
+import { resolveAccountingDefaultAccountIds } from "@/lib/finances/resolve-accounting-default-accounts";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
@@ -258,6 +258,7 @@ const PurchaseAccountingEntryTransactionInputSchema = FinancialTransactionSchema
 const PurchaseAccountingEntryFieldsSchema = AccountingEntrySchema.omit({
 	organizacaoId: true,
 	vendaId: true,
+	loteId: true,
 	origemTipo: true,
 	idContaDebito: true,
 	idContaCredito: true,
@@ -274,11 +275,6 @@ const CreatePurchaseInputSchema = z.object({
 });
 export type TCreatePurchaseInput = z.infer<typeof CreatePurchaseInputSchema>;
 
-/**
- * Resolve as contas contábeis de débito/crédito de uma compra a partir dos padrões da organização.
- * Mesmo padrão de `resolveTransferAccountingAccountIds` em finances/financial-transactions/transfer:
- * prefere os IDs e, para organizações onboardadas antes das chaves serem semeadas, resolve pela chave.
- */
 async function resolvePurchaseAccountingAccountIds({
 	trx,
 	orgId,
@@ -286,41 +282,7 @@ async function resolvePurchaseAccountingAccountIds({
 	trx: DBTransaction;
 	orgId: string;
 }): Promise<{ debitAccountId: string; creditAccountId: string }> {
-	const organization = await trx.query.organizations.findFirst({
-		where: (fields, { eq }) => eq(fields.id, orgId),
-		columns: { configuracao: true },
-	});
-	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
-
-	const purchaseDefaults = organization.configuracao.defaults.contabilidade.lancamentosPadrao.compras;
-	let debitAccountId = purchaseDefaults?.debitoContaId ?? null;
-	let creditAccountId = purchaseDefaults?.creditoContaId ?? null;
-
-	// Organizações onboardadas antes dos defaults de compras não têm os IDs gravados; resolvemos pelo
-	// código da conta no plano de contas padrão (a `key` do seed não é persistida).
-	if (!debitAccountId || !creditAccountId) {
-		const debitCode = getDefaultAccountChartCodeByKey(purchaseDefaults?.debitoContaKey ?? RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoKey);
-		const creditCode = getDefaultAccountChartCodeByKey(
-			purchaseDefaults?.creditoContaKey ?? RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.creditoKey,
-		);
-		const wantedCodes = [!debitAccountId ? debitCode : null, !creditAccountId ? creditCode : null].filter((code): code is string => !!code);
-
-		if (wantedCodes.length > 0) {
-			const accountsByCode = await trx.query.accountsCharts.findMany({
-				where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, orgId), inArray(fields.codigo, wantedCodes)),
-				columns: { id: true, codigo: true },
-			});
-			if (!debitAccountId && debitCode) debitAccountId = accountsByCode.find((account) => account.codigo === debitCode)?.id ?? null;
-			if (!creditAccountId && creditCode) creditAccountId = accountsByCode.find((account) => account.codigo === creditCode)?.id ?? null;
-		}
-	}
-
-	if (!debitAccountId || !creditAccountId)
-		throw new createHttpError.BadRequest(
-			"Contas contábeis padrão de compras não configuradas. Defina-as nas configurações da organização antes de registrar compras.",
-		);
-
-	return { debitAccountId, creditAccountId };
+	return await resolveAccountingDefaultAccountIds({ trx, orgId, kind: "compras" });
 }
 
 function assertAccountingEntryIsBalanced({

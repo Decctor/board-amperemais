@@ -130,6 +130,7 @@ export const RecompraCRMDefaultAccountCharts: TOnboardingAccountChartNode[] = [
 			{ key: "despesas_administrativas", nome: "Despesas Administrativas", codigo: "6.2", natureza: "DESPESA" },
 			{ key: "despesas_comerciais", nome: "Despesas Comerciais", codigo: "6.3", natureza: "DESPESA" },
 			{ key: "despesas_financeiras", nome: "Despesas Financeiras", codigo: "6.4", natureza: "DESPESA" },
+			{ key: "perdas_estoque", nome: "Perdas de Estoque", codigo: "6.5", natureza: "DESPESA" },
 		],
 	},
 ];
@@ -139,6 +140,7 @@ export const RecompraCRMDefaultAccountingDefaults: {
 		vendas: { debitoKey: string; creditoKey: string };
 		compras: { debitoKey: string; creditoKey: string };
 		transferencias: { debitoKey: string; creditoKey: string };
+		perdasEstoque: { debitoKey: string; creditoKey: string };
 	};
 } = {
 	lancamentosPadrao: {
@@ -148,6 +150,7 @@ export const RecompraCRMDefaultAccountingDefaults: {
 			debitoKey: "caixa_bancos",
 			creditoKey: "caixa_bancos",
 		},
+		perdasEstoque: { debitoKey: "perdas_estoque", creditoKey: "estoques" },
 	},
 };
 
@@ -305,6 +308,12 @@ export function buildOrganizationAccountingDefaults(accountIdsByKey: Map<string,
 				debitoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.transferencias.debitoKey,
 				creditoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.transferencias.creditoKey) ?? null,
 				creditoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.transferencias.creditoKey,
+			},
+			perdasEstoque: {
+				debitoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.perdasEstoque.debitoKey) ?? null,
+				debitoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.perdasEstoque.debitoKey,
+				creditoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.perdasEstoque.creditoKey) ?? null,
+				creditoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.perdasEstoque.creditoKey,
 			},
 		},
 	};
