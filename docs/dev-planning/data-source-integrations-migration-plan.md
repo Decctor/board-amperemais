@@ -221,14 +221,29 @@ O papel (b) — "de qual org é este merchant/store?" — vira consulta por `tip
 | `BLING` | `null` (a config não carrega id de conta) |
 | `ONLINE-SOFTWARE` | `null` |
 
+`refExterno` não identifica a conta em todos os provedores. Por isso, "reconectar" deve ser uma
+operação explícita sobre uma `integrationId` conhecida (carregada no state do OAuth quando
+aplicável), e não um lookup implícito apenas por `(organizacaoId, tipo)`. Onde o provedor expuser
+um identificador estável da conta, ele também deve ser persistido para validar a reconexão. Sem
+essa confirmação, o fluxo é tratado como nova conexão e não reaproveita silenciosamente uma linha
+histórica.
+
 Como o unique `(organizacaoId, tipo, refExterno)` não deduplica `NULL`s no Postgres, a
 unicidade "uma conexão ativa por tipo" durante a transição é **garantida em nível de aplicação**
 no serviço de criação (ver D5).
 
-**`sales.integracaoId`** (nova coluna, `varchar` FK → `integrations.id`, `onDelete: "set null"`,
+**Ciclo de vida de `integrations`**: conexões de fonte de dados passam a usar soft delete. A
+desconexão grava `ativo: false` + `dataDesativacao` e preserva a linha como identidade histórica
+da conta externa. O fluxo normal não exclui fisicamente uma integração que originou vendas. Uma
+reconexão da mesma conta externa reativa a mesma linha; conectar outra conta do mesmo provedor
+cria outra linha e mantém a anterior desativada (D9).
+
+**`sales.integracaoId`** (nova coluna, `varchar` FK → `integrations.id`, `onDelete: "restrict"`,
 nullable): gravada por `lib/data-collecting-v2/sync-sales.ts` em toda venda importada.
-Observabilidade ("de qual conexão veio esta venda") e fundação para o dedupe multi-fonte (D4).
-Vendas históricas ficam `null`.
+Observabilidade ("de qual conexão veio esta venda") e proteção contra colisão multi-fonte (D4).
+As vendas históricas das organizações que hoje possuem uma integração são atribuídas à única
+integração migrada da organização na Fase 1. Vendas internas/sem atribuição determinística podem
+continuar `null`; nenhuma atribuição existente é sobrescrita.
 
 **`organizations.poiConfiguracao`** (nova coluna, `jsonb $type<TOrganizationPoiConfig>`): config
 própria do Ponto de Interação (§3.4, D8). Nesta entrega carrega só o flag explícito de registro
@@ -320,12 +335,15 @@ follow-up staged (§8) — a coluna já nasce no lugar certo para recebê-las.
 - **D3 — iFood: uma linha por conexão, não por merchant**: `merchantIds[]` continua dentro da
   config (é um token set para N merchants). Uma linha por merchant duplicaria tokens e o refresh.
   Follow-up possível: índice GIN em `configuracao->'merchantIds'` se o scan pesar.
-- **D4 — Identidade de venda continua `(organizacaoId, idExterno)`**: mudar a chave de match quebra
-  o histórico. Mitigação nesta entrega: gravar `sales.integracaoId` e **logar/alertar colisão**
-  (venda encontrada por `idExterno` com `integracaoId` divergente e não-nulo). Unique
+- **D4 — Identidade de venda continua `(organizacaoId, idExterno)`, com colisão fail-closed**: a
+  Fase 1 preenche `sales.integracaoId` nas vendas históricas das organizações que hoje possuem
+  uma integração — no cenário atual de produção, todas essas vendas pertencem à única integração
+  da organização. Depois do cutover, encontrar uma venda pelo mesmo `idExterno` só permite update
+  quando a `integracaoId` também é a mesma. Se a integração divergir (ou a venda importada
+  encontrada continuar sem atribuição), o item não altera a venda existente e não executa
+  cashback/campanhas/efeitos; a colisão entra no erro/summary observável do batch. Unique
   `(organizacaoId, integracaoId, idExterno)` fica para quando o multi-fonte estiver rodando e o
-  risco real medido (ids do iFood são UUIDs, Bling/Online numéricos — colisão improvável, não
-  impossível).
+  risco real medido.
 - **D5 — Invariante de transição**: guard de aplicação "no máximo 1 linha **ativa** por
   `(organizacaoId, tipo)` de fonte de dados" no POST/callbacks. Preserva o comportamento atual e
   deixa a liberação de N conexões do mesmo tipo como decisão de produto posterior — o schema já
@@ -340,6 +358,19 @@ follow-up staged (§8) — a coluna já nasce no lugar certo para recebê-las.
   derivação `!integracaoTipo` (§3.4). Backfill preserva o comportamento atual. Consequência a
   comunicar: **desconectar a última integração não reabilita o registro de vendas do POI
   automaticamente** — o fluxo de desconexão na UI deve avisar/oferecer o toggle (ver R12).
+- **D9 — Integrações de fonte de dados usam soft delete e identidade estável**: desconectar grava
+  `ativo: false` + `dataDesativacao`; não usa `DELETE` e não apaga a proveniência das vendas. A FK
+  de `sales.integracaoId` usa `RESTRICT`. Reativar a mesma conta externa preserva a linha e o
+  `integrationId`; uma conta externa diferente recebe outra linha. A reconexão aponta
+  explicitamente para a linha anterior e valida a identidade externa quando o provedor a expõe —
+  nunca escolhe uma linha histórica só pelo tipo. Credenciais são revogadas no provedor quando
+  houver suporte e não são motivo para apagar a identidade histórica.
+- **D10 — Sobreposição da mesma venda entre fontes é exceção observável, não identidade nesta
+  entrega**: o paradigma padrão assume vendas distintas entre integrações. Um follow-up poderá
+  procurar **possíveis** duplicadas somente entre integrações diferentes, usando organização,
+  cliente, valor e proximidade temporal, e exibi-las como alerta na área de vendas para correção
+  manual. Essa assinatura nunca será unique nem causará merge automático. A modelagem de
+  persistência da decisão/correção e o serviço que compensa efeitos ficam fora desta migração.
 
 ### Abertas (não bloqueiam a migração)
 
@@ -347,6 +378,8 @@ follow-up staged (§8) — a coluna já nasce no lugar certo para recebê-las.
 - Acúmulo de cashback **por integração** (hoje `acumuloPermitirViaIntegracao` é binário no
   programa: com ERP + iFood, vendas das duas fontes acumulam). Se um food service quiser cashback
   só no balcão e não no iFood, precisa de config por conexão — follow-up.
+- Detecção e correção manual de possíveis vendas duplicadas entre fontes (D10), incluindo a
+  persistência da decisão do operador e a compensação idempotente de cashback/demais efeitos.
 - Cursor incremental por integração (`dataUltimaSincronizacao` como watermark real em vez de
   janela dia-corrente). Hoje não existe; a tabela nova torna trivial no futuro.
 
@@ -359,14 +392,18 @@ follow-up staged (§8) — a coluna já nasce no lugar certo para recebê-las.
 1. `services/drizzle/schema/enums.ts`: +5 valores em `integrationTypeEnum` (D1).
 2. `schemas/integrations.ts`: mover as 5 variantes de config para `IntegrationConfigSchema`;
    atualizar `schemas/enums.ts` (`IntegrationTipoEnum`).
-3. `services/drizzle/schema/sales.ts`: coluna `integracaoId` (D4).
-4. `services/drizzle/schema/organizations.ts` + `schemas/organizations.ts`: coluna
+3. `services/drizzle/schema/integrations.ts` + `schemas/integrations.ts`: coluna nullable
+   `dataDesativacao` (D9).
+4. `services/drizzle/schema/sales.ts`: coluna `integracaoId`, FK com `onDelete: "restrict"` (D4/D9).
+5. `services/drizzle/schema/organizations.ts` + `schemas/organizations.ts`: coluna
    `poiConfiguracao` + `OrganizationPoiConfigSchema` (§3.4).
-5. `lib/integrations/data-sources.ts`: constante + helpers (§3.1).
-6. `POST /api/integrations` (§3.3) + `maskConfig` cobrindo os novos tipos (garantir que
+6. `lib/integrations/data-sources.ts`: constante + helpers (§3.1).
+7. `POST /api/integrations` (§3.3) + `maskConfig` cobrindo os novos tipos (garantir que
    `accessToken`/`refreshToken`/`apiKey`/`token` das novas variantes são mascarados).
-7. SQL (manual, D7): `ALTER TYPE integration_type ADD VALUE ...` ×5; `ALTER TABLE ampmais_sales
-   ADD COLUMN integracao_id ...`; `ALTER TABLE ampmais_organizations ADD COLUMN poi_configuracao jsonb`.
+8. SQL (manual, D7): `ALTER TYPE integration_type ADD VALUE ...` ×5; `ALTER TABLE
+   ampmais_integrations ADD COLUMN data_desativacao ...`; `ALTER TABLE ampmais_sales ADD COLUMN
+   integracao_id ...` com FK `RESTRICT`; `ALTER TABLE ampmais_organizations ADD COLUMN
+   poi_configuracao jsonb`.
 
 *Aceite*: deploy sem nenhuma mudança visível; typecheck dos arquivos tocados limpo (baseline de
 ~300 erros pré-existentes — verificar filtrando `tsc` pelos arquivos alterados).
@@ -400,6 +437,36 @@ WHERE o.integracao_tipo IS NOT NULL
 	);
 ```
 
+Backfill da proveniência das vendas (D4). A premissa de produção é que, antes da liberação
+multi-fonte, todas as vendas de uma organização que possui integração pertencem à única
+integração atual. O CTE só seleciona organizações com exatamente uma fonte de dados ativa e o
+`UPDATE` nunca sobrescreve uma atribuição existente:
+
+```sql
+WITH fonte_unica AS (
+	SELECT
+		i.organizacao_id,
+		MIN(i.id) AS integracao_id
+	FROM ampmais_integrations i
+	WHERE i.ativo = true
+		AND i.tipo::text IN (
+			'ONLINE-SOFTWARE', 'CARDAPIO-WEB', 'NUVEM-SHOP', 'IFOOD', 'BLING'
+		)
+	GROUP BY i.organizacao_id
+	HAVING COUNT(*) = 1
+)
+UPDATE ampmais_sales s
+SET integracao_id = f.integracao_id
+FROM fonte_unica f
+WHERE s.organizacao_id = f.organizacao_id
+	AND s.integracao_id IS NULL;
+```
+
+- Antes do `UPDATE`, executar a mesma seleção como auditoria e registrar: organizações elegíveis,
+  quantidade de vendas por organização e organizações com zero ou mais de uma fonte candidata.
+- Depois do `UPDATE`, comparar contagem elegível × atualizada × ainda nula. Qualquer divergência
+  precisa ser explicada antes da Fase 2; não há atribuição automática em caso ambíguo.
+
 Backfill do gate do POI (D8 — snapshot do comportamento atual):
 
 ```sql
@@ -430,7 +497,9 @@ Ordem interna sugerida (tudo na mesma release; itens agrupados por superfície):
    passar `integrationId` adiante; ao fim de cada run, gravar `dataUltimaSincronizacao` +
    `status`/`ultimoErro` na linha.
 2. `lib/data-collecting-v2/types.ts` + `validation.ts` + `sync-sales.ts`: `integrationId` no
-   batch/summary/snapshot; gravar `sales.integracaoId`; log de colisão (D4).
+   batch/summary/snapshot; gravar `sales.integracaoId`; colisão fail-closed (mesmo `idExterno` e
+   outra/nenhuma `integracaoId` não altera a venda nem executa efeitos) registrada no summary
+   observável do batch (D4).
 3. `lib/data-connectors/types.ts`: `TDataConnectorKind` re-ancorado; `TDataConnectorFetchInput`
    ganha `integrationId`; config tipada pela união nova.
 4. Refresh de token row-scoped: `bling/client.ts`, `ifood/client.ts`, `ifood/sandbox.ts`,
@@ -451,15 +520,18 @@ Ordem interna sugerida (tudo na mesma release; itens agrupados por superfície):
    backfill de `merchantIds` row-scoped.
 
 **Conexão/desconexão**
-10. Callbacks Bling/Nuvemshop/iFood/sandbox: upsert em `integrations` (reconnect = update da
-    linha existente do tipo: config nova, `status: 'CONECTADO'`, `ultimoErro: null`). **Parar de
-    escrever os 4 campos antigos.**
+10. Callbacks Bling/Nuvemshop/iFood/sandbox: upsert em `integrations`. Reconexão explícita recebe a
+    `integrationId` anterior e, quando disponível, valida o identificador estável da mesma conta
+    externa antes de reativar a linha (`ativo: true`, `dataDesativacao: null`, config nova,
+    `status: 'CONECTADO'`, `ultimoErro: null`); conectar outra conta cria outra linha e preserva a
+    anterior desativada. **Parar de escrever os 4 campos antigos.**
 11. `ConfigureIntegration.tsx` → `POST /api/integrations`; desconectar em
-    `SettingsIntegration.tsx` → `DELETE /api/integrations?id=`. Ao desconectar a **última** fonte
-    de dados ativa, a UI avisa que o POI não voltará a registrar vendas sozinho e oferece ligar
-    `poiConfiguracao.vendas.registroAtivo` (R12). Expor o toggle do POI na UI de settings
-    (novo bloco "Ponto de Interação" ou o existente de POI, se houver) — é ele que destrava o
-    caso "ERP integrado + coleta local via POI".
+    `SettingsIntegration.tsx` → serviço de soft delete (`ativo: false`, `dataDesativacao: now()`),
+    sem `DELETE` para fonte de dados (D9). Ao desconectar a **última** fonte de dados ativa, a UI
+    avisa que o POI não voltará a registrar vendas sozinho e oferece ligar
+    `poiConfiguracao.vendas.registroAtivo` (R12). Expor o toggle do POI na UI de settings (novo
+    bloco "Ponto de Interação" ou o existente de POI, se houver) — é ele que destrava o caso "ERP
+    integrado + coleta local via POI".
 
 **Sessão e UI**
 12. `lib/authentication/{types,session}.ts`: remover os 3 campos; adicionar `integracoes` resumido
@@ -478,11 +550,13 @@ Ordem interna sugerida (tudo na mesma release; itens agrupados por superfície):
 14. State hooks: remover defaults dos campos que morrem (manter `dadosViaPDI`).
 
 *Aceite da Fase 2*: cron importa vendas de uma org com **duas** integrações ativas (ex.: BLING +
-IFOOD em staging/sandbox); POI de org com integração continua sem criar venda; POI de org sem
-fonte continua criando; **org com integração ativa + `registroAtivo: true` tem os dois canais
+IFOOD em staging/sandbox); colisão exata de `idExterno` entre as fontes não altera a venda
+existente nem executa seus efeitos; POI de org com integração continua sem criar venda; POI de org
+sem fonte continua criando; **org com integração ativa + `registroAtivo: true` tem os dois canais
 gerando vendas** (o caso loja-de-roupas); webhook iFood resolve merchant e keep-alive responde;
 Settings mostra as duas conexões com "última sincronização" preenchendo; nenhum token aparece em
-resposta de API nem na sessão.
+resposta de API nem na sessão; desativar e reativar a mesma conta preserva `integrationId` e a
+proveniência das vendas históricas.
 
 ### Fase 3 — Scripts e documentação
 
@@ -513,9 +587,9 @@ resposta de API nem na sessão.
 
 | # | Risco | Onde | Mitigação |
 |---|---|---|---|
-| R1 | Backfill do gate do POI errado ⇒ POI cria venda interna para org que não deveria (dupla venda + dupla campanha + duplo cashback) — ou para de criar onde deveria | `new-transaction:273` + backfill D8 | O gate deixa de ser derivado em runtime (D8) — o risco concentra-se no snapshot do backfill, auditável com um SELECT antes/depois (`registroAtivo` deve igualar `integracao_tipo IS NULL` org a org). Teste matriz: org só com META_ADS ⇒ `registroAtivo: true` ⇒ POI cria venda; org com fonte ativa ⇒ `false` ⇒ não cria; org com fonte + `registroAtivo: true` explícito ⇒ ambos os canais criam (intencional; validar que não há dupla contagem da *mesma* venda — canais cobrem vendas distintas por definição). |
+| R1 | Backfill do gate do POI errado ⇒ POI cria venda interna para org que não deveria (dupla venda + dupla campanha + duplo cashback) — ou para de criar onde deveria | `new-transaction:273` + backfill D8 | O gate deixa de ser derivado em runtime (D8) — o risco concentra-se no snapshot do backfill, auditável com um SELECT antes/depois (`registroAtivo` deve igualar `integracao_tipo IS NULL` org a org). Teste matriz: org só com META_ADS ⇒ `registroAtivo: true` ⇒ POI cria venda; org com fonte ativa ⇒ `false` ⇒ não cria; org com fonte + `registroAtivo: true` explícito ⇒ ambos os canais criam. A sobreposição excepcional da mesma venda entre canais diferentes é o risco R13, não uma propriedade do gate do POI. |
 | R2 | Homologação/keep-alive iFood quebra (merchant set vazio) | `webhooks/ifood/route.ts:73-82` | Backfill preserva `merchantIds` no jsonb; validar com `scripts/ifood-homologation-polling.ts` migrado logo após o deploy. |
-| R3 | Colisão de `idExterno` entre duas fontes da mesma org (venda A sobrescreve venda B, cashback errado) | `sync-sales.ts:278-290` | D4: `sales.integracaoId` + log de colisão desde o dia 1 do multi-fonte; unique composto quando houver dado real. |
+| R3 | Colisão de `idExterno` entre duas fontes da mesma org (venda A sobrescreve venda B, cashback errado) | `sync-sales.ts:278-290` | D4: backfill histórico de `sales.integracaoId` antes do multi-fonte; depois do cutover, match com integração divergente/ausente é fail-closed — não altera a venda nem executa efeitos e aparece no summary observável do batch. |
 | R4 | Duplo acúmulo de cashback com 2 fontes (iFood + ERP ambos acumulam via `acumuloPermitirViaIntegracao`) | `lib/data-collecting-v2/effects.ts:249,294` | Comportamento *esperado* no modelo binário atual — documentar na entrega; controle por integração é follow-up (§4 abertas). |
 | R5 | Sessão muda de shape e algum consumidor não mapeado quebra em runtime | `lib/authentication/types.ts` | A remoção dos campos é erro de compilação em todo consumidor tipado — rodar `tsc` filtrado nos tocados; grep final por `integracaoTipo`/`integracaoConfiguracao` deve retornar zero fora de schema deprecado. |
 | R6 | Refresh de token entre o backfill e o deploy da Fase 2 deixa token válido só na coluna antiga → primeira sync da linha nova falha com 401 | janela de cutover | Janela mínima (backfill + deploy na sequência); os conectores Bling/iFood já re-refresham com o `refreshToken` (que não rotaciona no refresh do Bling e rotaciona no iFood — para iFood, refazer backfill se houver sync entre os passos, ou aceitar 1 ciclo de erro + reconexão). Monitorar `status='EXPIRADO'` pós-deploy. |
@@ -525,15 +599,23 @@ resposta de API nem na sessão.
 | R10 | `products-syncing` não está no `vercel.json` — migrar o WHERE sem perceber que o trigger é manual | `app/api/cron/products-syncing` | Apenas registrar o fato; decidir separadamente se entra no `vercel.json`. |
 | R11 | Scripts não migrados rodando contra colunas congeladas (dados velhos silenciosos) na janela Fase 2→4 | `utils/scripts/*` | Janela curta + Fase 4 dropa as colunas e o compilador acusa; scripts críticos (homologação iFood) migram na Fase 2/3. |
 | R12 | Org desconecta a última integração e o POI **não** volta a registrar vendas (hoje voltava automaticamente, por derivação) ⇒ vendas de balcão somem até alguém perceber | fluxo de desconexão | Mudança comportamental intencional do D8, mas precisa de rede: a UI de desconexão avisa e oferece ligar `registroAtivo` na hora (Fase 2, item 11); Settings exibe alerta permanente quando a org está sem **nenhum** canal de vendas (nem fonte ativa, nem POI registrando). |
+| R13 | A mesma venda real chega por duas integrações com `idExterno` diferentes (ex.: marketplace direto + ERP que também recebeu o pedido) ⇒ dois registros e efeitos duplicados | pipeline multi-fonte | Risco residual aceito nesta entrega: o paradigma padrão assume fontes distintas e não haverá merge heurístico automático. Follow-up D10: query procura candidatos entre integrações diferentes por organização + cliente + valor + proximidade temporal; a aba de vendas alerta e oferece correção manual. Persistência da decisão e compensação idempotente dos efeitos serão desenhadas nesse follow-up. |
+| R14 | Excluir/desconectar uma integração zera a proveniência das vendas e faz uma reconexão parecer outra origem | ciclo de vida de `integrations` + FK de `sales` | D9: fonte de dados usa soft delete (`ativo: false`, `dataDesativacao`), FK `RESTRICT` e não é excluída pelo fluxo normal. Reconectar a mesma conta preserva a linha; conta externa diferente cria outra. |
 
 ---
 
 ## 7. Validação
 
-- **Unit**: helpers de `lib/integrations/data-sources.ts`; upsert de reconexão; guard D5;
-  mascaramento das novas variantes de config.
+- **Unit**: helpers de `lib/integrations/data-sources.ts`; reconexão da mesma conta vs. conexão de
+  outra conta; soft delete; guard D5; colisão D4 fail-closed sem efeitos; mascaramento das novas
+  variantes de config.
+- **Backfill**: relatório antes/depois de `sales.integracaoId`; toda organização elegível tem uma
+  única fonte candidata; nenhuma atribuição existente é sobrescrita; divergências ficam
+  explicitamente listadas antes do cutover.
 - **Integração (staging)**: org com BLING + IFOOD sandbox ativos → 1 run do cron gera 2 batches,
-  2 `dataUltimaSincronizacao`; desativar uma linha e confirmar que só a outra roda.
+  2 `dataUltimaSincronizacao`; colisão exata entre fontes preserva a venda original e não dispara
+  efeitos; desativar uma linha confirma que só a outra roda e que as vendas históricas mantêm sua
+  `integracaoId`; reativar a mesma conta preserva o id da integração.
 - **POI**: matriz `registroAtivo` × {sem integração, fonte ativa, fonte inativa, só META_ADS,
   `poiConfiguracao` nula (fallback)} × venda criada/não criada; caso multi-canal (fonte ativa +
   `registroAtivo: true`) com verificação de cashback/campanhas corretos em cada canal.
@@ -554,6 +636,11 @@ resposta de API nem na sessão.
   preferência de comportamento, não conexão; fica onde está.
 - Cashback por integração, cursor incremental, múltiplas conexões do mesmo tipo na UI, índice GIN
   de `merchantIds` — follow-ups listados em §4.
+- **Possíveis vendas duplicadas entre integrações com IDs externos diferentes** — follow-up D10:
+  query por organização + cliente + valor + proximidade temporal, alerta na área de vendas e ação
+  manual de correção. A assinatura é apenas indicativa; não vira unique e não faz merge
+  automático. A modelagem de persistência da decisão/correção e a compensação de cashback,
+  métricas e demais efeitos serão definidas nesse trabalho futuro.
 - **Consolidação completa da config do POI** — migrar para `poiConfiguracao` as capacidades hoje
   espalhadas: `poiConfirmacaoValorObrigatoria`, `poiQrCode*DataUrl`, resgate habilitado/embutido
   (cenário ERP), acúmulo na transação (hoje `acumuloPermitirViaPontoIntegracao` no programa de
