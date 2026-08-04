@@ -1,5 +1,6 @@
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { connectDataSourceIntegration } from "@/lib/integrations/data-sources";
+import { canManageIntegrations } from "@/lib/integrations/mask";
 import { consumeOAuthRedirect } from "@/lib/integrations/oauth-redirect";
 import { db } from "@/services/drizzle";
 import { cookies } from "next/headers";
@@ -25,6 +26,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) return NextResponse.json({ error: "Você precisa estar vinculado a uma organização para conectar a Nuvem Shop." }, { status: 400 });
+	if (!canManageIntegrations(session.membership?.permissoes)) {
+		return NextResponse.json({ error: "Você não possui permissão para gerenciar integrações." }, { status: 403 });
+	}
 
 	const cookieStore = await cookies();
 	const code = request.nextUrl.searchParams.get("code");

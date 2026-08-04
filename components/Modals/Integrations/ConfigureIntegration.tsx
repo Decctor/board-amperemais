@@ -13,6 +13,8 @@ type ViewIntegrationProps = {
 	integrationType: "ONLINE-SOFTWARE" | "CARDAPIO-WEB";
 	/** true quando já existe conexão ativa do mesmo tipo — o apelido vira obrigatório (D5). */
 	requireApelido?: boolean;
+	/** Reconexão explícita (D9): id da linha de `integrations` a reativar com as credenciais novas. */
+	reconnectIntegrationId?: string | null;
 	callbacks?: {
 		onMutate?: () => void;
 		onSuccess?: () => void;
@@ -34,7 +36,7 @@ const INITIAL_CONFIG: Record<"ONLINE-SOFTWARE" | "CARDAPIO-WEB", TOrganizationIn
 		apiKey: "",
 	},
 };
-export default function ViewIntegration({ integrationType, requireApelido, callbacks, closeMenu }: ViewIntegrationProps) {
+export default function ViewIntegration({ integrationType, requireApelido, reconnectIntegrationId, callbacks, closeMenu }: ViewIntegrationProps) {
 	const [organizationIntegrationConfig, setOrganizationIntegrationConfig] = useState<TOrganizationIntegrationConfig>(INITIAL_CONFIG[integrationType]);
 	const [apelido, setApelido] = useState("");
 
@@ -80,6 +82,7 @@ export default function ViewIntegration({ integrationType, requireApelido, callb
 		return await createIntegration({
 			apelido: apelido.trim() || null,
 			configuracao: integration,
+			reconnectIntegrationId: reconnectIntegrationId ?? null,
 		});
 	}
 

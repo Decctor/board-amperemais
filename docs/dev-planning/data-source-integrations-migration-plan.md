@@ -400,6 +400,11 @@ follow-up staged (§8) — a coluna já nasce no lugar certo para recebê-las.
   só no balcão e não no iFood, precisa de config por conexão — follow-up.
 - Detecção e correção manual de possíveis vendas duplicadas entre fontes (D10), incluindo a
   persistência da decisão do operador e a compensação idempotente de cashback/demais efeitos.
+- **Proveniência de catálogo**: `products` (e agregados/opções) não têm `integracaoId` — o
+  catálogo da organização é deliberadamente convergente por código/ID externo, como sempre foi.
+  Com N conexões de catálogo (Cardápio Web/Nuvemshop), SKUs iguais com significados diferentes se
+  sobrescrevem na sincronização (risco R15). Se o caso real aparecer, o follow-up modela
+  proveniência ou uma camada de conciliação de produtos.
 - Cursor incremental por integração (`dataUltimaSincronizacao` como watermark real em vez de
   janela dia-corrente). Hoje não existe; a tabela nova torna trivial no futuro.
 
@@ -628,7 +633,9 @@ proveniência das vendas históricas.
 | R11 | Scripts não migrados rodando contra colunas congeladas (dados velhos silenciosos) na janela Fase 2→4 | `utils/scripts/*` | Janela curta + Fase 4 dropa as colunas e o compilador acusa; scripts críticos (homologação iFood) migram na Fase 2/3. |
 | R12 | Org desconecta a última integração e o POI **não** volta a registrar vendas (hoje voltava automaticamente, por derivação) ⇒ vendas de balcão somem até alguém perceber | fluxo de desconexão | Mudança comportamental intencional do D8, mas precisa de rede: a UI de desconexão avisa e oferece ligar `registroAtivo` na hora (Fase 2, item 11); Settings exibe alerta permanente quando a org está sem **nenhum** canal de vendas (nem fonte ativa, nem POI registrando). |
 | R13 | A mesma venda real chega por duas integrações com `idExterno` diferentes (ex.: marketplace direto + ERP que também recebeu o pedido) ⇒ dois registros e efeitos duplicados | pipeline multi-fonte | Risco residual aceito nesta entrega: o paradigma padrão assume fontes distintas e não haverá merge heurístico automático. Follow-up D10: query procura candidatos entre integrações diferentes por organização + cliente + valor + proximidade temporal; a aba de vendas alerta e oferece correção manual. Persistência da decisão e compensação idempotente dos efeitos serão desenhadas nesse follow-up. |
-| R14 | Excluir/desconectar uma integração zera a proveniência das vendas e faz uma reconexão parecer outra origem | ciclo de vida de `integrations` + FK de `sales` | D9: fonte de dados usa soft delete (`ativo: false`, `dataDesativacao`), FK `RESTRICT` e não é excluída pelo fluxo normal. Reconectar a mesma conta preserva a linha; conta externa diferente cria outra. |
+| R14 | Excluir/desconectar uma integração zera a proveniência das vendas e faz uma reconexão parecer outra origem | ciclo de vida de `integrations` + FK de `sales` | D9: fonte de dados usa soft delete (`ativo: false`, `dataDesativacao`), FK `RESTRICT` e não é excluída pelo fluxo normal. Reconectar a mesma conta preserva a linha; conta externa diferente cria outra. A UI de Settings lista conexões desativadas com ação explícita de reconexão. |
+| R15 | Com N conexões de catálogo, SKUs iguais com significados diferentes se sobrescrevem (products não têm proveniência) | `catalog-sync` + `products` | Risco residual aceito: o catálogo é convergente por código/ID externo por modelagem (comportamento pré-existente). Follow-up listado em §8 se o caso real aparecer. |
+| R16 | A mesma conta/loja externa vinculada a DUAS organizações torna a resolução dos webhooks ambígua | webhooks iFood/Nuvemshop | Estado operacionalmente inválido e pré-existente (o unique de `refExterno` é por organização; o guard D5 também). Os webhooks fazem desempate determinístico (conexão mais antiga) e LOGAM warning quando encontram mais de um match — a promoção para constraint global é decisão de produto fora deste plano. |
 
 ---
 

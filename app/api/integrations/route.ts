@@ -1,7 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { connectDataSourceIntegration, isDataSourceIntegrationType } from "@/lib/integrations/data-sources";
+import { assertDataSourceIdentityAvailable, connectDataSourceIntegration, isDataSourceIntegrationType } from "@/lib/integrations/data-sources";
 import { canManageIntegrations, canViewIntegrations, maskIntegrationConfig } from "@/lib/integrations/mask";
 import { IntegrationTipoEnum } from "@/schemas/enums";
 import { DataSourceIntegrationConfigSchema, MetaAdsCapiConfigPatchSchema } from "@/schemas/integrations";
@@ -147,7 +147,32 @@ async function updateIntegration({ input, session }: { input: TUpdateIntegration
 	if (!existing) throw new createHttpError.NotFound("Integração não encontrada.");
 
 	const patch: Partial<TIntegrationEntity> = {};
-	if (input.ativo !== undefined) patch.ativo = input.ativo;
+	if (input.ativo !== undefined) {
+		patch.ativo = input.ativo;
+		// Fontes de dados carregam as invariantes do soft delete (D9) e do guard de identidade
+		// (D5) também pelo toggle — não só pelo DELETE/reconexão.
+		if (isDataSourceIntegrationType(existing.tipo)) {
+			if (input.ativo && !existing.ativo) {
+				if (!existing.configuracao || existing.configuracao.tipo !== existing.tipo) {
+					throw new createHttpError.BadRequest("Configuração inválida — reconecte a integração em vez de reativá-la.");
+				}
+				try {
+					await assertDataSourceIdentityAvailable({
+						executor: db,
+						organizationId: organizacaoId,
+						config: existing.configuracao,
+						ignoreIntegrationId: existing.id,
+					});
+				} catch (error) {
+					throw new createHttpError.BadRequest(error instanceof Error ? error.message : "Conexão duplicada.");
+				}
+				patch.dataDesativacao = null;
+			}
+			if (!input.ativo && existing.ativo) {
+				patch.dataDesativacao = new Date();
+			}
+		}
+	}
 	if (input.apelido !== undefined) patch.apelido = input.apelido;
 
 	if (input.capiConfig) {

@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { exchangeBlingAuthorizationCode } from "@/lib/data-connectors/bling/client";
 import { connectDataSourceIntegration } from "@/lib/integrations/data-sources";
+import { canManageIntegrations } from "@/lib/integrations/mask";
 import { consumeOAuthRedirect } from "@/lib/integrations/oauth-redirect";
 import { db } from "@/services/drizzle";
 import { cookies } from "next/headers";
@@ -67,6 +68,9 @@ async function completeBlingAuthorizationRoute(request: NextRequest) {
 
 	const organizationId = session.membership?.organizacao.id;
 	if (!organizationId) return NextResponse.json({ error: "Você precisa estar vinculado a uma organização para conectar o Bling." }, { status: 400 });
+	if (!canManageIntegrations(session.membership?.permissoes)) {
+		return NextResponse.json({ error: "Você não possui permissão para gerenciar integrações." }, { status: 403 });
+	}
 
 	const cookieStore = await cookies();
 	const storedState = cookieStore.get(BLING_OAUTH_STATE_COOKIE_NAME)?.value ?? null;

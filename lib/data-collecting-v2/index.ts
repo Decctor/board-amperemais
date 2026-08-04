@@ -28,6 +28,11 @@ dayjs.extend(timezone);
 
 export type TRunDataCollectingV2Params = {
 	organizationIds?: string[];
+	/**
+	 * Restringe o run a conexões específicas (ex.: webhook que já resolveu o merchant → linha).
+	 * Sem isso, um evento de uma loja iFood dispararia polling/refresh de TODAS as fontes da org.
+	 */
+	integrationIds?: string[];
 	window?: TCanonicalImportWindow;
 	processImmediateInteractions?: boolean;
 	effects?: Partial<TDataCollectingV2EffectsOptions>;
@@ -93,11 +98,14 @@ function serializeDataCollectingError(error: unknown) {
 	};
 }
 
-async function loadDataSourceIntegrations(organizationIds?: string[]) {
+async function loadDataSourceIntegrations(organizationIds?: string[], integrationIds?: string[]) {
 	const rows = await getActiveDataSourceIntegrations({ executor: db });
-	if (!organizationIds?.length) return rows;
-	const idSet = new Set(organizationIds);
-	return rows.filter((integration) => idSet.has(integration.organizacaoId));
+	const organizationIdSet = organizationIds?.length ? new Set(organizationIds) : null;
+	const integrationIdSet = integrationIds?.length ? new Set(integrationIds) : null;
+	return rows.filter(
+		(integration) =>
+			(!organizationIdSet || organizationIdSet.has(integration.organizacaoId)) && (!integrationIdSet || integrationIdSet.has(integration.id)),
+	);
 }
 
 async function loadOrganizationConfigurations(organizationIds: string[]) {
@@ -255,6 +263,7 @@ async function processIntegration({
 
 export async function runDataCollectingV2({
 	organizationIds,
+	integrationIds,
 	window = getDefaultImportWindow(),
 	processImmediateInteractions = true,
 	effects: effectsOverrides,
@@ -264,7 +273,7 @@ export async function runDataCollectingV2({
 	// Loop POR INTEGRAÇÃO, não por org: uma organização com N fontes ativas roda N batches (uma
 	// linha só tem um tipo — o gate antigo de coerência tipo↔config.tipo vive no filtro de
 	// getActiveDataSourceIntegrations).
-	const integrationsForImport = await loadDataSourceIntegrations(organizationIds);
+	const integrationsForImport = await loadDataSourceIntegrations(organizationIds, integrationIds);
 	const organizationConfigurationsById = await loadOrganizationConfigurations(
 		Array.from(new Set(integrationsForImport.map((integration) => integration.organizacaoId))),
 	);
@@ -304,10 +313,19 @@ export async function runDataCollectingV2({
 			allImmediateProcessingData.push(...immediateProcessingDataList);
 
 			// "Última sincronização" finalmente mantida: a linha da conexão registra o fim de cada
-			// run bem-sucedido.
+			// run bem-sucedido. Colisões fail-closed não derrubam o status (a conexão funciona),
+			// mas ficam visíveis em `ultimoErro` até um run limpo — senão a ocorrência só existiria
+			// no log do cron.
 			await db
 				.update(integrations)
-				.set({ dataUltimaSincronizacao: new Date(), status: "CONECTADO", ultimoErro: null })
+				.set({
+					dataUltimaSincronizacao: new Date(),
+					status: "CONECTADO",
+					ultimoErro:
+						summary.saleIdCollisionsCount > 0
+							? `${summary.saleIdCollisionsCount} colisão(ões) de idExterno com vendas de outra origem no último run — itens ignorados (fail-closed).`
+							: null,
+				})
 				.where(eq(integrations.id, integration.id));
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Erro desconhecido ao processar integração.";

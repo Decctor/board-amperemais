@@ -270,8 +270,12 @@ export type TSyncSalesResult = {
 	persistedSales: TPersistedSaleForEffects[];
 	/**
 	 * Colisões fail-closed (D4): venda existente com o mesmo `idExterno` mas outra (ou nenhuma)
-	 * `integracaoId`. O item importado NÃO altera a venda existente e NÃO executa efeitos —
-	 * aparece aqui para o summary observável do batch.
+	 * `integracaoId`. O item importado NÃO altera a venda existente e NÃO executa efeitos de
+	 * venda (cashback/campanhas/métricas) — aparece aqui para o summary observável do batch.
+	 * Nota: as entidades auxiliares do batch (cliente/produto/vendedor/parceiro) já foram
+	 * upsertadas por `syncAuxiliaryEntities` antes desta checagem — são cadastros reais da
+	 * organização e os upserts são idempotentes por identidade externa; a colisão bloqueia a
+	 * venda e seus efeitos, não o cadastro auxiliar.
 	 */
 	saleIdCollisions: TSaleIdCollision[];
 };

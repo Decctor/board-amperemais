@@ -11,6 +11,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 type IfoodConnectMenuProps = {
+	/** Reconexão explícita (D9): id da linha de `integrations` a reativar com as credenciais novas. */
+	reconnectIntegrationId?: string | null;
 	closeMenu: () => void;
 };
 
@@ -19,7 +21,7 @@ type IfoodConnectMenuProps = {
  * Portal do Parceiro e cola o código de autorização para concluir. Reusa as rotas
  * `/api/integrations/ifood/auth` e `/api/integrations/ifood/auth/complete`.
  */
-export function IfoodConnectMenu({ closeMenu }: IfoodConnectMenuProps) {
+export function IfoodConnectMenu({ reconnectIntegrationId, closeMenu }: IfoodConnectMenuProps) {
 	const [authorization, setAuthorization] = useState<TCreateIfoodAuthorizationOutput | null>(null);
 	const [authorizationCode, setAuthorizationCode] = useState("");
 
@@ -44,7 +46,7 @@ export function IfoodConnectMenu({ closeMenu }: IfoodConnectMenuProps) {
 			const response = await fetch("/api/integrations/ifood/auth/complete", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ authorizationCode }),
+				body: JSON.stringify({ authorizationCode, reconnectIntegrationId: reconnectIntegrationId ?? null }),
 			});
 			const data = await response.json();
 			if (!response.ok) throw new Error(data.error ?? "Não foi possível conectar o iFood.");

@@ -4,7 +4,7 @@ import { getActiveDataSourceIntegrations, type TDataSourceIntegration } from "@/
 import { db } from "@/services/drizzle";
 import { integrations } from "@/services/drizzle/schema";
 import type { AxiosInstance } from "axios";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { getIfoodMerchantsList } from "./merchant";
 import type { TIfoodMerchantSummaryDTO } from "./merchant-types";
@@ -89,10 +89,30 @@ export async function resolveIfoodManagementContext({
 		merchants = await getIfoodMerchantsList(client);
 		merchantIds = merchants.map((merchant) => merchant.id);
 		if (merchantIds.length) {
+			// Patch cirúrgico só de merchantIds (jsonb_set): um refresh de token concorrente não é
+			// sobrescrito por este snapshot da config.
 			await db
 				.update(integrations)
-				.set({ configuracao: { ...config, merchantIds } })
+				.set({
+					configuracao: sql`jsonb_set(${integrations.configuracao}, '{merchantIds}', ${JSON.stringify(merchantIds)}::jsonb)`,
+				})
 				.where(eq(integrations.id, integration.id));
+
+			// Merchants descobertos tarde demais para o guard de conexão (D5): se colidirem com
+			// outra linha ativa, a conta foi conectada duas vezes — estado inválido a corrigir
+			// manualmente (desativar uma das linhas). Não desativamos automaticamente.
+			const discoveredSet = new Set(merchantIds);
+			const overlapping = rows.find(
+				(row) =>
+					row.id !== integration.id && row.configuracao.tipo === "IFOOD" && row.configuracao.merchantIds.some((id) => discoveredSet.has(id)),
+			);
+			if (overlapping) {
+				console.warn("[IFOOD_CONTEXT] Merchants descobertos colidem com outra conexão ativa da organização — mesma conta conectada duas vezes?", {
+					organizacaoId,
+					integrationId: integration.id,
+					overlappingIntegrationId: overlapping.id,
+				});
+			}
 		}
 	}
 

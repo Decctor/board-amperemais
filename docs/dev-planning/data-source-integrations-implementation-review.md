@@ -281,3 +281,25 @@ Validações executadas durante o review:
 6. Ensaiar a sequência 0059 → 0060 → 0062, rotacionar o token legado e executar o procedimento de
    recuperação descrito na 0062.
 7. Só então classificar os demais itens de concorrência, observabilidade e desempenho.
+
+---
+
+## Triagem e disposição (pós-review)
+
+> Adicionado após a validação dos achados. Cada item foi classificado e, quando real, corrigido na
+> própria branch.
+
+| # | Achado | Veredito | Disposição |
+|---|---|---|---|
+| 1 | Webhooks podem resolver o tenant errado | **Parcial — pré-existente** | A mesma ambiguidade existia no modelo antigo (scan de orgs por `integracaoTipo`); o unique de `refExterno` é por organização de propósito (D5 é guard de identidade intra-org). Uma conta em duas orgs é estado operacional inválido. **Mitigado**: os dois webhooks agora fazem desempate determinístico (conexão mais antiga) e logam warning quando encontram mais de um match. Constraint global = decisão de produto (novo risco R16 no plano). |
+| 2 | Dedup iFood inoperante na autorização | **Real — corrigido** | `auth/complete` agora descobre os `merchantIds` imediatamente após a troca do token (como o sandbox já fazia) — o guard D5 e o auto-match de reconexão (D9) passam a funcionar na criação. Falha na descoberta não bloqueia a conexão (o resolver backfilla depois e agora LOGA colisão de merchants com outra linha ativa). A janela de concorrência guard→INSERT permanece (sem constraint exprimível sobre o JSONB) — risco residual aceito para um fluxo de UI single-user. |
+| 3 | UI não preserva identidade ao reconectar | **Real — corrigido** | Settings agora lista as conexões desativadas com ação explícita RECONECTAR: Bling → `?reconnectIntegrationId` no OAuth; iFood → menu com `reconnectIntegrationId` no complete (e o auto-match por merchants do item 2 cobre o fluxo sem id); Nuvemshop → auto-match por storeId; manuais → `ConfigureIntegration` com alvo explícito. |
+| 4 | Catálogo sem discriminador de conexão | **Real — follow-up de produto** | Convergência por SKU é a modelagem vigente (pré-existente); proveniência de catálogo exigiria coluna + camada de conciliação. Registrado como risco R15 + follow-up em §4/§8 do plano; sem código nesta entrega. |
+| 5 | OAuth sem `canManageIntegrations` | **Real — corrigido** | Todos os fluxos (Bling auth/callback, Nuvemshop auth/callback, iFood userCode/complete, sandbox) agora exigem a permissão. (Pré-existente: os fluxos antigos também não checavam — mas a correção é barata e alinha com o POST/DELETE.) |
+| 6 | Backfill não re-rodável com token rotacionado | **Real — corrigido** | A 0062 ganhou o passo 1b: UPDATE que re-copia o jsonb da org para linhas já criadas, guardado por `data_ultima_sincronizacao IS NULL` (só pré-cutover — nunca sobrescreve token novo da linha com token velho da org). O procedimento com DELETE foi removido do cabeçalho. |
+| 7 | Webhook dispara todas as integrações da org | **Real — corrigido** | `runDataCollectingV2` aceita `integrationIds`; o webhook resolve merchant → conexão e restringe o run àquela linha. |
+| 8 | PATCH reativa soft delete sem invariantes | **Real — corrigido** | Para tipos de fonte de dados, ativar via PATCH valida a config, roda o guard de identidade (D5) e limpa `dataDesativacao`; desativar carimba `dataDesativacao` (D9). Credencial não é revalidada — o próximo run marca ERRO/EXPIRADO. |
+| 9 | Lost update no refresh de token | **Parcial — mitigado** | O maior clobber (descoberta de merchants sobrescrevendo a config inteira) virou patch cirúrgico via `jsonb_set`. O refresh em si segue write-last-wins — mesmo risco pré-existente, explicitamente aceito no plano (R9, "refresh condicional é hardening opcional"). |
+| 10 | Colisões persistidas como sync bem-sucedido | **Parcial — corrigido** | Run com colisões continua `CONECTADO` (a conexão funciona), mas grava a ocorrência em `ultimoErro` até um run limpo. Entidades auxiliares antes da checagem: comportamento aceito e documentado — são cadastros reais da organização, upserts idempotentes; a colisão bloqueia a venda e seus efeitos. |
+| 11 | Custo extra na validação de sessão | **Aceito** | Uma SELECT indexada de colunas leves entre as 3–4 queries que a validação já faz; as linhas desativadas são necessárias para a UI de reconexão. Otimização (join na query de membership / cache) fica para quando houver medição que a justifique. |
+| — | Ausência de testes automatizados | **Norma do repo** | O repositório não possui framework de testes (os `test:*` do package.json são scripts tsx manuais). A validação segue a matriz de aceite da Fase 2 do plano (staging). |

@@ -40,12 +40,21 @@ async function findOrganizationByNuvemshopStoreId(storeId: number | null): Promi
 	if (!storeId) return null;
 
 	// Lookup indexado por refExterno (= String(storeId)) na tabela de integrações. Webhook LGPD
-	// vale para lojas já desconectadas também — por isso NÃO filtra por `ativo`.
-	const [integration] = await db
+	// vale para lojas já desconectadas também — por isso NÃO filtra por `ativo`. O unique é por
+	// organização: a mesma loja em DUAS organizações é estado inválido operacional — logar antes
+	// do desempate determinístico.
+	const rows = await db
 		.select({ organizacaoId: integrations.organizacaoId, configuracao: integrations.configuracao })
 		.from(integrations)
 		.where(and(eq(integrations.tipo, "NUVEM-SHOP"), eq(integrations.refExterno, String(storeId))))
-		.limit(1);
+		.orderBy(integrations.dataInsercao);
+	if (rows.length > 1) {
+		console.warn("[NUVEMSHOP_LGPD_WEBHOOK] storeId presente em mais de uma organização — usando a conexão mais antiga.", {
+			storeId,
+			organizationIds: rows.map((row) => row.organizacaoId),
+		});
+	}
+	const [integration] = rows;
 	if (!integration) return null;
 
 	const organization = await db.query.organizations.findFirst({

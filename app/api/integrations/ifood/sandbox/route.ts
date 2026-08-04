@@ -6,6 +6,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { buildIfoodSandboxIntegrationConfig, isIfoodSandboxEnabled } from "@/lib/data-connectors/ifood/sandbox";
 import { connectDataSourceIntegration } from "@/lib/integrations/data-sources";
+import { canManageIntegrations } from "@/lib/integrations/mask";
 import { db } from "@/services/drizzle";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -41,6 +42,9 @@ async function connectIfoodSandboxRoute(_request: NextRequest) {
 	const organizationId = session.membership?.organizacao.id;
 	if (!organizationId) {
 		return NextResponse.json({ error: "Você precisa estar vinculado a uma organização para conectar o iFood sandbox." }, { status: 400 });
+	}
+	if (!canManageIntegrations(session.membership?.permissoes)) {
+		return NextResponse.json({ error: "Você não possui permissão para gerenciar integrações." }, { status: 403 });
 	}
 
 	const result = await connectIfoodSandbox({ organizationId, autorId: session.user.id });

@@ -1,7 +1,9 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import { exchangeIfoodAuthorizationCode } from "@/lib/data-connectors/ifood";
+import { createIfoodClient, exchangeIfoodAuthorizationCode } from "@/lib/data-connectors/ifood";
 import { connectDataSourceIntegration } from "@/lib/integrations/data-sources";
+import { getIfoodMerchantsList } from "@/lib/integrations/ifood/merchant";
+import { canManageIntegrations } from "@/lib/integrations/mask";
 import { db } from "@/services/drizzle";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
@@ -38,9 +40,31 @@ async function completeIfoodAuthorization({
 		authorizationCodeVerifier,
 	});
 
+	// Descobre os merchants JÁ NA CONEXÃO: eles são a identidade externa da conta iFood — sem
+	// eles o guard de duplicidade (D5) e a reconexão automática da mesma conta (D9) não têm o
+	// que comparar, e autorizar a mesma conta duas vezes criaria duas linhas ativas. Falha na
+	// descoberta não bloqueia a conexão (o resolver backfilla depois), só a deduplicação.
+	let merchantIds: string[] = [];
+	try {
+		const merchants = await getIfoodMerchantsList(
+			createIfoodClient({
+				tipo: "IFOOD",
+				merchantIds: [],
+				accessToken: token.accessToken,
+				refreshToken: token.refreshToken,
+				tokenType: token.tokenType,
+				scope: token.scope,
+				expiresAt: token.expiresAt,
+			}),
+		);
+		merchantIds = merchants.map((merchant) => merchant.id);
+	} catch (error) {
+		console.warn("[IFOOD_AUTH_COMPLETE] Falha ao descobrir merchants na conexão — dedup indisponível até o backfill.", error);
+	}
+
 	const integrationConfig = {
 		tipo: "IFOOD" as const,
-		merchantIds: [],
+		merchantIds,
 		accessToken: token.accessToken,
 		refreshToken: token.refreshToken,
 		tokenType: token.tokenType,
@@ -73,6 +97,9 @@ async function completeIfoodAuthorizationRoute(request: NextRequest) {
 
 	const organizationId = session.membership?.organizacao.id;
 	if (!organizationId) return NextResponse.json({ error: "Você precisa estar vinculado a uma organização para conectar o iFood." }, { status: 400 });
+	if (!canManageIntegrations(session.membership?.permissoes)) {
+		return NextResponse.json({ error: "Você não possui permissão para gerenciar integrações." }, { status: 403 });
+	}
 
 	const payload = await request.json();
 	const input = CompleteIfoodAuthorizationInputSchema.parse(payload);

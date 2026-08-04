@@ -7,7 +7,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { deleteIntegration } from "@/lib/mutations/integrations";
 import { updateOrganization } from "@/lib/mutations/organizations";
 import { useMutation } from "@tanstack/react-query";
-import { AlertTriangle, Calendar, CheckCircle2, LinkIcon, Unlink } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle2, LinkIcon, RefreshCcw, Unlink } from "lucide-react";
 import Image, { type StaticImageData } from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -108,8 +108,12 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [selectedIntegrationId, setSelectedIntegrationId] = useState<"ONLINE-SOFTWARE" | "CARDAPIO-WEB" | null>(null);
 	const [ifoodMenuIsOpen, setIfoodMenuIsOpen] = useState(false);
+	// Reconexão explícita (D9): a linha desativada a reativar com as credenciais novas — preserva
+	// o `integrationId` e a proveniência das vendas históricas.
+	const [reconnectIntegrationId, setReconnectIntegrationId] = useState<string | null>(null);
 
 	const activeConnections = membership.organizacao.integracoes.filter((integration) => integration.ativo && isDataSourceSummary(integration));
+	const inactiveConnections = membership.organizacao.integracoes.filter((integration) => !integration.ativo && isDataSourceSummary(integration));
 	const poiSalesRegistrationEnabled = membership.organizacao.poiConfiguracao?.vendas.registroAtivo ?? activeConnections.length === 0;
 
 	// Disconnect Mutation — soft delete por conexão (D9). A linha permanece como identidade
@@ -161,13 +165,41 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 			return;
 		}
 		if (integrationId === "IFOOD") {
+			setReconnectIntegrationId(null);
 			setIfoodMenuIsOpen(true);
 			return;
 		}
 		if (integrationId === "NUVEM-SHOP") return;
 		if (integrationId === "BLING") return;
+		setReconnectIntegrationId(null);
 		setSelectedIntegrationId(integrationId);
 		setIsMenuOpen(true);
+	};
+
+	// Reconectar aponta EXPLICITAMENTE para a linha desativada (D9) — autorizar de novo pela
+	// entrada genérica criaria outra linha e as vendas históricas ficariam presas à antiga
+	// (colisão fail-closed de idExterno). Nuvemshop/Cardápio Web também casam pela identidade
+	// externa (storeId/merchantId); Bling e iFood dependem do alvo explícito.
+	const handleReconnect = (connection: TAuthSessionIntegrationSummary) => {
+		if (!canEdit) return;
+		if (connection.tipo === "BLING") {
+			window.location.href = `/api/integrations/bling/auth?reconnectIntegrationId=${connection.id}`;
+			return;
+		}
+		if (connection.tipo === "NUVEM-SHOP") {
+			window.location.href = "/api/integrations/nuvemshop/auth";
+			return;
+		}
+		if (connection.tipo === "IFOOD") {
+			setReconnectIntegrationId(connection.id);
+			setIfoodMenuIsOpen(true);
+			return;
+		}
+		if (connection.tipo === "ONLINE-SOFTWARE" || connection.tipo === "CARDAPIO-WEB") {
+			setReconnectIntegrationId(connection.id);
+			setSelectedIntegrationId(connection.tipo);
+			setIsMenuOpen(true);
+		}
 	};
 
 	const selectedTypeHasActiveConnection = selectedIntegrationId
@@ -272,6 +304,36 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 				})}
 			</div>
 
+			{inactiveConnections.length > 0 ? (
+				<div className="flex w-full flex-col gap-2">
+					<h3 className="text-sm font-semibold text-muted-foreground">Conexões desativadas</h3>
+					{inactiveConnections.map((connection) => {
+						const integrationDetails = INTEGRATIONS.find((item) => item.id === connection.tipo);
+						if (!integrationDetails) return null;
+						const connectionLabel = connection.apelido ?? (connection.refExterno ? `Conta ${connection.refExterno}` : null);
+						return (
+							<div
+								key={connection.id}
+								className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2"
+							>
+								<div className="flex items-center gap-2">
+									<span className="text-sm font-semibold">{integrationDetails.name}</span>
+									{connectionLabel ? <span className="text-sm text-muted-foreground">— {connectionLabel}</span> : null}
+								</div>
+								<Button variant="outline" size="sm" disabled={!canEdit} onClick={() => handleReconnect(connection)}>
+									<RefreshCcw className="h-4 w-4 min-h-4 min-w-4" />
+									RECONECTAR
+								</Button>
+							</div>
+						);
+					})}
+					<p className="text-xs text-muted-foreground">
+						Reconectar reativa a mesma conexão — as vendas já importadas continuam vinculadas a ela. Conectar pela lista acima cria uma conexão
+						nova.
+					</p>
+				</div>
+			) : null}
+
 			{/* Ponto de Interação — registro de vendas explícito (D8): destrava o caso "fonte de dados
 			ativa + coleta local de balcão via POI". */}
 			<div className="flex w-full flex-col gap-2 rounded-xl border border-border bg-card px-3 py-4 shadow-2xs">
@@ -294,12 +356,24 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 			{isMenuOpen && selectedIntegrationId ? (
 				<ConfigureIntegration
 					integrationType={selectedIntegrationId}
-					requireApelido={selectedTypeHasActiveConnection}
-					closeMenu={() => setIsMenuOpen(false)}
+					requireApelido={!reconnectIntegrationId && selectedTypeHasActiveConnection}
+					reconnectIntegrationId={reconnectIntegrationId}
+					closeMenu={() => {
+						setIsMenuOpen(false);
+						setReconnectIntegrationId(null);
+					}}
 				/>
 			) : null}
-			{/* SANDBOX: trocar de volta para IfoodIntegrationMenu ao remover fluxo sandbox */}
-			{ifoodMenuIsOpen ? <IfoodSandboxIntegrationMenu closeMenu={() => setIfoodMenuIsOpen(false)} /> : null}
+			{/* SANDBOX: trocar de volta para IfoodIntegrationMenu (passando reconnectIntegrationId) ao
+			remover o fluxo sandbox. O sandbox reativa a mesma linha por auto-match de merchants. */}
+			{ifoodMenuIsOpen ? (
+				<IfoodSandboxIntegrationMenu
+					closeMenu={() => {
+						setIfoodMenuIsOpen(false);
+						setReconnectIntegrationId(null);
+					}}
+				/>
+			) : null}
 		</div>
 	);
 }
@@ -381,7 +455,7 @@ type TIfoodAuthorizationResponse = {
 	expiresIn?: number | null;
 };
 
-function IfoodIntegrationMenu({ closeMenu }: { closeMenu: () => void }) {
+function IfoodIntegrationMenu({ reconnectIntegrationId, closeMenu }: { reconnectIntegrationId?: string | null; closeMenu: () => void }) {
 	const [authorization, setAuthorization] = useState<TIfoodAuthorizationResponse | null>(null);
 	const [authorizationCode, setAuthorizationCode] = useState("");
 
@@ -410,7 +484,7 @@ function IfoodIntegrationMenu({ closeMenu }: { closeMenu: () => void }) {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({ authorizationCode }),
+				body: JSON.stringify({ authorizationCode, reconnectIntegrationId: reconnectIntegrationId ?? null }),
 			});
 			const data = await response.json();
 			if (!response.ok) throw new Error(data.error ?? "Não foi possível conectar o iFood.");
