@@ -1,3 +1,4 @@
+import { resolveDefaultGoalPeriod } from "@/lib/goals/periods";
 import { GoalSchema, GoalSellerSchema } from "@/schemas/goals";
 import { SellerSchema } from "@/schemas/sellers";
 import { useState } from "react";
@@ -34,10 +35,14 @@ type TUseGoalsStateProps = {
 	initialState?: Partial<TGoalsState>;
 };
 export function useGoalsState({ initialState }: TUseGoalsStateProps) {
+	// Uma meta nasce cobrindo o mês corrente. O padrão anterior era `new Date()` nas duas pontas: um
+	// intervalo de duração zero, que nenhuma checagem de "meta ativa" consegue satisfazer.
+	const defaultPeriod = resolveDefaultGoalPeriod();
+
 	const [state, setState] = useState<TGoalsState>({
 		goal: {
-			dataInicio: initialState?.goal?.dataInicio ?? new Date(),
-			dataFim: initialState?.goal?.dataFim ?? new Date(),
+			dataInicio: initialState?.goal?.dataInicio ?? defaultPeriod.dataInicio,
+			dataFim: initialState?.goal?.dataFim ?? defaultPeriod.dataFim,
 			objetivoValor: initialState?.goal?.objetivoValor ?? 0,
 			objetivoQtdeVendas: initialState?.goal?.objetivoQtdeVendas ?? null,
 			objetivoNovosClientes: initialState?.goal?.objetivoNovosClientes ?? null,
@@ -72,24 +77,36 @@ export function useGoalsState({ initialState }: TUseGoalsStateProps) {
 			goalSellers: info,
 		}));
 	}
-	function deleteGoalSeller(index: number) {
-		// Validating existence (id defined)
-		const isExistingGoalSeller = state.goalSellers.find((c, gsId) => index === gsId && !!c.id);
-		if (!isExistingGoalSeller)
-			// If not an existing instance, just filtering it out
-			return setState((prev) => ({ ...prev, goalSellers: prev.goalSellers.filter((_, gsId) => index !== gsId) }));
-		// Else, marking it with a deletar flag
-		return setState((prev) => ({
+	/** Remove pelo id do vendedor. A tabela pensa em vendedor, não em posição de array. */
+	function removeGoalSellerByVendedorId(vendedorId: string) {
+		setState((prev) => ({
 			...prev,
-			goalSellers: prev.goalSellers.map((item, gsId) => (index === gsId ? { ...item, deletar: true } : item)),
+			goalSellers: prev.goalSellers.flatMap((seller) => {
+				if (seller.vendedorId !== vendedorId) return [seller];
+				// Linha já persistida vira soft-delete; linha nova simplesmente sai.
+				return seller.id ? [{ ...seller, deletar: true }] : [];
+			}),
 		}));
 	}
 
+	/** Desfaz uma remoção: linha persistida perde a flag, linha nova é reinserida. */
+	function restoreGoalSeller(goalSeller: TGoalsState["goalSellers"][number]) {
+		setState((prev) => {
+			const exists = prev.goalSellers.some((seller) => seller.vendedorId === goalSeller.vendedorId);
+			if (!exists) return { ...prev, goalSellers: [...prev.goalSellers, { ...goalSeller, deletar: false }] };
+			return {
+				...prev,
+				goalSellers: prev.goalSellers.map((seller) => (seller.vendedorId === goalSeller.vendedorId ? { ...seller, deletar: false } : seller)),
+			};
+		});
+	}
+
 	function resetState() {
+		const period = resolveDefaultGoalPeriod();
 		setState({
 			goal: {
-				dataInicio: new Date(),
-				dataFim: new Date(),
+				dataInicio: period.dataInicio,
+				dataFim: period.dataFim,
 				objetivoValor: 0,
 				objetivoQtdeVendas: null,
 				objetivoNovosClientes: null,
@@ -100,6 +117,16 @@ export function useGoalsState({ initialState }: TUseGoalsStateProps) {
 	function redefineState(state: TGoalsState) {
 		setState(state);
 	}
-	return { state, updateGoal, addGoalSeller, updateGoalSeller, deleteGoalSeller, updateManyGoalSellers, resetState, redefineState };
+	return {
+		state,
+		updateGoal,
+		addGoalSeller,
+		updateGoalSeller,
+		removeGoalSellerByVendedorId,
+		restoreGoalSeller,
+		updateManyGoalSellers,
+		resetState,
+		redefineState,
+	};
 }
 export type TUseGoalsState = ReturnType<typeof useGoalsState>;

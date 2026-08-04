@@ -3,6 +3,7 @@ import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, t
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
+import { resolveActiveGoalPacing } from "@/lib/goals/resolve-active-goal-pacing";
 import { GoalSchema, GoalSellerSchema } from "@/schemas/goals";
 import { db } from "@/services/drizzle";
 import { clients, goals, goalsSellers, sales, sellers } from "@/services/drizzle/schema";
@@ -44,17 +45,21 @@ async function computeGoalAchievement({
 			.select({ totalValor: sum(sales.valorTotal), totalQtde: count(sales.id) })
 			.from(sales)
 			.where(and(...saleConditions)),
-		db
-			.select({ totalNovosClientes: count(clients.id) })
-			.from(clients)
-			.where(
-				and(
-					eq(clients.organizacaoId, organizacaoId),
-					isNotNull(clients.primeiraCompraData),
-					gte(clients.primeiraCompraData, dataInicio),
-					lte(clients.primeiraCompraData, dataFim),
-				),
-			),
+		// `primeiraCompraData` não carrega vendedor, então um novo cliente não é atribuível a
+		// ninguém. Contar o total da organização em cada vendedor daria a todos o mesmo número.
+		vendedorId
+			? Promise.resolve([])
+			: db
+					.select({ totalNovosClientes: count(clients.id) })
+					.from(clients)
+					.where(
+						and(
+							eq(clients.organizacaoId, organizacaoId),
+							isNotNull(clients.primeiraCompraData),
+							gte(clients.primeiraCompraData, dataInicio),
+							lte(clients.primeiraCompraData, dataFim),
+						),
+					),
 	]);
 
 	return {
@@ -153,6 +158,8 @@ async function getGoals({ input, session }: { input: TGetGoalsInput; session: TA
 	const goalsMatched = Number(totalResult[0]?.total ?? 0);
 	const totalPages = Math.max(1, Math.ceil(goalsMatched / PAGE_SIZE));
 
+	const now = new Date();
+
 	// Compute achievement for each goal in parallel
 	const goalsWithAchievement = await Promise.all(
 		allGoals.map(async (goal) => {
@@ -174,10 +181,25 @@ async function getGoals({ input, session }: { input: TGetGoalsInput; session: TA
 				}),
 			);
 
+			const isActive = goal.dataInicio.getTime() <= now.getTime() && goal.dataFim.getTime() >= now.getTime();
+
+			// Ritmo só existe para a meta em curso: uma meta encerrada não está adiantada nem
+			// atrasada, e uma futura ainda não começou. Ver `resolveActiveGoalPacing`.
+			const ritmo = isActive
+				? await resolveActiveGoalPacing({
+						organizacaoId: userOrgId,
+						goal,
+						goalSellers: goal.vendedores,
+						agora: now,
+					})
+				: null;
+
 			return {
 				...goal,
 				...orgAchievement,
 				vendedores: vendedoresWithAchievement,
+				isActive,
+				ritmo,
 			};
 		}),
 	);

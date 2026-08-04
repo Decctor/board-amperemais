@@ -10,6 +10,7 @@ import dayjs from "dayjs";
 import { AnimatePresence, motion } from "framer-motion";
 import { BadgeDollarSign, ChevronDown, ChevronUp, Pencil, ShoppingCart, UserPlus } from "lucide-react";
 import { useState } from "react";
+import GoalPaceChip from "./GoalPaceChip";
 
 type GoalStatusBadgeProps = {
 	dataInicio: Date;
@@ -17,24 +18,27 @@ type GoalStatusBadgeProps = {
 };
 function GoalStatusBadge({ dataInicio, dataFim }: GoalStatusBadgeProps) {
 	const now = dayjs();
-	const start = dayjs(dataInicio);
-	const end = dayjs(dataFim);
-	const isActive = start.isBefore(now) && end.isAfter(now);
-	const isFuture = start.isAfter(now);
+	// Inclusivo nas duas pontas: uma meta que começa ou termina hoje ainda está ativa.
+	const isActive = !dayjs(dataInicio).isAfter(now) && !dayjs(dataFim).isBefore(now);
+	const isFuture = dayjs(dataInicio).isAfter(now);
 
 	if (isActive) {
 		return (
-			<span className="px-2 py-0.5 rounded-full text-[0.65rem] font-bold tracking-wide bg-blue-100 text-blue-700 border border-blue-200">ATIVA</span>
+			<span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-[0.08em] text-primary">
+				Ativa
+			</span>
 		);
 	}
 	if (isFuture) {
 		return (
-			<span className="px-2 py-0.5 rounded-full text-[0.65rem] font-bold tracking-wide bg-amber-100 text-amber-700 border border-amber-200">FUTURA</span>
+			<span className="rounded-full border border-brand/35 bg-brand/15 px-2 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-[0.08em] text-foreground">
+				Futura
+			</span>
 		);
 	}
 	return (
-		<span className="px-2 py-0.5 rounded-full text-[0.65rem] font-bold tracking-wide bg-muted text-muted-foreground border border-border">
-			ENCERRADA
+		<span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-[0.08em] text-muted-foreground">
+			Encerrada
 		</span>
 	);
 }
@@ -61,19 +65,20 @@ function MetricBar({ label, icon, valueHit, valueGoal, formattedHit, formattedGo
 					<span className="uppercase tracking-tight font-medium">{label}</span>
 				</div>
 				<div className="flex items-center gap-1.5">
-					<span className={cn("text-xs font-bold", isOver ? "text-green-600" : "text-foreground")}>{formatDecimalPlaces(displayPercent)}%</span>
+					<span className={cn("text-xs font-bold tabular-nums", isOver ? "text-success" : "text-foreground")}>{formatDecimalPlaces(displayPercent)}%</span>
 					<span className="text-[0.65rem] text-muted-foreground">
 						{formattedHit} / {formattedGoal}
 					</span>
 				</div>
 			</div>
-			<div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+			<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+				{/* scaleX em vez de width: transform é composto, width dispara layout a cada frame. */}
 				<motion.div
-					className="h-full rounded-full"
-					style={{ backgroundColor: isOver ? "#16a34a" : (barColor ?? "hsl(var(--primary))") }}
-					initial={{ width: 0 }}
-					animate={{ width: `${percentage}%` }}
-					transition={{ duration: 0.8, ease: "easeOut" }}
+					className="h-full w-full origin-left rounded-full"
+					style={{ backgroundColor: isOver ? "var(--color-success)" : (barColor ?? "var(--color-primary)") }}
+					initial={{ transform: "scaleX(0)" }}
+					animate={{ transform: `scaleX(${percentage / 100})` }}
+					transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
 				/>
 			</div>
 		</div>
@@ -145,11 +150,14 @@ export default function GoalEnrichedCard({ goal, onEdit }: GoalEnrichedCardProps
 			<div className="px-4 py-4 flex flex-col gap-3">
 				{/* Header */}
 				<div className="flex items-center justify-between gap-2 flex-wrap">
-					<div className="flex items-center gap-2">
+					<div className="flex flex-wrap items-center gap-2">
 						<h2 className="text-xs font-bold tracking-tight uppercase">
 							{formatDateAsLocale(goal.dataInicio)} → {formatDateAsLocale(goal.dataFim)}
 						</h2>
 						<GoalStatusBadge dataInicio={goal.dataInicio} dataFim={goal.dataFim} />
+						{/* Ritmo só vem preenchido para a meta em curso: uma meta encerrada não está
+						    adiantada nem atrasada, e uma futura ainda não começou. */}
+						{goal.ritmo ? <GoalPaceChip situacao={goal.ritmo.situacao} diferenca={goal.ritmo.diferenca} size="sm" /> : null}
 					</div>
 					<Button variant="ghost" size="sm" className="flex items-center gap-1.5 h-7 px-2" onClick={() => onEdit(goal.id)}>
 						<Pencil className="w-3 h-3" />
