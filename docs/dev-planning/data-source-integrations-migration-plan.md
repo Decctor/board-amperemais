@@ -11,6 +11,14 @@
 > fundação é aditiva, não substitui o ERP inline"). O comentário em
 > `services/drizzle/schema/integrations.ts:15-16` que documenta essa decisão deve ser atualizado
 > na entrega.
+>
+> **Revisão (2026-08): múltiplas conexões do mesmo tipo já nesta entrega.** A versão anterior
+> deste plano preservava o invariante "no máximo 1 conexão ativa por `(organizacaoId, tipo)`"
+> como guard de transição (antigo D5) e deixava a liberação de N conexões do mesmo tipo como
+> decisão comercial futura. Essa decisão foi tomada: a plataforma **suporta N conexões ativas do
+> mesmo tipo por organização desde o cutover** (ex.: duas contas iFood, dois Bling). O D5 foi
+> reescrito como guard de **identidade** (não de cardinalidade) e as superfícies de UI/lookup
+> foram ajustadas (ver D5, §3.1, §5 itens 9/11/13).
 
 ---
 
@@ -223,14 +231,22 @@ O papel (b) — "de qual org é este merchant/store?" — vira consulta por `tip
 
 `refExterno` não identifica a conta em todos os provedores. Por isso, "reconectar" deve ser uma
 operação explícita sobre uma `integrationId` conhecida (carregada no state do OAuth quando
-aplicável), e não um lookup implícito apenas por `(organizacaoId, tipo)`. Onde o provedor expuser
-um identificador estável da conta, ele também deve ser persistido para validar a reconexão. Sem
-essa confirmação, o fluxo é tratado como nova conexão e não reaproveita silenciosamente uma linha
-histórica.
+aplicável), e não um lookup implícito apenas por `(organizacaoId, tipo)` — com N conexões do
+mesmo tipo esse lookup é ambíguo por definição. Onde o provedor expuser um identificador estável
+da conta, ele também deve ser persistido para validar a reconexão. Sem essa confirmação, o fluxo
+é tratado como nova conexão e não reaproveita silenciosamente uma linha histórica.
 
-Como o unique `(organizacaoId, tipo, refExterno)` não deduplica `NULL`s no Postgres, a
-unicidade "uma conexão ativa por tipo" durante a transição é **garantida em nível de aplicação**
-no serviço de criação (ver D5).
+**Multiplicidade**: N conexões ativas do mesmo tipo por organização são suportadas desde o
+cutover. A deduplicação é por **identidade da conta externa**, não por tipo (D5):
+
+- Tipos com `refExterno` (`NUVEM-SHOP`, `CARDAPIO-WEB`): o unique `(organizacaoId, tipo,
+  refExterno)` já impede a mesma conta duas vezes; contas diferentes coexistem.
+- `IFOOD`: guard de aplicação impede **sobreposição de `merchantIds`** entre linhas IFOOD ativas
+  da mesma organização (e o merchant→org do webhook já assume merchant globalmente único). Duas
+  contas iFood = dois token sets disjuntos.
+- `BLING` / `ONLINE-SOFTWARE`: sem identificador estável na config — sem dedup automático; a
+  desambiguação para o operador é o `apelido` (a UI pede um ao criar a segunda conexão do mesmo
+  tipo).
 
 **Ciclo de vida de `integrations`**: conexões de fonte de dados passam a usar soft delete. A
 desconexão grava `ativo: false` + `dataDesativacao` e preserva a linha como identidade histórica
@@ -268,7 +284,8 @@ de vendas; é o destino da consolidação futura das demais capacidades do POI.
 
 Hoje só o callback do Meta insere em `integrations`. Adicionar **POST `/api/integrations`** (4
 partes, `canManageIntegrations`): valida `configuracao` pela união discriminada, deriva
-`refExterno`, aplica o guard de unicidade (D5), `status: "CONECTADO"`. É o destino do modal
+`refExterno`, aplica o guard de identidade (D5 — mesma conta externa não duplica; N contas
+distintas do mesmo tipo são permitidas), `status: "CONECTADO"`. É o destino do modal
 `ConfigureIntegration` (ONLINE-SOFTWARE / CARDAPIO-WEB) e do sandbox iFood.
 
 ### 3.4 O POI deixa de ser fallback implícito e vira canal configurável
@@ -344,10 +361,14 @@ follow-up staged (§8) — a coluna já nasce no lugar certo para recebê-las.
   cashback/campanhas/efeitos; a colisão entra no erro/summary observável do batch. Unique
   `(organizacaoId, integracaoId, idExterno)` fica para quando o multi-fonte estiver rodando e o
   risco real medido.
-- **D5 — Invariante de transição**: guard de aplicação "no máximo 1 linha **ativa** por
-  `(organizacaoId, tipo)` de fonte de dados" no POST/callbacks. Preserva o comportamento atual e
-  deixa a liberação de N conexões do mesmo tipo como decisão de produto posterior — o schema já
-  suporta.
+- **D5 — Multiconexão por tipo desde o cutover, com guard de identidade**: N linhas ativas por
+  `(organizacaoId, tipo)` são permitidas. O guard de aplicação no POST/callbacks impede apenas
+  **duplicar a mesma conta externa**: `refExterno` repetido (já coberto pelo unique) e, para
+  IFOOD, interseção de `merchantIds` com outra linha IFOOD ativa da organização. Tipos sem
+  identidade estável (BLING, ONLINE-SOFTWARE) não têm dedup automático — a UI exige `apelido` ao
+  criar a segunda conexão ativa do mesmo tipo, para desambiguação humana. Todo lookup interno
+  que antes assumia "a conexão do tipo X da org" passa a operar **por linha** (`integrationId`)
+  ou sobre a **lista** de linhas ativas.
 - **D6 — Destino dos flags**: `dadosViaERP` e `dadosViaIntegracoes` **morrem** (write-only/mortos).
   `dadosViaPDI` **fica** (onboarding ainda escreve/lê). `origemDadosPadrao` **fica** — é modo de
   processamento (RECEPTOR/ERP), não conexão; fora do escopo.
@@ -374,7 +395,6 @@ follow-up staged (§8) — a coluna já nasce no lugar certo para recebê-las.
 
 ### Abertas (não bloqueiam a migração)
 
-- Quando liberar na UI múltiplas conexões do mesmo tipo (ex.: duas contas iFood)? Comercial.
 - Acúmulo de cashback **por integração** (hoje `acumuloPermitirViaIntegracao` é binário no
   programa: com ERP + iFood, vendas das duas fontes acumulam). Se um food service quiser cashback
   só no balcão e não no iFood, precisa de config por conexão — follow-up.
@@ -516,8 +536,10 @@ Ordem interna sugerida (tudo na mesma release; itens agrupados por superfície):
 7. `app/api/webhooks/ifood/route.ts`: `loadConnectedIfoodOrganizations` via tabela nova.
    **Validar keep-alive/homologação depois do deploy** (R2).
 8. `lib/integrations/nuvemshop/webhook-notifications.ts`: lookup por `refExterno`.
-9. `lib/integrations/ifood/context.ts`: resolver por linha IFOOD ativa da org (404 igual);
-   backfill de `merchantIds` row-scoped.
+9. `lib/integrations/ifood/context.ts`: resolver **por linha** — aceita `integrationId` opcional;
+   sem ele, usa a única linha IFOOD ativa da org (404 igual quando não há nenhuma). Com mais de
+   uma linha ativa e sem `integrationId`, o resolver retorna a lista para a UI escolher (o módulo
+   iFood do dashboard ganha seletor de conexão quando N>1). Backfill de `merchantIds` row-scoped.
 
 **Conexão/desconexão**
 10. Callbacks Bling/Nuvemshop/iFood/sandbox: upsert em `integrations`. Reconexão explícita recebe a
@@ -525,9 +547,11 @@ Ordem interna sugerida (tudo na mesma release; itens agrupados por superfície):
     externa antes de reativar a linha (`ativo: true`, `dataDesativacao: null`, config nova,
     `status: 'CONECTADO'`, `ultimoErro: null`); conectar outra conta cria outra linha e preserva a
     anterior desativada. **Parar de escrever os 4 campos antigos.**
-11. `ConfigureIntegration.tsx` → `POST /api/integrations`; desconectar em
-    `SettingsIntegration.tsx` → serviço de soft delete (`ativo: false`, `dataDesativacao: now()`),
-    sem `DELETE` para fonte de dados (D9). Ao desconectar a **última** fonte de dados ativa, a UI
+11. `ConfigureIntegration.tsx` → `POST /api/integrations` (conectar um provedor já conectado cria
+    **outra** linha — a UI pede `apelido` quando já existe conexão ativa do mesmo tipo, D5);
+    desconectar em `SettingsIntegration.tsx` → serviço de soft delete (`ativo: false`,
+    `dataDesativacao: now()`) **por `integrationId`**, sem `DELETE` para fonte de dados (D9). Ao
+    desconectar a **última** fonte de dados ativa, a UI
     avisa que o POI não voltará a registrar vendas sozinho e oferece ligar
     `poiConfiguracao.vendas.registroAtivo` (R12). Expor o toggle do POI na UI de settings (novo
     bloco "Ponto de Interação" ou o existente de POI, se houver) — é ele que destrava o caso "ERP
@@ -536,9 +560,11 @@ Ordem interna sugerida (tudo na mesma release; itens agrupados por superfície):
 **Sessão e UI**
 12. `lib/authentication/{types,session}.ts`: remover os 3 campos; adicionar `integracoes` resumido
     (§3.2). Corrige o vazamento de tokens para o browser.
-13. Consumidores de sessão (§2.5): `integrations-page` (isConnected por tipo a partir do resumo ou
-    de `useIntegrations()`), `ifood-page`/gate, `SettingsIntegration` (agora lista N conexões — o
-    padrão multi-conexão da paid-media page é o precedente), cashback modals (defaults deixam de
+13. Consumidores de sessão (§2.5): `integrations-page` (cada card mostra a **contagem** de
+    conexões ativas do tipo e permite conectar outra conta — nenhum provedor fica "travado" por já
+    ter conexão), `ifood-page`/gate (seletor quando N>1), `SettingsIntegration` (agora lista N
+    conexões, inclusive várias do mesmo tipo, identificadas por `apelido`/`refExterno` — o padrão
+    multi-conexão da paid-media page é o precedente), cashback modals (defaults deixam de
     derivar de `integracaoTipo`: `acumuloPermitirViaIntegracao` default = há fonte de dados
     ativa; `acumuloPermitirViaPontoIntegracao` default = `poiConfiguracao.vendas.registroAtivo` —
     e os dois podem ser verdadeiros juntos no cenário multi-canal), `Summary.tsx`, onboarding
@@ -550,7 +576,9 @@ Ordem interna sugerida (tudo na mesma release; itens agrupados por superfície):
 14. State hooks: remover defaults dos campos que morrem (manter `dadosViaPDI`).
 
 *Aceite da Fase 2*: cron importa vendas de uma org com **duas** integrações ativas (ex.: BLING +
-IFOOD em staging/sandbox); colisão exata de `idExterno` entre as fontes não altera a venda
+IFOOD em staging/sandbox) e também de uma org com **duas conexões do mesmo tipo** (ex.: duas
+contas IFOOD sandbox → 2 batches, 2 `dataUltimaSincronizacao`, webhook resolve o merchant para a
+linha certa); colisão exata de `idExterno` entre as fontes não altera a venda
 existente nem executa seus efeitos; POI de org com integração continua sem criar venda; POI de org
 sem fonte continua criando; **org com integração ativa + `registroAtivo: true` tem os dois canais
 gerando vendas** (o caso loja-de-roupas); webhook iFood resolve merchant e keep-alive responde;
@@ -607,8 +635,9 @@ proveniência das vendas históricas.
 ## 7. Validação
 
 - **Unit**: helpers de `lib/integrations/data-sources.ts`; reconexão da mesma conta vs. conexão de
-  outra conta; soft delete; guard D5; colisão D4 fail-closed sem efeitos; mascaramento das novas
-  variantes de config.
+  outra conta; soft delete; guard D5 (mesma conta bloqueia, conta distinta do mesmo tipo cria
+  segunda linha; interseção de `merchantIds` IFOOD bloqueia); colisão D4 fail-closed sem efeitos;
+  mascaramento das novas variantes de config.
 - **Backfill**: relatório antes/depois de `sales.integracaoId`; toda organização elegível tem uma
   única fonte candidata; nenhuma atribuição existente é sobrescrita; divergências ficam
   explicitamente listadas antes do cutover.
@@ -634,8 +663,8 @@ proveniência das vendas históricas.
 - `origemDadosPadrao` / modo ERP (`docs/ERP-IMPLEMENTATION.md`) — inalterado.
 - `configuracao.preferencias.integracaoERP` (`app/api/integrations/settings/route.ts`) — é
   preferência de comportamento, não conexão; fica onde está.
-- Cashback por integração, cursor incremental, múltiplas conexões do mesmo tipo na UI, índice GIN
-  de `merchantIds` — follow-ups listados em §4.
+- Cashback por integração, cursor incremental, índice GIN de `merchantIds` — follow-ups listados
+  em §4. (Múltiplas conexões do mesmo tipo **entraram** no escopo desta entrega — ver D5.)
 - **Possíveis vendas duplicadas entre integrações com IDs externos diferentes** — follow-up D10:
   query por organização + cliente + valor + proximidade temporal, alerta na área de vendas e ação
   manual de correção. A assinatura é apenas indicativa; não vira unique e não faz merge
