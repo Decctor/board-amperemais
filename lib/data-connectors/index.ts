@@ -7,10 +7,15 @@ import type { TCanonicalImportBatch, TDataConnectorFetchInput, TDataConnectorKin
 
 export * from "./types";
 export * from "./status-mappers";
-export { syncProductsForOrganization } from "./catalog-sync";
+export { CATALOG_SYNC_INTEGRATION_TYPES, syncProductsForIntegration, syncProductsForOrganization } from "./catalog-sync";
 export type { TSyncProductsForOrganizationResult } from "./catalog-sync";
 
 export async function fetchConnectorImportBatch(input: TDataConnectorFetchInput): Promise<TCanonicalImportBatch> {
+	const batch = await fetchConnectorBatch(input);
+	return { ...batch, integrationId: input.integrationId };
+}
+
+async function fetchConnectorBatch(input: TDataConnectorFetchInput) {
 	if (input.config.tipo === "CARDAPIO-WEB") {
 		return fetchCardapioWebImportBatch({
 			organizationId: input.organizationId,
@@ -38,6 +43,7 @@ export async function fetchConnectorImportBatch(input: TDataConnectorFetchInput)
 	if (input.config.tipo === "IFOOD") {
 		return fetchIfoodImportBatch({
 			organizationId: input.organizationId,
+			integrationId: input.integrationId,
 			config: input.config,
 			window: input.window,
 		});
@@ -46,6 +52,7 @@ export async function fetchConnectorImportBatch(input: TDataConnectorFetchInput)
 	if (input.config.tipo === "BLING") {
 		return blingDataConnector.fetchImportBatch({
 			organizationId: input.organizationId,
+			integrationId: input.integrationId,
 			config: input.config,
 			window: input.window,
 		});

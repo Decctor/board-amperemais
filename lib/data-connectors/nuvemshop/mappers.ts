@@ -3,7 +3,7 @@ import dayjs from "dayjs";
 import type {
 	TCanonicalClient,
 	TCanonicalDeliveryMode,
-	TCanonicalImportBatch,
+	TCanonicalConnectorBatch,
 	TCanonicalImportWindow,
 	TCanonicalProduct,
 	TCanonicalSale,
@@ -351,7 +351,7 @@ export function toCanonicalNuvemshopImportBatch({
 	organizationId: string;
 	window: TCanonicalImportWindow;
 	orders: TNuvemshopOrder[];
-}): TCanonicalImportBatch {
+}): TCanonicalConnectorBatch {
 	const sales = orders.map(mapNuvemshopSale);
 	const products = uniqueBy(
 		orders.flatMap((order) => order.products.map(mapNuvemshopProduct)),

@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
-import { syncProductsForOrganization } from "@/lib/data-connectors";
+import { CATALOG_SYNC_INTEGRATION_TYPES, syncProductsForIntegration } from "@/lib/data-connectors";
+import { getActiveDataSourceIntegrations } from "@/lib/integrations/data-sources";
 import { db } from "@/services/drizzle";
 import { utils } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -22,42 +23,39 @@ import { NextRequest, NextResponse } from "next/server";
 async function getProductsSyncingRoute(_req: NextRequest) {
 	console.log(`[PRODUCTS-SYNCING] Starting products sync at ${dayjs().format("YYYY-MM-DD HH:mm:ss")}`);
 
-	const organizations = await db.query.organizations.findMany({
-		where: (fields, { inArray }) => inArray(fields.integracaoTipo, ["CARDAPIO-WEB", "NUVEM-SHOP"]),
-		columns: {
-			id: true,
-			integracaoTipo: true,
-		},
+	const integrationsForCatalog = await getActiveDataSourceIntegrations({
+		executor: db,
+		types: CATALOG_SYNC_INTEGRATION_TYPES,
 	});
 
 	let successCount = 0;
 	let errorCount = 0;
 
-	for (const organization of organizations) {
-		console.log(`[ORG: ${organization.id}] [PRODUCTS-SYNCING] Processing ${organization.integracaoTipo} catalog sync`);
+	for (const integration of integrationsForCatalog) {
+		console.log(
+			`[ORG: ${integration.organizacaoId}] [PRODUCTS-SYNCING] Processing ${integration.tipo} catalog sync (integration ${integration.id})`,
+		);
 		try {
-			await syncProductsForOrganization({ organizationId: organization.id });
+			await syncProductsForIntegration({ integration });
 			successCount++;
 		} catch (error) {
 			errorCount++;
-			console.error(`[ORG: ${organization.id}] [PRODUCTS-SYNCING] Error:`, error);
+			console.error(`[ORG: ${integration.organizacaoId}] [PRODUCTS-SYNCING] Error:`, error);
 
-			const identificador = organization.integracaoTipo === "NUVEM-SHOP" ? ("NUVEMSHOP_IMPORTATION" as const) : ("CARDAPIO_WEB_IMPORTATION" as const);
+			const identificador = integration.tipo === "NUVEM-SHOP" ? ("NUVEMSHOP_IMPORTATION" as const) : ("CARDAPIO_WEB_IMPORTATION" as const);
 			const descricao =
-				organization.integracaoTipo === "NUVEM-SHOP"
-					? "Erro ao sincronizar catálogo da Nuvemshop."
-					: "Erro ao sincronizar catálogo do CardapioWeb.";
+				integration.tipo === "NUVEM-SHOP" ? "Erro ao sincronizar catálogo da Nuvemshop." : "Erro ao sincronizar catálogo do CardapioWeb.";
 
 			await db
 				.insert(utils)
 				.values({
-					organizacaoId: organization.id,
+					organizacaoId: integration.organizacaoId,
 					identificador,
 					valor: {
 						identificador,
 						dados: {
 							tipo: "CATALOG_SYNC_ERROR",
-							organizacaoId: organization.id,
+							organizacaoId: integration.organizacaoId,
 							data: dayjs().format("YYYY-MM-DD"),
 							erro: JSON.stringify(error, Object.getOwnPropertyNames(error)),
 							descricao,

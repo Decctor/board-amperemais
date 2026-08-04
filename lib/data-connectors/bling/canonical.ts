@@ -96,13 +96,13 @@ async function fetchBlingProductsForSales(client: ReturnType<typeof createBlingC
 
 export const blingDataConnector: TDataConnector = {
 	kind: "BLING",
-	fetchImportBatch: async ({ organizationId, config, window }) => {
+	fetchImportBatch: async ({ organizationId, integrationId, config, window }) => {
 		const dataInicial = formatBlingDate(window.startDate);
 		const dataFinal = formatBlingDate(window.endDate);
-		console.log(`${LOG_PREFIX} Iniciando importação (org=${organizationId}, período=${dataInicial} a ${dataFinal})...`);
+		console.log(`${LOG_PREFIX} Iniciando importação (org=${organizationId}, integração=${integrationId}, período=${dataInicial} a ${dataFinal})...`);
 
 		const parsedConfig = BlingConfigSchema.parse(config);
-		const validConfig = await getValidBlingConfig({ organizationId, config: parsedConfig });
+		const validConfig = await getValidBlingConfig({ integrationId, config: parsedConfig });
 		const client = createBlingClient(validConfig);
 
 		const sales = await fetchBlingSalesWithDetails(client, window);

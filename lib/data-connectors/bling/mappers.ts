@@ -3,7 +3,7 @@ import dayjs from "dayjs";
 import type {
 	TCanonicalClient,
 	TCanonicalDeliveryMode,
-	TCanonicalImportBatch,
+	TCanonicalConnectorBatch,
 	TCanonicalImportWindow,
 	TCanonicalProduct,
 	TCanonicalSale,
@@ -221,7 +221,7 @@ export function toCanonicalBlingImportBatch({
 	sales: TBlingSale[];
 	contacts: TBlingContact[];
 	products: TBlingProduct[];
-}): TCanonicalImportBatch {
+}): TCanonicalConnectorBatch {
 	const contactsById = new Map(
 		contacts.map((contact) => [toStringId(contact.id), contact]).filter((entry): entry is [string, TBlingContact] => !!entry[0]),
 	);

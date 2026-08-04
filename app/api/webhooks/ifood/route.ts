@@ -1,9 +1,8 @@
 import { runDataCollectingV2 } from "@/lib/data-collecting-v2";
+import { getActiveDataSourceIntegrations } from "@/lib/integrations/data-sources";
 import { db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
 import { waitUntil } from "@vercel/functions";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
@@ -47,27 +46,18 @@ function validateIfoodSignature(rawBody: string, signature: string | null): bool
 	return timingSafeEqual(expectedBuffer, receivedBuffer);
 }
 
-async function loadConnectedIfoodOrganizations() {
-	const result = await db.query.organizations.findMany({
-		where: eq(organizations.integracaoTipo, "IFOOD"),
-		columns: { id: true, integracaoConfiguracao: true },
-	});
-
-	return result
-		.map((organization) => {
-			const config = organization.integracaoConfiguracao;
-			if (!config || config.tipo !== "IFOOD") return null;
-			const merchantIds = Array.isArray((config as { merchantIds?: unknown }).merchantIds)
-				? ((config as { merchantIds: unknown[] }).merchantIds.filter((id): id is string => typeof id === "string") ?? [])
-				: [];
-			return { id: organization.id, merchantIds };
-		})
-		.filter((organization): organization is { id: string; merchantIds: string[] } => !!organization);
+async function loadConnectedIfoodIntegrations() {
+	const rows = await getActiveDataSourceIntegrations({ executor: db, types: ["IFOOD"] });
+	return rows.map((integration) => ({
+		id: integration.id,
+		organizacaoId: integration.organizacaoId,
+		merchantIds: integration.configuracao.tipo === "IFOOD" ? integration.configuracao.merchantIds : [],
+	}));
 }
 
 async function resolveOrganizationIdByMerchantId(merchantId: string): Promise<string | null> {
-	const connected = await loadConnectedIfoodOrganizations();
-	return connected.find((organization) => organization.merchantIds.includes(merchantId))?.id ?? null;
+	const connected = await loadConnectedIfoodIntegrations();
+	return connected.find((integration) => integration.merchantIds.includes(merchantId))?.organizacaoId ?? null;
 }
 
 async function handleKeepAlive(requestedMerchantIds: string[] | null | undefined) {
@@ -75,8 +65,8 @@ async function handleKeepAlive(requestedMerchantIds: string[] | null | undefined
 	// consideramos online todo merchant conectado a uma organização da plataforma.
 	if (!requestedMerchantIds?.length) return NextResponse.json({}, { status: 202 });
 
-	const connected = await loadConnectedIfoodOrganizations();
-	const connectedMerchantIds = new Set(connected.flatMap((organization) => organization.merchantIds));
+	const connected = await loadConnectedIfoodIntegrations();
+	const connectedMerchantIds = new Set(connected.flatMap((integration) => integration.merchantIds));
 	const onlineMerchantIds = requestedMerchantIds.filter((merchantId) => connectedMerchantIds.has(merchantId));
 	return NextResponse.json({ merchantIds: onlineMerchantIds }, { status: 202 });
 }

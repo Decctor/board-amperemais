@@ -11,6 +11,7 @@ import {
 	startIfoodOrderPreparation,
 } from "@/lib/integrations/ifood/orders";
 import { canManageIntegrations } from "@/lib/integrations/mask";
+import { db } from "@/services/drizzle";
 import { waitUntil } from "@vercel/functions";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -38,7 +39,12 @@ const PostIfoodOrderActionInputSchema = z
 export type TPostIfoodOrderActionInput = z.infer<typeof PostIfoodOrderActionInputSchema>;
 
 async function postIfoodOrderAction({ input, organizacaoId }: { input: TPostIfoodOrderActionInput; organizacaoId: string }) {
-	const context = await resolveIfoodManagementContext({ organizacaoId });
+	// Proveniência da venda já ingerida desambigua a conexão quando a org tem N contas iFood.
+	const sale = await db.query.sales.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, organizacaoId), eq(fields.idExterno, input.orderId)),
+		columns: { integracaoId: true },
+	});
+	const context = await resolveIfoodManagementContext({ organizacaoId, integrationId: sale?.integracaoId });
 
 	if (input.action === "confirm") await confirmIfoodOrder(context.client, input.orderId);
 	if (input.action === "startPreparation") await startIfoodOrderPreparation(context.client, input.orderId);

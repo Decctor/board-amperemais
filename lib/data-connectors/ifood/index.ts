@@ -44,15 +44,17 @@ function uniqueOrderIds(events: TIfoodEvent[]) {
 
 export async function fetchIfoodImportBatch({
 	organizationId,
+	integrationId,
 	config,
 	window,
 }: {
 	organizationId: string;
+	integrationId: string;
 	config: unknown;
 	window: TCanonicalImportWindow;
 }) {
 	const parsedConfig = IfoodConfigSchema.parse(config);
-	const validConfig = await getValidIfoodConfig({ organizationId, config: parsedConfig });
+	const validConfig = await getValidIfoodConfig({ integrationId, config: parsedConfig });
 	const client = createIfoodClient(validConfig);
 	const events = await pollIfoodEvents(client, { merchantIds: validConfig.merchantIds });
 	const relevantEvents = getRelevantOrderEvents(events);

@@ -2,7 +2,7 @@ import { fetchCardapioWebOrdersWithDetails } from ".";
 import type {
 	TCanonicalClient,
 	TCanonicalDeliveryMode,
-	TCanonicalImportBatch,
+	TCanonicalConnectorBatch,
 	TCanonicalImportWindow,
 	TCanonicalPartner,
 	TCanonicalProduct,
@@ -112,7 +112,7 @@ export function toCanonicalCardapioWebImportBatch({
 	organizationId: string;
 	window: TCanonicalImportWindow;
 	orders: TGetCardapioWebOrderDetailsOutput[];
-}): TCanonicalImportBatch {
+}): TCanonicalConnectorBatch {
 	const extracted = extractAllCardapioWebData(orders);
 
 	return {

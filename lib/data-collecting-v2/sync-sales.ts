@@ -116,6 +116,7 @@ function buildSaleValues({
 	return {
 		organizacaoId: batch.organizationId,
 		idExterno: sale.sourceSaleId,
+		integracaoId: batch.integrationId,
 		clienteId: clientId,
 		valorTotal: sale.totalValue,
 		descontosTotal: sale.totalDiscount,
@@ -259,6 +260,22 @@ async function updateClientMetrics({
 	return { totalPurchaseCount, totalPurchaseValue, previousTotalPurchaseCount, previousTotalPurchaseValue };
 }
 
+export type TSaleIdCollision = {
+	sourceSaleId: string;
+	existingSaleId: string;
+	existingIntegrationId: string | null;
+};
+
+export type TSyncSalesResult = {
+	persistedSales: TPersistedSaleForEffects[];
+	/**
+	 * Colisões fail-closed (D4): venda existente com o mesmo `idExterno` mas outra (ou nenhuma)
+	 * `integracaoId`. O item importado NÃO altera a venda existente e NÃO executa efeitos —
+	 * aparece aqui para o summary observável do batch.
+	 */
+	saleIdCollisions: TSaleIdCollision[];
+};
+
 export async function syncSales({
 	tx,
 	batch,
@@ -270,7 +287,7 @@ export async function syncSales({
 	context: TResolvedAuxiliaryEntities;
 	/** Política de canal da organização. Ausente = comportamento legado (sem efeitos de ERP). */
 	erp?: TSyncSalesErpOptions | null;
-}): Promise<TPersistedSaleForEffects[]> {
+}): Promise<TSyncSalesResult> {
 	const saleSourceIds = batch.sales.map((sale) => sale.sourceSaleId);
 	const existingSales =
 		saleSourceIds.length > 0
@@ -279,6 +296,7 @@ export async function syncSales({
 					columns: {
 						id: true,
 						idExterno: true,
+						integracaoId: true,
 						natureza: true,
 						valorTotal: true,
 						statusVenda: true,
@@ -289,6 +307,7 @@ export async function syncSales({
 			: [];
 	const existingSalesBySourceId = new Map(existingSales.map((sale) => [sale.idExterno, sale]));
 	const persistedSales: TPersistedSaleForEffects[] = [];
+	const saleIdCollisions: TSaleIdCollision[] = [];
 	const firstValidSaleByClientKey = new Map<string, { sourceSaleId: string; occurredAt: Date }>();
 
 	for (const sale of batch.sales) {
@@ -312,6 +331,21 @@ export async function syncSales({
 		const sellerId = getSellerId(context, sale);
 		const partner = getPartner(context, sale);
 		const existingSale = existingSalesBySourceId.get(sale.sourceSaleId);
+
+		// Colisão de idExterno entre fontes é fail-closed (D4): mesma venda externa encontrada com
+		// outra (ou nenhuma) integração de origem — não altera a venda, não executa efeitos.
+		if (existingSale && existingSale.integracaoId !== batch.integrationId) {
+			console.warn(
+				`[SYNC_SALES] Colisão de idExterno ${sale.sourceSaleId}: venda ${existingSale.id} pertence à integração ${existingSale.integracaoId ?? "SEM ATRIBUIÇÃO"} e o batch é da integração ${batch.integrationId}. Item ignorado.`,
+			);
+			saleIdCollisions.push({
+				sourceSaleId: sale.sourceSaleId,
+				existingSaleId: existingSale.id,
+				existingIntegrationId: existingSale.integracaoId,
+			});
+			continue;
+		}
+
 		const saleValues = buildSaleValues({ batch, sale, clientId, sellerId, partnerId: partner?.id ?? null });
 
 		let saleId: string;
@@ -451,5 +485,5 @@ export async function syncSales({
 		});
 	}
 
-	return persistedSales;
+	return { persistedSales, saleIdCollisions };
 }

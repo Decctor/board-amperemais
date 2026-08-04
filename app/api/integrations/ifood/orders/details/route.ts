@@ -3,6 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { resolveIfoodManagementContext } from "@/lib/integrations/ifood/context";
 import { getIfoodOrderCancellationReasons, getIfoodOrderDetails } from "@/lib/integrations/ifood/orders";
 import { canViewIntegrations } from "@/lib/integrations/mask";
+import { db } from "@/services/drizzle";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -18,7 +19,12 @@ const GetIfoodOrderDetailsInputSchema = z.object({
 export type TGetIfoodOrderDetailsInput = z.infer<typeof GetIfoodOrderDetailsInputSchema>;
 
 async function getIfoodOrderDetailsService({ input, organizacaoId }: { input: TGetIfoodOrderDetailsInput; organizacaoId: string }) {
-	const context = await resolveIfoodManagementContext({ organizacaoId });
+	// Proveniência da venda já ingerida desambigua a conexão quando a org tem N contas iFood.
+	const sale = await db.query.sales.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, organizacaoId), eq(fields.idExterno, input.orderId)),
+		columns: { integracaoId: true },
+	});
+	const context = await resolveIfoodManagementContext({ organizacaoId, integrationId: sale?.integracaoId });
 
 	const [pedido, motivosCancelamento] = await Promise.all([
 		getIfoodOrderDetails(context.client, input.orderId),

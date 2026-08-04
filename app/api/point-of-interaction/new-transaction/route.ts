@@ -14,6 +14,7 @@ import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-week
 import { evaluateCouponAgainstSaleValue } from "@/lib/coupons/engine";
 import { processCouponRedemption } from "@/lib/coupons/redemption";
 import { resolvePoiActorContext } from "@/lib/access/poi-actor";
+import { organizationHasActiveDataSource } from "@/lib/integrations/data-sources";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
 import { runPoiTransactionWithIdempotency } from "@/lib/point-of-interaction/idempotency";
 import {
@@ -242,7 +243,7 @@ async function preparePointOfInteractionTransaction({ input, operatorContext, tx
 				organizacao: {
 					columns: {
 						id: true,
-						integracaoTipo: true,
+						poiConfiguracao: true,
 						poiConfirmacaoValorObrigatoria: true,
 					},
 				},
@@ -269,8 +270,13 @@ async function preparePointOfInteractionTransaction({ input, operatorContext, tx
 		const isPrizeRedemption = !!prizeRedemption;
 		// Prize redemptions do not generate cashback, even when accumulation via POI is enabled.
 		const transactionRequiresAccumulationProcessing = cashbackProgramIsActive && program.acumuloPermitirViaPontoIntegracao && !isPrizeRedemption;
-		// Transactions only require sale processing when organization has no defined integration
-		const transactionRequiresSaleProcessing = !program.organizacao.integracaoTipo;
+		// Registro de vendas do POI é config EXPLÍCITA (D8), não derivação do estado das
+		// integrações — org com fonte de dados ativa pode manter o POI coletando balcão.
+		// Fallback para org criada entre o deploy e o backfill (poiConfiguracao nula): comportamento
+		// legado — registra quando não há fonte de dados ativa. Removível na fase de limpeza.
+		const transactionRequiresSaleProcessing =
+			program.organizacao.poiConfiguracao?.vendas.registroAtivo ??
+			!(await organizationHasActiveDataSource({ executor: tx, organizationId: input.orgId }));
 		// Transactions only require redemption processing when cashback is applied and has a positive value
 		const requestedCashbackRedemption = input.sale.cashback.aplicar && input.sale.cashback.valor > 0;
 		if (!cashbackProgramIsActive && requestedCashbackRedemption) {
@@ -281,7 +287,7 @@ async function preparePointOfInteractionTransaction({ input, operatorContext, tx
 			transactionRequiresAccumulationProcessing,
 			transactionRequiresSaleProcessing,
 			transactionRequiresRedemptionProcessing,
-			integracaoTipo: program.organizacao.integracaoTipo ?? null,
+			poiRegistroVendasConfigurado: program.organizacao.poiConfiguracao?.vendas.registroAtivo ?? null,
 		});
 		// FIRST STEP: Identifying the transaction operator
 		const operatorIdentifier = operatorContext?.operatorIdentifier ?? ("operatorIdentifier" in input ? input.operatorIdentifier : undefined);
@@ -920,7 +926,7 @@ async function preparePointOfInteractionTransaction({ input, operatorContext, tx
 				});
 			} else {
 				console.log(
-					`[POI ${input.orgId}] [CAMPAIGNS] Pulando campanhas de quantidade/valor total — venda não criada internamente (integracaoTipo=${program.organizacao.integracaoTipo ?? "null"})`,
+					`[POI ${input.orgId}] [CAMPAIGNS] Pulando campanhas de quantidade/valor total — venda não criada internamente (registro de vendas do POI desativado)`,
 				);
 			}
 		} else {

@@ -5,7 +5,7 @@ import dayjs from "dayjs";
 import type {
 	TCanonicalClient,
 	TCanonicalDeliveryMode,
-	TCanonicalImportBatch,
+	TCanonicalConnectorBatch,
 	TCanonicalImportWindow,
 	TCanonicalProduct,
 	TCanonicalSale,
@@ -501,7 +501,7 @@ export function toCanonicalIfoodImportBatch({
 	orders: TIfoodOrder[];
 	events: TIfoodEvent[];
 	postProcess?: () => Promise<void>;
-}): TCanonicalImportBatch {
+}): TCanonicalConnectorBatch {
 	const eventsByOrderId = new Map<string, TIfoodEvent[]>();
 	for (const event of events) {
 		if (!event.orderId) continue;

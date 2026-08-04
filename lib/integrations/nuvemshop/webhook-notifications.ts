@@ -1,8 +1,8 @@
 import { resend } from "@/services/resend";
 import { db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
+import { integrations, organizations } from "@/services/drizzle/schema";
 import { createHmac, timingSafeEqual } from "crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 const NUVEMSHOP_LGPD_NOTIFICATION_EMAIL = "lucas@syncroniza.com.br";
@@ -39,23 +39,28 @@ function getStoreIdFromPayload(payload: unknown) {
 async function findOrganizationByNuvemshopStoreId(storeId: number | null): Promise<TNuvemshopWebhookOrganization | null> {
 	if (!storeId) return null;
 
-	const nuvemshopOrganizations = await db.query.organizations.findMany({
-		where: eq(organizations.integracaoTipo, "NUVEM-SHOP"),
-		columns: {
-			id: true,
-			nome: true,
-			email: true,
-			integracaoTipo: true,
-			integracaoConfiguracao: true,
-		},
-	});
+	// Lookup indexado por refExterno (= String(storeId)) na tabela de integrações. Webhook LGPD
+	// vale para lojas já desconectadas também — por isso NÃO filtra por `ativo`.
+	const [integration] = await db
+		.select({ organizacaoId: integrations.organizacaoId, configuracao: integrations.configuracao })
+		.from(integrations)
+		.where(and(eq(integrations.tipo, "NUVEM-SHOP"), eq(integrations.refExterno, String(storeId))))
+		.limit(1);
+	if (!integration) return null;
 
-	return (
-		nuvemshopOrganizations.find((organization) => {
-			const config = organization.integracaoConfiguracao;
-			return !!config && typeof config === "object" && "storeId" in config && config.storeId === storeId;
-		}) ?? null
-	);
+	const organization = await db.query.organizations.findFirst({
+		where: eq(organizations.id, integration.organizacaoId),
+		columns: { id: true, nome: true, email: true },
+	});
+	if (!organization) return null;
+
+	return {
+		id: organization.id,
+		nome: organization.nome,
+		email: organization.email,
+		integracaoTipo: "NUVEM-SHOP",
+		integracaoConfiguracao: integration.configuracao,
+	};
 }
 
 function buildEmailHtml({

@@ -31,6 +31,7 @@ export function resolveFulfillmentChannelForSale(sale: TSaleForChannelResolution
 export async function applyChannelFulfillmentTransition({
 	channel,
 	organizacaoId,
+	integrationId,
 	orderId,
 	fromStatus,
 	toStatus,
@@ -38,13 +39,15 @@ export async function applyChannelFulfillmentTransition({
 }: {
 	channel: TFulfillmentChannel;
 	organizacaoId: string;
+	/** Proveniência da venda (`sales.integracaoId`) — resolve a conexão certa com N contas do canal. */
+	integrationId?: string | null;
 	orderId: string;
 	fromStatus: TSaleAttendanceStatusEnum;
 	toStatus: TSaleAttendanceStatusEnum;
 	cancellationCode?: string | null;
 }): Promise<{ appliedLocally: boolean }> {
 	if (channel === "IFOOD") {
-		return applyIfoodFulfillmentTransition({ organizacaoId, orderId, fromStatus, toStatus, cancellationCode });
+		return applyIfoodFulfillmentTransition({ organizacaoId, integrationId, orderId, fromStatus, toStatus, cancellationCode });
 	}
 	return { appliedLocally: true };
 }

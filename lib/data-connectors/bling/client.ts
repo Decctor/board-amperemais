@@ -1,5 +1,5 @@
 import { db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
+import { integrations } from "@/services/drizzle/schema";
 import axios, { isAxiosError, type AxiosInstance } from "axios";
 import dayjs from "dayjs";
 import { eq } from "drizzle-orm";
@@ -133,17 +133,27 @@ export async function refreshBlingToken(config: TBlingConfig): Promise<TBlingCon
 	};
 }
 
-export async function getValidBlingConfig({ organizationId, config }: { organizationId: string; config: TBlingConfig }) {
+export async function getValidBlingConfig({ integrationId, config }: { integrationId: string; config: TBlingConfig }) {
 	const expiresAt = dayjs(config.expiresAt);
 	if (expiresAt.isValid() && expiresAt.subtract(BLING_TOKEN_REFRESH_SKEW_MINUTES, "minutes").isAfter(dayjs())) return config;
 
-	const refreshedConfig = await refreshBlingToken(config);
+	let refreshedConfig: TBlingConfig;
+	try {
+		refreshedConfig = await refreshBlingToken(config);
+	} catch (error) {
+		await db
+			.update(integrations)
+			.set({ status: "EXPIRADO", ultimoErro: error instanceof Error ? error.message : "Falha ao renovar o token do Bling." })
+			.where(eq(integrations.id, integrationId));
+		throw error;
+	}
+
+	// Row-scoped: só a linha desta conexão — refreshes concorrentes de outras integrações da
+	// mesma organização não se sobrescrevem.
 	await db
-		.update(organizations)
-		.set({
-			integracaoConfiguracao: refreshedConfig,
-		})
-		.where(eq(organizations.id, organizationId));
+		.update(integrations)
+		.set({ configuracao: refreshedConfig, status: "CONECTADO", ultimoErro: null })
+		.where(eq(integrations.id, integrationId));
 
 	return refreshedConfig;
 }
