@@ -18,15 +18,7 @@ const UploadIfoodImageInputSchema = z.object({
 });
 export type TUploadIfoodImageInput = z.infer<typeof UploadIfoodImageInputSchema>;
 
-async function uploadIfoodImageService({
-	input,
-	file,
-	organizacaoId,
-}: {
-	input: TUploadIfoodImageInput;
-	file: File;
-	organizacaoId: string;
-}) {
+async function uploadIfoodImageService({ input, file, organizacaoId }: { input: TUploadIfoodImageInput; file: File; organizacaoId: string }) {
 	const context = await resolveIfoodManagementContext({ organizacaoId, merchantId: input.merchantId });
 	const result = await uploadIfoodImage(context.client, input.merchantId, { file, fileName: file.name });
 	return { data: result, message: "Imagem enviada com sucesso ao iFood." };
