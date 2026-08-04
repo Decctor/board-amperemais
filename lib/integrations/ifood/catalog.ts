@@ -1,3 +1,4 @@
+import type { TIfoodCatalogContextEnum, TIfoodCatalogStatusEnum } from "@/schemas/enums";
 import type { AxiosInstance } from "axios";
 import { mapIfoodError } from "./errors";
 import {
@@ -7,6 +8,7 @@ import {
 	IfoodCatalogsListResponseSchema,
 	IfoodCategoriesListResponseSchema,
 	IfoodCategoryDetailResponseSchema,
+	IfoodItemFlatResponseSchema,
 	IfoodOptionGroupDetailResponseSchema,
 	IfoodOptionGroupsListResponseSchema,
 	IfoodProductDetailResponseSchema,
@@ -15,6 +17,7 @@ import {
 	mapIfoodCatalog,
 	mapIfoodCatalogVersion,
 	mapIfoodCategory,
+	mapIfoodItemFlat,
 	mapIfoodOptionGroup,
 	mapIfoodOptionGroupsList,
 	mapIfoodProduct,
@@ -23,6 +26,7 @@ import {
 	type TIfoodCatalogDTO,
 	type TIfoodCatalogVersion,
 	type TIfoodCategoryDTO,
+	type TIfoodItemFlatDTO,
 	type TIfoodOptionGroupDTO,
 	type TIfoodProductsPageDTO,
 } from "./catalog-types";
@@ -124,6 +128,19 @@ export async function getIfoodOptionGroup(client: AxiosInstance, merchantId: str
 	}
 }
 
+/**
+ * GET /items/{itemId}/flat — item com produto, grupos de complementos e opções resolvidos. É a
+ * única leitura que traz os complementos: a listagem por categoria devolve o item sem eles.
+ */
+export async function getIfoodItemFlat(client: AxiosInstance, merchantId: string, itemId: string): Promise<TIfoodItemFlatDTO> {
+	try {
+		const response = await client.get<unknown>(catalogUrl(merchantId, `/items/${itemId}/flat`));
+		return mapIfoodItemFlat(IfoodItemFlatResponseSchema.parse(response.data));
+	} catch (error) {
+		mapIfoodError("getIfoodItemFlat", error);
+	}
+}
+
 export async function getIfoodBatch(client: AxiosInstance, merchantId: string, batchId: string): Promise<TIfoodBatchDTO> {
 	try {
 		const response = await client.get<unknown>(catalogUrl(merchantId, `/batch/${batchId}`));
@@ -140,7 +157,7 @@ export async function getIfoodBatch(client: AxiosInstance, merchantId: string, b
 export type TIfoodCategoryWritePayload = {
 	nome: string;
 	codigoExterno?: string | null;
-	status?: string | null;
+	status?: TIfoodCatalogStatusEnum | null;
 	indice?: number | null;
 	template?: string | null;
 };
@@ -238,13 +255,41 @@ export async function deleteIfoodProduct(client: AxiosInstance, merchantId: stri
 	}
 }
 
+/**
+ * `resources` diz ao iFood o que o `externalCode` endereça: o item vendável, o complemento, ou
+ * ambos. Sem ele o lote não sabe onde aplicar a mudança — era o campo que faltava no nosso payload.
+ */
+export type TIfoodBatchResource = "ITEM" | "OPTION";
+
+export type TIfoodBatchPriceEntry = {
+	externalCode: string;
+	price: { value: number; originalValue?: number | null };
+	resources?: TIfoodBatchResource[];
+	catalogContext?: TIfoodCatalogContextEnum | null;
+};
+
+export type TIfoodBatchStatusEntry = {
+	externalCode: string;
+	status: TIfoodCatalogStatusEnum;
+	resources?: TIfoodBatchResource[];
+	catalogContext?: TIfoodCatalogContextEnum | null;
+};
+
 export async function batchUpdateIfoodProductsPrice(
 	client: AxiosInstance,
 	merchantId: string,
-	itens: { externalCode: string; price: { value: number; originalValue?: number | null } }[],
+	itens: TIfoodBatchPriceEntry[],
 ): Promise<TIfoodBatchDTO> {
 	try {
-		const response = await client.patch<unknown>(catalogUrl(merchantId, "/products/price"), itens);
+		const response = await client.patch<unknown>(
+			catalogUrl(merchantId, "/products/price"),
+			itens.map((item) => ({
+				externalCode: item.externalCode,
+				price: { value: item.price.value, originalValue: item.price.originalValue ?? undefined },
+				resources: item.resources ?? ["ITEM"],
+				catalogContext: item.catalogContext ?? undefined,
+			})),
+		);
 		return mapIfoodBatch(IfoodBatchResponseSchema.parse(response.data));
 	} catch (error) {
 		mapIfoodError("batchUpdateIfoodProductsPrice", error);
@@ -254,10 +299,18 @@ export async function batchUpdateIfoodProductsPrice(
 export async function batchUpdateIfoodProductsStatus(
 	client: AxiosInstance,
 	merchantId: string,
-	itens: { externalCode: string; status: string }[],
+	itens: TIfoodBatchStatusEntry[],
 ): Promise<TIfoodBatchDTO> {
 	try {
-		const response = await client.patch<unknown>(catalogUrl(merchantId, "/products/status"), itens);
+		const response = await client.patch<unknown>(
+			catalogUrl(merchantId, "/products/status"),
+			itens.map((item) => ({
+				externalCode: item.externalCode,
+				status: item.status,
+				resources: item.resources ?? ["ITEM"],
+				catalogContext: item.catalogContext ?? undefined,
+			})),
+		);
 		return mapIfoodBatch(IfoodBatchResponseSchema.parse(response.data));
 	} catch (error) {
 		mapIfoodError("batchUpdateIfoodProductsStatus", error);

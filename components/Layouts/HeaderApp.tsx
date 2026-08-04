@@ -1,7 +1,7 @@
 "use client";
 import { getAppRouteIcon } from "@/config/app-route-icons";
 import { getAppRouteDescription, getAppRouteTitle } from "@/config";
-import SubscriptionStatusBanner from "@/components/Sidebar/SubscriptionStatusBanner";
+import { HeaderUtilities } from "@/components/Layouts/HeaderUtilities";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -22,7 +22,8 @@ export default function AppHeader({ showSidebarTrigger = true }: AppHeaderProps)
 	return (
 		<header className="flex flex-col gap-0.5">
 			<div className="flex items-center justify-between w-full">
-				<div className="flex items-center gap-2">
+				{/* min-w-0 + truncate: sem isso um título de rota longo empurra o trilho de utilidades para fora. */}
+				<div className="flex min-w-0 items-center gap-2">
 					{showSidebarTrigger ? <SidebarTrigger /> : null}
 					{redirectBackTo ? (
 						<Button variant="ghost" size="fit" asChild className="rounded-full hover:bg-brand/10 flex items-center gap-1 px-2 py-2 short:px-1.5 short:py-1">
@@ -34,11 +35,9 @@ export default function AppHeader({ showSidebarTrigger = true }: AppHeaderProps)
 					) : null}
 					{/* Decorativo: o título ao lado já nomeia a rota. */}
 					{RouteIcon ? <RouteIcon aria-hidden className="size-4 shrink-0 text-foreground md:size-5" /> : null}
-					<h1 className="text-lg font-black leading-none tracking-tight text-foreground md:text-xl">{title}</h1>
+					<h1 className="truncate text-lg font-black leading-none tracking-tight text-foreground md:text-xl">{title}</h1>
 				</div>
-				<div className="flex items-center gap-2">
-					<SubscriptionStatusBanner />
-				</div>
+				<HeaderUtilities />
 			</div>
 			<p className="pl-2 text-xs leading-tight text-muted-foreground">{description}</p>
 		</header>

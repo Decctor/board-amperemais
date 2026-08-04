@@ -109,19 +109,16 @@ export function useBulkCreateSalesState({ initialState }: TUseBulkCreateSalesSta
 	const [warnings, setWarnings] = useState<string[]>(initialState?.warnings ?? []);
 	const [parseErrors, setParseErrors] = useState<string[]>(initialState?.parseErrors ?? []);
 
-	const redefineState = useCallback(
-		(nextState: Partial<TUseBulkCreateSalesStateParams["initialState"]>) => {
-			if (nextState?.importState) setImportState(nextState.importState);
-			if (nextState?.fileName !== undefined) setFileName(nextState.fileName);
-			if (nextState?.headers) setHeaders(nextState.headers);
-			if (nextState?.rawRows) setRawRows(nextState.rawRows);
-			if (nextState?.mappingDefinitions) setMappingDefinitions(nextState.mappingDefinitions);
-			if (nextState?.normalizedRows) setNormalizedRows(nextState.normalizedRows as TBulkSaleImportRow[]);
-			if (nextState?.warnings) setWarnings(nextState.warnings);
-			if (nextState?.parseErrors) setParseErrors(nextState.parseErrors);
-		},
-		[],
-	);
+	const redefineState = useCallback((nextState: Partial<TUseBulkCreateSalesStateParams["initialState"]>) => {
+		if (nextState?.importState) setImportState(nextState.importState);
+		if (nextState?.fileName !== undefined) setFileName(nextState.fileName);
+		if (nextState?.headers) setHeaders(nextState.headers);
+		if (nextState?.rawRows) setRawRows(nextState.rawRows);
+		if (nextState?.mappingDefinitions) setMappingDefinitions(nextState.mappingDefinitions);
+		if (nextState?.normalizedRows) setNormalizedRows(nextState.normalizedRows as TBulkSaleImportRow[]);
+		if (nextState?.warnings) setWarnings(nextState.warnings);
+		if (nextState?.parseErrors) setParseErrors(nextState.parseErrors);
+	}, []);
 
 	const resetState = useCallback(() => {
 		setImportState("idle");

@@ -57,9 +57,7 @@ export function useInternalQuoteState({ initialState }: { initialState?: Partial
 			if (existing) {
 				return {
 					...prev,
-					itens: prev.itens.map((current) =>
-						current.tempId === existing.tempId ? { ...current, quantidade: current.quantidade + quantidade } : current,
-					),
+					itens: prev.itens.map((current) => (current.tempId === existing.tempId ? { ...current, quantidade: current.quantidade + quantidade } : current)),
 				};
 			}
 			if (prev.itens.length >= MAX_QUOTE_ITEMS) return prev;

@@ -688,3 +688,46 @@ export type TExternalEventSourceEnum = z.infer<typeof ExternalEventSourceEnum>;
 
 export const ExternalEventProcessingStatusEnum = z.enum(["RECEBIDO", "PROCESSADO", "FALHOU"]);
 export type TExternalEventProcessingStatusEnum = z.infer<typeof ExternalEventProcessingStatusEnum>;
+
+// Vocabulário da Catalog API v2.0 do iFood, não do domínio da casa: estes valores viajam para a API
+// deles, então ficam em inglês (a regra de enum em PT vale para o que é nosso). A homologação exige
+// que o cliente rejeite qualquer status fora deste par antes de chamar o iFood.
+export const IfoodCatalogStatusEnum = z.enum(["AVAILABLE", "UNAVAILABLE"], {
+	required_error: "Status não informado.",
+	invalid_type_error: "Tipo inválido para o status.",
+});
+export type TIfoodCatalogStatusEnum = z.infer<typeof IfoodCatalogStatusEnum>;
+
+/** Limites de tamanho de campo cobrados na homologação do Catalog. */
+export const IFOOD_CATALOG_TITLE_MAX_LENGTH = 100;
+export const IFOOD_CATALOG_DESCRIPTION_MAX_LENGTH = 500;
+
+// Todo grupo de complementos precisa declarar seu tipo. Os quatro aqui valem para itens DEFAULT;
+// pizza usa SIZE/CRUST/EDGE/TOPPING, que só fazem sentido dentro de uma categoria PIZZA e entram
+// junto com o suporte a pizza — deixar de fora aqui é o que impede marcar "borda" num hambúrguer.
+export const IfoodOptionGroupTypeEnum = z.enum(["OFFER_UNIT", "SPECIFICATION", "INGREDIENTS", "CUTLERY"], {
+	required_error: "Tipo do grupo de complementos não informado.",
+	invalid_type_error: "Tipo inválido para o grupo de complementos.",
+});
+export type TIfoodOptionGroupTypeEnum = z.infer<typeof IfoodOptionGroupTypeEnum>;
+
+/** Rótulos em PT dos tipos de grupo, para os seletores da UI. */
+export const IFOOD_OPTION_GROUP_TYPE_LABELS: Record<TIfoodOptionGroupTypeEnum, string> = {
+	OFFER_UNIT: "Venda adicional",
+	SPECIFICATION: "Especificação de preparo",
+	INGREDIENTS: "Alteração de ingredientes",
+	CUTLERY: "Utensílios",
+};
+
+/** Contextos (canais de venda) de um catálogo do iFood. */
+export const IfoodCatalogContextEnum = z.enum(["DEFAULT", "WHITELABEL", "INDOOR"], {
+	required_error: "Contexto do catálogo não informado.",
+	invalid_type_error: "Tipo inválido para o contexto do catálogo.",
+});
+export type TIfoodCatalogContextEnum = z.infer<typeof IfoodCatalogContextEnum>;
+
+export const IFOOD_CATALOG_CONTEXT_LABELS: Record<TIfoodCatalogContextEnum, string> = {
+	DEFAULT: "Entrega",
+	WHITELABEL: "Cardápio Digital",
+	INDOOR: "Consumo no Local",
+};

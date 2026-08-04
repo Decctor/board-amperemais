@@ -1,5 +1,5 @@
 import { IFOOD_MERCHANT_BASE_URL } from "@/lib/data-connectors/ifood/types";
-import type { AxiosInstance } from "axios";
+import type { AxiosInstance, AxiosRequestConfig } from "axios";
 import { mapIfoodError } from "./errors";
 import {
 	IfoodInterruptionResponseSchema,
@@ -46,9 +46,17 @@ export async function getIfoodMerchantDetails(client: AxiosInstance, merchantId:
 	}
 }
 
-export async function getIfoodMerchantStatus(client: AxiosInstance, merchantId: string): Promise<TIfoodMerchantStatusDTO[]> {
+/**
+ * `config` existe para quem chama fora de uma tela dedicada — o trilho do header passa um
+ * `AbortSignal` com prazo curto, porque um status atrasado lá vale menos que um header responsivo.
+ */
+export async function getIfoodMerchantStatus(
+	client: AxiosInstance,
+	merchantId: string,
+	config?: AxiosRequestConfig,
+): Promise<TIfoodMerchantStatusDTO[]> {
 	try {
-		const response = await client.get<unknown>(`${IFOOD_MERCHANT_BASE_URL}/merchants/${merchantId}/status`);
+		const response = await client.get<unknown>(`${IFOOD_MERCHANT_BASE_URL}/merchants/${merchantId}/status`, config);
 		return IfoodMerchantStatusListResponseSchema.parse(response.data).map(mapIfoodMerchantStatus);
 	} catch (error) {
 		mapIfoodError("getIfoodMerchantStatus", error);

@@ -4,6 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { addIfoodOptions, patchIfoodOptionsPrice, patchIfoodOptionsStatus } from "@/lib/integrations/ifood/catalog-items";
 import { resolveIfoodManagementContext } from "@/lib/integrations/ifood/context";
 import { canManageIntegrations } from "@/lib/integrations/mask";
+import { IFOOD_CATALOG_TITLE_MAX_LENGTH, IfoodCatalogStatusEnum, type TIfoodCatalogStatusEnum } from "@/schemas/enums";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -34,10 +35,15 @@ const CreateIfoodOptionsInputSchema = z.object({
 						invalid_type_error: "Tipo inválido para o nome da opção.",
 					})
 					.trim()
-					.min(1, "Nome da opção não informado."),
-				preco: z.number({ invalid_type_error: "Tipo inválido para o preço da opção." }).min(0).optional().nullable(),
+					.min(1, "Nome da opção não informado.")
+					.max(IFOOD_CATALOG_TITLE_MAX_LENGTH, `O nome da opção não pode passar de ${IFOOD_CATALOG_TITLE_MAX_LENGTH} caracteres.`),
+				preco: z
+					.number({ invalid_type_error: "Tipo inválido para o preço da opção." })
+					.min(0, "Preço da opção não pode ser negativo.")
+					.optional()
+					.nullable(),
 				codigoExterno: z.string({ invalid_type_error: "Tipo inválido para o código externo da opção." }).optional().nullable(),
-				status: z.string({ invalid_type_error: "Tipo inválido para o status da opção." }).optional().nullable(),
+				status: IfoodCatalogStatusEnum.optional().nullable(),
 			}),
 			{
 				required_error: "Opções não informadas.",
@@ -93,8 +99,12 @@ const PatchIfoodOptionsInputSchema = z.object({
 						invalid_type_error: "Tipo inválido para o ID da opção.",
 					})
 					.min(1, "ID da opção não informado."),
-				preco: z.number({ invalid_type_error: "Tipo inválido para o preço da opção." }).min(0).optional().nullable(),
-				status: z.string({ invalid_type_error: "Tipo inválido para o status da opção." }).optional().nullable(),
+				preco: z
+					.number({ invalid_type_error: "Tipo inválido para o preço da opção." })
+					.min(0, "Preço da opção não pode ser negativo.")
+					.optional()
+					.nullable(),
+				status: IfoodCatalogStatusEnum.optional().nullable(),
 			}),
 			{
 				required_error: "Opções não informadas.",
@@ -116,7 +126,9 @@ async function patchIfoodOptionsService({ input, session }: { input: TPatchIfood
 		return { data: { atualizadas: opcoes.length }, message: "Preços das opções atualizados com sucesso no iFood." };
 	}
 
-	const opcoes = input.opcoes.filter((opcao) => opcao.status != null).map((opcao) => ({ optionId: opcao.optionId, status: opcao.status as string }));
+	const opcoes = input.opcoes
+		.filter((opcao) => opcao.status != null)
+		.map((opcao) => ({ optionId: opcao.optionId, status: opcao.status as TIfoodCatalogStatusEnum }));
 	if (!opcoes.length) throw new createHttpError.BadRequest("Nenhuma opção com status informado.");
 	await patchIfoodOptionsStatus(context.client, input.merchantId, opcoes);
 	return { data: { atualizadas: opcoes.length }, message: "Status das opções atualizados com sucesso no iFood." };

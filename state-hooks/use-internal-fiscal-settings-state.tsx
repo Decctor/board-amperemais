@@ -98,8 +98,7 @@ export function useInternalFiscalSettingsState({ initialState }: { initialState:
 		setState((prev) => ({
 			...prev,
 			...nextState,
-			fiscalConfiguracao:
-				nextState.fiscalConfiguracao !== undefined ? normalizeFiscalConfig(nextState.fiscalConfiguracao) : prev.fiscalConfiguracao,
+			fiscalConfiguracao: nextState.fiscalConfiguracao !== undefined ? normalizeFiscalConfig(nextState.fiscalConfiguracao) : prev.fiscalConfiguracao,
 		}));
 	}, []);
 

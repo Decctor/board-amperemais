@@ -125,22 +125,25 @@ export function useInternalCommunityCourseSectionState({ initialState }: TUseInt
 		[],
 	);
 
-	const updateCommunityCourseSectionLessonVideoHolder = useCallback((index: number, videoHolder: Partial<TCommunityCourseSectionLessonState["videoHolder"]>) => {
-		setState((prevState) => ({
-			...prevState,
-			communityCourseSectionLessons: prevState.communityCourseSectionLessons.map((lesson, lessonIndex) =>
-				lessonIndex === index
-					? {
-							...lesson,
-							videoHolder: {
-								...lesson.videoHolder,
-								...videoHolder,
-							},
-						}
-					: lesson,
-			),
-		}));
-	}, []);
+	const updateCommunityCourseSectionLessonVideoHolder = useCallback(
+		(index: number, videoHolder: Partial<TCommunityCourseSectionLessonState["videoHolder"]>) => {
+			setState((prevState) => ({
+				...prevState,
+				communityCourseSectionLessons: prevState.communityCourseSectionLessons.map((lesson, lessonIndex) =>
+					lessonIndex === index
+						? {
+								...lesson,
+								videoHolder: {
+									...lesson.videoHolder,
+									...videoHolder,
+								},
+							}
+						: lesson,
+				),
+			}));
+		},
+		[],
+	);
 
 	const removeCommunityCourseSectionLesson = useCallback((index: number) => {
 		setState((prevState) => {

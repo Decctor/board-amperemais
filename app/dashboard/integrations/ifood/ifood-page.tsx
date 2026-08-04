@@ -10,8 +10,7 @@ import IfoodLogo from "@/utils/images/integrations/ifood-logo.png";
 import { SlidersHorizontal } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { IfoodCatalogSection } from "./_module/catalog/IfoodCatalogSection";
-import { IfoodOptionGroupsSection } from "./_module/catalog/IfoodOptionGroupsSection";
+import { IfoodCatalogEntrySection } from "./_module/catalog/IfoodCatalogEntrySection";
 import { IfoodOrdersSection } from "./_module/orders/IfoodOrdersSection";
 import { IfoodStoreSection } from "./_module/overview/IfoodStoreSection";
 import { IfoodConnectionGate } from "./_module/shared/IfoodConnectionGate";
@@ -72,8 +71,7 @@ export default function IntegrationsIFoodPage({ sessionUser: _sessionUser, membe
 						<IfoodInterruptionsSection merchantId={selectedMerchantId} canManage={canManage} />
 						<IfoodOpeningHoursSection merchantId={selectedMerchantId} canManage={canManage} />
 						<IfoodOrdersSection canManage={canManage} />
-						<IfoodCatalogSection merchantId={selectedMerchantId} canManage={canManage} />
-						<IfoodOptionGroupsSection merchantId={selectedMerchantId} canManage={canManage} />
+						<IfoodCatalogEntrySection merchantId={selectedMerchantId} />
 					</div>
 				)}
 			</IfoodConnectionGate>

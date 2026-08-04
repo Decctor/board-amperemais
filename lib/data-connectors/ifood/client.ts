@@ -19,6 +19,7 @@ import {
 	type TIfoodOrder,
 	type TIfoodUserCodeResponse,
 } from "./types";
+import { attachIfoodRetry } from "./retry";
 // SANDBOX: remover import e bloco em getValidIfoodConfig ao deletar ifood/sandbox
 import { getValidIfoodSandboxConfig, isIfoodSandboxConfig } from "./sandbox";
 
@@ -144,13 +145,15 @@ export async function getValidIfoodConfig({ organizationId, config }: { organiza
 }
 
 export function createIfoodClient(config: TIfoodConfig): AxiosInstance {
-	return axios.create({
-		headers: {
-			Authorization: `Bearer ${config.accessToken}`,
-			"Content-Type": "application/json",
-		},
-		timeout: 30000,
-	});
+	return attachIfoodRetry(
+		axios.create({
+			headers: {
+				Authorization: `Bearer ${config.accessToken}`,
+				"Content-Type": "application/json",
+			},
+			timeout: 30000,
+		}),
+	);
 }
 
 function normalizeEvents(data: unknown): TIfoodEvent[] {

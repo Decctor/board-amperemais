@@ -1,4 +1,6 @@
 import type { TGetIfoodCategoriesOutput } from "@/app/api/integrations/ifood/catalog/categories/route";
+import type { TGetIfoodItemOutput } from "@/app/api/integrations/ifood/catalog/items/route";
+import type { TGetIfoodBatchOutput } from "@/app/api/integrations/ifood/catalog/products/batch/route";
 import type { TGetIfoodOptionGroupsOutput } from "@/app/api/integrations/ifood/catalog/option-groups/route";
 import type { TGetIfoodProductsOutput } from "@/app/api/integrations/ifood/catalog/products/route";
 import type { TGetIfoodCatalogsOutput } from "@/app/api/integrations/ifood/catalog/route";
@@ -125,6 +127,34 @@ export function useIfoodCategories({ merchantId, catalogId }: { merchantId: stri
 			queryKey,
 			queryFn: () => fetchIfoodCategories({ merchantId: merchantId as string, catalogId: catalogId as string }),
 			enabled: !!merchantId && !!catalogId,
+			retry: false,
+		}),
+		queryKey,
+	};
+}
+
+/**
+ * Estado de um lote. Não é hook de propósito: o acompanhamento é imperativo, disparado logo após o
+ * envio, e a quantidade de lotes varia por aplicação (preço e status viajam separados).
+ */
+export async function fetchIfoodBatchStatus({ merchantId, batchId }: { merchantId: string; batchId: string }) {
+	const { data } = await axios.get<TGetIfoodBatchOutput>(`/api/integrations/ifood/catalog/products/batch?merchantId=${merchantId}&batchId=${batchId}`);
+	return data.data;
+}
+
+async function fetchIfoodItemById({ merchantId, itemId }: { merchantId: string; itemId: string }) {
+	const { data } = await axios.get<TGetIfoodItemOutput>(`/api/integrations/ifood/catalog/items?merchantId=${merchantId}&itemId=${itemId}`);
+	return data.data.byId;
+}
+
+/** Item completo com complementos. É a única leitura que traz os grupos — a listagem não traz. */
+export function useIfoodItemById({ merchantId, itemId }: { merchantId: string | null; itemId: string | null }) {
+	const queryKey = ["ifood-item-by-id", merchantId, itemId];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchIfoodItemById({ merchantId: merchantId as string, itemId: itemId as string }),
+			enabled: !!merchantId && !!itemId,
 			retry: false,
 		}),
 		queryKey,

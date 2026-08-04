@@ -48,7 +48,10 @@ const IfoodCatalogResponseSchema = z
 		catalogId: NullableString,
 		id: NullableString,
 		status: NullableString,
-		context: z.union([z.array(z.string()), z.string()]).optional().nullable(),
+		context: z
+			.union([z.array(z.string()), z.string()])
+			.optional()
+			.nullable(),
 		modifiedAt: NullableString,
 	})
 	.passthrough();
@@ -106,6 +109,15 @@ const IfoodItemPriceResponseSchema = z
 	})
 	.passthrough();
 
+const IfoodContextModifierResponseSchema = z
+	.object({
+		catalogContext: NullableString,
+		status: NullableString,
+		externalCode: NullableString,
+		price: IfoodItemPriceResponseSchema.optional().nullable(),
+	})
+	.passthrough();
+
 const IfoodItemResponseSchema = z
 	.object({
 		id: NullableString,
@@ -117,8 +129,25 @@ const IfoodItemResponseSchema = z
 		index: NullableNumber,
 		price: IfoodItemPriceResponseSchema.optional().nullable(),
 		imagePath: NullableString,
+		contextModifiers: z.array(IfoodContextModifierResponseSchema).optional().nullable(),
 	})
 	.passthrough();
+
+export type TIfoodContextModifierDTO = {
+	contexto: string | null;
+	preco: number | null;
+	status: string | null;
+	codigoExterno: string | null;
+};
+
+export function mapIfoodContextModifier(modifier: z.infer<typeof IfoodContextModifierResponseSchema>): TIfoodContextModifierDTO {
+	return {
+		contexto: modifier.catalogContext,
+		preco: modifier.price?.value ?? null,
+		status: modifier.status,
+		codigoExterno: modifier.externalCode,
+	};
+}
 
 export type TIfoodItemDTO = {
 	id: string | null;
@@ -346,25 +375,209 @@ export function mapIfoodOptionGroupsList(payload: z.infer<typeof IfoodOptionGrou
 }
 
 // ---------------------------------------------------------------------------
+// Item "flat" — item com produto, grupos e opções resolvidos (GET /items/{id}/flat)
+// ---------------------------------------------------------------------------
+
+const IfoodFlatOptionResponseSchema = z
+	.object({
+		id: NullableString,
+		productId: NullableString,
+		name: NullableString,
+		description: NullableString,
+		externalCode: NullableString,
+		status: NullableString,
+		index: NullableNumber,
+		price: IfoodItemPriceResponseSchema.optional().nullable(),
+	})
+	.passthrough();
+
+const IfoodFlatOptionGroupResponseSchema = z
+	.object({
+		id: NullableString,
+		name: NullableString,
+		optionGroupType: NullableString,
+		min: NullableNumber,
+		max: NullableNumber,
+		index: NullableNumber,
+		optionIds: z.array(z.string()).optional().nullable(),
+		options: z.array(IfoodFlatOptionResponseSchema).optional().nullable(),
+	})
+	.passthrough();
+
+export const IfoodItemFlatResponseSchema = z
+	.object({
+		item: IfoodItemResponseSchema.optional().nullable(),
+		id: NullableString,
+		productId: NullableString,
+		categoryId: NullableString,
+		name: NullableString,
+		description: NullableString,
+		externalCode: NullableString,
+		status: NullableString,
+		price: IfoodItemPriceResponseSchema.optional().nullable(),
+		imagePath: NullableString,
+		// O `flat` devolve o item ora aninhado em `item`, ora na raiz — os canais seguem o mesmo item.
+		contextModifiers: z.array(IfoodContextModifierResponseSchema).optional().nullable(),
+		products: z.array(IfoodProductResponseSchema).optional().nullable(),
+		optionGroups: z.array(IfoodFlatOptionGroupResponseSchema).optional().nullable(),
+		options: z.array(IfoodFlatOptionResponseSchema).optional().nullable(),
+	})
+	.passthrough();
+
+export type TIfoodFlatOptionDTO = {
+	id: string | null;
+	produtoId: string | null;
+	nome: string | null;
+	descricao: string | null;
+	codigoExterno: string | null;
+	status: string | null;
+	preco: number | null;
+};
+
+export type TIfoodFlatOptionGroupDTO = {
+	id: string | null;
+	nome: string | null;
+	tipo: string | null;
+	min: number | null;
+	max: number | null;
+	opcoes: TIfoodFlatOptionDTO[];
+};
+
+export type TIfoodItemFlatDTO = {
+	id: string | null;
+	produtoId: string | null;
+	categoriaId: string | null;
+	nome: string | null;
+	descricao: string | null;
+	codigoExterno: string | null;
+	status: string | null;
+	preco: number | null;
+	precoOriginal: number | null;
+	imagemPath: string | null;
+	imagemUrl: string | null;
+	gruposComplementos: TIfoodFlatOptionGroupDTO[];
+	canais: TIfoodContextModifierDTO[];
+};
+
+/**
+ * O `flat` devolve o item ora na raiz, ora aninhado em `item`, e o nome do complemento pode vir na
+ * própria opção ou só no produto dela — o iFood modela opção como produto. Resolvemos os dois
+ * caminhos aqui para a UI receber sempre a mesma forma.
+ */
+export function mapIfoodItemFlat(payload: z.infer<typeof IfoodItemFlatResponseSchema>): TIfoodItemFlatDTO {
+	const item = payload.item ?? payload;
+	const produtos = payload.products ?? [];
+	const produtoBase = produtos.find((produto) => produto.id && produto.id === item.productId) ?? produtos[0] ?? null;
+
+	function resolveOptionName(option: z.infer<typeof IfoodFlatOptionResponseSchema>) {
+		if (option.name) return option.name;
+		const produto = produtos.find((candidato) => candidato.id && candidato.id === option.productId);
+		return produto?.name ?? null;
+	}
+
+	// As opções podem chegar dentro do grupo ou numa lista irmã referenciada por `optionIds`.
+	const opcoesSoltas = payload.options ?? [];
+	const grupos = (payload.optionGroups ?? []).map((grupo) => {
+		const opcoesDoGrupo = grupo.options?.length
+			? grupo.options
+			: opcoesSoltas.filter((opcao) => opcao.id && (grupo.optionIds ?? []).includes(opcao.id));
+		return {
+			id: grupo.id,
+			nome: grupo.name,
+			tipo: grupo.optionGroupType,
+			min: grupo.min,
+			max: grupo.max,
+			opcoes: opcoesDoGrupo.map((opcao) => ({
+				id: opcao.id,
+				produtoId: opcao.productId,
+				nome: resolveOptionName(opcao),
+				descricao: opcao.description,
+				codigoExterno: opcao.externalCode,
+				status: opcao.status,
+				preco: opcao.price?.value ?? null,
+			})),
+		};
+	});
+
+	const imagePath = produtoBase?.imagePath ?? produtoBase?.image ?? payload.imagePath ?? item.imagePath ?? null;
+
+	return {
+		id: item.id ?? payload.id,
+		produtoId: item.productId ?? produtoBase?.id ?? null,
+		categoriaId: payload.categoryId ?? null,
+		nome: produtoBase?.name ?? item.name ?? payload.name,
+		descricao: produtoBase?.description ?? item.description ?? payload.description,
+		codigoExterno: item.externalCode ?? payload.externalCode,
+		status: item.status ?? payload.status,
+		preco: item.price?.value ?? payload.price?.value ?? null,
+		precoOriginal: item.price?.originalValue ?? payload.price?.originalValue ?? null,
+		imagemPath: imagePath,
+		imagemUrl: buildIfoodCatalogImageUrl(imagePath),
+		gruposComplementos: grupos,
+		canais: (item.contextModifiers ?? []).map(mapIfoodContextModifier),
+	};
+}
+
+// ---------------------------------------------------------------------------
 // Batch (operações em lote de preço/status)
 // ---------------------------------------------------------------------------
+
+/**
+ * O status terminal do lote vem em `batchStatus` (`COMPLETED`); `status` é aceito como fallback
+ * porque respostas antigas usavam esse nome.
+ */
+const IfoodBatchResultSchema = z
+	.object({
+		resourceId: NullableString,
+		result: NullableString,
+		message: NullableString,
+	})
+	.passthrough();
 
 export const IfoodBatchResponseSchema = z
 	.object({
 		batchId: NullableString,
 		id: NullableString,
+		batchStatus: NullableString,
 		status: NullableString,
+		url: NullableString,
+		results: z.array(IfoodBatchResultSchema).optional().nullable(),
+		error: z.unknown().optional().nullable(),
 	})
 	.passthrough();
+
+export type TIfoodBatchResultDTO = {
+	/** O `externalCode` que endereçou a linha — é por ele que a UI acha o item na tabela. */
+	recurso: string | null;
+	sucesso: boolean;
+	mensagem: string | null;
+};
 
 export type TIfoodBatchDTO = {
 	id: string | null;
 	status: string | null;
+	/** `true` quando o lote chegou ao fim — a UI para de fazer polling. */
+	concluido: boolean;
+	/** Resultado por linha. `COMPLETED` no lote não garante sucesso em cada item. */
+	resultados: TIfoodBatchResultDTO[];
+	falhas: TIfoodBatchResultDTO[];
 };
 
+const IFOOD_BATCH_TERMINAL_STATUSES = new Set(["COMPLETED", "ERROR", "FAILED", "CANCELLED"]);
+
 export function mapIfoodBatch(batch: z.infer<typeof IfoodBatchResponseSchema>): TIfoodBatchDTO {
+	const status = batch.batchStatus ?? batch.status;
+	const resultados = (batch.results ?? []).map((resultado) => ({
+		recurso: resultado.resourceId,
+		sucesso: resultado.result?.toUpperCase() === "SUCCESS",
+		mensagem: resultado.message,
+	}));
+
 	return {
 		id: batch.batchId ?? batch.id,
-		status: batch.status,
+		status,
+		concluido: !!status && IFOOD_BATCH_TERMINAL_STATUSES.has(status.toUpperCase()),
+		resultados,
+		falhas: resultados.filter((resultado) => !resultado.sucesso),
 	};
 }

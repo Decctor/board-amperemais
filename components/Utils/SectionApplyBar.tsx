@@ -2,6 +2,7 @@
 
 import { LoadingButton } from "@/components/loading-button";
 import { Button } from "@/components/ui/button";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 type SectionApplyBarProps = {
 	isDirty: boolean;
@@ -13,23 +14,53 @@ type SectionApplyBarProps = {
 	onDiscard: () => void;
 };
 
-/** Barra de alterações não salvas de uma seção editável. Some quando não há o que aplicar. */
+/**
+ * Barra de alterações não salvas de uma seção editável. Some quando não há o que aplicar.
+ *
+ * Flutua acima do conteúdo em vez de encostar nele: o rascunho pertence à seção inteira, não à
+ * última linha editada, e uma barra grudada no fluxo se lê como rodapé daquele bloco. A superfície
+ * segue o mesmo idioma dos docks do app (`AdminDock`/`CommunityDock`): recuada das bordas, elevada,
+ * com desfoque atrás.
+ *
+ * `sticky` e não `fixed` de propósito — a mesma página pode ter duas seções editáveis (variantes e
+ * adicionais no cadastro de produto) e duas barras fixas se empilhariam uma sobre a outra.
+ */
 export default function SectionApplyBar({ isDirty, isPending, disabled = false, disabledReason, onApply, onDiscard }: SectionApplyBarProps) {
-	if (!isDirty) return null;
+	const shouldReduceMotion = useReducedMotion();
+	const bloqueado = disabled && !!disabledReason;
+
+	// A barra surge fora do ponto onde o usuário está olhando, então precisa de transição. Com
+	// movimento reduzido, só o fade.
+	const oculto = shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 };
+	const visivel = shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 };
 
 	return (
-		<div className="sticky bottom-0 -mx-3 mt-4 flex items-center justify-between gap-3 border-t border-border bg-background/95 px-3 py-3 backdrop-blur-sm">
-			<p className={disabled && disabledReason ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>
-				{disabled && disabledReason ? disabledReason : "Alterações não salvas nesta seção"}
-			</p>
-			<div className="flex shrink-0 items-center gap-2">
-				<Button type="button" variant="ghost" size="sm" onClick={onDiscard} disabled={isPending}>
-					DESCARTAR
-				</Button>
-				<LoadingButton type="button" size="sm" loading={isPending} disabled={disabled} onClick={onApply}>
-					APLICAR ALTERAÇÕES
-				</LoadingButton>
-			</div>
-		</div>
+		<AnimatePresence>
+			{isDirty ? (
+				<motion.div
+					// O container ocupa a largura toda para centralizar a barra, mas não intercepta
+					// cliques no conteúdo que passa por baixo dela.
+					className="pointer-events-none sticky bottom-4 z-30 mt-4 flex w-full justify-center"
+					initial={oculto}
+					animate={visivel}
+					exit={oculto}
+					transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+				>
+					<div className="pointer-events-auto flex w-full max-w-2xl items-center justify-between gap-3 rounded-2xl bg-background/90 px-3 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] ring-1 ring-border/70 backdrop-blur-md">
+						<p className={bloqueado ? "min-w-0 flex-1 text-xs font-medium text-destructive" : "min-w-0 flex-1 text-xs text-muted-foreground"}>
+							{bloqueado ? disabledReason : "Alterações não salvas nesta seção"}
+						</p>
+						<div className="flex shrink-0 items-center gap-2">
+							<Button type="button" variant="ghost" size="sm" onClick={onDiscard} disabled={isPending}>
+								DESCARTAR
+							</Button>
+							<LoadingButton type="button" loading={isPending} disabled={disabled} onClick={onApply}>
+								APLICAR ALTERAÇÕES
+							</LoadingButton>
+						</div>
+					</div>
+				</motion.div>
+			) : null}
+		</AnimatePresence>
 	);
 }

@@ -4,6 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { createIfoodCategory, deleteIfoodCategory, listIfoodCategories, updateIfoodCategory } from "@/lib/integrations/ifood/catalog";
 import { resolveIfoodManagementContext } from "@/lib/integrations/ifood/context";
 import { canManageIntegrations, canViewIntegrations } from "@/lib/integrations/mask";
+import { IFOOD_CATALOG_TITLE_MAX_LENGTH, IfoodCatalogStatusEnum } from "@/schemas/enums";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -59,9 +60,10 @@ const IfoodCategoryPayloadSchema = z.object({
 			invalid_type_error: "Tipo inválido para o nome da categoria.",
 		})
 		.trim()
-		.min(1, "Nome da categoria não informado."),
+		.min(1, "Nome da categoria não informado.")
+		.max(IFOOD_CATALOG_TITLE_MAX_LENGTH, `O nome da categoria não pode passar de ${IFOOD_CATALOG_TITLE_MAX_LENGTH} caracteres.`),
 	codigoExterno: z.string({ invalid_type_error: "Tipo inválido para o código externo da categoria." }).optional().nullable(),
-	status: z.string({ invalid_type_error: "Tipo inválido para o status da categoria." }).optional().nullable(),
+	status: IfoodCatalogStatusEnum.optional().nullable(),
 	template: z.string({ invalid_type_error: "Tipo inválido para o template da categoria." }).optional().nullable(),
 });
 

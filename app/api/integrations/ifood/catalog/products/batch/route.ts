@@ -4,6 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { batchUpdateIfoodProductsPrice, batchUpdateIfoodProductsStatus, getIfoodBatch } from "@/lib/integrations/ifood/catalog";
 import { resolveIfoodManagementContext } from "@/lib/integrations/ifood/context";
 import { canManageIntegrations, canViewIntegrations } from "@/lib/integrations/mask";
+import { IfoodCatalogStatusEnum, type TIfoodCatalogStatusEnum } from "@/schemas/enums";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -32,8 +33,12 @@ const BatchUpdateIfoodProductsInputSchema = z.object({
 						invalid_type_error: "Tipo inválido para o código externo do produto.",
 					})
 					.min(1, "Código externo do produto não informado."),
-				preco: z.number({ invalid_type_error: "Tipo inválido para o preço do produto." }).min(0).optional().nullable(),
-				status: z.string({ invalid_type_error: "Tipo inválido para o status do produto." }).optional().nullable(),
+				preco: z
+					.number({ invalid_type_error: "Tipo inválido para o preço do produto." })
+					.min(0, "Preço do produto não pode ser negativo.")
+					.optional()
+					.nullable(),
+				status: IfoodCatalogStatusEnum.optional().nullable(),
 			}),
 			{
 				required_error: "Itens da atualização em lote não informados.",
@@ -59,7 +64,7 @@ async function batchUpdateIfoodProductsService({ input, session }: { input: TBat
 
 	const itens = input.itens
 		.filter((item) => item.status != null)
-		.map((item) => ({ externalCode: item.codigoExterno, status: item.status as string }));
+		.map((item) => ({ externalCode: item.codigoExterno, status: item.status as TIfoodCatalogStatusEnum }));
 	if (!itens.length) throw new createHttpError.BadRequest("Nenhum item com status informado.");
 	const batch = await batchUpdateIfoodProductsStatus(context.client, input.merchantId, itens);
 	return { data: batch, message: "Atualização de status enviada ao iFood." };

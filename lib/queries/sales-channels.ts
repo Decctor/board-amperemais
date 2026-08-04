@@ -1,0 +1,30 @@
+import type { TGetSalesChannelsStatusOutput } from "@/app/api/sales-channels/status/route";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+const SALES_CHANNELS_STATUS_REFETCH_MS = 60 * 1000;
+
+async function fetchSalesChannelsStatus() {
+	const { data } = await axios.get<TGetSalesChannelsStatusOutput>("/api/sales-channels/status");
+	return data.data.canais;
+}
+
+/**
+ * O trilho do header vive em toda página, então a cadência importa: o `staleTime` padrão de 60s do
+ * `TanstackProvider` já evita refetch ao navegar, e o intervalo mantém o estado fresco em quem
+ * deixa o painel aberto. O servidor ainda faz cache por organização — as duas camadas somadas
+ * seguram o custo em ~1 chamada por minuto por organização.
+ */
+export function useSalesChannelsStatus() {
+	const queryKey = ["sales-channels-status"];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: fetchSalesChannelsStatus,
+			refetchInterval: SALES_CHANNELS_STATUS_REFETCH_MS,
+			// Um canal fora do ar já volta como INDETERMINADO; insistir só gera ruído de rede.
+			retry: false,
+		}),
+		queryKey,
+	};
+}

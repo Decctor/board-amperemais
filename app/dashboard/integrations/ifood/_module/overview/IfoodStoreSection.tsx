@@ -9,7 +9,8 @@ import { useIfoodMerchantDetails, useIfoodMerchantStatus } from "@/lib/queries/i
 import { Activity, Hash, Info, MapPin, Store, Tag } from "lucide-react";
 import { IfoodSectionEmpty } from "../shared/IfoodSectionEmpty";
 import { IfoodSectionLoading } from "../shared/IfoodSectionLoading";
-import { getIfoodOperationLabel, getIfoodStatusConfig } from "../shared/ifood-status-config";
+import { getIfoodOperationLabel } from "@/lib/integrations/ifood/operations";
+import { getIfoodStatusConfig } from "../shared/ifood-status-config";
 
 type IfoodStoreSectionProps = {
 	merchantId: string | null;

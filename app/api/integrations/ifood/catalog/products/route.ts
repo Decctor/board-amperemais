@@ -4,6 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { createIfoodProduct, deleteIfoodProduct, listIfoodProducts, updateIfoodProduct } from "@/lib/integrations/ifood/catalog";
 import { resolveIfoodManagementContext } from "@/lib/integrations/ifood/context";
 import { canManageIntegrations, canViewIntegrations } from "@/lib/integrations/mask";
+import { IFOOD_CATALOG_DESCRIPTION_MAX_LENGTH, IFOOD_CATALOG_TITLE_MAX_LENGTH } from "@/schemas/enums";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -64,8 +65,13 @@ const IfoodProductPayloadSchema = z.object({
 			invalid_type_error: "Tipo inválido para o nome do produto.",
 		})
 		.trim()
-		.min(1, "Nome do produto não informado."),
-	descricao: z.string({ invalid_type_error: "Tipo inválido para a descrição do produto." }).optional().nullable(),
+		.min(1, "Nome do produto não informado.")
+		.max(IFOOD_CATALOG_TITLE_MAX_LENGTH, `O nome do produto não pode passar de ${IFOOD_CATALOG_TITLE_MAX_LENGTH} caracteres.`),
+	descricao: z
+		.string({ invalid_type_error: "Tipo inválido para a descrição do produto." })
+		.max(IFOOD_CATALOG_DESCRIPTION_MAX_LENGTH, `A descrição do produto não pode passar de ${IFOOD_CATALOG_DESCRIPTION_MAX_LENGTH} caracteres.`)
+		.optional()
+		.nullable(),
 	codigoExterno: z.string({ invalid_type_error: "Tipo inválido para o código externo do produto." }).optional().nullable(),
 	imagemPath: z.string({ invalid_type_error: "Tipo inválido para a imagem do produto." }).optional().nullable(),
 });

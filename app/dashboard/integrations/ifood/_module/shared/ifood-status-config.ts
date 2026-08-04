@@ -30,16 +30,3 @@ export const IFOOD_DAY_LABELS: Record<string, string> = {
 	SATURDAY: "Sábado",
 	SUNDAY: "Domingo",
 };
-
-export const IFOOD_OPERATION_LABELS: Record<string, string> = {
-	DELIVERY: "Entrega",
-	TAKEOUT: "Retirada",
-	INDOOR: "No local",
-	"DINE-IN": "No local",
-	SCHEDULE: "Agendamento",
-};
-
-export function getIfoodOperationLabel(operation: string | null) {
-	if (!operation) return "Operação";
-	return IFOOD_OPERATION_LABELS[operation.toUpperCase()] ?? operation;
-}

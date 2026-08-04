@@ -35,15 +35,12 @@ export function useFiscalOperationProfileState({ initialState }: TUseFiscalOpera
 
 	const [state, setState] = useState<TFiscalOperationProfileState>(initialStateHolder);
 
-	const updateFiscalOperationProfile = useCallback(
-		(patch: Partial<TFiscalOperationProfileState["fiscalOperationProfile"]>) => {
-			setState((prev) => ({
-				...prev,
-				fiscalOperationProfile: { ...prev.fiscalOperationProfile, ...patch },
-			}));
-		},
-		[],
-	);
+	const updateFiscalOperationProfile = useCallback((patch: Partial<TFiscalOperationProfileState["fiscalOperationProfile"]>) => {
+		setState((prev) => ({
+			...prev,
+			fiscalOperationProfile: { ...prev.fiscalOperationProfile, ...patch },
+		}));
+	}, []);
 
 	const redefineState = useCallback((nextState: TFiscalOperationProfileState) => {
 		setState(nextState);

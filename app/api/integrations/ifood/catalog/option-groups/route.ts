@@ -6,6 +6,7 @@ import { deleteIfoodOptionGroup, patchIfoodOptionGroupStatus, updateIfoodOptionG
 import type { TIfoodOptionGroupDTO } from "@/lib/integrations/ifood/catalog-types";
 import { resolveIfoodManagementContext } from "@/lib/integrations/ifood/context";
 import { canManageIntegrations, canViewIntegrations } from "@/lib/integrations/mask";
+import { IFOOD_CATALOG_TITLE_MAX_LENGTH, IfoodCatalogStatusEnum } from "@/schemas/enums";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -91,8 +92,13 @@ const UpdateIfoodOptionGroupInputSchema = z
 				invalid_type_error: "Tipo inválido para o ID do grupo de complementos.",
 			})
 			.min(1, "ID do grupo de complementos não informado."),
-		nome: z.string({ invalid_type_error: "Tipo inválido para o nome do grupo de complementos." }).trim().optional().nullable(),
-		status: z.string({ invalid_type_error: "Tipo inválido para o status do grupo de complementos." }).optional().nullable(),
+		nome: z
+			.string({ invalid_type_error: "Tipo inválido para o nome do grupo de complementos." })
+			.trim()
+			.max(IFOOD_CATALOG_TITLE_MAX_LENGTH, `O nome do grupo não pode passar de ${IFOOD_CATALOG_TITLE_MAX_LENGTH} caracteres.`)
+			.optional()
+			.nullable(),
+		status: IfoodCatalogStatusEnum.optional().nullable(),
 	})
 	.refine((value) => value.nome || value.status, { message: "Nenhuma alteração informada para o grupo de complementos." });
 export type TUpdateIfoodOptionGroupInput = z.infer<typeof UpdateIfoodOptionGroupInputSchema>;
