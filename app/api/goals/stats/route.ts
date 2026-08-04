@@ -1,9 +1,10 @@
 import { appApiHandler } from "@/lib/app-api";
-import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
+import { runPagesRouteHandler, type PagesRouteHandler } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { resolveActiveGoalPacing } from "@/lib/goals/resolve-active-goal-pacing";
 import { db } from "@/services/drizzle";
-import { clients, goals, sales } from "@/services/drizzle/schema";
+import { clients, sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { and, count, eq, gte, isNotNull, lte, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -12,10 +13,12 @@ async function computeAchievementForPeriod({
 	organizacaoId,
 	dataInicio,
 	dataFim,
+	vendedorId,
 }: {
 	organizacaoId: string;
 	dataInicio: Date;
 	dataFim: Date;
+	vendedorId?: string;
 }) {
 	const saleConditions = [
 		eq(sales.organizacaoId, organizacaoId),
@@ -24,20 +27,25 @@ async function computeAchievementForPeriod({
 		gte(sales.dataVenda, dataInicio),
 		lte(sales.dataVenda, dataFim),
 	];
+	if (vendedorId) saleConditions.push(eq(sales.vendedorId, vendedorId));
 
 	const [salesResult, clientsResult] = await Promise.all([
 		db.select({ totalValor: sum(sales.valorTotal), totalQtde: count(sales.id) }).from(sales).where(and(...saleConditions)),
-		db
-			.select({ totalNovosClientes: count(clients.id) })
-			.from(clients)
-			.where(
-				and(
-					eq(clients.organizacaoId, organizacaoId),
-					isNotNull(clients.primeiraCompraData),
-					gte(clients.primeiraCompraData, dataInicio),
-					lte(clients.primeiraCompraData, dataFim),
-				),
-			),
+		// `primeiraCompraData` não carrega vendedor, então um novo cliente não é atribuível a
+		// ninguém. Contar o total da organização em cada vendedor daria a todos o mesmo número.
+		vendedorId
+			? Promise.resolve([])
+			: db
+					.select({ totalNovosClientes: count(clients.id) })
+					.from(clients)
+					.where(
+						and(
+							eq(clients.organizacaoId, organizacaoId),
+							isNotNull(clients.primeiraCompraData),
+							gte(clients.primeiraCompraData, dataInicio),
+							lte(clients.primeiraCompraData, dataFim),
+						),
+					),
 	]);
 
 	return {
@@ -53,6 +61,11 @@ async function getGoalsStats({ session }: { session: TAuthUserSession }) {
 
 	const allGoals = await db.query.goals.findMany({
 		where: (fields, { eq }) => eq(fields.organizacaoId, userOrgId),
+		with: {
+			vendedores: {
+				with: { vendedor: { columns: { id: true, nome: true, avatarUrl: true } } },
+			},
+		},
 		orderBy: (fields, { desc }) => desc(fields.dataInicio),
 	});
 
@@ -61,11 +74,24 @@ async function getGoalsStats({ session }: { session: TAuthUserSession }) {
 	// Compute achievement for each goal in parallel
 	const goalsWithAchievement = await Promise.all(
 		allGoals.map(async (goal) => {
-			const achievement = await computeAchievementForPeriod({
-				organizacaoId: userOrgId,
-				dataInicio: goal.dataInicio,
-				dataFim: goal.dataFim,
-			});
+			const [achievement, vendedores] = await Promise.all([
+				computeAchievementForPeriod({
+					organizacaoId: userOrgId,
+					dataInicio: goal.dataInicio,
+					dataFim: goal.dataFim,
+				}),
+				Promise.all(
+					goal.vendedores.map(async (goalSeller) => ({
+						...goalSeller,
+						...(await computeAchievementForPeriod({
+							organizacaoId: userOrgId,
+							dataInicio: goal.dataInicio,
+							dataFim: goal.dataFim,
+							vendedorId: goalSeller.vendedorId,
+						})),
+					})),
+				),
+			]);
 
 			const percentualValor = goal.objetivoValor > 0 ? (achievement.realizadoValor / goal.objetivoValor) * 100 : 0;
 			const percentualQtde =
@@ -73,13 +99,17 @@ async function getGoalsStats({ session }: { session: TAuthUserSession }) {
 			const percentualClientes =
 				goal.objetivoNovosClientes && goal.objetivoNovosClientes > 0 ? (achievement.realizadoNovosClientes / goal.objetivoNovosClientes) * 100 : null;
 
-			const isActive = dayjs(goal.dataInicio).isBefore(now) && dayjs(goal.dataFim).isAfter(now);
+			// Inclusivo nas duas pontas: uma meta que começa hoje já está ativa, e uma que termina
+			// hoje ainda está. O `isBefore`/`isAfter` estrito de antes deixava o primeiro e o último
+			// dia da meta sem meta ativa nenhuma na tela.
+			const isActive = !dayjs(goal.dataInicio).isAfter(now) && !dayjs(goal.dataFim).isBefore(now);
 
 			const label = `${dayjs(goal.dataInicio).format("DD/MM/YY")} - ${dayjs(goal.dataFim).format("DD/MM/YY")}`;
 
 			return {
 				...goal,
 				...achievement,
+				vendedores,
 				percentualValor,
 				percentualQtde,
 				percentualClientes,
@@ -90,7 +120,20 @@ async function getGoalsStats({ session }: { session: TAuthUserSession }) {
 	);
 
 	// Find the currently active goal
-	const activeGoal = goalsWithAchievement.find((g) => g.isActive) ?? null;
+	const activeGoalRow = goalsWithAchievement.find((g) => g.isActive) ?? null;
+
+	// O ritmo só é calculado para a meta ativa. Ver `resolveActiveGoalPacing` para o porquê.
+	const activeGoal = activeGoalRow
+		? {
+				...activeGoalRow,
+				ritmo: await resolveActiveGoalPacing({
+					organizacaoId: userOrgId,
+					goal: activeGoalRow,
+					goalSellers: activeGoalRow.vendedores,
+					agora: now.toDate(),
+				}),
+			}
+		: null;
 
 	// Compute aggregate KPIs
 	const totalMetas = goalsWithAchievement.length;
