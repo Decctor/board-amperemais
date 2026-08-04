@@ -1,9 +1,10 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { connectDataSourceIntegration, isDataSourceIntegrationType } from "@/lib/integrations/data-sources";
 import { canManageIntegrations, canViewIntegrations, maskIntegrationConfig } from "@/lib/integrations/mask";
 import { IntegrationTipoEnum } from "@/schemas/enums";
-import { MetaAdsCapiConfigPatchSchema } from "@/schemas/integrations";
+import { DataSourceIntegrationConfigSchema, MetaAdsCapiConfigPatchSchema } from "@/schemas/integrations";
 import { db } from "@/services/drizzle";
 import { integrations } from "@/services/drizzle/schema";
 import type { TIntegrationEntity } from "@/services/drizzle/schema";
@@ -13,11 +14,13 @@ import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
 /**
- * Fundação de integrations — CRUD base (listar/atualizar/desconectar).
+ * Integrations — CRUD base (criar credencial manual/listar/atualizar/desconectar).
  *
- * As conexões em si (ex.: Meta Ads) são CRIADAS pelos fluxos OAuth específicos
- * (`/api/integrations/meta/ads/auth/callback`), não por esta rota. Aqui ficam as operações
- * genéricas de gestão. Segredos nunca voltam crus: tudo passa por `maskIntegrationConfig`.
+ * Conexões OAuth (Meta Ads, Bling, iFood, Nuvemshop) são CRIADAS pelos fluxos específicos em
+ * `/api/integrations/<provedor>/auth/*`, não por esta rota. O POST cobre os tipos de credencial
+ * manual (ONLINE-SOFTWARE, CARDAPIO-WEB). Segredos nunca voltam crus: tudo passa por
+ * `maskIntegrationConfig`. N conexões ativas do mesmo tipo por organização são permitidas; a
+ * mesma conta externa não duplica (D5).
  */
 
 // ---------------------------------------------------------------------------
@@ -76,6 +79,49 @@ async function getIntegrationsRoute(request: NextRequest) {
 		tipo: searchParams.get("tipo"),
 	});
 	const result = await getIntegrations({ input, organizacaoId });
+	return NextResponse.json(result);
+}
+
+// ---------------------------------------------------------------------------
+// POST — criar conexão de fonte de dados com credencial manual
+// ---------------------------------------------------------------------------
+
+const CreateIntegrationInputSchema = z.object({
+	apelido: z.string({ invalid_type_error: "Tipo inválido para o apelido." }).optional().nullable(),
+	configuracao: DataSourceIntegrationConfigSchema,
+	// Reconexão explícita (D9): id da linha a reativar com credenciais novas.
+	reconnectIntegrationId: z.string({ invalid_type_error: "Tipo inválido para o ID da conexão a reconectar." }).optional().nullable(),
+});
+export type TCreateIntegrationInput = z.infer<typeof CreateIntegrationInputSchema>;
+
+async function createIntegration({ input, session }: { input: TCreateIntegrationInput; session: TAuthUserSession }) {
+	const organizacaoId = session.membership?.organizacao.id as string;
+
+	try {
+		const { integration } = await connectDataSourceIntegration({
+			executor: db,
+			organizationId: organizacaoId,
+			config: input.configuracao,
+			apelido: input.apelido,
+			autorId: session.user.id,
+			reconnectIntegrationId: input.reconnectIntegrationId,
+		});
+		return { data: toMaskedIntegration(integration), message: "Integração conectada com sucesso." };
+	} catch (error) {
+		throw new createHttpError.BadRequest(error instanceof Error ? error.message : "Não foi possível conectar a integração.");
+	}
+}
+export type TCreateIntegrationOutput = Awaited<ReturnType<typeof createIntegration>>;
+
+async function createIntegrationRoute(request: NextRequest) {
+	const session = await getCurrentSessionUncached();
+	if (!session) throw new createHttpError.Unauthorized("Você precisa estar autenticado para conectar integrações.");
+	if (!session.membership?.organizacao.id) throw new createHttpError.BadRequest("Você precisa estar vinculado a uma organização.");
+	if (!canManageIntegrations(session.membership?.permissoes))
+		throw new createHttpError.Forbidden("Você não possui permissão para gerenciar integrações.");
+
+	const input = CreateIntegrationInputSchema.parse(await request.json());
+	const result = await createIntegration({ input, session });
 	return NextResponse.json(result);
 }
 
@@ -155,6 +201,13 @@ async function deleteIntegration({ input, session }: { input: TDeleteIntegration
 	});
 	if (!existing) throw new createHttpError.NotFound("Integração não encontrada.");
 
+	// Fontes de dados usam soft delete (D9): a linha é a identidade histórica da conta externa e a
+	// proveniência de `sales.integracaoId` (FK RESTRICT) — nunca some pelo fluxo normal.
+	if (isDataSourceIntegrationType(existing.tipo)) {
+		await db.update(integrations).set({ ativo: false, dataDesativacao: new Date() }).where(eq(integrations.id, input.id));
+		return { data: { id: input.id }, message: "Integração desconectada com sucesso." };
+	}
+
 	await db.delete(integrations).where(eq(integrations.id, input.id));
 	return { data: { id: input.id }, message: "Integração desconectada com sucesso." };
 }
@@ -173,5 +226,6 @@ async function deleteIntegrationRoute(request: NextRequest) {
 }
 
 export const GET = appApiHandler({ GET: getIntegrationsRoute });
+export const POST = appApiHandler({ POST: createIntegrationRoute });
 export const PATCH = appApiHandler({ PATCH: updateIntegrationRoute });
 export const DELETE = appApiHandler({ DELETE: deleteIntegrationRoute });

@@ -10,13 +10,28 @@ const MASK = "********";
  */
 export function maskIntegrationConfig(config: TIntegrationConfig | null | undefined): TIntegrationConfig | null {
 	if (!config) return null;
-	if (config.tipo === "META_ADS") {
-		return {
-			...config,
-			accessToken: config.accessToken ? MASK : config.accessToken,
-		};
+	switch (config.tipo) {
+		case "META_ADS":
+			return {
+				...config,
+				accessToken: config.accessToken ? MASK : config.accessToken,
+			};
+		case "ONLINE-SOFTWARE":
+			return { ...config, token: config.token ? MASK : config.token };
+		case "CARDAPIO-WEB":
+			return { ...config, apiKey: config.apiKey ? MASK : config.apiKey };
+		case "NUVEM-SHOP":
+			return { ...config, accessToken: config.accessToken ? MASK : config.accessToken };
+		case "IFOOD":
+		case "BLING":
+			return {
+				...config,
+				accessToken: config.accessToken ? MASK : config.accessToken,
+				refreshToken: config.refreshToken ? MASK : config.refreshToken,
+			};
+		default:
+			return config;
 	}
-	return config;
 }
 
 /**

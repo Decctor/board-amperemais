@@ -1,6 +1,17 @@
-import type { TDeleteIntegrationOutput, TUpdateIntegrationInput, TUpdateIntegrationOutput } from "@/app/api/integrations/route";
+import type {
+	TCreateIntegrationInput,
+	TCreateIntegrationOutput,
+	TDeleteIntegrationOutput,
+	TUpdateIntegrationInput,
+	TUpdateIntegrationOutput,
+} from "@/app/api/integrations/route";
 import type { TUpdateIntegrationSettingsInput, TUpdateIntegrationSettingsOutput } from "@/app/api/integrations/settings/route";
 import axios from "axios";
+
+export async function createIntegration(input: TCreateIntegrationInput) {
+	const { data } = await axios.post<TCreateIntegrationOutput>("/api/integrations", input);
+	return data;
+}
 
 export async function updateIntegration(input: TUpdateIntegrationInput) {
 	const { data } = await axios.patch<TUpdateIntegrationOutput>("/api/integrations", input);

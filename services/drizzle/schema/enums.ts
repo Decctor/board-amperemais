@@ -80,9 +80,21 @@ export const organizationIntegrationTypeEnum = pgEnum("organization_integration_
 	"BLING",
 ]);
 
-// Fundação de integrations (marketing/parceiros — Meta Ads, CAPI, etc.). Separada do
-// enum de fonte de dados/ERP acima (organizationIntegrationTypeEnum), que é inline em organizations.
-export const integrationTypeEnum = pgEnum("integration_type", ["META_ADS", "META_CAPI", "TRACKING"]);
+// Fundação de integrations. Inclui marketing/parceiros (Meta Ads, CAPI…) e as fontes de dados
+// ERP/marketplace migradas de organizationIntegrationTypeEnum (grafia hifenizada legada mantida
+// de propósito — os valores viajam como dado no discriminante `tipo` dos jsonb de config; ver
+// docs/dev-planning/data-source-integrations-migration-plan.md D1).
+export const integrationTypeEnum = pgEnum("integration_type", [
+	"META_ADS",
+	"META_CAPI",
+	"TRACKING",
+	// Fontes de dados (migradas de organizationIntegrationTypeEnum):
+	"ONLINE-SOFTWARE",
+	"CARDAPIO-WEB",
+	"NUVEM-SHOP",
+	"IFOOD",
+	"BLING",
+]);
 export const integrationStatusEnum = pgEnum("integration_status", ["CONECTADO", "EXPIRADO", "ERRO"]);
 
 // Audiences (públicos) — status de sincronização de um destino (ex.: Custom Audience na Meta).

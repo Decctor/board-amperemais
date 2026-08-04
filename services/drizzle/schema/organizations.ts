@@ -3,6 +3,7 @@ import type {
 	TOrganizationIntegrationConfig,
 	TOrganizationMemberPermissions,
 	TOrganizationFiscalConfig,
+	TOrganizationPoiConfig,
 } from "@/schemas/organizations";
 import { relations } from "drizzle-orm";
 import { boolean, integer, jsonb, text, timestamp, varchar } from "drizzle-orm/pg-core";
@@ -70,6 +71,9 @@ export const organizations = newTable("organizations", {
 	poiQrCodeKioskDataUrl: text("poi_qr_code_kiosk_data_url"),
 	poiQrCodeMobileDataUrl: text("poi_qr_code_mobile_data_url"),
 	poiConfirmacaoValorObrigatoria: boolean("poi_confirmacao_valor_obrigatoria").notNull().default(false),
+	// Config própria do POI (D8): registro de vendas explícito, não derivado das integrações.
+	// Null = org criada antes do backfill — leitores tratam como "sem fonte ativa ⇒ registra".
+	poiConfiguracao: jsonb("poi_configuracao").$type<TOrganizationPoiConfig>(),
 	configuracao: jsonb("configuracao").$type<TOrganizationConfiguration>().notNull(),
 
 	// Fiscal config

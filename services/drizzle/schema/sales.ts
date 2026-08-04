@@ -8,6 +8,7 @@ import { clientLocations, clients } from "./clients";
 import { newTable } from "./common";
 import { deliveryModeEnum, saleAttendanceStatusEnum, saleProcessingSourceEnum, saleStatusEnum } from "./enums";
 import { accountingEntries, fiscalOutboundDocuments } from "./financial";
+import { integrations } from "./integrations";
 import { interactions } from "./interactions";
 import { organizations } from "./organizations";
 import { partners } from "./partners";
@@ -25,6 +26,10 @@ export const sales = newTable(
 		organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id, { onDelete: "cascade" }),
 		clienteId: varchar("cliente_id", { length: 255 }).references(() => clients.id, { onDelete: "set null" }), // allow nulls for non-identified clients
 		idExterno: text("id_externo").notNull(),
+		// Proveniência: de qual conexão de `integrations` esta venda foi importada. Null = venda
+		// interna/sem atribuição determinística. RESTRICT: a integração que originou vendas não é
+		// apagada fisicamente (soft delete, D9 do plano de migração de fontes de dados).
+		integracaoId: varchar("integracao_id", { length: 255 }).references(() => integrations.id, { onDelete: "restrict" }),
 
 		valorTotal: doublePrecision("valor_total").notNull(),
 
@@ -150,6 +155,10 @@ export const salesRelations = relations(sales, ({ one, many }) => ({
 	tab: one(tabs, {
 		fields: [sales.tabId],
 		references: [tabs.id],
+	}),
+	integracao: one(integrations, {
+		fields: [sales.integracaoId],
+		references: [integrations.id],
 	}),
 	// ERP back-relations
 	lancamentosContabeis: many(accountingEntries),

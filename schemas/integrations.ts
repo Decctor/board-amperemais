@@ -75,8 +75,84 @@ export const MetaAdsCapiConfigPatchSchema = z.object({
 });
 export type TMetaAdsCapiConfigPatch = z.infer<typeof MetaAdsCapiConfigPatchSchema>;
 
+// ---------------------------------------------------------------------------
+// Fontes de dados (ERP/marketplace) — variantes migradas de OrganizationIntegrationConfigSchema
+// (schemas/organizations.ts). Shapes preservados byte a byte: o backfill copia o jsonb da org
+// sem transformação e os conectores ramificam por `config.tipo` com a grafia legada (D1).
+// ---------------------------------------------------------------------------
+
+export const OnlineSoftwareIntegrationConfigSchema = z.object({
+	tipo: z.literal("ONLINE-SOFTWARE"),
+	token: z.string({ invalid_type_error: "Tipo não válido para o token da integração." }),
+	url: z.string({ invalid_type_error: "Tipo não válido para a URL da integração." }),
+});
+export type TOnlineSoftwareIntegrationConfig = z.infer<typeof OnlineSoftwareIntegrationConfigSchema>;
+
+export const CardapioWebIntegrationConfigSchema = z.object({
+	tipo: z.literal("CARDAPIO-WEB"),
+	merchantId: z.string({ invalid_type_error: "Tipo não válido para o ID do merchant." }),
+	apiKey: z.string({ invalid_type_error: "Tipo não válido para a API Key." }),
+});
+export type TCardapioWebIntegrationConfig = z.infer<typeof CardapioWebIntegrationConfigSchema>;
+
+export const NuvemshopIntegrationConfigSchema = z.object({
+	tipo: z.literal("NUVEM-SHOP"),
+	storeId: z.number({ invalid_type_error: "Tipo não válido para o ID da loja Nuvem Shop." }),
+	accessToken: z.string({ invalid_type_error: "Tipo não válido para o token de acesso da Nuvem Shop." }),
+	tokenType: z.literal("bearer", { invalid_type_error: "Tipo não válido para o tipo do token da Nuvem Shop." }),
+	scope: z.array(z.string({ invalid_type_error: "Tipo não válido para o escopo da Nuvem Shop." })),
+});
+export type TNuvemshopIntegrationConfig = z.infer<typeof NuvemshopIntegrationConfigSchema>;
+
+export const IfoodIntegrationConfigSchema = z.object({
+	tipo: z.literal("IFOOD"),
+	merchantIds: z.array(z.string({ invalid_type_error: "Tipo não válido para o ID da loja iFood." })).default([]),
+	accessToken: z.string({ invalid_type_error: "Tipo não válido para o token de acesso do iFood." }),
+	refreshToken: z.string({ invalid_type_error: "Tipo não válido para o token de renovação do iFood." }),
+	tokenType: z.literal("bearer", { invalid_type_error: "Tipo não válido para o tipo do token do iFood." }),
+	scope: z.array(z.string({ invalid_type_error: "Tipo não válido para o escopo do iFood." })),
+	expiresAt: z
+		.string({ invalid_type_error: "Tipo não válido para a expiração do token do iFood." })
+		.datetime({ message: "Tipo não válido para a expiração do token do iFood." }),
+	authorizedAt: z
+		.string({ invalid_type_error: "Tipo não válido para a data de autorização do iFood." })
+		.datetime({ message: "Tipo não válido para a data de autorização do iFood." })
+		.optional()
+		.nullable(),
+});
+export type TIfoodIntegrationConfig = z.infer<typeof IfoodIntegrationConfigSchema>;
+
+export const BlingIntegrationConfigSchema = z.object({
+	tipo: z.literal("BLING"),
+	accessToken: z.string({ invalid_type_error: "Tipo não válido para o token de acesso do Bling." }),
+	refreshToken: z.string({ invalid_type_error: "Tipo não válido para o token de renovação do Bling." }),
+	tokenType: z.string({ invalid_type_error: "Tipo não válido para o tipo do token do Bling." }).default("Bearer"),
+	scope: z.array(z.string({ invalid_type_error: "Tipo não válido para o escopo do Bling." })).default([]),
+	expiresAt: z
+		.string({ invalid_type_error: "Tipo não válido para a expiração do token do Bling." })
+		.datetime({ message: "Tipo não válido para a expiração do token do Bling." }),
+	connectedAt: z
+		.string({ invalid_type_error: "Tipo não válido para a data de conexão do Bling." })
+		.datetime({ message: "Tipo não válido para a data de conexão do Bling." }),
+});
+export type TBlingIntegrationConfig = z.infer<typeof BlingIntegrationConfigSchema>;
+
+export const DataSourceIntegrationConfigSchema = z.discriminatedUnion("tipo", [
+	OnlineSoftwareIntegrationConfigSchema,
+	CardapioWebIntegrationConfigSchema,
+	NuvemshopIntegrationConfigSchema,
+	IfoodIntegrationConfigSchema,
+	BlingIntegrationConfigSchema,
+]);
+export type TDataSourceIntegrationConfig = z.infer<typeof DataSourceIntegrationConfigSchema>;
+
 export const IntegrationConfigSchema = z.discriminatedUnion("tipo", [
 	MetaAdsIntegrationConfigSchema,
 	// MetaCapiIntegrationConfigSchema, TrackingIntegrationConfigSchema — fases futuras.
+	OnlineSoftwareIntegrationConfigSchema,
+	CardapioWebIntegrationConfigSchema,
+	NuvemshopIntegrationConfigSchema,
+	IfoodIntegrationConfigSchema,
+	BlingIntegrationConfigSchema,
 ]);
 export type TIntegrationConfig = z.infer<typeof IntegrationConfigSchema>;
