@@ -256,7 +256,116 @@ async function probeFullItemDto({ client, merchantId, categoriaId }: { client: A
 	}
 }
 
-async function run({ organizationId, confirm, keep, cleanup }: { organizationId: string; confirm: boolean; keep: boolean; cleanup: boolean }) {
+/**
+ * Cria uma PIZZA com os quatro grupos obrigatórios e confere a releitura.
+ *
+ * Opt-in porque a loja aceita no MÁXIMO UMA categoria PIZZA: se ela já vender pizza de verdade,
+ * criar outra atrapalha o cardápio real. A categoria criada é sempre removida no fim.
+ */
+async function runPizzaScenario({ client, merchantId, keep }: { client: AxiosInstance; merchantId: string; keep: boolean }) {
+	const sufixo = new Date().toISOString().slice(11, 19).replaceAll(":", "");
+	console.log("\n[PIZZA] Criando item type=PIZZA com SIZE/CRUST/EDGE/TOPPING");
+
+	// Os ids dos TAMANHOS precisam existir antes dos sabores: o iFood exige que cada sabor esteja
+	// ligado a TODOS os tamanhos ("Pizza topping option must be linked with all sizes in all
+	// contexts"), o que faz a lista de sabores ser a matriz sabor × tamanho, não a lista de sabores.
+	const tamanhos = [
+		{ id: crypto.randomUUID(), nome: "Pequena", preco: 25, fatias: 6, fracoes: [1, 2] },
+		{ id: crypto.randomUUID(), nome: "Grande", preco: 42, fatias: 12, fracoes: [1, 2, 3, 4] },
+	];
+	const sabores = [
+		{ produtoId: crypto.randomUUID(), nome: "Calabresa", precoPorTamanho: [0, 0] },
+		{ produtoId: crypto.randomUUID(), nome: "Margherita", precoPorTamanho: [2, 4] },
+	];
+
+	// Sem `categoriaId`: o iFood cria a categoria PIZZA sozinho.
+	const { itemId } = await upsertIfoodItem(client, merchantId, {
+		tipo: "PIZZA",
+		status: "AVAILABLE",
+		preco: 0,
+		codigoExterno: `TESTE_PIZZA_${sufixo}`,
+		produto: { nome: `[TESTE] Pizza ${sufixo}`, descricao: "Pizza criada pelo script de homologação." },
+		gruposComplementos: [
+			{
+				nome: "Tamanho",
+				tipo: "SIZE",
+				min: 1,
+				max: 1,
+				opcoes: tamanhos.map((tamanho) => ({
+					id: tamanho.id,
+					nome: tamanho.nome,
+					preco: tamanho.preco,
+					fatias: tamanho.fatias,
+					fracoes: tamanho.fracoes,
+				})),
+			},
+			{
+				nome: "Massa",
+				tipo: "CRUST",
+				min: 1,
+				max: 1,
+				opcoes: [
+					{ nome: "Tradicional", preco: 0 },
+					{ nome: "Fina", preco: 2 },
+				],
+			},
+			{
+				nome: "Borda",
+				tipo: "EDGE",
+				min: 0,
+				max: 1,
+				opcoes: [
+					{ nome: "Sem borda", preco: 0 },
+					{ nome: "Recheada", preco: 8 },
+				],
+			},
+			{
+				nome: "Sabor",
+				tipo: "TOPPING",
+				min: 1,
+				max: 1,
+				// Matriz: um registro por (sabor, tamanho), todos apontando para o mesmo produto do
+				// sabor e amarrados ao tamanho por `opcaoPaiId`.
+				opcoes: sabores.flatMap((sabor) =>
+					tamanhos.map((tamanho, indiceTamanho) => ({
+						produtoId: sabor.produtoId,
+						nome: sabor.nome,
+						preco: sabor.precoPorTamanho[indiceTamanho],
+						opcaoPaiId: tamanho.id,
+					})),
+				),
+			},
+		],
+	});
+	check("PUT /items type=PIZZA aceito", !!itemId, `itemId ${itemId}`);
+
+	const flat = await getIfoodItemFlat(client, merchantId, itemId);
+	checkEqual("pizza voltou com 4 grupos", 4, flat.gruposComplementos.length);
+	for (const tipoEsperado of ["SIZE", "CRUST", "EDGE", "TOPPING"]) {
+		const grupo = flat.gruposComplementos.find((candidato) => candidato.tipo?.toUpperCase() === tipoEsperado);
+		check(`grupo ${tipoEsperado} presente`, !!grupo, grupo ? `"${grupo.nome}" com ${grupo.opcoes.length} opção(ões)` : "ausente");
+	}
+	const tamanho = flat.gruposComplementos.find((grupo) => grupo.tipo?.toUpperCase() === "SIZE");
+	checkEqual("  min do grupo SIZE", 1, tamanho?.min ?? null);
+	checkEqual("  max do grupo SIZE", 1, tamanho?.max ?? null);
+
+	if (keep) {
+		console.log(`[PIZZA] Mantida (--keep): item ${itemId}, categoria ${flat.categoriaId}.`);
+		return;
+	}
+	if (flat.categoriaId) {
+		await deleteIfoodCategory(client, merchantId, flat.categoriaId).catch(() => undefined);
+		check("categoria PIZZA removida", true);
+	}
+}
+
+async function run({
+	organizationId,
+	confirm,
+	keep,
+	cleanup,
+	pizza,
+}: { organizationId: string; confirm: boolean; keep: boolean; cleanup: boolean; pizza: boolean }) {
 	await printTokenDiagnostics(organizationId);
 	const { client, merchantId } = await resolveContext(organizationId);
 	console.log(`\n[IFOOD_CATALOG_TEST] Loja: ${merchantId}\n`);
@@ -265,6 +374,15 @@ async function run({ organizationId, confirm, keep, cleanup }: { organizationId:
 		const catalogosParaLimpar = await getIfoodCatalogs(client, merchantId);
 		console.log("Limpeza de resíduos de execuções anteriores");
 		for (const alvo of catalogosParaLimpar) await cleanupTestCategories({ client, merchantId, catalogId: alvo.id });
+		return;
+	}
+
+	if (pizza) {
+		if (!confirm) {
+			console.log("\nModo leitura: --pizza precisa de --confirm para criar a pizza de teste.\n");
+			return;
+		}
+		await runPizzaScenario({ client, merchantId, keep });
 		return;
 	}
 
@@ -528,8 +646,10 @@ async function main() {
 	const keep = hasFlag("keep");
 	const cleanup = hasFlag("cleanup");
 
-	console.log("[IFOOD_CATALOG_TEST] Iniciando", { organizationId, confirm, keep, cleanup, probeItem: hasFlag("probe-item") });
-	await run({ organizationId, confirm, keep, cleanup });
+	const pizza = hasFlag("pizza");
+
+	console.log("[IFOOD_CATALOG_TEST] Iniciando", { organizationId, confirm, keep, cleanup, pizza, probeItem: hasFlag("probe-item") });
+	await run({ organizationId, confirm, keep, cleanup, pizza });
 
 	if (!checks.length) return;
 	const falhas = checks.filter((item) => !item.ok);

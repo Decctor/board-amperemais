@@ -1,4 +1,4 @@
-import type { TIfoodCatalogContextEnum, TIfoodCatalogStatusEnum, TIfoodOptionGroupTypeEnum } from "@/schemas/enums";
+import type { TIfoodCatalogContextEnum, TIfoodCatalogStatusEnum, TIfoodItemTypeEnum, TIfoodOptionGroupTypeEnum } from "@/schemas/enums";
 import type { AxiosInstance } from "axios";
 import { mapIfoodError } from "./errors";
 import { IFOOD_CATALOG_BASE_URL, mapIfoodOptionGroup, IfoodOptionGroupDetailResponseSchema } from "./catalog-types";
@@ -30,6 +30,16 @@ export type TIfoodItemOptionPayload = {
 	preco?: number | null;
 	codigoExterno?: string | null;
 	status?: TIfoodCatalogStatusEnum | null;
+	/** Ordem de exibição dentro do grupo. */
+	indice?: number | null;
+	/** Pizza (SIZE): número de fatias do tamanho. Vai no PRODUTO da opção, não na opção. */
+	fatias?: number | null;
+	/** Pizza (SIZE): em quantas partes a pizza pode ser dividida — `[1,2]` = inteira ou meia. */
+	fracoes?: number[] | null;
+	/** Pizza (TOPPING): amarra este preço de sabor a um tamanho específico. */
+	opcaoPaiId?: string | null;
+	/** Combo: grupos de 3º nível que pendem desta opção (só SPECIFICATION e INGREDIENTS). */
+	gruposComplementos?: TIfoodItemOptionGroupPayload[] | null;
 };
 
 /**
@@ -43,6 +53,10 @@ export type TIfoodItemOptionGroupPayload = {
 	min: number;
 	max: number;
 	status?: TIfoodCatalogStatusEnum | null;
+	/** Ordem de exibição dos grupos no item. */
+	indice?: number | null;
+	/** Combo: marca o grupo principal (`associationType: "MAIN"`). Exatamente um por combo. */
+	principal?: boolean;
 	opcoes: TIfoodItemOptionPayload[];
 };
 
@@ -61,7 +75,9 @@ export type TIfoodItemUpsertPayload = {
 	/** Presente ao atualizar um item existente. */
 	itemId?: string | null;
 	produtoId?: string | null;
-	categoriaId: string;
+	/** `DEFAULT` quando omitido. `PIZZA` dispensa `categoriaId` — o iFood cria a categoria. */
+	tipo?: TIfoodItemTypeEnum | null;
+	categoriaId?: string | null;
 	status: TIfoodCatalogStatusEnum;
 	preco: number;
 	precoOriginal?: number | null;
@@ -100,19 +116,44 @@ export async function upsertIfoodItem(
 	try {
 		const itemId = payload.itemId ?? crypto.randomUUID();
 		const productId = payload.produtoId ?? crypto.randomUUID();
+		const tipoItem = payload.tipo ?? "DEFAULT";
 
-		// Cada opção vira um par produto + opção; o id da opção precisa existir antes de entrar no
-		// `optionIds` do grupo, então resolvemos todos os ids primeiro.
-		const grupos = (payload.gruposComplementos ?? []).map((grupo) => ({
-			...grupo,
-			id: grupo.id ?? crypto.randomUUID(),
-			opcoes: grupo.opcoes.map((opcao) => ({
-				...opcao,
-				id: opcao.id ?? crypto.randomUUID(),
-				produtoId: opcao.produtoId ?? crypto.randomUUID(),
-			})),
-		}));
-		const opcoes = grupos.flatMap((grupo) => grupo.opcoes);
+		// O `FullItemDto` é PLANO: três listas que se referenciam por id. A árvore (item → grupos →
+		// opções → grupos de 3º nível, no combo) é expressa por `products[].optionGroups`, que carrega
+		// min/max/index/associationType do vínculo. Achatamos a árvore aqui.
+		const gruposAchatados: (TIfoodItemOptionGroupPayload & { id: string; opcoes: (TIfoodItemOptionPayload & { id: string; produtoId: string })[] })[] = [];
+		/** Vínculos produto → grupos, na forma de objeto que o iFood exige. */
+		const vinculosPorProduto = new Map<string, { id: string; min: number; max: number; index?: number; associationType?: "MAIN" }[]>();
+
+		function achatar(grupos: TIfoodItemOptionGroupPayload[], produtoDonoId: string) {
+			grupos.forEach((grupo, indiceGrupo) => {
+				const grupoId = grupo.id ?? crypto.randomUUID();
+				const opcoesResolvidas = grupo.opcoes.map((opcao) => ({
+					...opcao,
+					id: opcao.id ?? crypto.randomUUID(),
+					produtoId: opcao.produtoId ?? crypto.randomUUID(),
+				}));
+
+				gruposAchatados.push({ ...grupo, id: grupoId, opcoes: opcoesResolvidas });
+
+				const vinculos = vinculosPorProduto.get(produtoDonoId) ?? [];
+				vinculos.push({
+					id: grupoId,
+					min: grupo.min,
+					max: grupo.max,
+					index: grupo.indice ?? indiceGrupo,
+					...(grupo.principal ? { associationType: "MAIN" as const } : {}),
+				});
+				vinculosPorProduto.set(produtoDonoId, vinculos);
+
+				// 3º nível do combo: grupos que pendem do PRODUTO da opção.
+				for (const opcao of opcoesResolvidas) {
+					if (opcao.gruposComplementos?.length) achatar(opcao.gruposComplementos, opcao.produtoId);
+				}
+			});
+		}
+		achatar(payload.gruposComplementos ?? [], productId);
+		const opcoes = gruposAchatados.flatMap((grupo) => grupo.opcoes);
 
 		const produtosBase = payload.produto
 			? [
@@ -121,9 +162,10 @@ export async function upsertIfoodItem(
 						name: payload.produto.nome,
 						description: payload.produto.descricao ?? undefined,
 						imagePath: payload.produto.imagemPath ?? undefined,
-						// O vínculo com os grupos sai DAQUI, do produto base — não do item. Apontar do
-						// item (`item.optionGroupIds`) responde 400 "resources are not linked correctly".
-						optionGroupIds: grupos.length ? grupos.map((grupo) => grupo.id) : undefined,
+						externalCode: payload.codigoExterno ? `${payload.codigoExterno}_PROD` : undefined,
+						// O vínculo com os grupos sai DAQUI, do produto — não do item. Apontar do item
+						// (`item.optionGroupIds`) responde 400 "resources are not linked correctly".
+						optionGroups: vinculosPorProduto.get(productId),
 					},
 				]
 			: [];
@@ -131,9 +173,11 @@ export async function upsertIfoodItem(
 		await client.put(catalogUrl(merchantId, "/items"), {
 			item: {
 				id: itemId,
-				type: "DEFAULT",
+				type: tipoItem,
 				productId,
-				categoryId: payload.categoriaId,
+				// Pizza sem categoria informada faz o iFood criar a categoria PIZZA sozinho (a loja
+				// aceita no máximo uma).
+				categoryId: payload.categoriaId ?? undefined,
 				status: payload.status,
 				externalCode: payload.codigoExterno ?? undefined,
 				index: payload.indice ?? undefined,
@@ -164,25 +208,32 @@ export async function upsertIfoodItem(
 					id: opcao.produtoId,
 					name: opcao.nome,
 					description: opcao.descricao ?? undefined,
+					// Pizza: o número de fatias do tamanho mora no PRODUTO da opção.
+					quantity: opcao.fatias ?? undefined,
+					// Combo: uma opção que tem grupos de 3º nível os declara pelo seu produto.
+					optionGroups: vinculosPorProduto.get(opcao.produtoId),
 				})),
 			],
-			optionGroups: grupos.map((grupo) => ({
+			// min/max NÃO vão aqui — eles pertencem ao vínculo em `products[].optionGroups`.
+			optionGroups: gruposAchatados.map((grupo) => ({
 				id: grupo.id,
 				name: grupo.nome,
 				optionGroupType: grupo.tipo,
 				// Obrigatório, apesar de ausente no exemplo da documentação: sem ele a API responde
 				// 400 "FullItemDto is not valid" com `OptionGroupDto[0] status must be one of...`.
 				status: grupo.status ?? "AVAILABLE",
-				min: grupo.min,
-				max: grupo.max,
 				optionIds: grupo.opcoes.map((opcao) => opcao.id),
 			})),
-			options: opcoes.map((opcao) => ({
+			options: opcoes.map((opcao, indiceOpcao) => ({
 				id: opcao.id,
 				productId: opcao.produtoId,
 				status: opcao.status ?? "AVAILABLE",
 				externalCode: opcao.codigoExterno ?? undefined,
+				index: opcao.indice ?? indiceOpcao,
 				price: { value: opcao.preco ?? 0 },
+				// Pizza: divisões permitidas do tamanho e preço de sabor amarrado a um tamanho.
+				fractions: opcao.fracoes ?? undefined,
+				parentCustomizationOptionId: opcao.opcaoPaiId ?? undefined,
 			})),
 		});
 		return { itemId, productId };

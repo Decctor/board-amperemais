@@ -709,7 +709,26 @@ export const IFOOD_CATALOG_DESCRIPTION_MAX_LENGTH = 500;
 // Todo grupo de complementos precisa declarar seu tipo. Os quatro aqui valem para itens DEFAULT;
 // pizza usa SIZE/CRUST/EDGE/TOPPING, que só fazem sentido dentro de uma categoria PIZZA e entram
 // junto com o suporte a pizza — deixar de fora aqui é o que impede marcar "borda" num hambúrguer.
-export const IfoodOptionGroupTypeEnum = z.enum(["OFFER_UNIT", "SPECIFICATION", "INGREDIENTS", "CUTLERY"], {
+/**
+ * Tipo do item. `PIZZA` exige os quatro grupos SIZE/CRUST/EDGE/TOPPING (422 sem eles) e a loja
+ * aceita no máximo uma categoria PIZZA. `COMBO_V2` exige exatamente um grupo `associationType: MAIN`.
+ */
+export const IfoodItemTypeEnum = z.enum(["DEFAULT", "PIZZA", "COMBO_V2"], {
+	required_error: "Tipo do item não informado.",
+	invalid_type_error: "Tipo inválido para o item.",
+});
+export type TIfoodItemTypeEnum = z.infer<typeof IfoodItemTypeEnum>;
+
+export const IFOOD_ITEM_TYPE_LABELS: Record<TIfoodItemTypeEnum, string> = {
+	DEFAULT: "Item comum",
+	PIZZA: "Pizza",
+	COMBO_V2: "Combo",
+};
+
+/** Os quatro tipos de grupo que só existem dentro de uma pizza, na ordem em que o cliente escolhe. */
+export const IFOOD_PIZZA_GROUP_TYPES = ["SIZE", "CRUST", "EDGE", "TOPPING"] as const;
+
+export const IfoodOptionGroupTypeEnum = z.enum(["OFFER_UNIT", "SPECIFICATION", "INGREDIENTS", "CUTLERY", ...IFOOD_PIZZA_GROUP_TYPES], {
 	required_error: "Tipo do grupo de complementos não informado.",
 	invalid_type_error: "Tipo inválido para o grupo de complementos.",
 });
@@ -721,7 +740,14 @@ export const IFOOD_OPTION_GROUP_TYPE_LABELS: Record<TIfoodOptionGroupTypeEnum, s
 	SPECIFICATION: "Especificação de preparo",
 	INGREDIENTS: "Alteração de ingredientes",
 	CUTLERY: "Utensílios",
+	SIZE: "Tamanho",
+	CRUST: "Massa",
+	EDGE: "Borda",
+	TOPPING: "Sabor",
 };
+
+/** Tipos de grupo oferecidos num item comum — os de pizza só existem dentro de um item PIZZA. */
+export const IFOOD_DEFAULT_OPTION_GROUP_TYPES = ["OFFER_UNIT", "SPECIFICATION", "INGREDIENTS", "CUTLERY"] as const;
 
 /** Contextos (canais de venda) de um catálogo do iFood. */
 export const IfoodCatalogContextEnum = z.enum(["DEFAULT", "WHITELABEL", "INDOOR"], {
