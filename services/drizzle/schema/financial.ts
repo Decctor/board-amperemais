@@ -114,6 +114,7 @@ export const accountingEntries = newTable(
 		recorrenciaRegraId: varchar("recorrencia_regra_id", { length: 255 }),
 		recorrenciaInstanciaData: timestamp("recorrencia_instancia_data"),
 		recorrenciaGeradoEm: timestamp("recorrencia_gerado_em"),
+		chaveIdempotencia: varchar("chave_idempotencia", { length: 120 }),
 		autorId: varchar("autor_id", { length: 255 }).references(() => users.id),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	},
@@ -126,6 +127,7 @@ export const accountingEntries = newTable(
 		recurrenceInstanceUniqueIdx: uniqueIndex("uq_accounting_entries_recurrence_instance")
 			.on(table.recorrenciaRegraId, table.recorrenciaInstanciaData)
 			.where(sql`${table.recorrenciaRegraId} IS NOT NULL AND ${table.recorrenciaInstanciaData} IS NOT NULL`),
+		idempotencyUniqueIdx: uniqueIndex("uq_accounting_entries_organizacao_idempotency_key").on(table.organizacaoId, table.chaveIdempotencia),
 	}),
 );
 
@@ -247,6 +249,17 @@ export const financialTransactions = newTable(
 		titulo: text("titulo").notNull(),
 		tipo: financialTransactionTypeEnum("tipo").notNull(),
 		valor: doublePrecision("valor").notNull(),
+		valorBase: doublePrecision("valor_base").notNull().default(0),
+		valorJuros: doublePrecision("valor_juros").notNull().default(0),
+		valorMulta: doublePrecision("valor_multa").notNull().default(0),
+		valorTaxas: doublePrecision("valor_taxas").notNull().default(0),
+		valorDesconto: doublePrecision("valor_desconto").notNull().default(0),
+		modificadoresMetadata: jsonb("modificadores_metadata").$type<{
+			origem?: string | null;
+			regra?: string | null;
+			observacoes?: string | null;
+			parametros?: Record<string, unknown> | null;
+		} | null>(),
 		metodo: paymentMethodEnum("metodo").notNull(),
 		dataPrevisao: timestamp("data_previsao").notNull(),
 		dataEfetivacao: timestamp("data_efetivacao"),

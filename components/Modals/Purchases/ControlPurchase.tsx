@@ -2,6 +2,7 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { getAccountingEntryBalanceError } from "@/lib/finances/accounting-entry-balance";
+import { invalidateFinanceQueries } from "@/lib/finances/invalidate-finance-queries";
 import { formatToMoney } from "@/lib/formatting";
 import { updatePurchase as updatePurchaseMutation } from "@/lib/mutations/purchases";
 import { usePurchaseState } from "@/state-hooks/use-purchase-state";
@@ -15,7 +16,7 @@ import PurchaseItemsBlock from "./Blocks/Items";
 import PurchaseTransportBlock from "./Blocks/Transport";
 import PurchaseDeliveryBlock from "./Blocks/Delivery";
 import { usePurchaseById } from "@/lib/queries/purchases";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 type TPurchaseByIdItem = NonNullable<ReturnType<typeof usePurchaseById>["data"]>["itens"][number];
 
@@ -38,9 +39,9 @@ type ControlPurchaseProps = {
 		onSettled?: () => void;
 	};
 };
-export default function ControlPurchase({ purchaseId, user, closeModal, callbacks }: ControlPurchaseProps) {
+export default function ControlPurchase({ purchaseId, closeModal, callbacks }: ControlPurchaseProps) {
 	const queryClient = useQueryClient();
-	const { data: purchase, queryKey, isLoading, isError, isSuccess, error } = usePurchaseById({ id: purchaseId });
+	const { data: purchase, isLoading, isError, error } = usePurchaseById({ id: purchaseId });
 	const {
 		state,
 		updatePurchase,
@@ -56,6 +57,7 @@ export default function ControlPurchase({ purchaseId, user, closeModal, callback
 	} = usePurchaseState({
 		initialState: {},
 	});
+	const hydratedPurchaseIdRef = useRef<string | null>(null);
 
 	const balanceError = getAccountingEntryBalanceError({
 		entryValue: state.lancamentoContabil.valor,
@@ -74,6 +76,7 @@ export default function ControlPurchase({ purchaseId, user, closeModal, callback
 		onSuccess: async (data) => {
 			if (callbacks?.onSuccess) callbacks.onSuccess();
 			toast.success(data.message);
+			void invalidateFinanceQueries(queryClient, { accountingEntryId: state.lancamentoContabil.id });
 			resetState();
 			return closeModal();
 		},
@@ -88,7 +91,8 @@ export default function ControlPurchase({ purchaseId, user, closeModal, callback
 	});
 
 	useEffect(() => {
-		if (purchase)
+		if (purchase && hydratedPurchaseIdRef.current !== purchase.id) {
+			hydratedPurchaseIdRef.current = purchase.id;
 			redefineState({
 				purchase: purchase,
 				purchaseItems: purchase.itens,
@@ -108,6 +112,12 @@ export default function ControlPurchase({ purchaseId, user, closeModal, callback
 								titulo: transaction.titulo,
 								tipo: transaction.tipo,
 								valor: transaction.valor,
+								valorBase: transaction.valorBase,
+								valorJuros: transaction.valorJuros,
+								valorMulta: transaction.valorMulta,
+								valorTaxas: transaction.valorTaxas,
+								valorDesconto: transaction.valorDesconto,
+								modificadoresMetadata: transaction.modificadoresMetadata,
 								metodo: transaction.metodo,
 								dataPrevisao: transaction.dataPrevisao,
 								dataEfetivacao: transaction.dataEfetivacao,
@@ -124,6 +134,7 @@ export default function ControlPurchase({ purchaseId, user, closeModal, callback
 							transacoes: [],
 						},
 			});
+		}
 	}, [purchase, redefineState]);
 	return (
 		<ResponsiveMenu

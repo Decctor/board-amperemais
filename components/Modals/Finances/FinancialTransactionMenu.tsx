@@ -1,15 +1,19 @@
 "use client";
 
+import type { TGetFinancialAccountsOutputDefault } from "@/app/api/finances/financial-accounts/route";
+import type { TGetFinancialTransactionsOutputById } from "@/app/api/finances/financial-transactions/route";
 import FinancialTransactionEffectBlock from "@/components/Modals/Finances/Blocks/Effect";
 import FinancialTransactionRelationsBlock from "@/components/Modals/Finances/Blocks/Relations";
 import FinancialTransactionSummaryBlock from "@/components/Modals/Finances/Blocks/Summary";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
+import { invalidateFinanceQueries } from "@/lib/finances/invalidate-finance-queries";
+import { formatDateForInputValue, formatDateOnInputChange } from "@/lib/formatting";
 import { effectFinancialTransaction, updateFinancialTransaction } from "@/lib/mutations/finances";
 import { useFinancesAccounts, useFinancialTransactionById } from "@/lib/queries/finances";
 import type { TPaymentMethodEnum } from "@/schemas/enums";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 type FinancialTransactionMenuProps = {
@@ -23,35 +27,73 @@ type FinancialTransactionMenuProps = {
 	};
 };
 
-function getDefaultEffectDate(transaction: { dataEfetivacao: Date | null; dataPrevisao: Date }) {
-	if (transaction.dataEfetivacao) return new Date(transaction.dataEfetivacao).toISOString().slice(0, 10);
-	return new Date(transaction.dataPrevisao).toISOString().slice(0, 10);
-}
+type LoadedFinancialTransactionMenuProps = FinancialTransactionMenuProps & {
+	transaction: TGetFinancialTransactionsOutputById;
+	financialAccounts: TGetFinancialAccountsOutputDefault["accounts"];
+};
 
 export default function FinancialTransactionMenu({ transactionId, closeMenu, callbacks }: FinancialTransactionMenuProps) {
+	const transactionQuery = useFinancialTransactionById(transactionId);
+	const financialAccountsQuery = useFinancesAccounts({ initialFilters: { activeOnly: true, stats: false } });
+	const isLoading = transactionQuery.isLoading || financialAccountsQuery.isLoading;
+	const stateError = transactionQuery.isError
+		? getErrorMessage(transactionQuery.error)
+		: financialAccountsQuery.isError
+			? getErrorMessage(financialAccountsQuery.error)
+			: null;
+
+	if (transactionQuery.data && financialAccountsQuery.data && !isLoading && !stateError) {
+		return (
+			<LoadedFinancialTransactionMenu
+				key={transactionQuery.data.id}
+				transactionId={transactionId}
+				transaction={transactionQuery.data}
+				financialAccounts={financialAccountsQuery.data.accounts}
+				closeMenu={closeMenu}
+				callbacks={callbacks}
+			/>
+		);
+	}
+
+	return (
+		<ResponsiveMenu
+			menuTitle="MOVIMENTAÇÃO FINANCEIRA"
+			menuDescription="Carregando os dados da movimentação financeira."
+			menuActionButtonText="SALVAR"
+			menuCancelButtonText="CANCELAR"
+			closeMenu={closeMenu}
+			actionFunction={() => undefined}
+			actionIsLoading={false}
+			menuActionButtonDisabled
+			stateIsLoading={isLoading}
+			stateError={stateError}
+		>
+			{null}
+		</ResponsiveMenu>
+	);
+}
+
+function LoadedFinancialTransactionMenu({
+	transactionId,
+	transaction,
+	financialAccounts,
+	closeMenu,
+	callbacks,
+}: LoadedFinancialTransactionMenuProps) {
 	const queryClient = useQueryClient();
-	const { data: transaction, isLoading, isError, error } = useFinancialTransactionById(transactionId);
-	const { data: financialAccountsData } = useFinancesAccounts({ initialFilters: { activeOnly: true } });
-	const financialAccounts = financialAccountsData?.accounts ?? [];
+	const [effectDate, setEffectDate] = useState<string | undefined>(() =>
+		formatDateForInputValue(transaction.dataEfetivacao ?? transaction.dataPrevisao),
+	);
+	const [selectedAccountId, setSelectedAccountId] = useState<string | null>(() => transaction.contaFinanceira?.id ?? null);
+	const [selectedMethod, setSelectedMethod] = useState<TPaymentMethodEnum>(() =>
+		transaction.metodo === "A_DEFINIR" ? "DINHEIRO" : transaction.metodo,
+	);
+	const isEffective = !!transaction.dataEfetivacao;
+	const canChangeMethodOnEffect = transaction.metodo === "A_DEFINIR";
 
-	const [effectDate, setEffectDate] = useState<string | undefined>(undefined);
-	const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-	const [selectedMethod, setSelectedMethod] = useState<TPaymentMethodEnum>("DINHEIRO");
-
-	const isEffective = !!transaction?.dataEfetivacao;
-	const canChangeMethodOnEffect = transaction?.metodo === "A_DEFINIR";
-
-	useEffect(() => {
-		if (!transaction) return;
-		setEffectDate(getDefaultEffectDate(transaction));
-		setSelectedAccountId(transaction.contaFinanceira?.id ?? null);
-		setSelectedMethod(transaction.metodo === "A_DEFINIR" ? "DINHEIRO" : transaction.metodo);
-	}, [transaction]);
-
-	const invalidateTransactionQueries = () => {
-		void queryClient.invalidateQueries({ queryKey: ["finances-financial-transactions"] });
-		void queryClient.invalidateQueries({ queryKey: ["finances-financial-transaction-by-id", transactionId] });
-	};
+	function invalidateQueries() {
+		void invalidateFinanceQueries(queryClient, { transactionId, accountingEntryId: transaction.lancamentoContabil?.id });
+	}
 
 	const { mutate: mutateEffectTransaction, isPending: isEffecting } = useMutation({
 		mutationKey: ["effect-financial-transaction", transactionId],
@@ -60,12 +102,12 @@ export default function FinancialTransactionMenu({ transactionId, closeMenu, cal
 		onSuccess: (data) => {
 			callbacks?.onSuccess?.();
 			toast.success(data.message);
-			invalidateTransactionQueries();
+			invalidateQueries();
 			closeMenu();
 		},
-		onError: (err) => {
+		onError: (error) => {
 			callbacks?.onError?.();
-			toast.error(getErrorMessage(err));
+			toast.error(getErrorMessage(error));
 		},
 		onSettled: () => callbacks?.onSettled?.(),
 	});
@@ -77,41 +119,31 @@ export default function FinancialTransactionMenu({ transactionId, closeMenu, cal
 		onSuccess: (data) => {
 			callbacks?.onSuccess?.();
 			toast.success(data.message);
-			invalidateTransactionQueries();
+			invalidateQueries();
 			closeMenu();
 		},
-		onError: (err) => {
+		onError: (error) => {
 			callbacks?.onError?.();
-			toast.error(getErrorMessage(err));
+			toast.error(getErrorMessage(error));
 		},
 		onSettled: () => callbacks?.onSettled?.(),
 	});
 
 	function buildTransactionPayload() {
 		return {
-			dataEfetivacao: effectDate ? new Date(effectDate) : null,
+			dataEfetivacao: effectDate ? formatDateOnInputChange(effectDate, "date") : null,
 			contaFinanceiraId: selectedAccountId,
 			metodo: isEffective || canChangeMethodOnEffect ? selectedMethod : ("A_DEFINIR" as const),
 		};
 	}
 
 	function handleSave() {
-		if (!transaction) return;
 		if (isEffective) {
-			mutateUpdateTransaction({
-				transactionId: transaction.id,
-				transaction: buildTransactionPayload(),
-			});
+			mutateUpdateTransaction({ transactionId: transaction.id, transaction: buildTransactionPayload() });
 			return;
 		}
-		mutateEffectTransaction({
-			transactionId: transaction.id,
-			transaction: buildTransactionPayload(),
-		});
+		mutateEffectTransaction({ transactionId: transaction.id, transaction: buildTransactionPayload() });
 	}
-
-	const stateError = isError ? getErrorMessage(error) : null;
-	const isSaving = isEffecting || isUpdating;
 
 	return (
 		<ResponsiveMenu
@@ -121,26 +153,21 @@ export default function FinancialTransactionMenu({ transactionId, closeMenu, cal
 			menuCancelButtonText="CANCELAR"
 			closeMenu={closeMenu}
 			actionFunction={handleSave}
-			actionIsLoading={isSaving}
-			stateIsLoading={isLoading}
-			stateError={stateError}
+			actionIsLoading={isEffecting || isUpdating}
+			stateIsLoading={false}
 		>
-			{transaction && !isLoading && !stateError ? (
-				<>
-					<FinancialTransactionEffectBlock
-						financialAccounts={financialAccounts}
-						effectDate={effectDate}
-						setEffectDate={setEffectDate}
-						selectedAccountId={selectedAccountId}
-						setSelectedAccountId={setSelectedAccountId}
-						selectedMethod={selectedMethod}
-						setSelectedMethod={setSelectedMethod}
-						allowMethodChange={isEffective || canChangeMethodOnEffect}
-					/>
-					<FinancialTransactionSummaryBlock transaction={transaction} />
-					<FinancialTransactionRelationsBlock transaction={transaction} />
-				</>
-			) : null}
+			<FinancialTransactionEffectBlock
+				financialAccounts={financialAccounts}
+				effectDate={effectDate}
+				setEffectDate={setEffectDate}
+				selectedAccountId={selectedAccountId}
+				setSelectedAccountId={setSelectedAccountId}
+				selectedMethod={selectedMethod}
+				setSelectedMethod={setSelectedMethod}
+				allowMethodChange={isEffective || canChangeMethodOnEffect}
+			/>
+			<FinancialTransactionSummaryBlock transaction={transaction} />
+			<FinancialTransactionRelationsBlock transaction={transaction} />
 		</ResponsiveMenu>
 	);
 }

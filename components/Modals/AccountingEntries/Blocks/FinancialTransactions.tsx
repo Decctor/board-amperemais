@@ -9,6 +9,9 @@ import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { distributeTotalEqually } from "@/lib/finances/accounting-entry-balance";
+import { getCreditCardForecastDate } from "@/lib/finances/credit-card";
+import { calculateFinancialTransactionTotal, normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
+import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatDateForInputValue, formatDateOnInputChange, formatToMoney } from "@/lib/formatting";
 import { useFinancesAccounts } from "@/lib/queries/finances";
 import { cn } from "@/lib/utils";
@@ -16,12 +19,13 @@ import type { TAccountingEntryFinancialTransactionState, TUseInternalAccountingE
 import { getDefaultAccountingEntryTransactionState } from "@/state-hooks/use-internal-accounting-entry-state";
 import { FinancialAccountTypeOptions, FinancialTransactionTypeOptions, SalePaymentMethodsOptions } from "@/utils/select-options";
 import dayjs from "dayjs";
-import { AlertCircle, CalendarClock, CheckCircle2, Clock, Layers3, Pencil, Plus, Trash2, WalletCards } from "lucide-react";
-import { useMemo, useState } from "react";
+import { AlertCircle, Calculator, CalendarClock, CheckCircle2, Clock, Layers3, Minus, Pencil, Plus, Trash2, WalletCards } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type AccountingEntryFinancialTransactionsBlockProps = {
 	entryTotalValue: number;
+	entryCompetenceDate: Date;
 	entryFinancialTransactions: TUseInternalAccountingEntryState["state"]["entryFinancialTransactions"];
 	addFinancialTransaction: TUseInternalAccountingEntryState["addFinancialTransaction"];
 	updateFinancialTransaction: TUseInternalAccountingEntryState["updateFinancialTransaction"];
@@ -32,6 +36,7 @@ type AccountingEntryFinancialTransactionsBlockProps = {
 
 export default function AccountingEntryFinancialTransactionsBlock({
 	entryTotalValue,
+	entryCompetenceDate,
 	entryFinancialTransactions,
 	addFinancialTransaction,
 	updateFinancialTransaction,
@@ -93,6 +98,7 @@ export default function AccountingEntryFinancialTransactionsBlock({
 
 			{editable && transactionMenuIsOpen ? (
 				<FinancialTransactionDraftMenu
+					entryCompetenceDate={entryCompetenceDate}
 					closeMenu={() => setTransactionMenuIsOpen(false)}
 					commitFinancialTransaction={(transaction) => {
 						addFinancialTransaction(transaction);
@@ -103,6 +109,7 @@ export default function AccountingEntryFinancialTransactionsBlock({
 
 			{editable && editingIndex !== null ? (
 				<FinancialTransactionDraftMenu
+					entryCompetenceDate={entryCompetenceDate}
 					initialTransaction={entryFinancialTransactions[editingIndex]}
 					closeMenu={() => setEditingIndex(null)}
 					commitFinancialTransaction={(transaction) => {
@@ -194,17 +201,41 @@ function TransactionCard({ transaction, onEditClick, onRemoveClick, editable }: 
 }
 
 type FinancialTransactionDraftMenuProps = {
+	entryCompetenceDate: Date;
 	initialTransaction?: TAccountingEntryFinancialTransactionState;
 	commitFinancialTransaction: (transaction: TAccountingEntryFinancialTransactionState) => void;
 	closeMenu: () => void;
 };
 
-function FinancialTransactionDraftMenu({ initialTransaction, commitFinancialTransaction, closeMenu }: FinancialTransactionDraftMenuProps) {
-	const { data: financialAccountsData } = useFinancesAccounts({ initialFilters: { activeOnly: true, stats: false } });
+type TMonetaryFieldName = "valorBase" | "valorJuros" | "valorMulta" | "valorTaxas" | "valorDesconto";
+
+function getInitialTransactionState(initialTransaction?: TAccountingEntryFinancialTransactionState) {
+	const transaction = getDefaultAccountingEntryTransactionState(initialTransaction);
+	return {
+		...transaction,
+		valorBase: transaction.valorBase ?? transaction.valor,
+		valorJuros: transaction.valorJuros ?? 0,
+		valorMulta: transaction.valorMulta ?? 0,
+		valorTaxas: transaction.valorTaxas ?? 0,
+		valorDesconto: transaction.valorDesconto ?? 0,
+	};
+}
+
+function FinancialTransactionDraftMenu({
+	entryCompetenceDate,
+	initialTransaction,
+	commitFinancialTransaction,
+	closeMenu,
+}: FinancialTransactionDraftMenuProps) {
+	const {
+		data: financialAccountsData,
+		isLoading: financialAccountsAreLoading,
+		isError: financialAccountsHaveError,
+		error: financialAccountsError,
+	} = useFinancesAccounts({ initialFilters: { activeOnly: true, stats: false } });
 	const financialAccounts = financialAccountsData?.accounts ?? [];
-	const [transaction, setTransaction] = useState<TAccountingEntryFinancialTransactionState>(
-		getDefaultAccountingEntryTransactionState(initialTransaction),
-	);
+	const [transaction, setTransaction] = useState<TAccountingEntryFinancialTransactionState>(() => getInitialTransactionState(initialTransaction));
+	const [showValidationErrors, setShowValidationErrors] = useState(false);
 
 	const financialAccountOptions = useMemo(
 		() =>
@@ -220,18 +251,58 @@ function FinancialTransactionDraftMenu({ initialTransaction, commitFinancialTran
 		[financialAccounts],
 	);
 
+	const selectedFinancialAccount = useMemo(
+		() => financialAccounts.find((account) => account.id === transaction.contaFinanceiraId) ?? null,
+		[financialAccounts, transaction.contaFinanceiraId],
+	);
+	const inferredCreditCardForecast =
+		selectedFinancialAccount?.tipo === "CARTAO_CREDITO" && selectedFinancialAccount.configuracao.categoria === "CARTAO_CREDITO"
+			? getCreditCardForecastDate(entryCompetenceDate, selectedFinancialAccount.configuracao)
+			: null;
+	const transactionForCommit = {
+		...transaction,
+		dataPrevisao: inferredCreditCardForecast ?? transaction.dataPrevisao,
+	};
+
+	const titleValidationError = transaction.titulo.trim() ? null : "Informe o título da transação.";
+	let monetaryValidationError: string | null = null;
+	try {
+		normalizeFinancialTransactionValue(transactionForCommit);
+	} catch (error) {
+		monetaryValidationError = getErrorMessage(error);
+	}
+	const validationError = titleValidationError ?? monetaryValidationError;
+
+	const updateMonetaryField = useCallback((field: TMonetaryFieldName, value: number) => {
+		setTransaction((previous) => {
+			const next = { ...previous, [field]: value };
+			return { ...next, valor: calculateFinancialTransactionTotal(next) };
+		});
+	}, []);
+
+	function handleCommit() {
+		if (validationError) {
+			setShowValidationErrors(true);
+			toast.error(validationError);
+			return;
+		}
+		commitFinancialTransaction({ ...transactionForCommit, ...normalizeFinancialTransactionValue(transactionForCommit) });
+	}
+
 	return (
 		<ResponsiveMenu
 			menuTitle={initialTransaction ? "EDITAR TRANSAÇÃO" : "NOVA TRANSAÇÃO"}
 			menuDescription="Preencha os dados da transação financeira vinculada ao lançamento."
 			menuActionButtonText={initialTransaction ? "SALVAR TRANSAÇÃO" : "ADICIONAR TRANSAÇÃO"}
 			menuCancelButtonText="CANCELAR"
-			actionFunction={() => commitFinancialTransaction(transaction)}
+			actionFunction={handleCommit}
 			actionIsLoading={false}
-			stateIsLoading={false}
+			menuActionButtonDisabled={financialAccountsAreLoading}
+			stateIsLoading={financialAccountsAreLoading}
+			stateError={financialAccountsHaveError ? getErrorMessage(financialAccountsError) : null}
 			closeMenu={closeMenu}
-			dialogVariant="md"
-			drawerVariant="lg"
+			dialogVariant="sm"
+			drawerVariant="sm"
 		>
 			<TextInput
 				label="TÍTULO"
@@ -240,6 +311,11 @@ function FinancialTransactionDraftMenu({ initialTransaction, commitFinancialTran
 				handleChange={(value) => setTransaction((prev) => ({ ...prev, titulo: value }))}
 				required
 			/>
+			{showValidationErrors && titleValidationError ? (
+				<p role="alert" className="-mt-1 text-xs font-medium text-destructive">
+					{titleValidationError}
+				</p>
+			) : null}
 			<SelectInput
 				label="TIPO"
 				value={transaction.tipo}
@@ -253,12 +329,107 @@ function FinancialTransactionDraftMenu({ initialTransaction, commitFinancialTran
 				onReset={() => setTransaction((prev) => ({ ...prev, tipo: "ENTRADA" }))}
 				handleChange={(value) => setTransaction((prev) => ({ ...prev, tipo: value as typeof prev.tipo }))}
 			/>
-			<NumberInput
-				label="VALOR"
-				value={transaction.valor}
-				handleChange={(value) => setTransaction((prev) => ({ ...prev, valor: value }))}
-				placeholder="Preencha o valor da transação..."
-			/>
+			<section className="shrink-0 overflow-hidden rounded-lg border border-border bg-card">
+				<header className="flex items-center justify-between gap-3 border-b border-border bg-muted/30 px-3 py-2.5">
+					<div className="flex min-w-0 items-center gap-2">
+						<div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+							<Calculator className="size-3.5" />
+						</div>
+						<div className="min-w-0">
+							<h3 className="text-sm font-bold text-foreground">COMPOSIÇÃO DO VALOR</h3>
+							<p className="truncate text-[0.7rem] text-muted-foreground">Base + ajustes da transação</p>
+						</div>
+					</div>
+					<div className="shrink-0 text-right">
+						<span className="block text-[0.58rem] font-bold tracking-wide text-primary uppercase">Total</span>
+						<strong aria-live="polite" className="block text-base font-extrabold tracking-tight text-primary tabular-nums">
+							{formatToMoney(transaction.valor)}
+						</strong>
+					</div>
+				</header>
+
+				<div className="space-y-3 px-3 py-3">
+					<NumberInput
+						label="VALOR BASE"
+						labelClassName="text-xs font-semibold"
+						holderClassName="h-9 px-3 py-2"
+						value={transaction.valorBase}
+						handleChange={(value) => updateMonetaryField("valorBase", value)}
+						placeholder="Valor original da transação..."
+					/>
+
+					<div className="space-y-2 border-t border-dashed border-border/70 pt-3">
+						<div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
+							<Plus className="size-3.5" />
+							<p className="text-[0.68rem] font-bold tracking-wide uppercase">Acréscimos</p>
+						</div>
+						<div className="space-y-2">
+							<NumberInput
+								label="JUROS"
+								labelClassName="text-xs font-semibold"
+								holderClassName="h-9 px-3 py-2"
+								value={transaction.valorJuros}
+								handleChange={(value) => updateMonetaryField("valorJuros", value)}
+								placeholder="Juros..."
+							/>
+							<NumberInput
+								label="MULTA"
+								labelClassName="text-xs font-semibold"
+								holderClassName="h-9 px-3 py-2"
+								value={transaction.valorMulta}
+								handleChange={(value) => updateMonetaryField("valorMulta", value)}
+								placeholder="Multa..."
+							/>
+							<NumberInput
+								label="TAXAS"
+								labelClassName="text-xs font-semibold"
+								holderClassName="h-9 px-3 py-2"
+								value={transaction.valorTaxas}
+								handleChange={(value) => updateMonetaryField("valorTaxas", value)}
+								placeholder="Taxas..."
+							/>
+						</div>
+					</div>
+
+					<div className="space-y-2 border-t border-dashed border-border/70 pt-3">
+						<div className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
+							<Minus className="size-3.5" />
+							<p className="text-[0.68rem] font-bold tracking-wide uppercase">Deduções</p>
+						</div>
+						<NumberInput
+							label="DESCONTO"
+							labelClassName="text-xs font-semibold"
+							holderClassName="h-9 px-3 py-2"
+							value={transaction.valorDesconto}
+							handleChange={(value) => updateMonetaryField("valorDesconto", value)}
+							placeholder="Desconto..."
+						/>
+					</div>
+
+					{showValidationErrors && monetaryValidationError ? (
+						<p role="alert" className="text-xs font-medium text-destructive">
+							{monetaryValidationError}
+						</p>
+					) : null}
+				</div>
+
+				<footer
+					aria-label={`Cálculo do total: ${formatToMoney(transaction.valorBase ?? 0)} mais ${formatToMoney(transaction.valorJuros ?? 0)} mais ${formatToMoney(transaction.valorMulta ?? 0)} mais ${formatToMoney(transaction.valorTaxas ?? 0)} menos ${formatToMoney(transaction.valorDesconto ?? 0)} igual a ${formatToMoney(transaction.valor)}`}
+					className="flex flex-wrap items-center gap-x-1.5 gap-y-1 border-t border-border bg-muted/20 px-3 py-2 text-[0.65rem] text-muted-foreground tabular-nums"
+				>
+					<span>{formatToMoney(transaction.valorBase ?? 0)}</span>
+					<span aria-hidden="true">+</span>
+					<span>{formatToMoney(transaction.valorJuros ?? 0)}</span>
+					<span aria-hidden="true">+</span>
+					<span>{formatToMoney(transaction.valorMulta ?? 0)}</span>
+					<span aria-hidden="true">+</span>
+					<span>{formatToMoney(transaction.valorTaxas ?? 0)}</span>
+					<span aria-hidden="true">−</span>
+					<span>{formatToMoney(transaction.valorDesconto ?? 0)}</span>
+					<span aria-hidden="true">=</span>
+					<strong className="font-extrabold text-foreground">{formatToMoney(transaction.valor)}</strong>
+				</footer>
+			</section>
 			<SelectInput
 				label="MÉTODO"
 				value={transaction.metodo}
@@ -274,9 +445,13 @@ function FinancialTransactionDraftMenu({ initialTransaction, commitFinancialTran
 			/>
 			<DateInput
 				label="DATA DE PREVISÃO"
-				value={formatDateForInputValue(transaction.dataPrevisao)}
+				value={formatDateForInputValue(inferredCreditCardForecast ?? transaction.dataPrevisao)}
 				handleChange={(value) => setTransaction((prev) => ({ ...prev, dataPrevisao: formatDateOnInputChange(value, "date") ?? prev.dataPrevisao }))}
+				editable={!inferredCreditCardForecast}
 			/>
+			{inferredCreditCardForecast ? (
+				<p className="text-xs text-muted-foreground">Vencimento calculado automaticamente pelo ciclo do cartão selecionado.</p>
+			) : null}
 			<DateInput
 				label="DATA DE EFETIVAÇÃO"
 				value={formatDateForInputValue(transaction.dataEfetivacao)}
@@ -314,13 +489,18 @@ type AddMultiFinancialTransactionsMenuProps = {
 	closeMenu: () => void;
 };
 
+type TFinancialTransactionDraft = {
+	key: string;
+	transaction: TAccountingEntryFinancialTransactionState;
+};
+
 function AddMultiFinancialTransactionsMenu({ entryTotalValue, onCommit, closeMenu }: AddMultiFinancialTransactionsMenuProps) {
 	const [installmentCount, setInstallmentCount] = useState(2);
 	const [firstDate, setFirstDate] = useState<Date>(new Date());
 	const [dayInterval, setDayInterval] = useState(30);
 	const [transactionType, setTransactionType] = useState<TAccountingEntryFinancialTransactionState["tipo"]>("ENTRADA");
 	const [paymentMethod, setPaymentMethod] = useState<TAccountingEntryFinancialTransactionState["metodo"]>("A_DEFINIR");
-	const [drafts, setDrafts] = useState<TAccountingEntryFinancialTransactionState[]>([]);
+	const [drafts, setDrafts] = useState<TFinancialTransactionDraft[]>([]);
 
 	function generateDrafts() {
 		if (entryTotalValue <= 0) {
@@ -330,8 +510,9 @@ function AddMultiFinancialTransactionsMenu({ entryTotalValue, onCommit, closeMen
 		const count = Math.min(24, Math.max(2, Math.round(installmentCount || 2)));
 		const amounts = distributeTotalEqually(entryTotalValue, count);
 		setDrafts(
-			amounts.map((amount, index) =>
-				getDefaultAccountingEntryTransactionState({
+			amounts.map((amount, index) => ({
+				key: crypto.randomUUID(),
+				transaction: getDefaultAccountingEntryTransactionState({
 					titulo: `Parcela ${index + 1}/${count}`,
 					tipo: transactionType,
 					valor: amount,
@@ -342,11 +523,11 @@ function AddMultiFinancialTransactionsMenu({ entryTotalValue, onCommit, closeMen
 					parcela: index + 1,
 					totalParcelas: count,
 				}),
-			),
+			})),
 		);
 	}
 
-	const draftsTotal = drafts.reduce((acc, transaction) => acc + transaction.valor, 0);
+	const draftsTotal = drafts.reduce((acc, draft) => acc + draft.transaction.valor, 0);
 
 	return (
 		<ResponsiveMenu
@@ -359,7 +540,7 @@ function AddMultiFinancialTransactionsMenu({ entryTotalValue, onCommit, closeMen
 					toast.error("Gere as transações antes de adicionar.");
 					return;
 				}
-				onCommit(drafts);
+				onCommit(drafts.map((draft) => draft.transaction));
 			}}
 			actionIsLoading={false}
 			stateIsLoading={false}
@@ -419,22 +600,27 @@ function AddMultiFinancialTransactionsMenu({ entryTotalValue, onCommit, closeMen
 				<div className="flex max-h-[40vh] flex-col gap-2 overflow-auto pr-1">
 					{drafts.length > 0 ? (
 						drafts.map((draft, index) => (
-							<div
-								key={`${draft.titulo}-${index}`}
-								className="grid grid-cols-1 gap-2 rounded-md border border-border px-2 py-2 sm:grid-cols-[1fr_120px_40px]"
-							>
+							<div key={draft.key} className="grid grid-cols-1 gap-2 rounded-md border border-border px-2 py-2 sm:grid-cols-[1fr_120px_40px]">
 								<Input
-									value={draft.titulo}
+									value={draft.transaction.titulo}
 									onChange={(event) =>
-										setDrafts((prev) => prev.map((item, itemIndex) => (itemIndex === index ? { ...item, titulo: event.target.value } : item)))
+										setDrafts((prev) =>
+											prev.map((item, itemIndex) =>
+												itemIndex === index ? { ...item, transaction: { ...item.transaction, titulo: event.target.value } } : item,
+											),
+										)
 									}
 								/>
 								<Input
 									type="number"
 									step="0.01"
-									value={draft.valor}
+									value={draft.transaction.valor}
 									onChange={(event) =>
-										setDrafts((prev) => prev.map((item, itemIndex) => (itemIndex === index ? { ...item, valor: Number(event.target.value) || 0 } : item)))
+										setDrafts((prev) =>
+											prev.map((item, itemIndex) =>
+												itemIndex === index ? { ...item, transaction: { ...item.transaction, valor: Number(event.target.value) || 0 } } : item,
+											),
+										)
 									}
 								/>
 								<Button

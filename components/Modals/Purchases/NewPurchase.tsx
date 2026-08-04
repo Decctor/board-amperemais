@@ -2,10 +2,11 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { getAccountingEntryBalanceError } from "@/lib/finances/accounting-entry-balance";
+import { invalidateFinanceQueries } from "@/lib/finances/invalidate-finance-queries";
 import { formatToMoney } from "@/lib/formatting";
 import { createPurchase } from "@/lib/mutations/purchases";
 import { usePurchaseState } from "@/state-hooks/use-purchase-state";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import PurchaseAccountingEntryBlock from "./Blocks/AccountingEntry";
@@ -25,7 +26,8 @@ type NewPurchaseProps = {
 		onSettled?: () => void;
 	};
 };
-export default function NewPurchase({ user, closeModal, callbacks }: NewPurchaseProps) {
+export default function NewPurchase({ closeModal, callbacks }: NewPurchaseProps) {
+	const queryClient = useQueryClient();
 	const {
 		state,
 		updatePurchase,
@@ -58,6 +60,7 @@ export default function NewPurchase({ user, closeModal, callbacks }: NewPurchase
 		onSuccess: async (data) => {
 			if (callbacks?.onSuccess) callbacks.onSuccess();
 			toast.success(data.message);
+			void invalidateFinanceQueries(queryClient);
 			resetState();
 			return closeModal();
 		},

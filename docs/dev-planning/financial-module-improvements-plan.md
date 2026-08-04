@@ -165,13 +165,19 @@ respeitada.
 - [x] Regra de recorrência manual com configuração, templates, edição de
       status e materialização idempotente por cron.
 - [x] Criação de lançamento e regra recorrente na mesma transação de banco.
+- [x] Modificadores monetários em transações, normalização compatível e
+      migration `drizzle/0066_financial_transaction_modifiers.sql`.
+- [x] Faturas derivadas por cartão/vencimento, com status de aberto, parcial,
+      pago, vencido e credor.
+- [x] Pagamento de cartão como movimento atômico banco/conta de cartão,
+      com classificação `PAGAMENTO_CARTAO` e idempotência opcional.
 - [x] Migrations manuais `drizzle/0064a_financial_account_enums.sql`,
       `drizzle/0064_financial_account_configuration.sql` e
       `drizzle/0065_financial_recurring_rules.sql` preparadas para aplicação.
 
 ### Verificações executadas
 
-- [x] 9 testes unitários financeiros focados passaram.
+- [x] 14 testes unitários financeiros focados passaram.
 - [x] Oxlint nos arquivos alterados passou sem warnings ou erros.
 - [x] Oxfmt nos arquivos alterados passou.
 - [x] TypeScript não reportou erros nos arquivos alterados; o projeto ainda
@@ -228,18 +234,17 @@ respeitada.
 
 ### Decomposição do valor de transações
 
-- [ ] Adicionar às transações financeiras:
-  - [ ] `valorBase`;
-  - [ ] `valorJuros`;
-  - [ ] `valorMulta`;
-  - [ ] `valorTaxas`;
-  - [ ] `valorDesconto`;
-  - [ ] `modificadoresMetadata`.
-- [ ] Criar schema Zod tipado para metadata não monetária.
-- [ ] Criar normalizador compartilhado de payload de transação.
-- [ ] Validar a equação do valor total no servidor.
-- [ ] Decidir a tolerância de arredondamento e reutilizar a constante contábil
-      existente quando aplicável.
+- [x] Adicionar às transações financeiras:
+  - [x] `valorBase`;
+  - [x] `valorJuros`;
+  - [x] `valorMulta`;
+  - [x] `valorTaxas`;
+  - [x] `valorDesconto`;
+  - [x] `modificadoresMetadata`.
+- [x] Criar schema Zod tipado para metadata não monetária.
+- [x] Criar normalizador compartilhado em `lib/finances/financial-transaction-value.ts`.
+- [x] Validar a equação do valor total no servidor.
+- [x] Reutilizar a tolerância contábil de `0,02` para arredondamentos.
 
 ### Migration de compatibilidade
 
@@ -249,8 +254,8 @@ respeitada.
 - [x] Backfill de configuração a partir das colunas bancárias atuais.
 - [x] Backfill das demais contas com configuração mínima por tipo.
 - [x] Tornar `configuracao` obrigatória após o backfill.
-- [ ] Adicionar colunas de modificadores.
-- [ ] Backfill `valorBase = valor` e demais modificadores com zero.
+- [x] Adicionar colunas de modificadores (`0066`).
+- [x] Backfill `valorBase = valor` e demais modificadores com zero (`0066`).
 - [x] Não remover as colunas bancárias legadas nesta fase.
 - [x] Documentar aplicação manual da migration conforme o padrão atual do
       repositório.
@@ -511,28 +516,19 @@ respeitada.
 
 ### Consulta de faturas
 
-- [ ] Definir input por conta, período e vencimento.
-- [ ] Criar rota App Router de faturas derivadas.
-- [ ] Agrupar saídas do cartão por ciclo/data de vencimento.
-- [ ] Subtrair entradas que representem pagamentos.
-- [ ] Expor:
-  - [ ] vencimento;
-  - [ ] valor base;
-  - [ ] juros;
-  - [ ] multas;
-  - [ ] taxas;
-  - [ ] descontos;
-  - [ ] total;
-  - [ ] valor pago;
-  - [ ] saldo restante;
-  - [ ] status derivado.
-- [ ] Definir tratamento de pagamento parcial e pagamento em excesso.
-- [ ] Evitar inferir quitação apenas por data; usar os movimentos no cartão.
+- [x] Definir input por conta, período e vencimento.
+- [x] Criar rota App Router `app/api/finances/credit-card-invoices/route.ts`.
+- [x] Agrupar saídas do cartão por ciclo/data de vencimento.
+- [x] Subtrair entradas que representem pagamentos.
+- [x] Expor vencimento, total faturado, valor pago, créditos, saldo restante,
+      status derivado e transações componentes.
+- [x] Definir tratamento de pagamento parcial e pagamento em excesso (`CREDORA`).
+- [x] Evitar inferir quitação apenas por data; usar os movimentos no cartão.
 
 ### UI de faturas
 
-- [ ] Adicionar visão de faturas na área de contas financeiras.
-- [ ] Exibir fatura aberta, futuras e pagas.
+- [x] Adicionar visão de faturas na área financeira.
+- [x] Exibir faturas abertas, futuras e pagas.
 - [ ] Permitir abrir os lançamentos/transações que compõem a fatura.
 - [ ] Exibir limite total, valor utilizado e limite disponível quando
       configurado.
@@ -540,22 +536,23 @@ respeitada.
 
 ### Pagamento
 
-- [ ] Criar menu “Pagar fatura”.
-- [ ] Pré-selecionar `contaPagamentoPadraoId` quando válido.
-- [ ] Permitir pagamento total ou parcial.
-- [ ] Reutilizar o fluxo transacional de transferência.
-- [ ] Validar origem cash-like e destino `CARTAO_CREDITO`.
-- [ ] Criar classificação contábil adequada para banco contra cartão a pagar.
-- [ ] Invalidar conta, gráfico, faturas, transações e lançamentos após o
+- [x] Criar menu “Pagar fatura”.
+- [x] Pré-selecionar `contaPagamentoPadraoId` quando válido.
+- [x] Permitir pagamento total ou parcial, bloqueando excesso no servidor.
+- [x] Reutilizar a infraestrutura transacional de transferência.
+- [x] Validar origem cash-like e destino `CARTAO_CREDITO`.
+- [x] Criar classificação contábil `PAGAMENTO_CARTAO` entre passivo e caixa.
+- [x] Proteger reenvios com `chaveIdempotencia` e migration `0067`.
+- [x] Invalidar conta, gráfico, faturas, transações e lançamentos após o
       pagamento.
 
 ### Critérios de aceite da Fase 5
 
-- [ ] Fatura derivada fecha com a soma de suas transações.
-- [ ] Pagamento parcial reduz corretamente saldo da fatura e do cartão.
-- [ ] Pagamento total marca a fatura como quitada pela regra derivada.
-- [ ] Conta bancária e cartão refletem lados opostos do pagamento.
-- [ ] Não há tabela persistente de faturas sem nova decisão arquitetural.
+- [x] Fatura derivada fecha com a soma de suas transações.
+- [x] Pagamento parcial reduz corretamente saldo da fatura e do cartão.
+- [x] Pagamento total marca a fatura como quitada pela regra derivada.
+- [x] Conta bancária e cartão refletem lados opostos do pagamento.
+- [x] Não há tabela persistente de faturas sem nova decisão arquitetural.
 
 ---
 
@@ -569,9 +566,10 @@ respeitada.
 - [ ] Atualizar `components/Settings/SettingsFinances.tsx`.
 - [ ] Atualizar `lib/payments/resolve-payment-financial-account.ts`.
 - [ ] Atualizar o endpoint de contas financeiras do POS.
-- [ ] Atualizar compras e suas tabelas de transações.
-- [ ] Atualizar vendas, fechamento de conta e sessões de caixa.
-- [ ] Atualizar transferência, efeito e controle de transações.
+- [x] Atualizar compras e suas tabelas de transações.
+- [x] Atualizar vendas, fechamento de conta e sessões de caixa para preencher
+      `valorBase` e modificadores legados.
+- [x] Atualizar transferência, efeito e controle de transações.
 - [ ] Atualizar conciliação, rematch e importações.
 - [ ] Atualizar Open Finance.
 - [ ] Atualizar estatísticas, gráficos e relatórios.
@@ -619,6 +617,24 @@ respeitada.
 
 ## Estratégia de migrations e deploy
 
+### Ordem de aplicação atual
+
+O script `scripts/apply-sql-migration.ts` executa cada arquivo em uma
+transação. Por isso o enum precisa ser confirmado em uma migration separada:
+
+```powershell
+npx tsx ./scripts/apply-sql-migration.ts drizzle/0064a_financial_account_enums.sql
+npx tsx ./scripts/apply-sql-migration.ts drizzle/0064_financial_account_configuration.sql
+npx tsx ./scripts/apply-sql-migration.ts drizzle/0065_financial_recurring_rules.sql
+npx tsx ./scripts/apply-sql-migration.ts drizzle/0066_financial_transaction_modifiers.sql
+npx tsx ./scripts/apply-sql-migration.ts drizzle/0067a_accounting_payment_enum.sql
+npx tsx ./scripts/apply-sql-migration.ts drizzle/0067_financial_card_payment_idempotency.sql
+```
+
+As migrations `0066` e `0067` são compatíveis com reexecução (`IF NOT
+EXISTS`). A aplicação em desenvolvimento e os smoke tests autenticados ainda
+dependem da execução pelo operador.
+
 ### Deploy A — Compatibilidade
 
 - [ ] Adicionar enums, `configuracao`, modificadores e estruturas de
@@ -642,7 +658,29 @@ respeitada.
 
 ## Estratégia de testes
 
+### Correções de sincronização e performance dos menus
+
+- [x] Derivar o valor total de base, juros, multa, taxas e desconto no submenu
+      de transação.
+- [x] Validar o detalhamento monetário antes de anexar a transação ao
+      lançamento.
+- [x] Preservar modificadores existentes ao hidratar e atualizar compras.
+- [x] Centralizar a invalidação das consultas financeiras afetadas por
+      mutações.
+- [x] Evitar que refetches sobrescrevam alterações ainda não salvas nos menus.
+- [x] Evitar deslocamento de data por fuso na efetivação de transações.
+- [x] Consultar contas sem estatísticas nos seletores e agrupar transações uma
+      única vez no cálculo de saldos.
+- [x] Normalizar entradas numéricas em formatos `pt-BR` e `en-US`.
+- [x] Usar identificadores estáveis na prévia de múltiplas transações.
+- [x] Exibir o vencimento calculado pelo ciclo do cartão.
+- [ ] Executar smoke test autenticado dos fluxos de criação, edição,
+      efetivação e compra.
+
 ### Testes unitários
+
+- [x] Equação e compatibilidade de modificadores monetários.
+- [x] Agrupamento e status de faturas derivadas.
 
 - [ ] Configuração padrão por tipo.
 - [ ] Correspondência tipo/configuração.

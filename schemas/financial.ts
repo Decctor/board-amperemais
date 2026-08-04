@@ -193,6 +193,14 @@ export type TFinancialAccount = z.infer<typeof FinancialAccountSchema>;
 // FINANCIAL TRANSACTIONS (Transacoes Financeiras)
 // ============================================================================
 
+export const FinancialTransactionModifierMetadataSchema = z.object({
+	origem: z.string({ invalid_type_error: "Tipo nao valido para a origem dos modificadores." }).optional().nullable(),
+	regra: z.string({ invalid_type_error: "Tipo nao valido para a regra dos modificadores." }).optional().nullable(),
+	observacoes: z.string({ invalid_type_error: "Tipo nao valido para as observacoes dos modificadores." }).optional().nullable(),
+	parametros: z.record(z.unknown()).optional().nullable(),
+});
+export type TFinancialTransactionModifierMetadata = z.infer<typeof FinancialTransactionModifierMetadataSchema>;
+
 export const FinancialTransactionSchema = z.object({
 	organizacaoId: z.string({
 		required_error: "ID da organizacao nao informado.",
@@ -212,6 +220,12 @@ export const FinancialTransactionSchema = z.object({
 		required_error: "Valor da transacao financeira nao informado.",
 		invalid_type_error: "Tipo nao valido para o valor da transacao financeira.",
 	}),
+	valorBase: z.number({ invalid_type_error: "Tipo nao valido para o valor base da transacao financeira." }).optional().nullable(),
+	valorJuros: z.number({ invalid_type_error: "Tipo nao valido para os juros da transacao financeira." }).optional().nullable(),
+	valorMulta: z.number({ invalid_type_error: "Tipo nao valido para a multa da transacao financeira." }).optional().nullable(),
+	valorTaxas: z.number({ invalid_type_error: "Tipo nao valido para as taxas da transacao financeira." }).optional().nullable(),
+	valorDesconto: z.number({ invalid_type_error: "Tipo nao valido para o desconto da transacao financeira." }).optional().nullable(),
+	modificadoresMetadata: FinancialTransactionModifierMetadataSchema.optional().nullable(),
 	metodo: PaymentMethodEnum,
 	dataPrevisao: z
 		.string({

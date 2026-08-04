@@ -1,4 +1,5 @@
 import { effectFinancialTransactionCore } from "@/lib/finances/effect-financial-transaction";
+import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 import { db } from "@/services/drizzle";
 import {
 	accountingEntries,
@@ -203,7 +204,7 @@ export async function createEntryFromStatementLine({
 				contaFinanceiraId: linha.contaFinanceiraId,
 				titulo: entryTitle,
 				tipo: linha.tipo,
-				valor: linha.valor,
+				...normalizeFinancialTransactionValue({ valor: linha.valor }),
 				metodo: linha.metodo ?? "OUTRO",
 				dataPrevisao: linha.dataTransacao,
 				dataEfetivacao: linha.dataTransacao,

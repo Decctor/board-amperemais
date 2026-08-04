@@ -3,6 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { canCreateFinances, canEditFinances, canViewFinances } from "@/lib/permissions/finances";
 import { getCreditCardForecastDate } from "@/lib/finances/credit-card";
+import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 import { getNextRecurringOccurrence } from "@/lib/finances/recurrence";
 import { db, type DBTransaction } from "@/services/drizzle";
 import { accountingEntries, accountsCharts, financialAccounts, financialRecurringRules, financialTransactions } from "@/services/drizzle/schema";
@@ -170,6 +171,12 @@ const FinancialTransactionMutationSchema = FinancialTransactionSchema.pick({
 	titulo: true,
 	tipo: true,
 	valor: true,
+	valorBase: true,
+	valorJuros: true,
+	valorMulta: true,
+	valorTaxas: true,
+	valorDesconto: true,
+	modificadoresMetadata: true,
 	metodo: true,
 	dataPrevisao: true,
 	dataEfetivacao: true,
@@ -333,11 +340,17 @@ function getTransactionValues(
 		account?.tipo === "CARTAO_CREDITO" && account.configuracao.categoria === "CARTAO_CREDITO"
 			? getCreditCardForecastDate(referenceDate, account.configuracao)
 			: transaction.dataPrevisao;
+	let monetaryValues;
+	try {
+		monetaryValues = normalizeFinancialTransactionValue(transaction);
+	} catch (error) {
+		throw new createHttpError.BadRequest(error instanceof Error ? error.message : "Modificadores monetários inválidos.");
+	}
 	return {
 		contaFinanceiraId: transaction.contaFinanceiraId ?? null,
 		titulo: transaction.titulo,
 		tipo: transaction.tipo,
-		valor: transaction.valor,
+		...monetaryValues,
 		metodo: transaction.metodo,
 		dataPrevisao,
 		dataEfetivacao: transaction.dataEfetivacao ?? null,
@@ -400,10 +413,10 @@ async function createAccountingEntry({ input, session }: { input: TCreateAccount
 			const templateTransacoes = input.entryFinancialTransactions.map((transaction) => {
 				const account = transaction.contaFinanceiraId ? accountById.get(transaction.contaFinanceiraId) : undefined;
 				return {
+					...normalizeFinancialTransactionValue(transaction),
 					contaFinanceiraId: transaction.contaFinanceiraId ?? null,
 					titulo: transaction.titulo,
 					tipo: transaction.tipo,
-					valor: transaction.valor,
 					metodo: transaction.metodo,
 					diaPrevisao: account?.tipo === "CARTAO_CREDITO" ? null : dayjs(transaction.dataPrevisao).date(),
 					previsaoModo: account?.tipo === "CARTAO_CREDITO" ? ("INFERIR_PELA_CONTA" as const) : ("DIA_FIXO" as const),

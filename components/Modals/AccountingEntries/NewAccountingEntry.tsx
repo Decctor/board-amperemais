@@ -7,6 +7,7 @@ import AccountingEntryValuesBlock from "@/components/Modals/AccountingEntries/Bl
 import { AccountingEntryRecurrenceBlock } from "@/components/Modals/AccountingEntries/Blocks/Recurrence";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
+import { invalidateFinanceQueries } from "@/lib/finances/invalidate-finance-queries";
 import { createAccountingEntry } from "@/lib/mutations/finances";
 import type { TFinancialRecurringRuleConfig } from "@/schemas/financial-recurring";
 import { useInternalAccountingEntryState } from "@/state-hooks/use-internal-accounting-entry-state";
@@ -55,7 +56,7 @@ export default function NewAccountingEntry({ closeModal, callbacks }: NewAccount
 			toast.success(data.message);
 			resetState();
 			setRecurrenceConfig(null);
-			void queryClient.invalidateQueries({ queryKey: ["finances-accounting-entries"] });
+			void invalidateFinanceQueries(queryClient);
 			void queryClient.invalidateQueries({ queryKey: ["finances-recurring-rules"] });
 			closeModal();
 		},
@@ -83,6 +84,7 @@ export default function NewAccountingEntry({ closeModal, callbacks }: NewAccount
 			<AccountingEntryValuesBlock entry={state.entry} updateEntry={updateEntry} />
 			<AccountingEntryFinancialTransactionsBlock
 				entryTotalValue={state.entry.valor}
+				entryCompetenceDate={state.entry.dataCompetencia}
 				entryFinancialTransactions={state.entryFinancialTransactions}
 				addFinancialTransaction={addFinancialTransaction}
 				updateFinancialTransaction={updateFinancialTransaction}

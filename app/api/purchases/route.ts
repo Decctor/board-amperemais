@@ -4,6 +4,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
 import { getAccountingEntryBalanceError } from "@/lib/finances/accounting-entry-balance";
+import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 import { handlePurchaseItemStockProcessing, type TPurchaseItemStockOperation } from "@/lib/purchase-processing/process-purchase-item-stock";
 import { createSimplifiedSearchCondition } from "@/lib/search";
 import { PurchaseStatusEnum, TPurchaseStatusEnum } from "@/schemas/enums";
@@ -296,6 +297,14 @@ function assertAccountingEntryIsBalanced({
 	if (balanceError) throw new createHttpError.BadRequest(balanceError);
 }
 
+function normalizePurchaseFinancialTransaction<T extends { valor: number }>(transaction: T) {
+	try {
+		return { ...transaction, ...normalizeFinancialTransactionValue(transaction) };
+	} catch (error) {
+		throw new createHttpError.BadRequest(error instanceof Error ? error.message : "Modificadores monetários inválidos.");
+	}
+}
+
 function isPurchaseConsideredReceived(purchase: { status: TPurchaseStatusEnum; entregaDataRecebimentoEfetivacao?: Date | null }) {
 	return purchase.status === "RECEBIDA" && !!purchase.entregaDataRecebimentoEfetivacao;
 }
@@ -346,7 +355,7 @@ async function createPurchase({ input, session }: { input: TCreatePurchaseInput;
 		if (payloadAccountingEntryTransactions.length > 0)
 			await tx.insert(financialTransactions).values(
 				payloadAccountingEntryTransactions.map((transaction) => ({
-					...transaction,
+					...normalizePurchaseFinancialTransaction(transaction),
 					lancamentoContabilId: insertedAccountingEntryId,
 					organizacaoId: userOrgId,
 					autorId: session.user.id,
@@ -530,7 +539,10 @@ async function syncPurchaseAccountingEntry({
 		trx: tx,
 		table: financialTransactions,
 		// `autorId` só é atribuído nas transações novas — atualizar não muda quem criou a transação.
-		entities: payloadTransactions.map((transaction) => ({ ...transaction, ...(transaction.id ? {} : { autorId: userId }) })),
+		entities: payloadTransactions.map((transaction) => ({
+			...normalizePurchaseFinancialTransaction(transaction),
+			...(transaction.id ? {} : { autorId: userId }),
+		})),
 		fatherEntityKey: "lancamentoContabilId",
 		fatherEntityId: accountingEntryId,
 		organizacaoId: orgId,

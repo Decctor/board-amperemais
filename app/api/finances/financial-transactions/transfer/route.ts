@@ -3,6 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { canCreateFinances } from "@/lib/permissions/finances";
 import { db } from "@/services/drizzle";
+import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 import { accountingEntries, accountsCharts, financialAccounts, financialTransactions } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -44,11 +45,7 @@ const CreateFinancialTransferInputSchema = z.object({
 });
 export type TCreateFinancialTransferInput = z.infer<typeof CreateFinancialTransferInputSchema>;
 
-async function resolveTransferAccountingAccountIds({
-	orgId,
-}: {
-	orgId: string;
-}): Promise<{ debitAccountId: string; creditAccountId: string }> {
+async function resolveTransferAccountingAccountIds({ orgId }: { orgId: string }): Promise<{ debitAccountId: string; creditAccountId: string }> {
 	const organization = await db.query.organizations.findFirst({
 		where: (fields, { eq }) => eq(fields.id, orgId),
 		columns: { configuracao: true },
@@ -149,7 +146,7 @@ async function createFinancialTransfer({ input, session }: { input: TCreateFinan
 					contaFinanceiraId: sourceAccount.id,
 					titulo: `${transfer.titulo} - saída`,
 					tipo: "SAIDA",
-					valor: transfer.valor,
+					...normalizeFinancialTransactionValue({ valor: transfer.valor }),
 					metodo: "TRANSFERENCIA",
 					dataPrevisao: transfer.dataEfetivacao,
 					dataEfetivacao: transfer.dataEfetivacao,
@@ -161,7 +158,7 @@ async function createFinancialTransfer({ input, session }: { input: TCreateFinan
 					contaFinanceiraId: destinationAccount.id,
 					titulo: `${transfer.titulo} - entrada`,
 					tipo: "ENTRADA",
-					valor: transfer.valor,
+					...normalizeFinancialTransactionValue({ valor: transfer.valor }),
 					metodo: "TRANSFERENCIA",
 					dataPrevisao: transfer.dataEfetivacao,
 					dataEfetivacao: transfer.dataEfetivacao,

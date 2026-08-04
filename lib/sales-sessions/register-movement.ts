@@ -3,6 +3,7 @@ import { accountingEntries, financialTransactions, salesSessions } from "@/servi
 import type { TRegisterSalesSessionMovementInput } from "@/schemas/sales-sessions";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
+import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 
 /**
  * Registra um movimento manual de caixa (sangria/suprimento) numa sessão aberta.
@@ -66,7 +67,7 @@ export async function registerSalesSessionMovement({
 				sessaoVendaId: session.id,
 				titulo,
 				tipo: tipoTransacao,
-				valor: input.valor,
+				...normalizeFinancialTransactionValue({ valor: input.valor }),
 				metodo: "DINHEIRO",
 				dataPrevisao: new Date(),
 				dataEfetivacao: new Date(),

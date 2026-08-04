@@ -180,21 +180,33 @@ async function getFinancialAccounts({ input, session }: { input: TGetFinancialAc
 					inArray(financialTransactions.contaFinanceiraId, accountIds),
 				),
 			);
+		const transactionsByAccount = new Map<string, typeof allTransactions>();
+		for (const transaction of allTransactions) {
+			if (!transaction.contaFinanceiraId) continue;
+			const accountTransactions = transactionsByAccount.get(transaction.contaFinanceiraId);
+			if (accountTransactions) accountTransactions.push(transaction);
+			else transactionsByAccount.set(transaction.contaFinanceiraId, [transaction]);
+		}
 
 		for (const account of accountsResult) {
-			const accountTxs = allTransactions.filter((transaction) => transaction.contaFinanceiraId === account.id);
-			const balanceTxs = accountTxs.filter(
-				(transaction) => transaction.dataEfetivacao && new Date(transaction.dataEfetivacao) >= new Date(account.dataSaldoInicial),
-			);
-			const saldoAtual = getAccountBalance(account.tipo, account.saldoInicial, balanceTxs);
-			const periodTxs = accountTxs.filter((transaction) => {
+			const accountTxs = transactionsByAccount.get(account.id) ?? [];
+			const balanceTxs = [];
+			const initialBalanceDate = new Date(account.dataSaldoInicial);
+			let totalEntradas = 0;
+			let totalSaidas = 0;
+			for (const transaction of accountTxs) {
 				const date = new Date(transaction.dataEfetivacao!);
-				return (!input.statsPeriodAfter || date >= input.statsPeriodAfter) && (!input.statsPeriodBefore || date <= input.statsPeriodBefore);
-			});
+				if (date >= initialBalanceDate) balanceTxs.push(transaction);
+				if ((!input.statsPeriodAfter || date >= input.statsPeriodAfter) && (!input.statsPeriodBefore || date <= input.statsPeriodBefore)) {
+					if (transaction.tipo === "ENTRADA") totalEntradas += transaction.valor;
+					else totalSaidas += transaction.valor;
+				}
+			}
+			const saldoAtual = getAccountBalance(account.tipo, account.saldoInicial, balanceTxs);
 			statsMap[account.id] = {
 				saldoAtual,
-				totalEntradas: periodTxs.filter((transaction) => transaction.tipo === "ENTRADA").reduce((sum, transaction) => sum + transaction.valor, 0),
-				totalSaidas: periodTxs.filter((transaction) => transaction.tipo === "SAIDA").reduce((sum, transaction) => sum + transaction.valor, 0),
+				totalEntradas,
+				totalSaidas,
 			};
 		}
 	}

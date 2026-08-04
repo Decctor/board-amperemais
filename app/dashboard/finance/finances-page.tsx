@@ -3,12 +3,13 @@
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { Banknote, DollarSign, FileCheck2, List, TrendingUp } from "lucide-react";
+import { Banknote, CreditCard, DollarSign, FileCheck2, List, TrendingUp } from "lucide-react";
 import FinancesStatsView from "./finances-page-stats";
 import FinancesAccountingEntriesView from "./finances-page-accounting-entries";
 import FinancesTransactionsView from "./finances-page-transactions";
 import FinancesAccountsView from "./finances-page-financial-accounts";
 import FinancesReconciliationView from "./finances-page-reconciliation";
+import FinancesCreditCardInvoicesView from "./finances-page-credit-card-invoices";
 import { canCreateFinances, canEditFinances } from "@/lib/permissions/finances";
 
 type FinancesPageProps = {
@@ -19,7 +20,7 @@ type FinancesPageProps = {
 export default function FinancesPage({ membership }: FinancesPageProps) {
 	const [viewMode, setViewMode] = useQueryState(
 		"view",
-		parseAsStringEnum(["stats", "accounting-entries", "financial-transactions", "financial-accounts", "reconciliation"]),
+		parseAsStringEnum(["stats", "accounting-entries", "financial-transactions", "financial-accounts", "credit-card-invoices", "reconciliation"]),
 	);
 
 	return (
@@ -42,6 +43,10 @@ export default function FinancesPage({ membership }: FinancesPageProps) {
 						<Banknote className="w-4 h-4 min-w-4 min-h-4" />
 						Contas Financeiras
 					</TabsTrigger>
+					<TabsTrigger value="credit-card-invoices">
+						<CreditCard className="w-4 h-4 min-w-4 min-h-4" />
+						Faturas de Cartão
+					</TabsTrigger>
 					<TabsTrigger value="reconciliation">
 						<FileCheck2 className="w-4 h-4 min-w-4 min-h-4" />
 						Conciliação
@@ -58,6 +63,9 @@ export default function FinancesPage({ membership }: FinancesPageProps) {
 				</TabsContent>
 				<TabsContent value="financial-accounts" className="flex flex-col gap-3">
 					<FinancesAccountsView canCreateAccounts={canCreateFinances(membership.permissoes)} canEditAccounts={canEditFinances(membership.permissoes)} />
+				</TabsContent>
+				<TabsContent value="credit-card-invoices" className="flex flex-col gap-3">
+					<FinancesCreditCardInvoicesView canCreatePayments={canCreateFinances(membership.permissoes)} />
 				</TabsContent>
 				<TabsContent value="reconciliation" className="flex flex-col gap-3">
 					<FinancesReconciliationView />

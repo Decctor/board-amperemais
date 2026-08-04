@@ -208,6 +208,7 @@ export const AccountingEntryOriginTypeEnum = z.enum([
 	"CONCILIACAO",
 	"PERDA_ESTOQUE",
 	"RECORRENCIA",
+	"PAGAMENTO_CARTAO",
 ]);
 export type TAccountingEntryOriginTypeEnum = z.infer<typeof AccountingEntryOriginTypeEnum>;
 export const FinancialStatementOriginEnum = z.enum(["ARQUIVO", "OPEN_FINANCE"]);

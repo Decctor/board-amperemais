@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 import { db, type DBTransaction } from "@/services/drizzle";
 import { financialTransactions } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -44,7 +45,7 @@ export class LocalPaymentProvider implements IPaymentProvider {
 							sessaoVendaId: input.sessaoVendaId ?? null,
 							titulo: buildTransactionTitle(pagamento.metodo, pagamento.observacoes),
 							tipo: "ENTRADA",
-							valor: valorParcela,
+							...normalizeFinancialTransactionValue({ valor: valorParcela }),
 							metodo: pagamento.metodo,
 							dataPrevisao,
 							dataEfetivacao: null,
@@ -81,7 +82,7 @@ export class LocalPaymentProvider implements IPaymentProvider {
 					sessaoVendaId: input.sessaoVendaId ?? null,
 					titulo: buildTransactionTitle(pagamento.metodo, pagamento.observacoes),
 					tipo: "ENTRADA",
-					valor: pagamento.valor,
+					...normalizeFinancialTransactionValue({ valor: pagamento.valor }),
 					metodo: pagamento.metodo,
 					dataPrevisao,
 					dataEfetivacao,

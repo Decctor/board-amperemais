@@ -19,6 +19,7 @@ import type {
 	TUpdateRecurringRuleInput,
 	TUpdateRecurringRuleOutput,
 } from "@/app/api/finances/recurring-rules/route";
+import type { TCreateCreditCardPaymentInput, TCreateCreditCardPaymentOutput } from "@/app/api/finances/credit-card-invoices/payment/route";
 import axios from "axios";
 
 export async function effectFinancialTransaction(input: TEffectFinancialTransactionInput) {
@@ -63,5 +64,10 @@ export async function createFinancialRecurringRule(input: TCreateRecurringRuleIn
 
 export async function updateFinancialRecurringRule(input: TUpdateRecurringRuleInput) {
 	const { data } = await axios.put<TUpdateRecurringRuleOutput>(`/api/finances/recurring-rules`, input);
+	return data;
+}
+
+export async function createCreditCardPayment(input: TCreateCreditCardPaymentInput) {
+	const { data } = await axios.post<TCreateCreditCardPaymentOutput>(`/api/finances/credit-card-invoices/payment`, input);
 	return data;
 }

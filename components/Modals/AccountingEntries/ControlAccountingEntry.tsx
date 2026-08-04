@@ -7,14 +7,14 @@ import AccountingEntryValuesBlock from "@/components/Modals/AccountingEntries/Bl
 import { AccountingEntryRecurrenceBlock } from "@/components/Modals/AccountingEntries/Blocks/Recurrence";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
+import { invalidateFinanceQueries } from "@/lib/finances/invalidate-finance-queries";
 import { createFinancialRecurringRule, updateAccountingEntry, updateFinancialRecurringRule } from "@/lib/mutations/finances";
 import { useAccountingEntryById } from "@/lib/queries/finances";
 import { useInternalAccountingEntryState } from "@/state-hooks/use-internal-accounting-entry-state";
 import { AccountingEntryOriginTypeOptions } from "@/utils/select-options";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Info } from "lucide-react";
-import { useEffect } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TFinancialRecurringRuleConfig } from "@/schemas/financial-recurring";
 import { toast } from "sonner";
 
@@ -43,9 +43,11 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 		resetState,
 	} = useInternalAccountingEntryState({ initialState: { entryId } });
 	const [recurrenceConfig, setRecurrenceConfig] = useState<TFinancialRecurringRuleConfig | null>(null);
+	const hydratedEntryIdRef = useRef<string | null>(null);
 
 	useEffect(() => {
-		if (!entryData) return;
+		if (!entryData || hydratedEntryIdRef.current === entryData.id) return;
+		hydratedEntryIdRef.current = entryData.id;
 		redefineState({
 			entryId: entryData.id,
 			entry: {
@@ -64,6 +66,12 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 				titulo: transaction.titulo,
 				tipo: transaction.tipo,
 				valor: transaction.valor,
+				valorBase: transaction.valorBase,
+				valorJuros: transaction.valorJuros,
+				valorMulta: transaction.valorMulta,
+				valorTaxas: transaction.valorTaxas,
+				valorDesconto: transaction.valorDesconto,
+				modificadoresMetadata: transaction.modificadoresMetadata,
 				metodo: transaction.metodo,
 				dataPrevisao: transaction.dataPrevisao,
 				dataEfetivacao: transaction.dataEfetivacao,
@@ -105,9 +113,8 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 			toast.success(data.message);
 			resetState();
 			setRecurrenceConfig(null);
-			void queryClient.invalidateQueries({ queryKey: ["finances-accounting-entries"] });
+			void invalidateFinanceQueries(queryClient, { accountingEntryId: entryId });
 			void queryClient.invalidateQueries({ queryKey: ["finances-recurring-rules"] });
-			void queryClient.invalidateQueries({ queryKey });
 			closeModal();
 		},
 		onError: (mutationError) => {
@@ -188,6 +195,7 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 			<AccountingEntryValuesBlock entry={state.entry} updateEntry={updateEntry} editable={canEditAccountingFields} />
 			<AccountingEntryFinancialTransactionsBlock
 				entryTotalValue={state.entry.valor}
+				entryCompetenceDate={state.entry.dataCompetencia}
 				entryFinancialTransactions={state.entryFinancialTransactions}
 				addFinancialTransaction={addFinancialTransaction}
 				updateFinancialTransaction={updateFinancialTransaction}

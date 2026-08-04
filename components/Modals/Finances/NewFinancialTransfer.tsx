@@ -9,6 +9,7 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import type { TCreateFinancialTransferInput } from "@/app/api/finances/financial-transactions/transfer/route";
 import { getErrorMessage } from "@/lib/errors";
+import { invalidateFinanceQueries } from "@/lib/finances/invalidate-finance-queries";
 import { formatDateForInputValue, formatDateOnInputChange, formatToMoney } from "@/lib/formatting";
 import { createFinancialTransfer } from "@/lib/mutations/finances";
 import { useFinancesAccounts } from "@/lib/queries/finances";
@@ -65,11 +66,7 @@ export default function NewFinancialTransfer({ closeMenu, callbacks }: NewFinanc
 		onSuccess: (data) => {
 			callbacks?.onSuccess?.();
 			toast.success(data.message);
-			void queryClient.invalidateQueries({ queryKey: ["finances-financial-transactions"] });
-			void queryClient.invalidateQueries({ queryKey: ["finances-accounting-entries"] });
-			void queryClient.invalidateQueries({ queryKey: ["finances-financial-accounts"] });
-			void queryClient.invalidateQueries({ queryKey: ["finances-overall-stats"] });
-			void queryClient.invalidateQueries({ queryKey: ["financial-account-graph"] });
+			void invalidateFinanceQueries(queryClient);
 			closeMenu();
 		},
 		onError: (mutationError) => {

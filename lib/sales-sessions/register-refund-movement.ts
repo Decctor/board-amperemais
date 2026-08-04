@@ -1,5 +1,6 @@
 import { financialTransactions } from "@/services/drizzle/schema";
 import type { TransactionClient } from "./types";
+import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 
 /**
  * Registra a saída de dinheiro de um estorno na sessão de venda atualmente aberta.
@@ -41,7 +42,7 @@ export async function registerRefundCashMovement({
 			sessaoVendaId,
 			titulo,
 			tipo: "SAIDA",
-			valor: valorDinheiro,
+			...normalizeFinancialTransactionValue({ valor: valorDinheiro }),
 			metodo: "DINHEIRO",
 			dataPrevisao: new Date(),
 			dataEfetivacao: new Date(),

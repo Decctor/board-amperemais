@@ -63,6 +63,18 @@ type PurchaseTransactionsTableProps = {
 	removeTransaction: TUsePurchaseState["removeAccountingEntryTransaction"];
 };
 
+function getTransactionValuePatch(valor: number): Partial<TPurchaseAccountingEntryTransaction> {
+	return {
+		valor,
+		valorBase: valor,
+		valorJuros: 0,
+		valorMulta: 0,
+		valorTaxas: 0,
+		valorDesconto: 0,
+		modificadoresMetadata: null,
+	};
+}
+
 /**
  * Tabela inline das transações financeiras que quitam o lançamento contábil da compra.
  * Segue o mesmo padrão da tabela de itens: células editáveis com navegação por teclado e uma
@@ -370,7 +382,7 @@ function PurchaseTransactionTableRow({
 						gridCol={TRANSACTION_GRID_COL.VALUE}
 						gridBounds={gridBounds}
 						format={(value) => (value > 0 ? formatToMoney(value) : "-")}
-						onCommit={(valor) => handleUpdate({ valor })}
+						onCommit={(valor) => handleUpdate(getTransactionValuePatch(valor))}
 					/>
 				</div>
 				<div className="flex w-[5%] justify-center px-1">
@@ -401,7 +413,7 @@ function PurchaseTransactionTableRow({
 							ariaLabel="Editar valor da transação"
 							min={0}
 							format={(value) => (value > 0 ? formatToMoney(value) : "-")}
-							onCommit={(valor) => handleUpdate({ valor })}
+							onCommit={(valor) => handleUpdate(getTransactionValuePatch(valor))}
 						/>
 					</MobileEditableField>
 					<MobileEditableField label="Método">
@@ -533,13 +545,7 @@ function DraftPurchaseTransactionRow({
 					/>
 				</div>
 				<div className="w-[11%] px-1">
-					<DraftValueCell
-						value={effectiveValue}
-						isSuggestion={!valueIsConfirmed}
-						gridRow={gridRow}
-						gridBounds={gridBounds}
-						onCommit={confirmDraftValue}
-					/>
+					<DraftValueCell value={effectiveValue} isSuggestion={!valueIsConfirmed} gridRow={gridRow} gridBounds={gridBounds} onCommit={confirmDraftValue} />
 				</div>
 				<div className="w-[5%]" />
 			</div>

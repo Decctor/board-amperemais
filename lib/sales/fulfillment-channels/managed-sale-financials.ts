@@ -1,5 +1,6 @@
 import type { TCanonicalSale, TCanonicalSalePayment } from "@/lib/data-connectors/types";
 import { ensureFirstPartyFinancialAccount, type TFirstPartyAccountKey } from "@/lib/finances/first-party-accounts";
+import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 import { getOrganizationPaymentMethodsConfig } from "@/lib/payments/defaults";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { DBTransaction } from "@/services/drizzle";
@@ -117,7 +118,7 @@ export async function processManagedSaleFinancials(
 			contaFinanceiraId: isOnline ? channelAccount.id : (methodDefaults[payment.metodo]?.contaFinanceiraPadraoId ?? null),
 			titulo: buildTransactionTitle(payment, saleLabel),
 			tipo: "ENTRADA",
-			valor: payment.valor,
+			...normalizeFinancialTransactionValue({ valor: payment.valor }),
 			metodo: payment.metodo,
 			dataPrevisao: isOnline ? dayjs(sale.occurredAt).add(SETTLEMENT_FORECAST_DAYS, "days").toDate() : sale.occurredAt,
 			dataEfetivacao: null,

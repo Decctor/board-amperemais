@@ -640,6 +640,16 @@ export const AccountingEntryOriginTypeOptions: {
 			background: "bg-indigo-200",
 		},
 	},
+	{
+		id: 8,
+		label: "PAGAMENTO DE CARTÃO",
+		value: "PAGAMENTO_CARTAO",
+		icon: <CreditCard className="w-4 h-4" />,
+		colors: {
+			text: "text-cyan-600",
+			background: "bg-cyan-200",
+		},
+	},
 ];
 
 export const FinancialTransactionTypeOptions: {

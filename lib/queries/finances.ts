@@ -4,6 +4,7 @@ import { TGetFinancialTransactionsOutput } from "@/app/api/finances/financial-tr
 import { TGetFinancialAccountsOutput, TGetFinancialAccountsOutputById } from "@/app/api/finances/financial-accounts/route";
 import { TGetFinancialAccountGraphOutput } from "@/app/api/finances/financial-accounts/graph/route";
 import { TGetRecurringRulesOutput } from "@/app/api/finances/recurring-rules/route";
+import type { TGetCreditCardInvoicesInput, TGetCreditCardInvoicesOutput } from "@/app/api/finances/credit-card-invoices/route";
 import axios from "axios";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -261,6 +262,7 @@ export function useFinancesAccounts({ initialFilters }: UseFinancesAccountsParam
 		...useQuery({
 			queryKey: ["finances-financial-accounts", filters],
 			queryFn: () => fetchFinancialAccounts(filters),
+			staleTime: filters.stats ? 60_000 : 5 * 60_000,
 		}),
 		queryKey: ["finances-financial-accounts", filters],
 		filters,
@@ -337,5 +339,29 @@ export function useFinancialRecurringRules(ruleId?: string | null) {
 			queryFn: () => fetchFinancialRecurringRules(ruleId),
 		}),
 		queryKey: ["finances-recurring-rules", ruleId ?? "list"],
+	};
+}
+
+// ============================================================================
+// CREDIT CARD INVOICES (derived read model)
+// ============================================================================
+
+async function fetchCreditCardInvoices(input: TGetCreditCardInvoicesInput) {
+	const searchParams = new URLSearchParams();
+	if (input.contaFinanceiraId) searchParams.set("contaFinanceiraId", input.contaFinanceiraId);
+	if (input.dataVencimento) searchParams.set("dataVencimento", input.dataVencimento.toISOString());
+	if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+	if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+	const { data } = await axios.get<TGetCreditCardInvoicesOutput>(`/api/finances/credit-card-invoices?${searchParams.toString()}`);
+	return data.data;
+}
+
+export function useCreditCardInvoices(input: TGetCreditCardInvoicesInput = {}) {
+	return {
+		...useQuery({
+			queryKey: ["finances-credit-card-invoices", input],
+			queryFn: () => fetchCreditCardInvoices(input),
+		}),
+		queryKey: ["finances-credit-card-invoices", input],
 	};
 }
