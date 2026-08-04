@@ -115,8 +115,20 @@ async function createIfoodInterruptionRoute(request: NextRequest) {
 	if (!canManageIntegrations(session.membership?.permissoes))
 		throw new createHttpError.Forbidden("Você não possui permissão para gerenciar integrações.");
 
-	const input = CreateIfoodInterruptionInputSchema.parse(await request.json());
-	const result = await createIfoodInterruptionService({ input, session });
+	// O ZodError não carrega o valor recusado, e sem ele um 400 de formato em produção é indiagnosticável:
+	// não dá para saber se o cliente mandou UTC, milissegundos ou lixo. O log guarda o que chegou.
+	const body = await request.json();
+	const parsed = CreateIfoodInterruptionInputSchema.safeParse(body);
+	if (!parsed.success) {
+		console.error("[IFOOD] Payload de pausa recusado:", {
+			inicio: body?.inicio,
+			fim: body?.fim,
+			issues: parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`),
+		});
+		throw new createHttpError.BadRequest(parsed.error.issues[0].message);
+	}
+
+	const result = await createIfoodInterruptionService({ input: parsed.data, session });
 	return NextResponse.json(result);
 }
 
