@@ -40,17 +40,11 @@ export function NewIfoodInterruption({ merchantId, closeModal, callbacks }: NewI
 		if (!descricao.trim()) return toast.error("Informe a descrição da pausa.");
 		if (!inicio) return toast.error("Informe a data de início da pausa.");
 		if (!fim) return toast.error("Informe a data de fim da pausa.");
-		const inicioDate = new Date(inicio);
-		const fimDate = new Date(fim);
-		if (Number.isNaN(inicioDate.getTime()) || Number.isNaN(fimDate.getTime())) return toast.error("Datas da pausa inválidas.");
-		if (fimDate <= inicioDate) return toast.error("A data de fim da pausa deve ser posterior à data de início.");
+		// Sem conversão de fuso: o iFood grava o horário local da loja e descarta qualquer offset, então
+		// converter para UTC deslocaria a pausa em 3h. O valor do input já é o wall-clock desejado.
+		if (fim <= inicio) return toast.error("A data de fim da pausa deve ser posterior à data de início.");
 
-		mutate({
-			merchantId,
-			descricao: descricao.trim(),
-			inicio: inicioDate.toISOString(),
-			fim: fimDate.toISOString(),
-		});
+		mutate({ merchantId, descricao: descricao.trim(), inicio, fim });
 	}
 
 	return (

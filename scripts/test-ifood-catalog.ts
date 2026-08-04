@@ -13,8 +13,9 @@ import {
 	getIfoodCatalogs,
 	getIfoodItemFlat,
 	listIfoodCategories,
+	listIfoodOptionGroups,
 } from "@/lib/integrations/ifood/catalog";
-import { deleteIfoodItemFromCategory, upsertIfoodItem } from "@/lib/integrations/ifood/catalog-items";
+import { deleteIfoodItemFromCategory, deleteIfoodOptionGroup, upsertIfoodItem } from "@/lib/integrations/ifood/catalog-items";
 import { deleteIfoodProductsInventory, getIfoodProductInventory, setIfoodProductInventory } from "@/lib/integrations/ifood/inventory";
 import { getIfoodMerchantsList } from "@/lib/integrations/ifood/merchant";
 import { connection, db } from "@/services/drizzle";
@@ -140,6 +141,33 @@ async function resolveContext(organizationId: string): Promise<{ client: AxiosIn
 // ---------------------------------------------------------------------------
 // Roteiro
 // ---------------------------------------------------------------------------
+
+/**
+ * Grupos de complementos ÓRFÃOS: existem na loja mas nenhum item vivo os usa.
+ *
+ * Apagar o item não apaga os grupos que ele criou — cada execução do roteiro deixava dois para trás.
+ * A varredura é por REFERÊNCIA, não por nome: lê os grupos em uso por cada item existente e
+ * considera órfão o que sobrar. Assim um grupo que você criou de propósito nunca entra na lista,
+ * mesmo que se chame "Adicionais".
+ */
+async function findOrphanOptionGroups({ client, merchantId, catalogId }: { client: AxiosInstance; merchantId: string; catalogId: string }) {
+	const todos = await listIfoodOptionGroups(client, merchantId, { page: 1, limit: 100 });
+	const categorias = await listIfoodCategories(client, merchantId, { catalogId });
+	const itens = categorias.flatMap((categoria) => categoria.itens).filter((item) => !!item.id);
+
+	const emUso = new Set<string>();
+	for (const item of itens) {
+		const flat = await getIfoodItemFlat(client, merchantId, item.id as string);
+		for (const grupo of flat.gruposComplementos) if (grupo.id) emUso.add(grupo.id);
+	}
+
+	return {
+		total: todos.length,
+		itensVerificados: itens.length,
+		emUso: emUso.size,
+		orfaos: todos.filter((grupo) => !emUso.has(grupo.id)),
+	};
+}
 
 /** Remove categorias `[TESTE]` deixadas por execuções que falharam no meio. */
 async function cleanupTestCategories({ client, merchantId, catalogId }: { client: AxiosInstance; merchantId: string; catalogId: string }) {
@@ -408,6 +436,30 @@ async function run({
 		const catalogosParaLimpar = await getIfoodCatalogs(client, merchantId);
 		console.log("Limpeza de resíduos de execuções anteriores");
 		for (const alvo of catalogosParaLimpar) await cleanupTestCategories({ client, merchantId, catalogId: alvo.id });
+
+		for (const alvo of catalogosParaLimpar) {
+			const { total, itensVerificados, emUso, orfaos } = await findOrphanOptionGroups({ client, merchantId, catalogId: alvo.id });
+			console.log(`\n  Grupos de complementos: ${total} no total · ${emUso} em uso por ${itensVerificados} item(ns) · ${orfaos.length} órfão(s)`);
+			if (!orfaos.length) continue;
+
+			for (const orfao of orfaos) console.log(`    · ${JSON.stringify(orfao.nome)} (${orfao.opcoes.length} opções) — ${orfao.id}`);
+
+			if (!confirm) {
+				console.log("\n  Modo leitura: rode com --confirm para remover os órfãos acima.");
+				continue;
+			}
+
+			let removidos = 0;
+			for (const orfao of orfaos) {
+				try {
+					await deleteIfoodOptionGroup(client, merchantId, orfao.id);
+					removidos++;
+				} catch (error) {
+					console.log(`    ✗ falhou ao remover ${orfao.nome}: ${error instanceof Error ? error.message : String(error)}`);
+				}
+			}
+			console.log(`  ✓ ${removidos}/${orfaos.length} grupo(s) órfão(s) removido(s).`);
+		}
 		return;
 	}
 

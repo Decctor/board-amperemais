@@ -47,6 +47,28 @@ async function getIfoodInterruptionsRoute(request: NextRequest) {
 // POST — cria uma pausa programada (fecha a loja temporariamente)
 // ---------------------------------------------------------------------------
 
+/**
+ * As pausas do iFood viajam como horário LOCAL DA LOJA, sem fuso: a API descarta qualquer offset e
+ * lê o wall-clock literal — mandar `16:00` em UTC (`19:00Z`) agenda a pausa para as 19:00 na loja.
+ *
+ * Por isso o valor não é convertido em nenhum ponto do caminho: o que o lojista digita no
+ * `datetime-local` é exatamente o que o iFood grava, e é exatamente o que ele devolve no GET.
+ */
+const IFOOD_LOCAL_DATETIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
+
+function IfoodLocalDateTimeSchema(campo: string) {
+	return z
+		.string({
+			required_error: `Data de ${campo} da pausa não informada.`,
+			invalid_type_error: `Tipo inválido para a data de ${campo} da pausa.`,
+		})
+		.regex(IFOOD_LOCAL_DATETIME_PATTERN, {
+			message: `Data de ${campo} da pausa deve ser um horário local no formato AAAA-MM-DDTHH:MM.`,
+		})
+		// O input `datetime-local` omite os segundos; o iFood sempre os devolve.
+		.transform((value) => (value.length === 16 ? `${value}:00` : value));
+}
+
 const CreateIfoodInterruptionInputSchema = z
 	.object({
 		merchantId: z
@@ -62,20 +84,12 @@ const CreateIfoodInterruptionInputSchema = z
 			})
 			.trim()
 			.min(1, "Descrição da pausa não informada."),
-		inicio: z
-			.string({
-				required_error: "Data de início da pausa não informada.",
-				invalid_type_error: "Tipo inválido para a data de início da pausa.",
-			})
-			.datetime({ message: "Formato inválido para a data de início da pausa." }),
-		fim: z
-			.string({
-				required_error: "Data de fim da pausa não informada.",
-				invalid_type_error: "Tipo inválido para a data de fim da pausa.",
-			})
-			.datetime({ message: "Formato inválido para a data de fim da pausa." }),
+		inicio: IfoodLocalDateTimeSchema("início"),
+		fim: IfoodLocalDateTimeSchema("fim"),
 	})
-	.refine((value) => new Date(value.fim) > new Date(value.inicio), {
+	// Comparação textual: o formato tem largura fixa, então a ordem lexicográfica é a cronológica —
+	// e evita reintroduzir um `new Date()`, que traria de volta a semântica de fuso que não queremos.
+	.refine((value) => value.fim > value.inicio, {
 		message: "A data de fim da pausa deve ser posterior à data de início.",
 		path: ["fim"],
 	});
