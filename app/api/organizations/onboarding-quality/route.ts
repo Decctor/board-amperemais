@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { organizationHasActiveDataSource } from "@/lib/integrations/data-sources";
 import { db } from "@/services/drizzle";
 import { cashbackPrograms, clients, organizationMembers, organizations } from "@/services/drizzle/schema";
 import { count, eq } from "drizzle-orm";
@@ -102,7 +103,7 @@ async function getOnboardingQuality({ session }: { session: TAuthUserSession }):
 	// Step 4: Integration (conditional on configuracao.recursos.integracoes.acesso)
 	const hasIntegrationAccess = configuration?.recursos?.integracoes?.acesso ?? false;
 	if (hasIntegrationAccess) {
-		const hasIntegration = !!organization.integracaoTipo && !!organization.integracaoConfiguracao;
+		const hasIntegration = await organizationHasActiveDataSource({ executor: db, organizationId: orgId });
 		steps.push({
 			id: "integration",
 			title: "Configurar integração",

@@ -1,9 +1,9 @@
-import type { TOrganizationIntegrationConfig } from "@/schemas/organizations";
+import type { TDataSourceIntegrationType } from "@/lib/integrations/data-sources";
 import type { TPaymentMethodEnum, TSaleAttendanceStatusEnum } from "@/schemas/enums";
+import type { TDataSourceIntegrationConfig } from "@/schemas/integrations";
 import type { TSaleIntegrationMetadata } from "@/schemas/sales";
-import type { TOrganizationEntity } from "@/services/drizzle/schema";
 
-export type TDataConnectorKind = NonNullable<TOrganizationEntity["integracaoTipo"]>;
+export type TDataConnectorKind = TDataSourceIntegrationType;
 
 export type TCanonicalDeliveryMode = "PRESENCIAL" | "RETIRADA" | "ENTREGA" | "COMANDA" | null;
 
@@ -164,7 +164,8 @@ export type TCanonicalSale = {
 	raw?: unknown;
 };
 
-export type TCanonicalImportBatch = {
+/** Batch como cada conector o monta — sem `integrationId`, que é carimbado pelo dispatcher. */
+export type TCanonicalConnectorBatch = {
 	source: TDataConnectorKind;
 	organizationId: string;
 	window: TCanonicalImportWindow;
@@ -179,13 +180,20 @@ export type TCanonicalImportBatch = {
 	postProcess?: () => Promise<void>;
 };
 
-export type TDataConnectorFetchInput<TConfig extends TOrganizationIntegrationConfig = TOrganizationIntegrationConfig> = {
+/** Batch consumido pelo pipeline: sempre sabe de qual linha de `integrations` veio. */
+export type TCanonicalImportBatch = TCanonicalConnectorBatch & {
+	integrationId: string;
+};
+
+export type TDataConnectorFetchInput<TConfig extends TDataSourceIntegrationConfig = TDataSourceIntegrationConfig> = {
 	organizationId: string;
+	/** Linha de `integrations` dona da config — alvo dos refreshes de token row-scoped. */
+	integrationId: string;
 	config: TConfig;
 	window: TCanonicalImportWindow;
 };
 
-export type TDataConnector<TConfig extends TOrganizationIntegrationConfig = TOrganizationIntegrationConfig> = {
+export type TDataConnector<TConfig extends TDataSourceIntegrationConfig = TDataSourceIntegrationConfig> = {
 	kind: TDataConnectorKind;
-	fetchImportBatch: (input: TDataConnectorFetchInput<TConfig>) => Promise<TCanonicalImportBatch>;
+	fetchImportBatch: (input: TDataConnectorFetchInput<TConfig>) => Promise<TCanonicalConnectorBatch>;
 };

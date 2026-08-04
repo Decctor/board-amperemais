@@ -2,15 +2,19 @@ import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { getErrorMessage } from "@/lib/errors";
-import { updateOrganization } from "@/lib/mutations/organizations";
+import { createIntegration } from "@/lib/mutations/integrations";
 import { TOrganizationIntegrationConfig } from "@/schemas/organizations";
 import { useMutation } from "@tanstack/react-query";
-import { CheckCircle2, Globe, Package } from "lucide-react";
+import { CheckCircle2, Globe, Package, Tag } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 type ViewIntegrationProps = {
 	integrationType: "ONLINE-SOFTWARE" | "CARDAPIO-WEB";
+	/** true quando já existe conexão ativa do mesmo tipo — o apelido vira obrigatório (D5). */
+	requireApelido?: boolean;
+	/** Reconexão explícita (D9): id da linha de `integrations` a reativar com as credenciais novas. */
+	reconnectIntegrationId?: string | null;
 	callbacks?: {
 		onMutate?: () => void;
 		onSuccess?: () => void;
@@ -32,8 +36,9 @@ const INITIAL_CONFIG: Record<"ONLINE-SOFTWARE" | "CARDAPIO-WEB", TOrganizationIn
 		apiKey: "",
 	},
 };
-export default function ViewIntegration({ integrationType, callbacks, closeMenu }: ViewIntegrationProps) {
+export default function ViewIntegration({ integrationType, requireApelido, reconnectIntegrationId, callbacks, closeMenu }: ViewIntegrationProps) {
 	const [organizationIntegrationConfig, setOrganizationIntegrationConfig] = useState<TOrganizationIntegrationConfig>(INITIAL_CONFIG[integrationType]);
+	const [apelido, setApelido] = useState("");
 
 	function updateOrganizationOnlineSoftwareConfig(changes: Partial<Extract<TOrganizationIntegrationConfig, { tipo: "ONLINE-SOFTWARE" }>>) {
 		setOrganizationIntegrationConfig((prev) => {
@@ -59,10 +64,6 @@ export default function ViewIntegration({ integrationType, callbacks, closeMenu 
 		});
 	}
 
-	const updateOrg = async () => {
-		console.log("TESTING UPDATE ORG");
-	};
-
 	async function handleValidateAndCommit(integration: TOrganizationIntegrationConfig) {
 		if (integration.tipo === "ONLINE-SOFTWARE") {
 			if (!integration.token.trim()) {
@@ -74,14 +75,14 @@ export default function ViewIntegration({ integrationType, callbacks, closeMenu 
 				throw new Error("O Merchant ID e API Key são obrigatórios para a integração Cardápio Web.");
 			}
 		}
+		if (requireApelido && !apelido.trim()) {
+			throw new Error("Informe um apelido para diferenciar esta conexão das demais do mesmo tipo.");
+		}
 
-		// We need to pass the selected type here, not the state one, because state one updates only on success/reload logic effectively in the old code,
-		// but here we want to update to what is being configured.
-		return await updateOrganization({
-			organization: {
-				integracaoTipo: integrationType,
-				integracaoConfiguracao: integration,
-			},
+		return await createIntegration({
+			apelido: apelido.trim() || null,
+			configuracao: integration,
+			reconnectIntegrationId: reconnectIntegrationId ?? null,
 		});
 	}
 
@@ -151,6 +152,15 @@ export default function ViewIntegration({ integrationType, callbacks, closeMenu 
 					updateOrganizationIntegrationConfig={updateOrganizationCardapioWebConfig}
 				/>
 			) : null}
+
+			<ResponsiveMenuSection title="IDENTIFICAÇÃO" icon={<Tag className="w-4 h-4" />}>
+				<TextInput
+					label={requireApelido ? "APELIDO (OBRIGATÓRIO)" : "APELIDO (OPCIONAL)"}
+					value={apelido}
+					placeholder="Ex.: Loja Centro, Conta principal..."
+					handleChange={setApelido}
+				/>
+			</ResponsiveMenuSection>
 		</ResponsiveMenuV2>
 	);
 }

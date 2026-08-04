@@ -22,7 +22,7 @@ type IntegrationsPageProps = {
 };
 
 export default function IntegrationsPage({ sessionUser: _sessionUser, membership }: IntegrationsPageProps) {
-	const activeIntegrationType = membership.organizacao.integracaoTipo;
+	const activeIntegrations = membership.organizacao.integracoes.filter((integration) => integration.ativo);
 
 	return (
 		<div className="flex h-full w-full flex-col gap-3 p-2 lg:p-4">
@@ -33,7 +33,11 @@ export default function IntegrationsPage({ sessionUser: _sessionUser, membership
 
 			<div className="flex w-full flex-wrap items-stretch gap-x-6 gap-y-4">
 				{PROVIDERS.map((provider) => (
-					<IntegrationProviderCard key={provider.id} provider={provider} isConnected={activeIntegrationType === provider.id} />
+					<IntegrationProviderCard
+						key={provider.id}
+						provider={provider}
+						isConnected={activeIntegrations.some((integration) => integration.tipo === provider.id)}
+					/>
 				))}
 			</div>
 

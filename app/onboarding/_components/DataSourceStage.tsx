@@ -32,7 +32,7 @@ const OAUTH_INTEGRATIONS: { key: string; nome: string; descricao: string; logo: 
 
 export function DataSourceStage({ state, updateDataSource }: DataSourceStageProps) {
 	const mode = state.dataSource.mode;
-	const connectedIntegration = state.organization.integracaoTipo;
+	const connectedIntegrations = state.dataSource.integracoesConectadas;
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -59,10 +59,12 @@ export function DataSourceStage({ state, updateDataSource }: DataSourceStageProp
 
 			{mode === "INTEGRATION" && (
 				<div className="flex flex-col gap-3 rounded-2xl border border-border bg-superficie/40 p-4">
-					{connectedIntegration && (
+					{connectedIntegrations.length > 0 && (
 						<div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">
 							<CheckCircle2 className="h-4 w-4" />
-							Integração {connectedIntegration} conectada.
+							{connectedIntegrations.length > 1
+								? `Integrações ${connectedIntegrations.join(", ")} conectadas.`
+								: `Integração ${connectedIntegrations[0]} conectada.`}
 						</div>
 					)}
 					<div className="grid grid-cols-1 gap-3">

@@ -6,8 +6,9 @@ import path from "node:path";
 import { blingDataConnector } from "@/lib/data-connectors/bling/canonical";
 import { createBlingClient, getValidBlingConfig, refreshBlingToken } from "@/lib/data-connectors/bling/client";
 import { BLING_API_BASE_URL, BlingConfigSchema, type TBlingConfig } from "@/lib/data-connectors/bling/types";
+import { getActiveDataSourceIntegrations } from "@/lib/integrations/data-sources";
 import { connection, db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
+import { integrations } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { eq } from "drizzle-orm";
 
@@ -15,6 +16,7 @@ const DEFAULT_ORGANIZATION_ID = "2658876a-d365-4e37-ba1e-5a63239cf98f";
 
 type TScriptOptions = {
 	organizationId: string;
+	integrationId: string | null;
 	startDate: Date;
 	endDate: Date;
 	outputPath: string | null;
@@ -74,6 +76,7 @@ function parseOptions(): TScriptOptions {
 
 	return {
 		organizationId: getArgValue("org") ?? process.env.BLING_TEST_ORGANIZATION_ID ?? DEFAULT_ORGANIZATION_ID,
+		integrationId: getArgValue("integration-id"),
 		startDate: parseDateArg("start", now.startOf("month").toDate()),
 		endDate: parseDateArg("end", now.toDate()),
 		outputPath: getArgValue("out"),
@@ -84,22 +87,20 @@ function parseOptions(): TScriptOptions {
 	};
 }
 
-async function getConfigFromOrganization(organizationId: string): Promise<TBlingConfig> {
-	const organization = await db.query.organizations.findFirst({
-		where: eq(organizations.id, organizationId),
-		columns: {
-			integracaoTipo: true,
-			integracaoConfiguracao: true,
-		},
-	});
-
-	if (!organization) throw new Error(`Organização não encontrada: ${organizationId}`);
-	if (organization.integracaoTipo !== "BLING") throw new Error(`Organização não está conectada ao Bling: ${organizationId}`);
-	if (!organization.integracaoConfiguracao || organization.integracaoConfiguracao.tipo !== "BLING") {
-		throw new Error(`Configuração Bling inválida para organização: ${organizationId}`);
+async function getBlingIntegration(organizationId: string, integrationId: string | null) {
+	const rows = await getActiveDataSourceIntegrations({ executor: db, organizationId, types: ["BLING"] });
+	if (!rows.length) throw new Error(`Organização não está conectada ao Bling: ${organizationId}`);
+	if (integrationId) {
+		const row = rows.find((candidate) => candidate.id === integrationId);
+		if (!row) throw new Error(`Conexão Bling ${integrationId} não encontrada/ativa para a organização ${organizationId}`);
+		return { integrationId: row.id, config: BlingConfigSchema.parse(row.configuracao) };
 	}
-
-	return BlingConfigSchema.parse(organization.integracaoConfiguracao);
+	if (rows.length > 1) {
+		throw new Error(
+			`Organização ${organizationId} tem ${rows.length} conexões Bling ativas — informe --integration-id=<id>. Opções: ${rows.map((row) => row.id).join(", ")}`,
+		);
+	}
+	return { integrationId: rows[0].id, config: BlingConfigSchema.parse(rows[0].configuracao) };
 }
 
 function maskToken(token: string | null | undefined) {
@@ -169,11 +170,11 @@ async function probeBlingEndpoint({
 }
 
 async function runDiagnose({
-	organizationId,
+	integrationId,
 	baseConfig,
 	forceRefresh,
 }: {
-	organizationId: string;
+	integrationId: string;
 	baseConfig: TBlingConfig;
 	forceRefresh: boolean;
 }) {
@@ -181,7 +182,7 @@ async function runDiagnose({
 	printConfigDiagnostics({ label: "Config no banco (antes)", config: baseConfig, clientId });
 
 	const validConfig = await resolveValidConfig({
-		organizationId,
+		integrationId,
 		config: baseConfig,
 		forceRefresh,
 	});
@@ -237,11 +238,11 @@ function formatBlingDate(date: Date) {
 }
 
 async function resolveValidConfig({
-	organizationId,
+	integrationId,
 	config,
 	forceRefresh,
 }: {
-	organizationId: string;
+	integrationId: string;
 	config: TBlingConfig;
 	forceRefresh: boolean;
 }) {
@@ -249,13 +250,13 @@ async function resolveValidConfig({
 		console.log("[BLING_FETCH_TEST] Renovando token OAuth (force-refresh)...");
 		const refreshedConfig = await refreshBlingToken(config);
 		await db
-			.update(organizations)
-			.set({ integracaoConfiguracao: refreshedConfig })
-			.where(eq(organizations.id, organizationId));
+			.update(integrations)
+			.set({ configuracao: refreshedConfig, status: "CONECTADO", ultimoErro: null })
+			.where(eq(integrations.id, integrationId));
 		return refreshedConfig;
 	}
 
-	return getValidBlingConfig({ organizationId, config });
+	return getValidBlingConfig({ integrationId, config });
 }
 
 async function fetchRawApiSamples({
@@ -378,11 +379,11 @@ async function main() {
 	}
 
 	const options = parseOptions();
-	const baseConfig = await getConfigFromOrganization(options.organizationId);
+	const { integrationId, config: baseConfig } = await getBlingIntegration(options.organizationId, options.integrationId);
 
 	if (options.diagnose) {
 		await runDiagnose({
-			organizationId: options.organizationId,
+			integrationId,
 			baseConfig,
 			forceRefresh: options.forceRefresh,
 		});
@@ -390,7 +391,7 @@ async function main() {
 	}
 
 	const validConfig = await resolveValidConfig({
-		organizationId: options.organizationId,
+		integrationId,
 		config: baseConfig,
 		forceRefresh: options.forceRefresh,
 	});
@@ -409,6 +410,7 @@ async function main() {
 
 	const batch = await blingDataConnector.fetchImportBatch({
 		organizationId: options.organizationId,
+		integrationId,
 		config: validConfig,
 		window,
 	});

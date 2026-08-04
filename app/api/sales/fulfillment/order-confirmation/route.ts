@@ -48,7 +48,7 @@ async function resolveManagedSaleForConfirmation({ saleId, session }: { saleId: 
 	const orgId = session.membership!.organizacao.id;
 	const sale = await db.query.sales.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, saleId), eq(fields.organizacaoId, orgId)),
-		columns: { id: true, idExterno: true, modelo: true, processamentoOrigem: true, statusVenda: true, statusAtendimento: true },
+		columns: { id: true, idExterno: true, integracaoId: true, modelo: true, processamentoOrigem: true, statusVenda: true, statusAtendimento: true },
 	});
 	if (!sale) throw new createHttpError.NotFound("Venda não encontrada.");
 
@@ -61,7 +61,7 @@ async function resolveManagedSaleForConfirmation({ saleId, session }: { saleId: 
 
 async function getOrderConfirmationReasons({ saleId, session }: { saleId: string; session: TAuthUserSession }) {
 	const { orgId, sale } = await resolveManagedSaleForConfirmation({ saleId, session });
-	const context = await resolveIfoodManagementContext({ organizacaoId: orgId });
+	const context = await resolveIfoodManagementContext({ organizacaoId: orgId, integrationId: sale.integracaoId });
 	const motivos = await getIfoodOrderCancellationReasons(context.client, sale.idExterno);
 	return { data: { motivos }, message: "Motivos de recusa carregados com sucesso." };
 }
@@ -69,7 +69,7 @@ export type TGetFulfillmentOrderConfirmationOutput = Awaited<ReturnType<typeof g
 
 async function postOrderConfirmation({ input, session }: { input: TPostFulfillmentOrderConfirmationInput; session: TAuthUserSession }) {
 	const { orgId, sale } = await resolveManagedSaleForConfirmation({ saleId: input.saleId, session });
-	const context = await resolveIfoodManagementContext({ organizacaoId: orgId });
+	const context = await resolveIfoodManagementContext({ organizacaoId: orgId, integrationId: sale.integracaoId });
 
 	if (input.decision === "CONFIRMAR") {
 		await confirmIfoodOrder(context.client, sale.idExterno);

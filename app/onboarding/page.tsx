@@ -1,4 +1,5 @@
 import { getCurrentSession } from "@/lib/authentication/session";
+import { getActiveDataSourceIntegrations } from "@/lib/integrations/data-sources";
 import { db } from "@/services/drizzle";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -48,9 +49,19 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
 			plataformasUtilizadas: true,
 			origemLead: true,
 			dadosViaPDI: true,
-			integracaoTipo: true,
 		},
 	});
 
-	return <OnboardingPage user={authSession.user} initialStage={resumeStage} existingOrganization={organization ?? null} />;
+	// Conexões de fonte de dados ativas (retomada pós-OAuth) — podem ser N.
+	const activeDataSources = organization
+		? await getActiveDataSourceIntegrations({ executor: db, organizationId: organization.id })
+		: [];
+
+	return (
+		<OnboardingPage
+			user={authSession.user}
+			initialStage={resumeStage}
+			existingOrganization={organization ? { ...organization, integracoesAtivas: activeDataSources.map((integration) => integration.tipo) } : null}
+		/>
+	);
 }

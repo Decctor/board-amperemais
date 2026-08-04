@@ -5,10 +5,8 @@ import path from "node:path";
 
 import { fetchNuvemshopImportBatch } from "@/lib/data-connectors/nuvemshop";
 import type { TNuvemshopConfig } from "@/lib/data-connectors/nuvemshop/types";
-import { db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
+import { getScriptDataSourceIntegration } from "@/utils/scripts/get-data-source-integration";
 import dayjs from "dayjs";
-import { eq } from "drizzle-orm";
 
 type TScriptOptions = {
 	organizationId: string | null;
@@ -84,24 +82,16 @@ function getConfigFromEnv(): TNuvemshopConfig {
 }
 
 async function getConfigFromOrganization(organizationId: string): Promise<TNuvemshopConfig> {
-	const organization = await db.query.organizations.findFirst({
-		where: eq(organizations.id, organizationId),
-		columns: {
-			integracaoTipo: true,
-			integracaoConfiguracao: true,
-		},
-	});
-
-	if (!organization) throw new Error(`Organização não encontrada: ${organizationId}`);
-	if (organization.integracaoTipo !== "NUVEM-SHOP") throw new Error(`Organização não está conectada à Nuvem Shop: ${organizationId}`);
-	if (!organization.integracaoConfiguracao || organization.integracaoConfiguracao.tipo !== "NUVEM-SHOP") {
+	const integration = await getScriptDataSourceIntegration({ organizationId, types: ["NUVEM-SHOP"] });
+	if (integration.configuracao.tipo !== "NUVEM-SHOP") {
 		throw new Error(`Configuração Nuvem Shop inválida para organização: ${organizationId}`);
 	}
 
-	console.log("organization.integracaoConfiguracao", organization.integracaoConfiguracao);
+	// Sem config no log — o accessToken não vaza para stdout.
+	console.log("[NUVEMSHOP_FETCH_TEST] Usando integração", { integrationId: integration.id, storeId: integration.configuracao.storeId });
 	return {
-		...organization.integracaoConfiguracao,
-		storeId: String(organization.integracaoConfiguracao.storeId),
+		...integration.configuracao,
+		storeId: String(integration.configuracao.storeId),
 	};
 }
 

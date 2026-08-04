@@ -3,6 +3,7 @@ import type { TDataCollectingV2RunSummary } from "./types";
 export type TDataCollectingV2ValidationSnapshot = {
 	source: string;
 	organizationId: string;
+	integrationId: string;
 	salesCount: number;
 	createdSalesCount: number;
 	updatedSalesCount: number;
@@ -16,15 +17,19 @@ export type TDataCollectingV2ValidationSnapshot = {
 
 export type TDataCollectingV2ValidationDiff = {
 	organizationId: string;
+	integrationId: string;
 	source: string;
 	matches: boolean;
-	differences: Partial<Record<keyof Omit<TDataCollectingV2ValidationSnapshot, "organizationId" | "source">, { legacy: number; v2: number }>>;
+	differences: Partial<
+		Record<keyof Omit<TDataCollectingV2ValidationSnapshot, "organizationId" | "integrationId" | "source">, { legacy: number; v2: number }>
+	>;
 };
 
 export function createDataCollectingV2ValidationSnapshot(summary: TDataCollectingV2RunSummary): TDataCollectingV2ValidationSnapshot {
 	return {
 		source: summary.source,
 		organizationId: summary.organizationId,
+		integrationId: summary.integrationId,
 		salesCount: summary.importedSalesCount,
 		createdSalesCount: summary.createdSalesCount,
 		updatedSalesCount: summary.updatedSalesCount,
@@ -65,6 +70,7 @@ export function compareDataCollectingSnapshots({
 
 	return {
 		organizationId: v2.organizationId,
+		integrationId: v2.integrationId,
 		source: v2.source,
 		matches: Object.keys(differences).length === 0,
 		differences,

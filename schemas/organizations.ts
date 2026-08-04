@@ -1,57 +1,34 @@
 import z from "zod";
 import { DefaultDataSourceEnum, DiscountLimitTypeEnum, OrganizationIntegrationTypeEnum, SalesSessionScopeEnum } from "./enums";
 import { OrganizationFiscalConfigSchema } from "./fiscal";
+import { DataSourceIntegrationConfigSchema } from "./integrations";
 import { PaymentEffectivenessTypeEnum } from "@/lib/payments/schemas";
 
-export const OrganizationIntegrationConfigSchema = z.discriminatedUnion("tipo", [
-	z.object({
-		tipo: z.literal("ONLINE-SOFTWARE"),
-		token: z.string({ invalid_type_error: "Tipo não válido para o token da integração." }),
-		url: z.string({ invalid_type_error: "Tipo não válido para a URL da integração." }),
-	}),
-	z.object({
-		tipo: z.literal("CARDAPIO-WEB"),
-		merchantId: z.string({ invalid_type_error: "Tipo não válido para o ID do merchant." }),
-		apiKey: z.string({ invalid_type_error: "Tipo não válido para a API Key." }),
-	}),
-	z.object({
-		tipo: z.literal("NUVEM-SHOP"),
-		storeId: z.number({ invalid_type_error: "Tipo não válido para o ID da loja Nuvem Shop." }),
-		accessToken: z.string({ invalid_type_error: "Tipo não válido para o token de acesso da Nuvem Shop." }),
-		tokenType: z.literal("bearer", { invalid_type_error: "Tipo não válido para o tipo do token da Nuvem Shop." }),
-		scope: z.array(z.string({ invalid_type_error: "Tipo não válido para o escopo da Nuvem Shop." })),
-	}),
-	z.object({
-		tipo: z.literal("IFOOD"),
-		merchantIds: z.array(z.string({ invalid_type_error: "Tipo não válido para o ID da loja iFood." })).default([]),
-		accessToken: z.string({ invalid_type_error: "Tipo não válido para o token de acesso do iFood." }),
-		refreshToken: z.string({ invalid_type_error: "Tipo não válido para o token de renovação do iFood." }),
-		tokenType: z.literal("bearer", { invalid_type_error: "Tipo não válido para o tipo do token do iFood." }),
-		scope: z.array(z.string({ invalid_type_error: "Tipo não válido para o escopo do iFood." })),
-		expiresAt: z
-			.string({ invalid_type_error: "Tipo não válido para a expiração do token do iFood." })
-			.datetime({ message: "Tipo não válido para a expiração do token do iFood." }),
-		authorizedAt: z
-			.string({ invalid_type_error: "Tipo não válido para a data de autorização do iFood." })
-			.datetime({ message: "Tipo não válido para a data de autorização do iFood." })
-			.optional()
-			.nullable(),
-	}),
-	z.object({
-		tipo: z.literal("BLING"),
-		accessToken: z.string({ invalid_type_error: "Tipo não válido para o token de acesso do Bling." }),
-		refreshToken: z.string({ invalid_type_error: "Tipo não válido para o token de renovação do Bling." }),
-		tokenType: z.string({ invalid_type_error: "Tipo não válido para o tipo do token do Bling." }).default("Bearer"),
-		scope: z.array(z.string({ invalid_type_error: "Tipo não válido para o escopo do Bling." })).default([]),
-		expiresAt: z
-			.string({ invalid_type_error: "Tipo não válido para a expiração do token do Bling." })
-			.datetime({ message: "Tipo não válido para a expiração do token do Bling." }),
-		connectedAt: z
-			.string({ invalid_type_error: "Tipo não válido para a data de conexão do Bling." })
-			.datetime({ message: "Tipo não válido para a data de conexão do Bling." }),
-	}),
-]);
+/**
+ * @deprecated As variantes vivem em `schemas/integrations.ts` (DataSourceIntegrationConfigSchema);
+ * a conexão de fonte de dados agora é uma linha em `integrations`. Este alias existe só para as
+ * colunas congeladas `organizations.integracaoTipo`/`integracaoConfiguracao` até a fase de limpeza
+ * (docs/dev-planning/data-source-integrations-migration-plan.md, Fase 4).
+ */
+export const OrganizationIntegrationConfigSchema = DataSourceIntegrationConfigSchema;
 export type TOrganizationIntegrationConfig = z.infer<typeof OrganizationIntegrationConfigSchema>;
+
+/**
+ * Configuração própria do Ponto de Interação. Sucessor EXPLÍCITO da derivação
+ * `transactionRequiresSaleProcessing = !integracaoTipo` (D8): o registro de vendas do POI é
+ * config decidida uma vez (backfill = snapshot do comportamento atual), não derivação do estado
+ * das integrações. Consolidação futura das demais capacidades do POI (resgate, confirmação de
+ * valor, QR codes, perfil) entra aqui em plano próprio.
+ */
+export const OrganizationPoiConfigSchema = z.object({
+	vendas: z.object({
+		registroAtivo: z.boolean({
+			required_error: "Configuração de registro de vendas do POI não informada.",
+			invalid_type_error: "Tipo não válido para o registro de vendas do POI.",
+		}),
+	}),
+});
+export type TOrganizationPoiConfig = z.infer<typeof OrganizationPoiConfigSchema>;
 
 export const OrganizationPaymentMethodDefaultsSchema = z.object({
 	suportado: z.boolean({
@@ -385,6 +362,7 @@ export const OrganizationSchema = z.object({
 			invalid_type_error: "Tipo não válido para a confirmação do valor no POI.",
 		})
 		.default(false),
+	poiConfiguracao: OrganizationPoiConfigSchema.optional().nullable(),
 
 	// Onboarding conclusion marker. Null = onboarding still in progress.
 	dataOnboardingConclusao: z

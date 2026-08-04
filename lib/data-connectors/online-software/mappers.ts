@@ -3,7 +3,7 @@ import dayjs from "dayjs";
 import dayjsCustomParseFormat from "dayjs/plugin/customParseFormat";
 import type {
 	TCanonicalClient,
-	TCanonicalImportBatch,
+	TCanonicalConnectorBatch,
 	TCanonicalImportWindow,
 	TCanonicalPartner,
 	TCanonicalProduct,
@@ -182,7 +182,7 @@ export function toCanonicalOnlineSoftwareImportBatch({
 	organizationId: string;
 	window: TCanonicalImportWindow;
 	sales: TOnlineSoftwareSaleImportation[];
-}): TCanonicalImportBatch {
+}): TCanonicalConnectorBatch {
 	const canonicalSales = sales.map(mapOnlineSoftwareSale);
 	const products = uniqueBy(
 		sales.flatMap((sale) => sale.itens.map(mapOnlineSoftwareProduct)),

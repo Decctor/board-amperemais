@@ -98,12 +98,15 @@ export type TPersistedSaleForEffects = {
 
 export type TDataCollectingV2RunError = {
 	organizationId: string;
+	/** Linha de `integrations` que originou o erro. Null em erros fora do loop por integração. */
+	integrationId: string | null;
 	integrationType: string | null;
 	message: string;
 };
 
 export type TDataCollectingV2RawBatch = {
 	organizationId: string;
+	integrationId: string;
 	source: TCanonicalImportBatch["source"];
 	window: TCanonicalImportBatch["window"];
 	raw: unknown;
@@ -111,8 +114,11 @@ export type TDataCollectingV2RawBatch = {
 
 export type TDataCollectingV2RunSummary = {
 	organizationId: string;
+	integrationId: string;
 	source: TCanonicalImportBatch["source"];
 	importedSalesCount: number;
+	/** Colisões de idExterno fail-closed (D4) — itens ignorados sem alterar a venda existente. */
+	saleIdCollisionsCount: number;
 	createdSalesCount: number;
 	/** Escritas reais: existentes com assinatura divergente (exclui as puladas). */
 	updatedSalesCount: number;

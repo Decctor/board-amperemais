@@ -1,6 +1,22 @@
 import type { TUserPermissions } from "@/schemas/users";
-import type { TAuthSessionEntity, TOrganizationEntity, TOrganizationMemberEntity, TUserEntity } from "@/services/drizzle/schema";
+import type { TAuthSessionEntity, TIntegrationEntity, TOrganizationEntity, TOrganizationMemberEntity, TUserEntity } from "@/services/drizzle/schema";
 import z from "zod";
+
+/**
+ * Resumo LEVE e sem segredos das conexões da organização, embutido na sessão. A config completa
+ * (mascarada) só via `GET /api/integrations`. Sucessor dos campos deprecados
+ * `integracaoTipo`/`integracaoConfiguracao`/`integracaoDataUltimaSincronizacao`, que embutiam
+ * tokens crus em todo client component.
+ */
+export type TAuthSessionIntegrationSummary = {
+	id: TIntegrationEntity["id"];
+	tipo: TIntegrationEntity["tipo"];
+	apelido: TIntegrationEntity["apelido"];
+	refExterno: TIntegrationEntity["refExterno"];
+	ativo: TIntegrationEntity["ativo"];
+	status: TIntegrationEntity["status"];
+	dataUltimaSincronizacao: TIntegrationEntity["dataUltimaSincronizacao"];
+};
 
 export type TAuthUserSession = {
 	session: {
@@ -36,10 +52,9 @@ export type TAuthUserSession = {
 			poiQrCodeKioskDataUrl: TOrganizationEntity["poiQrCodeKioskDataUrl"];
 			poiQrCodeMobileDataUrl: TOrganizationEntity["poiQrCodeMobileDataUrl"];
 			poiConfirmacaoValorObrigatoria: TOrganizationEntity["poiConfirmacaoValorObrigatoria"];
+			poiConfiguracao: TOrganizationEntity["poiConfiguracao"];
 			configuracao: TOrganizationEntity["configuracao"];
-			integracaoTipo: TOrganizationEntity["integracaoTipo"];
-			integracaoConfiguracao: TOrganizationEntity["integracaoConfiguracao"];
-			integracaoDataUltimaSincronizacao: TOrganizationEntity["integracaoDataUltimaSincronizacao"];
+			integracoes: TAuthSessionIntegrationSummary[];
 			dataOnboardingConclusao: TOrganizationEntity["dataOnboardingConclusao"];
 			fiscalEmissaoAutomatica: TOrganizationEntity["fiscalEmissaoAutomatica"];
 		};

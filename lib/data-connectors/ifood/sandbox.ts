@@ -3,7 +3,7 @@
  * Remover este arquivo e as referências em client.ts / Settings / app/api/.../sandbox quando não precisar mais.
  */
 import { db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
+import { integrations } from "@/services/drizzle/schema";
 import axios from "axios";
 import dayjs from "dayjs";
 import { eq } from "drizzle-orm";
@@ -129,7 +129,7 @@ export async function buildIfoodSandboxIntegrationConfig() {
 	};
 }
 
-export async function refreshIfoodSandboxConfig({ organizationId, config }: { organizationId: string; config: TIfoodConfig }) {
+export async function refreshIfoodSandboxConfig({ integrationId, config }: { integrationId: string; config: TIfoodConfig }) {
 	const token = await exchangeIfoodSandboxClientCredentials();
 	const refreshedConfig: TIfoodConfig = {
 		...config,
@@ -141,20 +141,18 @@ export async function refreshIfoodSandboxConfig({ organizationId, config }: { or
 	};
 
 	await db
-		.update(organizations)
-		.set({
-			integracaoConfiguracao: refreshedConfig,
-		})
-		.where(eq(organizations.id, organizationId));
+		.update(integrations)
+		.set({ configuracao: refreshedConfig, status: "CONECTADO", ultimoErro: null })
+		.where(eq(integrations.id, integrationId));
 
 	return refreshedConfig;
 }
 
-export async function getValidIfoodSandboxConfig({ organizationId, config }: { organizationId: string; config: TIfoodConfig }) {
+export async function getValidIfoodSandboxConfig({ integrationId, config }: { integrationId: string; config: TIfoodConfig }) {
 	const expiresAt = dayjs(config.expiresAt);
 	if (expiresAt.isValid() && expiresAt.subtract(IFOOD_SANDBOX_TOKEN_REFRESH_SKEW_MINUTES, "minutes").isAfter(dayjs())) {
 		return config;
 	}
 
-	return refreshIfoodSandboxConfig({ organizationId, config });
+	return refreshIfoodSandboxConfig({ integrationId, config });
 }

@@ -42,7 +42,7 @@ async function updateSaleAttendanceStatus({ input, session }: { input: TUpdateSa
 
 	const sale = await db.query.sales.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, input.id), eq(fields.organizacaoId, orgId)),
-		columns: { id: true, idExterno: true, modelo: true, processamentoOrigem: true, statusAtendimento: true },
+		columns: { id: true, idExterno: true, integracaoId: true, modelo: true, processamentoOrigem: true, statusAtendimento: true },
 	});
 	if (!sale) throw new createHttpError.NotFound("Venda não encontrada.");
 
@@ -54,6 +54,7 @@ async function updateSaleAttendanceStatus({ input, session }: { input: TUpdateSa
 		const channelResult = await applyChannelFulfillmentTransition({
 			channel,
 			organizacaoId: orgId,
+			integrationId: sale.integracaoId,
 			orderId: sale.idExterno,
 			fromStatus: sale.statusAtendimento,
 			toStatus: input.attendanceStatus,

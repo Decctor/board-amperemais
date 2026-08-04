@@ -24,7 +24,7 @@ type IntegrationsIFoodPageProps = {
 };
 
 export default function IntegrationsIFoodPage({ sessionUser: _sessionUser, membership }: IntegrationsIFoodPageProps) {
-	const isConnected = membership.organizacao.integracaoTipo === "IFOOD";
+	const isConnected = membership.organizacao.integracoes.some((integration) => integration.tipo === "IFOOD" && integration.ativo);
 	const canManage = canManageIntegrations(membership.permissoes);
 
 	const canView = canViewIntegrations(membership.permissoes);

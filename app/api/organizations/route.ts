@@ -214,6 +214,9 @@ async function createOrganization({
 					preferencias: DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES,
 					defaults: DEFAULT_ORGANIZATION_CONFIGURATION_DEFAULTS,
 				},
+				// Registro de vendas do POI é config explícita (D8). Org nova nasce sem integração,
+				// então o POI registra — mesmo comportamento de antes, agora como dado.
+				poiConfiguracao: organization.poiConfiguracao ?? { vendas: { registroAtivo: true } },
 				autorId: sessionUser.id,
 			})
 			.returning({ id: organizations.id });

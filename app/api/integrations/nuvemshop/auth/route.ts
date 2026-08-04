@@ -1,4 +1,5 @@
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { canManageIntegrations } from "@/lib/integrations/mask";
 import { persistOAuthRedirect } from "@/lib/integrations/oauth-redirect";
 import { generateState } from "arctic";
 import { cookies } from "next/headers";
@@ -11,6 +12,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 	const session = await getCurrentSessionUncached();
 	if (!session) return NextResponse.json({ error: "Você não está autenticado." }, { status: 401 });
 	if (!session.membership?.organizacao.id) return NextResponse.json({ error: "Você precisa estar vinculado a uma organização." }, { status: 400 });
+	if (!canManageIntegrations(session.membership?.permissoes)) {
+		return NextResponse.json({ error: "Você não possui permissão para gerenciar integrações." }, { status: 403 });
+	}
 
 	const clientId = process.env.NUVEMSHOP_CLIENT_ID;
 	if (!clientId) return NextResponse.json({ error: "NUVEMSHOP_CLIENT_ID não configurado." }, { status: 500 });

@@ -72,7 +72,8 @@ export default function AdminOrganizationSummaryBlock({ organization }: AdminOrg
 						</span>
 					</DetailField>
 				) : null}
-				{organization.integracaoTipo ? <DetailField label="Integração ativa" value={organization.integracaoTipo} /> : null}
+				{/* "Integração ativa" saiu daqui: a conexão vive em `integrations` (N por org) e a
+				coluna congelada da organização mostraria dado desatualizado. */}
 				{organization.fiscalProvedor ? <DetailField label="Provedor fiscal" value={organization.fiscalProvedor} /> : null}
 			</div>
 		</ResponsiveMenuSection>

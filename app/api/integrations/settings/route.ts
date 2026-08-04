@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { getChannelErpPolicy } from "@/lib/sales/fulfillment-channels";
+import { getActiveDataSourceIntegrations } from "@/lib/integrations/data-sources";
 import { canManageIntegrations, canViewIntegrations } from "@/lib/integrations/mask";
 import { db } from "@/services/drizzle";
 import { organizations } from "@/services/drizzle/schema";
@@ -32,13 +33,15 @@ export type TUpdateIntegrationSettingsInput = z.infer<typeof UpdateIntegrationSe
 async function getIntegrationSettings({ organizacaoId }: { organizacaoId: string }) {
 	const organization = await db.query.organizations.findFirst({
 		where: eq(organizations.id, organizacaoId),
-		columns: { id: true, integracaoTipo: true, configuracao: true },
+		columns: { id: true, configuracao: true },
 	});
 	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
 
+	const activeDataSources = await getActiveDataSourceIntegrations({ executor: db, organizationId: organizacaoId });
+
 	return {
 		data: {
-			integracaoTipo: organization.integracaoTipo,
+			integracoes: activeDataSources.map((integration) => ({ id: integration.id, tipo: integration.tipo, apelido: integration.apelido })),
 			integracaoERP: getChannelErpPolicy(organization.configuracao),
 		},
 		message: "Configurações de integração carregadas com sucesso.",

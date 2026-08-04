@@ -7,13 +7,22 @@ import { organizations } from "./organizations";
 import { users } from "./users";
 
 /**
- * Fundação de integrations (marketing/parceiros — Meta Ads, CAPI, etc.).
+ * Integrations — TODAS as conexões com plataformas externas: marketing/parceiros (Meta Ads,
+ * CAPI…) e fontes de dados ERP/marketplace (iFood, Bling, Nuvemshop, Cardápio Web,
+ * Online Software).
  *
- * Uma linha = uma conexão concreta (ex.: uma conta de anúncios da Meta). O `configuracao` (jsonb) é
- * tipado por uma união discriminada Zod (`TIntegrationConfig`), variando conforme o `tipo`.
+ * Uma linha = uma conexão concreta (ex.: uma conta de anúncios da Meta, uma conta iFood). O
+ * `configuracao` (jsonb) é tipado por uma união discriminada Zod (`TIntegrationConfig`), variando
+ * conforme o `tipo`. Múltiplas linhas ativas do mesmo tipo por organização são suportadas.
  *
- * Aditiva: NÃO substitui a integração de ERP/fonte de dados, que segue inline em
- * `organizations.integracaoTipo`/`integracaoConfiguracao`.
+ * Nota histórica: a fundação nasceu aditiva ("não substitui o ERP inline em
+ * `organizations.integracaoTipo`"), decisão revertida pela migração de fontes de dados
+ * (docs/dev-planning/data-source-integrations-migration-plan.md) — as colunas inline estão
+ * congeladas até a fase de limpeza.
+ *
+ * Fontes de dados usam SOFT DELETE (D9): desconectar grava `ativo: false` + `dataDesativacao`,
+ * preservando a linha como identidade histórica da conta externa (proveniência de
+ * `sales.integracaoId`, FK RESTRICT).
  */
 export const integrations = newTable(
 	"integrations",
@@ -34,6 +43,8 @@ export const integrations = newTable(
 		status: integrationStatusEnum("status").notNull().default("CONECTADO"),
 		ultimoErro: text("ultimo_erro"),
 		dataUltimaSincronizacao: timestamp("data_ultima_sincronizacao"),
+		// Soft delete de fontes de dados (D9): preenchida ao desconectar; null = nunca desativada.
+		dataDesativacao: timestamp("data_desativacao"),
 		autorId: varchar("autor_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 		dataAtualizacao: timestamp("data_atualizacao", { mode: "date" }).$onUpdate(() => new Date()),

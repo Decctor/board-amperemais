@@ -7,7 +7,24 @@ import { encodeBase32LowerCaseNoPadding, encodeHexLowerCase } from "@oslojs/enco
 import dayjs from "dayjs";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
-import type { TAuthUserSession } from "./types";
+import type { TAuthSessionIntegrationSummary, TAuthUserSession } from "./types";
+
+async function loadSessionIntegrationSummaries(organizationId: string): Promise<TAuthSessionIntegrationSummary[]> {
+	const rows = await db.query.integrations.findMany({
+		where: (fields, { eq }) => eq(fields.organizacaoId, organizationId),
+		columns: {
+			id: true,
+			tipo: true,
+			apelido: true,
+			refExterno: true,
+			ativo: true,
+			status: true,
+			dataUltimaSincronizacao: true,
+		},
+		orderBy: (fields, { asc }) => asc(fields.dataInsercao),
+	});
+	return rows;
+}
 
 export async function generateSessionToken(): Promise<string> {
 	const tokenBytes = new Uint8Array(20);
@@ -99,11 +116,10 @@ export async function validateSession(token: string) {
 					poiQrCodeKioskDataUrl: membership.organizacao.poiQrCodeKioskDataUrl,
 					poiQrCodeMobileDataUrl: membership.organizacao.poiQrCodeMobileDataUrl,
 					poiConfirmacaoValorObrigatoria: membership.organizacao.poiConfirmacaoValorObrigatoria,
+					poiConfiguracao: membership.organizacao.poiConfiguracao,
 					configuracao: membership.organizacao.configuracao,
 					fiscalEmissaoAutomatica: membership.organizacao.fiscalEmissaoAutomatica,
-					integracaoTipo: membership.organizacao.integracaoTipo,
-					integracaoConfiguracao: membership.organizacao.integracaoConfiguracao,
-					integracaoDataUltimaSincronizacao: membership.organizacao.integracaoDataUltimaSincronizacao,
+					integracoes: await loadSessionIntegrationSummaries(membership.organizacao.id),
 					dataOnboardingConclusao: membership.organizacao.dataOnboardingConclusao,
 				},
 				permissoes: membership.permissoes,
@@ -142,11 +158,10 @@ export async function validateSession(token: string) {
 					poiQrCodeKioskDataUrl: mostRecentMembership.organizacao.poiQrCodeKioskDataUrl,
 					poiQrCodeMobileDataUrl: mostRecentMembership.organizacao.poiQrCodeMobileDataUrl,
 					poiConfirmacaoValorObrigatoria: mostRecentMembership.organizacao.poiConfirmacaoValorObrigatoria,
+					poiConfiguracao: mostRecentMembership.organizacao.poiConfiguracao,
 					configuracao: mostRecentMembership.organizacao.configuracao,
 					fiscalEmissaoAutomatica: mostRecentMembership.organizacao.fiscalEmissaoAutomatica,
-					integracaoTipo: mostRecentMembership.organizacao.integracaoTipo,
-					integracaoConfiguracao: mostRecentMembership.organizacao.integracaoConfiguracao,
-					integracaoDataUltimaSincronizacao: mostRecentMembership.organizacao.integracaoDataUltimaSincronizacao,
+					integracoes: await loadSessionIntegrationSummaries(mostRecentMembership.organizacao.id),
 					dataOnboardingConclusao: mostRecentMembership.organizacao.dataOnboardingConclusao,
 				},
 				permissoes: mostRecentMembership.permissoes,

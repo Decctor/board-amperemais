@@ -1,9 +1,11 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { getActiveDataSourceIntegrations } from "@/lib/integrations/data-sources";
 import { resolveIfoodManagementContext } from "@/lib/integrations/ifood/context";
 import { getIfoodMerchantDetails, getIfoodMerchantsList } from "@/lib/integrations/ifood/merchant";
 import type { TIfoodMerchantDetailsDTO, TIfoodMerchantSummaryDTO } from "@/lib/integrations/ifood/merchant-types";
 import { canViewIntegrations } from "@/lib/integrations/mask";
+import { db } from "@/services/drizzle";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -18,9 +20,8 @@ const GetIfoodMerchantsInputSchema = z.object({
 export type TGetIfoodMerchantsInput = z.infer<typeof GetIfoodMerchantsInputSchema>;
 
 async function getIfoodMerchants({ input, organizacaoId }: { input: TGetIfoodMerchantsInput; organizacaoId: string }) {
-	const context = await resolveIfoodManagementContext({ organizacaoId, merchantId: input.merchantId });
-
 	if (input.merchantId) {
+		const context = await resolveIfoodManagementContext({ organizacaoId, merchantId: input.merchantId });
 		const byId = await getIfoodMerchantDetails(context.client, input.merchantId);
 		return {
 			data: { byId, default: null as TIfoodMerchantSummaryDTO[] | null },
@@ -28,7 +29,25 @@ async function getIfoodMerchants({ input, organizacaoId }: { input: TGetIfoodMer
 		};
 	}
 
-	const merchants = context.merchants ?? (await getIfoodMerchantsList(context.client));
+	// Listagem agrega as lojas de TODAS as conexões iFood ativas da organização (N contas → N
+	// token sets). As demais rotas do módulo resolvem a conexão certa pelo merchantId.
+	const rows = await getActiveDataSourceIntegrations({ executor: db, organizationId: organizacaoId, types: ["IFOOD"] });
+	if (!rows.length) {
+		throw new createHttpError.NotFound("Integração do iFood não encontrada. Conecte sua loja iFood para gerenciar seus recursos.");
+	}
+
+	const merchants: TIfoodMerchantSummaryDTO[] = [];
+	const seenMerchantIds = new Set<string>();
+	for (const row of rows) {
+		const context = await resolveIfoodManagementContext({ organizacaoId, integrationId: row.id });
+		const rowMerchants = context.merchants ?? (await getIfoodMerchantsList(context.client));
+		for (const merchant of rowMerchants) {
+			if (seenMerchantIds.has(merchant.id)) continue;
+			seenMerchantIds.add(merchant.id);
+			merchants.push(merchant);
+		}
+	}
+
 	return {
 		data: { byId: null as TIfoodMerchantDetailsDTO | null, default: merchants },
 		message: "Lojas do iFood buscadas com sucesso.",

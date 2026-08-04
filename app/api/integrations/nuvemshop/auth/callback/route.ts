@@ -1,8 +1,8 @@
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { connectDataSourceIntegration } from "@/lib/integrations/data-sources";
+import { canManageIntegrations } from "@/lib/integrations/mask";
 import { consumeOAuthRedirect } from "@/lib/integrations/oauth-redirect";
 import { db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
-import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -26,6 +26,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) return NextResponse.json({ error: "Você precisa estar vinculado a uma organização para conectar a Nuvem Shop." }, { status: 400 });
+	if (!canManageIntegrations(session.membership?.permissoes)) {
+		return NextResponse.json({ error: "Você não possui permissão para gerenciar integrações." }, { status: 403 });
+	}
 
 	const cookieStore = await cookies();
 	const code = request.nextUrl.searchParams.get("code");
@@ -70,11 +73,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 		return NextResponse.json({ error: "A Nuvem Shop não retornou o ID da loja." }, { status: 400 });
 	}
 
-	await db
-		.update(organizations)
-		.set({
-			integracaoTipo: "NUVEM-SHOP",
-			integracaoConfiguracao: {
+	// A identidade da conta é o storeId (refExterno): reconectar a mesma loja reativa a mesma
+	// linha; outra loja cria outra conexão (D5/D9).
+	try {
+		await connectDataSourceIntegration({
+			executor: db,
+			organizationId: userOrgId,
+			config: {
 				tipo: "NUVEM-SHOP",
 				storeId: Number(storeId),
 				accessToken: tokenData.access_token,
@@ -86,10 +91,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 							.filter(Boolean)
 					: [],
 			},
-			integracaoDataUltimaSincronizacao: null,
-			dadosViaIntegracoes: true,
-		})
-		.where(eq(organizations.id, userOrgId));
+			autorId: session.user.id,
+		});
+	} catch (error) {
+		console.error("[ERROR] [NUVEMSHOP_CALLBACK] Falha ao registrar a conexão:", error);
+		return NextResponse.json({ error: error instanceof Error ? error.message : "Não foi possível conectar a Nuvem Shop." }, { status: 400 });
+	}
 
 	return NextResponse.redirect(new URL(redirectPath, process.env.NEXT_PUBLIC_APP_URL));
 }

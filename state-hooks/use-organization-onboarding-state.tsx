@@ -26,6 +26,8 @@ export type TOnboardingCashbackConfig = z.infer<typeof CashbackConfigSchema>;
 const DataSourceSchema = z.object({
 	mode: z.enum(["INTEGRATION", "POI"]).nullable(),
 	integrationKey: z.string().nullable(),
+	// Tipos das conexões de fonte de dados já ativas (retomada pós-OAuth) — podem ser N.
+	integracoesConectadas: z.array(z.string()),
 });
 
 const OrganizationOnboardingStateSchema = z.object({
@@ -75,7 +77,11 @@ export function buildCashbackConfigFromNiche(
 	};
 }
 
-type TExistingOrganization = Partial<TOrganizationOnboardingState["organization"]> & { id?: string | null };
+type TExistingOrganization = Partial<TOrganizationOnboardingState["organization"]> & {
+	id?: string | null;
+	/** Tipos das conexões de fonte de dados ativas em `integrations` (retomada pós-OAuth). */
+	integracoesAtivas?: string[] | null;
+};
 
 type TUseOrganizationOnboardingStateProps = {
 	initialStage?: TOnboardingStage;
@@ -118,7 +124,7 @@ export function useOrganizationOnboardingState({ initialStage, existingOrganizat
 				corPrimariaForeground: null,
 				corSecundaria: null,
 				corSecundariaForeground: null,
-				integracaoTipo: org?.integracaoTipo ?? null,
+				integracaoTipo: null,
 				integracaoConfiguracao: null,
 				integracaoDataUltimaSincronizacao: null,
 				logoUrl: org?.logoUrl ?? null,
@@ -129,7 +135,7 @@ export function useOrganizationOnboardingState({ initialStage, existingOrganizat
 			organizationLogoHolder: { file: null, previewUrl: null },
 			cashback: buildCashbackConfigFromNiche(org?.atuacaoNicho, org?.nome ?? "", false),
 			selectedCampaignKeys: OnboardingCampaignPresets.filter((preset) => preset.defaultSelected).map((preset) => preset.key),
-			dataSource: { mode: null, integrationKey: null },
+			dataSource: { mode: null, integrationKey: null, integracoesConectadas: org?.integracoesAtivas ?? [] },
 			indicadorCodigo: null,
 			termsAccepted: false,
 		};

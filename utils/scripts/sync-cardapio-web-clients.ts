@@ -1,4 +1,5 @@
 import "@/utils/scripts/load-next-env";
+import { getScriptDataSourceIntegration } from "@/utils/scripts/get-data-source-integration";
 
 import { fetchCardapioWebOrdersWithDetails } from "@/lib/data-connectors/cardapio-web";
 import { type MappedCardapioWebClient, type MappedCardapioWebSale, mapCardapioWebSales } from "@/lib/data-connectors/cardapio-web/mappers";
@@ -252,25 +253,27 @@ export async function handleCardapioWebClientUpdates(organizationId: string, con
 export async function syncCardapioWebClientUpdates() {
 	const organizationId = getCliArgValue("organizationId") ?? TARGET_ORGANIZATION_ID;
 
-	const config = await db.query.organizations.findFirst({
+	const organization = await db.query.organizations.findFirst({
 		where: (fields, { eq: equals }) => equals(fields.id, organizationId),
 		columns: {
 			nome: true,
-			integracaoConfiguracao: true,
 		},
 	});
 
-	if (!config) {
-		throw new Error("Configuração não encontrada.");
+	if (!organization) {
+		throw new Error("Organização não encontrada.");
 	}
 
+	const integration = await getScriptDataSourceIntegration({ organizationId, types: ["CARDAPIO-WEB"] });
+
+	// Sem config no log — credenciais (apiKey) não vazam para stdout.
 	console.log(`[SYNC-CARDAPIO-WEB-CLIENTS] Syncing clients for organization ${organizationId}`, {
 		organizationId,
-		organizationName: config.nome,
-		config,
+		organizationName: organization.nome,
+		integrationId: integration.id,
 	});
 
-	const configData = config.integracaoConfiguracao as TCardapioWebConfig;
+	const configData = integration.configuracao as TCardapioWebConfig;
 	const stats = await handleCardapioWebClientUpdates(organizationId, configData);
 	const result = {
 		message: "Atualização de clientes concluída",

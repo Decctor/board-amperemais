@@ -1,5 +1,5 @@
 import { db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
+import { integrations } from "@/services/drizzle/schema";
 import axios, { isAxiosError, type AxiosInstance } from "axios";
 import dayjs from "dayjs";
 import { eq } from "drizzle-orm";
@@ -124,22 +124,32 @@ export async function refreshIfoodToken(config: TIfoodConfig) {
 	};
 }
 
-export async function getValidIfoodConfig({ organizationId, config }: { organizationId: string; config: TIfoodConfig }) {
+export async function getValidIfoodConfig({ integrationId, config }: { integrationId: string; config: TIfoodConfig }) {
 	// SANDBOX: remover este bloco ao deletar ifood/sandbox
 	if (isIfoodSandboxConfig(config)) {
-		return getValidIfoodSandboxConfig({ organizationId, config });
+		return getValidIfoodSandboxConfig({ integrationId, config });
 	}
 
 	const expiresAt = dayjs(config.expiresAt);
 	if (expiresAt.isValid() && expiresAt.subtract(IFOOD_TOKEN_REFRESH_SKEW_MINUTES, "minutes").isAfter(dayjs())) return config;
 
-	const refreshedConfig = await refreshIfoodToken(config);
+	let refreshedConfig: TIfoodConfig;
+	try {
+		refreshedConfig = await refreshIfoodToken(config);
+	} catch (error) {
+		await db
+			.update(integrations)
+			.set({ status: "EXPIRADO", ultimoErro: error instanceof Error ? error.message : "Falha ao renovar o token do iFood." })
+			.where(eq(integrations.id, integrationId));
+		throw error;
+	}
+
+	// Row-scoped: só a linha desta conexão — refreshes concorrentes de outras integrações da
+	// mesma organização não se sobrescrevem.
 	await db
-		.update(organizations)
-		.set({
-			integracaoConfiguracao: refreshedConfig,
-		})
-		.where(eq(organizations.id, organizationId));
+		.update(integrations)
+		.set({ configuracao: refreshedConfig, status: "CONECTADO", ultimoErro: null })
+		.where(eq(integrations.id, integrationId));
 
 	return refreshedConfig;
 }

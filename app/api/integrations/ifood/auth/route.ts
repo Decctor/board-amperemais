@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { createIfoodUserCode } from "@/lib/data-connectors/ifood";
+import { canManageIntegrations } from "@/lib/integrations/mask";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import z from "zod";
@@ -35,6 +36,9 @@ async function createIfoodAuthorizationRoute(_request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) return NextResponse.json({ error: "Você não está autenticado." }, { status: 401 });
 	if (!session.membership?.organizacao.id) return NextResponse.json({ error: "Você precisa estar vinculado a uma organização." }, { status: 400 });
+	if (!canManageIntegrations(session.membership?.permissoes)) {
+		return NextResponse.json({ error: "Você não possui permissão para gerenciar integrações." }, { status: 403 });
+	}
 
 	const input = CreateIfoodAuthorizationInputSchema.parse({});
 	const result = await createIfoodAuthorization(input);

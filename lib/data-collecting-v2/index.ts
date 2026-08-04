@@ -1,14 +1,15 @@
 import { fetchConnectorImportBatch, type TCanonicalImportWindow } from "@/lib/data-connectors";
+import { getActiveDataSourceIntegrations, type TDataSourceIntegration } from "@/lib/integrations/data-sources";
 import { getChannelErpPolicy } from "@/lib/sales/fulfillment-channels/policy";
 import { processSaleAutomaticFiscalEmissionIfEligible } from "@/lib/sales/sale-processing/process-sale-automatic-fiscal-emission";
 import { processOrganizationInteractionsBatch, type ImmediateProcessingData } from "@/lib/interactions";
 import { db } from "@/services/drizzle";
-import { campaigns, organizations } from "@/services/drizzle/schema";
+import { campaigns, integrations, organizations } from "@/services/drizzle/schema";
 import { isAxiosError } from "axios";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, ne, or } from "drizzle-orm";
 import { z } from "zod";
 import { resolveCampaignAudiences } from "./campaign-audiences";
 import { processDataCollectingV2Effects } from "./effects";
@@ -27,6 +28,11 @@ dayjs.extend(timezone);
 
 export type TRunDataCollectingV2Params = {
 	organizationIds?: string[];
+	/**
+	 * Restringe o run a conexões específicas (ex.: webhook que já resolveu o merchant → linha).
+	 * Sem isso, um evento de uma loja iFood dispararia polling/refresh de TODAS as fontes da org.
+	 */
+	integrationIds?: string[];
 	window?: TCanonicalImportWindow;
 	processImmediateInteractions?: boolean;
 	effects?: Partial<TDataCollectingV2EffectsOptions>;
@@ -92,17 +98,25 @@ function serializeDataCollectingError(error: unknown) {
 	};
 }
 
-async function loadOrganizations(organizationIds?: string[]) {
-	return db.query.organizations.findMany({
-		where: organizationIds?.length ? inArray(organizations.id, organizationIds) : undefined,
-		columns: {
-			id: true,
-			integracaoTipo: true,
-			integracaoConfiguracao: true,
-			configuracao: true,
-		},
-	});
+async function loadDataSourceIntegrations(organizationIds?: string[], integrationIds?: string[]) {
+	const rows = await getActiveDataSourceIntegrations({ executor: db });
+	const organizationIdSet = organizationIds?.length ? new Set(organizationIds) : null;
+	const integrationIdSet = integrationIds?.length ? new Set(integrationIds) : null;
+	return rows.filter(
+		(integration) =>
+			(!organizationIdSet || organizationIdSet.has(integration.organizacaoId)) && (!integrationIdSet || integrationIdSet.has(integration.id)),
+	);
 }
+
+async function loadOrganizationConfigurations(organizationIds: string[]) {
+	if (organizationIds.length === 0) return new Map<string, TOrganizationConfigurationRow>();
+	const rows = await db.query.organizations.findMany({
+		where: inArray(organizations.id, organizationIds),
+		columns: { id: true, configuracao: true },
+	});
+	return new Map(rows.map((row) => [row.id, row]));
+}
+type TOrganizationConfigurationRow = { id: string; configuracao: (typeof organizations.$inferSelect)["configuracao"] };
 
 async function loadCampaigns(organizationId: string): Promise<TCampaignWithAudienceRelations[]> {
 	const result = await db.query.campaigns.findMany({
@@ -137,34 +151,38 @@ async function loadCampaigns(organizationId: string): Promise<TCampaignWithAudie
 	return result as unknown as TCampaignWithAudienceRelations[];
 }
 
-async function processOrganization({
-	organizationId,
-	config,
+async function processIntegration({
+	integration,
 	organizationConfiguration,
 	window,
 	effects,
 	includeRawInResult,
 }: {
-	organizationId: string;
-	config: NonNullable<Awaited<ReturnType<typeof loadOrganizations>>[number]["integracaoConfiguracao"]>;
-	organizationConfiguration: Awaited<ReturnType<typeof loadOrganizations>>[number]["configuracao"];
+	integration: TDataSourceIntegration;
+	organizationConfiguration: (typeof organizations.$inferSelect)["configuracao"] | null;
 	window: TCanonicalImportWindow;
 	effects: TDataCollectingV2EffectsOptions;
 	includeRawInResult?: boolean;
 }) {
+	const organizationId = integration.organizacaoId;
 	const erp: TSyncSalesErpOptions = {
 		policy: getChannelErpPolicy(organizationConfiguration),
 		stockTrackingEnabled: organizationConfiguration?.preferencias?.rastreamentoEstoque ?? false,
 		organizationConfiguration,
 	};
-	const batch = await fetchConnectorImportBatch({ organizationId, config, window });
+	const batch = await fetchConnectorImportBatch({
+		organizationId,
+		integrationId: integration.id,
+		config: integration.configuracao,
+		window,
+	});
 	const campaignsForOrganization = effects.processCampaigns ? await loadCampaigns(organizationId) : [];
 	let immediateProcessingDataList: ImmediateProcessingData[] = [];
 	let fiscalEmissionCandidateSaleIds: string[] = [];
 
 	const summary = await db.transaction(async (tx): Promise<TDataCollectingV2RunSummary> => {
 		const auxiliaryContext = await syncAuxiliaryEntities({ tx, batch });
-		const persistedSales = await syncSales({ tx, batch, context: auxiliaryContext, erp });
+		const { persistedSales, saleIdCollisions } = await syncSales({ tx, batch, context: auxiliaryContext, erp });
 		fiscalEmissionCandidateSaleIds = persistedSales.filter((sale) => sale.managedFiscalEmissionCandidate).map((sale) => sale.id);
 		// Audiences are resolved once from the post-sync state. Keep audience filters independent
 		// from client metrics mutated by this batch; per-sale trigger counters live in persistedSales.
@@ -188,8 +206,10 @@ async function processOrganization({
 
 		return {
 			organizationId,
+			integrationId: integration.id,
 			source: batch.source,
 			importedSalesCount: batch.sales.length,
+			saleIdCollisionsCount: saleIdCollisions.length,
 			createdSalesCount: persistedSales.filter((sale) => sale.isNewSale).length,
 			updatedSalesCount: persistedSales.filter((sale) => !sale.isNewSale && !sale.skipped).length,
 			unchangedSalesCount: persistedSales.filter((sale) => sale.skipped).length,
@@ -243,54 +263,87 @@ async function processOrganization({
 
 export async function runDataCollectingV2({
 	organizationIds,
+	integrationIds,
 	window = getDefaultImportWindow(),
 	processImmediateInteractions = true,
 	effects: effectsOverrides,
 	includeRawInResult = false,
 }: TRunDataCollectingV2Params = {}) {
 	const effects = { ...DEFAULT_EFFECTS_OPTIONS, ...effectsOverrides };
-	const organizationsForImport = await loadOrganizations(organizationIds);
-	const organizationsById = new Map(organizationsForImport.map((organization) => [organization.id, organization]));
+	// Loop POR INTEGRAÇÃO, não por org: uma organização com N fontes ativas roda N batches (uma
+	// linha só tem um tipo — o gate antigo de coerência tipo↔config.tipo vive no filtro de
+	// getActiveDataSourceIntegrations).
+	const integrationsForImport = await loadDataSourceIntegrations(organizationIds, integrationIds);
+	const organizationConfigurationsById = await loadOrganizationConfigurations(
+		Array.from(new Set(integrationsForImport.map((integration) => integration.organizacaoId))),
+	);
 	const summaries: TDataCollectingV2RunSummary[] = [];
 	const rawBatches: TDataCollectingV2RawBatch[] = [];
 	const allImmediateProcessingData: ImmediateProcessingData[] = [];
 	const errors: TDataCollectingV2RunError[] = [];
 
-	for (const organization of organizationsForImport) {
-		if (!organization.integracaoTipo || !organization.integracaoConfiguracao) continue;
-		if (organization.integracaoConfiguracao.tipo !== organization.integracaoTipo) continue;
-
+	for (const integration of integrationsForImport) {
 		try {
-			const { summary, immediateProcessingDataList, raw } = await processOrganization({
-				organizationId: organization.id,
-				config: organization.integracaoConfiguracao,
-				organizationConfiguration: organization.configuracao,
+			const { summary, immediateProcessingDataList, raw } = await processIntegration({
+				integration,
+				organizationConfiguration: organizationConfigurationsById.get(integration.organizacaoId)?.configuracao ?? null,
 				window,
 				effects,
 				includeRawInResult,
 			});
-			console.log(`[DATA_COLLECTING_V2] [ORG: ${organization.id}] Summary`, summary);
+			console.log(`[DATA_COLLECTING_V2] [ORG: ${integration.organizacaoId}] [INTEGRATION: ${integration.id}] Summary`, summary);
 			summaries.push(summary);
+			if (summary.saleIdCollisionsCount > 0) {
+				errors.push({
+					organizationId: integration.organizacaoId,
+					integrationId: integration.id,
+					integrationType: integration.tipo,
+					message: `${summary.saleIdCollisionsCount} colisão(ões) de idExterno com vendas de outra origem — itens ignorados (fail-closed).`,
+				});
+			}
 			if (raw !== undefined) {
 				rawBatches.push({
-					organizationId: organization.id,
+					organizationId: integration.organizacaoId,
+					integrationId: integration.id,
 					source: summary.source,
 					window,
 					raw,
 				});
 			}
 			allImmediateProcessingData.push(...immediateProcessingDataList);
+
+			// "Última sincronização" finalmente mantida: a linha da conexão registra o fim de cada
+			// run bem-sucedido. Colisões fail-closed não derrubam o status (a conexão funciona),
+			// mas ficam visíveis em `ultimoErro` até um run limpo — senão a ocorrência só existiria
+			// no log do cron.
+			await db
+				.update(integrations)
+				.set({
+					dataUltimaSincronizacao: new Date(),
+					status: "CONECTADO",
+					ultimoErro:
+						summary.saleIdCollisionsCount > 0
+							? `${summary.saleIdCollisionsCount} colisão(ões) de idExterno com vendas de outra origem no último run — itens ignorados (fail-closed).`
+							: null,
+				})
+				.where(eq(integrations.id, integration.id));
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Erro desconhecido ao processar organização.";
+			const message = error instanceof Error ? error.message : "Erro desconhecido ao processar integração.";
 			console.error(
-				`[DATA_COLLECTING_V2] [ORG: ${organization.id}] Integration ${organization.integracaoTipo} failed`,
+				`[DATA_COLLECTING_V2] [ORG: ${integration.organizacaoId}] [INTEGRATION: ${integration.id}] Integration ${integration.tipo} failed`,
 				serializeDataCollectingError(error),
 			);
 			errors.push({
-				organizationId: organization.id,
-				integrationType: organization.integracaoTipo,
+				organizationId: integration.organizacaoId,
+				integrationId: integration.id,
+				integrationType: integration.tipo,
 				message,
 			});
+			// EXPIRADO (gravado pelo refresh de token que falhou) não é rebaixado para ERRO.
+			await db
+				.update(integrations)
+				.set({ status: "ERRO", ultimoErro: message })
+				.where(and(eq(integrations.id, integration.id), ne(integrations.status, "EXPIRADO")));
 		}
 	}
 
@@ -303,7 +356,6 @@ export async function runDataCollectingV2({
 		}
 
 		for (const [organizationId, interactions] of interactionsByOrganizationId) {
-			const organization = organizationsById.get(organizationId);
 			try {
 				const processingSummary = await processOrganizationInteractionsBatch({ organizationId, interactions });
 				const failedResults = processingSummary.results.filter((result) => !result.success);
@@ -318,7 +370,8 @@ export async function runDataCollectingV2({
 
 					errors.push({
 						organizationId,
-						integrationType: organization?.integracaoTipo ?? null,
+						integrationId: null,
+						integrationType: null,
 						message: `${failedResults.length} de ${processingSummary.total} interações imediatas não foram processadas com sucesso.`,
 					});
 				}
@@ -327,7 +380,8 @@ export async function runDataCollectingV2({
 				console.error(`[DATA_COLLECTING_V2] [ORG: ${organizationId}] Immediate interactions processing failed`, serializeDataCollectingError(error));
 				errors.push({
 					organizationId,
-					integrationType: organization?.integracaoTipo ?? null,
+					integrationId: null,
+					integrationType: null,
 					message,
 				});
 			}

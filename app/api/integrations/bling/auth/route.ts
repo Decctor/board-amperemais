@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { getBlingRedirectUri } from "@/lib/data-connectors/bling/client";
+import { canManageIntegrations } from "@/lib/integrations/mask";
 import { BLING_AUTHORIZATION_URL } from "@/lib/data-connectors/bling/types";
 import { persistOAuthRedirect } from "@/lib/integrations/oauth-redirect";
 import { generateState } from "arctic";
@@ -10,6 +11,8 @@ import z from "zod";
 
 export const BLING_OAUTH_STATE_COOKIE_NAME = "bling_oauth_state";
 export const BLING_OAUTH_REDIRECT_COOKIE_NAME = "bling_oauth_redirect";
+// Reconexão explícita (D9): id da linha de `integrations` a reativar, carregado no fluxo OAuth.
+export const BLING_OAUTH_RECONNECT_COOKIE_NAME = "bling_oauth_reconnect_integration";
 
 const CreateBlingAuthorizationInputSchema = z.object({});
 export type TCreateBlingAuthorizationInput = z.infer<typeof CreateBlingAuthorizationInputSchema>;
@@ -42,9 +45,23 @@ async function createBlingAuthorizationRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) return NextResponse.json({ error: "Você não está autenticado." }, { status: 401 });
 	if (!session.membership?.organizacao.id) return NextResponse.json({ error: "Você precisa estar vinculado a uma organização." }, { status: 400 });
+	if (!canManageIntegrations(session.membership?.permissoes)) {
+		return NextResponse.json({ error: "Você não possui permissão para gerenciar integrações." }, { status: 403 });
+	}
 
 	const cookieStore = await cookies();
 	persistOAuthRedirect(cookieStore, BLING_OAUTH_REDIRECT_COOKIE_NAME, request.nextUrl.searchParams.get("redirectTo"));
+
+	const reconnectIntegrationId = request.nextUrl.searchParams.get("reconnectIntegrationId");
+	if (reconnectIntegrationId) {
+		cookieStore.set(BLING_OAUTH_RECONNECT_COOKIE_NAME, reconnectIntegrationId, {
+			secure: true,
+			path: "/",
+			httpOnly: true,
+			maxAge: 60 * 10,
+			sameSite: "lax",
+		});
+	}
 
 	const input = CreateBlingAuthorizationInputSchema.parse({});
 	const url = await createBlingAuthorization(input);

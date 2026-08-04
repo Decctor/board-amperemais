@@ -1,4 +1,5 @@
 import "@/utils/scripts/load-next-env";
+import { getScriptDataSourceIntegration } from "@/utils/scripts/get-data-source-integration";
 
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -309,19 +310,19 @@ export async function handleCardapioWebImportation(organizationId: string, confi
 }
 
 export async function syncCardapioWebManualCollecting() {
-	const config = await db.query.organizations.findFirst({
+	const organization = await db.query.organizations.findFirst({
 		where: (fields, { eq }) => eq(fields.id, TARGET_ORGANIZATION_ID),
 		columns: {
 			nome: true,
-			integracaoConfiguracao: true,
 		},
 	});
 
-	if (!config) {
-		throw new Error("Configuração não encontrada.");
+	if (!organization) {
+		throw new Error("Organização não encontrada.");
 	}
-	console.log(`[SYNC-CARDAPIO-WEB-MANUAL-COLLECTING] Config found: ${config.nome}`);
-	const configData = config.integracaoConfiguracao as TCardapioWebConfig;
+	const integration = await getScriptDataSourceIntegration({ organizationId: TARGET_ORGANIZATION_ID, types: ["CARDAPIO-WEB"] });
+	console.log(`[SYNC-CARDAPIO-WEB-MANUAL-COLLECTING] Config found: ${organization.nome} (integration ${integration.id})`);
+	const configData = integration.configuracao as TCardapioWebConfig;
 	await handleCardapioWebImportation(TARGET_ORGANIZATION_ID, configData);
 
 	const result = {

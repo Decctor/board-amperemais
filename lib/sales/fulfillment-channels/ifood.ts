@@ -19,18 +19,21 @@ import createHttpError from "http-errors";
  */
 export async function applyIfoodFulfillmentTransition({
 	organizacaoId,
+	integrationId,
 	orderId,
 	fromStatus,
 	toStatus,
 	cancellationCode,
 }: {
 	organizacaoId: string;
+	/** Proveniência da venda (`sales.integracaoId`) — resolve a conexão certa com N contas iFood. */
+	integrationId?: string | null;
 	orderId: string;
 	fromStatus: TSaleAttendanceStatusEnum;
 	toStatus: TSaleAttendanceStatusEnum;
 	cancellationCode?: string | null;
 }): Promise<{ appliedLocally: boolean }> {
-	const context = await resolveIfoodManagementContext({ organizacaoId });
+	const context = await resolveIfoodManagementContext({ organizacaoId, integrationId });
 
 	if (toStatus === "CANCELADO") {
 		if (!cancellationCode) throw new createHttpError.BadRequest("Informe o motivo de cancelamento do pedido no iFood.");
