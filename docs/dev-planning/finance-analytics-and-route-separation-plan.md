@@ -15,8 +15,10 @@ Two coupled goals, delivered together:
 
 1. **Port the finance analytics suite from `syncroniza-control`** (reference commit `bfb87b0`,
    2026-07-21): executive summary with period-over-period deltas, cash flow (consolidated position,
-   burn, runway, projection), managerial DRE (competência) with chart-of-accounts drill-down,
-   receivables & payables (aging, delays, friction costs), and profitability rankings.
+   burn, runway, projection), managerial DRE (competência) with chart-of-accounts drill-down, and
+   receivables & payables (aging, delays, friction costs). Control's fifth section, Rentabilidade,
+   is **not ported** (decision 2026-08-05): it is built on `projetoId` and counterparty snapshots
+   that have no RecompraCRM equivalent, and no adaptation will be pursued.
 2. **Split the single tab-driven finance page into canonical routes** under `/dashboard/finance`
    with a grouped sidebar entry, following the sales decomposition executed in
    `dashboard-information-architecture-and-routes-plan.md`. The finance page currently holds six
@@ -78,14 +80,13 @@ Inside `Relatórios`, each report is a **real route** with module-local secondar
 /dashboard/finance/reports/income-statement       DRE (default; /reports redirects here)
 /dashboard/finance/reports/cash-flow              Fluxo de caixa
 /dashboard/finance/reports/receivables-payables   Recebíveis & pagáveis
-/dashboard/finance/reports/profitability          Rentabilidade (Phase 4, pending decision)
 ```
 
 ### Navigation decisions
 
 - [ ] `Visão geral` (the ported executive summary) lives at the module root, mirroring how sales
       history lives at `/dashboard/sales`. It replaces the current `stats` tab.
-- [ ] `Relatórios` is a single sidebar child covering the four analyses, keeping the Financeiro
+- [ ] `Relatórios` is a single sidebar child covering the three analyses, keeping the Financeiro
       group at seven children. Promoting each report to its own sidebar child stays available as a
       follow-up if usage justifies it.
 - [ ] `Faturas de cartão` keeps its own route (1:1 with the current tab). Alternative considered
@@ -109,7 +110,6 @@ Current `?view=` tab → new route. Same clean-cutover rules as the dashboard ro
 - [ ] Add `/dashboard/finance/reports/income-statement`.
 - [ ] Add `/dashboard/finance/reports/cash-flow`.
 - [ ] Add `/dashboard/finance/reports/receivables-payables`.
-- [ ] Add `/dashboard/finance/reports/profitability` (Phase 4).
 - [ ] Remove the `view` query-state contract from the finance page.
 - [ ] Do not add redirects or keep a compatibility `?view=` reader.
 
@@ -120,7 +120,7 @@ Converting it to a nested object is a breaking change at every call site.
 
 - [ ] Convert `appRoutes.finance` into a nested builder group
       (`finance: { root, entries, transactions, accounts, creditCards, reconciliation,
-      reports: { incomeStatement, cashFlow, receivablesPayables, profitability } }`) in
+      reports: { incomeStatement, cashFlow, receivablesPayables } }`) in
       `lib/navigation/routes.ts`.
 - [ ] Update the existing `appRoutes.finance()` call site in `components/Sidebar/AppSidebar.tsx`.
 - [ ] Search for `"/dashboard/finance"` literals repo-wide and replace with builders.
@@ -174,7 +174,7 @@ Pure, tested functions; the API routes stay thin per the four-part route convent
       hard-coded fixed-root UUIDs. Revenue matches on `idContaDebito`→credit side
       (`idContaCredito`), costs/expenses on `idContaDebito`, cost checked before expense — same
       semantics as Control's `getDreAccountClassification`.
-- [ ] Use this single classifier for the executive summary, DRE, and profitability. (Control's
+- [ ] Use this single classifier for the executive summary and DRE. (Control's
       executive summary uses a flat-ID variant that diverges from the DRE tree walk — a known
       inconsistency we fix on port rather than preserve.)
 - [ ] `tree.ts` — DRE tree roll-up: per-account totals bubble to ancestors (max depth 20),
@@ -195,7 +195,7 @@ Pure, tested functions; the API routes stay thin per the four-part route convent
       with `origemTipo === "TRANSFERENCIA"` where aggregating the accrual side).
 - [ ] Scope every query by `organizacaoId` (Control scopes by `parceiroId`; the tenancy key
       changes, the shape does not).
-- [ ] Accrual vs cash split is preserved exactly: DRE and profitability aggregate
+- [ ] Accrual vs cash split is preserved exactly: the DRE aggregates
       `accountingEntries.dataCompetencia`; cash flow and receivables aggregate
       `financialTransactions.dataPrevisao` / `dataEfetivacao` (null `dataEfetivacao` = pending).
 - [ ] Credit-card forecast dates reuse the existing `lib/finances/credit-card.ts` helpers.
@@ -221,7 +221,6 @@ transformed in the Zod schema; response `{ data, message }` with exported output
 - [ ] `analytics/receivables-payables/route.ts` — aging buckets, totals + overdue, average
       delays, friction (`jurosMultasPagos`, `descontosObtidos`, `taxasPorMetodo`), liquidity
       block (capital de giro, cobertura de fixos).
-- [ ] `analytics/profitability/route.ts` — Phase 4, shape pending the adaptation decision below.
 - [ ] Extend `app/api/finances/stats/route.ts` with previous-period totals so the executive
       summary can render deltas; keep its existing output backward-compatible for the current
       consumers; remove the stray `console.log`.
@@ -229,20 +228,13 @@ transformed in the Zod schema; response `{ data, message }` with exported output
 - [ ] Query hooks in `lib/queries/finances.ts` (or a new `lib/queries/finance-analytics.ts`),
       with 500 ms debounced period params, typed from the routes' exported output types.
 
-### Profitability adaptation (decision required)
+### Profitability (descoped)
 
-Control's profitability is built on `projetoId` and emissor/destinatário CNPJ snapshots — none of
-which exist on RecompraCRM's `accounting_entries`. A 1:1 port is impossible. Options:
-
-1. **Adapt (recommended):** revenue ranking by cliente via `vendaId` → sale → client join; spend
-   ranking by fornecedor via purchase linkage; concentration metric (top-5 % of revenue) kept.
-   "Resultado por projeto" has no equivalent — the closest RecompraCRM axis is per origem/canal
-   (VENDA, COMPRA, MANUAL, ...) or per plano-de-contas subtree, which the DRE drill-down already
-   covers.
-2. **Descope:** ship the other three reports now, design profitability separately once
-   counterparty data (or a cost-center dimension) exists in the schema.
-
-Phase 4 does not block Phases 1–3 either way.
+Decision 2026-08-05: Rentabilidade is not ported and not adapted. Control's implementation is
+built on `projetoId` and emissor/destinatário CNPJ snapshots — none of which exist on
+RecompraCRM's `accounting_entries` — and the closest RecompraCRM axes (per plano-de-contas
+subtree) are already covered by the DRE drill-down. If a counterparty or cost-center dimension
+lands in the schema later, a profitability workspace can be designed fresh at that point.
 
 ## Frontend decomposition
 
@@ -266,7 +258,6 @@ app/dashboard/finance/
     income-statement/{page.tsx, income-statement-page.tsx, _components/}
     cash-flow/{page.tsx, cash-flow-page.tsx, _components/}
     receivables-payables/{page.tsx, receivables-payables-page.tsx, _components/}
-    profitability/…                  Phase 4
 ```
 
 - [ ] Move each `finances-page-*.tsx` view into its route directory, renamed to the
@@ -274,10 +265,9 @@ app/dashboard/finance/
 - [ ] While moving, split the two oversized views per the target architecture:
       `finances-page-reconciliation.tsx` (548 l.) and `finances-page-financial-accounts.tsx`
       (440 l.) get local `_components/`.
-- [ ] Port the five Control sections as the new report pages, adapted to RecompraCRM primitives:
+- [ ] Port the four kept Control sections as the new pages, adapted to RecompraCRM primitives:
       existing `DateIntervalInput`, `InteractiveFilter`, recharts, Sonner; UI copy stays pt-BR
-      (RESUMO EXECUTIVO → Visão geral, DRE, FLUXO DE CAIXA, RECEBÍVEIS & PAGÁVEIS,
-      RENTABILIDADE).
+      (RESUMO EXECUTIVO → Visão geral, DRE, FLUXO DE CAIXA, RECEBÍVEIS & PAGÁVEIS).
 - [ ] Port `DeltaBadge` into `_components/` (period-over-period badge with `invert` semantics for
       cost/expense lines).
 - [ ] Each route owns its loading, error, and empty states.
@@ -314,12 +304,7 @@ app/dashboard/finance/
 - [ ] Receivables & payables workspace (aging chart, delay/friction cards).
 - [ ] Overview upgrade to executive summary with deltas.
 
-### Phase 4 — Profitability (after decision)
-
-- [ ] Decide adaptation vs descope.
-- [ ] Implement the chosen shape (route, endpoint, UI).
-
-### Phase 5 — Cleanup and cross-doc updates
+### Phase 4 — Cleanup and cross-doc updates
 
 - [ ] Remove unused imports/utilities left by the moves.
 - [ ] Update `dashboard-information-architecture-and-routes-plan.md`: finance local-tabs line
