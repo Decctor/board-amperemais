@@ -12,7 +12,7 @@ import { formatToMoney } from "@/lib/formatting";
 import { useFinancesOverallStats } from "@/lib/queries/finances";
 import { cn } from "@/lib/utils";
 
-export default function FinancesStatsView() {
+export default function FinanceOverviewPage() {
 	const [showResultsByAccount, setShowResultsByAccount] = useState(false);
 	const [showLiquidResultDetails, setShowLiquidResultDetails] = useState(false);
 	const { data: stats, params, updateParams } = useFinancesOverallStats({ initialParams: {} });

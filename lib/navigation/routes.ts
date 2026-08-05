@@ -33,7 +33,20 @@ export const appRoutes = {
 		lot: (lotId: string) => `/dashboard/inventory/lots/${lotId}`,
 		lotLabelsPreview: () => "/dashboard/inventory/lots/labels/preview",
 	},
-	finance: () => "/dashboard/finance",
+	finance: {
+		root: () => "/dashboard/finance",
+		entries: () => "/dashboard/finance/entries",
+		transactions: () => "/dashboard/finance/transactions",
+		accounts: () => "/dashboard/finance/accounts",
+		creditCards: () => "/dashboard/finance/credit-cards",
+		reconciliation: () => "/dashboard/finance/reconciliation",
+		reports: {
+			root: () => "/dashboard/finance/reports",
+			incomeStatement: () => "/dashboard/finance/reports/income-statement",
+			cashFlow: () => "/dashboard/finance/reports/cash-flow",
+			receivablesPayables: () => "/dashboard/finance/reports/receivables-payables",
+		},
+	},
 	fiscal: () => "/dashboard/fiscal",
 	catalog: {
 		products: () => "/dashboard/catalog/products",

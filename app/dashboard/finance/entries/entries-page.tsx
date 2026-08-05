@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { AccountingEntryOriginTypeOptions } from "@/utils/select-options";
 import { BsCalendar } from "react-icons/bs";
 
-export default function FinancesAccountingEntriesView() {
+export default function FinanceEntriesPage() {
 	const [newEntryMenuIsOpen, setNewEntryMenuIsOpen] = useState(false);
 	const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
 	const { data, isLoading, isError, isSuccess, error, filters, updateFilters } = useFinancesAccountingEntries({

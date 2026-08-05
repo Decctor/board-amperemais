@@ -827,8 +827,33 @@ export const AppRoutes = [
 	},
 	{
 		path: "/dashboard/finance",
-		title: "Finanças",
-		description: "Painel de acompanhamento e gestão das finanças do seu negócio.",
+		title: "Financeiro",
+		description: "Visão geral das finanças do seu negócio.",
+	},
+	{
+		path: "/dashboard/finance/entries",
+		title: "Lançamentos",
+		description: "Lançamentos contábeis do seu negócio.",
+	},
+	{
+		path: "/dashboard/finance/transactions",
+		title: "Movimentações",
+		description: "Movimentações financeiras do seu negócio.",
+	},
+	{
+		path: "/dashboard/finance/accounts",
+		title: "Contas Financeiras",
+		description: "Contas financeiras do seu negócio e seus saldos.",
+	},
+	{
+		path: "/dashboard/finance/credit-cards",
+		title: "Faturas de Cartão",
+		description: "Faturas dos cartões de crédito do seu negócio.",
+	},
+	{
+		path: "/dashboard/finance/reconciliation",
+		title: "Conciliação",
+		description: "Conciliação bancária das contas financeiras do seu negócio.",
 	},
 	{
 		path: "/dashboard/fiscal",

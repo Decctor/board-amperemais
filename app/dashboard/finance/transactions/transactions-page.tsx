@@ -26,7 +26,7 @@ const TRANSACTION_STATUS_OPTIONS = [
 	{ id: "em-atraso", value: "em-atraso", label: "EM ATRASO", icon: <AlertCircle className="w-4 h-4 text-red-600" /> },
 ];
 
-export default function FinancesTransactionsView() {
+export default function FinanceTransactionsPage() {
 	const [viewingTransactionId, setViewingTransactionId] = useState<string | null>(null);
 	const [isCreatingTransfer, setIsCreatingTransfer] = useState(false);
 	const { data, isLoading, isError, isSuccess, error, filters, updateFilters } = useFinancesTransactions({

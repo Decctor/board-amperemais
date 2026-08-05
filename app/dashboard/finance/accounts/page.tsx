@@ -1,16 +1,16 @@
 import UnauthorizedPage from "@/components/Utils/UnauthorizedPage";
 import { requireDashboardCapability } from "@/lib/access/guards";
-import { canViewFinances } from "@/lib/permissions/finances";
+import { canCreateFinances, canEditFinances, canViewFinances } from "@/lib/permissions/finances";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import FinanceOverviewPage from "./overview-page";
+import FinanceAccountsPage from "./accounts-page";
 
 export const metadata: Metadata = {
-	title: "Financeiro",
-	description: "Visão geral das finanças do seu negócio.",
+	title: "Contas Financeiras",
+	description: "Contas financeiras do seu negócio.",
 };
 
-export default async function FinanceOverview() {
+export default async function FinanceAccounts() {
 	const { sessionUser, unauthorized } = await requireDashboardCapability("finance");
 	if (unauthorized) return unauthorized;
 	if (!sessionUser) redirect("/auth/signin");
@@ -24,5 +24,5 @@ export default async function FinanceOverview() {
 		return <UnauthorizedPage message="Você não possui permissão para visualizar o módulo financeiro." />;
 	}
 
-	return <FinanceOverviewPage />;
+	return <FinanceAccountsPage canCreateAccounts={canCreateFinances(permissoes)} canEditAccounts={canEditFinances(permissoes)} />;
 }

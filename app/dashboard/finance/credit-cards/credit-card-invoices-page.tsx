@@ -13,7 +13,7 @@ import dayjs from "dayjs";
 import { CreditCard, ReceiptText } from "lucide-react";
 import { useMemo, useState } from "react";
 
-export default function FinancesCreditCardInvoicesView({ canCreatePayments = false }: { canCreatePayments?: boolean }) {
+export default function FinanceCreditCardInvoicesPage({ canCreatePayments = false }: { canCreatePayments?: boolean }) {
 	const [selectedInvoice, setSelectedInvoice] = useState<TGetCreditCardInvoiceOutput | null>(null);
 	const { data: accountsData } = useFinancesAccounts({ initialFilters: { activeOnly: true, stats: false } });
 	const cardAccounts = useMemo(() => (accountsData?.accounts ?? []).filter((account) => account.tipo === "CARTAO_CREDITO"), [accountsData?.accounts]);
