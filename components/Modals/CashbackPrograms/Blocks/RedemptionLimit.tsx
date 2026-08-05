@@ -1,3 +1,4 @@
+import CheckboxInput from "@/components/Inputs/CheckboxInput";
 import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
@@ -49,6 +50,18 @@ export default function CashbackProgramsRedemptionLimitBlock({ cashbackProgram, 
 						editable={!!cashbackProgram.resgateLimiteTipo}
 					/>
 				</div>
+			</div>
+			<div className="w-full flex flex-col gap-1">
+				<p className="text-sm font-medium text-muted-foreground">
+					Define abaixo se o cliente pode resgatar {getCashbackUnitLabel(cashbackProgram.terminologia)} pelo ponto de interação (totem/celular). Desative
+					quando os resgates devem acontecer apenas no PDV.
+				</p>
+				<CheckboxInput
+					labelTrue="PERMITIR RESGATES PELO PONTO DE INTERAÇÃO"
+					labelFalse="PERMITIR RESGATES PELO PONTO DE INTERAÇÃO"
+					checked={cashbackProgram.resgatePermitirViaPontoIntegracao}
+					handleChange={(value) => updateCashbackProgram({ resgatePermitirViaPontoIntegracao: value })}
+				/>
 			</div>
 		</ResponsiveMenuSection>
 	);

@@ -29,59 +29,27 @@ const ClientByLookupInputSchema = z.object({
 export type TClientByLookupInput = z.infer<typeof ClientByLookupInputSchema>;
 
 async function getClientByLookup(input: Omit<TClientByLookupInput, "orgId"> & { orgId: string }) {
+	// Uma consulta só para os dois modos (por ID e por telefone): a carteirinha do clube e a matriz
+	// de ações do POI dependem dos mesmos campos, e shapes divergentes por ramo virariam união no tipo.
+	let whereClause: ReturnType<typeof and>;
 	if (input.clientId) {
-		const client = await db.query.clients.findFirst({
-			where: and(eq(clients.id, input.clientId), eq(clients.organizacaoId, input.orgId)),
-			columns: {
-				id: true,
-				nome: true,
-				telefone: true,
-			},
-			with: {
-				saldos: {
-					columns: {
-						id: true,
-						saldoValorDisponivel: true,
-						saldoValorAcumuladoTotal: true,
-						saldoValorResgatadoTotal: true,
-					},
-					with: {
-						programa: {
-							columns: {
-								id: true,
-								resgateLimiteTipo: true,
-								resgateLimiteValor: true,
-								terminologia: true,
-								acumuloPermitirViaPontoIntegracao: true,
-								acumuloPermitirViaIntegracao: true,
-							},
-						},
-					},
-				},
-			},
-		});
-		if (!client) {
-			throw new createHttpError.NotFound("Cliente não encontrado.");
+		whereClause = and(eq(clients.id, input.clientId), eq(clients.organizacaoId, input.orgId));
+	} else {
+		const phoneBase = formatPhoneAsBase(input.phone);
+		if (!phoneBase) {
+			throw new createHttpError.BadRequest("Telefone inválido.");
 		}
-		return {
-			data: client,
-			message: "Cliente encontrado com sucesso.",
-		};
-	}
-	// Format phone to base for comparison
-	const phoneBase = formatPhoneAsBase(input.phone);
-
-	if (!phoneBase) {
-		throw new createHttpError.BadRequest("Telefone inválido.");
+		whereClause = and(eq(clients.telefoneBase, phoneBase), eq(clients.organizacaoId, input.orgId));
 	}
 
-	// Find client by phone and organization
 	const client = await db.query.clients.findFirst({
-		where: and(eq(clients.telefoneBase, phoneBase), eq(clients.organizacaoId, input.orgId)),
+		where: whereClause,
 		columns: {
 			id: true,
 			nome: true,
 			telefone: true,
+			// Deliberadamente sem `cpfCnpj`: dado sensível não trafega para o ponto de interação.
+			metadataTotalCompras: true,
 		},
 		with: {
 			saldos: {
@@ -90,16 +58,22 @@ async function getClientByLookup(input: Omit<TClientByLookupInput, "orgId"> & { 
 					saldoValorDisponivel: true,
 					saldoValorAcumuladoTotal: true,
 					saldoValorResgatadoTotal: true,
+					dataAdesao: true,
 				},
 				with: {
 					programa: {
 						columns: {
 							id: true,
+							ativo: true,
+							titulo: true,
 							resgateLimiteTipo: true,
 							resgateLimiteValor: true,
 							terminologia: true,
+							modalidadeDescontosPermitida: true,
+							modalidadeRecompensasPermitida: true,
 							acumuloPermitirViaPontoIntegracao: true,
 							acumuloPermitirViaIntegracao: true,
+							resgatePermitirViaPontoIntegracao: true,
 						},
 					},
 				},
@@ -108,6 +82,11 @@ async function getClientByLookup(input: Omit<TClientByLookupInput, "orgId"> & { 
 	});
 
 	if (!client) {
+		// Busca por ID vem de um contexto já validado (rota do wizard): ausência é erro.
+		// Busca por telefone é uma consulta aberta: ausência é o caso "novo cliente".
+		if (input.clientId) {
+			throw new createHttpError.NotFound("Cliente não encontrado.");
+		}
 		return {
 			data: null,
 			message: "Cliente não encontrado.",
