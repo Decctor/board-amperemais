@@ -496,3 +496,15 @@ export const accessCredentialTypeEnum = pgEnum("access_credential_type", ["TOKEN
 // A `origem` de external_events NÃO é pgEnum de propósito (mesmo racional de access_events):
 // é varchar + z.enum no app para que novas origens (Stripe, iFood…) não custem migração.
 export const externalEventProcessingStatusEnum = pgEnum("external_event_processing_status", ["RECEBIDO", "PROCESSADO", "FALHOU"]);
+
+// ============================================================================
+// CAMPOS PERSONALIZADOS
+// ============================================================================
+
+// A entidade que o campo personalizado estende. Hoje só CLIENTE — o enum existe para que
+// estender a PRODUTO/VENDA seja um ALTER TYPE, e não uma migração de tabela.
+export const customFieldEntityEnum = pgEnum("custom_field_entity", ["CLIENTE"]);
+
+// O tipo determina o formato do `valor` gravado (jsonb): ESCOLHA_UNICA → string,
+// ESCOLHA_MULTIPLA → string[], TEXTO → string, NUMERO → number, DATA → string ISO.
+export const customFieldTypeEnum = pgEnum("custom_field_type", ["ESCOLHA_UNICA", "ESCOLHA_MULTIPLA", "TEXTO", "NUMERO", "DATA"]);
