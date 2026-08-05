@@ -44,13 +44,15 @@ export default function ReceivablesPayablesPage() {
 		<div className="flex h-full w-full flex-col gap-4">
 			<div className="flex min-h-8 items-center justify-between">
 				<h1 className="text-xs font-bold tracking-tight uppercase">RECEBÍVEIS & PAGÁVEIS</h1>
-				<DateIntervalInput
-					label="PERÍODO"
-					labelClassName="hidden"
-					className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
-					value={{ after: params.periodAfter, before: params.periodBefore }}
-					handleChange={(value) => updateParams({ periodAfter: value.after ?? params.periodAfter, periodBefore: value.before ?? params.periodBefore })}
-				/>
+				<div className="w-fit">
+					<DateIntervalInput
+						label="PERÍODO"
+						labelClassName="hidden"
+						className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
+						value={{ after: params.periodAfter, before: params.periodBefore }}
+						handleChange={(value) => updateParams({ periodAfter: value.after ?? params.periodAfter, periodBefore: value.before ?? params.periodBefore })}
+					/>
+				</div>
 			</div>
 
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
