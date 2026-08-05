@@ -3,7 +3,7 @@
 import type React from "react";
 import { Button } from "@/components/ui/button";
 import { formatToMoney } from "@/lib/formatting";
-import { CheckCircle2, PartyPopper } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 type StatItem = {
 	label: string;
@@ -28,19 +28,15 @@ type SuccessCelebrationProps = {
 
 export function SuccessCelebration({ title, subtitle, stats, primaryAction, secondaryAction, children }: SuccessCelebrationProps) {
 	return (
-		<div className="flex flex-col items-center text-center space-y-8 short:space-y-2 animate-in zoom-in duration-500">
+		<div className="flex flex-col items-center text-center space-y-8 short:space-y-2 animate-in fade-in duration-300">
 			<div className="relative">
-				<div className="absolute inset-0 bg-green-500/20 blur-3xl rounded-full scale-150 animate-pulse short:hidden" />
-				<div className="relative bg-green-600 p-8 short:p-3 rounded-full text-white shadow-2xl shadow-green-600/30">
+				<div className="relative bg-green-600 p-6 short:p-3 rounded-full text-white shadow-sm">
 					<CheckCircle2 className="w-20 h-20 short:w-8 short:h-8" />
-				</div>
-				<div className="absolute -top-4 -right-4 short:-top-1 short:-right-1 bg-yellow-400 p-3 short:p-1 rounded-2xl short:rounded-lg text-yellow-900 shadow-lg animate-bounce">
-					<PartyPopper className="w-6 h-6 short:w-3 short:h-3" />
 				</div>
 			</div>
 
 			<div className="space-y-2 short:space-y-0.5">
-				<h2 className="text-4xl short:text-lg font-black uppercase tracking-tighter text-green-700">{title}</h2>
+				<h2 className="text-3xl short:text-lg font-extrabold tracking-tight text-green-700">{title}</h2>
 				<p className="text-muted-foreground font-medium text-lg short:text-sm">{subtitle}</p>
 			</div>
 
@@ -52,8 +48,8 @@ export function SuccessCelebration({ title, subtitle, stats, primaryAction, seco
 						key={stat.label}
 						className={
 							stat.variant === "green"
-								? "bg-green-50 border-2 short:border border-green-200 rounded-3xl short:rounded-xl p-6 short:p-2 shadow-sm"
-								: "bg-brand/5 border-2 short:border border-brand/20 rounded-3xl short:rounded-xl p-6 short:p-2 shadow-sm"
+								? "bg-green-50 border border-green-200 rounded-2xl short:rounded-xl p-5 short:p-2"
+								: "bg-brand/5 border border-brand/20 rounded-2xl short:rounded-xl p-5 short:p-2"
 						}
 					>
 						<p
@@ -73,18 +69,14 @@ export function SuccessCelebration({ title, subtitle, stats, primaryAction, seco
 			</div>
 
 			<div className="flex flex-col sm:flex-row gap-4 short:gap-2 w-full max-w-xl">
-				<Button
-					onClick={primaryAction.onClick}
-					size="lg"
-					className="flex-1 rounded-2xl short:rounded-lg h-20 short:h-11 short:py-2.5 text-xl short:text-base font-black shadow-xl uppercase tracking-wider"
-				>
+				<Button onClick={primaryAction.onClick} size="lg" className="flex-1 rounded-2xl short:rounded-lg h-12 short:h-11 text-base font-bold shadow-sm">
 					{primaryAction.label}
 				</Button>
 				<Button
 					onClick={secondaryAction.onClick}
 					variant="outline"
 					size="lg"
-					className="flex-1 rounded-2xl short:rounded-lg h-20 short:h-11 short:py-2.5 text-xl short:text-base font-black border-4 short:border hover:bg-muted uppercase tracking-wider"
+					className="flex-1 rounded-2xl short:rounded-lg h-11 text-sm font-bold border hover:bg-muted"
 				>
 					{secondaryAction.label}
 				</Button>

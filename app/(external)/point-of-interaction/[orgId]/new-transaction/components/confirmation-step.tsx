@@ -48,7 +48,7 @@ export function ConfirmationStep({
 			}}
 		>
 			<div className="text-center space-y-2 short:space-y-0.5">
-				<h2 className="text-xl short:text-lg font-black uppercase tracking-tight">Finalizar Operação</h2>
+				<h2 className="text-xl short:text-lg font-extrabold tracking-tight">Finalizar operação</h2>
 				<p className="text-muted-foreground short:text-xs">Confira os dados e digite o usuário do operador.</p>
 			</div>
 
@@ -87,7 +87,7 @@ export function ConfirmationStep({
 							const inputValue = Number(e.target.value);
 							onCouponDiscountChange(Number.isFinite(inputValue) && inputValue > 0 ? inputValue : null);
 						}}
-						className="h-14 short:h-11 text-2xl short:text-xl font-black text-center rounded-2xl short:rounded-lg border-2 short:border border-green-200 bg-green-50/30"
+						className="h-14 short:h-11 text-2xl short:text-xl font-black text-center rounded-2xl short:rounded-lg border border-green-200 bg-green-50/30"
 					/>
 				</div>
 			) : null}

@@ -49,7 +49,14 @@ type PointOfInteractionContentProps = {
 	registrationConfig: TPoiRegistrationConfig;
 };
 
-export default function PointOfInteractionContent({ org, cashbackProgram, mode, flow, presetSellerId, registrationConfig }: PointOfInteractionContentProps) {
+export default function PointOfInteractionContent({
+	org,
+	cashbackProgram,
+	mode,
+	flow,
+	presetSellerId,
+	registrationConfig,
+}: PointOfInteractionContentProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const { playAction, playSuccess } = usePoiSounds();
@@ -294,10 +301,10 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 				<div className="w-full max-w-5xl flex flex-col md:flex-row items-center md:items-stretch gap-8 md:gap-12">
 					{/* LEFT: Unified org card — brand hero header + program details list */}
 					<div className="w-full md:w-[45%] flex flex-col">
-						<div className="bg-card rounded-3xl shadow-xl border border-border/50 overflow-hidden flex flex-col flex-1">
+						<div className="bg-card rounded-3xl shadow-sm border border-border/50 overflow-hidden flex flex-col flex-1">
 							{/* Brand hero header */}
 							<div className="bg-brand px-6 py-7 md:px-8 md:py-10 flex items-center gap-5">
-								<div className="w-16 h-16 md:w-20 md:h-20 flex-shrink-0 flex items-center justify-center relative rounded-2xl overflow-hidden bg-white shadow-lg ring-2 ring-white/20">
+								<div className="w-16 h-16 md:w-20 md:h-20 flex-shrink-0 flex items-center justify-center relative rounded-2xl overflow-hidden bg-white shadow-sm ring-1 ring-white/20">
 									{org.logoUrl ? (
 										<Image src={org.logoUrl} alt={org.nome} fill className="object-contain p-1.5 rounded-2xl" />
 									) : (
@@ -372,7 +379,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 						{isMobileMode ? (
 							<div className="flex flex-col gap-5 items-center">
 								<div className="text-center space-y-1">
-									<h2 className="text-2xl font-black uppercase tracking-tight">Identifique-se</h2>
+									<h2 className="text-2xl font-extrabold tracking-tight">Identifique-se</h2>
 									<p className="text-sm text-muted-foreground">Digite seu número de telefone para começar</p>
 								</div>
 								<div className="w-full max-w-sm">
@@ -391,7 +398,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 						) : (
 							<div className="flex flex-col gap-3.5">
 								{/* Phone showcase */}
-								<div className="bg-card border border-border/50 rounded-2xl p-5 md:p-7 text-center shadow-xl">
+								<div className="bg-card border border-border/50 rounded-2xl p-5 md:p-7 text-center shadow-sm">
 									<p className="text-[0.65rem] font-bold uppercase text-muted-foreground tracking-widest mb-2">Número de Telefone</p>
 									<div className="flex items-center justify-center min-h-[3.5rem]">
 										{phoneDigits.length > 0 ? (
@@ -469,10 +476,10 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 									type="button"
 									size="lg"
 									onClick={() => handleGoToTransaction(shouldPassIntent ? "pontuar" : null)}
-									className="w-full rounded-2xl h-16 short:h-12 text-base font-black uppercase tracking-widest shadow-lg shadow-brand/20 bg-brand text-brand-foreground hover:bg-brand hover:opacity-90"
+									className="w-full rounded-2xl h-12 text-base font-bold shadow-sm bg-brand text-brand-foreground hover:bg-brand hover:opacity-90"
 								>
 									<BadgePercent className="w-5 h-5 mr-2" />
-									PONTUAR
+									Pontuar
 								</Button>
 							) : null}
 							{canRedeem ? (
@@ -480,26 +487,24 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 									type="button"
 									size="lg"
 									onClick={() => handleGoToTransaction(shouldPassIntent ? "resgatar" : null)}
-									className="w-full rounded-2xl h-16 short:h-12 text-base font-black uppercase tracking-widest shadow-lg bg-brand-secondary text-brand-secondary-foreground hover:bg-brand-secondary hover:opacity-90"
+									className="w-full rounded-2xl h-12 text-base font-bold shadow-sm bg-brand-secondary text-brand-secondary-foreground hover:bg-brand-secondary hover:opacity-90"
 								>
 									<Gift className="w-5 h-5 mr-2" />
-									RESGATAR
+									Resgatar
 								</Button>
 							) : null}
 						</div>
 					) : (
 						<div className="w-full flex flex-col items-center gap-2">
-							<p className="text-sm text-muted-foreground text-center font-medium">
-								Esta é a sua carteirinha do clube. As transações acontecem no caixa.
-							</p>
+							<p className="text-sm text-muted-foreground text-center font-medium">Esta é a sua carteirinha do clube. As transações acontecem no caixa.</p>
 							<Button
 								type="button"
 								size="lg"
 								onClick={handleGoToProfile}
-								className="w-full rounded-2xl h-16 short:h-12 text-base font-black uppercase tracking-widest shadow-lg shadow-brand/20 bg-brand text-brand-foreground hover:bg-brand hover:opacity-90"
+								className="w-full rounded-2xl h-12 text-base font-bold shadow-sm bg-brand text-brand-foreground hover:bg-brand hover:opacity-90"
 							>
 								<WalletCards className="w-5 h-5 mr-2" />
-								VER MEU CLUBE
+								Ver meu clube
 							</Button>
 						</div>
 					)}
@@ -561,13 +566,13 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 			{/* ===== CLIENT NOT FOUND — cadastro rápido (default de toda organização) ===== */}
 			{clientNotFound && !useRegistrationWizard ? (
 				<div className="w-full max-w-xl flex flex-col items-center justify-center animate-in zoom-in duration-300 motion-reduce:animate-none">
-					<div className="w-full bg-card border-2 border-brand/20 rounded-3xl p-8 md:p-10 short:p-5 flex flex-col gap-5 short:gap-3 shadow-xl">
+					<div className="w-full bg-card border border-brand/20 rounded-3xl p-8 md:p-10 short:p-5 flex flex-col gap-5 short:gap-3 shadow-sm">
 						<div className="flex items-center gap-4 short:gap-3 mb-1 short:mb-0">
 							<div className="p-3 short:p-2 bg-brand rounded-xl text-brand-foreground shadow-sm">
 								<UserPlus className="w-7 h-7 short:w-5 short:h-5" />
 							</div>
 							<div className="min-w-0">
-								<h3 className="font-black uppercase text-foreground text-xl short:text-lg tracking-tight">
+								<h3 className="font-extrabold text-foreground text-xl short:text-lg tracking-tight">
 									{isProfileFlow ? "CLUBE DE BENEFÍCIOS" : "NOVO CLIENTE"}
 								</h3>
 								<p className="text-sm text-muted-foreground">
@@ -672,7 +677,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 								type="submit"
 								size="lg"
 								disabled={isCreatingClient || !newClientName}
-								className="w-full mt-1 short:mt-0 rounded-2xl h-16 short:h-12 text-lg short:text-base font-bold shadow-lg shadow-brand/20 bg-brand text-brand-foreground hover:bg-brand hover:opacity-90 uppercase tracking-widest"
+								className="w-full mt-1 short:mt-0 rounded-2xl h-12 text-base font-bold shadow-sm bg-brand text-brand-foreground hover:bg-brand hover:opacity-90"
 							>
 								{isCreatingClient ? (
 									<>

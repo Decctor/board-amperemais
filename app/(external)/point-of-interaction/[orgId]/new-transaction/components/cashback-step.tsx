@@ -6,7 +6,7 @@ import { VirtualKeyboard } from "@/components/ui/virtual-keyboard";
 import { formatCashbackValue, formatToMoney, getCashbackUnitLabel } from "@/lib/formatting";
 import { useAutoScrollOnFocus } from "@/lib/hooks/use-auto-scroll-on-focus";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, BadgePercent, CreditCard, ShoppingCart } from "lucide-react";
+import { AlertTriangle, CreditCard, ShoppingCart } from "lucide-react";
 import { getLimitDescription } from "../../_shared/helpers/redemption-limit";
 import type { TRedemptionLimit } from "../../_shared/types";
 
@@ -61,20 +61,17 @@ export function CashbackStep({
 		>
 			<div className="flex flex-col md:flex-row gap-6 short:gap-3">
 				{/* Left Block - Cashback Usage */}
-				<div className="flex-1 bg-card rounded-3xl short:rounded-xl p-6 short:p-4 border-2 border-brand/5 shadow-sm flex flex-col gap-6 short:gap-3">
+				<div className="flex-1 bg-card rounded-3xl short:rounded-xl p-6 short:p-4 border border-brand/10 flex flex-col gap-6 short:gap-3">
 					<div className="flex justify-between items-center">
 						<div className="flex items-center gap-3 short:gap-1.5">
 							<div className="p-2 short:p-1 bg-green-100 rounded-lg short:rounded text-green-600">
 								<CreditCard className="w-5 h-5 short:w-3.5 short:h-3.5" />
 							</div>
-							<h3 className="font-black uppercase italic short:text-xs">{redemptionAllowed ? "Usar Cashback?" : "Seu Cashback"}</h3>
+							<h3 className="font-bold short:text-xs">{redemptionAllowed ? "Usar cashback?" : "Seu cashback"}</h3>
 						</div>
 						{redemptionAllowed ? (
 							<div
-								className={cn(
-									"inline-flex items-center rounded-full p-1 border border-brand/20 bg-background shadow-sm",
-									available === 0 && "opacity-60",
-								)}
+								className={cn("inline-flex items-center rounded-full p-1 border border-brand/20 bg-background shadow-sm", available === 0 && "opacity-60")}
 							>
 								<button
 									type="button"
@@ -148,7 +145,7 @@ export function CashbackStep({
 									formatValue={(v) => formatCashbackValue(v, redemptionLimit.terminologia)}
 									confirmLabel="Usar valor"
 									placeholder={formatCashbackValue(0, redemptionLimit.terminologia)}
-									triggerClassName="h-14 short:h-11 text-2xl short:text-xl font-black rounded-2xl short:rounded-lg border-2 short:border border-green-200 bg-green-50/30 hover:border-green-400"
+									triggerClassName="h-14 short:h-11 text-2xl short:text-xl font-black rounded-2xl short:rounded-lg border border-green-200 bg-green-50/30 hover:border-green-400"
 								/>
 							) : (
 								<Input
@@ -156,7 +153,7 @@ export function CashbackStep({
 									max={maxAllowed}
 									value={amount}
 									onChange={(e) => onAmountChange(Number(e.target.value))}
-									className="h-14 short:h-11 text-2xl short:text-xl font-black text-center rounded-2xl short:rounded-lg border-2 short:border border-green-200 bg-green-50/30"
+									className="h-14 short:h-11 text-2xl short:text-xl font-black text-center rounded-2xl short:rounded-lg border border-green-200 bg-green-50/30"
 									onFocus={handleScrollOnFocus}
 								/>
 							)}
@@ -165,13 +162,13 @@ export function CashbackStep({
 				</div>
 
 				{/* Right Block - Checkout Summary */}
-				<div className="flex-1 bg-brand rounded-3xl short:rounded-xl p-6 short:p-4 text-brand-foreground shadow-2xl relative overflow-hidden flex flex-col">
+				<div className="flex-1 bg-brand rounded-3xl short:rounded-xl p-6 short:p-4 text-brand-foreground shadow-sm relative overflow-hidden flex flex-col">
 					<div className="relative z-10 flex flex-col h-full">
 						<div className="flex items-center gap-3 short:gap-1.5">
 							<div className="p-2 short:p-1 bg-white/20 rounded-lg short:rounded text-white">
 								<ShoppingCart className="w-5 h-5 short:w-3.5 short:h-3.5" />
 							</div>
-							<h3 className="font-black uppercase italic short:text-xs text-white">Resumo da Venda</h3>
+							<h3 className="font-bold short:text-xs text-brand-foreground">Resumo da venda</h3>
 						</div>
 
 						<div className="flex flex-col gap-4 short:gap-2 mt-auto pt-6 short:pt-3">
@@ -191,12 +188,9 @@ export function CashbackStep({
 
 						<div className="flex flex-col gap-1 short:gap-0">
 							<span className="text-sm short:text-[0.7rem] font-bold uppercase tracking-widest opacity-80">Total a Pagar</span>
-							<span className="text-5xl lg:text-5xl md:text-4xl short:text-3xl font-black text-brand-foreground tracking-tighter">
-								{formatToMoney(finalValue)}
-							</span>
+							<span className="text-4xl md:text-3xl short:text-3xl font-extrabold text-brand-foreground tracking-tight">{formatToMoney(finalValue)}</span>
 						</div>
 					</div>
-					<BadgePercent className="absolute -right-8 -bottom-8 w-48 h-48 short:w-24 short:h-24 text-white/5 rotate-12" />
 				</div>
 			</div>
 

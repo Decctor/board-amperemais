@@ -45,13 +45,13 @@ export function PrizeConfirmationStep({
 			}}
 		>
 			<div className="text-center space-y-2 short:space-y-0.5">
-				<h2 className="text-xl short:text-lg font-black uppercase tracking-tight">Confirmar Resgate</h2>
+				<h2 className="text-xl short:text-lg font-extrabold tracking-tight">Confirmar resgate</h2>
 				<p className="text-muted-foreground short:text-xs">Confira os dados e digite a senha do operador.</p>
 			</div>
 
 			{/* Prize compact card */}
 			{selectedPrize && (
-				<div className="bg-amber-50 border-2 short:border border-amber-200 rounded-3xl short:rounded-xl p-4 short:p-2 flex items-center gap-4 short:gap-2">
+				<div className="bg-amber-50 border border-amber-200 rounded-2xl short:rounded-xl p-4 short:p-2 flex items-center gap-4 short:gap-2">
 					<div className="relative w-16 h-16 short:w-10 short:h-10 min-w-16 short:min-w-10 rounded-xl short:rounded-lg overflow-hidden">
 						{selectedPrize.imagemCapaUrl ? (
 							<Image src={selectedPrize.imagemCapaUrl} alt={selectedPrize.titulo} fill className="object-cover" />
@@ -62,7 +62,7 @@ export function PrizeConfirmationStep({
 						)}
 					</div>
 					<div className="flex-1 min-w-0">
-						<h3 className="font-black text-sm short:text-xs uppercase tracking-tight truncate">{selectedPrize.titulo}</h3>
+						<h3 className="font-bold text-sm short:text-xs tracking-tight truncate">{selectedPrize.titulo}</h3>
 						<p className="font-black text-lg short:text-base text-amber-700">{formatCashbackValue(selectedPrize.valor, terminology)}</p>
 						<p className="text-xs short:text-[0.65rem] text-muted-foreground">Valor comercial: {formatToMoney(selectedPrize.valorVenda)}</p>
 					</div>

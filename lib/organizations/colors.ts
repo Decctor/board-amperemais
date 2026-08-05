@@ -9,10 +9,10 @@
 // Cores padrão aplicadas quando a organização não configurou a própria identidade.
 // Espelham os tokens `--color-brand*` de styles/globals.css.
 export const DEFAULT_ORG_COLORS = {
-	primary: "#FFB900", // Yellow/Gold - Current period charts, progress bars, buttons
-	primaryForeground: "#000000", // Black text on yellow
-	secondary: "#24549C", // Blue - Previous period charts, alternative accents
-	secondaryForeground: "#FFFFFF", // White text on blue
+	primary: "#24549C", // Blue - Structural actions, active states, focus and navigation
+	primaryForeground: "#FFFFFF", // White text on blue
+	secondary: "#FFB900", // Yellow/Gold - Cashback, rewards and celebration moments
+	secondaryForeground: "#000000", // Black text on yellow
 } as const;
 
 // WCAG relative luminance of a hex color (0 = black, 1 = white)

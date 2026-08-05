@@ -45,7 +45,7 @@ export function MobilePrizeConfirmationStep({
 						)}
 					</div>
 					<div className="min-w-0 flex-1">
-						<p className="truncate text-base font-black uppercase tracking-tight">{selectedPrize.titulo}</p>
+						<p className="truncate text-base font-bold tracking-tight">{selectedPrize.titulo}</p>
 						<p className="text-lg font-black text-amber-700">{formatCashbackValue(selectedPrize.valor, terminology)}</p>
 						<p className="text-xs text-muted-foreground">Valor comercial: {formatToMoney(selectedPrize.valorVenda)}</p>
 					</div>
@@ -79,7 +79,7 @@ export function MobilePrizeConfirmationStep({
 				</div>
 			</div>
 
-			<Button onClick={onSubmit} size="lg" className="h-14 w-full rounded-2xl text-sm font-black uppercase tracking-[0.2em]">
+			<Button onClick={onSubmit} size="lg" className="h-12 w-full rounded-2xl text-sm font-bold">
 				Enviar para aprovação
 			</Button>
 		</div>

@@ -68,8 +68,8 @@ export function hexToHsl(hex: string): { h: number; s: number; l: number } {
 
 // Tailwind gradient class based on primary color
 export function getPrimaryGradientClass(primaryColor: string): string {
-	// For the default yellow, use the existing gradient
-	if (primaryColor === DEFAULT_ORG_COLORS.primary || primaryColor === "#ffb900") {
+	// Preserve the legacy amber gradient only for organizations that explicitly use amber as primary.
+	if (primaryColor.toLowerCase() === "#ffb900") {
 		return "bg-linear-to-r from-yellow-200 to-amber-400";
 	}
 	// For custom colors, we'll use inline styles instead
@@ -241,7 +241,7 @@ export function useOrgColors(): OrgColorsContextValue {
 				secondaryForeground: DEFAULT_ORG_COLORS.secondaryForeground,
 			},
 			getPrimaryGradientStyle: () => ({
-				background: "linear-gradient(to right, #fde68a, #fbbf24)",
+				background: "linear-gradient(to right, #dbe7f7, #24549c)",
 			}),
 			getChartColors: () => ({
 				current: DEFAULT_ORG_COLORS.primary,
