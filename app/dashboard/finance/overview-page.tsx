@@ -8,9 +8,11 @@ import type { TGetFinancesOverallStatsOutput } from "@/app/api/finances/stats/ro
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import { ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { SlideMotionVariants } from "@/lib/animations";
-import { formatToMoney } from "@/lib/formatting";
+import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { useFinancesOverallStats } from "@/lib/queries/finances";
 import { cn } from "@/lib/utils";
+import { DeltaBadge } from "./_components/delta-badge";
+import { StatCard } from "./_components/stat-card";
 
 export default function FinanceOverviewPage() {
 	const [showResultsByAccount, setShowResultsByAccount] = useState(false);
@@ -20,6 +22,12 @@ export default function FinanceOverviewPage() {
 	const totalRevenue = stats?.totalRevenue || 0;
 	const totalExpense = stats?.totalExpense || 0;
 	const totalCost = stats?.totalCost || 0;
+	const totalResult = totalRevenue - totalCost - totalExpense;
+	const previousRevenue = stats?.previous.totalRevenue || 0;
+	const previousExpense = stats?.previous.totalExpense || 0;
+	const previousCost = stats?.previous.totalCost || 0;
+	const previousResult = previousRevenue - previousCost - previousExpense;
+	const resultMargin = totalRevenue > 0 ? (totalResult / totalRevenue) * 100 : null;
 	return (
 		<div className="flex w-full flex-col gap-4">
 			<div className="w-full flex items-center justify-end">
@@ -29,6 +37,62 @@ export default function FinanceOverviewPage() {
 					className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
 					value={{ after: params.periodAfter, before: params.periodBefore }}
 					handleChange={(value) => updateParams({ periodAfter: value.after, periodBefore: value.before })}
+				/>
+			</div>
+			<div className="grid w-full grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+				<StatCard
+					icon={<MoveUp className="w-4 h-4 min-w-4 min-h-4" />}
+					iconWrapperClassName="bg-green-200 text-green-600"
+					label="RECEITAS"
+					value={
+						<div className="flex items-center gap-2">
+							<h1 className="text-sm font-medium">{formatToMoney(totalRevenue)}</h1>
+							<DeltaBadge current={totalRevenue} previous={previousRevenue} />
+						</div>
+					}
+				/>
+				<StatCard
+					icon={<MoveDown className="w-4 h-4 min-w-4 min-h-4" />}
+					iconWrapperClassName="bg-orange-200 text-orange-600"
+					label="CUSTOS"
+					value={
+						<div className="flex items-center gap-2">
+							<h1 className="text-sm font-medium">{formatToMoney(totalCost)}</h1>
+							<DeltaBadge current={totalCost} previous={previousCost} invert />
+						</div>
+					}
+				/>
+				<StatCard
+					icon={<MoveDown className="w-4 h-4 min-w-4 min-h-4" />}
+					iconWrapperClassName="bg-red-200 text-red-600"
+					label="DESPESAS"
+					value={
+						<div className="flex items-center gap-2">
+							<h1 className="text-sm font-medium">{formatToMoney(totalExpense)}</h1>
+							<DeltaBadge current={totalExpense} previous={previousExpense} invert />
+						</div>
+					}
+				/>
+				<StatCard
+					icon={<BadgeDollarSign className="w-4 h-4 min-w-4 min-h-4" />}
+					iconWrapperClassName="bg-blue-200 text-blue-600"
+					label="RESULTADO"
+					value={
+						<div className="flex items-center gap-2">
+							<h1 className={cn("text-sm font-medium", { "text-red-600 dark:text-red-400": totalResult < 0 })}>{formatToMoney(totalResult)}</h1>
+							{resultMargin !== null ? (
+								<span
+									className={cn("rounded-md px-1.5 py-0.5 text-[0.6rem] font-medium tabular-nums", {
+										"bg-green-500/10 text-green-700 dark:text-green-400": resultMargin >= 0,
+										"bg-red-500/10 text-red-700 dark:text-red-400": resultMargin < 0,
+									})}
+								>
+									MARGEM {formatDecimalPlaces(resultMargin, 1, 1)}%
+								</span>
+							) : null}
+							<DeltaBadge current={totalResult} previous={previousResult} />
+						</div>
+					}
 				/>
 			</div>
 			<div className="flex w-full flex-col gap-6 lg:flex-row">
@@ -242,7 +306,6 @@ type TransactionsGraphProps = {
 	daily: TGetFinancesOverallStatsOutput["data"]["daily"];
 };
 function TransactionsGraph({ daily }: TransactionsGraphProps) {
-	console.log(daily);
 	const chartConfig = {
 		effective: {
 			label: "EFETIVADO",
@@ -274,32 +337,8 @@ function TransactionsGraph({ daily }: TransactionsGraphProps) {
 						<Cell key={item.day} fill={item.expected > 0 ? "#ca8a04" : "#dc2626 "} />
 					))}
 				</Bar>
-				<ChartLegend content={<ChartLegendContent payload={daily} />} className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center" />
+				<ChartLegend content={<ChartLegendContent />} className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center" />
 			</BarChart>
 		</ChartContainer>
-	);
-}
-
-type StatCardProps = {
-	className?: string;
-	icon: React.ReactNode;
-	iconWrapperClassName?: string;
-	label: string;
-	value: string | number | React.ReactNode;
-};
-
-export function StatCard({ className, icon, iconWrapperClassName, label, value }: StatCardProps) {
-	return (
-		<div
-			className={cn("bg-card border-border flex w-full flex-row items-center justify-between gap-1 rounded-xl border px-3 py-4 shadow-xs", className)}
-		>
-			<div className="flex w-full flex-col items-center justify-between gap-2 lg:flex-row">
-				<div className="flex items-center justify-start gap-2">
-					<div className={cn("flex h-7 w-7 p-1 items-center justify-center rounded-full", iconWrapperClassName)}>{icon}</div>
-					<h1 className="text-xs font-medium leading-none tracking-tight">{label}</h1>
-				</div>
-				{typeof value === "string" || typeof value === "number" ? <h1 className="text-sm font-medium">{value}</h1> : <div>{value}</div>}
-			</div>
-		</div>
 	);
 }

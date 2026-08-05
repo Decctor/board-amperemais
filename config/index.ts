@@ -856,6 +856,21 @@ export const AppRoutes = [
 		description: "Conciliação bancária das contas financeiras do seu negócio.",
 	},
 	{
+		path: "/dashboard/finance/reports/income-statement",
+		title: "DRE",
+		description: "Demonstrativo gerencial do resultado do exercício por competência.",
+	},
+	{
+		path: "/dashboard/finance/reports/cash-flow",
+		title: "Fluxo de Caixa",
+		description: "Posição consolidada de caixa, burn, runway e projeção diária.",
+	},
+	{
+		path: "/dashboard/finance/reports/receivables-payables",
+		title: "Recebíveis & Pagáveis",
+		description: "Aging de vencimentos, atrasos médios, custos de fricção e liquidez.",
+	},
+	{
 		path: "/dashboard/fiscal",
 		title: "Fiscal",
 		description: "Painel de acompanhamento e gestão do seu recursos fiscais.",

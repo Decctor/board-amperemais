@@ -10,6 +10,7 @@ import {
 	BookText,
 	Boxes,
 	CalendarCheck,
+	ChartNoAxesColumnIncreasing,
 	CirclePlay,
 	CreditCard,
 	Factory,
@@ -269,6 +270,14 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 						title: "Visão geral",
 						url: appRoutes.finance.root(),
 						icon: <TrendingUp className="size-4" />,
+						items: null,
+					},
+					{
+						id: "finance-reports",
+						capability: "finance",
+						title: "Relatórios",
+						url: appRoutes.finance.reports.root(),
+						icon: <ChartNoAxesColumnIncreasing className="size-4" />,
 						items: null,
 					},
 					{
