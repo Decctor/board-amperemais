@@ -49,9 +49,7 @@ export default function ReceivablesPayablesPage() {
 					labelClassName="hidden"
 					className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
 					value={{ after: params.periodAfter, before: params.periodBefore }}
-					handleChange={(value) =>
-						updateParams({ periodAfter: value.after ?? params.periodAfter, periodBefore: value.before ?? params.periodBefore })
-					}
+					handleChange={(value) => updateParams({ periodAfter: value.after ?? params.periodAfter, periodBefore: value.before ?? params.periodBefore })}
 				/>
 			</div>
 
@@ -203,7 +201,9 @@ export default function ReceivablesPayablesPage() {
 									<h1 className="text-xs font-medium tabular-nums">{formatToMoney(row.total)}</h1>
 								</div>
 							))}
-							{data && data.friccao.taxasPorMetodo.length === 0 ? <p className="text-xs text-muted-foreground">Nenhuma taxa registrada no período.</p> : null}
+							{data && data.friccao.taxasPorMetodo.length === 0 ? (
+								<p className="text-xs text-muted-foreground">Nenhuma taxa registrada no período.</p>
+							) : null}
 						</div>
 					</div>
 				</div>

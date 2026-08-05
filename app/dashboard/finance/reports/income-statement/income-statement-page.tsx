@@ -45,9 +45,7 @@ export default function IncomeStatementPage() {
 					labelClassName="hidden"
 					className="hover:bg-accent hover:text-accent-foreground border-none shadow-none"
 					value={{ after: params.periodAfter, before: params.periodBefore }}
-					handleChange={(value) =>
-						updateParams({ periodAfter: value.after ?? params.periodAfter, periodBefore: value.before ?? params.periodBefore })
-					}
+					handleChange={(value) => updateParams({ periodAfter: value.after ?? params.periodAfter, periodBefore: value.before ?? params.periodBefore })}
 				/>
 			</div>
 

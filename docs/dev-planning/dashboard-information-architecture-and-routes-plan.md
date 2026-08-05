@@ -297,12 +297,12 @@ Configurações
 ## Module-local secondary navigation
 
 - [ ] Keep inventory overview, movements, and lots in local secondary navigation.
-- [ ] Keep finance statistics, entries, transactions, accounts, and reconciliation in local secondary navigation for this migration.
+- [x] Keep finance statistics, entries, transactions, accounts, and reconciliation in local secondary navigation for this migration. (Superseded afterwards: promoted to canonical routes by `finance-analytics-and-route-separation-plan.md`.)
 - [ ] Keep fiscal documents and configuration in local secondary navigation.
 - [ ] Keep production records and recipes in local secondary navigation.
 - [ ] Keep purchases and received documents in local secondary navigation.
 - [ ] Ensure each local tab preserves its current query-state behavior where useful.
-- [ ] Record follow-up candidates if a local tab later needs its own permission or deep-link boundary.
+- [x] Record follow-up candidates if a local tab later needs its own permission or deep-link boundary. (Finance recorded and executed in `finance-analytics-and-route-separation-plan.md`.)
 
 ## Clean cutover and old-route removal
 

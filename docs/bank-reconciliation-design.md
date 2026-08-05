@@ -220,8 +220,10 @@ financeiro: { visualizar, criar, editar, conciliar } (optional/nullable)
 
 ## 8. UI
 
-Nova aba **"Conciliação"** no Tabs de `app/dashboard/operational/finances/finances-page.tsx`
-(`?view=reconciliation` via nuqs) → `finances-page-reconciliation.tsx`:
+Workspace **"Conciliação"** com rota canônica própria — `/dashboard/finance/reconciliation` →
+`app/dashboard/finance/reconciliation/reconciliation-page.tsx` (a antiga aba `?view=reconciliation`
+foi promovida a rota na separação do módulo financeiro; ver
+`docs/dev-planning/finance-analytics-and-route-separation-plan.md`):
 
 - **Header da aba**: seletor de conta financeira (BANCO/CARTEIRA_DIGITAL), botão "Importar extrato",
   cards-resumo (pendentes, sugeridas, conciliadas no período).

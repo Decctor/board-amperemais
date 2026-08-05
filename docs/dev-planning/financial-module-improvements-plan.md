@@ -374,9 +374,9 @@ respeitada.
 
 - [x] Tornar a listagem de contas type-aware.
 - [x] Tornar o gráfico de conta type-aware.
-- [ ] Exibir `totalCaixa`.
-- [ ] Exibir `totalPassivos`.
-- [ ] Exibir `posicaoLiquida = totalCaixa - totalPassivos`.
+- [x] Exibir `totalCaixa`. (Entregue no workspace de fluxo de caixa — `/dashboard/finance/reports/cash-flow`, ver `finance-analytics-and-route-separation-plan.md`.)
+- [x] Exibir `totalPassivos`. (Idem — chip "PASSIVOS" no card CAIXA CONSOLIDADO.)
+- [x] Exibir `posicaoLiquida = totalCaixa - totalPassivos`. (Idem — calculada em `lib/finances/analytics/balances.ts` e exposta por `/api/finances/analytics/cash-flow`.)
 - [ ] Não incluir investimento em “caixa disponível” sem uma decisão explícita
       sobre liquidez; usar total separado se necessário.
 - [x] Revisar labels e cores para não representar dívida como dinheiro
@@ -409,7 +409,7 @@ respeitada.
 
 - [ ] Compra em cartão recebe a previsão correta no cliente e no servidor.
 - [ ] Saldo de cartão representa dívida, não disponibilidade.
-- [ ] Totais do dashboard separam caixa e passivos.
+- [x] Totais do dashboard separam caixa e passivos. (Atendido pelo workspace de fluxo de caixa; ver `finance-analytics-and-route-separation-plan.md`.)
 - [ ] Cartão não aparece onde apenas contas de recebimento são válidas.
 - [ ] Fluxos bancários existentes não sofrem regressão.
 

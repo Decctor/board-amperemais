@@ -11,7 +11,9 @@ type StatCardProps = {
 
 export function StatCard({ className, icon, iconWrapperClassName, label, value }: StatCardProps) {
 	return (
-		<div className={cn("bg-card border-border flex w-full flex-row items-center justify-between gap-1 rounded-xl border px-3 py-4 shadow-2xs", className)}>
+		<div
+			className={cn("bg-card border-border flex w-full flex-row items-center justify-between gap-1 rounded-xl border px-3 py-4 shadow-2xs", className)}
+		>
 			<div className="flex w-full flex-col items-center justify-between gap-2 lg:flex-row">
 				<div className="flex items-center justify-start gap-2">
 					<div className={cn("flex h-7 w-7 p-1 items-center justify-center rounded-full", iconWrapperClassName)}>{icon}</div>

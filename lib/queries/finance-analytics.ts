@@ -1,6 +1,9 @@
 import type { TGetFinancesCashFlowOutput } from "@/app/api/finances/analytics/cash-flow/route";
 import type { TGetFinancesDreInput, TGetFinancesDreOutput } from "@/app/api/finances/analytics/dre/route";
-import type { TGetFinancesReceivablesPayablesInput, TGetFinancesReceivablesPayablesOutput } from "@/app/api/finances/analytics/receivables-payables/route";
+import type {
+	TGetFinancesReceivablesPayablesInput,
+	TGetFinancesReceivablesPayablesOutput,
+} from "@/app/api/finances/analytics/receivables-payables/route";
 import axios from "axios";
 import dayjs from "dayjs";
 import { useState } from "react";
