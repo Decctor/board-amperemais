@@ -1,13 +1,14 @@
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { getDayStringsBetweenDates, isDateOverdue } from "@/lib/dates";
 import { canViewFinances } from "@/lib/permissions/finances";
-import { getAccountChartIdsByNatureza } from "@/lib/finances";
+import { FINANCIAL_TRANSFER_METHOD, getAccountChartIdsByNatureza } from "@/lib/finances";
+import { getPreviousPeriod } from "@/lib/finances/analytics/periods";
 import { db } from "@/services/drizzle";
 import { accountingEntries, financialTransactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import createHttpError from "http-errors";
 import z from "zod";
-import { and, eq, gte, inArray, lte, sum } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, ne, sum } from "drizzle-orm";
 import { formatAsNumber } from "@/lib/formatting";
 import { appApiHandler } from "@/lib/app-api";
 import { NextRequest, NextResponse } from "next/server";
@@ -121,7 +122,6 @@ async function getFinancesOverallStats({ input, session }: { input: TGetFinances
 	// Process credited amounts
 	for (const item of creditedByAccount) {
 		const accountName = accountMap.get(item.accountId) || "Unknown Account";
-		console.log("ACCOUNT NAME", accountName);
 		resultMap.set(item.accountId, {
 			accountId: item.accountId,
 			accountName,
@@ -154,62 +154,38 @@ async function getFinancesOverallStats({ input, session }: { input: TGetFinances
 	}
 	const resultByAccounts = Array.from(resultMap.values());
 
-	const totalRevenueResult =
-		revenueAccountIds.length > 0
-			? await db
-					.select({
-						total: sum(accountingEntries.valor),
-					})
-					.from(accountingEntries)
-					.where(
-						and(
-							eq(accountingEntries.organizacaoId, userOrgId),
-							gte(accountingEntries.dataCompetencia, periodAfter),
-							lte(accountingEntries.dataCompetencia, periodBefore),
-							inArray(accountingEntries.idContaCredito, revenueAccountIds),
-						),
-					)
-			: [{ total: 0 }];
+	// Soma dos lançamentos de um lado (crédito p/ receita, débito p/ custo e despesa) num intervalo.
+	const sumEntriesTotal = async (accountIds: string[], side: "credito" | "debito", range: { after: Date; before: Date }) => {
+		if (accountIds.length === 0) return 0;
+		const sideColumn = side === "credito" ? accountingEntries.idContaCredito : accountingEntries.idContaDebito;
+		const result = await db
+			.select({ total: sum(accountingEntries.valor) })
+			.from(accountingEntries)
+			.where(
+				and(
+					eq(accountingEntries.organizacaoId, userOrgId),
+					gte(accountingEntries.dataCompetencia, range.after),
+					lte(accountingEntries.dataCompetencia, range.before),
+					inArray(sideColumn, accountIds),
+				),
+			);
+		return formatAsNumber(result[0]?.total || 0);
+	};
 
-	const totalRevenueResultValue = formatAsNumber(totalRevenueResult[0]?.total || 0);
+	const currentRange = { after: periodAfter, before: periodBefore };
+	const previousRange = getPreviousPeriod(currentRange);
 
-	const totalExpenseResult =
-		expenseAccountIds.length > 0
-			? await db
-					.select({
-						total: sum(accountingEntries.valor),
-					})
-					.from(accountingEntries)
-					.where(
-						and(
-							eq(accountingEntries.organizacaoId, userOrgId),
-							gte(accountingEntries.dataCompetencia, periodAfter),
-							lte(accountingEntries.dataCompetencia, periodBefore),
-							inArray(accountingEntries.idContaDebito, expenseAccountIds),
-						),
-					)
-			: [{ total: 0 }];
+	const [totalRevenueResultValue, totalExpenseResultValue, totalCostResultValue, previousTotalRevenue, previousTotalExpense, previousTotalCost] =
+		await Promise.all([
+			sumEntriesTotal(revenueAccountIds, "credito", currentRange),
+			sumEntriesTotal(expenseAccountIds, "debito", currentRange),
+			sumEntriesTotal(costAccountIds, "debito", currentRange),
+			sumEntriesTotal(revenueAccountIds, "credito", previousRange),
+			sumEntriesTotal(expenseAccountIds, "debito", previousRange),
+			sumEntriesTotal(costAccountIds, "debito", previousRange),
+		]);
 
-	const totalExpenseResultValue = formatAsNumber(totalExpenseResult[0]?.total || 0);
-
-	const totalCostResult =
-		costAccountIds.length > 0
-			? await db
-					.select({
-						total: sum(accountingEntries.valor),
-					})
-					.from(accountingEntries)
-					.where(
-						and(
-							eq(accountingEntries.organizacaoId, userOrgId),
-							gte(accountingEntries.dataCompetencia, periodAfter),
-							lte(accountingEntries.dataCompetencia, periodBefore),
-							inArray(accountingEntries.idContaDebito, costAccountIds),
-						),
-					)
-			: [{ total: 0 }];
-	const totalCostResultValue = formatAsNumber(totalCostResult[0]?.total || 0);
-
+	// Transferências entre contas zeram no líquido, mas inflariam os fluxos medidos abaixo.
 	const totalInFlowResult = await db
 		.select({ total: sum(financialTransactions.valor) })
 		.from(financialTransactions)
@@ -217,6 +193,7 @@ async function getFinancesOverallStats({ input, session }: { input: TGetFinances
 			and(
 				eq(financialTransactions.organizacaoId, userOrgId),
 				eq(financialTransactions.tipo, "ENTRADA"),
+				ne(financialTransactions.metodo, FINANCIAL_TRANSFER_METHOD),
 				gte(financialTransactions.dataEfetivacao, periodAfter),
 				lte(financialTransactions.dataEfetivacao, periodBefore),
 			),
@@ -230,15 +207,17 @@ async function getFinancesOverallStats({ input, session }: { input: TGetFinances
 			and(
 				eq(financialTransactions.organizacaoId, userOrgId),
 				eq(financialTransactions.tipo, "SAIDA"),
+				ne(financialTransactions.metodo, FINANCIAL_TRANSFER_METHOD),
 				gte(financialTransactions.dataEfetivacao, periodAfter),
 				lte(financialTransactions.dataEfetivacao, periodBefore),
 			),
 		);
 	const totalOutFlow = totalOutFlowResult[0]?.total || 0;
 	const transactions = await db.query.financialTransactions.findMany({
-		where: (fields, { and, or, gte, lte, eq, isNull }) =>
+		where: (fields, { and, or, gte, lte, eq, ne, isNull }) =>
 			and(
 				eq(fields.organizacaoId, userOrgId),
+				ne(fields.metodo, FINANCIAL_TRANSFER_METHOD),
 				or(isNull(fields.dataEfetivacao), and(gte(fields.dataEfetivacao, periodAfter), lte(fields.dataEfetivacao, periodBefore))),
 			),
 		columns: {
@@ -282,7 +261,6 @@ async function getFinancesOverallStats({ input, session }: { input: TGetFinances
 		} else {
 			// Defining flags based on the transaction date
 			const currentDateDayJs = dayjs();
-			console.log(currentDateDayJs.get("date"), dayjs(transactionExpectedDate).get("date"));
 			const transactionIsForToday = transactionExpectedDate && dayjs(transactionExpectedDate).isSame(new Date(), "day");
 			const transactionIsOverdue =
 				transactionExpectedDate && isDateOverdue({ date: transactionExpectedDate, inRelationTo: currentDateDayJs, useEndOfDay: true });
@@ -310,6 +288,13 @@ async function getFinancesOverallStats({ input, session }: { input: TGetFinances
 			totalRevenue: totalRevenueResultValue,
 			totalExpense: totalExpenseResultValue,
 			totalCost: totalCostResultValue,
+			// Mesmas métricas na janela imediatamente anterior de duração idêntica, para deltas na UI.
+			// Campos em inglês por consistência com o payload legado deste endpoint.
+			previous: {
+				totalRevenue: previousTotalRevenue,
+				totalExpense: previousTotalExpense,
+				totalCost: previousTotalCost,
+			},
 			totalInFlow,
 			totalOutFlow,
 			totalPendingTransactions: reduced.totalPendingTransactions,

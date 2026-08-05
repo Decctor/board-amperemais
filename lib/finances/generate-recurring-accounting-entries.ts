@@ -12,7 +12,7 @@ function getDateOnOccurrence(occurrenceDate: Date, day: number) {
 	return month.date(Math.min(Math.max(Math.trunc(day), 1), month.daysInMonth())).toDate();
 }
 
-function getTransactionForecastDate({
+export function getTransactionForecastDate({
 	occurrenceDate,
 	template,
 	account,
