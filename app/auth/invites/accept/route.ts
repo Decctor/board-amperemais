@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 				admin: false,
 				nome: invitation.nome,
 				email: invitation.email,
-				telefone: "",
+				telefone: invitation.telefone ?? "",
 				usuario: formatAsSlug(invitation.nome),
 				senha: "",
 			})

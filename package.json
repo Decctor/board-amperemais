@@ -48,6 +48,7 @@
 		"report:test-send": "tsx ./scripts/send-report-template-test.ts",
 		"meta:templates:inspect": "tsx ./scripts/inspect-meta-whatsapp-templates.ts",
 		"meta:templates:create-service-transfer": "tsx ./scripts/create-service-transfer-template.ts",
+		"meta:templates:create-organization-invite": "tsx ./scripts/create-organization-invite-template.ts",
 		"brand:export": "tsx ./scripts/export-brand-asset.ts",
 		"parse:congelatte": "tsx ./scripts/parse-congelatte-recipes.ts",
 		"map:congelatte": "tsx ./scripts/congelatte-map-products.ts",

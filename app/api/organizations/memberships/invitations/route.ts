@@ -1,7 +1,8 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { EmailTemplate, sendEmailWithResend } from "@/lib/email";
+import { sendOrganizationInvite } from "@/lib/organizations/invite-delivery";
+import { ORGANIZATION_INVITE_EXPIRES_IN_HOURS } from "@/lib/organizations/invite-template";
 import { OrganizationMembershipInvitationSchema } from "@/schemas/organizations";
 import { db } from "@/services/drizzle";
 import { organizationMembershipInvitations } from "@/services/drizzle/schema";
@@ -24,12 +25,15 @@ export type TCreateOrganizationMembershipInvitationInput = z.infer<typeof Create
 async function createOrganizationMembershipInvitation({
 	input,
 	session,
-}: { input: TCreateOrganizationMembershipInvitationInput; session: TAuthUserSession }) {
+}: {
+	input: TCreateOrganizationMembershipInvitationInput;
+	session: TAuthUserSession;
+}) {
 	const sessionUserOrg = session.membership?.organizacao.id;
 	if (!sessionUserOrg) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const { invitation } = input;
 
-	const invitationExpirationDate = dayjs().add(1, "hour").toDate();
+	const invitationExpirationDate = dayjs().add(ORGANIZATION_INVITE_EXPIRES_IN_HOURS, "hour").toDate();
 	const insertedInvitation = await db
 		.insert(organizationMembershipInvitations)
 		.values({
@@ -45,14 +49,14 @@ async function createOrganizationMembershipInvitation({
 	if (!insertedInvitationId)
 		throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar convite de membro da organização.");
 
-	const baseUrl = process.env.NEXT_PUBLIC_APP_URL as string;
-	const inviteLink = `${baseUrl}/auth/invites/accept?invitationId=${insertedInvitationId}`;
-	const expiresInHours = 1;
-	await sendEmailWithResend(invitation.email, EmailTemplate.OrganizationInvite, {
-		inviteLink,
-		invitedName: invitation.nome,
+	await sendOrganizationInvite({
+		invitationId: insertedInvitationId,
+		organizacaoId: sessionUserOrg,
 		organizationName: session.membership?.organizacao.nome ?? null,
-		expiresInHours,
+		organizationLogoUrl: session.membership?.organizacao.logoUrl ?? null,
+		invitedName: invitation.nome,
+		email: invitation.email,
+		phone: invitation.telefone,
 	});
 
 	return {
@@ -91,7 +95,10 @@ export type TGetOrganizationMembershipInvitationsInput = z.infer<typeof GetOrgan
 async function getOrganizationMembershipInvitations({
 	input,
 	session,
-}: { input: TGetOrganizationMembershipInvitationsInput; session: TAuthUserSession }) {
+}: {
+	input: TGetOrganizationMembershipInvitationsInput;
+	session: TAuthUserSession;
+}) {
 	const sessionUserOrg = session.membership?.organizacao.id;
 	if (!sessionUserOrg) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	const { pendingOnly } = input;

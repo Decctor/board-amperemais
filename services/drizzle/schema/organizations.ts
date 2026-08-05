@@ -144,6 +144,7 @@ export const organizationMembershipInvitations = newTable("organization_membersh
 		.notNull(),
 	nome: text("nome").notNull(),
 	email: text("email").notNull(),
+	telefone: text("telefone"), // opcional — quando preenchido, o convite também é entregue por WhatsApp
 	vendedorAplicavel: boolean("vendedor_aplicavel").notNull().default(false), // defines whether or not the new user should be attributed to a seller
 	vendedorId: varchar("vendedor_id", { length: 255 }).references(() => sellers.id),
 	permissoes: jsonb("permissoes").$type<TOrganizationMemberPermissions>().notNull(),

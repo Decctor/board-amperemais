@@ -1,9 +1,11 @@
 import type { CSSProperties } from "react";
 
 import { brandLogoSource } from "@/components/Brand/BrandLogo";
+import { getWatermarkLayout, RECOMPRA_BRAND_BLUE, RECOMPRA_BRAND_YELLOW } from "@/lib/brand/watermark-layout";
 
-export const RECOMPRA_BRAND_BLUE = "#24549C";
-export const RECOMPRA_BRAND_YELLOW = "#FFB900";
+// Reexportados para não quebrar quem já importa daqui; a fonte da verdade é
+// `lib/brand/watermark-layout` (compartilhada com o cabeçalho satori dos convites).
+export { getWatermarkCanvasSize, getWatermarkLayout, RECOMPRA_BRAND_BLUE, RECOMPRA_BRAND_YELLOW } from "@/lib/brand/watermark-layout";
 
 const FONT_STACK = "var(--font-raleway), ui-sans-serif, system-ui, sans-serif";
 
@@ -68,38 +70,4 @@ export default function OrganizationBrandWatermark({
 			</div>
 		</div>
 	);
-}
-
-type WatermarkLayout = {
-	width: number;
-	height: number;
-	padding: number;
-	overlap: number;
-	border: number;
-	shadowBlur: number;
-	shadowOffset: number;
-};
-
-export function getWatermarkLayout(diameter: number, outerPaddingPercent = 10): WatermarkLayout {
-	const safeOuterPaddingPercent = Math.min(Math.max(outerPaddingPercent, 4), 160);
-	const padding = Math.round(diameter * (safeOuterPaddingPercent / 100));
-	const overlap = Math.round(diameter * 0.16);
-	const border = Math.max(2, Math.round(diameter * 0.012));
-	const shadowBlur = Math.round(diameter * 0.05);
-	const shadowOffset = Math.round(diameter * 0.016);
-
-	return {
-		width: diameter * 2 - overlap + padding * 2,
-		height: diameter + padding * 2,
-		padding,
-		overlap,
-		border,
-		shadowBlur,
-		shadowOffset,
-	};
-}
-
-export function getWatermarkCanvasSize(diameter: number, outerPaddingPercent = 10) {
-	const { width, height } = getWatermarkLayout(diameter, outerPaddingPercent);
-	return { width, height };
 }

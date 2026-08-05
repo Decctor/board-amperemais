@@ -1,4 +1,4 @@
-import { supabaseClient } from "@/services/supabase";
+import { uploadPublicAsset } from "@/lib/files-storage/public-assets";
 import type { TReportFrequency } from "./types";
 
 type UploadReportImageParams = {
@@ -14,25 +14,10 @@ export async function uploadReportImage({
 	storageKey,
 	pngBuffer,
 }: UploadReportImageParams): Promise<{ publicUrl: string; storagePath: string }> {
-	const storagePath = `/public/reports/${organizacaoId}/${frequency}/${storageKey}.png`;
-	const pngBytes = Uint8Array.from(pngBuffer);
-	const pngBlob = new Blob([pngBytes], { type: "image/png" });
-
-	const { data, error } = await supabaseClient.storage.from("files").upload(storagePath, pngBlob, {
+	return uploadPublicAsset({
+		storagePath: `/public/reports/${organizacaoId}/${frequency}/${storageKey}.png`,
+		body: pngBuffer,
 		contentType: "image/png",
-		upsert: true,
+		errorLabel: "imagem do relatório",
 	});
-
-	if (error) {
-		throw new Error(`Falha ao fazer upload da imagem do relatório: ${error.message}`);
-	}
-
-	const {
-		data: { publicUrl },
-	} = supabaseClient.storage.from("files").getPublicUrl(storagePath);
-
-	return {
-		publicUrl,
-		storagePath: data.path,
-	};
 }

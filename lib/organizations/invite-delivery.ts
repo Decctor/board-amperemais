@@ -1,0 +1,166 @@
+import { EmailTemplate, sendEmailWithResend } from "@/lib/email";
+import { sendTemplateWhatsappMessage } from "@/lib/whatsapp";
+import { formatPhoneForInternalGateway, sanitizeTemplateParameter } from "@/lib/whatsapp/utils";
+import { renderAndUploadOrganizationInviteHeader } from "./invite-header/render";
+import {
+	buildOrganizationInviteAcceptUrl,
+	getOrganizationInviteExpirationLabel,
+	ORGANIZATION_INVITE_EXPIRES_IN_HOURS,
+	ORGANIZATION_INVITE_PARAM_NAMES,
+	ORGANIZATION_INVITE_PRODUCTION_ORIGIN,
+	ORGANIZATION_INVITE_TEMPLATE_LANGUAGE,
+	ORGANIZATION_INVITE_TEMPLATE_NAME,
+} from "./invite-template";
+
+const FALLBACK_ORGANIZATION_NAME = "sua organização";
+
+type SendOrganizationInviteParams = {
+	invitationId: string;
+	organizacaoId: string;
+	organizationName: string | null;
+	organizationLogoUrl?: string | null;
+	invitedName: string;
+	email: string;
+	phone?: string | null;
+};
+
+function getAppOrigin() {
+	return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_URL || ORGANIZATION_INVITE_PRODUCTION_ORIGIN;
+}
+
+async function sendOrganizationInviteEmail({
+	email,
+	invitationId,
+	invitedName,
+	organizationName,
+}: Pick<SendOrganizationInviteParams, "email" | "invitationId" | "invitedName" | "organizationName">) {
+	return sendEmailWithResend(email, EmailTemplate.OrganizationInvite, {
+		inviteLink: buildOrganizationInviteAcceptUrl({ origin: getAppOrigin(), invitationId }),
+		invitedName,
+		organizationName,
+		expiresInHours: ORGANIZATION_INVITE_EXPIRES_IN_HOURS,
+	});
+}
+
+async function sendOrganizationInviteWhatsapp({
+	phone,
+	invitationId,
+	organizacaoId,
+	invitedName,
+	organizationName,
+	organizationLogoUrl,
+}: Pick<SendOrganizationInviteParams, "phone" | "invitationId" | "organizacaoId" | "invitedName" | "organizationName" | "organizationLogoUrl">) {
+	if (!phone?.trim()) return null;
+
+	const whatsappToken = process.env.META_ACCESS_TOKEN;
+	const whatsappPhoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
+
+	if (!whatsappToken || !whatsappPhoneNumberId) {
+		console.warn("[WARN] [ORGANIZATION_INVITE_WHATSAPP] WhatsApp env vars not configured; skipping WhatsApp delivery.");
+		return null;
+	}
+
+	const safeOrganizationName = organizationName?.trim() || FALLBACK_ORGANIZATION_NAME;
+	const headerImageUrl = await renderAndUploadOrganizationInviteHeader({
+		organizacaoId,
+		invitationId,
+		organizationName: safeOrganizationName,
+		organizationLogoUrl,
+	});
+
+	// O cabeçalho de imagem é obrigatório no template aprovado — sem ele a Meta
+	// rejeita o envio, então é melhor pular o WhatsApp do que estourar o convite.
+	if (!headerImageUrl) {
+		console.warn("[WARN] [ORGANIZATION_INVITE_WHATSAPP] Cabeçalho indisponível; skipping WhatsApp delivery.");
+		return null;
+	}
+
+	return sendTemplateWhatsappMessage({
+		fromPhoneNumberId: whatsappPhoneNumberId,
+		whatsappToken,
+		templatePayload: {
+			messaging_product: "whatsapp",
+			to: formatPhoneForInternalGateway(phone),
+			type: "template",
+			template: {
+				name: ORGANIZATION_INVITE_TEMPLATE_NAME,
+				language: { code: ORGANIZATION_INVITE_TEMPLATE_LANGUAGE },
+				components: [
+					{
+						type: "header",
+						parameters: [{ type: "image", image: { link: headerImageUrl } }],
+					},
+					{
+						type: "body",
+						parameters: [
+							{
+								type: "text",
+								parameter_name: ORGANIZATION_INVITE_PARAM_NAMES.convidadoNome,
+								text: sanitizeTemplateParameter(invitedName),
+							},
+							{
+								type: "text",
+								parameter_name: ORGANIZATION_INVITE_PARAM_NAMES.organizacaoNome,
+								text: sanitizeTemplateParameter(safeOrganizationName),
+							},
+							{
+								type: "text",
+								parameter_name: ORGANIZATION_INVITE_PARAM_NAMES.expiracao,
+								text: getOrganizationInviteExpirationLabel(),
+							},
+						],
+					},
+					{
+						// A Meta anexa este valor ao final da URL do botão, que termina em `invitationId=`.
+						type: "button",
+						sub_type: "url",
+						index: "0",
+						parameters: [{ type: "text", text: invitationId }],
+					},
+				],
+			},
+		},
+	});
+}
+
+/**
+ * Entrega o convite por e-mail e, quando há telefone, também por WhatsApp.
+ *
+ * O e-mail é o canal principal: se ele falhar, o erro sobe. O WhatsApp é
+ * complementar e opt-in — falha ali só vira log, para não derrubar um convite
+ * que já foi persistido.
+ */
+export async function sendOrganizationInvite({
+	invitationId,
+	organizacaoId,
+	organizationName,
+	organizationLogoUrl,
+	invitedName,
+	email,
+	phone,
+}: SendOrganizationInviteParams) {
+	const [emailResult, whatsappResult] = await Promise.allSettled([
+		sendOrganizationInviteEmail({ email, invitationId, invitedName, organizationName }),
+		sendOrganizationInviteWhatsapp({
+			phone,
+			invitationId,
+			organizacaoId,
+			invitedName,
+			organizationName,
+			organizationLogoUrl,
+		}),
+	]);
+
+	if (whatsappResult.status === "rejected") {
+		console.error("[ERROR] [ORGANIZATION_INVITE_WHATSAPP] WhatsApp delivery failed:", whatsappResult.reason);
+	}
+
+	if (emailResult.status === "rejected") {
+		throw emailResult.reason;
+	}
+
+	return {
+		email: emailResult.value,
+		whatsapp: whatsappResult.status === "fulfilled" ? whatsappResult.value : null,
+	};
+}

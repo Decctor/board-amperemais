@@ -1,5 +1,6 @@
 import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
+import { formatToPhone } from "@/lib/formatting";
 import type { TUseOrganizationMembershipInvitationState } from "@/state-hooks/use-organization-membership-invitation-state";
 import { LayoutGrid } from "lucide-react";
 
@@ -25,6 +26,12 @@ export default function OrganizationsMembershipInvitationsGeneralBlock({
 				label="EMAIL"
 				placeholder="Preencha aqui o email do usuário que será convidado."
 				handleChange={(value) => updateInvitation({ email: value })}
+			/>
+			<TextInput
+				value={formatToPhone(invitation.telefone ?? "")}
+				label="TELEFONE (OPCIONAL)"
+				placeholder="Preencha para enviar o convite também por WhatsApp."
+				handleChange={(value) => updateInvitation({ telefone: formatToPhone(value) })}
 			/>
 		</ResponsiveMenuSection>
 	);
