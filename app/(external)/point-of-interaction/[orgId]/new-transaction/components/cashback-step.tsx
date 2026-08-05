@@ -11,6 +11,9 @@ import { getLimitDescription } from "../../_shared/helpers/redemption-limit";
 import type { TRedemptionLimit } from "../../_shared/types";
 
 type CashbackStepProps = {
+	// Falso quando o programa não permite resgates pelo ponto de interação: some a escolha
+	// "usar cashback" e o campo de valor, restando o saldo como informação e o total a pagar cheio.
+	redemptionAllowed: boolean;
 	available: number;
 	maxAllowed: number;
 	applied: boolean;
@@ -26,6 +29,7 @@ type CashbackStepProps = {
 };
 
 export function CashbackStep({
+	redemptionAllowed,
 	available,
 	maxAllowed,
 	applied,
@@ -43,6 +47,9 @@ export function CashbackStep({
 	const limitDescription = getLimitDescription(redemptionLimit);
 	const isKiosk = mode === "kiosk";
 	const isPoints = redemptionLimit.terminologia === "PONTOS";
+	// Com resgate bloqueado o passo continua existindo (é onde vivem os cupons), mas vira leitura:
+	// mostra o saldo acumulado e nada mais.
+	const isApplied = redemptionAllowed && applied;
 
 	return (
 		<form
@@ -60,60 +67,72 @@ export function CashbackStep({
 							<div className="p-2 short:p-1 bg-green-100 rounded-lg short:rounded text-green-600">
 								<CreditCard className="w-5 h-5 short:w-3.5 short:h-3.5" />
 							</div>
-							<h3 className="font-black uppercase italic short:text-xs">Usar Cashback?</h3>
+							<h3 className="font-black uppercase italic short:text-xs">{redemptionAllowed ? "Usar Cashback?" : "Seu Cashback"}</h3>
 						</div>
-						<div
-							className={cn("inline-flex items-center rounded-full p-1 border border-brand/20 bg-background shadow-sm", available === 0 && "opacity-60")}
-						>
-							<button
-								type="button"
-								onClick={() => onToggle(true)}
-								disabled={available === 0}
-								aria-pressed={applied}
+						{redemptionAllowed ? (
+							<div
 								className={cn(
-									"h-8 short:h-7 px-4 short:px-2.5 rounded-full text-xs short:text-[0.7rem] font-black uppercase tracking-wide transition-all",
-									applied ? "bg-brand text-brand-foreground shadow-sm" : "text-brand hover:bg-brand/10",
-									available === 0 && "cursor-not-allowed hover:bg-transparent",
+									"inline-flex items-center rounded-full p-1 border border-brand/20 bg-background shadow-sm",
+									available === 0 && "opacity-60",
 								)}
 							>
-								Sim
-							</button>
-							<button
-								type="button"
-								onClick={() => onToggle(false)}
-								disabled={available === 0}
-								aria-pressed={!applied}
-								className={cn(
-									"h-8 short:h-7 px-4 short:px-2.5 rounded-full text-xs short:text-[0.7rem] font-black uppercase tracking-wide transition-all",
-									!applied ? "bg-brand text-brand-foreground shadow-sm" : "text-brand hover:bg-brand/10",
-									available === 0 && "cursor-not-allowed hover:bg-transparent",
-								)}
-							>
-								Não
-							</button>
-						</div>
+								<button
+									type="button"
+									onClick={() => onToggle(true)}
+									disabled={available === 0}
+									aria-pressed={applied}
+									className={cn(
+										"h-8 short:h-7 px-4 short:px-2.5 rounded-full text-xs short:text-[0.7rem] font-black uppercase tracking-wide transition-all",
+										applied ? "bg-brand text-brand-foreground shadow-sm" : "text-brand hover:bg-brand/10",
+										available === 0 && "cursor-not-allowed hover:bg-transparent",
+									)}
+								>
+									Sim
+								</button>
+								<button
+									type="button"
+									onClick={() => onToggle(false)}
+									disabled={available === 0}
+									aria-pressed={!applied}
+									className={cn(
+										"h-8 short:h-7 px-4 short:px-2.5 rounded-full text-xs short:text-[0.7rem] font-black uppercase tracking-wide transition-all",
+										!applied ? "bg-brand text-brand-foreground shadow-sm" : "text-brand hover:bg-brand/10",
+										available === 0 && "cursor-not-allowed hover:bg-transparent",
+									)}
+								>
+									Não
+								</button>
+							</div>
+						) : null}
 					</div>
 
-					<div className="grid grid-cols-2 gap-4 short:gap-1.5">
+					<div className={cn("grid gap-4 short:gap-1.5", redemptionAllowed ? "grid-cols-2" : "grid-cols-1")}>
 						<div className="bg-brand/5 p-4 short:p-2 rounded-2xl short:rounded-lg border border-brand/10">
 							<p className="text-[0.6rem] short:text-[0.6rem] font-bold text-muted-foreground uppercase">Seu Saldo</p>
 							<p className="text-xl short:text-base font-black text-green-600">{formatCashbackValue(available, redemptionLimit.terminologia)}</p>
 						</div>
-						<div className="bg-brand/5 p-4 short:p-2 rounded-2xl short:rounded-lg border border-brand/10">
-							<p className="text-[0.6rem] short:text-[0.6rem] font-bold text-muted-foreground uppercase">Limite p/ esta compra</p>
-							<p className="text-xl short:text-base font-black text-brand">{formatCashbackValue(maxAllowed, redemptionLimit.terminologia)}</p>
-						</div>
+						{redemptionAllowed ? (
+							<div className="bg-brand/5 p-4 short:p-2 rounded-2xl short:rounded-lg border border-brand/10">
+								<p className="text-[0.6rem] short:text-[0.6rem] font-bold text-muted-foreground uppercase">Limite p/ esta compra</p>
+								<p className="text-xl short:text-base font-black text-brand">{formatCashbackValue(maxAllowed, redemptionLimit.terminologia)}</p>
+							</div>
+						) : null}
 					</div>
 					<div className="flex flex-col items-center gap-1">
-						{limitDescription && (
+						{redemptionAllowed && limitDescription ? (
 							<p className="text-[0.65rem] short:text-[0.6rem] font-medium text-muted-foreground text-center italic">{limitDescription}</p>
+						) : null}
+						{redemptionAllowed ? null : (
+							<p className="text-[0.65rem] short:text-[0.6rem] font-medium text-muted-foreground text-center italic">
+								Seu saldo continua acumulando aqui. O resgate é feito no caixa.
+							</p>
 						)}
 						{redemptionLimit.terminologia === "PONTOS" ? (
 							<p className="text-[0.65rem] short:text-[0.6rem] font-medium text-muted-foreground text-center italic">1 ponto = R$ 1,00</p>
 						) : null}
 					</div>
 
-					{applied && (
+					{isApplied && (
 						<div className="space-y-2 short:space-y-0.5 mt-auto pt-2 animate-in zoom-in">
 							<Label className="font-bold text-xs short:text-[0.65rem] text-muted-foreground uppercase tracking-widest text-center block">
 								Valor a Resgatar em {getCashbackUnitLabel(redemptionLimit.terminologia)}
@@ -160,7 +179,7 @@ export function CashbackStep({
 								<span className="text-sm short:text-[0.7rem] font-bold uppercase tracking-widest">Subtotal</span>
 								<span className="font-bold text-lg short:text-sm">{formatToMoney(saleValue)}</span>
 							</div>
-							{applied && (
+							{isApplied && (
 								<div className="flex justify-between items-center text-white">
 									<span className="text-sm short:text-[0.7rem] font-black uppercase tracking-widest">Desconto Cashback</span>
 									<span className="font-black text-lg short:text-sm">- {formatToMoney(amount)}</span>
@@ -181,7 +200,7 @@ export function CashbackStep({
 				</div>
 			</div>
 
-			{isAttemptingToUseMoreCashbackThanAllowed && (
+			{redemptionAllowed && isAttemptingToUseMoreCashbackThanAllowed && (
 				<div className="w-full flex items-center justify-center animate-in slide-in-from-top-2 fade-in">
 					<div className="w-fit self-center flex items-center justify-center px-4 py-2 short:px-2 short:py-1 bg-red-100 border border-red-200 text-red-600 rounded-2xl short:rounded-lg gap-2 short:gap-1 shadow-sm">
 						<AlertTriangle className="w-5 h-5 short:w-3.5 short:h-3.5" />

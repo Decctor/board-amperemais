@@ -2,6 +2,8 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import { OrgColorsProvider } from "@/components/Providers/OrgColorsProvider";
 import { Button } from "@/components/ui/button";
 import { getCurrentSession } from "@/lib/authentication/session";
+import { buildPoiRegistrationConfig, resolvePoiRegistrationConfig } from "@/lib/point-of-interaction/registration";
+import { derivePoiTheme, getPoiThemeStyle } from "@/lib/point-of-interaction/theme";
 import { db } from "@/services/drizzle";
 import { Plus } from "lucide-react";
 import Link from "next/link";
@@ -39,11 +41,29 @@ export default async function PointOfInteraction({
 			corPrimariaForeground: true,
 			corSecundaria: true,
 			corSecundariaForeground: true,
+			poiConfiguracao: true,
 		},
 	});
 	if (!org) {
 		return <ErrorComponent msg="Organização não encontrada" />;
 	}
+
+	// Cadastro configurável (poiConfiguracao.cadastro): a config manda a ORDEM dos passos, as
+	// definições vêm de `custom_fields`. A consulta só acontece quando há campos configurados
+	// para esta superfície — o cadastro rápido, que é o caso da maioria, não paga por ela.
+	const registrationSurfaceConfig = resolvePoiRegistrationConfig(org.poiConfiguracao, interfaceMode);
+	const configuredCustomFields =
+		registrationSurfaceConfig.fluxo === "COMPLETO" && registrationSurfaceConfig.campos.length > 0
+			? await db.query.customFields.findMany({
+					where: (fields, { and, eq }) => and(eq(fields.organizacaoId, orgId), eq(fields.entidade, "CLIENTE"), eq(fields.ativo, true)),
+					columns: { id: true, chaveNativa: true, titulo: true, descricao: true, tipo: true, opcoes: true },
+				})
+			: [];
+	const registrationConfig = buildPoiRegistrationConfig({
+		poiConfiguracao: org.poiConfiguracao,
+		interfaceMode,
+		customFields: configuredCustomFields,
+	});
 
 	// Link pessoal do vendedor (salão): pré-atribui o "quem te atendeu" no cadastro.
 	// Validado aqui contra a org; id inválido/inativo é simplesmente ignorado.
@@ -78,6 +98,10 @@ export default async function PointOfInteraction({
 		);
 	}
 
+	// `--poi-*` acompanham (não substituem) as variáveis de `OrgColorsProvider`: `bg-brand` segue
+	// respondendo a `--color-brand`, e o POI ganha o tom profundo e a lavagem clara derivados.
+	const poiThemeStyle = getPoiThemeStyle(derivePoiTheme(org));
+
 	return (
 		<OrgColorsProvider
 			corPrimaria={org.corPrimaria}
@@ -85,13 +109,16 @@ export default async function PointOfInteraction({
 			corSecundaria={org.corSecundaria}
 			corSecundariaForeground={org.corSecundariaForeground}
 		>
-			<PointOfInteractionContent
-				org={org}
-				cashbackProgram={cashbackProgram}
-				mode={interfaceMode}
-				flow={interfaceFlow}
-				presetSellerId={presetSeller?.id ?? null}
-			/>
+			<div className="contents" style={poiThemeStyle}>
+				<PointOfInteractionContent
+					org={org}
+					cashbackProgram={cashbackProgram}
+					mode={interfaceMode}
+					flow={interfaceFlow}
+					presetSellerId={presetSeller?.id ?? null}
+					registrationConfig={registrationConfig}
+				/>
+			</div>
 		</OrgColorsProvider>
 	);
 }

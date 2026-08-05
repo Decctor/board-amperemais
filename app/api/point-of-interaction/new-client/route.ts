@@ -1,9 +1,11 @@
 import { resolvePoiActorContext } from "@/lib/access/poi-actor";
 import { appApiHandler } from "@/lib/app-api";
 import { resolveValidatedAuthorSeller } from "@/lib/clients/authorship";
+import { saveClientCustomFieldValues } from "@/lib/custom-fields/values";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { isValidCpfCnpj } from "@/lib/validation";
 import { ClientSchema } from "@/schemas/clients";
+import { CustomFieldValueInputSchema } from "@/schemas/custom-fields";
 import { db } from "@/services/drizzle";
 import { cashbackProgramBalances } from "@/services/drizzle/schema/cashback-programs";
 import { clients } from "@/services/drizzle/schema/clients";
@@ -23,11 +25,28 @@ const CreateClientViaPointOfInteractionInputSchema = z.object({
 		// validado no servidor contra a organização resolvida pelo actor context.
 		autorVendedorId: true,
 	}),
+	// Respostas do assistente de cadastro completo (poiConfiguracao.cadastro). Ausente/vazio =
+	// cadastro rápido, o payload que o POI sempre enviou. A validação real (campo da organização,
+	// ativo, tipo, opções) mora em `saveClientCustomFieldValues` — aqui só o formato.
+	respostasCampos: z
+		.array(CustomFieldValueInputSchema, {
+			invalid_type_error: "Tipo não válido para as respostas dos campos personalizados.",
+		})
+		.optional()
+		.nullable(),
+	// Aceite explícito de marketing (LGPD). Só `true` grava a data; `false`/ausente não é uma
+	// retirada de consentimento — é a ausência de um aceite novo.
+	consentimentoMarketing: z
+		.boolean({
+			invalid_type_error: "Tipo não válido para o consentimento de marketing.",
+		})
+		.optional()
+		.nullable(),
 });
 export type TCreateClientViaPointOfInteractionInput = z.infer<typeof CreateClientViaPointOfInteractionInputSchema>;
 
 async function createClientViaPointOfInteraction({ input }: { input: Omit<TCreateClientViaPointOfInteractionInput, "orgId"> & { orgId: string } }) {
-	const { orgId, client } = input;
+	const { orgId, client, respostasCampos, consentimentoMarketing } = input;
 
 	return await db.transaction(async (tx) => {
 		const autorVendedorId = client.autorVendedorId
@@ -62,6 +81,8 @@ async function createClientViaPointOfInteraction({ input }: { input: Omit<TCreat
 				telefone: client.telefone ?? "",
 				telefoneBase: clientPhoneAsBase,
 				dataNascimento: client.dataNascimento ? new Date(client.dataNascimento) : null,
+				// Só o aceite explícito grava a data — nunca derivada do simples ato de se cadastrar.
+				consentimentoMarketingData: consentimentoMarketing === true ? new Date() : null,
 				canalAquisicao: "PONTO DE INTERAÇÃO",
 				analiseRFMTitulo: "CLIENTES RECENTES",
 			})
@@ -69,6 +90,18 @@ async function createClientViaPointOfInteraction({ input }: { input: Omit<TCreat
 
 		const insertedClientId = insertedClientResponse[0]?.id;
 		if (!insertedClientId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar cliente.");
+
+		// Dentro da transação e ANTES do saldo: uma resposta inválida derruba o cadastro inteiro.
+		// Um cliente meio-cadastrado — criado, mas com as respostas que ele deu descartadas em
+		// silêncio — é pior que um erro na tela, porque ninguém descobre o que se perdeu.
+		if (respostasCampos && respostasCampos.length > 0) {
+			await saveClientCustomFieldValues({
+				trx: tx,
+				organizacaoId: orgId,
+				clienteId: insertedClientId,
+				valores: respostasCampos,
+			});
+		}
 
 		const insertedCashbackProgramBalanceResponse = await tx
 			.insert(cashbackProgramBalances)

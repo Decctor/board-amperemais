@@ -88,14 +88,17 @@ type NewSaleContentProps = {
 		terminologia: TCashbackProgramTerminologyEnum;
 		modalidadeDescontosPermitida: boolean;
 		modalidadeRecompensasPermitida: boolean;
+		resgatePermitirViaPontoIntegracao: boolean;
 		poiConfirmacaoValorObrigatoria: boolean;
 	};
 	clientId: string;
 	prizes: TPrize[];
 	initialOperatorPassword?: string;
 	mode: "kiosk" | "mobile";
+	// Intenção vinda do hub quando as duas ações estavam visíveis lá.
+	intent?: "pontuar" | "resgatar" | null;
 };
-export default function NewSaleContent({ org, clientId, prizes, initialOperatorPassword, mode }: NewSaleContentProps) {
+export default function NewSaleContent({ org, clientId, prizes, initialOperatorPassword, mode, intent = null }: NewSaleContentProps) {
 	const router = useRouter();
 	const {
 		state,
@@ -113,8 +116,14 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	const [currentStep, setCurrentStep] = React.useState<number>(1);
 	const [successData, setSuccessData] = React.useState<TCreatePointOfInteractionTransactionOutput["data"] | null>(null);
 
-	// Prize flow state
-	const [flowMode, setFlowMode] = React.useState<"discount" | "prize" | null>(null);
+	// Prize flow state — a intenção do hub já nasce escolhida, pulando a tela de seleção de modo.
+	// Só tem efeito quando a seleção de modo existiria (ambas as modalidades liberadas); fora disso
+	// `effectiveFlowMode` ignora este estado e resolve pelas flags do programa.
+	const [flowMode, setFlowMode] = React.useState<"discount" | "prize" | null>(() => {
+		if (intent === "resgatar") return "prize";
+		if (intent === "pontuar") return "discount";
+		return null;
+	});
 	const [showModeSelection, setShowModeSelection] = React.useState(false);
 	const [selectedPrize, setSelectedPrize] = React.useState<TPrize | null>(null);
 	const [prizeFlowIntent, setPrizeFlowIntent] = React.useState<"redeem" | "sale-only" | null>(null);
@@ -123,8 +132,12 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	const [selectedCoupon, setSelectedCoupon] = React.useState<TPoiAvailableCoupon | null>(null);
 
 	const hasPrizes = prizes.length > 0;
+	// Gate de resgate pelo POI. O caminho mobile cria uma SOLICITAÇÃO (não passa pelo 403 da API de
+	// transação na hora do envio), então a UI precisa ser a barreira: sem resgate liberado não existe
+	// modo recompensa nem opção de aplicar saldo — resta o caminho de puro acúmulo.
+	const isRedemptionAllowedViaPoi = org.resgatePermitirViaPontoIntegracao;
 	const isDiscountModeAllowed = org.modalidadeDescontosPermitida;
-	const isPrizeModeAllowed = org.modalidadeRecompensasPermitida && hasPrizes;
+	const isPrizeModeAllowed = org.modalidadeRecompensasPermitida && hasPrizes && isRedemptionAllowedViaPoi;
 	const shouldShowFlowModeSelection = isDiscountModeAllowed && isPrizeModeAllowed;
 	const effectiveFlowMode: "discount" | "prize" = shouldShowFlowModeSelection ? (flowMode ?? "discount") : isPrizeModeAllowed ? "prize" : "discount";
 	const isPrizeMode = effectiveFlowMode === "prize";
@@ -169,8 +182,9 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	}, [state.sale.coupon]);
 
 	const maximumCashbackAllowed = useMemo(
-		() => getMaxCashbackToUse(availableCashback, Math.max(0, state.sale.valor - couponDiscount), redemptionLimitConfig),
-		[availableCashback, state.sale.valor, couponDiscount, redemptionLimitConfig],
+		() =>
+			isRedemptionAllowedViaPoi ? getMaxCashbackToUse(availableCashback, Math.max(0, state.sale.valor - couponDiscount), redemptionLimitConfig) : 0,
+		[isRedemptionAllowedViaPoi, availableCashback, state.sale.valor, couponDiscount, redemptionLimitConfig],
 	);
 	const finalValue = useMemo(
 		() => Math.max(0, getFinalValue(state.sale.valor, state.sale.cashback) - couponDiscount),
@@ -474,6 +488,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 									onClear={handleClearCoupon}
 								/>
 								<CashbackStep
+									redemptionAllowed={isRedemptionAllowedViaPoi}
 									available={availableCashback}
 									maxAllowed={maximumCashbackAllowed}
 									saleValue={state.sale.valor}

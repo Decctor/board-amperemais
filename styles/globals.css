@@ -512,3 +512,146 @@
 [data-sonner-toast][data-mounted="true"][data-expanded="true"] {
 	--y: translateY(0) !important;
 }
+
+/* Ponto de Interação — carteirinha do clube (microinterações portadas da demo Clube Prático) */
+@keyframes poi-card-enter {
+	from {
+		opacity: 0;
+		transform: translateY(16px) rotateX(5deg);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) rotateX(0);
+	}
+}
+
+@keyframes poi-card-pop {
+	0% {
+		opacity: 0;
+		transform: scale(0.7);
+	}
+	70% {
+		opacity: 1;
+		transform: scale(1.08);
+	}
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+.poi-card-enter {
+	animation: poi-card-enter 480ms 160ms cubic-bezier(0, 0, 0.2, 1) both;
+	transform-origin: center top;
+}
+
+.poi-card-pop {
+	animation: poi-card-pop 260ms 320ms cubic-bezier(0, 0, 0.2, 1) both;
+}
+
+/* Ponto de Interação — assistente de cadastro (mesma origem: demo Clube Prático) */
+@keyframes poi-step-forward {
+	from {
+		opacity: 0;
+		transform: translateX(18px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@keyframes poi-step-back {
+	from {
+		opacity: 0;
+		transform: translateX(-18px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+/* Distinto de `poi-card-pop`: mesma curva, sem os 320ms de atraso da carteirinha — aqui o pop é
+   resposta a um toque, e responder com atraso parece travamento. */
+@keyframes poi-pop {
+	0% {
+		opacity: 0;
+		transform: scale(0.7);
+	}
+	70% {
+		opacity: 1;
+		transform: scale(1.08);
+	}
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@keyframes poi-shake {
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+	25% {
+		transform: translateX(-4px);
+	}
+	75% {
+		transform: translateX(4px);
+	}
+}
+
+@keyframes poi-confetti {
+	0% {
+		opacity: 0;
+		transform: translateY(-10px) rotate(var(--poi-confetti-rotation, 0deg));
+	}
+	15% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+		transform: translateY(185px) rotate(calc(var(--poi-confetti-rotation, 0deg) + 240deg));
+	}
+}
+
+.poi-step-forward {
+	animation: poi-step-forward 240ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.poi-step-back {
+	animation: poi-step-back 240ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.poi-choice-selected,
+.poi-progress-pop,
+.poi-validity-pop,
+.poi-person-pop,
+.poi-success-pop {
+	animation: poi-pop 260ms cubic-bezier(0, 0, 0.2, 1) both;
+}
+
+.poi-error-shake {
+	animation: poi-shake 240ms ease-out;
+}
+
+.poi-confetti {
+	animation: poi-confetti 1.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.poi-card-enter,
+	.poi-card-pop,
+	.poi-step-forward,
+	.poi-step-back,
+	.poi-choice-selected,
+	.poi-progress-pop,
+	.poi-validity-pop,
+	.poi-person-pop,
+	.poi-success-pop,
+	.poi-error-shake,
+	.poi-confetti {
+		animation: none;
+	}
+}

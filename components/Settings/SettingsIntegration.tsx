@@ -1,19 +1,26 @@
 import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import TextInput from "@/components/Inputs/TextInput";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import type { TAuthSessionIntegrationSummary, TAuthUserSession } from "@/lib/authentication/types";
+import { NATIVE_CUSTOM_FIELD_LIST } from "@/lib/custom-fields/native-catalog";
 import { getErrorMessage } from "@/lib/errors";
+import { createCustomField } from "@/lib/mutations/custom-fields";
 import { deleteIntegration } from "@/lib/mutations/integrations";
 import { updateOrganization } from "@/lib/mutations/organizations";
 import { useMutation } from "@tanstack/react-query";
-import { AlertTriangle, Calendar, CheckCircle2, LinkIcon, RefreshCcw, Unlink } from "lucide-react";
+import { useCashbackProgram } from "@/lib/queries/cashback-programs";
+import { useCustomFields } from "@/lib/queries/custom-fields";
+import { AlertTriangle, Calendar, CheckCircle2, ChevronDown, ChevronUp, LinkIcon, Plus, RefreshCcw, Settings2, Unlink, X } from "lucide-react";
 import Image, { type StaticImageData } from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import type { TDataSourceIntegrationTipoEnum } from "@/schemas/enums";
-import { DataSourceIntegrationTipoEnum } from "@/schemas/enums";
+import type { TDataSourceIntegrationTipoEnum, TPoiRegistrationFlowEnum } from "@/schemas/enums";
+import { CUSTOM_FIELD_TYPE_LABELS, DataSourceIntegrationTipoEnum, POI_REGISTRATION_FLOW_LABELS, PoiRegistrationFlowEnum } from "@/schemas/enums";
+import type { TStoredPoiRegistrationConfig } from "@/schemas/organizations";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import CardapioWebLogo from "@/utils/images/integrations/cardapio-web.png";
@@ -115,6 +122,11 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 	const activeConnections = membership.organizacao.integracoes.filter((integration) => integration.ativo && isDataSourceSummary(integration));
 	const inactiveConnections = membership.organizacao.integracoes.filter((integration) => !integration.ativo && isDataSourceSummary(integration));
 	const poiSalesRegistrationEnabled = membership.organizacao.poiConfiguracao?.vendas.registroAtivo ?? activeConnections.length === 0;
+	// Espelho somente-leitura da permissão de resgate pelo POI: ela pertence ao programa de cashback
+	// (a atualização exige o payload inteiro do programa + recompensas), então aqui só informamos e
+	// apontamos para o lugar certo de editar.
+	const { data: cashbackProgram } = useCashbackProgram();
+	const poiRedemptionEnabled = cashbackProgram?.resgatePermitirViaPontoIntegracao ?? null;
 
 	// Disconnect Mutation — soft delete por conexão (D9). A linha permanece como identidade
 	// histórica da conta e proveniência das vendas.
@@ -131,9 +143,13 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 		},
 	});
 
+	// `poiConfiguracao` é gravada como jsonb inteiro (a rota não faz merge por chave), então
+	// escrever `vendas` obriga a reenviar o `cadastro` atual — e vice-versa.
+	const poiRegistrationConfig = membership.organizacao.poiConfiguracao?.cadastro;
+
 	const enablePoiSalesRegistrationMutation = useMutation({
 		mutationFn: async (registroAtivo: boolean) =>
-			updateOrganization({ organization: { poiConfiguracao: { vendas: { registroAtivo } } } }),
+			updateOrganization({ organization: { poiConfiguracao: { vendas: { registroAtivo }, cadastro: poiRegistrationConfig } } }),
 		onSuccess: () => {
 			toast.success("Configuração do Ponto de Interação atualizada com sucesso!");
 			setTimeout(() => {
@@ -351,6 +367,35 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 						onCheckedChange={(checked) => enablePoiSalesRegistrationMutation.mutate(checked)}
 					/>
 				</div>
+
+				{poiRedemptionEnabled !== null ? (
+					<div className="flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
+						<div className="flex flex-col gap-1">
+							<div className="flex items-center gap-2">
+								<span className="text-sm font-semibold">Resgates pelo Ponto de Interação</span>
+								<Chip.Root variant={poiRedemptionEnabled ? "success" : "destructive"} size="sm">
+									<Chip.Label>{poiRedemptionEnabled ? "PERMITIDOS" : "BLOQUEADOS"}</Chip.Label>
+								</Chip.Root>
+							</div>
+							<p className="text-sm text-muted-foreground">
+								Controla se o cliente pode usar o saldo como desconto ou trocar por recompensas direto no totem/celular. A configuração vive no
+								programa de cashback.
+							</p>
+						</div>
+						<Button variant="outline" size="sm" asChild>
+							<Link href="/dashboard/growth/cashback">
+								<Settings2 className="h-4 w-4 min-h-4 min-w-4" />
+								AJUSTAR NO PROGRAMA
+							</Link>
+						</Button>
+					</div>
+				) : null}
+
+				<PoiRegistrationSettings
+					storedConfig={poiRegistrationConfig}
+					salesRegistrationEnabled={poiSalesRegistrationEnabled}
+					canEdit={canEdit}
+				/>
 			</div>
 
 			{isMenuOpen && selectedIntegrationId ? (
@@ -374,6 +419,276 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 					}}
 				/>
 			) : null}
+		</div>
+	);
+}
+
+type TPoiRegistrationSurfaceKey = keyof TStoredPoiRegistrationConfig;
+
+const POI_REGISTRATION_SURFACES: { key: TPoiRegistrationSurfaceKey; label: string; description: string }[] = [
+	{ key: "mobile", label: "CELULAR", description: "Cliente lendo o QR Code no próprio aparelho." },
+	{ key: "kiosk", label: "TOTEM", description: "Tela fixa no balcão, com o cliente de pé." },
+];
+
+/**
+ * Configuração do cadastro do Ponto de Interação, por superfície.
+ *
+ * Edita um rascunho local e grava tudo de uma vez: reordenar campos é uma sequência de pequenos
+ * ajustes, e salvar a cada clique transformaria um arraste mental em dez requisições. O `vendas`
+ * atual entra no payload porque `poiConfiguracao` é gravada como jsonb inteiro.
+ */
+type PoiRegistrationSettingsProps = {
+	storedConfig: TStoredPoiRegistrationConfig | undefined;
+	salesRegistrationEnabled: boolean;
+	canEdit: boolean;
+};
+function PoiRegistrationSettings({ storedConfig, salesRegistrationEnabled, canEdit }: PoiRegistrationSettingsProps) {
+	// Sem `ativoOnly`: os inativos não podem ser adicionados, mas precisam ser conhecidos — um
+	// campo nativo desativado ainda ocupa a chave, e oferecer "ativar" de novo daria erro.
+	const { data: customFieldsResult, isLoading: customFieldsAreLoading, refetch: refetchCustomFields } = useCustomFields({ entidade: "CLIENTE" });
+	const organizationCustomFields = customFieldsResult?.customFields ?? [];
+	const activeCustomFields = organizationCustomFields.filter((customField) => customField.ativo);
+	const takenNativeKeys = organizationCustomFields.map((customField) => customField.chaveNativa).filter(Boolean);
+	const missingNativeFields = NATIVE_CUSTOM_FIELD_LIST.filter((nativeField) => !takenNativeKeys.includes(nativeField.chave));
+
+	const [config, setConfig] = useState<TStoredPoiRegistrationConfig>(() => ({
+		mobile: storedConfig?.mobile ?? { fluxo: "RAPIDO", campos: [] },
+		kiosk: storedConfig?.kiosk ?? { fluxo: "RAPIDO", campos: [] },
+	}));
+
+	const setSurfaceFlow = (surface: TPoiRegistrationSurfaceKey, fluxo: TPoiRegistrationFlowEnum) => {
+		setConfig((previous) => ({ ...previous, [surface]: { ...previous[surface], fluxo } }));
+	};
+
+	const addFieldToSurface = (surface: TPoiRegistrationSurfaceKey, campoId: string) => {
+		setConfig((previous) => {
+			const surfaceConfig = previous[surface];
+			if (surfaceConfig.campos.some((campo) => campo.campoId === campoId)) return previous;
+			return { ...previous, [surface]: { ...surfaceConfig, campos: [...surfaceConfig.campos, { campoId, obrigatorio: false }] } };
+		});
+	};
+
+	const removeFieldFromSurface = (surface: TPoiRegistrationSurfaceKey, campoId: string) => {
+		setConfig((previous) => ({
+			...previous,
+			[surface]: { ...previous[surface], campos: previous[surface].campos.filter((campo) => campo.campoId !== campoId) },
+		}));
+	};
+
+	const setFieldRequired = (surface: TPoiRegistrationSurfaceKey, campoId: string, obrigatorio: boolean) => {
+		setConfig((previous) => ({
+			...previous,
+			[surface]: {
+				...previous[surface],
+				campos: previous[surface].campos.map((campo) => (campo.campoId === campoId ? { ...campo, obrigatorio } : campo)),
+			},
+		}));
+	};
+
+	// A ordem do array É a ordem dos passos — mover é trocar de lugar com o vizinho.
+	const moveFieldInSurface = (surface: TPoiRegistrationSurfaceKey, index: number, direction: -1 | 1) => {
+		setConfig((previous) => {
+			const campos = [...previous[surface].campos];
+			const targetIndex = index + direction;
+			const movedField = campos[index];
+			const displacedField = campos[targetIndex];
+			if (!movedField || !displacedField) return previous;
+			campos[index] = displacedField;
+			campos[targetIndex] = movedField;
+			return { ...previous, [surface]: { ...previous[surface], campos } };
+		});
+	};
+
+	const saveRegistrationConfigMutation = useMutation({
+		mutationFn: async () =>
+			updateOrganization({ organization: { poiConfiguracao: { vendas: { registroAtivo: salesRegistrationEnabled }, cadastro: config } } }),
+		onSuccess: () => {
+			toast.success("Cadastro do Ponto de Interação atualizado com sucesso!");
+			setTimeout(() => {
+				window.location.reload();
+			}, 1500);
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
+		},
+	});
+
+	// Ativar um campo nativo cria a definição para a organização inteira (ela passa a existir no
+	// CRM) e, por conveniência, já o coloca na superfície de onde o botão foi clicado.
+	const enableNativeFieldMutation = useMutation({
+		mutationFn: async ({ chave }: { chave: string; surface: TPoiRegistrationSurfaceKey }) =>
+			createCustomField({
+				customField: { entidade: "CLIENTE", chaveNativa: chave, titulo: null, tipo: null, descricao: null, opcoes: null, ativo: true },
+			}),
+		onSuccess: async (data, variables) => {
+			toast.success(data.message);
+			addFieldToSurface(variables.surface, data.data.insertedId);
+			await refetchCustomFields();
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
+		},
+	});
+
+	return (
+		<div className="flex flex-col gap-3 border-t border-border pt-3">
+			<div className="flex flex-col gap-1">
+				<h4 className="text-sm font-semibold">CADASTRO NO PONTO DE INTERAÇÃO</h4>
+				<p className="text-sm text-muted-foreground">
+					No cadastro rápido o cliente informa apenas nome e telefone. No completo, o assistente pergunta também os campos escolhidos abaixo — na ordem
+					em que eles aparecem aqui.
+				</p>
+			</div>
+
+			{POI_REGISTRATION_SURFACES.map((surface) => {
+				const surfaceConfig = config[surface.key];
+				const availableCustomFields = activeCustomFields.filter(
+					(customField) => !surfaceConfig.campos.some((campo) => campo.campoId === customField.id),
+				);
+
+				return (
+					<div key={surface.key} className="flex w-full flex-col gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2">
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+							<div className="flex flex-col">
+								<span className="text-sm font-semibold">{surface.label}</span>
+								<span className="text-xs text-muted-foreground">{surface.description}</span>
+							</div>
+							<div className="flex items-center gap-1.5">
+								{PoiRegistrationFlowEnum.options.map((fluxo) => (
+									<Button
+										key={fluxo}
+										size="sm"
+										variant={surfaceConfig.fluxo === fluxo ? "default" : "outline"}
+										disabled={!canEdit}
+										onClick={() => setSurfaceFlow(surface.key, fluxo)}
+									>
+										{POI_REGISTRATION_FLOW_LABELS[fluxo].toUpperCase()}
+									</Button>
+								))}
+							</div>
+						</div>
+
+						{surfaceConfig.fluxo !== "COMPLETO" ? null : customFieldsAreLoading ? (
+							<p className="text-xs text-muted-foreground italic">Carregando campos...</p>
+						) : (
+							<div className="flex w-full flex-col gap-2 border-t border-border pt-2">
+								{surfaceConfig.campos.length === 0 ? (
+									<p className="text-xs text-muted-foreground italic">
+										Nenhum campo no cadastro desta superfície — o cliente vai ver o cadastro rápido.
+									</p>
+								) : (
+									surfaceConfig.campos.map((campo, index) => {
+										const definition = activeCustomFields.find((customField) => customField.id === campo.campoId);
+										return (
+											<div key={campo.campoId} className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
+												<div className="flex flex-col">
+													<Button
+														variant="ghost"
+														size="fit"
+														className="p-0.5"
+														disabled={!canEdit || index === 0}
+														onClick={() => moveFieldInSurface(surface.key, index, -1)}
+													>
+														<ChevronUp className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />
+													</Button>
+													<Button
+														variant="ghost"
+														size="fit"
+														className="p-0.5"
+														disabled={!canEdit || index === surfaceConfig.campos.length - 1}
+														onClick={() => moveFieldInSurface(surface.key, index, 1)}
+													>
+														<ChevronDown className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />
+													</Button>
+												</div>
+												<div className="flex grow flex-col">
+													<span className="text-sm font-medium">
+														{index + 1}. {definition?.titulo ?? "Campo indisponível"}
+													</span>
+													<span className="text-xs text-muted-foreground">
+														{definition
+															? CUSTOM_FIELD_TYPE_LABELS[definition.tipo]
+															: "O campo foi desativado — remova-o para limpar o cadastro."}
+													</span>
+												</div>
+												<label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-muted-foreground">
+													<Checkbox
+														checked={campo.obrigatorio}
+														disabled={!canEdit}
+														onCheckedChange={(checked) => setFieldRequired(surface.key, campo.campoId, checked === true)}
+													/>
+													OBRIGATÓRIO
+												</label>
+												<Button
+													variant="ghost-destructive"
+													size="fit"
+													className="p-1"
+													disabled={!canEdit}
+													onClick={() => removeFieldFromSurface(surface.key, campo.campoId)}
+												>
+													<X className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />
+												</Button>
+											</div>
+										);
+									})
+								)}
+
+								{availableCustomFields.length > 0 ? (
+									<div className="flex w-full flex-wrap items-center gap-1.5">
+										<span className="text-xs font-medium text-muted-foreground">ADICIONAR:</span>
+										{availableCustomFields.map((customField) => (
+											<Button
+												key={customField.id}
+												variant="outline"
+												size="fit"
+												className="gap-1 px-2 py-1 text-xs"
+												disabled={!canEdit}
+												onClick={() => addFieldToSurface(surface.key, customField.id)}
+											>
+												<Plus className="h-3 w-3 min-h-3 min-w-3" />
+												{customField.titulo.toUpperCase()}
+											</Button>
+										))}
+									</div>
+								) : null}
+
+								{missingNativeFields.length > 0 ? (
+									<div className="flex w-full flex-wrap items-center gap-1.5">
+										<span className="text-xs font-medium text-muted-foreground">ATIVAR CAMPO PRONTO:</span>
+										{missingNativeFields.map((nativeField) => (
+											<Button
+												key={nativeField.chave}
+												variant="outline"
+												size="fit"
+												className="gap-1 px-2 py-1 text-xs"
+												disabled={!canEdit || enableNativeFieldMutation.isPending}
+												onClick={() => enableNativeFieldMutation.mutate({ chave: nativeField.chave, surface: surface.key })}
+											>
+												<Plus className="h-3 w-3 min-h-3 min-w-3" />
+												{nativeField.titulo.toUpperCase()}
+											</Button>
+										))}
+									</div>
+								) : null}
+							</div>
+						)}
+					</div>
+				);
+			})}
+
+			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+				<p className="text-xs text-muted-foreground">
+					Os campos prontos já são entendidos pela plataforma (segmentação e aniversariantes saem de graça). Campos próprios da organização, se
+					existirem, aparecem na lista acima.
+				</p>
+				<Button
+					size="sm"
+					disabled={!canEdit || saveRegistrationConfigMutation.isPending}
+					onClick={() => saveRegistrationConfigMutation.mutate()}
+				>
+					SALVAR CADASTRO
+				</Button>
+			</div>
 		</div>
 	);
 }

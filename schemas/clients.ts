@@ -155,6 +155,17 @@ export const ClientSchema = z.object({
 		.optional()
 		.nullable(),
 
+	// Consentimento explícito de marketing (LGPD): a DATA do aceite, nunca um booleano — é ela
+	// que serve de prova. Null = nunca consentiu. Sempre opcional na entrada: nenhum cadastro é
+	// bloqueado por falta de consentimento, e nenhuma superfície pode exigi-lo.
+	consentimentoMarketingData: z
+		.string({
+			invalid_type_error: "Tipo não válido para a data de consentimento de marketing.",
+		})
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
+
 	// Autoria do cadastro: sempre resolvida no servidor (sessão / operador / pipeline),
 	// nunca aceita diretamente do payload — exceto autorVendedorId nos fluxos de venda e POI,
 	// onde é validada contra a organização antes de persistir.

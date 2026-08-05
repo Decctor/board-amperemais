@@ -1,5 +1,11 @@
 import z from "zod";
-import { DefaultDataSourceEnum, DiscountLimitTypeEnum, OrganizationIntegrationTypeEnum, SalesSessionScopeEnum } from "./enums";
+import {
+	DefaultDataSourceEnum,
+	DiscountLimitTypeEnum,
+	OrganizationIntegrationTypeEnum,
+	PoiRegistrationFlowEnum,
+	SalesSessionScopeEnum,
+} from "./enums";
 import { OrganizationFiscalConfigSchema } from "./fiscal";
 import { DataSourceIntegrationConfigSchema } from "./integrations";
 import { PaymentEffectivenessTypeEnum } from "@/lib/payments/schemas";
@@ -14,11 +20,61 @@ export const OrganizationIntegrationConfigSchema = DataSourceIntegrationConfigSc
 export type TOrganizationIntegrationConfig = z.infer<typeof OrganizationIntegrationConfigSchema>;
 
 /**
+ * Um campo personalizado colocado no assistente de cadastro de uma superfície do POI. Guarda só a
+ * referência (`campoId`) e a política local (`obrigatorio`) — título, tipo e opções continuam
+ * vivendo na definição em `custom_fields`, para que renomear um campo não exija reescrever o jsonb.
+ */
+export const PoiRegistrationFieldConfigSchema = z.object({
+	campoId: z.string({
+		required_error: "ID do campo do cadastro do POI não informado.",
+		invalid_type_error: "Tipo não válido para o ID do campo do cadastro do POI.",
+	}),
+	obrigatorio: z
+		.boolean({
+			invalid_type_error: "Tipo não válido para a obrigatoriedade do campo do cadastro do POI.",
+		})
+		.default(false),
+});
+export type TPoiRegistrationFieldConfig = z.infer<typeof PoiRegistrationFieldConfigSchema>;
+
+/**
+ * Configuração do cadastro de UMA superfície (celular ou totem). A ORDEM do array `campos` é a
+ * ordem dos passos do assistente — não há campo de posição separado justamente para que a ordem
+ * não possa divergir de si mesma.
+ */
+export const PoiRegistrationSurfaceConfigSchema = z.object({
+	fluxo: PoiRegistrationFlowEnum,
+	campos: z
+		.array(PoiRegistrationFieldConfigSchema, {
+			invalid_type_error: "Tipo não válido para os campos do cadastro do POI.",
+		})
+		.default([]),
+});
+export type TPoiRegistrationSurfaceConfig = z.infer<typeof PoiRegistrationSurfaceConfigSchema>;
+
+/**
+ * As duas superfícies são configuradas separadamente de propósito: o totem do balcão e o celular
+ * do cliente têm paciências diferentes para responder perguntas.
+ *
+ * "Stored" no nome do tipo separa isto do `TPoiRegistrationConfig` de
+ * `lib/point-of-interaction/registration.ts`, que é a versão já resolvida (com título, tipo e
+ * opções de cada campo) entregue ao assistente público. Aqui só ficam referências.
+ */
+export const StoredPoiRegistrationConfigSchema = z.object({
+	mobile: PoiRegistrationSurfaceConfigSchema,
+	kiosk: PoiRegistrationSurfaceConfigSchema,
+});
+export type TStoredPoiRegistrationConfig = z.infer<typeof StoredPoiRegistrationConfigSchema>;
+
+/**
  * Configuração própria do Ponto de Interação. Sucessor EXPLÍCITO da derivação
  * `transactionRequiresSaleProcessing = !integracaoTipo` (D8): o registro de vendas do POI é
  * config decidida uma vez (backfill = snapshot do comportamento atual), não derivação do estado
  * das integrações. Consolidação futura das demais capacidades do POI (resgate, confirmação de
  * valor, QR codes, perfil) entra aqui em plano próprio.
+ *
+ * `cadastro` é opcional: ausência = cadastro rápido nas duas superfícies, sem campos — exatamente
+ * o comportamento que as organizações existentes já têm, sem backfill.
  */
 export const OrganizationPoiConfigSchema = z.object({
 	vendas: z.object({
@@ -27,6 +83,7 @@ export const OrganizationPoiConfigSchema = z.object({
 			invalid_type_error: "Tipo não válido para o registro de vendas do POI.",
 		}),
 	}),
+	cadastro: StoredPoiRegistrationConfigSchema.optional(),
 });
 export type TOrganizationPoiConfig = z.infer<typeof OrganizationPoiConfigSchema>;
 
