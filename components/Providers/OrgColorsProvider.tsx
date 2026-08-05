@@ -1,14 +1,12 @@
 "use client";
 
+import { DEFAULT_ORG_COLORS, ensureReadableForeground } from "@/lib/organizations/colors";
 import { type ReactNode, createContext, useContext, useEffect, useMemo } from "react";
 
-// Default colors used throughout the application
-export const DEFAULT_ORG_COLORS = {
-	primary: "#FFB900", // Yellow/Gold - Current period charts, progress bars, buttons
-	primaryForeground: "#000000", // Black text on yellow
-	secondary: "#24549C", // Blue - Previous period charts, alternative accents
-	secondaryForeground: "#FFFFFF", // White text on blue
-} as const;
+// As primitivas puras (defaults + contraste WCAG) moram em lib/organizations/colors.ts para poderem
+// ser usadas em server components; reexportadas aqui porque este continua sendo o ponto de entrada
+// histórico dos client components.
+export { DEFAULT_ORG_COLORS, ensureReadableForeground, getContrastRatio } from "@/lib/organizations/colors";
 
 // Lighter variant for backgrounds (e.g., chart fills)
 export function getColorWithOpacity(hex: string, opacity: number): string {
@@ -76,33 +74,6 @@ export function getPrimaryGradientClass(primaryColor: string): string {
 	}
 	// For custom colors, we'll use inline styles instead
 	return "";
-}
-
-// WCAG relative luminance of a hex color (0 = black, 1 = white)
-function getRelativeLuminance(hex: string): number {
-	const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-	if (!result) return 0;
-	const [r, g, b] = [result[1], result[2], result[3]].map((channel) => {
-		const value = Number.parseInt(channel, 16) / 255;
-		return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-	});
-	return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-export function getContrastRatio(hexA: string, hexB: string): number {
-	const luminanceA = getRelativeLuminance(hexA);
-	const luminanceB = getRelativeLuminance(hexB);
-	const lighter = Math.max(luminanceA, luminanceB);
-	const darker = Math.min(luminanceA, luminanceB);
-	return (lighter + 0.05) / (darker + 0.05);
-}
-
-// Org colors come straight from the database with no guarantee the configured
-// foreground is readable on the background. Below 3:1 (WCAG minimum for UI
-// components / large text) we fall back to plain black or white.
-export function ensureReadableForeground(background: string, foreground: string): string {
-	if (getContrastRatio(background, foreground) >= 3) return foreground;
-	return getContrastRatio(background, "#111111") >= getContrastRatio(background, "#ffffff") ? "#111111" : "#ffffff";
 }
 
 export type OrgColors = {

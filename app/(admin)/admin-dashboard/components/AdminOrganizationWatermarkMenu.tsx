@@ -10,6 +10,7 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Slider } from "@/components/ui/slider";
 import { getErrorMessage } from "@/lib/errors";
+import { DEFAULT_LOGO_CHIP_COLOR, getImageEdgeColor } from "@/lib/organizations/logo-color";
 import OrganizationBrandWatermark, {
 	getWatermarkCanvasSize,
 	RECOMPRA_BRAND_BLUE,
@@ -45,7 +46,7 @@ const CHECKERBOARD_STYLE: CSSProperties = {
 	backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0",
 };
 
-const DEFAULT_ORGANIZATION_BADGE_BACKGROUND = "#FFFFFF";
+const DEFAULT_ORGANIZATION_BADGE_BACKGROUND = DEFAULT_LOGO_CHIP_COLOR;
 
 type AdminOrganizationWatermarkMenuProps = {
 	organizationName: string;
@@ -71,50 +72,6 @@ async function resolveImageAsDataUrl(url: string): Promise<string> {
 		reader.onerror = () => reject(new Error("Falha ao ler a logo da organização."));
 		reader.readAsDataURL(blob);
 	});
-}
-
-async function getImageEdgeColor(src: string): Promise<string | null> {
-	const image = new Image();
-	image.crossOrigin = "anonymous";
-	image.decoding = "async";
-	image.src = src;
-	await image.decode();
-
-	const canvas = document.createElement("canvas");
-	const size = 80;
-	canvas.width = size;
-	canvas.height = size;
-
-	const context = canvas.getContext("2d", { willReadFrequently: true });
-	if (!context) return null;
-
-	context.drawImage(image, 0, 0, size, size);
-	const { data } = context.getImageData(0, 0, size, size);
-	const edgeSize = 8;
-	const buckets = new Map<string, number>();
-
-	for (let y = 0; y < size; y++) {
-		for (let x = 0; x < size; x++) {
-			const isEdgePixel = x < edgeSize || x >= size - edgeSize || y < edgeSize || y >= size - edgeSize;
-			if (!isEdgePixel) continue;
-
-			const index = (y * size + x) * 4;
-			const alpha = data[index + 3] ?? 0;
-			if (alpha < 180) continue;
-
-			const r = data[index] ?? 255;
-			const g = data[index + 1] ?? 255;
-			const b = data[index + 2] ?? 255;
-			const bucket = [r, g, b].map((channel) => Math.round(channel / 16) * 16).join(",");
-			buckets.set(bucket, (buckets.get(bucket) ?? 0) + 1);
-		}
-	}
-
-	const dominant = [...buckets.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-	if (!dominant) return null;
-
-	const [r, g, b] = dominant.split(",").map((value) => Number(value));
-	return `rgb(${r}, ${g}, ${b})`;
 }
 
 function slugifyOrganizationName(name: string) {

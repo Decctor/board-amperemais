@@ -3,7 +3,7 @@
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { POI_QR_CODE_TO_DATA_URL_OPTIONS } from "@/lib/organizations/poi-qr-codes";
 import { cn, copyToClipboard } from "@/lib/utils";
-import { BadgePercent, BookOpen, Copy, ExternalLink, FileText, QrCode, UserPlus } from "lucide-react";
+import { BadgePercent, BookOpen, Copy, ExternalLink, FileText, Printer, QrCode, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
@@ -158,12 +158,20 @@ export function PointOfInteractionLinksAndHelpers({ organization }: PointOfInter
 
 				<div className="w-full flex flex-col gap-1.5 mt-2 pt-4 border-t border-border">
 					<h1 className="text-xs font-medium tracking-tight uppercase">MATERIAL PARA DISPLAY</h1>
-					<p className="text-[0.65rem] text-muted-foreground mb-2">Display pronto para impressão no formato A5 para engajar seus clientes.</p>
-					<div className="w-full flex items-center justify-center">
+					<p className="text-[0.65rem] text-muted-foreground mb-2">
+						Materiais prontos para impressão (A4, A5 ou A6), já nas cores da sua marca, para engajar seus clientes.
+					</p>
+					<div className="w-full flex items-center justify-center gap-2 flex-wrap">
 						<Button variant={"ghost-brand"} className="flex items-center gap-1.5" asChild>
 							<Link href={`/point-of-interaction-display/${organization.id}`} target="_blank">
 								<ExternalLink className="w-4 h-4" />
 								ABRIR DISPLAY
+							</Link>
+						</Button>
+						<Button variant={"ghost-brand"} className="flex items-center gap-1.5" asChild>
+							<Link href={"/dashboard/sales/point-of-interaction/poster"} target="_blank">
+								<Printer className="w-4 h-4" />
+								PÔSTER DO CLUBE
 							</Link>
 						</Button>
 					</div>
