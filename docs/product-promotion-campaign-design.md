@@ -213,6 +213,17 @@ context-driven, not client-driven).
 `sendReservedInteraction` needs **zero changes** for v1: the variables flow through
 `contextMetadados` exactly like the cashback/coupon ones.
 
+### 5.3 Gap found during implementation: context on the immediate-send path
+
+The drain path (`process-interactions` cron) reads `interactions.metadados` back from the database
+and passes it as `contextMetadados`. The **immediate** path did not: `processEnqueuedChunkImmediate
+Interactions` (`lib/campaigns/shared.ts`) built its `ImmediateProcessingData` payloads without the
+field, so anything enqueued and sent in the same run would render context variables empty.
+
+Fixed by adding an optional `contextMetadadosByClientId` map to that helper (backward compatible —
+the recurrent cron passes nothing and is unaffected). Without it the promotion variables would have
+been empty on exactly the sends that matter most.
+
 ---
 
 ## 6. Cron processing (`app/api/cron/process-single-use-campaigns/route.ts`)
@@ -274,7 +285,19 @@ Every per-trigger touchpoint follows the existing registry pattern:
 - Global label maps: `utils/select-options.tsx` and
   `components/Stats/Blocks/CampaignTriggerDistributionBlock.tsx`.
 
-### 7.2 Products table — purchases spreadsheet pattern
+### 7.2 Hydrating display data from IDs
+
+The jsonb persists only `produtoId` + `precoPromocional`, but the table shows name, code, current
+price and image — and in edit mode those must come from the catalog. Solved with an additive `ids`
+hydration mode on the existing `/api/products/search` route (when present, the textual search and
+pagination are bypassed and exactly the requested products return) plus a `useProductsByIds` hook in
+`lib/queries/products.ts`. The hook sorts the IDs into its query key so the same set in a different
+order reuses the cache.
+
+No display data is written into the campaign state: the persisted array stays exactly the shape the
+API validates.
+
+### 7.3 Products table — purchases spreadsheet pattern
 
 Reuse the spreadsheet stack from `components/Modals/Purchases/Blocks/Items.tsx`:
 `components/Spreadsheet/*` (`SpreadsheetCellWrapper`, `EditableNumberCell`, `DeleteRowButton`,
@@ -299,7 +322,7 @@ Rules:
   `addPromotionProduct` / `updatePromotionProduct` / `removePromotionProduct` updaters over
   `gatilhoPromocaoProdutos`, all `useCallback`-wrapped per the state-hook conventions.
 
-### 7.3 Template side
+### 7.4 Template side
 
 Nothing bespoke: the template editor already groups variables by context, so "Produto Sugerido da
 Promoção" appears as a group when (and only when) the trigger allows it; previews use the new
@@ -313,8 +336,10 @@ example values.
   snapshot for the test client with the same resolution helper used by the cron (extract it to
   `lib/campaigns/` — e.g. `lib/campaigns/promotion-suggestion.ts` — so cron and test route share
   one implementation).
-- Unit-testable pure core: `rankPromotionProductForClient(clientSignals, campaignProducts)` covering
-  the four ranking rules and the empty-signal fallback.
+- Unit-testable pure core: `rankPromotionProductForClient({ candidates, signals })`, covered by
+  `lib/campaigns/promotion-suggestion.test.ts` (`node:test`) — the four ranking rules, the
+  empty-signal fallback, list-order tie-breaking, the empty-list null, and effective-price
+  resolution.
 - Manual QA checklist: campaign with overrides + without; client with favorite in list; client with
   no purchase history (fallback); product deactivated between save and fire; template using a
   `PROMOCAO` variable rejected on a non-promo trigger.
@@ -335,7 +360,7 @@ affinity to the list.
 
 ---
 
-## 10. Implementation checklist (ordered)
+## 10. Implementation checklist (ordered — all shipped)
 
 1. **Schema/enums**: pgEnum + Zod enum value; `gatilhoPromocaoDataReferencia` +
    `gatilhoPromocaoProdutos` columns; `CampaignPromotionProductSchema` + type; migration

@@ -10,7 +10,13 @@ import {
 	getEnqueueErrorMessage,
 	processEnqueuedChunkImmediateInteractions,
 } from "@/lib/campaigns/shared";
+import {
+	loadPromotionProductCandidates,
+	resolvePromotionMetadataByClientId,
+	type TPromotionProductCandidate,
+} from "@/lib/campaigns/promotion-suggestion";
 import { INTERACTIONS_CRON_TIMEZONE, getCurrentTimeBlock, type TInteractionCronTimeBlock } from "@/lib/campaigns/time-blocks";
+import type { TInteractionContextMetadados } from "@/lib/message-templates";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
 import { notifyCampaignEnqueueFailure } from "@/lib/cron/notify-campaign-enqueue-failure";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
@@ -47,6 +53,9 @@ function createOrganizationSummary(): TOrganizationSingleUseSummary {
 	};
 }
 
+// Campanhas de disparo único agendadas para a janela atual. Os dois gatilhos aqui — uso único e
+// promoção de produtos — compartilham a mesma mecânica (data + bloco, claim atômico, enfileiramento
+// em lotes); só a origem da data e o contexto por cliente diferem.
 async function getSingleUseCampaignsForBlock({
 	organizationId,
 	currentDate,
@@ -57,12 +66,14 @@ async function getSingleUseCampaignsForBlock({
 	currentTimeBlock: TInteractionCronTimeBlock;
 }) {
 	return db.query.campaigns.findMany({
-		where: (fields, { and, eq }) =>
+		where: (fields, { and, eq, or }) =>
 			and(
 				eq(fields.organizacaoId, organizationId),
 				eq(fields.ativo, true),
-				eq(fields.gatilhoTipo, "USO-UNICO"),
-				eq(fields.gatilhoUsoUnicoDataReferencia, currentDate),
+				or(
+					and(eq(fields.gatilhoTipo, "USO-UNICO"), eq(fields.gatilhoUsoUnicoDataReferencia, currentDate)),
+					and(eq(fields.gatilhoTipo, "PROMOCAO-PRODUTOS"), eq(fields.gatilhoPromocaoDataReferencia, currentDate)),
+				),
 				eq(fields.execucaoAgendadaBloco, currentTimeBlock as TCampaignEntity["execucaoAgendadaBloco"]),
 			),
 		with: {
@@ -91,6 +102,8 @@ async function enqueueCampaignChunk({
 	currentTimeBlock,
 	cashbackActive,
 	cashbackValue,
+	interactionTitle,
+	contextMetadadosByClientId,
 }: {
 	organizationId: string;
 	campaign: TSingleUseCampaign;
@@ -99,6 +112,10 @@ async function enqueueCampaignChunk({
 	currentTimeBlock: TInteractionCronTimeBlock;
 	cashbackActive: boolean;
 	cashbackValue: number;
+	interactionTitle: string;
+	// Contexto por cliente congelado na interação (produto sugerido da promoção). Ausente para
+	// campanhas de uso único, que não têm contexto por cliente.
+	contextMetadadosByClientId?: Map<string, TInteractionContextMetadados>;
 }): Promise<{ inserted: { id: string; clienteId: string }[]; cashbackGenerated: number }> {
 	return db.transaction(async (tx) => {
 		let clientIdsToInsert = clientIds;
@@ -129,11 +146,12 @@ async function enqueueCampaignChunk({
 					clienteId: clientId,
 					campanhaId: campaign.id,
 					organizacaoId: organizationId,
-					titulo: `Uso único: ${campaign.titulo}`,
+					titulo: `${interactionTitle}: ${campaign.titulo}`,
 					tipo: "ENVIO-MENSAGEM" as const,
-					descricao: campaign.descricao ?? `Campanha de uso único: ${campaign.titulo}`,
+					descricao: campaign.descricao ?? `Campanha de ${interactionTitle.toLowerCase()}: ${campaign.titulo}`,
 					agendamentoDataReferencia: currentDate,
 					agendamentoBlocoReferencia: currentTimeBlock as TInteractionEntity["agendamentoBlocoReferencia"],
+					metadados: contextMetadadosByClientId?.get(clientId) ?? null,
 				})),
 			)
 			.returning({ id: interactions.id, clienteId: interactions.clienteId });
@@ -234,6 +252,46 @@ async function processSingleUseCampaign({
 
 	summary.claimedCampaigns += 1;
 
+	const isPromotionCampaign = campaign.gatilhoTipo === "PROMOCAO-PRODUTOS";
+	const interactionTitle = isPromotionCampaign ? "Promoção de produtos" : "Uso único";
+
+	// Catálogo dos produtos promovidos, lido uma única vez por campanha. Produtos apagados ou
+	// inativados desde o salvamento são descartados; sobrando lista vazia, a campanha não tem o que
+	// promover e é tratada como falha de configuração (mesmo caminho da falha de audiência):
+	// libera o claim e notifica, em vez de disparar mensagens sem produto.
+	let promotionCandidates: TPromotionProductCandidate[] = [];
+	if (isPromotionCampaign) {
+		try {
+			promotionCandidates = await loadPromotionProductCandidates({
+				organizationId,
+				promotionProducts: campaign.gatilhoPromocaoProdutos ?? [],
+			});
+		} catch (error) {
+			console.error(`[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}] Failed to load promotion products:`, error);
+		}
+
+		if (promotionCandidates.length === 0) {
+			console.error(`[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}] Promotion campaign has no available products. Skipping.`);
+			const reactivated = await reactivateCampaignAfterEnqueueFailure({ organizationId, campaignId: campaign.id });
+			await notifyCampaignEnqueueFailure({
+				organizationId,
+				campaignId: campaign.id,
+				campaignTitle: campaign.titulo,
+				audienceSize: 0,
+				enqueuedCount: 0,
+				failedClientIds: [],
+				errors: ["Nenhum produto disponível na lista da promoção (produtos removidos ou inativados)."],
+				notes: [
+					"Nenhum cliente foi enfileirado: revise os produtos da promoção antes de reagendar.",
+					reactivated
+						? "A campanha foi reativada e será reprocessada enquanto a janela agendada estiver vigente."
+						: "ATENÇÃO: a campanha NÃO pôde ser reativada; reative-a manualmente.",
+				],
+			});
+			return;
+		}
+	}
+
 	let targetClientIds: string[];
 	try {
 		targetClientIds = await resolveCampaignAudienceClientIdsForCampaign({
@@ -278,6 +336,22 @@ async function processSingleUseCampaign({
 
 	const chunks = chunkArray(targetClientIds, ENQUEUE_CHUNK_SIZE);
 	for (const chunk of chunks) {
+		// Produto sugerido por cliente, resolvido antes do insert para ser congelado na interação.
+		// Falha aqui não derruba o lote: sem contexto, o template ainda envia (as variáveis da
+		// promoção renderizam vazias), o que é preferível a perder a campanha inteira.
+		let contextMetadadosByClientId: Map<string, TInteractionContextMetadados> | undefined;
+		if (isPromotionCampaign) {
+			try {
+				contextMetadadosByClientId = await resolvePromotionMetadataByClientId({
+					organizationId,
+					clientIds: chunk,
+					candidates: promotionCandidates,
+				});
+			} catch (error) {
+				console.error(`[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}] Failed to resolve promotion suggestions for chunk:`, error);
+			}
+		}
+
 		const enqueueResult = await enqueueChunkWithRetries({
 			enqueue: () =>
 				enqueueCampaignChunk({
@@ -288,6 +362,8 @@ async function processSingleUseCampaign({
 					currentTimeBlock,
 					cashbackActive,
 					cashbackValue,
+					interactionTitle,
+					contextMetadadosByClientId,
 				}),
 			logPrefix: `[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}]`,
 		});
@@ -347,6 +423,7 @@ async function processSingleUseCampaign({
 				whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 				weeklyLimitCache,
 				logTag: "SINGLE_USE_CAMPAIGNS",
+				contextMetadadosByClientId,
 			});
 			summary.interactionsQueuedForImmediateProcessing += immediateResult.queuedForImmediateProcessing;
 			summary.immediateEligibleWithoutClientData += immediateResult.missingClientData;

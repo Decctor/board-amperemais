@@ -41,6 +41,9 @@ export function buildContextVariablesMap(
 		couponCode: ctx?.cupomCodigo ?? "",
 		couponTitle: ctx?.cupomTitulo ?? "",
 		couponExpirationDate: ctx?.cupomExpiracaoData ?? "",
+		promotionProductName: ctx?.promocaoProdutoNome ?? "",
+		promotionProductPrice: formatToMoney(ctx?.promocaoProdutoPrecoPromocional ?? 0),
+		promotionProductOriginalPrice: formatToMoney(ctx?.promocaoProdutoPrecoOriginal ?? 0),
 	};
 }
 

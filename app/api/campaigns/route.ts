@@ -2,7 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CAMPAIGN_SENT_INTERACTION_STATUSES } from "@/lib/campaigns/utils";
-import { getOrganizationWeeklyCampaignLimit, validateCampaignWeeklyLimit } from "@/lib/campaigns/validation";
+import { getOrganizationWeeklyCampaignLimit, validateCampaignWeeklyLimit, validateProductPromotionCampaign } from "@/lib/campaigns/validation";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
 import { validateTemplateForTrigger } from "@/lib/message-templates";
 import { CampaignSchema, CampaignSegmentationSchema } from "@/schemas/campaigns";
@@ -45,7 +45,8 @@ function validateRecurrentCampaign(campaign: z.infer<typeof CampaignSchema>) {
 }
 
 function validateCampaignFrequencyInterval(campaign: z.infer<typeof CampaignSchema>) {
-	if (campaign.gatilhoTipo === "USO-UNICO") return;
+	// Campanhas de disparo único não têm intervalo de recorrência a respeitar.
+	if (campaign.gatilhoTipo === "USO-UNICO" || campaign.gatilhoTipo === "PROMOCAO-PRODUTOS") return;
 	if (!campaign.permitirRecorrencia) return;
 
 	if (!campaign.frequenciaIntervaloMedida || !campaign.frequenciaIntervaloValor || campaign.frequenciaIntervaloValor <= 0) {
@@ -149,6 +150,8 @@ async function createCampaign({ input, session }: { input: TCreateCampaignInput;
 	validateCashbackExpiringTrigger(input.campaign as z.infer<typeof CampaignSchema>);
 	validateCampaignFrequencyInterval(input.campaign as z.infer<typeof CampaignSchema>);
 	validateExecutionDelayDirection(input.campaign as z.infer<typeof CampaignSchema>);
+
+	await validateProductPromotionCampaign(input.campaign as z.infer<typeof CampaignSchema>, userOrgId);
 
 	// Validate template-trigger compatibility
 	await validateCampaignTemplateTriggerCompatibility(input.campaign.whatsappTemplateId, input.campaign.gatilhoTipo);
@@ -509,6 +512,8 @@ async function updateCampaign({ input, session }: { input: TUpdateCampaignInput;
 	validateCashbackExpiringTrigger(input.campaign as z.infer<typeof CampaignSchema>);
 	validateCampaignFrequencyInterval(input.campaign as z.infer<typeof CampaignSchema>);
 	validateExecutionDelayDirection(input.campaign as z.infer<typeof CampaignSchema>);
+
+	await validateProductPromotionCampaign(input.campaign as z.infer<typeof CampaignSchema>, userOrgId);
 
 	// Validate template-trigger compatibility
 	await validateCampaignTemplateTriggerCompatibility(input.campaign.whatsappTemplateId, input.campaign.gatilhoTipo);
