@@ -220,9 +220,27 @@ and passes it as `contextMetadados`. The **immediate** path did not: `processEnq
 Interactions` (`lib/campaigns/shared.ts`) built its `ImmediateProcessingData` payloads without the
 field, so anything enqueued and sent in the same run would render context variables empty.
 
-Fixed by adding an optional `contextMetadadosByClientId` map to that helper (backward compatible —
-the recurrent cron passes nothing and is unaffected). Without it the promotion variables would have
-been empty on exactly the sends that matter most.
+Fixed by adding an optional `contextMetadadosByClientId` map to that helper. A follow-up audit of
+every enqueue-and-send path then found (and fixed) the wider class:
+
+- **`process-recurrent-campaigns` never ran campaign effects at all.** A RECORRENTE campaign with
+  `cashbackGeracaoAtivo`/`cupomGeracaoAtivo` silently credited nothing and granted nothing. The
+  cron now applies both effects per recurrence inside the enqueue transaction.
+- **`process-single-use-campaigns` ran effects but discarded their context.** Cashback was credited
+  and coupon grants were burned, yet the message rendered `couponCode` empty and cashback variables
+  as "R$ 0,00" (`formatCashbackValue(0)` — a plausible wrong number, worse than blank).
+- **Shared fix**: `applyCampaignBatchEffectsToInteractionMetadata`
+  (`lib/campaigns/interaction-metadata.ts`) is the batch mirror of
+  `applyCampaignBonusToInteractionMetadata` — it runs the FIXO-cashback and coupon batch generators
+  and returns the per-client context to persist and pass along. The batch generators now return
+  per-client balances (`balancesByClientId`, plus the program's `terminologia`) and the coupon's
+  code/title/expiration. Both crons pre-generate interaction IDs (so cashback transactions still
+  record `metadados.interacaoId` for send-block reversal) and insert the interaction with the full
+  merged context — effects and interaction stay atomic in one transaction.
+- **Structural guard**: `sendReservedInteraction` now falls back to the interaction's persisted
+  `metadados` (same query it already made, widened by one column) whenever the caller does not pass
+  `contextMetadados`. The persisted row is authoritative, so a future caller that forgets the
+  in-memory map degrades to correct-but-one-query behavior instead of rendering wrong values.
 
 ---
 

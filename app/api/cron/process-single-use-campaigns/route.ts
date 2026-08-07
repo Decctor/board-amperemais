@@ -1,6 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
-import { generateCashbackForCampaignBatch } from "@/lib/cashback/generate-campaign-cashback";
-import { generateCouponGrantsForCampaignBatch } from "@/lib/coupons/generate-campaign-coupon";
+import { applyCampaignBatchEffectsToInteractionMetadata } from "@/lib/campaigns/interaction-metadata";
 import { resolveCampaignAudienceClientIdsForCampaign } from "@/lib/campaigns/filters";
 import {
 	ENQUEUE_CHUNK_SIZE,
@@ -100,23 +99,23 @@ async function enqueueCampaignChunk({
 	clientIds,
 	currentDate,
 	currentTimeBlock,
-	cashbackActive,
-	cashbackValue,
 	interactionTitle,
-	contextMetadadosByClientId,
+	baseMetadataByClientId,
 }: {
 	organizationId: string;
 	campaign: TSingleUseCampaign;
 	clientIds: string[];
 	currentDate: string;
 	currentTimeBlock: TInteractionCronTimeBlock;
-	cashbackActive: boolean;
-	cashbackValue: number;
 	interactionTitle: string;
-	// Contexto por cliente congelado na interação (produto sugerido da promoção). Ausente para
-	// campanhas de uso único, que não têm contexto por cliente.
-	contextMetadadosByClientId?: Map<string, TInteractionContextMetadados>;
-}): Promise<{ inserted: { id: string; clienteId: string }[]; cashbackGenerated: number }> {
+	// Contexto-base por cliente (produto sugerido da promoção). Os efeitos de cashback/cupom são
+	// mesclados por cima antes do insert.
+	baseMetadataByClientId?: Map<string, TInteractionContextMetadados>;
+}): Promise<{
+	inserted: { id: string; clienteId: string }[];
+	cashbackGenerated: number;
+	metadadosByClientId: Map<string, TInteractionContextMetadados>;
+}> {
 	return db.transaction(async (tx) => {
 		let clientIdsToInsert = clientIds;
 
@@ -136,13 +135,29 @@ async function enqueueCampaignChunk({
 		}
 
 		if (clientIdsToInsert.length === 0) {
-			return { inserted: [], cashbackGenerated: 0 };
+			return { inserted: [], cashbackGenerated: 0, metadadosByClientId: new Map<string, TInteractionContextMetadados>() };
 		}
+
+		// IDs pré-gerados: os efeitos rodam ANTES do insert (o contexto deles — novo saldo, código do
+		// cupom — precisa estar no metadados da interação), mas as transações de cashback já gravam
+		// metadados.interacaoId para permitir estorno em bloqueio de envio. Tudo na mesma transação,
+		// então falha em qualquer etapa desfaz efeito e interação juntos.
+		const interactionIdByClientId = new Map(clientIdsToInsert.map((clientId) => [clientId, crypto.randomUUID()]));
+
+		const { cashbackGenerated, metadadosByClientId } = await applyCampaignBatchEffectsToInteractionMetadata({
+			tx,
+			organizationId,
+			campaign,
+			clientIds: clientIdsToInsert,
+			interactionIdByClientId,
+			baseMetadataByClientId,
+		});
 
 		const inserted = await tx
 			.insert(interactions)
 			.values(
 				clientIdsToInsert.map((clientId) => ({
+					id: interactionIdByClientId.get(clientId),
 					clienteId: clientId,
 					campanhaId: campaign.id,
 					organizacaoId: organizationId,
@@ -151,39 +166,12 @@ async function enqueueCampaignChunk({
 					descricao: campaign.descricao ?? `Campanha de ${interactionTitle.toLowerCase()}: ${campaign.titulo}`,
 					agendamentoDataReferencia: currentDate,
 					agendamentoBlocoReferencia: currentTimeBlock as TInteractionEntity["agendamentoBlocoReferencia"],
-					metadados: contextMetadadosByClientId?.get(clientId) ?? null,
+					metadados: metadadosByClientId.get(clientId) ?? null,
 				})),
 			)
 			.returning({ id: interactions.id, clienteId: interactions.clienteId });
 
-		let cashbackGenerated = 0;
-		if (cashbackActive && inserted.length > 0) {
-			const { generatedCount } = await generateCashbackForCampaignBatch({
-				tx,
-				organizationId,
-				campaignId: campaign.id,
-				clientIds: inserted.map((row) => row.clienteId),
-				cashbackValue,
-				expirationMeasure: campaign.cashbackGeracaoExpiracaoMedida,
-				expirationValue: campaign.cashbackGeracaoExpiracaoValor,
-				interactionIdByClientId: new Map(inserted.map((row) => [row.clienteId, row.id])),
-			});
-			cashbackGenerated = generatedCount;
-		}
-
-		if (campaign.cupomGeracaoAtivo && campaign.cupomGeracaoCupomId && inserted.length > 0) {
-			await generateCouponGrantsForCampaignBatch({
-				tx,
-				organizationId,
-				campaignId: campaign.id,
-				clientIds: inserted.map((row) => row.clienteId),
-				couponId: campaign.cupomGeracaoCupomId,
-				expirationMeasure: campaign.cupomGeracaoExpiracaoMedida,
-				expirationValue: campaign.cupomGeracaoExpiracaoValor,
-			});
-		}
-
-		return { inserted, cashbackGenerated };
+		return { inserted, cashbackGenerated, metadadosByClientId };
 	});
 }
 
@@ -339,10 +327,10 @@ async function processSingleUseCampaign({
 		// Produto sugerido por cliente, resolvido antes do insert para ser congelado na interação.
 		// Falha aqui não derruba o lote: sem contexto, o template ainda envia (as variáveis da
 		// promoção renderizam vazias), o que é preferível a perder a campanha inteira.
-		let contextMetadadosByClientId: Map<string, TInteractionContextMetadados> | undefined;
+		let promotionMetadataByClientId: Map<string, TInteractionContextMetadados> | undefined;
 		if (isPromotionCampaign) {
 			try {
-				contextMetadadosByClientId = await resolvePromotionMetadataByClientId({
+				promotionMetadataByClientId = await resolvePromotionMetadataByClientId({
 					organizationId,
 					clientIds: chunk,
 					candidates: promotionCandidates,
@@ -360,10 +348,8 @@ async function processSingleUseCampaign({
 					clientIds: chunk,
 					currentDate,
 					currentTimeBlock,
-					cashbackActive,
-					cashbackValue,
 					interactionTitle,
-					contextMetadadosByClientId,
+					baseMetadataByClientId: promotionMetadataByClientId,
 				}),
 			logPrefix: `[ORG: ${organizationId}] [CAMPAIGN: ${campaign.id}]`,
 		});
@@ -374,7 +360,9 @@ async function processSingleUseCampaign({
 			continue;
 		}
 
-		const { inserted, cashbackGenerated } = enqueueResult.result;
+		// O contexto final (promoção + efeitos de cashback/cupom) volta do enfileiramento: é o mesmo
+		// que foi congelado em interactions.metadados e deve seguir para o envio imediato.
+		const { inserted, cashbackGenerated, metadadosByClientId } = enqueueResult.result;
 		summary.cashbacksGenerated += cashbackGenerated;
 		summary.interactionsInserted += inserted.length;
 		campaignEnqueuedCount += inserted.length;
@@ -423,7 +411,7 @@ async function processSingleUseCampaign({
 				whatsappSessionId: campaign.whatsappConexaoTelefone?.conexao?.gatewaySessaoId ?? undefined,
 				weeklyLimitCache,
 				logTag: "SINGLE_USE_CAMPAIGNS",
-				contextMetadadosByClientId,
+				contextMetadadosByClientId: metadadosByClientId,
 			});
 			summary.interactionsQueuedForImmediateProcessing += immediateResult.queuedForImmediateProcessing;
 			summary.immediateEligibleWithoutClientData += immediateResult.missingClientData;
