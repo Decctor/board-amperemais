@@ -59,15 +59,18 @@ export default function SectionApplyBar({
 					exit={oculto}
 					transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
 				>
-					<div className="pointer-events-auto flex w-full max-w-2xl items-center justify-between gap-3 rounded-2xl bg-background/90 px-3 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] ring-1 ring-border/70 backdrop-blur-md">
-						<p className={bloqueado ? "min-w-0 flex-1 text-xs font-medium text-destructive" : "min-w-0 flex-1 text-xs text-muted-foreground"}>
+					{/* Em telas estreitas o aviso e os botões não cabem lado a lado — o texto colapsa em uma
+					    palavra por linha. Abaixo de sm a barra empilha: aviso em cima, botões em linha
+					    ocupando a largura toda. */}
+					<div className="pointer-events-auto flex w-full max-w-2xl flex-col gap-2 rounded-2xl bg-background/90 px-3 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] ring-1 ring-border/70 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+						<p className={bloqueado ? "min-w-0 text-xs font-medium text-destructive sm:flex-1" : "min-w-0 text-xs text-muted-foreground sm:flex-1"}>
 							{bloqueado ? disabledReason : message}
 						</p>
-						<div className="flex shrink-0 items-center gap-2">
+						<div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
 							<Button type="button" variant="ghost" size="sm" onClick={onDiscard} disabled={isPending}>
 								DESCARTAR
 							</Button>
-							<LoadingButton type="button" loading={isPending} disabled={disabled} onClick={onApply}>
+							<LoadingButton type="button" className="grow sm:grow-0" loading={isPending} disabled={disabled} onClick={onApply}>
 								{applyButtonText}
 							</LoadingButton>
 						</div>
