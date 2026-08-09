@@ -185,7 +185,8 @@ export default function ConfirmStockRecount({ entries, clearEntry, closeModal, c
 			<ResponsiveMenuSection title="Motivo" icon={<MessageSquareText className="h-4 w-4" />}>
 				<TextareaInput label="Motivo" placeholder="Recontagem de estoque" value={reason} handleChange={setReason} />
 				<p className="text-muted-foreground text-xs">
-					Cada ajuste gera uma movimentação de estoque do tipo AJUSTE no saldo do produto/variante. Saldos de lotes não são reconciliados pela recontagem.
+					Cada ajuste gera uma movimentação de estoque do tipo AJUSTE. Reduções são distribuídas entre os lotes ativos não vencidos (vencimento mais
+					próximo primeiro); o que os lotes não cobrirem — e os acréscimos — ajusta apenas o saldo do produto/variante.
 				</p>
 			</ResponsiveMenuSection>
 		</ResponsiveMenu>

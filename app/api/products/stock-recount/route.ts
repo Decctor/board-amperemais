@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { applyStockMovement } from "@/lib/stock/apply-stock-movement";
+import { consumeStockLotsByFefo } from "@/lib/stock/consume-stock-lots-fefo";
 import { db } from "@/services/drizzle";
 import { products, productVariants } from "@/services/drizzle/schema";
 import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
@@ -348,6 +349,8 @@ type TStockRecountItemResult = {
 	saldoAnterior: number;
 	saldoPosterior: number;
 	delta: number;
+	// Lotes cujo saldo foi reduzido pela distribuição FEFO de uma redução (sempre 0 em acréscimos).
+	lotesAjustados: number;
 };
 
 async function applyStockRecount({ input, session }: { input: TApplyStockRecountInput; session: TAuthUserSession }) {
@@ -408,37 +411,87 @@ async function applyStockRecount({ input, session }: { input: TApplyStockRecount
 			const base = { produtoId: item.produtoId, produtoVarianteId: item.produtoVarianteId ?? null };
 
 			if (!trackingActive) {
-				itens.push({ ...base, status: "RASTREAMENTO_INATIVO", saldoAnterior: currentQuantity, saldoPosterior: currentQuantity, delta: 0 });
+				itens.push({
+					...base,
+					status: "RASTREAMENTO_INATIVO",
+					saldoAnterior: currentQuantity,
+					saldoPosterior: currentQuantity,
+					delta: 0,
+					lotesAjustados: 0,
+				});
 				continue;
 			}
 
 			const signedQuantity = item.quantidadeContada - currentQuantity;
 			if (signedQuantity === 0) {
-				itens.push({ ...base, status: "SEM_DIFERENCA", saldoAnterior: currentQuantity, saldoPosterior: currentQuantity, delta: 0 });
+				itens.push({ ...base, status: "SEM_DIFERENCA", saldoAnterior: currentQuantity, saldoPosterior: currentQuantity, delta: 0, lotesAjustados: 0 });
 				continue;
 			}
 
-			// unitCost null preserva o custo médio móvel corrente — recontagem corrige quantidade,
-			// não reavalia custo.
-			const movement = await applyStockMovement({
-				trx: tx,
-				organizationId,
-				userId,
-				produtoId: item.produtoId,
-				produtoVarianteId: item.produtoVarianteId ?? null,
-				signedQuantity,
-				movementType: "AJUSTE",
-				reason: input.motivo,
-				unitCost: null,
-				validateSufficientStock: false,
-			});
+			let lotesAjustados = 0;
+
+			if (signedQuantity < 0) {
+				// Redução: distribuída entre os lotes ativos não vencidos (FEFO — os itens faltantes
+				// quase sempre saíram do estoque mais antigo). Cada lote consumido gera sua própria
+				// movimentação AJUSTE vinculada ao lote e o helper decrementa o saldo da entidade.
+				// O que os lotes não cobrirem (drift pré-existente ou produto sem lotes) ajusta o
+				// saldo da entidade sem vínculo de lote. Lotes vencidos ficam para o fluxo de
+				// descarte, que valora a perda contabilmente.
+				const consumedLots = await consumeStockLotsByFefo({
+					trx: tx,
+					organizationId,
+					userId,
+					produtoId: item.produtoId,
+					produtoVarianteId: item.produtoVarianteId ?? null,
+					quantidade: Math.abs(signedQuantity),
+					reason: input.motivo,
+					movementType: "AJUSTE",
+					unitCost: null,
+					allowPartial: true,
+				});
+				lotesAjustados = consumedLots.length;
+				const consumedTotal = consumedLots.reduce((total, lot) => total + lot.quantidadeConsumida, 0);
+				const remainder = Math.abs(signedQuantity) - consumedTotal;
+				if (remainder > 1e-9) {
+					await applyStockMovement({
+						trx: tx,
+						organizationId,
+						userId,
+						produtoId: item.produtoId,
+						produtoVarianteId: item.produtoVarianteId ?? null,
+						signedQuantity: -remainder,
+						movementType: "AJUSTE",
+						reason: input.motivo,
+						unitCost: null,
+						validateSufficientStock: false,
+					});
+				}
+			} else {
+				// Acréscimo: não há lote de origem conhecido para as unidades encontradas — apenas o
+				// saldo da entidade sobe. A soma dos lotes ficar abaixo do saldo é o sentido inofensivo
+				// do desvio (o FEFO nunca consome além do que o lote tem). unitCost null preserva o
+				// custo médio móvel corrente — recontagem corrige quantidade, não reavalia custo.
+				await applyStockMovement({
+					trx: tx,
+					organizationId,
+					userId,
+					produtoId: item.produtoId,
+					produtoVarianteId: item.produtoVarianteId ?? null,
+					signedQuantity,
+					movementType: "AJUSTE",
+					reason: input.motivo,
+					unitCost: null,
+					validateSufficientStock: false,
+				});
+			}
 
 			itens.push({
 				...base,
 				status: "APLICADO",
-				saldoAnterior: movement.previousQuantity,
-				saldoPosterior: movement.nextQuantity,
+				saldoAnterior: currentQuantity,
+				saldoPosterior: currentQuantity + signedQuantity,
 				delta: signedQuantity,
+				lotesAjustados,
 			});
 		}
 

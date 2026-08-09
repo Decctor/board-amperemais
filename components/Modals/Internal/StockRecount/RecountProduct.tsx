@@ -113,7 +113,10 @@ export default function RecountProduct({ productId, closeModal, callbacks }: Rec
 
 			<ResponsiveMenuSection title="Motivo" icon={<MessageSquareText className="h-4 w-4" />}>
 				<TextareaInput label="Motivo" placeholder="Recontagem de estoque" value={reason} handleChange={setReason} />
-				<p className="text-muted-foreground text-xs">Itens sem diferença não geram movimentação de estoque.</p>
+				<p className="text-muted-foreground text-xs">
+					Itens sem diferença não geram movimentação de estoque. Reduções são distribuídas entre os lotes ativos não vencidos (vencimento mais próximo
+					primeiro).
+				</p>
 			</ResponsiveMenuSection>
 		</ResponsiveMenu>
 	);
