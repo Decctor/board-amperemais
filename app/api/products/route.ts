@@ -3,7 +3,15 @@ import { runPagesRouteHandler, type PagesRouteHandler } from "@/lib/pages-route-
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { ProductFiscalProfileSchema } from "@/schemas/fiscal";
-import { ProductAddOnOptionSchema, ProductAddOnSchema, ProductOptionSchema, ProductOptionValueSchema, ProductSchema, ProductVariantSchema } from "@/schemas/products";
+import {
+	ProductAddOnOptionSchema,
+	ProductAddOnSchema,
+	ProductOptionSchema,
+	ProductOptionValueSchema,
+	ProductSchema,
+	ProductVariantSchema,
+} from "@/schemas/products";
+import { applyStockMovement } from "@/lib/stock/apply-stock-movement";
 import { db, type DBTransaction } from "@/services/drizzle";
 import {
 	productAddOnOptions,
@@ -443,9 +451,7 @@ async function getProductsStockView({ input, userOrgId }: { input: TGetProductsD
 					quantidadeAtual: primaryLot.quantidadeAtual,
 					quantidadeInicial: primaryLot.quantidadeInicial,
 					dataValidade: primaryLot.dataValidade,
-					diasAteValidade: primaryLot.dataValidade
-						? Math.ceil((new Date(primaryLot.dataValidade).getTime() - now.getTime()) / 86_400_000)
-						: null,
+					diasAteValidade: primaryLot.dataValidade ? Math.ceil((new Date(primaryLot.dataValidade).getTime() - now.getTime()) / 86_400_000) : null,
 				}
 			: null;
 
@@ -656,9 +662,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 			organizacaoId: products.organizacaoId,
 			dataUltimaSincronizacao: products.dataUltimaSincronizacao,
 			// Campos de stats - só considera valores quando a venda passa nos filtros
-			totalSalesValue: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END)`.as(
-				"total_sales_value",
-			),
+			totalSalesValue: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END)`.as("total_sales_value"),
 			totalSalesQty: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.quantidade} ELSE 0 END)`.as("total_sales_qty"),
 			totalCostValue: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorCustoTotal} ELSE 0 END)`.as("total_cost_value"),
 			firstSaleDate: min(sales.dataVenda).as("first_sale_date"),
@@ -715,7 +719,12 @@ async function getProducts({ input, session }: GetProductsParams) {
 		.from(productStatsSubquery);
 
 	if (input.abcClasses && input.abcClasses.length > 0) {
-		productsWithABCQuery.where(sql`${curvaABCSql} IN (${sql.join(input.abcClasses.map((abcClass) => sql`${abcClass}`), sql`, `)})`);
+		productsWithABCQuery.where(
+			sql`${curvaABCSql} IN (${sql.join(
+				input.abcClasses.map((abcClass) => sql`${abcClass}`),
+				sql`, `,
+			)})`,
+		);
 	}
 
 	const productsWithABCSubquery = productsWithABCQuery.as("products_with_abc");
@@ -743,23 +752,13 @@ async function getProducts({ input, session }: GetProductsParams) {
 
 	// resultLimit: corta os top N após ordenação e filtro de curva ABC, antes da paginação
 	const paginationSource = input.resultLimit
-		? db
-				.select()
-				.from(productsWithABCSubquery)
-				.orderBy(buildOrderByClause(productsWithABCSubquery))
-				.limit(input.resultLimit)
-				.as("products_capped")
+		? db.select().from(productsWithABCSubquery).orderBy(buildOrderByClause(productsWithABCSubquery)).limit(input.resultLimit).as("products_capped")
 		: productsWithABCSubquery;
 
 	const matchedCountResult = await db.select({ count: count() }).from(paginationSource);
 	const statsByProductMatchedCount = matchedCountResult[0]?.count ?? 0;
 
-	const productsWithStatsResult = await db
-		.select()
-		.from(paginationSource)
-		.orderBy(buildOrderByClause(paginationSource))
-		.offset(skip)
-		.limit(PAGE_SIZE);
+	const productsWithStatsResult = await db.select().from(paginationSource).orderBy(buildOrderByClause(paginationSource)).offset(skip).limit(PAGE_SIZE);
 
 	// Mapeia os resultados para o formato final
 	const productsWithStats = productsWithStatsResult.map((row) => {
@@ -1305,6 +1304,17 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 	if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
 
 	const transactionReturn = await db.transaction(async (tx) => {
+		// Saldo lido com trava (FOR UPDATE): a edição vira um AJUSTE calculado por delta, então o
+		// saldo de referência não pode mudar (venda concorrente) entre a leitura e a movimentação.
+		const [currentProductState] = await tx
+			.select({ quantidade: products.quantidade })
+			.from(products)
+			.where(and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)))
+			.for("update");
+		if (!currentProductState) throw new createHttpError.NotFound("Produto não encontrado.");
+
+		// `quantidade` fica fora do update direto: com rastreamento ativo, o saldo só muda via
+		// movimentação de estoque (abaixo), preservando o livro-razão.
 		const [updatedProduct] = await tx
 			.update(products)
 			.set({
@@ -1318,7 +1328,6 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 				imagemCapaUrl: input.product.imagemCapaUrl,
 				precoVenda: input.product.precoVenda,
 				precoCusto: input.product.precoCusto,
-				quantidade: input.product.quantidade,
 				rastreamentoEstoqueAtivo: input.product.rastreamentoEstoqueAtivo,
 				baixaEstoqueModo: input.product.baixaEstoqueModo,
 				fichaTecnicaReceitaId: input.product.fichaTecnicaReceitaId,
@@ -1328,6 +1337,35 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 
 		if (!updatedProduct?.updatedId) {
 			throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar produto.");
+		}
+
+		// Quantidade ausente no payload = saldo inalterado (antes, escrevia null e zerava o saldo
+		// sem rastro). Com rastreamento ativo o delta vira um AJUSTE no livro-razão — o flag novo já
+		// foi persistido acima, então ligar o rastreamento e informar o saldo na mesma edição
+		// funciona. Sem rastreamento, mantém a escrita direta (produto sem livro-razão).
+		if (input.product.quantidade != null) {
+			if (input.product.rastreamentoEstoqueAtivo) {
+				const productQuantityDelta = input.product.quantidade - (currentProductState.quantidade ?? 0);
+				if (productQuantityDelta !== 0) {
+					await applyStockMovement({
+						trx: tx,
+						organizationId: userOrgId,
+						userId: session.user.id,
+						produtoId: input.productId,
+						produtoVarianteId: null,
+						signedQuantity: productQuantityDelta,
+						movementType: "AJUSTE",
+						reason: "Ajuste manual via edição do produto",
+						unitCost: null,
+						validateSufficientStock: false,
+					});
+				}
+			} else {
+				await tx
+					.update(products)
+					.set({ quantidade: input.product.quantidade })
+					.where(and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)));
+			}
 		}
 
 		await upsertScopedProductFiscalProfiles({
@@ -1369,6 +1407,14 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 			let variantId = variant.id ?? null;
 
 			if (variantId) {
+				// Mesmo tratamento do produto: saldo travado, flag persistido antes, delta via AJUSTE.
+				const [currentVariantState] = await tx
+					.select({ quantidade: productVariants.quantidade })
+					.from(productVariants)
+					.where(and(eq(productVariants.id, variantId), eq(productVariants.produtoId, input.productId), eq(productVariants.organizacaoId, userOrgId)))
+					.for("update");
+				if (!currentVariantState) throw new createHttpError.NotFound("Variante do produto não encontrada.");
+
 				await tx
 					.update(productVariants)
 					.set({
@@ -1377,11 +1423,33 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 						imagemCapaUrl: variant.imagemCapaUrl,
 						precoVenda: variant.precoVenda,
 						precoCusto: variant.precoCusto,
-						quantidade: variant.quantidade,
 						rastreamentoEstoqueAtivo: variant.rastreamentoEstoqueAtivo,
 						ativo: variant.ativo,
 					})
 					.where(and(eq(productVariants.id, variantId), eq(productVariants.produtoId, input.productId), eq(productVariants.organizacaoId, userOrgId)));
+
+				if (variant.rastreamentoEstoqueAtivo) {
+					const variantQuantityDelta = variant.quantidade - (currentVariantState.quantidade ?? 0);
+					if (variantQuantityDelta !== 0) {
+						await applyStockMovement({
+							trx: tx,
+							organizationId: userOrgId,
+							userId: session.user.id,
+							produtoId: input.productId,
+							produtoVarianteId: variantId,
+							signedQuantity: variantQuantityDelta,
+							movementType: "AJUSTE",
+							reason: "Ajuste manual via edição do produto",
+							unitCost: null,
+							validateSufficientStock: false,
+						});
+					}
+				} else {
+					await tx
+						.update(productVariants)
+						.set({ quantidade: variant.quantidade })
+						.where(and(eq(productVariants.id, variantId), eq(productVariants.produtoId, input.productId), eq(productVariants.organizacaoId, userOrgId)));
+				}
 			} else {
 				const [createdVariant] = await tx
 					.insert(productVariants)
@@ -1404,6 +1472,23 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 				}
 
 				variantId = createdVariant.id;
+
+				// Variante criada pela edição do produto ganha a mesma transação de inicialização que a
+				// rota dedicada de variantes escreve — sem isso o saldo inicial nasceria fora do
+				// livro-razão.
+				if (variant.rastreamentoEstoqueAtivo && variant.quantidade > 0) {
+					await tx.insert(productStockTransactions).values({
+						organizacaoId: userOrgId,
+						produtoId: input.productId,
+						produtoVarianteId: variantId,
+						quantidade: variant.quantidade,
+						saldoAnterior: 0,
+						saldoPosterior: variant.quantidade,
+						motivo: "Inicialização do estoque",
+						tipo: "AJUSTE",
+						operadorId: session.user.id,
+					});
+				}
 			}
 
 			await syncVariantOptionValues({

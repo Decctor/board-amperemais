@@ -3,6 +3,7 @@
 import type { TGetProductsOutputStock } from "@/app/api/products/route";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
+import RecountProduct from "@/components/Modals/Internal/StockRecount/RecountProduct";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import {
 	BadgeDollarSign,
 	Boxes,
 	CalendarClock,
+	ClipboardList,
 	Code,
 	Diamond,
 	Info,
@@ -32,12 +34,16 @@ import {
 	ShoppingCart,
 	Tag,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 
 type StockProduct = TGetProductsOutputStock["products"][number];
 
 export default function StocksPage() {
+	const queryClient = useQueryClient();
+	const [recountingProductId, setRecountingProductId] = useState<string | null>(null);
 	const {
 		data: stock,
 		isLoading,
@@ -147,7 +153,23 @@ export default function StocksPage() {
 			) : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 
-			{isSuccess && products.length > 0 ? products.map((product) => <StockProductCard key={product.id} product={product} />) : null}
+			{isSuccess && products.length > 0
+				? products.map((product) => <StockProductCard key={product.id} product={product} onRecount={() => setRecountingProductId(product.id)} />)
+				: null}
+
+			{recountingProductId ? (
+				<RecountProduct
+					productId={recountingProductId}
+					closeModal={() => setRecountingProductId(null)}
+					callbacks={{
+						onSuccess: () => {
+							queryClient.invalidateQueries({ queryKey: ["products-stock"] });
+							queryClient.invalidateQueries({ queryKey: ["product-stock-transactions"] });
+							queryClient.invalidateQueries({ queryKey: ["stock-recount-rows"] });
+						},
+					}}
+				/>
+			) : null}
 
 			{isSuccess && products.length === 0 ? (
 				<Empty>
@@ -178,8 +200,9 @@ function getSaldoTone(quantidade: number) {
 
 type StockProductCardProps = {
 	product: StockProduct;
+	onRecount: () => void;
 };
-function StockProductCard({ product }: StockProductCardProps) {
+function StockProductCard({ product, onRecount }: StockProductCardProps) {
 	const quantidade = product.quantidade ?? 0;
 	const saldoTone = getSaldoTone(quantidade);
 	const { entradas, saidas } = product.movimentacao;
@@ -254,9 +277,7 @@ function StockProductCard({ product }: StockProductCardProps) {
 							</span>
 							<ValidityChip diasAteValidade={loteAtivo.diasAteValidade} dataValidade={loteAtivo.dataValidade} />
 							{product.lotesAtivosCount > 1 ? (
-								<span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold">
-									+{product.lotesAtivosCount - 1}
-								</span>
+								<span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold">+{product.lotesAtivosCount - 1}</span>
 							) : null}
 						</div>
 					) : (
@@ -265,8 +286,12 @@ function StockProductCard({ product }: StockProductCardProps) {
 				</div>
 			</div>
 
-			{/* Ação */}
-			<div className="flex shrink-0 items-center justify-end">
+			{/* Ações */}
+			<div className="flex shrink-0 items-center justify-end gap-1">
+				<Button variant="ghost" size="sm" onClick={onRecount}>
+					<ClipboardList className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />
+					RECONTAR
+				</Button>
 				<Button variant="ghost" size="sm" asChild>
 					<Link href={appRoutes.catalog.product(product.id)}>
 						<Info className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />
