@@ -29,6 +29,7 @@ export const appRoutes = {
 	inventory: {
 		root: () => "/dashboard/inventory",
 		movements: () => "/dashboard/inventory/movements",
+		recount: () => "/dashboard/inventory/recount",
 		lots: () => "/dashboard/inventory/lots",
 		lot: (lotId: string) => `/dashboard/inventory/lots/${lotId}`,
 		lotLabelsPreview: () => "/dashboard/inventory/lots/labels/preview",

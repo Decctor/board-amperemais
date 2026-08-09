@@ -4,6 +4,7 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import PlanRestrictionComponent from "@/components/Layouts/PlanRestrictionComponent";
 import NewProduct from "@/components/Modals/Products/NewProduct";
+import RecountProduct from "@/components/Modals/Internal/StockRecount/RecountProduct";
 import ProductsGraphs from "@/app/dashboard/catalog/products/_components/ProductsGraphs";
 import ProductsInlineFilters from "@/app/dashboard/catalog/products/_components/ProductsInlineFilters";
 import ProductsRanking from "@/app/dashboard/catalog/products/_components/ProductsRanking";
@@ -32,6 +33,7 @@ import {
 	BadgeDollarSign,
 	ChevronDown,
 	ChevronUp,
+	ClipboardList,
 	Code,
 	Diamond,
 	DollarSign,
@@ -100,6 +102,7 @@ function ProductsDatabaseView({ user, userMembership, organization }: ProductsDa
 	const orgHasStockTracking = organization.configuracao.preferencias.rastreamentoEstoque;
 	const queryClient = useQueryClient();
 	const [newProductModalIsOpen, setNewProductModalIsOpen] = useState<boolean>(false);
+	const [recountingProductId, setRecountingProductId] = useState<string | null>(null);
 	const {
 		data: productsResult,
 		queryKey,
@@ -169,6 +172,7 @@ function ProductsDatabaseView({ user, userMembership, organization }: ProductsDa
 							periodAfter={filters.statsPeriodAfter}
 							periodBefore={filters.statsPeriodBefore}
 							showStockData={orgHasStockTracking}
+							onRecount={() => setRecountingProductId(product.id)}
 						/>
 					))
 				) : (
@@ -181,6 +185,20 @@ function ProductsDatabaseView({ user, userMembership, organization }: ProductsDa
 					userMembership={userMembership}
 					closeModal={() => setNewProductModalIsOpen(false)}
 					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+				/>
+			) : null}
+			{recountingProductId ? (
+				<RecountProduct
+					productId={recountingProductId}
+					closeModal={() => setRecountingProductId(null)}
+					callbacks={{
+						onSuccess: () => {
+							queryClient.invalidateQueries({ queryKey: queryKey });
+							queryClient.invalidateQueries({ queryKey: ["products-stock"] });
+							queryClient.invalidateQueries({ queryKey: ["product-stock-transactions"] });
+							queryClient.invalidateQueries({ queryKey: ["stock-recount-rows"] });
+						},
+					}}
 				/>
 			) : null}
 		</div>
@@ -405,11 +423,13 @@ function ProductCard({
 	periodAfter,
 	periodBefore,
 	showStockData,
+	onRecount,
 }: {
 	product: TGetProductsOutputDefault["products"][number];
 	periodAfter: Date | null;
 	periodBefore: Date | null;
 	showStockData: boolean;
+	onRecount: () => void;
 }) {
 	const [showMoreMetrics, setShowMoreMetrics] = useState(false);
 	// Calculate stock status
@@ -521,6 +541,12 @@ function ProductCard({
 						</div>
 					</div>
 					<div className="flex items-center gap-1.5">
+						{showStockData ? (
+							<Button variant="ghost" className="flex items-center gap-1.5" size="sm" onClick={onRecount}>
+								<ClipboardList className="w-3 min-w-3 h-3 min-h-3" />
+								RECONTAR
+							</Button>
+						) : null}
 						<Button variant="ghost" className="flex items-center gap-1.5" size="sm" asChild>
 							<Link href={`${appRoutes.catalog.product(product.id)}?tab=cadastro`}>
 								<PencilIcon className="w-3 min-w-3 h-3 min-h-3" />
@@ -553,9 +579,7 @@ function ProductCard({
 								</ProductStatCell>
 								<ProductStatCell
 									label="Giro"
-									tooltip={
-										turnoverDays !== null ? "Dias de estoque restantes no ritmo de vendas do período" : "Sem vendas no período para calcular o giro."
-									}
+									tooltip={turnoverDays !== null ? "Dias de estoque restantes no ritmo de vendas do período" : "Sem vendas no período para calcular o giro."}
 								>
 									{turnoverDays !== null ? (
 										<Chip.Root
@@ -629,24 +653,16 @@ function ProductCard({
 							>
 								<ProductStatValue>{custoMedio !== null ? formatToMoney(custoMedio) : null}</ProductStatValue>
 							</ProductStatCell>
-							<ProductStatCell
-								label="Custo total"
-								tooltip={hasCost ? "Custo dos itens vendidos no período" : hasSales ? noCostTooltip : noSalesTooltip}
-							>
+							<ProductStatCell label="Custo total" tooltip={hasCost ? "Custo dos itens vendidos no período" : hasSales ? noCostTooltip : noSalesTooltip}>
 								<ProductStatValue>{hasCost ? formatToMoney(vendasCusto) : null}</ProductStatValue>
 							</ProductStatCell>
-							<ProductStatCell
-								label="Lucro"
-								tooltip={lucro !== null ? "Faturamento − custo no período" : hasSales ? noCostTooltip : noSalesTooltip}
-							>
+							<ProductStatCell label="Lucro" tooltip={lucro !== null ? "Faturamento − custo no período" : hasSales ? noCostTooltip : noSalesTooltip}>
 								<ProductStatValue className={cn(lucro !== null && lucro < 0 && "text-red-600 dark:text-red-500")}>
 									{lucro !== null ? formatToMoney(lucro) : null}
 								</ProductStatValue>
 							</ProductStatCell>
 							<ProductStatCell label="Última venda" tooltip="Data da última venda do produto no período">
-								<ProductStatValue>
-									{product.estatisticas.dataUltimaVenda ? formatDateAsLocale(product.estatisticas.dataUltimaVenda) : null}
-								</ProductStatValue>
+								<ProductStatValue>{product.estatisticas.dataUltimaVenda ? formatDateAsLocale(product.estatisticas.dataUltimaVenda) : null}</ProductStatValue>
 							</ProductStatCell>
 						</div>
 					) : null}
