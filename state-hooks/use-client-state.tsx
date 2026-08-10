@@ -82,6 +82,9 @@ function getDefaultState(initialState?: Partial<TClientState>): TClientState {
 			analiseRFMUltimaAtualizacao: initialState?.client?.analiseRFMUltimaAtualizacao ?? null,
 			dataNascimento: initialState?.client?.dataNascimento ?? null,
 			dataFundacao: initialState?.client?.dataFundacao ?? null,
+			// Consentimento de marketing (LGPD): o CRM só carrega e preserva o que já foi aceito —
+			// null continua null. Um formulário interno não pode consentir pelo cliente.
+			consentimentoMarketingData: initialState?.client?.consentimentoMarketingData ?? null,
 			profissao: initialState?.client?.profissao ?? null,
 			ondeTrabalha: initialState?.client?.ondeTrabalha ?? null,
 			estadoCivil: initialState?.client?.estadoCivil ?? null,

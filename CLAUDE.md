@@ -373,7 +373,8 @@ is **Portuguese**. If it only exists in the implementation, it is **English**.
 
 ### 1. Data is Portuguese
 
-DB columns, Drizzle fields, Zod entity schemas, request/response bodies, form state.
+DB columns, Drizzle fields, Zod entity schemas, entity-shaped values nested in request/response
+bodies, and form state.
 
 ```typescript
 custoTotal: doublePrecision("custo_total"),            // Drizzle
@@ -392,7 +393,33 @@ let costedQuantity = 0;
 export function ValuationChips({ valores }: ValuationChipsProps) { ... }  // valuation-chips.tsx
 ```
 
-### 3. Whatever extends the entity is data too
+### 3. API envelope keys are code; nested entity fields are data
+
+Top-level and structural keys that organize an API operation are part of the code contract, so
+name them in English. A nested object or array validated by an entity schema keeps that schema's
+Portuguese fields. Do not make the whole request body Portuguese merely because it carries data.
+
+```typescript
+// Correct — English operation envelope, Portuguese fields inside entity-shaped values
+const CreateClientInputSchema = z.object({
+	orgId: z.string(),
+	client: ClientSchema.pick({ nome: true, telefone: true }),
+	customFieldAnswers: z.array(CustomFieldValueInputSchema), // [{ campoId, valor }]
+	marketingConsent: z.boolean(),
+});
+
+// Wrong — structural keys translated as though they were entity fields
+const CreateClientInputSchema = z.object({
+	cliente: ClientSchema,
+	respostasCampos: z.array(CustomFieldValueInputSchema),
+	consentimentoMarketing: z.boolean(),
+});
+```
+
+The same rule applies to response envelopes: `data`, `pagination`, and operation-specific grouping
+keys are English; entities inside them retain their Portuguese fields.
+
+### 4. Whatever extends the entity is data too
 
 A computed block that the API attaches to an entity does not open a new namespace — it extends the
 entity, and travels beside `titulo`, `entradas`, `saidas`. Name it in Portuguese.
@@ -406,7 +433,7 @@ valores: resolveProductionValuation({ production, pricingMap });
 valuation: { totalCost, expectedReturn, margin, marginPercentage, valuationOrigin }
 ```
 
-### 4. Do not translate a field just because it entered a signature
+### 5. Do not translate a field just because it entered a signature
 
 When a parameter, prop, or internal type carries entity fields, it keeps the entity's names. The
 **type name** is English; its **fields** follow the data. Translating buys nothing and forces a
@@ -433,7 +460,7 @@ Enum values travel as data, so they are Portuguese and SCREAMING_CASE, matching 
 
 ### Reference implementation
 
-`/lib/productions/valuation.ts` plus `/app/api/productions/route.ts` show all four rules together:
+`/lib/productions/valuation.ts` plus `/app/api/productions/route.ts` show these rules together:
 English functions and type names, Portuguese fields and payload, no renaming mappers.
 
 ---

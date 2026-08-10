@@ -49,6 +49,7 @@ export function useCashbackProgramState({ initialState }: TUseCashbackProgramSta
 				acumuloRegraValorMinimo: initialState?.cashbackProgram?.acumuloRegraValorMinimo ?? 0,
 				acumuloPermitirViaIntegracao: initialState?.cashbackProgram?.acumuloPermitirViaIntegracao ?? false,
 				acumuloPermitirViaPontoIntegracao: initialState?.cashbackProgram?.acumuloPermitirViaPontoIntegracao ?? false,
+				resgatePermitirViaPontoIntegracao: initialState?.cashbackProgram?.resgatePermitirViaPontoIntegracao ?? true,
 				expiracaoRegraValidadeValor: initialState?.cashbackProgram?.expiracaoRegraValidadeValor ?? 0,
 				resgateLimiteTipo: initialState?.cashbackProgram?.resgateLimiteTipo ?? null,
 				resgateLimiteValor: initialState?.cashbackProgram?.resgateLimiteValor ?? null,

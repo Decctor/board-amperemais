@@ -9,11 +9,14 @@ export default async function NewSalePage({
 	searchParams,
 }: {
 	params: Promise<{ orgId: string }>;
-	searchParams: Promise<{ clientId?: string; filledOperatorPassword?: string; mode?: string }>;
+	searchParams: Promise<{ clientId?: string; filledOperatorPassword?: string; mode?: string; intent?: string }>;
 }) {
 	const { orgId } = await params;
-	const { clientId, filledOperatorPassword, mode } = await searchParams;
+	const { clientId, filledOperatorPassword, mode, intent } = await searchParams;
 	const interfaceMode = mode === "mobile" ? "mobile" : "kiosk";
+	// Intenção declarada no hub (?intent=pontuar|resgatar) — só enviesa o modo inicial do wizard,
+	// nunca destrava algo que as flags do programa não permitam.
+	const interfaceIntent = intent === "pontuar" || intent === "resgatar" ? intent : null;
 
 	if (!orgId) {
 		return <ErrorComponent msg="Oops, parâmetro inválido." />;
@@ -88,6 +91,7 @@ export default async function NewSalePage({
 			terminologia: true,
 			modalidadeDescontosPermitida: true,
 			modalidadeRecompensasPermitida: true,
+			resgatePermitirViaPontoIntegracao: true,
 		},
 	});
 
@@ -96,6 +100,8 @@ export default async function NewSalePage({
 		terminologia: cashbackProgramConfig?.terminologia ?? "DINHEIRO",
 		modalidadeDescontosPermitida: cashbackProgramConfig?.modalidadeDescontosPermitida ?? true,
 		modalidadeRecompensasPermitida: cashbackProgramConfig?.modalidadeRecompensasPermitida ?? false,
+		// Sem programa ativo não há resgate a permitir — fail-closed, igual ao 403 da API de transação.
+		resgatePermitirViaPontoIntegracao: cashbackProgramConfig?.resgatePermitirViaPontoIntegracao ?? false,
 	};
 
 	return (
@@ -111,6 +117,7 @@ export default async function NewSalePage({
 				prizes={normalizedPrizes}
 				initialOperatorPassword={filledOperatorPassword}
 				mode={interfaceMode}
+				intent={interfaceIntent}
 			/>
 		</OrgColorsProvider>
 	);

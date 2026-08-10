@@ -2,6 +2,7 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import { OrgColorsProvider } from "@/components/Providers/OrgColorsProvider";
 import { Button } from "@/components/ui/button";
 import { getCurrentSession } from "@/lib/authentication/session";
+import { derivePoiTheme, getPoiThemeStyle } from "@/lib/point-of-interaction/theme";
 import { db } from "@/services/drizzle";
 import { Plus } from "lucide-react";
 import Link from "next/link";
@@ -44,7 +45,9 @@ export default async function PointOfInteraction({ params }: { params: Promise<{
 			corSecundaria={org.corSecundaria}
 			corSecundariaForeground={org.corSecundariaForeground}
 		>
-			<PointOfInteractionDisplayPage org={org} cashbackProgram={cashbackProgram} />
+			<div className="contents" style={getPoiThemeStyle(derivePoiTheme(org))}>
+				<PointOfInteractionDisplayPage org={org} cashbackProgram={cashbackProgram} />
+			</div>
 		</OrgColorsProvider>
 	);
 }

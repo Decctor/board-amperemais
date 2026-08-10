@@ -59,11 +59,11 @@ export function MobileWaitingStep({ token, onApproved, onRejected, onErrored, on
 				) : null}
 			</div>
 			<div className="flex flex-col gap-3">
-				<Button variant="outline" onClick={() => refetch()} className="h-12 rounded-2xl font-bold uppercase tracking-wider">
+				<Button variant="outline" onClick={() => refetch()} className="h-11 rounded-2xl font-bold">
 					Atualizar status
 				</Button>
 				{data.status === "REJEITADO" || data.status === "ERRO" ? (
-					<Button onClick={onReset} className="h-12 rounded-2xl font-bold uppercase tracking-wider">
+					<Button onClick={onReset} className="h-12 rounded-2xl font-bold">
 						Nova tentativa
 					</Button>
 				) : null}

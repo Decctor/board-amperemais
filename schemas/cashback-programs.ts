@@ -68,6 +68,13 @@ export const CashbackProgramSchema = z.object({
 			invalid_type_error: "Tipo não válido para a permissão de acumulação via ponto de integração.",
 		})
 		.default(false),
+	// Configurations for redemption source
+	resgatePermitirViaPontoIntegracao: z
+		.boolean({
+			required_error: "Permissão de resgate via ponto de integração não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de resgate via ponto de integração.",
+		})
+		.default(true),
 	expiracaoRegraValidadeValor: z
 		.number({
 			required_error: "Valor de validade do saldo do programa de cashback não informado.",
@@ -191,6 +198,13 @@ export const CashbackProgramBalanceSchema = z.object({
 			invalid_type_error: "Tipo não válido para o valor de saldo resgatado total do programa de cashback.",
 		})
 		.default(0),
+	dataAdesao: z
+		.string({
+			required_error: "Data de adesão ao programa de cashback não informada.",
+			invalid_type_error: "Tipo não válido para a data de adesão ao programa de cashback.",
+		})
+		.default(new Date().toISOString())
+		.transform((val) => new Date(val)),
 	dataInsercao: z
 		.string({
 			required_error: "Data de inserção do saldo do programa de cashback não informada.",

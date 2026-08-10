@@ -22,10 +22,10 @@ export const PrizeCard = React.memo(function PrizeCard({ prize, terminology, isD
 			onClick={() => !isDisabled && onSelect()}
 			disabled={isDisabled}
 			className={cn(
-				"flex items-center gap-3 short:gap-2 rounded-2xl short:rounded-xl border-2 overflow-hidden transition-all text-left p-2 short:p-1.5",
+				"flex items-center gap-3 short:gap-2 rounded-2xl short:rounded-xl border overflow-hidden transition-all text-left p-2 short:p-1.5",
 				isDisabled
 					? "opacity-50 cursor-not-allowed border-muted bg-muted/30"
-					: "border-brand/20 hover:border-brand hover:shadow-lg cursor-pointer bg-card",
+					: "border-brand/20 hover:border-brand hover:shadow-sm cursor-pointer bg-card",
 			)}
 		>
 			<div className="relative w-16 h-16 short:w-12 short:h-12 min-w-16 short:min-w-12 rounded-xl short:rounded-lg overflow-hidden bg-muted shrink-0">
@@ -38,7 +38,7 @@ export const PrizeCard = React.memo(function PrizeCard({ prize, terminology, isD
 				)}
 			</div>
 			<div className="flex-1 min-w-0 flex flex-col gap-0.5">
-				<h3 className="font-black text-sm short:text-xs uppercase tracking-tight truncate">{prize.titulo}</h3>
+				<h3 className="font-bold text-sm short:text-xs tracking-tight truncate">{prize.titulo}</h3>
 				{prize.descricao && <p className="text-xs short:text-[0.65rem] text-muted-foreground line-clamp-1">{prize.descricao}</p>}
 				<p className="text-[0.65rem] short:text-[0.6rem] text-muted-foreground">Valor comercial: {formatToMoney(prize.valorVenda)}</p>
 				<div className="flex items-center gap-2 mt-0.5">

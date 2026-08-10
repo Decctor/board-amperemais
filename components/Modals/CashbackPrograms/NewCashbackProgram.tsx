@@ -29,6 +29,9 @@ export default function NewCashbackProgram({ user, userOrg, closeModal, callback
 		(integration) => integration.ativo && DataSourceIntegrationTipoEnum.options.includes(integration.tipo as TDataSourceIntegrationTipoEnum),
 	);
 	const poiSalesRegistrationEnabled = userOrg.poiConfiguracao?.vendas.registroAtivo ?? !userOrgHasActiveDataSource;
+	// Org com ERP tem PDV próprio: o resgate nasce desligado no POI para não abrir dois caminhos
+	// de baixa de saldo. Sem ERP, o POI é o único canal de resgate e nasce ligado.
+	const userOrgHasErpAccess = !!userOrg.configuracao?.recursos?.erp?.acesso;
 	const { state, updateCashbackProgram, resetState, redefineState } = useCashbackProgramState({
 		initialState: {
 			cashbackProgram: {
@@ -44,6 +47,7 @@ export default function NewCashbackProgram({ user, userOrg, closeModal, callback
 				expiracaoRegraValidadeValor: 0,
 				acumuloPermitirViaIntegracao: userOrgHasActiveDataSource,
 				acumuloPermitirViaPontoIntegracao: poiSalesRegistrationEnabled,
+				resgatePermitirViaPontoIntegracao: !userOrgHasErpAccess,
 				descricao: "",
 				resgateLimiteTipo: null,
 				resgateLimiteValor: null,

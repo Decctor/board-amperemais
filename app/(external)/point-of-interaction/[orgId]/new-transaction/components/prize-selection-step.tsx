@@ -1,6 +1,6 @@
 "use client";
 
-import { formatCashbackValue, getCashbackUnitLabel } from "@/lib/formatting";
+import { formatCashbackValue } from "@/lib/formatting";
 import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Gift, LayoutGrid, List, ShoppingCart } from "lucide-react";
@@ -73,19 +73,19 @@ export function PrizeSelectionStep({
 						variant="none"
 						size="fit"
 						onClick={onContinueWithoutPrize}
-						className="group bg-brand-secondary text-brand-secondary-foreground flex flex-col w-full max-w-sm mx-auto rounded-2xl short:rounded-xl font-bold uppercase tracking-wide px-4 py-3 short:px-3 short:py-2.5 gap-"
+						className="group bg-brand-secondary text-brand-secondary-foreground flex flex-col w-full max-w-sm mx-auto rounded-2xl short:rounded-xl font-bold px-4 py-3 short:px-3 short:py-2.5"
 					>
 						<div className="flex items-center justify-center gap-3">
 							<div className="p-2 short:p-1.5 bg-brand-secondary-foreground text-brand-secondary rounded-xl">
 								<ShoppingCart className="w-4 h-4 shrink-0" />
 							</div>
-							<span className="text-[0.55rem] sm:text-[0.65rem] lg:text-xs text-center leading-tight">CLIQUE PARA APENAS PONTUAR</span>
+							<span className="text-[0.55rem] sm:text-[0.65rem] lg:text-xs text-center leading-tight">Clique para apenas pontuar</span>
 						</div>
 					</Button>
 				</div>
 			) : null}
 			<div className="text-center space-y-2 short:space-y-0.5">
-				<h2 className="text-xl short:text-lg font-black uppercase tracking-tight">Escolha a recompensa</h2>
+				<h2 className="text-xl short:text-lg font-extrabold tracking-tight">Escolha a recompensa</h2>
 				<p className="text-muted-foreground short:text-xs">
 					Saldo disponível: <span className="font-black text-green-600">{formatCashbackValue(availableBalance, terminology)}</span>
 				</p>
@@ -127,7 +127,7 @@ export function PrizeSelectionStep({
 									key={category}
 									type="button"
 									onClick={() => setSelectedCategory(category)}
-									className="flex flex-col rounded-2xl short:rounded-xl border-2 border-brand/20 overflow-hidden transition-all text-left hover:border-brand hover:shadow-lg cursor-pointer bg-card"
+									className="flex flex-col rounded-2xl short:rounded-xl border border-brand/20 overflow-hidden transition-all text-left hover:border-brand hover:shadow-sm cursor-pointer bg-card"
 								>
 									<div className="relative w-full aspect-[16/9] bg-muted">
 										{coverImage ? (
@@ -139,7 +139,7 @@ export function PrizeSelectionStep({
 										)}
 									</div>
 									<div className="p-4 short:p-2 flex items-center justify-between gap-2">
-										<h3 className="font-black text-sm short:text-xs uppercase tracking-tight">{category}</h3>
+										<h3 className="font-bold text-sm short:text-xs tracking-tight">{category}</h3>
 										<span className="text-[0.65rem] short:text-[0.6rem] font-bold bg-brand/10 text-brand rounded-full px-2 py-0.5">
 											{itemCount} {itemCount === 1 ? "item" : "itens"}
 										</span>

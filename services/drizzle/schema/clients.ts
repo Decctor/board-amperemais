@@ -74,6 +74,12 @@ export const clients = newTable(
 		// até a data. Null = sem pausa. Gravada por ação manual explícita.
 		comunicacaoPausadaAte: timestamp("comunicacao_pausada_ate"),
 
+		// Consentimento EXPLÍCITO de marketing (LGPD): guarda QUANDO o cliente aceitou, não um
+		// booleano — a data é a prova de auditoria. Null = nunca consentiu (nenhum cadastro
+		// anterior ao aceite explícito é retroativamente convertido em consentimento). Uma
+		// retirada de consentimento zera a coluna; opt-out temporário é `comunicacaoPausadaAte`.
+		consentimentoMarketingData: timestamp("consentimento_marketing_data"),
+
 		// Autoria do cadastro (imutável, gravada na criação). Null = criação de sistema
 		// (webhooks, cron, loja digital, scripts) ou registro legado. Nas integrações,
 		// autorVendedorId guarda o primeiro vendedor conhecido da venda que originou o cliente.

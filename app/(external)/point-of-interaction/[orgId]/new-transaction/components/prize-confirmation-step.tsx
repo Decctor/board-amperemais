@@ -45,25 +45,25 @@ export function PrizeConfirmationStep({
 			}}
 		>
 			<div className="text-center space-y-2 short:space-y-0.5">
-				<h2 className="text-xl short:text-lg font-black uppercase tracking-tight">Confirmar Resgate</h2>
+				<h2 className="text-xl short:text-lg font-extrabold tracking-tight">Confirmar resgate</h2>
 				<p className="text-muted-foreground short:text-xs">Confira os dados e digite a senha do operador.</p>
 			</div>
 
 			{/* Prize compact card */}
 			{selectedPrize && (
-				<div className="bg-amber-50 border-2 short:border border-amber-200 rounded-3xl short:rounded-xl p-4 short:p-2 flex items-center gap-4 short:gap-2">
+				<div className="bg-brand-secondary/5 border border-brand-secondary/20 rounded-2xl short:rounded-xl p-4 short:p-2 flex items-center gap-4 short:gap-2">
 					<div className="relative w-16 h-16 short:w-10 short:h-10 min-w-16 short:min-w-10 rounded-xl short:rounded-lg overflow-hidden">
 						{selectedPrize.imagemCapaUrl ? (
 							<Image src={selectedPrize.imagemCapaUrl} alt={selectedPrize.titulo} fill className="object-cover" />
 						) : (
-							<div className="flex h-full w-full items-center justify-center bg-amber-200 text-amber-700">
+							<div className="flex h-full w-full items-center justify-center bg-brand-secondary text-brand-secondary-foreground">
 								<Gift className="w-6 h-6 short:w-4 short:h-4" />
 							</div>
 						)}
 					</div>
 					<div className="flex-1 min-w-0">
-						<h3 className="font-black text-sm short:text-xs uppercase tracking-tight truncate">{selectedPrize.titulo}</h3>
-						<p className="font-black text-lg short:text-base text-amber-700">{formatCashbackValue(selectedPrize.valor, terminology)}</p>
+						<h3 className="font-bold text-sm short:text-xs tracking-tight truncate">{selectedPrize.titulo}</h3>
+						<p className="font-black text-lg short:text-base text-brand-secondary">{formatCashbackValue(selectedPrize.valor, terminology)}</p>
 						<p className="text-xs short:text-[0.65rem] text-muted-foreground">Valor comercial: {formatToMoney(selectedPrize.valorVenda)}</p>
 					</div>
 				</div>

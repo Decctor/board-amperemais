@@ -37,6 +37,7 @@ export const cashbackPrograms = newTable("cashback_programs", {
 	// Configurations for accumulation source
 	acumuloPermitirViaIntegracao: boolean("acumulo_permitir_via_integracao").notNull().default(false),
 	acumuloPermitirViaPontoIntegracao: boolean("acumulo_permitir_via_ponto_integracao").notNull().default(false),
+	// Configurations for redemption source
 	resgatePermitirViaPontoIntegracao: boolean("resgate_permitir_via_ponto_integracao").notNull().default(true),
 	expiracaoRegraValidadeValor: doublePrecision("expiracao_regra_validade_valor").notNull().default(0),
 	resgateLimiteTipo: cashbackProgramRedemptionLimitTypeEnum(),
@@ -107,6 +108,8 @@ export const cashbackProgramBalances = newTable("cashback_program_balances", {
 	saldoValorDisponivel: doublePrecision("saldo_valor_disponivel").notNull().default(0),
 	saldoValorAcumuladoTotal: doublePrecision("saldo_valor_acumulado_total").notNull().default(0),
 	saldoValorResgatadoTotal: doublePrecision("saldo_valor_resgatado_total").notNull().default(0),
+	// Momento explícito de adesão ao clube ("Membro desde").
+	dataAdesao: timestamp("data_adesao").defaultNow().notNull(),
 	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	dataAtualizacao: timestamp("data_atualizacao").$defaultFn(() => new Date()),
 });

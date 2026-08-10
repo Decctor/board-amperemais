@@ -45,3 +45,4 @@ export * from "./tab-order-requests";
 export * from "./access";
 export * from "./desktop-agent";
 export * from "./external-events";
+export * from "./custom-fields";

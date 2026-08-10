@@ -34,19 +34,19 @@ export function MobilePrizeConfirmationStep({
 			</div>
 
 			{selectedPrize ? (
-				<div className="flex items-center gap-4 rounded-3xl border border-amber-200 bg-amber-50 p-4">
-					<div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-amber-100">
+				<div className="flex items-center gap-4 rounded-3xl border border-brand-secondary/20 bg-brand-secondary/5 p-4">
+					<div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-brand-secondary">
 						{selectedPrize.imagemCapaUrl ? (
 							<Image src={selectedPrize.imagemCapaUrl} alt={selectedPrize.titulo} fill className="object-cover" />
 						) : (
-							<div className="flex h-full w-full items-center justify-center text-amber-700">
+							<div className="flex h-full w-full items-center justify-center text-brand-secondary-foreground">
 								<Gift className="h-6 w-6" />
 							</div>
 						)}
 					</div>
 					<div className="min-w-0 flex-1">
-						<p className="truncate text-base font-black uppercase tracking-tight">{selectedPrize.titulo}</p>
-						<p className="text-lg font-black text-amber-700">{formatCashbackValue(selectedPrize.valor, terminology)}</p>
+						<p className="truncate text-base font-bold tracking-tight">{selectedPrize.titulo}</p>
+						<p className="text-lg font-black text-brand-secondary">{formatCashbackValue(selectedPrize.valor, terminology)}</p>
 						<p className="text-xs text-muted-foreground">Valor comercial: {formatToMoney(selectedPrize.valorVenda)}</p>
 					</div>
 				</div>
@@ -79,7 +79,7 @@ export function MobilePrizeConfirmationStep({
 				</div>
 			</div>
 
-			<Button onClick={onSubmit} size="lg" className="h-14 w-full rounded-2xl text-sm font-black uppercase tracking-[0.2em]">
+			<Button onClick={onSubmit} size="lg" className="h-12 w-full rounded-2xl text-sm font-bold">
 				Enviar para aprovação
 			</Button>
 		</div>

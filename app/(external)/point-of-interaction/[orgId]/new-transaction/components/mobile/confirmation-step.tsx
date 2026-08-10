@@ -47,7 +47,7 @@ export function MobileConfirmationStep({ clientName, finalValue, onSubmit }: Mob
 				</div>
 			</div>
 
-			<Button onClick={onSubmit} size="lg" className="h-14 w-full rounded-2xl text-sm font-black uppercase tracking-[0.2em]">
+			<Button onClick={onSubmit} size="lg" className="h-12 w-full rounded-2xl text-sm font-bold">
 				Enviar para aprovação
 			</Button>
 		</div>

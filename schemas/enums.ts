@@ -771,3 +771,47 @@ export const IFOOD_CATALOG_CONTEXT_LABELS: Record<TIfoodCatalogContextEnum, stri
 	WHITELABEL: "Cardápio Digital",
 	INDOOR: "Consumo no Local",
 };
+
+// ============================================================================
+// CAMPOS PERSONALIZADOS
+// ============================================================================
+
+export const CustomFieldEntityEnum = z.enum(["CLIENTE"], {
+	required_error: "Entidade do campo personalizado não informada.",
+	invalid_type_error: "Tipo não válido para a entidade do campo personalizado.",
+});
+export type TCustomFieldEntityEnum = z.infer<typeof CustomFieldEntityEnum>;
+
+export const CustomFieldTypeEnum = z.enum(["ESCOLHA_UNICA", "ESCOLHA_MULTIPLA", "TEXTO", "NUMERO", "DATA"], {
+	required_error: "Tipo do campo personalizado não informado.",
+	invalid_type_error: "Tipo não válido para o tipo do campo personalizado.",
+});
+export type TCustomFieldTypeEnum = z.infer<typeof CustomFieldTypeEnum>;
+
+export const CUSTOM_FIELD_TYPE_LABELS: Record<TCustomFieldTypeEnum, string> = {
+	ESCOLHA_UNICA: "Escolha única",
+	ESCOLHA_MULTIPLA: "Escolha múltipla",
+	TEXTO: "Texto",
+	NUMERO: "Número",
+	DATA: "Data",
+};
+
+// ============================================================================
+// PONTO DE INTERAÇÃO
+// ============================================================================
+
+/**
+ * Fluxo de cadastro do ponto de interação, por superfície (celular/totem).
+ * RAPIDO = só o essencial (nome, telefone) — o cadastro que sempre existiu.
+ * COMPLETO = o essencial mais os campos personalizados configurados pela organização.
+ */
+export const PoiRegistrationFlowEnum = z.enum(["RAPIDO", "COMPLETO"], {
+	required_error: "Fluxo de cadastro do ponto de interação não informado.",
+	invalid_type_error: "Tipo não válido para o fluxo de cadastro do ponto de interação.",
+});
+export type TPoiRegistrationFlowEnum = z.infer<typeof PoiRegistrationFlowEnum>;
+
+export const POI_REGISTRATION_FLOW_LABELS: Record<TPoiRegistrationFlowEnum, string> = {
+	RAPIDO: "Rápido",
+	COMPLETO: "Completo",
+};

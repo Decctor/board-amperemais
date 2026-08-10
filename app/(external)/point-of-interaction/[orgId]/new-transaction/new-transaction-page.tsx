@@ -88,14 +88,17 @@ type NewSaleContentProps = {
 		terminologia: TCashbackProgramTerminologyEnum;
 		modalidadeDescontosPermitida: boolean;
 		modalidadeRecompensasPermitida: boolean;
+		resgatePermitirViaPontoIntegracao: boolean;
 		poiConfirmacaoValorObrigatoria: boolean;
 	};
 	clientId: string;
 	prizes: TPrize[];
 	initialOperatorPassword?: string;
 	mode: "kiosk" | "mobile";
+	// Intenção vinda do hub quando as duas ações estavam visíveis lá.
+	intent?: "pontuar" | "resgatar" | null;
 };
-export default function NewSaleContent({ org, clientId, prizes, initialOperatorPassword, mode }: NewSaleContentProps) {
+export default function NewSaleContent({ org, clientId, prizes, initialOperatorPassword, mode, intent = null }: NewSaleContentProps) {
 	const router = useRouter();
 	const {
 		state,
@@ -113,8 +116,14 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	const [currentStep, setCurrentStep] = React.useState<number>(1);
 	const [successData, setSuccessData] = React.useState<TCreatePointOfInteractionTransactionOutput["data"] | null>(null);
 
-	// Prize flow state
-	const [flowMode, setFlowMode] = React.useState<"discount" | "prize" | null>(null);
+	// Prize flow state — a intenção do hub já nasce escolhida, pulando a tela de seleção de modo.
+	// Só tem efeito quando a seleção de modo existiria (ambas as modalidades liberadas); fora disso
+	// `effectiveFlowMode` ignora este estado e resolve pelas flags do programa.
+	const [flowMode, setFlowMode] = React.useState<"discount" | "prize" | null>(() => {
+		if (intent === "resgatar") return "prize";
+		if (intent === "pontuar") return "discount";
+		return null;
+	});
 	const [showModeSelection, setShowModeSelection] = React.useState(false);
 	const [selectedPrize, setSelectedPrize] = React.useState<TPrize | null>(null);
 	const [prizeFlowIntent, setPrizeFlowIntent] = React.useState<"redeem" | "sale-only" | null>(null);
@@ -123,8 +132,12 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	const [selectedCoupon, setSelectedCoupon] = React.useState<TPoiAvailableCoupon | null>(null);
 
 	const hasPrizes = prizes.length > 0;
+	// Gate de resgate pelo POI. O caminho mobile cria uma SOLICITAÇÃO (não passa pelo 403 da API de
+	// transação na hora do envio), então a UI precisa ser a barreira: sem resgate liberado não existe
+	// modo recompensa nem opção de aplicar saldo — resta o caminho de puro acúmulo.
+	const isRedemptionAllowedViaPoi = org.resgatePermitirViaPontoIntegracao;
 	const isDiscountModeAllowed = org.modalidadeDescontosPermitida;
-	const isPrizeModeAllowed = org.modalidadeRecompensasPermitida && hasPrizes;
+	const isPrizeModeAllowed = org.modalidadeRecompensasPermitida && hasPrizes && isRedemptionAllowedViaPoi;
 	const shouldShowFlowModeSelection = isDiscountModeAllowed && isPrizeModeAllowed;
 	const effectiveFlowMode: "discount" | "prize" = shouldShowFlowModeSelection ? (flowMode ?? "discount") : isPrizeModeAllowed ? "prize" : "discount";
 	const isPrizeMode = effectiveFlowMode === "prize";
@@ -169,8 +182,9 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 	}, [state.sale.coupon]);
 
 	const maximumCashbackAllowed = useMemo(
-		() => getMaxCashbackToUse(availableCashback, Math.max(0, state.sale.valor - couponDiscount), redemptionLimitConfig),
-		[availableCashback, state.sale.valor, couponDiscount, redemptionLimitConfig],
+		() =>
+			isRedemptionAllowedViaPoi ? getMaxCashbackToUse(availableCashback, Math.max(0, state.sale.valor - couponDiscount), redemptionLimitConfig) : 0,
+		[isRedemptionAllowedViaPoi, availableCashback, state.sale.valor, couponDiscount, redemptionLimitConfig],
 	);
 	const finalValue = useMemo(
 		() => Math.max(0, getFinalValue(state.sale.valor, state.sale.cashback) - couponDiscount),
@@ -434,11 +448,11 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						</Link>
 					</Button>
 					<div className="flex items-center gap-3 short:gap-1.5">
-						<div className="p-3 short:p-1.5 bg-brand rounded-2xl short:rounded-lg text-brand-foreground shadow-lg">
+						<div className="p-3 short:p-1.5 bg-brand rounded-2xl short:rounded-lg text-brand-foreground shadow-sm">
 							<ShoppingCart className="w-6 h-6 md:w-8 md:h-8 short:w-4 short:h-4" />
 						</div>
 						<div>
-							<h1 className="text-2xl md:text-3xl short:text-base font-black tracking-tighter">NOVA VENDA</h1>
+							<h1 className="text-2xl md:text-3xl short:text-base font-extrabold tracking-tight">Nova venda</h1>
 							<p className="text-[0.6rem] md:text-xs short:text-[0.6rem] text-muted-foreground font-bold uppercase tracking-widest opacity-70">
 								{showModeSelection
 									? "Escolha o modo"
@@ -451,7 +465,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 				</div>
 
 				{/* Wrapper de Estágios */}
-				<div className="bg-card rounded-3xl short:rounded-xl shadow-xl overflow-hidden border border-brand/20">
+				<div className="bg-card rounded-3xl short:rounded-xl shadow-sm overflow-hidden border border-brand/20">
 					{currentStep <= confirmationStep && !showModeSelection && <StepProgressHeader steps={headerSteps} currentStep={currentStep} />}
 
 					<div className="p-6 md:p-10 short:p-3">
@@ -474,6 +488,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 									onClear={handleClearCoupon}
 								/>
 								<CashbackStep
+									redemptionAllowed={isRedemptionAllowedViaPoi}
 									available={availableCashback}
 									maxAllowed={maximumCashbackAllowed}
 									saleValue={state.sale.valor}
@@ -596,7 +611,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						{/* Discount mode success */}
 						{!showModeSelection && !isPrizeMode && currentStep === finalSuccessStep && successData && (
 							<SuccessCelebration
-								title="VENDA REALIZADA!"
+								title="Venda realizada!"
 								subtitle="A operação foi processada com sucesso."
 								stats={[
 									{
@@ -635,9 +650,9 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 											]
 										: []),
 								]}
-								primaryAction={{ label: "NOVA VENDA", onClick: handleReset }}
+								primaryAction={{ label: "Nova venda", onClick: handleReset }}
 								secondaryAction={{
-									label: "VOLTAR AO INÍCIO",
+									label: "Voltar ao início",
 									onClick: handleGoToHub,
 								}}
 							/>
@@ -646,7 +661,7 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 						{/* Prize mode success */}
 						{!showModeSelection && isPrizeMode && currentStep === finalSuccessStep && successData && (
 							<SuccessCelebration
-								title={selectedPrize ? "RESGATE REALIZADO!" : "VENDA REGISTRADA!"}
+								title={selectedPrize ? "Resgate realizado!" : "Venda registrada!"}
 								subtitle={selectedPrize ? "A recompensa foi resgatada com sucesso." : "A venda foi registrada com sucesso para pontuação."}
 								stats={[
 									{
@@ -671,26 +686,26 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 												},
 											]),
 								]}
-								primaryAction={{ label: "NOVA VENDA", onClick: handleReset }}
+								primaryAction={{ label: "Nova venda", onClick: handleReset }}
 								secondaryAction={{
-									label: "VOLTAR AO INÍCIO",
+									label: "Voltar ao início",
 									onClick: handleGoToHub,
 								}}
 							>
 								{selectedPrize && (
-									<div className="bg-amber-50 border-2 short:border border-amber-200 rounded-3xl short:rounded-xl p-4 short:p-2 flex items-center gap-4 short:gap-2 w-full max-w-xl">
+									<div className="bg-brand-secondary/5 border border-brand-secondary/20 rounded-2xl short:rounded-xl p-4 short:p-2 flex items-center gap-4 short:gap-2 w-full max-w-xl">
 										<div className="relative w-14 h-14 short:w-10 short:h-10 min-w-14 short:min-w-10 rounded-xl short:rounded-lg overflow-hidden">
 											{selectedPrize.imagemCapaUrl ? (
 												<Image src={selectedPrize.imagemCapaUrl} alt={selectedPrize.titulo} fill className="object-cover" />
 											) : (
-												<div className="flex h-full w-full items-center justify-center bg-amber-200 text-amber-700">
+												<div className="flex h-full w-full items-center justify-center bg-brand-secondary text-brand-secondary-foreground">
 													<Gift className="w-6 h-6 short:w-4 short:h-4" />
 												</div>
 											)}
 										</div>
 										<div className="flex-1 min-w-0 text-left">
-											<h3 className="font-black text-sm short:text-xs uppercase tracking-tight truncate">{selectedPrize.titulo}</h3>
-											<p className="font-black text-lg short:text-base text-amber-700">{formatCashbackValue(selectedPrize.valor, org.terminologia)}</p>
+											<h3 className="font-bold text-sm short:text-xs tracking-tight truncate">{selectedPrize.titulo}</h3>
+											<p className="font-black text-lg short:text-base text-brand-secondary">{formatCashbackValue(selectedPrize.valor, org.terminologia)}</p>
 											<p className="text-xs short:text-[0.65rem] text-muted-foreground">
 												Valor comercial: {selectedPrize.valorVenda.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
 											</p>
@@ -725,9 +740,9 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 										}}
 										variant="outline"
 										size="lg"
-										className="flex-1 rounded-2xl short:rounded-lg h-16 short:h-11 text-lg short:text-base font-bold"
+										className="flex-1 rounded-2xl short:rounded-lg h-11 text-sm font-bold"
 									>
-										VOLTAR
+										Voltar
 									</Button>
 								)}
 								{!(isPrizeMode && currentStep === 1) && (
@@ -736,11 +751,11 @@ export default function NewSaleContent({ org, clientId, prizes, initialOperatorP
 										size="lg"
 										disabled={isSubmitting || (!isPrizeMode && isAttemptingToUseMoreCashbackThanAllowed)}
 										className={cn(
-											"flex-1 rounded-2xl short:rounded-lg h-16 short:h-11 text-lg short:text-base font-bold shadow-lg shadow-brand/20 uppercase tracking-widest",
+											"flex-1 rounded-2xl short:rounded-lg h-12 short:h-11 text-base font-bold shadow-sm",
 											currentStep === confirmationStep && !isMobileMode && "bg-green-600 hover:bg-green-700",
 										)}
 									>
-										{currentStep === confirmationStep ? (isSubmitting ? "PROCESSANDO..." : isMobileMode ? "PRÓXIMO" : "FINALIZAR") : "PRÓXIMO"}
+										{currentStep === confirmationStep ? (isSubmitting ? "Processando..." : isMobileMode ? "Próximo" : "Finalizar") : "Próximo"}
 										{currentStep === confirmationStep && !isMobileMode ? (
 											<Check className="ml-2 w-6 h-6 short:w-5 short:h-5" />
 										) : (

@@ -5,35 +5,26 @@ import { Button } from "@/components/ui/button";
 import { VirtualKeyboard } from "@/components/ui/virtual-keyboard";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { getErrorMessage } from "@/lib/errors";
-import { formatCashbackValue, formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
+import { formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
 import { createClientViaPointOfInteraction } from "@/lib/mutations/clients";
+import type { TPoiRegistrationConfig } from "@/lib/point-of-interaction/registration";
 import { useClientByLookup } from "@/lib/queries/clients";
-import { usePoiSellers } from "@/lib/queries/sellers";
 import { cn } from "@/lib/utils";
 import { isValidCpfCnpj } from "@/lib/validation";
 import type { TCashbackProgramEntity, TOrganizationEntity } from "@/services/drizzle/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-	BadgePercent,
-	Building2,
-	Check,
-	ChevronDown,
-	ChevronUp,
-	Clock,
-	Delete,
-	Gift,
-	HelpCircle,
-	Loader2,
-	ShoppingCart,
-	UserPlus,
-} from "lucide-react";
+import { BadgePercent, Building2, ChevronDown, ChevronUp, Clock, Delete, Gift, Loader2, ShoppingCart, UserPlus, WalletCards } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { ClubIdentityCard } from "./_shared/components/club-identity-card";
+import { SellerPicker } from "./_shared/components/seller-picker";
 import { getCashbackAccumulationCopy } from "./_shared/helpers/cashback-copy";
+import { formatDateDigits, parseBirthDateDigitsToIso } from "./_shared/helpers/date-digits";
 import { useAutoAdvanceTimer } from "./_shared/hooks/use-auto-advance-timer";
 import { usePoiSounds } from "./_shared/hooks/use-poi-sounds";
+import { RegistrationWizard } from "./_shared/registration/registration-wizard";
 
 type PointOfInteractionContentProps = {
 	cashbackProgram: TCashbackProgramEntity;
@@ -51,30 +42,21 @@ type PointOfInteractionContentProps = {
 	// Vendedor pré-atribuído via link pessoal (?sellerId=), já validado no servidor.
 	// Quando presente, o select "quem te atendeu" fica oculto.
 	presetSellerId: string | null;
+	// Cadastro configurável desta superfície: fluxo + passos já ordenados e resolvidos no servidor
+	// (lib/point-of-interaction/registration.ts). O assistente do fluxo COMPLETO consome isto; o
+	// cadastro rápido atual ignora — `fluxo: "RAPIDO"` com `campos: []` é o default de todas as
+	// organizações que nunca configuraram nada.
+	registrationConfig: TPoiRegistrationConfig;
 };
 
-// Preview progressivo do teclado numérico: "31121990" -> "31/12/1990".
-function formatBirthDateDigits(digits: string): string {
-	const day = digits.slice(0, 2);
-	const month = digits.slice(2, 4);
-	const year = digits.slice(4, 8);
-	return [day, month, year].filter((part) => part.length > 0).join("/");
-}
-
-// "DDMMAAAA" -> "AAAA-MM-DD" (o formato que o ClientSchema transforma em Date).
-// Null = data incompleta ou inexistente (ex.: 31/02); nunca enviar DD/MM cru no payload.
-function parseBirthDateDigitsToIso(digits: string): string | null {
-	if (digits.length !== 8) return null;
-	const day = Number(digits.slice(0, 2));
-	const month = Number(digits.slice(2, 4));
-	const year = Number(digits.slice(4, 8));
-	const date = new Date(year, month - 1, day);
-	const isRealDate = date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
-	if (!isRealDate || year < 1900 || date.getTime() > Date.now()) return null;
-	return `${digits.slice(4, 8)}-${digits.slice(2, 4)}-${digits.slice(0, 2)}`;
-}
-
-export default function PointOfInteractionContent({ org, cashbackProgram, mode, flow, presetSellerId }: PointOfInteractionContentProps) {
+export default function PointOfInteractionContent({
+	org,
+	cashbackProgram,
+	mode,
+	flow,
+	presetSellerId,
+	registrationConfig,
+}: PointOfInteractionContentProps) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const { playAction, playSuccess } = usePoiSounds();
@@ -98,8 +80,10 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 	const [newClientAuthorSellerId, setNewClientAuthorSellerId] = useState<string | null>(presetSellerId);
 	const [authorSellerSkipped, setAuthorSellerSkipped] = useState(false);
 
-	const { data: poiSellers, isLoading: isLoadingPoiSellers } = usePoiSellers({ orgId: org.id });
 	const showSellerSelection = !presetSellerId;
+	// Cadastro configurável: COMPLETO entrega o assistente por passos; RAPIDO (o default de toda
+	// organização que nunca configurou nada) mantém o formulário inline abaixo, inalterado.
+	const useRegistrationWizard = registrationConfig.fluxo === "COMPLETO";
 
 	// Client lookup
 	const {
@@ -128,6 +112,35 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 		});
 	}, [org.id]);
 
+	// ===== Matriz de ações do ponto de interação =====
+	// O programa vem no próprio lookup (por saldo do cliente); o programa carregado no servidor é o
+	// fallback para quem ainda não tem linha de saldo — sem ele um cliente novo cairia em "carteirinha".
+	const clientBalance = client?.saldos?.[0] ?? null;
+	const clientProgram = clientBalance?.programa ?? null;
+	const isProgramActive = clientProgram?.ativo ?? cashbackProgram.ativo;
+	const allowsAccrualViaPoi = clientProgram?.acumuloPermitirViaPontoIntegracao ?? cashbackProgram.acumuloPermitirViaPontoIntegracao;
+	const allowsRedemptionViaPoi = clientProgram?.resgatePermitirViaPontoIntegracao ?? cashbackProgram.resgatePermitirViaPontoIntegracao;
+	const allowsDiscounts = clientProgram?.modalidadeDescontosPermitida ?? cashbackProgram.modalidadeDescontosPermitida;
+	const allowsRewards = clientProgram?.modalidadeRecompensasPermitida ?? cashbackProgram.modalidadeRecompensasPermitida;
+	const canAccrue = isProgramActive && allowsAccrualViaPoi;
+	const canRedeem = isProgramActive && allowsRedemptionViaPoi && (allowsDiscounts || allowsRewards);
+	const hasPoiActions = canAccrue || canRedeem;
+	// Duas ações visíveis: o wizard não tem como adivinhar a intenção, então ela viaja na URL.
+	const shouldPassIntent = canAccrue && canRedeem;
+	// Sem nenhuma ação (`!hasPoiActions`) o POI vira carteirinha digital: identidade + acesso ao clube.
+	const profileUrl = client ? `/point-of-interaction/${org.id}/client-profile/${client.id}${isMobileMode ? "?mode=mobile" : ""}` : "";
+
+	const buildTransactionUrl = useCallback(
+		(targetClientId: string, intent: "pontuar" | "resgatar" | null) => {
+			const searchParams = new URLSearchParams();
+			searchParams.set("clientId", targetClientId);
+			if (isMobileMode) searchParams.set("mode", "mobile");
+			if (intent) searchParams.set("intent", intent);
+			return `/point-of-interaction/${org.id}/new-transaction?${searchParams.toString()}`;
+		},
+		[isMobileMode, org.id],
+	);
+
 	// Auto-advance timer for found clients
 	const handleAdvance = useCallback(() => {
 		if (!client || !isPhoneComplete) return;
@@ -136,12 +149,13 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 			router.push(`/point-of-interaction/${org.id}/client-profile/${client.id}${isMobileMode ? "?mode=mobile" : ""}`);
 			return;
 		}
-		const modeParam = isMobileMode ? "&mode=mobile" : "";
-		router.push(`/point-of-interaction/${org.id}/new-transaction?clientId=${client.id}${modeParam}`);
-	}, [client, isMobileMode, isPhoneComplete, isProfileFlow, org.id, router]);
+		router.push(buildTransactionUrl(client.id, null));
+	}, [buildTransactionUrl, client, isMobileMode, isPhoneComplete, isProfileFlow, org.id, router]);
 
 	const { countdown, countdownSeconds, isAdvancing, wasCancelled, cancel, resetCancellation } = useAutoAdvanceTimer({
-		shouldStart: isSuccessClient && !!client && isPhoneComplete,
+		// flow=profile sempre avança (o destino é o próprio clube). flow=transaction só avança quando
+		// existe pelo menos uma ação — senão o cliente cairia num wizard que não pode concluir nada.
+		shouldStart: isSuccessClient && !!client && isPhoneComplete && (isProfileFlow || hasPoiActions),
 		onAdvance: handleAdvance,
 	});
 
@@ -152,12 +166,32 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 		}
 	}, [isSuccessClient, client, wasCancelled, playAction]);
 
-	// Reset cancellation when phone changes
+	// Reset cancellation when phone changes.
+	// Reage à MUDANÇA dos dígitos, não à presença deles: cancelar agora mantém a carteirinha na tela
+	// (com as ações), e a versão antiga religaria o timer no mesmo tick do cancelamento.
+	const lastPhoneDigitsRef = useRef(phoneDigits);
 	useEffect(() => {
-		if (phoneDigits && wasCancelled) {
+		if (lastPhoneDigitsRef.current === phoneDigits) return;
+		lastPhoneDigitsRef.current = phoneDigits;
+		if (wasCancelled) {
 			resetCancellation();
 		}
 	}, [phoneDigits, wasCancelled, resetCancellation]);
+
+	// Destino pós-cadastro. Extraído para que o assistente do fluxo COMPLETO continue exatamente
+	// para onde o cadastro rápido continua — a paridade é por construção, não por repetição.
+	const navigateAfterRegistration = useCallback(
+		(insertedClientId: string) => {
+			if (isProfileFlow) {
+				// Recém-entrou no clube: perfil com boas-vindas.
+				router.push(`/point-of-interaction/${org.id}/client-profile/${insertedClientId}?welcome=true${isMobileMode ? "&mode=mobile" : ""}`);
+				return;
+			}
+			const modeParam = isMobileMode ? "&mode=mobile" : "";
+			router.push(`/point-of-interaction/${org.id}/new-transaction?clientId=${insertedClientId}${modeParam}`);
+		},
+		[isMobileMode, isProfileFlow, org.id, router],
+	);
 
 	// Create client mutation
 	const { mutate: handleCreateClient, isPending: isCreatingClient } = useMutation({
@@ -166,13 +200,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 		onSuccess: (data) => {
 			playSuccess();
 			toast.success(data.message);
-			if (isProfileFlow) {
-				// Recém-entrou no clube: perfil com boas-vindas.
-				router.push(`/point-of-interaction/${org.id}/client-profile/${data.data.insertedClientId}?welcome=true${isMobileMode ? "&mode=mobile" : ""}`);
-				return;
-			}
-			const modeParam = isMobileMode ? "&mode=mobile" : "";
-			router.push(`/point-of-interaction/${org.id}/new-transaction?clientId=${data.data.insertedClientId}${modeParam}`);
+			navigateAfterRegistration(data.data.insertedClientId);
 		},
 		onError: (error) => {
 			toast.error(getErrorMessage(error));
@@ -209,10 +237,24 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 		resetCancellation();
 	}
 
+	// Cancelar interrompe o redirecionamento automático mas mantém a carteirinha e as ações na tela —
+	// quem cancela quer escolher, não recomeçar. Para recomeçar existe "TROCAR NÚMERO".
 	function handleCancelRedirect() {
 		cancel();
-		setPhoneDigits("");
-		clearClientLookup();
+	}
+
+	function handleGoToTransaction(intent: "pontuar" | "resgatar" | null) {
+		if (!client) return;
+		cancel();
+		playAction();
+		router.push(buildTransactionUrl(client.id, intent));
+	}
+
+	function handleGoToProfile() {
+		if (!client || !profileUrl) return;
+		cancel();
+		playAction();
+		router.push(profileUrl);
 	}
 
 	function handleSubmitNewClient() {
@@ -246,22 +288,23 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 	}
 
 	// UI state: determine what to show
-	const clientFound = isSuccessClient && !!client && !wasCancelled && isPhoneComplete;
+	const clientFound = isSuccessClient && !!client && isPhoneComplete && !isAdvancing;
 	const clientNotFound = isSuccessClient && !client && isPhoneComplete;
 	const isIdleState = !clientFound && !clientNotFound && !isAdvancing && !isLoadingClient;
 	const isLoadingState = isLoadingClient && isPhoneComplete;
 
+	// Fundo tingido com a lavagem clara da marca da org; no escuro o neutro do tema continua valendo.
 	return (
-		<div className="grow bg-background flex flex-col items-center justify-center p-4 md:p-8">
+		<div className="grow bg-[var(--poi-tint)] dark:bg-background flex flex-col items-center justify-center p-4 md:p-8">
 			{/* ===== IDLE STATE: Org card + Keypad side by side ===== */}
 			{isIdleState ? (
 				<div className="w-full max-w-5xl flex flex-col md:flex-row items-center md:items-stretch gap-8 md:gap-12">
 					{/* LEFT: Unified org card — brand hero header + program details list */}
 					<div className="w-full md:w-[45%] flex flex-col">
-						<div className="bg-card rounded-3xl shadow-xl border border-border/50 overflow-hidden flex flex-col flex-1">
+						<div className="bg-card rounded-3xl shadow-sm border border-border/50 overflow-hidden flex flex-col flex-1">
 							{/* Brand hero header */}
 							<div className="bg-brand px-6 py-7 md:px-8 md:py-10 flex items-center gap-5">
-								<div className="w-16 h-16 md:w-20 md:h-20 flex-shrink-0 flex items-center justify-center relative rounded-2xl overflow-hidden bg-white shadow-lg ring-2 ring-white/20">
+								<div className="w-16 h-16 md:w-20 md:h-20 flex-shrink-0 flex items-center justify-center relative rounded-2xl overflow-hidden bg-white shadow-sm ring-1 ring-white/20">
 									{org.logoUrl ? (
 										<Image src={org.logoUrl} alt={org.nome} fill className="object-contain p-1.5 rounded-2xl" />
 									) : (
@@ -336,7 +379,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 						{isMobileMode ? (
 							<div className="flex flex-col gap-5 items-center">
 								<div className="text-center space-y-1">
-									<h2 className="text-2xl font-black uppercase tracking-tight">Identifique-se</h2>
+									<h2 className="text-2xl font-extrabold tracking-tight">Identifique-se</h2>
 									<p className="text-sm text-muted-foreground">Digite seu número de telefone para começar</p>
 								</div>
 								<div className="w-full max-w-sm">
@@ -355,7 +398,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 						) : (
 							<div className="flex flex-col gap-3.5">
 								{/* Phone showcase */}
-								<div className="bg-card border border-border/50 rounded-2xl p-5 md:p-7 text-center shadow-xl">
+								<div className="bg-card border border-border/50 rounded-2xl p-5 md:p-7 text-center shadow-sm">
 									<p className="text-[0.65rem] font-bold uppercase text-muted-foreground tracking-widest mb-2">Número de Telefone</p>
 									<div className="flex items-center justify-center min-h-[3.5rem]">
 										{phoneDigits.length > 0 ? (
@@ -413,45 +456,87 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 				</div>
 			) : null}
 
-			{/* ===== CLIENT FOUND ===== */}
+			{/* ===== CLIENT FOUND — carteirinha do clube + matriz de ações ===== */}
 			{clientFound && client ? (
-				<div className="w-full max-w-xl flex flex-col items-center justify-center animate-in zoom-in duration-300">
-					<div className="w-full bg-green-50 border-2 border-green-200 rounded-3xl p-8 md:p-10 flex flex-col items-center gap-5 shadow-lg">
-						<div className="text-center">
-							<p className="text-sm font-bold text-green-600 uppercase tracking-widest mb-2">&#10003; Perfil Encontrado</p>
-							<p className="text-green-900 font-black text-3xl md:text-4xl uppercase italic tracking-tight">{client.nome}</p>
-							<p className="text-green-600 font-bold text-lg mt-1">{formatToPhone(client.telefone)}</p>
-						</div>
+				<div className={cn("w-full flex flex-col items-center justify-center gap-4 short:gap-3", isMobileMode ? "max-w-md" : "max-w-xl")}>
+					<ClubIdentityCard
+						org={{ nome: org.nome, logoUrl: org.logoUrl }}
+						programTitle={clientProgram?.titulo ?? cashbackProgram.titulo}
+						client={{ nome: client.nome, telefone: client.telefone, metadataTotalCompras: client.metadataTotalCompras }}
+						saldoDisponivel={clientBalance?.saldoValorDisponivel ?? 0}
+						terminologia={clientProgram?.terminologia ?? cashbackProgram.terminologia}
+						dataAdesao={clientBalance?.dataAdesao ?? null}
+						size={isMobileMode ? "mobile" : "kiosk"}
+					/>
 
-						<div className="bg-green-600 w-full rounded-2xl p-5 md:p-6 text-center text-white shadow-md">
-							<p className="text-xs font-bold opacity-80 uppercase tracking-widest mb-1">Saldo Disponível</p>
-							<p className="text-4xl md:text-5xl font-black">
-								{formatCashbackValue(client.saldos[0]?.saldoValorDisponivel ?? 0, client.saldos[0]?.programa?.terminologia ?? cashbackProgram.terminologia)}
-							</p>
+					{hasPoiActions ? (
+						<div className={cn("w-full grid gap-3 short:gap-2", shouldPassIntent ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
+							{canAccrue ? (
+								<Button
+									type="button"
+									size="lg"
+									onClick={() => handleGoToTransaction(shouldPassIntent ? "pontuar" : null)}
+									className="w-full rounded-2xl h-12 text-base font-bold shadow-sm bg-brand text-brand-foreground hover:bg-brand hover:opacity-90"
+								>
+									<BadgePercent className="w-5 h-5 mr-2" />
+									Pontuar
+								</Button>
+							) : null}
+							{canRedeem ? (
+								<Button
+									type="button"
+									size="lg"
+									onClick={() => handleGoToTransaction(shouldPassIntent ? "resgatar" : null)}
+									className="w-full rounded-2xl h-12 text-base font-bold shadow-sm bg-brand-secondary text-brand-secondary-foreground hover:bg-brand-secondary hover:opacity-90"
+								>
+									<Gift className="w-5 h-5 mr-2" />
+									Resgatar
+								</Button>
+							) : null}
 						</div>
+					) : (
+						<div className="w-full flex flex-col items-center gap-2">
+							<p className="text-sm text-muted-foreground text-center font-medium">Esta é a sua carteirinha do clube. As transações acontecem no caixa.</p>
+							<Button
+								type="button"
+								size="lg"
+								onClick={handleGoToProfile}
+								className="w-full rounded-2xl h-12 text-base font-bold shadow-sm bg-brand text-brand-foreground hover:bg-brand hover:opacity-90"
+							>
+								<WalletCards className="w-5 h-5 mr-2" />
+								Ver meu clube
+							</Button>
+						</div>
+					)}
 
+					{/* Progresso do auto-avanço: só existe quando o timer está de fato rodando. */}
+					{countdown !== null && !wasCancelled ? (
 						<div className="w-full flex flex-col gap-2">
-							<div className="w-full h-2.5 bg-green-200 rounded-full overflow-hidden">
-								<div
-									className="h-full bg-green-600 transition-all duration-1000 ease-linear"
-									style={{ width: `${((countdown ?? 0) / countdownSeconds) * 100}%` }}
-								/>
+							<div className="w-full h-2.5 bg-muted rounded-full overflow-hidden">
+								<div className="h-full bg-brand transition-all duration-1000 ease-linear" style={{ width: `${(countdown / countdownSeconds) * 100}%` }} />
 							</div>
-							<p className="text-sm text-green-700 text-center font-medium">
+							<p className="text-sm text-muted-foreground text-center font-medium">
 								Avançando em {countdown} segundo{countdown !== 1 ? "s" : ""}...
 							</p>
+							<Button
+								type="button"
+								variant="outline"
+								size="fit"
+								className="w-full p-3.5 font-black rounded-2xl text-sm uppercase tracking-widest"
+								onClick={handleCancelRedirect}
+							>
+								CANCELAR
+							</Button>
 						</div>
+					) : null}
 
-						<Button
-							type="button"
-							variant="outline"
-							size="fit"
-							className="w-full p-4 font-black border-green-300 text-green-700 hover:bg-green-100 rounded-2xl text-base"
-							onClick={handleCancelRedirect}
-						>
-							CANCELAR
-						</Button>
-					</div>
+					<button
+						type="button"
+						className="px-5 py-2.5 border border-border bg-background text-foreground hover:bg-accent rounded-xl text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+						onClick={handleReset}
+					>
+						NÃO É VOCÊ? TROCAR NÚMERO
+					</button>
 				</div>
 			) : null}
 
@@ -463,16 +548,31 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 				</div>
 			) : null}
 
-			{/* ===== CLIENT NOT FOUND ===== */}
-			{clientNotFound ? (
+			{/* ===== CLIENT NOT FOUND — assistente configurável (fluxo COMPLETO) ===== */}
+			{clientNotFound && useRegistrationWizard ? (
+				<RegistrationWizard
+					org={org}
+					cashbackProgram={cashbackProgram}
+					registrationConfig={registrationConfig}
+					mode={mode}
+					flow={flow}
+					presetSellerId={presetSellerId}
+					phone={formattedPhone}
+					onRestart={handleReset}
+					onContinue={navigateAfterRegistration}
+				/>
+			) : null}
+
+			{/* ===== CLIENT NOT FOUND — cadastro rápido (default de toda organização) ===== */}
+			{clientNotFound && !useRegistrationWizard ? (
 				<div className="w-full max-w-xl flex flex-col items-center justify-center animate-in zoom-in duration-300 motion-reduce:animate-none">
-					<div className="w-full bg-card border-2 border-brand/20 rounded-3xl p-8 md:p-10 short:p-5 flex flex-col gap-5 short:gap-3 shadow-xl">
+					<div className="w-full bg-card border border-brand/20 rounded-3xl p-8 md:p-10 short:p-5 flex flex-col gap-5 short:gap-3 shadow-sm">
 						<div className="flex items-center gap-4 short:gap-3 mb-1 short:mb-0">
 							<div className="p-3 short:p-2 bg-brand rounded-xl text-brand-foreground shadow-sm">
 								<UserPlus className="w-7 h-7 short:w-5 short:h-5" />
 							</div>
 							<div className="min-w-0">
-								<h3 className="font-black uppercase text-foreground text-xl short:text-lg tracking-tight">
+								<h3 className="font-extrabold text-foreground text-xl short:text-lg tracking-tight">
 									{isProfileFlow ? "CLUBE DE BENEFÍCIOS" : "NOVO CLIENTE"}
 								</h3>
 								<p className="text-sm text-muted-foreground">
@@ -503,100 +603,20 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 								/>
 							</div>
 
-							{showSellerSelection && isLoadingPoiSellers ? (
-								<div className="flex flex-col gap-1.5">
-									<span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">QUEM TE ATENDEU? (OPCIONAL)</span>
-									<div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-										{[0, 1, 2, 3].map((placeholder) => (
-											<div
-												key={placeholder}
-												className="flex flex-col items-center gap-1.5 rounded-xl border-2 border-border p-2.5 short:p-2 animate-pulse motion-reduce:animate-none"
-											>
-												<div className="w-12 h-12 short:w-10 short:h-10 rounded-full bg-muted" />
-												<div className="h-2.5 w-12 rounded bg-muted" />
-											</div>
-										))}
-									</div>
-								</div>
-							) : null}
-
-							{showSellerSelection && !isLoadingPoiSellers && poiSellers && poiSellers.length > 0 ? (
-								<div className="flex flex-col gap-1.5">
-									<span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">QUEM TE ATENDEU? (OPCIONAL)</span>
-									{/* Teto de altura: orgs com muitos vendedores rolam aqui dentro, o AVANÇAR nunca sai da dobra. */}
-									<div className="max-h-[15.5rem] short:max-h-44 overflow-y-auto overscroll-contain pr-1">
-										<div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-											{poiSellers.map((seller, sellerIndex) => {
-												const isSelected = newClientAuthorSellerId === seller.id;
-												return (
-													<button
-														key={seller.id}
-														type="button"
-														aria-pressed={isSelected}
-														onClick={() => {
-															setAuthorSellerSkipped(false);
-															setNewClientAuthorSellerId((prev) => (prev === seller.id ? null : seller.id));
-														}}
-														style={{ animationDelay: `${Math.min(sellerIndex * 30, 240)}ms`, animationFillMode: "backwards" }}
-														className={cn(
-															"relative flex flex-col items-center gap-1.5 rounded-xl border-2 p-2.5 short:p-2 transition-all active:scale-95 motion-reduce:active:scale-100",
-															"animate-in fade-in slide-in-from-bottom-2 motion-reduce:animate-none",
-															"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
-															isSelected ? "border-brand bg-brand/10 shadow-md" : "border-border bg-background hover:border-brand/50",
-														)}
-													>
-														{isSelected ? (
-															<span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 rounded-full bg-brand text-brand-foreground shadow-sm">
-																<Check className="w-3 h-3" strokeWidth={3} />
-															</span>
-														) : null}
-														<div className="relative w-12 h-12 short:w-10 short:h-10 rounded-full overflow-hidden bg-brand/10 flex items-center justify-center">
-															{seller.avatarUrl ? (
-																<Image src={seller.avatarUrl} alt={seller.nome} fill sizes="48px" className="object-cover" />
-															) : (
-																<span className="text-base font-black text-foreground/80">
-																	{seller.nome
-																		.split(" ")
-																		.slice(0, 2)
-																		.map((part) => part.charAt(0).toUpperCase())
-																		.join("")}
-																</span>
-															)}
-														</div>
-														<span className="w-full text-[0.65rem] font-bold uppercase leading-tight text-center truncate text-foreground">
-															{seller.nome.split(" ")[0]}
-														</span>
-													</button>
-												);
-											})}
-											<button
-												type="button"
-												aria-pressed={authorSellerSkipped}
-												onClick={() => {
-													setAuthorSellerSkipped(true);
-													setNewClientAuthorSellerId(null);
-												}}
-												style={{ animationDelay: `${Math.min(poiSellers.length * 30, 240)}ms`, animationFillMode: "backwards" }}
-												className={cn(
-													"relative flex flex-col items-center gap-1.5 rounded-xl border-2 border-dashed p-2.5 short:p-2 transition-all active:scale-95 motion-reduce:active:scale-100",
-													"animate-in fade-in slide-in-from-bottom-2 motion-reduce:animate-none",
-													"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
-													authorSellerSkipped ? "border-brand bg-brand/10 shadow-md" : "border-border bg-background hover:border-brand/50",
-												)}
-											>
-												{authorSellerSkipped ? (
-													<span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 rounded-full bg-brand text-brand-foreground shadow-sm">
-														<Check className="w-3 h-3" strokeWidth={3} />
-													</span>
-												) : null}
-												<div className="relative w-12 h-12 short:w-10 short:h-10 rounded-full bg-muted flex items-center justify-center">
-													<HelpCircle className="w-6 h-6 text-muted-foreground" />
-												</div>
-												<span className="w-full text-[0.65rem] font-bold uppercase leading-tight text-center truncate text-muted-foreground">NÃO SEI</span>
-											</button>
-										</div>
-									</div>
-								</div>
+							{showSellerSelection ? (
+								<SellerPicker
+									orgId={org.id}
+									selectedSellerId={newClientAuthorSellerId}
+									isSkipped={authorSellerSkipped}
+									onSelectSeller={(sellerId) => {
+										setAuthorSellerSkipped(false);
+										setNewClientAuthorSellerId(sellerId);
+									}}
+									onSkip={() => {
+										setAuthorSellerSkipped(true);
+										setNewClientAuthorSellerId(null);
+									}}
+								/>
 							) : null}
 
 							<div className="w-full flex items-center justify-center">
@@ -645,7 +665,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 											value={newClientBirthDateDigits}
 											onChange={setNewClientBirthDateDigits}
 											maxLength={8}
-											formatValue={formatBirthDateDigits}
+											formatValue={formatDateDigits}
 											confirmLabel="Confirmar data"
 											triggerClassName="h-11 justify-start text-left px-3 rounded-lg border-input bg-background text-sm font-medium"
 										/>
@@ -657,7 +677,7 @@ export default function PointOfInteractionContent({ org, cashbackProgram, mode, 
 								type="submit"
 								size="lg"
 								disabled={isCreatingClient || !newClientName}
-								className="w-full mt-1 short:mt-0 rounded-2xl h-16 short:h-12 text-lg short:text-base font-bold shadow-lg shadow-brand/20 bg-brand text-brand-foreground hover:bg-brand hover:opacity-90 uppercase tracking-widest"
+								className="w-full mt-1 short:mt-0 rounded-2xl h-12 text-base font-bold shadow-sm bg-brand text-brand-foreground hover:bg-brand hover:opacity-90"
 							>
 								{isCreatingClient ? (
 									<>

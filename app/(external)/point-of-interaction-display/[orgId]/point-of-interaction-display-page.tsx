@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TCashbackProgramEntity, TOrganizationEntity } from "@/services/drizzle/schema";
 import { hexToRgba, useOrgColors } from "@/components/Providers/OrgColorsProvider";
+import { POI_ACCENT_GRADIENT, POI_PRIMARY_GRADIENT } from "@/lib/point-of-interaction/theme";
 import { Camera, Gift, Printer, Scan, Smartphone } from "lucide-react";
 import { getCashbackUnitLabel } from "@/lib/formatting";
 import { SizeIcon } from "@radix-ui/react-icons";
@@ -130,10 +131,9 @@ const DISPLAY_MODE_CONFIG: Record<
 };
 
 export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: PointOfInteractionDisplayPageProps) {
-	const { colors, getPrimaryGradientStyle } = useOrgColors();
+	const { colors } = useOrgColors();
 	const [mode, setMode] = useState<TDisplayMode>("A5");
 	const displayConfig = DISPLAY_MODE_CONFIG[mode];
-	const primaryGradientStyle = getPrimaryGradientStyle();
 
 	const handlePrint = () => {
 		window.print();
@@ -157,7 +157,7 @@ export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: 
 	return (
 		<div
 			className="min-h-screen flex items-center justify-center p-4 pb-24 md:p-8 md:pb-8 print:p-0 print:min-h-0"
-			style={{ backgroundColor: hexToRgba(colors.primary, 0.08) }}
+			style={{ backgroundColor: "var(--poi-tint)" }}
 		>
 			<div className="flex items-start justify-center print:block">
 				<div
@@ -170,7 +170,7 @@ export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: 
 					{/* Header */}
 					<div
 						className={`relative flex flex-col items-center justify-center overflow-hidden ${displayConfig.headerClassName}`}
-						style={primaryGradientStyle}
+						style={{ backgroundColor: "var(--poi-primary)", backgroundImage: POI_PRIMARY_GRADIENT }}
 					>
 						{/* Decorative dots pattern */}
 						<div
@@ -231,7 +231,7 @@ export default function PointOfInteractionDisplayPage({ org, cashbackProgram }: 
 						{/* QR Code Card */}
 						<div className="relative w-full flex flex-col items-center">
 							{/* Outer decorative ring */}
-							<div className="p-1 rounded-2xl" style={{ background: primaryGradientStyle.background }}>
+							<div className="p-1 rounded-2xl" style={{ backgroundColor: "var(--poi-primary)", backgroundImage: POI_ACCENT_GRADIENT }}>
 								<div className="bg-white p-3 rounded-xl flex flex-col items-center shadow-inner">
 									<div
 										className="flex items-center justify-center rounded-lg overflow-hidden"
