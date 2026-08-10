@@ -915,31 +915,116 @@ export function getAppRouteDescription(path: string) {
 
 export const SUBSCRIPTION_GRACE_PERIOD_DAYS = 15;
 
-type TCheckSubscriptionStatus = {
+// Folga de compensação bancária após o vencimento do boleto: quem paga na véspera pode levar
+// até 2 dias úteis para ter a confirmação — bloquear antes disso puniria quem pagou.
+export const BOLETO_COMPENSATION_DAYS = 3;
+// Validade do boleto emitido no checkout (payment_method_options.boleto.expires_after_days).
+export const BOLETO_EXPIRES_AFTER_DAYS = 3;
+// Teto do acesso otimista de 1ª cobrança quando não há vencimento de boleto conhecido: PIX
+// aguardando confirmação, falha na leitura do voucher ou checkout anterior a estes campos.
+export const PENDING_FIRST_CHARGE_FALLBACK_DAYS = 3;
+
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+type TResolveSubscriptionAccessInput = {
 	stripeStatus: TOrganizationEntity["stripeSubscriptionStatus"];
-	stripeStatusUltimaAlteracao: TOrganizationEntity["stripeSubscriptionStatusUltimaAlteracao"];
-	trialPeriodStart: TOrganizationEntity["periodoTesteInicio"];
-	trialPeriodEnd: TOrganizationEntity["periodoTesteFim"];
+	stripeStatusChangedAt: TOrganizationEntity["stripeSubscriptionStatusUltimaAlteracao"];
+	trialStart: TOrganizationEntity["periodoTesteInicio"];
+	trialEnd: TOrganizationEntity["periodoTesteFim"];
+	paidPeriodEnd: TOrganizationEntity["assinaturaPeriodoPagoFim"];
+	provisionalAccessEnd: TOrganizationEntity["assinaturaAcessoProvisorioFim"];
 };
-export function checkSubscriptionStatus({ stripeStatus, stripeStatusUltimaAlteracao, trialPeriodStart, trialPeriodEnd }: TCheckSubscriptionStatus) {
-	if (stripeStatus === "active") return true;
 
-	// past_due: allow access during grace period (15 days from status change)
+export type TSubscriptionAccess = {
+	active: boolean;
+	mode: "success" | "warn" | "fail";
+	reason: "PAGO" | "PROVISORIO" | "GRACE_PAST_DUE" | "TRIAL" | "TRIAL_GRACE" | "BLOQUEADO";
+	/** Dias restantes do contexto do `reason` (janela provisória, grace ou trial); null quando não se aplica. */
+	daysRemaining: number | null;
+};
+
+/**
+ * Decisão única de acesso por assinatura — usada pela sessão (`assinaturaAtiva`) e pelo endpoint
+ * de status, para que as duas nunca divirjam. Ordem: período pago confirmado → janela otimista
+ * de cobrança pendente → grace de past_due → trial → bloqueio.
+ *
+ * `active` (Stripe) continua liberando: é o caminho do cartão e do legado sem backfill. Boleto
+ * nunca depende dele — a 1ª cobrança fica `incomplete` até o pagamento compensar, e é a janela
+ * provisória (data absoluta local) que libera nesse meio-tempo.
+ */
+export function resolveSubscriptionAccess({
+	stripeStatus,
+	stripeStatusChangedAt,
+	trialStart,
+	trialEnd,
+	paidPeriodEnd,
+	provisionalAccessEnd,
+}: TResolveSubscriptionAccessInput): TSubscriptionAccess {
+	const now = new Date();
+
+	// 1. Período confirmado por invoice.paid — ou status active.
+	if (stripeStatus === "active" || (paidPeriodEnd && now <= new Date(paidPeriodEnd))) {
+		return { active: true, mode: "success", reason: "PAGO", daysRemaining: null };
+	}
+
+	// 2. Cobrança pendente dentro da janela otimista (boleto emitido / PIX aguardando).
+	if (provisionalAccessEnd && now <= new Date(provisionalAccessEnd)) {
+		const daysRemaining = Math.ceil((new Date(provisionalAccessEnd).getTime() - now.getTime()) / MS_PER_DAY);
+		return { active: true, mode: "warn", reason: "PROVISORIO", daysRemaining };
+	}
+
+	// 2b. `incomplete` sem janela provisória (checkout anterior a estes campos): janela-teto curta
+	// a partir da última mudança de status — remove o "incomplete libera para sempre" sem quebrar
+	// um checkout PIX em andamento. Expirada a janela, o trial abaixo ainda pode valer (a org
+	// nunca teve assinatura paga; abandonar um checkout não deve queimar o teste vigente).
+	if (stripeStatus === "incomplete" && !provisionalAccessEnd) {
+		const referenceDate = stripeStatusChangedAt ? new Date(stripeStatusChangedAt) : now; // sem timestamp = conservador, janela cheia
+		const daysSinceChange = Math.floor((now.getTime() - referenceDate.getTime()) / MS_PER_DAY);
+		const daysRemaining = PENDING_FIRST_CHARGE_FALLBACK_DAYS - daysSinceChange;
+		if (daysRemaining > 0) return { active: true, mode: "warn", reason: "PROVISORIO", daysRemaining };
+		return resolveTrialAccess({ trialStart, trialEnd, now }) ?? { active: false, mode: "fail", reason: "BLOQUEADO", daysRemaining: null };
+	}
+
+	// 3. past_due: grace de 15 dias a partir da mudança de status (sem resgate por trial — a org
+	// já teve assinatura paga).
 	if (stripeStatus === "past_due") {
-		if (!stripeStatusUltimaAlteracao) return true; // no timestamp = conservative, grant grace
-		const daysSinceChange = Math.floor((Date.now() - new Date(stripeStatusUltimaAlteracao).getTime()) / (1000 * 60 * 60 * 24));
-		return daysSinceChange < SUBSCRIPTION_GRACE_PERIOD_DAYS;
+		const daysSinceChange = stripeStatusChangedAt ? Math.floor((now.getTime() - new Date(stripeStatusChangedAt).getTime()) / MS_PER_DAY) : 0; // sem timestamp = conservador, acabou de mudar
+		const daysRemaining = SUBSCRIPTION_GRACE_PERIOD_DAYS - daysSinceChange;
+		if (daysRemaining > 0) return { active: true, mode: "warn", reason: "GRACE_PAST_DUE", daysRemaining };
+		return { active: false, mode: "fail", reason: "BLOQUEADO", daysRemaining: null };
 	}
 
-	// Trial period: allow access during trial + grace period
-	if (trialPeriodStart && trialPeriodEnd) {
-		const now = new Date();
-		const trialEnd = new Date(trialPeriodEnd);
-		if (now < trialEnd) return true;
-		// Grace period after trial ends
-		const daysSinceTrialEnd = Math.floor((now.getTime() - trialEnd.getTime()) / (1000 * 60 * 60 * 24));
-		return daysSinceTrialEnd < SUBSCRIPTION_GRACE_PERIOD_DAYS;
+	// 4. Estados terminais: sem acesso (o período pago vigente já teria retornado no passo 1).
+	if (stripeStatus === "canceled" || stripeStatus === "unpaid" || stripeStatus === "incomplete_expired") {
+		return { active: false, mode: "fail", reason: "BLOQUEADO", daysRemaining: null };
 	}
 
-	return false;
+	// 5. Sem assinatura: trial (+ grace) ou bloqueio.
+	return resolveTrialAccess({ trialStart, trialEnd, now }) ?? { active: false, mode: "fail", reason: "BLOQUEADO", daysRemaining: null };
+}
+
+function resolveTrialAccess({
+	trialStart,
+	trialEnd,
+	now,
+}: {
+	trialStart: TOrganizationEntity["periodoTesteInicio"];
+	trialEnd: TOrganizationEntity["periodoTesteFim"];
+	now: Date;
+}): TSubscriptionAccess | null {
+	if (!trialStart || !trialEnd) return null;
+
+	const trialEndDate = new Date(trialEnd);
+	const msUntilTrialEnd = trialEndDate.getTime() - now.getTime();
+
+	if (msUntilTrialEnd > 0) {
+		const daysRemaining = Math.ceil(msUntilTrialEnd / MS_PER_DAY);
+		return { active: true, mode: daysRemaining > 7 ? "success" : "warn", reason: "TRIAL", daysRemaining };
+	}
+
+	const daysSinceTrialEnd = Math.floor(Math.abs(msUntilTrialEnd) / MS_PER_DAY);
+	const daysRemaining = SUBSCRIPTION_GRACE_PERIOD_DAYS - daysSinceTrialEnd;
+	if (daysRemaining > 0) return { active: true, mode: "warn", reason: "TRIAL_GRACE", daysRemaining };
+
+	return null;
 }

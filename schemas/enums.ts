@@ -697,7 +697,7 @@ export type TAccessEventTypeEnum = z.infer<typeof AccessEventTypeEnum>;
 
 // Origem de um evento externo arquivado no inbox (ampmais_external_events). Espelha o
 // varchar do schema — nova origem entra aqui sem migração de enum no Postgres.
-export const ExternalEventSourceEnum = z.enum(["META-WHATSAPP", "WHATSAPP-GATEWAY"]);
+export const ExternalEventSourceEnum = z.enum(["META-WHATSAPP", "WHATSAPP-GATEWAY", "STRIPE"]);
 export type TExternalEventSourceEnum = z.infer<typeof ExternalEventSourceEnum>;
 
 export const ExternalEventProcessingStatusEnum = z.enum(["RECEBIDO", "PROCESSADO", "FALHOU"]);

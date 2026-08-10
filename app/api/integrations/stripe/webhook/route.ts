@@ -1,5 +1,7 @@
-import { CONSULTORIA_ADDON } from "@/config";
+import { BOLETO_COMPENSATION_DAYS, CONSULTORIA_ADDON, PENDING_FIRST_CHARGE_FALLBACK_DAYS } from "@/config";
 import { findDealByStripeCustomerId, syncDealSubscriptionState } from "@/lib/deals";
+import { archiveExternalEvent, runArchivedEventProcessing } from "@/lib/external-events/archive";
+import { consolidatePaidAccess, grantProvisionalAccess } from "@/lib/subscriptions/access";
 import {
 	PLATFORM_PARTNER_COMMISSION_RULE_VERSION,
 	PLATFORM_PARTNER_MONTHLY_FIRST_INVOICE_BPS,
@@ -12,7 +14,7 @@ import { db } from "@/services/drizzle";
 import { organizations, platformPartnerCommissions, platformPartnerReferrals } from "@/services/drizzle/schema";
 import { stripe } from "@/services/stripe";
 import { waitUntil } from "@vercel/functions";
-import { and, count, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, count, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
@@ -28,6 +30,12 @@ const allowedStripeEvents: Stripe.Event.Type[] = [
 	// customer.subscription.updated (past_due), mas rastreamos a falha no nível do
 	// invoice para observabilidade.
 	"invoice.payment_failed",
+	// Boleto (1ª cobrança): "completed" = boleto emitido, não pago — abre a janela de acesso
+	// otimista. Os async_payment_* são observabilidade; a consolidação financeira é exclusiva
+	// do invoice.paid, e a revogação acontece sozinha quando a janela local expira.
+	"checkout.session.completed",
+	"checkout.session.async_payment_succeeded",
+	"checkout.session.async_payment_failed",
 ];
 
 export async function POST(req: NextRequest) {
@@ -37,28 +45,68 @@ export async function POST(req: NextRequest) {
 
 	if (!signature) return NextResponse.json({}, { status: 400 });
 
-	async function doEventProcessing() {
-		if (typeof signature !== "string") {
-			throw new Error("[STRIPE HOOK] Header isn't a string???");
-		}
-
-		const event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SIGNATURE_SECRET as string);
-		waitUntil(processEvent(event));
-	}
+	let event: Stripe.Event;
 	try {
-		await doEventProcessing();
+		event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SIGNATURE_SECRET as string);
 	} catch (error) {
-		console.log("[STRIPE HOOK] Error processing event", error);
+		console.log("[STRIPE HOOK] Invalid event signature", error);
+		return NextResponse.json({}, { status: 400 });
 	}
+
+	if (!allowedStripeEvents.includes(event.type)) return NextResponse.json({ received: true });
+
+	// Inbox durável: arquivar ANTES de processar. Se o insert falhar, a exceção propaga e o
+	// handler devolve 5xx — a Stripe reentrega. "Catch + 200" aqui seria evento financeiro
+	// perdido com a Stripe achando que entregou.
+	const { id: archivedEventId } = await archiveExternalEvent({ origem: "STRIPE", tipo: event.type, payload: event });
+
+	waitUntil(
+		runArchivedEventProcessing({
+			eventId: archivedEventId,
+			run: async () => {
+				await processEvent(event);
+			},
+			resolveOrganizationId: () => resolveEventOrganizationId(event),
+		}),
+	);
+
 	return NextResponse.json({ received: true });
 }
 
-async function processEvent(event: Stripe.Event) {
-	// Skip processing if the event isn't one I'm tracking (list of all events below)
-	if (!allowedStripeEvents.includes(event.type)) return;
+// Best-effort, só para carimbar a linha do inbox (deleção por org / observabilidade).
+async function resolveEventOrganizationId(event: Stripe.Event): Promise<string | null> {
+	const { customer } = event.data.object as { customer?: string | { id?: string } | null };
+	const customerId = typeof customer === "string" ? customer : (customer?.id ?? null);
+	if (!customerId) return null;
+	const organization = await db.query.organizations.findFirst({
+		where: eq(organizations.stripeCustomerId, customerId),
+		columns: { id: true },
+	});
+	return organization?.id ?? null;
+}
 
+async function processEvent(event: Stripe.Event) {
 	if (event.type === "invoice.paid" || event.type === "invoice.payment_succeeded") {
 		return await handleInvoicePaid(event.data.object as Stripe.Invoice);
+	}
+
+	if (event.type === "checkout.session.completed") {
+		return await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
+	}
+
+	if (event.type === "checkout.session.async_payment_succeeded" || event.type === "checkout.session.async_payment_failed") {
+		// Observabilidade apenas. Sucesso: o invoice.paid correspondente consolida o acesso —
+		// tratar aqui criaria um segundo caminho financeiro. Falha (boleto vencido): nenhuma
+		// revogação ativa — o acesso expira sozinho em assinaturaAcessoProvisorioFim, preservando
+		// a folga de compensação para quem pagou em cima do vencimento.
+		const checkoutSession = event.data.object as Stripe.Checkout.Session;
+		console.log("[STRIPE HOOK] [CHECKOUT_ASYNC_PAYMENT]", {
+			eventType: event.type,
+			sessionId: checkoutSession.id,
+			customerId: typeof checkoutSession.customer === "string" ? checkoutSession.customer : checkoutSession.customer?.id,
+			paymentStatus: checkoutSession.payment_status,
+		});
+		return;
 	}
 
 	if (event.type === "invoice.payment_failed") {
@@ -143,7 +191,9 @@ async function processEvent(event: Stripe.Event) {
 			.set({
 				stripeSubscriptionStatus: status,
 				stripeSubscriptionId: id,
-				stripeSubscriptionStatusUltimaAlteracao: new Date(),
+				// Só reancora o timestamp quando o status realmente muda: eventos repetidos de
+				// past_due reiniciariam o grace period de 15 dias a cada redelivery.
+				stripeSubscriptionStatusUltimaAlteracao: sql`CASE WHEN ${organizations.stripeSubscriptionStatus} IS DISTINCT FROM ${status} THEN NOW() ELSE ${organizations.stripeSubscriptionStatusUltimaAlteracao} END`,
 			})
 			.where(eq(organizations.stripeCustomerId, customerId));
 	}
@@ -216,6 +266,83 @@ function addDays(date: Date, days: number) {
 	return next;
 }
 
+// Para boleto, "completed" significa boleto EMITIDO, não pago — a assinatura fica `incomplete`
+// até a compensação. Abre a janela de acesso otimista com data absoluta local; a consolidação
+// financeira é exclusiva do invoice.paid.
+async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+	if (session.mode !== "subscription") return;
+	// Cartão (e PIX instantâneo) confirmam na hora: o invoice.paid consolida, nada a fazer aqui.
+	if (session.payment_status === "paid") return;
+
+	const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
+	if (!customerId) return;
+
+	const organization = await db.query.organizations.findFirst({
+		where: eq(organizations.stripeCustomerId, customerId),
+		columns: { id: true },
+	});
+	// Deals e customers desconhecidos ficam fora do fluxo otimista (org de deal não tem
+	// stripeCustomerId próprio).
+	if (!organization) return;
+
+	const subscriptionId = typeof session.subscription === "string" ? session.subscription : (session.subscription?.id ?? null);
+	const boletoExpiresAt = subscriptionId ? await findBoletoVoucherExpiresAt(subscriptionId) : null;
+
+	// Vencimento real do boleto + folga de compensação. Sem vencimento conhecido (PIX aguardando
+	// confirmação, ou falha na leitura do voucher), janela-teto curta — sempre uma data absoluta,
+	// nunca acesso em aberto.
+	const provisionalEnd = boletoExpiresAt ? addDays(boletoExpiresAt, BOLETO_COMPENSATION_DAYS) : addDays(new Date(), PENDING_FIRST_CHARGE_FALLBACK_DAYS);
+
+	console.log("[STRIPE HOOK] [CHECKOUT_COMPLETED_PENDING]", {
+		organizationId: organization.id,
+		sessionId: session.id,
+		subscriptionId,
+		boletoExpiresAt,
+		provisionalEnd,
+	});
+
+	await grantProvisionalAccess({ organizationId: organization.id, until: provisionalEnd });
+}
+
+// O PaymentIntent pendente do boleto vive no latest_invoice da assinatura. Na API atual o
+// caminho é invoice.payments[].payment.payment_intent; em versões anteriores era
+// invoice.payment_intent — lemos os dois formatos defensivamente, no mesmo idioma dos helpers
+// de invoice acima. Falha em qualquer passo → null (o chamador usa a janela-teto).
+async function findBoletoVoucherExpiresAt(subscriptionId: string): Promise<Date | null> {
+	try {
+		const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+		const latestInvoice = (subscription as unknown as { latest_invoice?: string | { id?: string } | null }).latest_invoice;
+		const invoiceId = typeof latestInvoice === "string" ? latestInvoice : (latestInvoice?.id ?? null);
+		if (!invoiceId) return null;
+
+		const invoice = await stripe.invoices.retrieve(invoiceId);
+		const invoiceRecord = invoice as unknown as Record<string, unknown>;
+
+		let paymentIntentId: string | null = null;
+		const payments = invoiceRecord.payments as { data?: Array<{ payment?: { payment_intent?: string | { id?: string } } }> } | undefined;
+		for (const invoicePayment of payments?.data ?? []) {
+			const candidate = invoicePayment.payment?.payment_intent;
+			const candidateId = typeof candidate === "string" ? candidate : (candidate?.id ?? null);
+			if (candidateId) {
+				paymentIntentId = candidateId;
+				break;
+			}
+		}
+		if (!paymentIntentId) {
+			const legacy = invoiceRecord.payment_intent as string | { id?: string } | null | undefined;
+			paymentIntentId = typeof legacy === "string" ? legacy : (legacy?.id ?? null);
+		}
+		if (!paymentIntentId) return null;
+
+		const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+		const expiresAt = paymentIntent.next_action?.boleto_display_details?.expires_at;
+		return typeof expiresAt === "number" ? new Date(expiresAt * 1000) : null;
+	} catch (error) {
+		console.error("[STRIPE HOOK] Falha ao ler o vencimento do boleto:", error);
+		return null;
+	}
+}
+
 // Gera a comissão do parceiro a partir de um invoice efetivamente pago. Com PIX
 // Automático o pagamento é assíncrono, então este handler só dispara APÓS a confirmação
 // (invoice.paid / invoice.payment_succeeded) — nunca durante o estado pendente do PIX.
@@ -240,15 +367,20 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 		return;
 	}
 
-	const existingCommission = await db.query.platformPartnerCommissions.findFirst({
-		where: eq(platformPartnerCommissions.stripeInvoiceId, invoice.id),
-	});
-	if (existingCommission) return;
-
 	const organization = await db.query.organizations.findFirst({
 		where: eq(organizations.stripeCustomerId, customerId),
 	});
 	if (!organization) return;
+
+	// Consolidação do acesso ANTES de qualquer early-return de comissão: todo invoice pago
+	// estende o período da organização, tenha ela indicação de parceiro ou não. Idempotente
+	// (GREATEST) — redelivery não move datas.
+	await consolidatePaidAccess({ organizationId: organization.id, invoice });
+
+	const existingCommission = await db.query.platformPartnerCommissions.findFirst({
+		where: eq(platformPartnerCommissions.stripeInvoiceId, invoice.id),
+	});
+	if (existingCommission) return;
 
 	const referral = await db.query.platformPartnerReferrals.findFirst({
 		where: eq(platformPartnerReferrals.organizacaoId, organization.id),

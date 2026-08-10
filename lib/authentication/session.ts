@@ -1,5 +1,5 @@
 "use server";
-import { SESSION_COOKIE_NAME, checkSubscriptionStatus } from "@/config";
+import { SESSION_COOKIE_NAME, resolveSubscriptionAccess } from "@/config";
 import { db } from "@/services/drizzle";
 import { type TAuthSessionEntity, authSessions } from "@/services/drizzle/schema";
 import { sha256 } from "@oslojs/crypto/sha2";
@@ -102,12 +102,14 @@ export async function validateSession(token: string) {
 					nome: membership.organizacao.nome,
 					cnpj: membership.organizacao.cnpj,
 					logoUrl: membership.organizacao.logoUrl,
-					assinaturaAtiva: checkSubscriptionStatus({
+					assinaturaAtiva: resolveSubscriptionAccess({
 						stripeStatus: membership.organizacao.stripeSubscriptionStatus,
-						stripeStatusUltimaAlteracao: membership.organizacao.stripeSubscriptionStatusUltimaAlteracao,
-						trialPeriodStart: membership.organizacao.periodoTesteInicio,
-						trialPeriodEnd: membership.organizacao.periodoTesteFim,
-					}),
+						stripeStatusChangedAt: membership.organizacao.stripeSubscriptionStatusUltimaAlteracao,
+						trialStart: membership.organizacao.periodoTesteInicio,
+						trialEnd: membership.organizacao.periodoTesteFim,
+						paidPeriodEnd: membership.organizacao.assinaturaPeriodoPagoFim,
+						provisionalAccessEnd: membership.organizacao.assinaturaAcessoProvisorioFim,
+					}).active,
 					assinaturaPlano: membership.organizacao.assinaturaPlano,
 					corPrimaria: membership.organizacao.corPrimaria,
 					corPrimariaForeground: membership.organizacao.corPrimariaForeground,
@@ -144,12 +146,14 @@ export async function validateSession(token: string) {
 					nome: mostRecentMembership.organizacao.nome,
 					cnpj: mostRecentMembership.organizacao.cnpj,
 					logoUrl: mostRecentMembership.organizacao.logoUrl,
-					assinaturaAtiva: checkSubscriptionStatus({
+					assinaturaAtiva: resolveSubscriptionAccess({
 						stripeStatus: mostRecentMembership.organizacao.stripeSubscriptionStatus,
-						stripeStatusUltimaAlteracao: mostRecentMembership.organizacao.stripeSubscriptionStatusUltimaAlteracao,
-						trialPeriodStart: mostRecentMembership.organizacao.periodoTesteInicio,
-						trialPeriodEnd: mostRecentMembership.organizacao.periodoTesteFim,
-					}),
+						stripeStatusChangedAt: mostRecentMembership.organizacao.stripeSubscriptionStatusUltimaAlteracao,
+						trialStart: mostRecentMembership.organizacao.periodoTesteInicio,
+						trialEnd: mostRecentMembership.organizacao.periodoTesteFim,
+						paidPeriodEnd: mostRecentMembership.organizacao.assinaturaPeriodoPagoFim,
+						provisionalAccessEnd: mostRecentMembership.organizacao.assinaturaAcessoProvisorioFim,
+					}).active,
 					assinaturaPlano: mostRecentMembership.organizacao.assinaturaPlano,
 					corPrimaria: mostRecentMembership.organizacao.corPrimaria,
 					corPrimariaForeground: mostRecentMembership.organizacao.corPrimariaForeground,

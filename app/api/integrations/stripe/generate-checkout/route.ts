@@ -1,4 +1,4 @@
-import { AppSubscriptionPlans, CONSULTORIA_ADDON, PIX_MANDATE_MAX_AMOUNT_CENTS, type TAppSubscriptionPlanKey } from "@/config";
+import { AppSubscriptionPlans, BOLETO_EXPIRES_AFTER_DAYS, CONSULTORIA_ADDON, PIX_MANDATE_MAX_AMOUNT_CENTS, type TAppSubscriptionPlanKey } from "@/config";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { db } from "@/services/drizzle";
@@ -148,12 +148,15 @@ async function generateCheckoutRoute(request: NextRequest) {
 
 	// PIX (via PIX Automático) só se aplica ao ciclo mensal — o mandato opera em
 	// payment_schedule "monthly" e não suporta débito único anual.
-	// Fica atrás de STRIPE_PIX_ENABLED: enquanto o PIX não estiver ativado na conta
-	// Stripe, incluí-lo em payment_method_types faz o create da sessão falhar por
-	// inteiro (derruba até o cartão). Com o flag off, mantemos o comportamento atual
-	// (payment methods dinâmicos definidos no Dashboard) intacto.
+	// Boleto vale para mensal e anual (cada renovação emite um novo voucher por e-mail).
+	// Ambos ficam atrás de flag: enquanto o método não estiver ativado na conta Stripe,
+	// incluí-lo em payment_method_types faz o create da sessão falhar por inteiro (derruba
+	// até o cartão). Com os dois flags off, mantemos o comportamento atual (payment methods
+	// dinâmicos definidos no Dashboard) intacto.
 	const pixEnabled = process.env.STRIPE_PIX_ENABLED === "true";
 	const acceptsPix = pixEnabled && modality === "monthly";
+	const acceptsBoleto = process.env.STRIPE_BOLETO_ENABLED === "true";
+	const restrictsPaymentMethods = acceptsPix || acceptsBoleto;
 
 	// Create checkout session
 	const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -161,10 +164,14 @@ async function generateCheckoutRoute(request: NextRequest) {
 		customer: stripeCustomerId,
 		line_items: lineItems,
 		mode: "subscription",
-		// Só restringimos os métodos quando ativamos PIX explicitamente; caso contrário
-		// omitimos para preservar os payment methods dinâmicos do Dashboard.
-		...(acceptsPix && {
-			payment_method_types: ["card", "pix"] as Stripe.Checkout.SessionCreateParams.PaymentMethodType[],
+		// Só restringimos os métodos quando algum flag ativa um método explícito; caso
+		// contrário omitimos para preservar os payment methods dinâmicos do Dashboard.
+		...(restrictsPaymentMethods && {
+			payment_method_types: [
+				"card",
+				...(acceptsPix ? ["pix"] : []),
+				...(acceptsBoleto ? ["boleto"] : []),
+			] as Stripe.Checkout.SessionCreateParams.PaymentMethodType[],
 		}),
 		allow_promotion_codes: true,
 		success_url: `${baseUrl}/dashboard?checkout=success`,
@@ -173,17 +180,22 @@ async function generateCheckoutRoute(request: NextRequest) {
 		// que upgrade/downgrade ou adição da consultoria não exijam reautorização no banco.
 		// O próprio mandato autoriza os débitos recorrentes — as renovações usam o método
 		// salvo, sem precisar de payment_settings na sessão (parâmetro inexistente aqui).
-		...(acceptsPix && {
+		...(restrictsPaymentMethods && {
 			payment_method_options: {
-				pix: {
-					mandate_options: {
-						amount: PIX_MANDATE_MAX_AMOUNT_CENTS,
-						amount_type: "maximum",
-						currency: "brl",
-						payment_schedule: "monthly",
-						reference: "RecompraCRM Assinatura",
+				...(acceptsPix && {
+					pix: {
+						mandate_options: {
+							amount: PIX_MANDATE_MAX_AMOUNT_CENTS,
+							amount_type: "maximum" as const,
+							currency: "brl",
+							payment_schedule: "monthly" as const,
+							reference: "RecompraCRM Assinatura",
+						},
 					},
-				},
+				}),
+				...(acceptsBoleto && {
+					boleto: { expires_after_days: BOLETO_EXPIRES_AFTER_DAYS },
+				}),
 			},
 		}),
 		metadata: controlMetadata,

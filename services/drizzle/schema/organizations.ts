@@ -42,6 +42,12 @@ export const organizations = newTable("organizations", {
 	stripeSubscriptionId: text("stripe_subscription_id"),
 	stripeSubscriptionStatus: text("stripe_subscription_status"),
 	stripeSubscriptionStatusUltimaAlteracao: timestamp("stripe_subscription_status_ultima_alteracao"),
+	// Até quando pagamentos confirmados (invoice.paid) garantem acesso — period.end da linha
+	// recorrente do invoice. Só avança (GREATEST), nunca recua por evento atrasado.
+	assinaturaPeriodoPagoFim: timestamp("assinatura_periodo_pago_fim"),
+	// Até quando uma cobrança pendente (boleto emitido / PIX aguardando) libera acesso otimista.
+	// Nenhum evento revoga: o acesso expira sozinho quando a data passa.
+	assinaturaAcessoProvisorioFim: timestamp("assinatura_acesso_provisorio_fim"),
 
 	assinaturaPlano: text("assinatura_plano").default("ESSENCIAL"),
 	// Deal (venda B2B multi-licença): quando presente, a assinatura desta org é governada

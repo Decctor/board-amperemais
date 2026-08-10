@@ -106,6 +106,10 @@
 		{
 			"path": "/api/cron/generate-recurring-entries",
 			"schedule": "20 0 * * *"
+		},
+		{
+			"path": "/api/cron/subscription-reconciliation",
+			"schedule": "0 7 * * *"
 		}
 	]
 }

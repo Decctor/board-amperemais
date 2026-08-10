@@ -1,7 +1,8 @@
-import { SUBSCRIPTION_GRACE_PERIOD_DAYS } from "@/config";
+import { resolveSubscriptionAccess } from "@/config";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { db } from "@/services/drizzle";
+import dayjs from "dayjs";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -26,176 +27,130 @@ async function getSubscriptionStatus(): Promise<{ data: TSubscriptionStatusData;
 
 	if (!org) throw new createHttpError.NotFound("Organização não encontrada.");
 
-	const now = new Date();
-	const stripeStatus = org.stripeSubscriptionStatus;
-	const statusChangedAt = org.stripeSubscriptionStatusUltimaAlteracao;
-	const trialStart = org.periodoTesteInicio;
-	const trialEnd = org.periodoTesteFim;
+	// Decisão de acesso centralizada (mesma função usada em assinaturaAtiva da sessão) — aqui só
+	// traduzimos o resultado em status/mensagem para o banner e o paywall.
+	const access = resolveSubscriptionAccess({
+		stripeStatus: org.stripeSubscriptionStatus,
+		stripeStatusChangedAt: org.stripeSubscriptionStatusUltimaAlteracao,
+		trialStart: org.periodoTesteInicio,
+		trialEnd: org.periodoTesteFim,
+		paidPeriodEnd: org.assinaturaPeriodoPagoFim,
+		provisionalAccessEnd: org.assinaturaAcessoProvisorioFim,
+	});
+	console.log("[INFO] [SUBSCRIPTION_STATUS]", {
+		orgId,
+		stripeStatus: org.stripeSubscriptionStatus,
+		reason: access.reason,
+		mode: access.mode,
+		daysRemaining: access.daysRemaining,
+	});
 
-	// 1. Active Stripe subscription
-	if (stripeStatus === "active") {
-		console.log("[INFO] Getting subscription status for active subscription:", { stripeStatus });
-		return {
-			data: {
+	const respond = (data: TSubscriptionStatusData) => ({ data, message: "Status da assinatura obtido com sucesso." });
+	const plural = (days: number) => (days !== 1 ? "s" : "");
+
+	if (access.reason === "PAGO") {
+		return respond({
+			ativa: true,
+			status: "Assinatura ativa",
+			modo: "success",
+			mensagem: "Sua assinatura está ativa.",
+		});
+	}
+
+	if (access.reason === "PROVISORIO") {
+		// Boleto emitido ou PIX aguardando confirmação — acesso otimista com data-limite local.
+		const limitDate = org.assinaturaAcessoProvisorioFim ? dayjs(org.assinaturaAcessoProvisorioFim).format("DD/MM/YYYY") : null;
+		return respond({
+			ativa: true,
+			status: "Confirmando pagamento",
+			modo: "warn",
+			mensagem: limitDate
+				? `Aguardando a confirmação do seu pagamento. Se você pagou por boleto, a compensação pode levar até 2 dias úteis. Seu acesso está garantido até ${limitDate}.`
+				: "Aguardando a confirmação do seu pagamento. Isso pode levar alguns minutos.",
+		});
+	}
+
+	if (access.reason === "GRACE_PAST_DUE") {
+		const daysRemaining = access.daysRemaining ?? 0;
+		return respond({
+			ativa: true,
+			status: "Pagamento pendente",
+			modo: "warn",
+			mensagem: `Pagamento pendente. O acesso será suspenso em ${daysRemaining} dia${plural(daysRemaining)} — regularize sua assinatura.`,
+		});
+	}
+
+	if (access.reason === "TRIAL") {
+		const daysRemaining = access.daysRemaining ?? 0;
+		if (access.mode === "success") {
+			return respond({
 				ativa: true,
-				status: "Assinatura ativa",
+				status: "Período de teste ativo",
 				modo: "success",
-				mensagem: "Sua assinatura está ativa.",
-			},
-			message: "Status da assinatura obtido com sucesso.",
-		};
-	}
-
-	// 2. Past due Stripe subscription (grace period)
-	if (stripeStatus === "past_due") {
-		console.log("[INFO] Getting subscription status for past due subscription:", { stripeStatus, statusChangedAt });
-		const daysSinceChange = statusChangedAt ? Math.floor((now.getTime() - new Date(statusChangedAt).getTime()) / (1000 * 60 * 60 * 24)) : 0; // no timestamp = conservative, treat as just changed
-		const daysRemaining = SUBSCRIPTION_GRACE_PERIOD_DAYS - daysSinceChange;
-
-		if (daysRemaining > 0) {
-			console.log("[INFO] Past due subscription, warn mode, days remaining:", { daysRemaining });
-			return {
-				data: {
-					ativa: true,
-					status: "Pagamento pendente",
-					modo: "warn",
-					mensagem: `Pagamento pendente há ${daysSinceChange} dia${daysSinceChange !== 1 ? "s" : ""}. O acesso será suspenso em ${daysRemaining} dia${daysRemaining !== 1 ? "s" : ""}.`,
-				},
-				message: "Status da assinatura obtido com sucesso.",
-			};
+				mensagem: `Período de teste ativo. Restam ${daysRemaining} dias.`,
+			});
 		}
-
-		console.log("[INFO] Past due subscription, fail mode, days remaining:", { daysRemaining });
-		return {
-			data: {
-				ativa: false,
-				status: "Acesso suspenso",
-				modo: "fail",
-				mensagem: "Pagamento pendente há mais de 15 dias. Acesso suspenso — regularize sua assinatura.",
-			},
-			message: "Status da assinatura obtido com sucesso.",
-		};
+		return respond({
+			ativa: true,
+			status: `Período de teste encerra em ${daysRemaining} dia${plural(daysRemaining)}`,
+			modo: "warn",
+			mensagem: `Seu período de teste encerra em ${daysRemaining} dia${plural(daysRemaining)}. Adquira um plano para não perder o acesso.`,
+		});
 	}
 
-	// 3. Incomplete (1ª cobrança PIX ainda não confirmada, logo após o checkout).
-	// Decisão de produto: manter o acesso liberado de forma otimista — a confirmação
-	// da primeira PIX costuma levar apenas alguns minutos.
-	if (stripeStatus === "incomplete") {
-		console.log("[INFO] Getting subscription status for incomplete subscription:", { stripeStatus });
-		return {
-			data: {
-				ativa: true,
-				status: "Confirmando pagamento",
-				modo: "warn",
-				mensagem: "Aguardando a confirmação do seu pagamento via PIX. Isso pode levar alguns minutos.",
-			},
-			message: "Status da assinatura obtido com sucesso.",
-		};
+	if (access.reason === "TRIAL_GRACE") {
+		const daysRemaining = access.daysRemaining ?? 0;
+		return respond({
+			ativa: true,
+			status: "Teste encerrado",
+			modo: "warn",
+			mensagem: `Seu período de teste encerrou. Regularize em até ${daysRemaining} dia${plural(daysRemaining)} para manter o acesso.`,
+		});
 	}
 
-	// 4. Assinatura não paga / expirada sem confirmação (PIX ou cartão) — sem acesso.
-	if (stripeStatus === "incomplete_expired" || stripeStatus === "unpaid") {
-		console.log("[INFO] Getting subscription status for unpaid/incomplete_expired subscription:", { stripeStatus });
-		return {
-			data: {
-				ativa: false,
-				status: "Pagamento não confirmado",
-				modo: "fail",
-				mensagem: "Não conseguimos confirmar o pagamento da sua assinatura. Regularize para continuar utilizando a plataforma.",
-			},
-			message: "Status da assinatura obtido com sucesso.",
-		};
-	}
-
-	// 5. Canceled subscription
-	if (stripeStatus === "canceled") {
-		console.log("[INFO] Getting subscription status for canceled subscription:", { stripeStatus });
-		return {
-			data: {
-				ativa: false,
-				status: "Assinatura cancelada",
-				modo: "fail",
-				mensagem: "Sua assinatura foi cancelada. Adquira um plano para continuar utilizando a plataforma.",
-			},
-			message: "Status da assinatura obtido com sucesso.",
-		};
-	}
-
-	// 6. Trial period (no Stripe subscription)
-	if (trialStart && trialEnd) {
-		console.log("[INFO] Getting subscription status for trial period:", { trialStart, trialEnd });
-		const trialEndDate = new Date(trialEnd);
-		const msUntilTrialEnd = trialEndDate.getTime() - now.getTime();
-		const daysUntilTrialEnd = Math.ceil(msUntilTrialEnd / (1000 * 60 * 60 * 24));
-
-		// Trial still active, more than 7 days left
-		if (daysUntilTrialEnd > 7) {
-			console.log("[INFO] Trial still active, success mode, more than 7 days left:", { daysUntilTrialEnd });
-			return {
-				data: {
-					ativa: true,
-					status: "Período de teste ativo",
-					modo: "success",
-					mensagem: `Período de teste ativo. Restam ${daysUntilTrialEnd} dias.`,
-				},
-				message: "Status da assinatura obtido com sucesso.",
-			};
-		}
-
-		// Trial active, 7 days or less
-		if (daysUntilTrialEnd > 0) {
-			console.log("[INFO] Trial active, warn mode, 7 days or less:", { daysUntilTrialEnd });
-			return {
-				data: {
-					ativa: true,
-					status: `Período de teste encerra em ${daysUntilTrialEnd} dia${daysUntilTrialEnd !== 1 ? "s" : ""}`,
-					modo: "warn",
-					mensagem: `Seu período de teste encerra em ${daysUntilTrialEnd} dia${daysUntilTrialEnd !== 1 ? "s" : ""}. Adquira um plano para não perder o acesso.`,
-				},
-				message: "Status da assinatura obtido com sucesso.",
-			};
-		}
-
-		// Trial ended, within grace period
-		const daysSinceTrialEnd = Math.floor(Math.abs(msUntilTrialEnd) / (1000 * 60 * 60 * 24));
-		const graceDaysRemaining = SUBSCRIPTION_GRACE_PERIOD_DAYS - daysSinceTrialEnd;
-
-		if (graceDaysRemaining > 0) {
-			console.log("[INFO] Trial ended, within grace period, warn mode:", { graceDaysRemaining });
-			return {
-				data: {
-					ativa: true,
-					status: "Teste encerrado",
-					modo: "warn",
-					mensagem: `Seu período de teste encerrou. Regularize em até ${graceDaysRemaining} dia${graceDaysRemaining !== 1 ? "s" : ""} para manter o acesso.`,
-				},
-				message: "Status da assinatura obtido com sucesso.",
-			};
-		}
-
-		// Trial + grace expired
-		console.log("[INFO] Trial + grace expired, fail mode:", { graceDaysRemaining });
-		return {
-			data: {
-				ativa: false,
-				status: "Acesso suspenso",
-				modo: "fail",
-				mensagem: "Seu período de teste e o prazo de regularização expiraram. Adquira um plano para continuar.",
-			},
-			message: "Status da assinatura obtido com sucesso.",
-		};
-	}
-
-	// 7. No subscription, no trial
-	return {
-		data: {
+	// BLOQUEADO — a mensagem varia com o motivo do bloqueio.
+	if (org.stripeSubscriptionStatus === "past_due") {
+		return respond({
 			ativa: false,
-			status: "Sem assinatura",
+			status: "Acesso suspenso",
 			modo: "fail",
-			mensagem: "Nenhuma assinatura encontrada. Adquira um plano para utilizar a plataforma.",
-		},
-		message: "Status da assinatura obtido com sucesso.",
-	};
+			mensagem: "Pagamento pendente há mais de 15 dias. Acesso suspenso — regularize sua assinatura.",
+		});
+	}
+
+	if (org.stripeSubscriptionStatus === "incomplete" || org.stripeSubscriptionStatus === "incomplete_expired" || org.stripeSubscriptionStatus === "unpaid") {
+		return respond({
+			ativa: false,
+			status: "Pagamento não confirmado",
+			modo: "fail",
+			mensagem: "Não conseguimos confirmar o pagamento da sua assinatura. Regularize para continuar utilizando a plataforma.",
+		});
+	}
+
+	if (org.stripeSubscriptionStatus === "canceled") {
+		return respond({
+			ativa: false,
+			status: "Assinatura cancelada",
+			modo: "fail",
+			mensagem: "Sua assinatura foi cancelada. Adquira um plano para continuar utilizando a plataforma.",
+		});
+	}
+
+	if (org.periodoTesteInicio && org.periodoTesteFim) {
+		return respond({
+			ativa: false,
+			status: "Acesso suspenso",
+			modo: "fail",
+			mensagem: "Seu período de teste e o prazo de regularização expiraram. Adquira um plano para continuar.",
+		});
+	}
+
+	return respond({
+		ativa: false,
+		status: "Sem assinatura",
+		modo: "fail",
+		mensagem: "Nenhuma assinatura encontrada. Adquira um plano para utilizar a plataforma.",
+	});
 }
 
 export type TGetSubscriptionStatusOutput = Awaited<ReturnType<typeof getSubscriptionStatus>>;
