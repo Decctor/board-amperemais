@@ -3,9 +3,9 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { PeriodQueryParamSchema } from "@/schemas/query-params-utils";
 import { db } from "@/services/drizzle";
-import { cashbackProgramTransactions } from "@/services/drizzle/schema";
+import { cashbackProgramTransactions, sellers } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, count, desc, eq, gte, lte } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, isNull, lte } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -18,6 +18,12 @@ const CashbackProgramTransactionsInputSchema = z.object({
 		.string({
 			required_error: "ID do cliente não informado.",
 			invalid_type_error: "Tipo não válido para ID do cliente.",
+		})
+		.optional()
+		.nullable(),
+	operadorVendedorId: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID do operador.",
 		})
 		.optional()
 		.nullable(),
@@ -66,6 +72,7 @@ type TTransactionsResult = {
 	transactions: TTransaction[];
 	transactionsMatched: number;
 	totalPages: number;
+	operadores: Array<{ id: string; nome: string }>;
 };
 
 type GetResponse = {
@@ -103,66 +110,79 @@ async function getCashbackProgramTransactions({
 		conditions.push(eq(cashbackProgramTransactions.clienteId, input.clientId));
 	}
 
-	// Get total count
-	const totalCountResult = await db
-		.select({ count: count() })
-		.from(cashbackProgramTransactions)
-		.where(and(...conditions));
+	if (input.operadorVendedorId) {
+		conditions.push(
+			input.operadorVendedorId === "SISTEMA"
+				? isNull(cashbackProgramTransactions.operadorVendedorId)
+				: eq(cashbackProgramTransactions.operadorVendedorId, input.operadorVendedorId),
+		);
+	}
+
+	const offset = (input.page - 1) * input.limit;
+	const [totalCountResult, transactions, operators] = await Promise.all([
+		db
+			.select({ count: count() })
+			.from(cashbackProgramTransactions)
+			.where(and(...conditions)),
+		db.query.cashbackProgramTransactions.findMany({
+			where: and(...conditions),
+			orderBy: [desc(cashbackProgramTransactions.dataInsercao)],
+			limit: input.limit,
+			offset,
+			with: {
+				operadorVendedor: {
+					columns: {
+						id: true,
+						nome: true,
+					},
+				},
+				resgateRecompensa: {
+					columns: {
+						id: true,
+						titulo: true,
+						imagemCapaUrl: true,
+					},
+				},
+				cliente: {
+					columns: {
+						id: true,
+						nome: true,
+					},
+				},
+				venda: {
+					columns: {
+						id: true,
+						valorTotal: true,
+						canal: true,
+						entregaModalidade: true,
+					},
+					with: {
+						vendedor: {
+							columns: {
+								id: true,
+								nome: true,
+							},
+						},
+						parceiro: {
+							columns: {
+								id: true,
+								nome: true,
+							},
+						},
+					},
+				},
+			},
+		}),
+		db
+			.selectDistinct({ id: sellers.id, nome: sellers.nome })
+			.from(cashbackProgramTransactions)
+			.innerJoin(sellers, eq(cashbackProgramTransactions.operadorVendedorId, sellers.id))
+			.where(eq(cashbackProgramTransactions.organizacaoId, userOrgId))
+			.orderBy(asc(sellers.nome)),
+	]);
 
 	const total = totalCountResult[0]?.count || 0;
 	const totalPages = Math.ceil(total / input.limit);
-
-	// Get paginated transactions
-	const offset = (input.page - 1) * input.limit;
-	const transactions = await db.query.cashbackProgramTransactions.findMany({
-		where: and(...conditions),
-		orderBy: [desc(cashbackProgramTransactions.dataInsercao)],
-		limit: input.limit,
-		offset: offset,
-		with: {
-			operadorVendedor: {
-				columns: {
-					id: true,
-					nome: true,
-				},
-			},
-			resgateRecompensa: {
-				columns: {
-					id: true,
-					titulo: true,
-					imagemCapaUrl: true,
-				},
-			},
-			cliente: {
-				columns: {
-					id: true,
-					nome: true,
-				},
-			},
-			venda: {
-				columns: {
-					id: true,
-					valorTotal: true,
-					canal: true,
-					entregaModalidade: true,
-				},
-				with: {
-					vendedor: {
-						columns: {
-							id: true,
-							nome: true,
-						},
-					},
-					parceiro: {
-						columns: {
-							id: true,
-							nome: true,
-						},
-					},
-				},
-			},
-		},
-	});
 
 	const payload: TTransactionsResult = {
 		transactions: transactions.map((t) => ({
@@ -214,6 +234,7 @@ async function getCashbackProgramTransactions({
 		})),
 		transactionsMatched: total,
 		totalPages,
+		operadores: operators,
 	};
 
 	if (input.clientId) {

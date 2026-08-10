@@ -1,14 +1,17 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
-import { formatCashbackValue, formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import { formatCashbackValue, formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { appRoutes } from "@/lib/navigation/routes";
 import { useCashbackProgramTransactions } from "@/lib/queries/cashback-programs";
 import { cn } from "@/lib/utils";
-import { ArrowUpRight, ChevronLeft, ChevronRight, Gift, History, TrendingDown, TrendingUp, UserRound } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, ChevronRight, Filter, Gift, History, RotateCcw, TrendingDown, TrendingUp, UserRound } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TCashbackProgramTransactionsOutputDefault } from "@/app/api/cashback-programs/transactions/route";
 import Image from "next/image";
 
@@ -17,16 +20,31 @@ type RecentTransactionsBlockProps = {
 	terminology: TCashbackProgramTerminologyEnum;
 };
 
+type TTransactionTypeFilter = "ACÚMULO" | "RESGATE" | "EXPIRAÇÃO" | undefined;
+
+function parsePeriod(period?: RecentTransactionsBlockProps["period"]): { after?: Date; before?: Date } {
+	return {
+		after: period?.after ? new Date(period.after) : undefined,
+		before: period?.before ? new Date(period.before) : undefined,
+	};
+}
+
 export default function RecentTransactionsBlock({ period, terminology }: RecentTransactionsBlockProps) {
 	const [page, setPage] = useState(1);
-	const [filterType, setFilterType] = useState<"ACÚMULO" | "RESGATE" | "EXPIRAÇÃO" | undefined>(undefined);
+	const [filterType, setFilterType] = useState<TTransactionTypeFilter>(undefined);
+	const [filterPopoverIsOpen, setFilterPopoverIsOpen] = useState(false);
+	const [appliedPeriod, setAppliedPeriod] = useState(period);
+	const [appliedOperatorId, setAppliedOperatorId] = useState<string>();
+	const [draftPeriod, setDraftPeriod] = useState(() => parsePeriod(period));
+	const [draftOperatorId, setDraftOperatorId] = useState("ALL");
 	const limit = 10;
 
 	const { data, isLoading } = useCashbackProgramTransactions({
-		period,
+		period: appliedPeriod,
 		page,
 		limit,
 		type: filterType,
+		operadorVendedorId: appliedOperatorId,
 	});
 
 	const transactions = data?.transactions || [];
@@ -35,12 +53,103 @@ export default function RecentTransactionsBlock({ period, terminology }: RecentT
 
 	const canGoPrevious = page > 1;
 	const canGoNext = totalPages > 0 ? page < totalPages : false;
+	const appliedOperatorName =
+		appliedOperatorId === "SISTEMA" ? "Sistema / automático" : data?.operadores.find((operator) => operator.id === appliedOperatorId)?.nome;
+	const activeFilterCount = (appliedPeriod ? 1 : 0) + (appliedOperatorId ? 1 : 0);
+
+	useEffect(() => {
+		setAppliedPeriod(period);
+		setDraftPeriod(parsePeriod(period));
+		setPage(1);
+	}, [period?.after, period?.before]);
+
+	function handlePopoverChange(open: boolean) {
+		setFilterPopoverIsOpen(open);
+		if (open) {
+			setDraftPeriod(parsePeriod(appliedPeriod));
+			setDraftOperatorId(appliedOperatorId ?? "ALL");
+		}
+	}
+
+	function applyAdvancedFilters() {
+		if (!draftPeriod.after || !draftPeriod.before) return;
+		setAppliedPeriod({
+			after: draftPeriod.after.toISOString(),
+			before: draftPeriod.before.toISOString(),
+		});
+		setAppliedOperatorId(draftOperatorId === "ALL" ? undefined : draftOperatorId);
+		setPage(1);
+		setFilterPopoverIsOpen(false);
+	}
+
+	function resetAdvancedFilters() {
+		setAppliedPeriod(period);
+		setAppliedOperatorId(undefined);
+		setDraftPeriod(parsePeriod(period));
+		setDraftOperatorId("ALL");
+		setPage(1);
+		setFilterPopoverIsOpen(false);
+	}
 
 	return (
-		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs h-full">
-			<div className="flex items-center justify-between">
-				<h1 className="text-xs font-medium tracking-tight uppercase">TRANSAÇÕES RECENTES</h1>
-				<div className="flex items-center gap-1">
+		<div className="bg-card border-border flex h-full w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
+			<div className="flex flex-col gap-3">
+				<div className="flex items-center justify-between gap-3">
+					<div className="min-w-0">
+						<h1 className="text-xs font-medium tracking-tight uppercase">TRANSAÇÕES RECENTES</h1>
+						<p className="mt-1 truncate text-[11px] text-muted-foreground">
+							{transactionsMatched} {transactionsMatched === 1 ? "registro" : "registros"}
+							{appliedOperatorName ? ` · ${appliedOperatorName}` : ""}
+						</p>
+					</div>
+					<Popover open={filterPopoverIsOpen} onOpenChange={handlePopoverChange}>
+						<PopoverTrigger asChild>
+							<Button variant="outline" size="sm" className="h-8 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs">
+								<Filter className="h-3.5 w-3.5" />
+								FILTROS
+								{activeFilterCount > 0 ? (
+									<span className="bg-primary text-primary-foreground flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold">
+										{activeFilterCount}
+									</span>
+								) : null}
+							</Button>
+						</PopoverTrigger>
+						<PopoverContent align="end" className="w-[min(92vw,440px)] space-y-4 rounded-xl p-4">
+							<div>
+								<p className="text-sm font-semibold">Filtrar histórico</p>
+								<p className="text-xs text-muted-foreground">Refine os registros por período e operador.</p>
+							</div>
+							<DateIntervalInput label="PERÍODO" value={draftPeriod} handleChange={setDraftPeriod} />
+							<div className="space-y-1.5">
+								<label className="text-sm font-medium tracking-tight text-foreground/80">OPERADOR</label>
+								<Select value={draftOperatorId} onValueChange={setDraftOperatorId}>
+									<SelectTrigger className="w-full rounded-md bg-background">
+										<SelectValue placeholder="Todos os operadores" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="ALL">Todos os operadores</SelectItem>
+										<SelectItem value="SISTEMA">Sistema / automático</SelectItem>
+										{data?.operadores.map((operator) => (
+											<SelectItem key={operator.id} value={operator.id}>
+												{operator.nome}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+							<div className="flex items-center justify-between gap-2 border-t pt-3">
+								<Button variant="ghost" size="sm" className="gap-1.5" onClick={resetAdvancedFilters}>
+									<RotateCcw className="h-3.5 w-3.5" />
+									REDEFINIR
+								</Button>
+								<Button size="sm" onClick={applyAdvancedFilters} disabled={!draftPeriod.after || !draftPeriod.before}>
+									APLICAR FILTROS
+								</Button>
+							</div>
+						</PopoverContent>
+					</Popover>
+				</div>
+				<div className="flex items-center gap-1 overflow-x-auto pb-0.5">
 					<Button
 						variant={!filterType ? "secondary" : "ghost"}
 						size="sm"
@@ -123,9 +232,9 @@ type TransactionCardProps = {
 };
 function TransactionCard({ transaction, cashbackProgramTerminology }: TransactionCardProps) {
 	const transactionValueBadgeStyles: Record<typeof transaction.tipo, string> = {
-		"ACÚMULO": "bg-green-100 text-green-700 border-green-200",
+		ACÚMULO: "bg-green-100 text-green-700 border-green-200",
 		RESGATE: "bg-blue-100 text-blue-700 border-blue-200",
-		"EXPIRAÇÃO": "bg-red-100 text-red-700 border-red-200",
+		EXPIRAÇÃO: "bg-red-100 text-red-700 border-red-200",
 		CANCELAMENTO: "bg-gray-100 text-gray-700 border-gray-200",
 	};
 
@@ -177,20 +286,15 @@ function TransactionCard({ transaction, cashbackProgramTerminology }: Transactio
 						<div className="flex items-center gap-2 text-xs text-muted-foreground">
 							<div className="flex items-center gap-1.5 min-w-0">
 								<UserRound className="h-3 w-3 min-h-3 min-w-3 shrink-0" />
-								<span className="text-xs font-medium truncate">{transaction.operadorVendedor?.nome}</span>
+								<span className="text-xs font-medium truncate">{transaction.operadorVendedor?.nome ?? "Sistema"}</span>
 							</div>
 							<span className="shrink-0">{formatDateAsLocale(transaction.dataInsercao, true)}</span>
-							{transaction.expiracaoData && (
-								<span className="shrink-0">• Expira: {formatDateAsLocale(transaction.expiracaoData, true)}</span>
-							)}
+							{transaction.expiracaoData && <span className="shrink-0">• Expira: {formatDateAsLocale(transaction.expiracaoData, true)}</span>}
 						</div>
 					</div>
 
 					<span
-						className={cn(
-							"inline-flex items-center rounded-md border px-2 py-1 text-xs font-bold shrink-0",
-							transactionValueBadgeStyles[transaction.tipo],
-						)}
+						className={cn("inline-flex items-center rounded-md border px-2 py-1 text-xs font-bold shrink-0", transactionValueBadgeStyles[transaction.tipo])}
 					>
 						{transactionValueBadge}
 					</span>
