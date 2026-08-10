@@ -1,64 +1,150 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { createSimplifiedSearchCondition } from "@/lib/search";
 import { db } from "@/services/drizzle";
-import { cashbackProgramBalances } from "@/services/drizzle/schema";
-import { and, eq } from "drizzle-orm";
+import { cashbackProgramBalances, clients } from "@/services/drizzle/schema";
+import { and, asc, count, desc, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
-import z from "zod";
+import { z } from "zod";
 
-const GetClientCashbackBalanceInputSchema = z.object({
-	clienteId: z.string({
-		required_error: "ID do cliente não informado.",
-		invalid_type_error: "Tipo não válido para ID do cliente.",
-	}),
+const GetCashbackBalancesInputSchema = z.object({
+	clientId: z.string({ invalid_type_error: "Tipo não válido para ID do cliente." }).optional().nullable(),
+	page: z
+		.string({ invalid_type_error: "Tipo não válido para página." })
+		.optional()
+		.nullable()
+		.transform((value) => (value ? Number(value) : 1)),
+	limit: z
+		.string({ invalid_type_error: "Tipo não válido para limite." })
+		.optional()
+		.nullable()
+		.transform((value) => (value ? Number(value) : 20)),
+	search: z
+		.string({ invalid_type_error: "Tipo não válido para busca." })
+		.optional()
+		.nullable()
+		.transform((value) => value?.trim() ?? ""),
+	orderByField: z
+		.enum(["clienteNome", "saldoValorDisponivel", "saldoValorAcumuladoTotal", "saldoValorResgatadoTotal"])
+		.optional()
+		.nullable()
+		.transform((value) => value ?? "saldoValorDisponivel"),
+	orderByDirection: z
+		.enum(["asc", "desc"])
+		.optional()
+		.nullable()
+		.transform((value) => value ?? "desc"),
 });
-export type TGetClientCashbackBalanceInput = z.infer<typeof GetClientCashbackBalanceInputSchema>;
+export type TGetCashbackBalancesInput = z.infer<typeof GetCashbackBalancesInputSchema>;
 
-async function getClientCashbackBalance({ input, session }: { input: TGetClientCashbackBalanceInput; session: TAuthUserSession }) {
-	const organizacaoId = session.membership?.organizacao.id;
-	if (!organizacaoId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+async function getCashbackBalances({ input, session }: { input: TGetCashbackBalancesInput; session: TAuthUserSession }) {
+	const organizationId = session.membership?.organizacao.id;
+	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const balance = await db.query.cashbackProgramBalances.findFirst({
-		where: and(eq(cashbackProgramBalances.organizacaoId, organizacaoId), eq(cashbackProgramBalances.clienteId, input.clienteId)),
-		columns: {
-			id: true,
-			clienteId: true,
-			programaId: true,
-			saldoValorDisponivel: true,
-			saldoValorAcumuladoTotal: true,
-			saldoValorResgatadoTotal: true,
-		},
-	});
+	if (input.clientId) {
+		const balance = await db.query.cashbackProgramBalances.findFirst({
+			where: and(eq(cashbackProgramBalances.organizacaoId, organizationId), eq(cashbackProgramBalances.clienteId, input.clientId)),
+			columns: {
+				id: true,
+				clienteId: true,
+				programaId: true,
+				saldoValorDisponivel: true,
+				saldoValorAcumuladoTotal: true,
+				saldoValorResgatadoTotal: true,
+			},
+		});
 
+		return {
+			data: {
+				byClientId: balance ?? {
+					id: null,
+					clienteId: input.clientId,
+					programaId: null,
+					saldoValorDisponivel: 0,
+					saldoValorAcumuladoTotal: 0,
+					saldoValorResgatadoTotal: 0,
+				},
+				default: null,
+			},
+			message: "Saldo de cashback carregado com sucesso.",
+		};
+	}
+
+	const conditions = [eq(cashbackProgramBalances.organizacaoId, organizationId)];
+	if (input.search) {
+		conditions.push(createSimplifiedSearchCondition(clients.nome, input.search));
+	}
+
+	const direction = input.orderByDirection === "desc" ? desc : asc;
+	const orderByColumn =
+		input.orderByField === "saldoValorDisponivel"
+			? cashbackProgramBalances.saldoValorDisponivel
+			: input.orderByField === "saldoValorAcumuladoTotal"
+				? cashbackProgramBalances.saldoValorAcumuladoTotal
+				: input.orderByField === "saldoValorResgatadoTotal"
+					? cashbackProgramBalances.saldoValorResgatadoTotal
+					: clients.nome;
+	const offset = (input.page - 1) * input.limit;
+
+	const [countResult, balances] = await Promise.all([
+		db
+			.select({ count: count() })
+			.from(cashbackProgramBalances)
+			.innerJoin(clients, eq(cashbackProgramBalances.clienteId, clients.id))
+			.where(and(...conditions)),
+		db
+			.select({
+				id: cashbackProgramBalances.id,
+				clienteId: cashbackProgramBalances.clienteId,
+				programaId: cashbackProgramBalances.programaId,
+				saldoValorDisponivel: cashbackProgramBalances.saldoValorDisponivel,
+				saldoValorAcumuladoTotal: cashbackProgramBalances.saldoValorAcumuladoTotal,
+				saldoValorResgatadoTotal: cashbackProgramBalances.saldoValorResgatadoTotal,
+				cliente: { id: clients.id, nome: clients.nome },
+			})
+			.from(cashbackProgramBalances)
+			.innerJoin(clients, eq(cashbackProgramBalances.clienteId, clients.id))
+			.where(and(...conditions))
+			.orderBy(direction(orderByColumn))
+			.limit(input.limit)
+			.offset(offset),
+	]);
+
+	const balancesMatched = countResult[0]?.count ?? 0;
 	return {
-		data: balance ?? {
-			id: null,
-			clienteId: input.clienteId,
-			programaId: null,
-			saldoValorDisponivel: 0,
-			saldoValorAcumuladoTotal: 0,
-			saldoValorResgatadoTotal: 0,
+		data: {
+			byClientId: null,
+			default: {
+				balances,
+				balancesMatched,
+				totalPages: Math.ceil(balancesMatched / input.limit),
+			},
 		},
-		message: "Saldo de cashback carregado com sucesso.",
+		message: "Saldos de cashback carregados com sucesso.",
 	};
 }
-export type TGetClientCashbackBalanceOutput = Awaited<ReturnType<typeof getClientCashbackBalance>>;
 
-async function getClientCashbackBalanceRoute(request: NextRequest) {
+export type TGetCashbackBalancesOutput = Awaited<ReturnType<typeof getCashbackBalances>>;
+export type TGetCashbackBalancesOutputDefault = NonNullable<TGetCashbackBalancesOutput["data"]["default"]>;
+export type TGetCashbackBalanceOutputByClientId = NonNullable<TGetCashbackBalancesOutput["data"]["byClientId"]>;
+
+async function getCashbackBalancesRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
-	if (!session.membership) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
 
 	const { searchParams } = new URL(request.url);
-	const input = GetClientCashbackBalanceInputSchema.parse({
-		clienteId: searchParams.get("clienteId"),
+	const input = GetCashbackBalancesInputSchema.parse({
+		clientId: searchParams.get("clientId"),
+		page: searchParams.get("page"),
+		limit: searchParams.get("limit"),
+		search: searchParams.get("search"),
+		orderByField: searchParams.get("orderByField"),
+		orderByDirection: searchParams.get("orderByDirection"),
 	});
-	const result = await getClientCashbackBalance({ input, session });
+	const result = await getCashbackBalances({ input, session });
 	return NextResponse.json(result, { status: 200 });
 }
 
-export const GET = appApiHandler({
-	GET: getClientCashbackBalanceRoute,
-});
+export const GET = appApiHandler({ GET: getCashbackBalancesRoute });

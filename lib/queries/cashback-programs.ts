@@ -1,15 +1,10 @@
-import type { TGetClientCashbackBalanceOutput } from "@/app/api/cashback-programs/clients/balance/route";
-import type { TTopCashbackClientsInput, TTopCashbackClientsOutput } from "@/app/api/cashback-programs/clients/top/route";
-import {
-	TGetCashbackProgramPrizesInput,
-	TGetCashbackProgramPrizesOutput,
-	TGetCashbackProgramPrizesOutputById,
-} from "@/app/api/cashback-programs/prizes/route";
+import type { TGetCashbackBalancesInput, TGetCashbackBalancesOutput } from "@/app/api/cashback-programs/clients/balance/route";
+import { TGetCashbackProgramPrizesInput, TGetCashbackProgramPrizesOutput } from "@/app/api/cashback-programs/prizes/route";
 import type { TGetCashbackProgramOutput } from "@/app/api/cashback-programs/route";
 import type { TGetAvailablePosRewardsOutput } from "@/app/api/pos/cashback-rewards/available/route";
 import type { TCashbackProgramsGraphInput, TCashbackProgramsGraphOutput } from "@/app/api/cashback-programs/stats/graph/route";
 import type { TCashbackProgramStatsOutput } from "@/app/api/cashback-programs/stats/route";
-import type { TCashbackProgramTransactionsInput, TCashbackProgramTransactionsOutput } from "@/app/api/cashback-programs/transactions/route";
+import type { TGetCashbackProgramTransactionsInput, TGetCashbackProgramTransactionsOutput } from "@/app/api/cashback-programs/transactions/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useDebounceMemo } from "../hooks/use-debounce";
@@ -56,13 +51,27 @@ export function useCashbackProgramStats(period: { after: string; before: string 
 	};
 }
 
-async function fetchCashbackProgramTransactionsByClientId(input: TCashbackProgramTransactionsInput) {
-	const { data } = await axios.post<TCashbackProgramTransactionsOutput>("/api/cashback-programs/transactions", input);
+function buildCashbackTransactionsSearchParams(input: TGetCashbackProgramTransactionsInput) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("page", input.page.toString());
+	searchParams.set("limit", input.limit.toString());
+	if (input.search) searchParams.set("search", input.search);
+	if (input.clientId) searchParams.set("clientId", input.clientId);
+	if (input.operatorSellerIds.length > 0) searchParams.set("operatorSellerIds", input.operatorSellerIds.join(","));
+	if (input.types.length > 0) searchParams.set("types", input.types.join(","));
+	if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
+	if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
+	return searchParams;
+}
+
+async function fetchCashbackProgramTransactionsByClientId(input: TGetCashbackProgramTransactionsInput) {
+	const searchParams = buildCashbackTransactionsSearchParams(input);
+	const { data } = await axios.get<TGetCashbackProgramTransactionsOutput>(`/api/cashback-programs/transactions?${searchParams.toString()}`);
 	if (!data.data.byClientId) throw new Error("Transações não encontradas.");
 	return data.data.byClientId;
 }
 
-export function useCashbackProgramTransactionsByClientId(input: TCashbackProgramTransactionsInput) {
+export function useCashbackProgramTransactionsByClientId(input: TGetCashbackProgramTransactionsInput) {
 	return {
 		...useQuery({
 			queryKey: ["cashback-program-transactions-by-client-id", input],
@@ -72,44 +81,43 @@ export function useCashbackProgramTransactionsByClientId(input: TCashbackProgram
 	};
 }
 
-async function fetchCashbackProgramTransactions(input: Omit<TCashbackProgramTransactionsInput, "clientId">) {
-	try {
-		const { data } = await axios.post<TCashbackProgramTransactionsOutput>("/api/cashback-programs/transactions", input);
-		if (!data.data.default) throw new Error("Transações não encontradas.");
-		return data.data.default;
-	} catch (error) {
-		console.log("Error running fetchCashbackProgramTransactions", error);
-		throw error;
-	}
+async function fetchCashbackProgramTransactions(input: Omit<TGetCashbackProgramTransactionsInput, "clientId">) {
+	const searchParams = buildCashbackTransactionsSearchParams({ ...input, clientId: null });
+	const { data } = await axios.get<TGetCashbackProgramTransactionsOutput>(`/api/cashback-programs/transactions?${searchParams.toString()}`);
+	if (!data.data.default) throw new Error("Transações não encontradas.");
+	return data.data.default;
 }
 
-export function useCashbackProgramTransactions(input: Omit<TCashbackProgramTransactionsInput, "clientId">) {
+type TUseCashbackProgramTransactionsParams = {
+	initialFilters?: Partial<Omit<TGetCashbackProgramTransactionsInput, "clientId">>;
+};
+
+export function useCashbackProgramTransactions({ initialFilters }: TUseCashbackProgramTransactionsParams = {}) {
+	const [filters, setFilters] = useState<Omit<TGetCashbackProgramTransactionsInput, "clientId">>({
+		page: initialFilters?.page ?? 1,
+		limit: initialFilters?.limit ?? 20,
+		search: initialFilters?.search ?? "",
+		operatorSellerIds: initialFilters?.operatorSellerIds ?? [],
+		types: initialFilters?.types ?? [],
+		periodAfter: initialFilters?.periodAfter ?? null,
+		periodBefore: initialFilters?.periodBefore ?? null,
+	});
+	const debouncedSearch = useDebounceMemo({ search: filters.search }, 500);
+	const finalFilters = { ...filters, ...debouncedSearch };
+	const queryKey = ["cashback-program-transactions", finalFilters];
+
+	function updateFilters(newFilters: Partial<Omit<TGetCashbackProgramTransactionsInput, "clientId">>) {
+		setFilters((currentFilters) => ({ ...currentFilters, ...newFilters }));
+	}
+
 	return {
 		...useQuery({
-			queryKey: ["cashback-program-transactions", input],
-			queryFn: () => fetchCashbackProgramTransactions(input),
+			queryKey,
+			queryFn: () => fetchCashbackProgramTransactions(finalFilters),
 		}),
-		queryKey: ["cashback-program-transactions", input],
-	};
-}
-
-async function fetchTopCashbackClients(params: TTopCashbackClientsInput) {
-	try {
-		const { data } = await axios.post<TTopCashbackClientsOutput>("/api/cashback-programs/clients/top", params);
-		return data.data.clients;
-	} catch (error) {
-		console.log("Error running fetchTopCashbackClients", error);
-		throw error;
-	}
-}
-
-export function useTopCashbackClients(params: TTopCashbackClientsInput) {
-	return {
-		...useQuery({
-			queryKey: ["cashback-program-top-clients", params],
-			queryFn: () => fetchTopCashbackClients(params),
-		}),
-		queryKey: ["cashback-program-top-clients", params],
+		queryKey,
+		filters,
+		updateFilters,
 	};
 }
 
@@ -134,9 +142,10 @@ export function useCashbackProgramsGraph(params: TCashbackProgramsGraphInput) {
 
 export async function fetchClientCashbackBalance(clienteId: string) {
 	const searchParams = new URLSearchParams();
-	searchParams.set("clienteId", clienteId);
-	const { data } = await axios.get<TGetClientCashbackBalanceOutput>(`/api/cashback-programs/clients/balance?${searchParams.toString()}`);
-	return data.data;
+	searchParams.set("clientId", clienteId);
+	const { data } = await axios.get<TGetCashbackBalancesOutput>(`/api/cashback-programs/clients/balance?${searchParams.toString()}`);
+	if (!data.data.byClientId) throw new Error("Saldo de cashback não encontrado.");
+	return data.data.byClientId;
 }
 
 export function useClientCashbackBalance({ clienteId }: { clienteId: string | null | undefined }) {
@@ -148,6 +157,46 @@ export function useClientCashbackBalance({ clienteId }: { clienteId: string | nu
 			enabled: !!clienteId,
 		}),
 		queryKey,
+	};
+}
+
+async function fetchCashbackBalances(input: Omit<TGetCashbackBalancesInput, "clientId">) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("page", input.page.toString());
+	searchParams.set("limit", input.limit.toString());
+	if (input.search) searchParams.set("search", input.search);
+	searchParams.set("orderByField", input.orderByField);
+	searchParams.set("orderByDirection", input.orderByDirection);
+	const { data } = await axios.get<TGetCashbackBalancesOutput>(`/api/cashback-programs/clients/balance?${searchParams.toString()}`);
+	if (!data.data.default) throw new Error("Saldos de cashback não encontrados.");
+	return data.data.default;
+}
+
+type TUseCashbackBalancesParams = {
+	initialFilters?: Partial<Omit<TGetCashbackBalancesInput, "clientId">>;
+};
+
+export function useCashbackBalances({ initialFilters }: TUseCashbackBalancesParams = {}) {
+	const [filters, setFilters] = useState<Omit<TGetCashbackBalancesInput, "clientId">>({
+		page: initialFilters?.page ?? 1,
+		limit: initialFilters?.limit ?? 20,
+		search: initialFilters?.search ?? "",
+		orderByField: initialFilters?.orderByField ?? "saldoValorDisponivel",
+		orderByDirection: initialFilters?.orderByDirection ?? "desc",
+	});
+	const debouncedSearch = useDebounceMemo({ search: filters.search }, 500);
+	const finalFilters = { ...filters, ...debouncedSearch };
+	const queryKey = ["cashback-balances", finalFilters];
+
+	function updateFilters(newFilters: Partial<Omit<TGetCashbackBalancesInput, "clientId">>) {
+		setFilters((currentFilters) => ({ ...currentFilters, ...newFilters }));
+	}
+
+	return {
+		...useQuery({ queryKey, queryFn: () => fetchCashbackBalances(finalFilters) }),
+		queryKey,
+		filters,
+		updateFilters,
 	};
 }
 

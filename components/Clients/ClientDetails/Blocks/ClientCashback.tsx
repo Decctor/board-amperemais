@@ -1,4 +1,4 @@
-import type { TCashbackProgramTransactionsOutputByClientId } from "@/app/api/cashback-programs/transactions/route";
+import type { TGetCashbackProgramTransactionsOutputByClientId } from "@/app/api/cashback-programs/transactions/route";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { getErrorMessage } from "@/lib/errors";
@@ -26,6 +26,11 @@ export default function ClientCashback({ clientId }: ClientCashbackProps) {
 		error: transactionsError,
 	} = useCashbackProgramTransactionsByClientId({
 		clientId,
+		operatorSellerIds: [],
+		search: "",
+		types: [],
+		periodAfter: null,
+		periodBefore: null,
 		page,
 		limit,
 	});
@@ -122,7 +127,7 @@ function TransactionCard({
 	transaction,
 	terminology,
 }: {
-	transaction: TCashbackProgramTransactionsOutputByClientId["transactions"][number];
+	transaction: TGetCashbackProgramTransactionsOutputByClientId["transactions"][number];
 	terminology: "DINHEIRO" | "PONTOS";
 }) {
 	return (
@@ -227,7 +232,7 @@ function TransactionCard({
 				{transaction.venda && (
 					<div className="pt-4 flex items-center justify-center">
 						<Button size="sm" variant="ghost" className="w-full gap-2" asChild>
-					<Link href={appRoutes.sales.details(transaction.venda.id)}>
+							<Link href={appRoutes.sales.details(transaction.venda.id)}>
 								VER VENDA
 								<ArrowUpRight className="h-4 w-4" />
 							</Link>

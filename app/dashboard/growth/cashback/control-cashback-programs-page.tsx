@@ -23,11 +23,13 @@ import {
 	Percent,
 	Stars,
 	Plus,
+	ReceiptText,
+	WalletCards,
 } from "lucide-react";
 import { useState } from "react";
 import CashbackStatsBlock from "./_components/CashbackStatsBlock";
-import RecentTransactionsBlock from "./_components/RecentTransactionsBlock";
-import TopClientsBlock from "./_components/TopClientsBlock";
+import CashbackBalancesView from "./_components/CashbackBalancesView";
+import CashbackTransactionsView from "./_components/CashbackTransactionsView";
 import { updateCashbackProgram } from "@/lib/mutations/cashback-programs";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "sonner";
@@ -44,11 +46,10 @@ type CashbackProgramsPageProps = {
 	user: TAuthUserSession["user"];
 	userOrg: Exclude<TAuthUserSession["membership"], null>["organizacao"];
 	cashbackProgram: Exclude<TGetCashbackProgramOutput["data"], null>;
-	organizationId: string;
 };
 
-export default function CashbackProgramsPage({ user, userOrg, cashbackProgram, organizationId }: CashbackProgramsPageProps) {
-	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum(["stats", "control-cashback-program"]));
+export default function CashbackProgramsPage({ user, userOrg, cashbackProgram }: CashbackProgramsPageProps) {
+	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum(["stats", "transactions", "balances", "control-cashback-program"]));
 	const { mutate: handleUpdateCashbackProgramMutation, isPending } = useMutation({
 		mutationKey: ["update-cashback-program", cashbackProgram.id],
 		mutationFn: updateCashbackProgram,
@@ -98,11 +99,22 @@ export default function CashbackProgramsPage({ user, userOrg, cashbackProgram, o
 					)}
 				</div>
 			</div>
-			<Tabs value={viewMode ?? "stats"} onValueChange={(v: string) => setViewMode(v as "stats" | "control-cashback-program")}>
+			<Tabs
+				value={viewMode ?? "stats"}
+				onValueChange={(value: string) => setViewMode(value as "stats" | "transactions" | "balances" | "control-cashback-program")}
+			>
 				<TabsList variant="page">
 					<TabsTrigger value="stats">
 						<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />
 						Estatísticas
+					</TabsTrigger>
+					<TabsTrigger value="transactions">
+						<ReceiptText className="w-4 h-4 min-w-4 min-h-4" />
+						Transações
+					</TabsTrigger>
+					<TabsTrigger value="balances">
+						<WalletCards className="w-4 h-4 min-w-4 min-h-4" />
+						Saldos
 					</TabsTrigger>
 					<TabsTrigger value="control-cashback-program">
 						<Database className="w-4 h-4 min-w-4 min-h-4" />
@@ -111,6 +123,12 @@ export default function CashbackProgramsPage({ user, userOrg, cashbackProgram, o
 				</TabsList>
 				<TabsContent value="stats" className="flex flex-col gap-3">
 					<CashbackProgramsStatsView cashbackProgram={cashbackProgram} />
+				</TabsContent>
+				<TabsContent value="transactions" className="flex flex-col gap-3">
+					<CashbackTransactionsView terminology={cashbackProgram.terminologia} />
+				</TabsContent>
+				<TabsContent value="balances" className="flex flex-col gap-3">
+					<CashbackBalancesView terminology={cashbackProgram.terminologia} />
 				</TabsContent>
 				<TabsContent value="control-cashback-program" className="flex flex-col gap-3">
 					<CashbackProgramControlView cashbackProgram={cashbackProgram} user={user} userOrg={userOrg} />
@@ -155,14 +173,6 @@ function CashbackProgramsStatsView({ cashbackProgram }: CashbackProgramsStatsVie
 				</div>
 			</div>
 			<CashbackStatsBlock period={periodFormatted} terminology={cashbackProgram.terminologia} />
-			<div className="w-full flex flex-col lg:flex-row gap-3 items-stretch">
-				<div className="w-full lg:w-1/2">
-					<RecentTransactionsBlock period={periodFormatted} terminology={cashbackProgram.terminologia} />
-				</div>
-				<div className="w-full lg:w-1/2">
-					<TopClientsBlock terminology={cashbackProgram.terminologia} />
-				</div>
-			</div>
 		</div>
 	);
 }
@@ -177,10 +187,6 @@ function CashbackProgramControlView({ cashbackProgram, user, userOrg }: Cashback
 
 	const [newCashbackProgramPrizeModalIsOpen, setNewCashbackProgramPrizeModalIsOpen] = useState<boolean>(false);
 	const [editCashbackProgramPrizeId, setEditCashbackProgramPrizeId] = useState<string | null>(null);
-	const period = {
-		after: dayjs().startOf("month").toDate().toISOString(),
-		before: dayjs().endOf("month").toDate().toISOString(),
-	};
 	return (
 		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-stretch gap-3 flex-col lg:flex-row">
@@ -316,14 +322,6 @@ function CashbackProgramControlView({ cashbackProgram, user, userOrg }: Cashback
 							)}
 						</div>
 					</SectionWrapper>
-				</div>
-			</div>
-			<div className="w-full flex flex-col lg:flex-row gap-3 items-stretch">
-				<div className="w-full lg:w-1/2">
-					<RecentTransactionsBlock period={period} terminology={cashbackProgram.terminologia} />
-				</div>
-				<div className="w-full lg:w-1/2">
-					<TopClientsBlock terminology={cashbackProgram.terminologia} />
 				</div>
 			</div>
 			{editCashbackProgramModalIsOpen ? (
