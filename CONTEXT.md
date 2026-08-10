@@ -47,3 +47,25 @@ Credito consumivel com quantidade original, organizacao emissora e eventual expi
 ### Compensacao de fidelidade (`loyaltySettlementEntry`)
 
 Posicao economica imutavel que identifica quanto uma organizacao deve pagar ou receber por emissao, resgate, expiracao, ajuste ou reversao no programa.
+
+## Compras e contabilidade
+
+### Modificador de custo da compra (`purchaseCostModifier`)
+
+Parcela monetária vinculada a um item de compra que explica um acréscimo ou uma redução em relação ao valor-base da mercadoria, como frete, seguro, desconto, imposto ou despesa acessória. O modificador registra sua origem e seu tratamento, mas não possui ciclo de vida independente do item.
+
+### Tratamento do modificador de custo (`purchaseCostTreatment`)
+
+Decisão contábil aplicada a um modificador: capitalizar no custo do estoque, reconhecer como crédito tributário ou reconhecer como despesa do período. A chave do modificador descreve o que o valor é; o tratamento descreve o efeito econômico e não pode ser inferido apenas pela chave.
+
+### Custo de estoque da compra (`purchaseInventoryCost`)
+
+Valor imutável atribuído ao item quando a compra é recebida. Inclui o valor líquido da mercadoria e os modificadores tratados como custo de estoque; alimenta o custo médio móvel do produto ou variante.
+
+### Documento importado da compra (`purchaseImportedDocument`)
+
+Snapshot da origem documental de uma compra, como NF-e XML, PDF ou imagem. Preserva identificação, totais declarados, hash e referência privada ao arquivo, sem adquirir ciclo de vida próprio fora da compra.
+
+### Linha contábil (`accountingEntryLine`)
+
+Débito ou crédito imutável em uma conta contábil que participa de um lançamento. As linhas representam a classificação contábil efetiva e devem se balancear; chaves de modificadores de compra não são uma taxonomia paralela de linhas.

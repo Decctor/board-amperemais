@@ -5,25 +5,22 @@ import { ingestStatementLines, parseStatementFile, runStatementMatching, STATEME
 import { canReconcileFinances, canViewFinances } from "@/lib/permissions/finances";
 import { db } from "@/services/drizzle";
 import { financialAccounts, financialStatementImports } from "@/services/drizzle/schema";
-import { supabaseClient } from "@/services/supabase";
+import { storePrivateFile } from "@/lib/files-storage/private";
 import { and, count, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
+import { randomUUID } from "node:crypto";
 
 // Processamento síncrono do arquivo (parse + dedup + matching) — mesmo modelo do import de compras.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const CreateStatementImportInputSchema = z.object({
+const CreateStatementImportFieldsSchema = z.object({
 	contaFinanceiraId: z.string({ required_error: "ID da conta financeira não informado." }),
-	storagePath: z.string({ required_error: "Caminho do arquivo no storage não informado." }),
-	nomeArquivo: z.string({ required_error: "Nome do arquivo não informado." }),
-	mimeType: z.string({ required_error: "Tipo do arquivo não informado." }),
-	tamanhoBytes: z.number({ invalid_type_error: "Tipo inválido para o tamanho do arquivo." }).optional().nullable(),
 });
-export type TCreateStatementImportInput = z.infer<typeof CreateStatementImportInputSchema>;
+export type TCreateStatementImportInput = z.infer<typeof CreateStatementImportFieldsSchema> & { file: File };
 
 async function createStatementImport({ input, session }: { input: TCreateStatementImportInput; session: TAuthUserSession }) {
 	const orgId = session.membership?.organizacao.id;
@@ -35,12 +32,20 @@ async function createStatementImport({ input, session }: { input: TCreateStateme
 	});
 	if (!account) throw new createHttpError.NotFound("Conta financeira não encontrada para esta organização.");
 
-	const { data: file, error: downloadError } = await supabaseClient.storage.from("files").download(input.storagePath);
-	if (downloadError || !file) throw new createHttpError.BadRequest("Não foi possível baixar o arquivo do extrato enviado.");
-	const buffer = Buffer.from(await file.arrayBuffer());
+	if (!(input.file instanceof File)) throw new createHttpError.BadRequest("Arquivo do extrato não informado.");
+	const buffer = Buffer.from(await input.file.arrayBuffer());
 	if (buffer.length === 0) throw new createHttpError.BadRequest("O arquivo do extrato está vazio.");
 	if (buffer.length > STATEMENT_IMPORT_MAX_FILE_BYTES)
 		throw new createHttpError.BadRequest("O arquivo do extrato excede o tamanho máximo suportado (15MB).");
+	const safeFileName = input.file.name
+		.normalize("NFKD")
+		.replace(/[^a-zA-Z0-9._-]+/g, "-")
+		.slice(0, 120);
+	const storagePath = await storePrivateFile({
+		path: `organizations/${orgId}/bank-statements/${randomUUID()}/${safeFileName}`,
+		data: Uint8Array.from(buffer).buffer,
+		contentType: input.file.type || "application/octet-stream",
+	});
 
 	const [importRow] = await db
 		.insert(financialStatementImports)
@@ -49,16 +54,16 @@ async function createStatementImport({ input, session }: { input: TCreateStateme
 			contaFinanceiraId: input.contaFinanceiraId,
 			origem: "ARQUIVO",
 			status: "PROCESSANDO",
-			arquivoNome: input.nomeArquivo,
-			arquivoStoragePath: input.storagePath,
-			arquivoMimeType: input.mimeType,
-			arquivoTamanhoBytes: input.tamanhoBytes ?? buffer.length,
+			arquivoNome: input.file.name,
+			arquivoStoragePath: storagePath,
+			arquivoMimeType: input.file.type || "application/octet-stream",
+			arquivoTamanhoBytes: buffer.length,
 			autorId: session.user.id,
 		})
 		.returning({ id: financialStatementImports.id });
 
 	try {
-		const parsed = await parseStatementFile({ fileName: input.nomeArquivo, mimeType: input.mimeType, buffer });
+		const parsed = await parseStatementFile({ fileName: input.file.name, mimeType: input.file.type, buffer });
 		if (parsed.linhas.length === 0) {
 			throw new createHttpError.BadRequest(
 				parsed.avisos[0] ?? "Nenhuma transação foi encontrada no arquivo — confira se é um extrato válido (OFX, planilha, PDF ou imagem).",
@@ -120,8 +125,11 @@ async function createStatementImportRoute(request: NextRequest) {
 	if (!canReconcileFinances(session.membership.permissoes))
 		throw new createHttpError.Forbidden("Você não possui permissão para realizar conciliação bancária.");
 
-	const body = await request.json();
-	const input = CreateStatementImportInputSchema.parse(body);
+	const formData = await request.formData();
+	const fields = CreateStatementImportFieldsSchema.parse({ contaFinanceiraId: formData.get("contaFinanceiraId") });
+	const file = formData.get("file");
+	if (!(file instanceof File)) throw new createHttpError.BadRequest("Arquivo do extrato não informado.");
+	const input: TCreateStatementImportInput = { ...fields, file };
 	const result = await createStatementImport({ input, session });
 	return NextResponse.json(result);
 }

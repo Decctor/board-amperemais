@@ -102,6 +102,7 @@ export default function NewPurchase({ closeModal, callbacks }: NewPurchaseProps)
 				accountingEntry={state.lancamentoContabil}
 				updateAccountingEntry={updateAccountingEntry}
 				fornecedorId={state.purchase.fornecedorId}
+				importedDocuments={state.purchase.documentosImportados}
 			/>
 			<PurchaseAccountingEntryBlock
 				accountingEntry={state.lancamentoContabil}

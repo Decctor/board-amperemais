@@ -168,6 +168,7 @@ export default function ControlPurchase({ purchaseId, closeModal, callbacks }: C
 				accountingEntry={state.lancamentoContabil}
 				updateAccountingEntry={updateAccountingEntry}
 				fornecedorId={state.purchase.fornecedorId}
+				importedDocuments={state.purchase.documentosImportados}
 				locked={purchase?.status === "RECEBIDA"}
 			/>
 			{/* O lançamento e sua programação de pagamento seguem editáveis mesmo após o recebimento —

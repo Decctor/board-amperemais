@@ -4,14 +4,26 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
 import { getAccountingEntryBalanceError } from "@/lib/finances/accounting-entry-balance";
+import {
+	accountingEntryLinesAreEnabled,
+	buildDefaultAccountingEntryLines,
+	buildPurchaseAccountingEntryLines,
+	syncAccountingEntryLines,
+} from "@/lib/finances/accounting-entry-lines";
 import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
-import { handlePurchaseItemStockProcessing, type TPurchaseItemStockOperation } from "@/lib/purchase-processing/process-purchase-item-stock";
+import { calculatePurchaseItemCost, centsToMoney, moneyToCents } from "@/lib/purchase/costing";
+import {
+	handlePurchaseItemStockProcessing,
+	normalizePurchaseItemCostValues,
+	type TPurchaseItemInput,
+	type TPurchaseItemStockOperation,
+} from "@/lib/purchase-processing/process-purchase-item-stock";
 import { createSimplifiedSearchCondition } from "@/lib/search";
 import { PurchaseStatusEnum, TPurchaseStatusEnum } from "@/schemas/enums";
 import { AccountingEntrySchema, FinancialTransactionSchema } from "@/schemas/financial";
 import { PurchaseItemSchema, PurchaseSchema, refinePurchaseStatusAndDeliveryDate } from "@/schemas/purchases";
 import { db, type DBTransaction } from "@/services/drizzle";
-import { accountingEntries, financialTransactions, productStockLots, purchases } from "@/services/drizzle/schema";
+import { accountingEntries, financialTransactions, organizations, productStockLots, purchases } from "@/services/drizzle/schema";
 import { and, count, eq, inArray, or } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { NextResponse, type NextRequest } from "next/server";
@@ -305,6 +317,100 @@ function normalizePurchaseFinancialTransaction<T extends { valor: number }>(tran
 	}
 }
 
+function normalizePurchaseItems<T extends TPurchaseItemInput>(items: T[]): T[] {
+	try {
+		return items.map((item) => normalizePurchaseItemCostValues(item));
+	} catch (error) {
+		throw new createHttpError.BadRequest(error instanceof Error ? error.message : "Composição de custo da compra inválida.");
+	}
+}
+
+function assertPurchaseEntryMatchesItems({ entryValue, items }: { entryValue: number; items: TPurchaseItemInput[] }) {
+	const itemsTotalCents = items.filter((item) => !item.deletar).reduce((total, item) => total + moneyToCents(item.valorTotalLiquido ?? 0), 0);
+	if (itemsTotalCents !== moneyToCents(entryValue)) {
+		throw new createHttpError.BadRequest("O valor do lançamento contábil precisa corresponder ao valor financeiro dos itens da compra.");
+	}
+}
+
+function getPurchaseAccountingAmounts(items: TPurchaseItemInput[]) {
+	let financialCents = 0;
+	let inventoryCents = 0;
+	let taxCreditCents = 0;
+	let periodExpenseCents = 0;
+	for (const item of items) {
+		if (item.deletar) continue;
+		const result = calculatePurchaseItemCost(item);
+		financialCents += moneyToCents(result.valorTotalLiquido);
+		inventoryCents += moneyToCents(result.valorTotalCusto);
+		taxCreditCents += moneyToCents(result.valorTotalCreditoTributario);
+		periodExpenseCents += moneyToCents(result.valorTotalDespesaPeriodo);
+	}
+	return {
+		valorFinanceiro: centsToMoney(financialCents),
+		valorCustoEstoque: centsToMoney(inventoryCents),
+		valorCreditoTributario: centsToMoney(taxCreditCents),
+		valorDespesaPeriodo: centsToMoney(periodExpenseCents),
+	};
+}
+
+async function syncPurchaseAccountingLines({
+	trx,
+	organizationId,
+	accountingEntryId,
+	entryValue,
+	expectedValue,
+	debitAccountId,
+	creditAccountId,
+	items,
+	purchaseIsReceived,
+}: {
+	trx: DBTransaction;
+	organizationId: string;
+	accountingEntryId: string;
+	entryValue: number;
+	expectedValue?: number | null;
+	debitAccountId: string;
+	creditAccountId: string;
+	items: TPurchaseItemInput[];
+	purchaseIsReceived: boolean;
+}) {
+	if (!accountingEntryLinesAreEnabled()) return;
+
+	if (!purchaseIsReceived) {
+		await syncAccountingEntryLines({
+			trx,
+			organizationId,
+			accountingEntryId,
+			entryValue,
+			lines: buildDefaultAccountingEntryLines({ debitAccountId, creditAccountId, value: entryValue, expectedValue }),
+		});
+		return;
+	}
+
+	const organization = await trx.query.organizations.findFirst({
+		where: eq(organizations.id, organizationId),
+		columns: { configuracao: true },
+	});
+	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
+	const treatmentAccounts = organization.configuracao.defaults.contabilidade.contasCustosCompra;
+	const amounts = getPurchaseAccountingAmounts(items);
+	await syncAccountingEntryLines({
+		trx,
+		organizationId,
+		accountingEntryId,
+		entryValue,
+		lines: buildPurchaseAccountingEntryLines({
+			amounts,
+			accounts: {
+				estoqueContaId: debitAccountId,
+				fornecedoresContaId: creditAccountId,
+				creditoTributarioContaId: treatmentAccounts?.creditoTributarioContaId,
+				despesaPeriodoContaId: treatmentAccounts?.despesaPeriodoContaId,
+			},
+		}),
+	});
+}
+
 function isPurchaseConsideredReceived(purchase: { status: TPurchaseStatusEnum; entregaDataRecebimentoEfetivacao?: Date | null }) {
 	return purchase.status === "RECEBIDA" && !!purchase.entregaDataRecebimentoEfetivacao;
 }
@@ -317,8 +423,11 @@ async function createPurchase({ input, session }: { input: TCreatePurchaseInput;
 
 	const { purchase: payloadPurchase, purchaseItems: payloadPurchaseItems, lancamentoContabil: payloadAccountingEntry } = input;
 	const { transacoes: payloadAccountingEntryTransactions, ...accountingEntryFields } = payloadAccountingEntry;
+	const normalizedPurchaseItems = normalizePurchaseItems(payloadPurchaseItems);
 
 	assertAccountingEntryIsBalanced({ entryValue: accountingEntryFields.valor, transactions: payloadAccountingEntryTransactions });
+	if (isPurchaseConsideredReceived(payloadPurchase))
+		assertPurchaseEntryMatchesItems({ entryValue: accountingEntryFields.valor, items: normalizedPurchaseItems });
 
 	return await db.transaction(async (tx) => {
 		// Primeiro o lançamento contábil, já que a compra referencia ele
@@ -337,6 +446,17 @@ async function createPurchase({ input, session }: { input: TCreatePurchaseInput;
 
 		const insertedAccountingEntryId = insertedAccountingEntry[0]?.id;
 		if (!insertedAccountingEntryId) throw new createHttpError.InternalServerError("Erro ao criar lançamento contábil da compra.");
+		await syncPurchaseAccountingLines({
+			trx: tx,
+			organizationId: userOrgId,
+			accountingEntryId: insertedAccountingEntryId,
+			entryValue: accountingEntryFields.valor,
+			expectedValue: accountingEntryFields.valorPrevisto,
+			debitAccountId,
+			creditAccountId,
+			items: normalizedPurchaseItems,
+			purchaseIsReceived: isPurchaseConsideredReceived(payloadPurchase),
+		});
 
 		const insertedPurchase = await tx
 			.insert(purchases)
@@ -364,7 +484,7 @@ async function createPurchase({ input, session }: { input: TCreatePurchaseInput;
 
 		const operation: TPurchaseItemStockOperation = isPurchaseConsideredReceived(payloadPurchase) ? "RECEIVING" : "UPDATING_UNRECEIVED";
 
-		for (const item of payloadPurchaseItems) {
+		for (const item of normalizedPurchaseItems) {
 			await handlePurchaseItemStockProcessing({
 				trx: tx,
 				organizationId: userOrgId,
@@ -439,7 +559,7 @@ function resolvePurchaseTransition(
 	return "UPDATING_UNRECEIVED";
 }
 
-type PreviousPurchaseItem = { id: string; produtoId: string; produtoVarianteId: string | null; quantidade: number; valorUnitarioBruto: number };
+type PreviousPurchaseItem = TPurchaseItemInput & { id: string; produtoVarianteId: string | null };
 type PayloadPurchaseItem = TUpdatePurchaseInput["purchaseItems"][number];
 
 // A received purchase freezes its items: once lots were spawned we don't allow silent add/remove/edit,
@@ -457,10 +577,20 @@ function assertReceivedPurchaseItemsUnchanged({
 		if (item.deletar) throw new createHttpError.BadRequest("Não é possível remover itens de uma compra já recebida.");
 		const previous = previousById.get(item.id);
 		if (!previous) throw new createHttpError.BadRequest("Item informado não pertence a esta compra.");
+		const normalizedPrevious = normalizePurchaseItemCostValues(previous);
+		const normalizedPayload = normalizePurchaseItemCostValues(item);
 		const changed =
-			previous.produtoId !== item.produtoId ||
-			(previous.produtoVarianteId ?? null) !== (item.produtoVarianteId ?? null) ||
-			previous.quantidade !== item.quantidade;
+			normalizedPrevious.produtoId !== normalizedPayload.produtoId ||
+			(normalizedPrevious.produtoVarianteId ?? null) !== (normalizedPayload.produtoVarianteId ?? null) ||
+			normalizedPrevious.quantidade !== normalizedPayload.quantidade ||
+			normalizedPrevious.valorUnitarioBruto !== normalizedPayload.valorUnitarioBruto ||
+			normalizedPrevious.valorTotalBruto !== normalizedPayload.valorTotalBruto ||
+			normalizedPrevious.valorTotalLiquido !== normalizedPayload.valorTotalLiquido ||
+			normalizedPrevious.valorUnitarioLiquido !== normalizedPayload.valorUnitarioLiquido ||
+			normalizedPrevious.valorTotalCusto !== normalizedPayload.valorTotalCusto ||
+			normalizedPrevious.valorUnitarioCusto !== normalizedPayload.valorUnitarioCusto ||
+			JSON.stringify(normalizedPrevious.modificadoresCusto) !== JSON.stringify(normalizedPayload.modificadoresCusto) ||
+			(normalizedPrevious.dataValidade?.getTime() ?? null) !== (normalizedPayload.dataValidade?.getTime() ?? null);
 		if (changed) throw new createHttpError.BadRequest("Não é possível alterar itens de uma compra já recebida. Cancele a compra para corrigir.");
 	}
 	const activePayloadCount = payloadItems.filter((item) => !item.deletar).length;
@@ -495,6 +625,9 @@ async function syncPurchaseAccountingEntry({
 	purchaseId,
 	previousAccountingEntryId,
 	payload,
+	items,
+	purchaseIsReceived,
+	synchronizeLines = true,
 }: {
 	tx: DBTransaction;
 	orgId: string;
@@ -502,6 +635,9 @@ async function syncPurchaseAccountingEntry({
 	purchaseId: string;
 	previousAccountingEntryId: string | null;
 	payload: TUpdatePurchaseInput["lancamentoContabil"];
+	items: TPurchaseItemInput[];
+	purchaseIsReceived: boolean;
+	synchronizeLines?: boolean;
 }) {
 	const { id: _payloadEntryId, transacoes: payloadTransactions, ...entryFields } = payload;
 
@@ -533,6 +669,21 @@ async function syncPurchaseAccountingEntry({
 			.update(purchases)
 			.set({ lancamentoContabilId: accountingEntryId })
 			.where(and(eq(purchases.id, purchaseId), eq(purchases.organizacaoId, orgId)));
+	}
+
+	if (synchronizeLines) {
+		const { debitAccountId, creditAccountId } = await resolvePurchaseAccountingAccountIds({ trx: tx, orgId });
+		await syncPurchaseAccountingLines({
+			trx: tx,
+			organizationId: orgId,
+			accountingEntryId,
+			entryValue: entryFields.valor,
+			expectedValue: entryFields.valorPrevisto,
+			debitAccountId,
+			creditAccountId,
+			items,
+			purchaseIsReceived,
+		});
 	}
 
 	await handleSimpleChildRowsProcessing({
@@ -605,6 +756,9 @@ async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput;
 							valorTotalLiquido: previousItem.valorTotalLiquido,
 							descontosTotal: previousItem.descontosTotal,
 							acrescimosTotal: previousItem.acrescimosTotal,
+							modificadoresCusto: previousItem.modificadoresCusto,
+							valorTotalCusto: previousItem.valorTotalCusto,
+							valorUnitarioCusto: previousItem.valorUnitarioCusto,
 							externoQtde: previousItem.externoQtde,
 							externoValor: previousItem.externoValor,
 							externoUnidade: previousItem.externoUnidade,
@@ -632,11 +786,13 @@ async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput;
 		}
 
 		const operation = resolvePurchaseTransition(previousPurchase, payloadPurchase);
+		const normalizedPurchaseItems = normalizePurchaseItems(payloadPurchaseItems);
+		if (operation === "RECEIVING") assertPurchaseEntryMatchesItems({ entryValue: payloadAccountingEntry.valor, items: normalizedPurchaseItems });
 
 		// Received purchase staying received: items are frozen. Reprocessing them here would roll back and
 		// re-apply stock on every save (and desync spawned lots), so we only update the header.
 		if (operation === "UPDATING_RECEIVED") {
-			assertReceivedPurchaseItemsUnchanged({ previousItems: previousPurchase.itens, payloadItems: payloadPurchaseItems });
+			assertReceivedPurchaseItemsUnchanged({ previousItems: previousPurchase.itens, payloadItems: normalizedPurchaseItems });
 			await tx
 				.update(purchases)
 				.set({ ...payloadPurchase, dataUltimaAtualizacao: new Date() })
@@ -650,6 +806,9 @@ async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput;
 				purchaseId,
 				previousAccountingEntryId: previousPurchase.lancamentoContabilId,
 				payload: payloadAccountingEntry,
+				items: normalizedPurchaseItems,
+				purchaseIsReceived: true,
+				synchronizeLines: false,
 			});
 			return {
 				data: { updatedPurchaseId: purchaseId },
@@ -678,9 +837,11 @@ async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput;
 			purchaseId,
 			previousAccountingEntryId: previousPurchase.lancamentoContabilId,
 			payload: payloadAccountingEntry,
+			items: normalizedPurchaseItems,
+			purchaseIsReceived: isPurchaseConsideredReceived(payloadPurchase),
 		});
 
-		for (const item of payloadPurchaseItems) {
+		for (const item of normalizedPurchaseItems) {
 			await handlePurchaseItemStockProcessing({
 				trx: tx,
 				organizationId: userOrgId,

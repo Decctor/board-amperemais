@@ -1,5 +1,4 @@
 "use client";
-import { TAuthUserSession } from "@/lib/authentication/types";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -101,7 +100,6 @@ import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { TGetFiscalDocumentsOutputById, TGetFiscalDocumentsOutputDefault } from "@/app/api/fiscal/documents/route";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { FiscalDocumentDetailsContent } from "./_components/fiscal-document-details-content";
-import { uploadFile } from "@/lib/files-storage";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -111,15 +109,12 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 type FiscalPageProps = {
-	user: TAuthUserSession["user"];
-	organization: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 	userHasFiscalViewPermission: boolean;
 	userHasFiscalConfigurePermission: boolean;
 	userHasFiscalEmitPermission: boolean;
 	userHasFiscalCancelPermission: boolean;
 };
 export default function FiscalPage({
-	organization,
 	userHasFiscalViewPermission,
 	userHasFiscalConfigurePermission,
 	userHasFiscalEmitPermission,
@@ -141,7 +136,7 @@ export default function FiscalPage({
 				</TabsList>
 				<TabsContent value="configuration" className="flex flex-col gap-3">
 					{userHasFiscalConfigurePermission ? (
-						<FiscalConfigurationsView organizationId={organization.id} userHasFiscalConfigurePermission={userHasFiscalConfigurePermission} />
+						<FiscalConfigurationsView userHasFiscalConfigurePermission={userHasFiscalConfigurePermission} />
 					) : (
 						<UnauthorizedPage message="Oops,  você não possui permissão para visualizar o módulo fiscal." />
 					)}
@@ -655,10 +650,9 @@ function FiscalDocumentDetailsMenu({
 }
 
 type FiscalConfigurationsViewProps = {
-	organizationId: string;
 	userHasFiscalConfigurePermission: boolean;
 };
-function FiscalConfigurationsView({ organizationId, userHasFiscalConfigurePermission }: FiscalConfigurationsViewProps) {
+function FiscalConfigurationsView({ userHasFiscalConfigurePermission }: FiscalConfigurationsViewProps) {
 	const canEdit = userHasFiscalConfigurePermission;
 	const queryClient = useQueryClient();
 	const { data, isLoading, isError, error, queryKey } = useFiscalSettings();
@@ -743,7 +737,6 @@ function FiscalConfigurationsView({ organizationId, userHasFiscalConfigurePermis
 			</SectionWrapper>
 
 			<CompanyBasicInformation
-				organizationId={organizationId}
 				fiscalConfig={state.fiscalConfiguracao}
 				updateFiscalConfig={updateFiscalConfig}
 				callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
@@ -786,8 +779,8 @@ function AutoEmissionPaymentMethodExceptions({ fiscalConfig, updateFiscalConfig 
 			<div>
 				<Label>EMISSÃO POR MÉTODO DE PAGAMENTO</Label>
 				<p className="text-sm text-muted-foreground">
-					A emissão automática é pausada quando a venda for paga <span className="font-semibold">somente</span> com métodos desativados abaixo — um mix
-					com qualquer método ativo emite normalmente.
+					A emissão automática é pausada quando a venda for paga <span className="font-semibold">somente</span> com métodos desativados abaixo — um mix com
+					qualquer método ativo emite normalmente.
 				</p>
 			</div>
 			<div className="divide-y rounded-lg border">
@@ -815,7 +808,6 @@ function AutoEmissionPaymentMethodExceptions({ fiscalConfig, updateFiscalConfig 
 }
 
 type CompanyBasicInformationProps = {
-	organizationId: string;
 	fiscalConfig: TUseInternalFiscalSettingsState["state"]["fiscalConfiguracao"];
 	updateFiscalConfig: TUseInternalFiscalSettingsState["updateFiscalConfig"];
 	callbacks: {
@@ -823,7 +815,7 @@ type CompanyBasicInformationProps = {
 		onSettled: () => void;
 	};
 };
-function CompanyBasicInformation({ organizationId, fiscalConfig, updateFiscalConfig, callbacks }: CompanyBasicInformationProps) {
+function CompanyBasicInformation({ fiscalConfig, updateFiscalConfig, callbacks }: CompanyBasicInformationProps) {
 	const [certificateMenuOpen, setCertificateMenuOpen] = useState(false);
 	async function setAddressDataByCEP(cep: string) {
 		const addressInfo = await getCEPInfo(cep);
@@ -1047,7 +1039,7 @@ function CompanyBasicInformation({ organizationId, fiscalConfig, updateFiscalCon
 					CERTIFICADO FISCAL
 				</Label>
 
-				{fiscalConfig.spedy?.certificado?.storagePath ? (
+				{fiscalConfig.spedy?.certificado?.providerManaged || fiscalConfig.spedy?.certificado?.storagePath ? (
 					<Button variant="success-light" onClick={() => setCertificateMenuOpen(true)} className="w-fit flex items-center gap-1.5">
 						<CheckCheck className="w-4 h-4 min-w-4 min-h-4" />
 						CERTIFICADO ATIVO
@@ -1062,7 +1054,6 @@ function CompanyBasicInformation({ organizationId, fiscalConfig, updateFiscalCon
 			{certificateMenuOpen ? (
 				<FiscalCertificateMenu
 					fiscalConfigCertificate={fiscalConfig.spedy?.certificado}
-					organizationId={organizationId}
 					callbacks={callbacks}
 					closeMenu={() => setCertificateMenuOpen(false)}
 				/>
@@ -1072,7 +1063,6 @@ function CompanyBasicInformation({ organizationId, fiscalConfig, updateFiscalCon
 }
 
 type FiscalCertificateMenuProps = {
-	organizationId: string;
 	fiscalConfigCertificate: TUseInternalFiscalSettingsState["state"]["fiscalConfiguracao"]["spedy"]["certificado"];
 	callbacks: {
 		onMutate: () => void;
@@ -1080,27 +1070,21 @@ type FiscalCertificateMenuProps = {
 	};
 	closeMenu: () => void;
 };
-function FiscalCertificateMenu({ organizationId, fiscalConfigCertificate, callbacks, closeMenu }: FiscalCertificateMenuProps) {
+function FiscalCertificateMenu({ fiscalConfigCertificate, callbacks, closeMenu }: FiscalCertificateMenuProps) {
 	const [certificateInformation, setCertificateInformation] = useState<{
 		file: File | null;
 		password: string | null;
 	}>({
 		file: null,
-		password: fiscalConfigCertificate.password ?? null,
+		password: null,
 	});
 
 	async function handleSubmitCertificate(info: { file: File | null; password: string | null }) {
 		if (!info.file) throw new Error("Arquivo não selecionado.");
 		if (!info.password) throw new Error("Senha não informada.");
 
-		const { storagePath } = await uploadFile({
-			file: info.file,
-			fileName: `CERTIFICADO_FISCAL_${organizationId}`,
-			vinculationId: organizationId,
-		});
-
 		return await syncFiscalCompanyCertificate({
-			storagePath,
+			file: info.file,
 			password: info.password,
 		});
 	}
@@ -1157,7 +1141,7 @@ function FiscalCertificateMenu({ organizationId, fiscalConfigCertificate, callba
 								<p className="text-center text-xs font-medium">ARQUIVO SELECIONADO</p>
 								<p className="line-clamp-4 break-all text-center text-xs font-medium text-muted-foreground">{certificateInformation.file.name}</p>
 							</>
-						) : fiscalConfigCertificate.storagePath ? (
+						) : fiscalConfigCertificate.providerManaged || fiscalConfigCertificate.storagePath ? (
 							<>
 								<FileIcon className="h-6 w-6 shrink-0" />
 								<p className="text-center text-xs font-medium">CERTIFICADO DEFINIDO</p>

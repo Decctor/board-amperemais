@@ -217,6 +217,8 @@ export const accountingEntryOriginTypeEnum = pgEnum("accounting_entry_origin_typ
 	"PAGAMENTO_CARTAO",
 ]);
 
+export const accountingEntryLineNatureEnum = pgEnum("accounting_entry_line_nature", ["DEBITO", "CREDITO"]);
+
 // ============================================================================
 // CONCILIAÇÃO BANCÁRIA (docs/bank-reconciliation-design.md)
 // ============================================================================

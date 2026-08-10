@@ -21,8 +21,6 @@ export default async function Fiscal() {
 
 	return (
 		<FiscalPage
-			user={sessionUser.user}
-			organization={sessionUser.membership.organizacao}
 			userHasFiscalViewPermission={userHasFiscalViewPermission}
 			userHasFiscalConfigurePermission={userHasFiscalConfigurePermission}
 			userHasFiscalEmitPermission={userHasFiscalEmitPermission}

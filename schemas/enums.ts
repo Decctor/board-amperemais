@@ -211,6 +211,9 @@ export const AccountingEntryOriginTypeEnum = z.enum([
 	"PAGAMENTO_CARTAO",
 ]);
 export type TAccountingEntryOriginTypeEnum = z.infer<typeof AccountingEntryOriginTypeEnum>;
+
+export const AccountingEntryLineNatureEnum = z.enum(["DEBITO", "CREDITO"]);
+export type TAccountingEntryLineNatureEnum = z.infer<typeof AccountingEntryLineNatureEnum>;
 export const FinancialStatementOriginEnum = z.enum(["ARQUIVO", "OPEN_FINANCE"]);
 export type TFinancialStatementOriginEnum = z.infer<typeof FinancialStatementOriginEnum>;
 export const FinancialStatementImportStatusEnum = z.enum(["PROCESSANDO", "PROCESSADO", "ERRO"]);
@@ -366,6 +369,33 @@ export type TDeliveryModeEnum = z.infer<typeof DeliveryModeEnum>;
 
 export const PurchaseStatusEnum = z.enum(["RASCUNHO", "CONFIRMADA", "RECEBIMENTO_PARCIAL", "RECEBIDA", "CANCELADA"]);
 export type TPurchaseStatusEnum = z.infer<typeof PurchaseStatusEnum>;
+
+export const PurchaseCostModifierKeyEnum = z.enum([
+	"DESCONTO",
+	"FRETE",
+	"SEGURO",
+	"DESPESA_ACESSORIA",
+	"IMPOSTOS_IPI",
+	"IMPOSTOS_ICMS_ST",
+	"IMPOSTOS_FCP_ST",
+	"OUTRO",
+]);
+export type TPurchaseCostModifierKeyEnum = z.infer<typeof PurchaseCostModifierKeyEnum>;
+
+export const PurchaseCostModifierEffectEnum = z.enum(["ACRESCIMO", "REDUCAO"]);
+export type TPurchaseCostModifierEffectEnum = z.infer<typeof PurchaseCostModifierEffectEnum>;
+
+export const PurchaseCostTreatmentEnum = z.enum(["CUSTO_ESTOQUE", "CREDITO_TRIBUTARIO", "DESPESA_PERIODO"]);
+export type TPurchaseCostTreatmentEnum = z.infer<typeof PurchaseCostTreatmentEnum>;
+
+export const PurchaseCostModifierOriginEnum = z.enum(["XML", "IA", "MANUAL"]);
+export type TPurchaseCostModifierOriginEnum = z.infer<typeof PurchaseCostModifierOriginEnum>;
+
+export const PurchaseCostAllocationMethodEnum = z.enum(["INFORMADO_ITEM", "PROPORCIONAL_VALOR", "PROPORCIONAL_QUANTIDADE", "MANUAL"]);
+export type TPurchaseCostAllocationMethodEnum = z.infer<typeof PurchaseCostAllocationMethodEnum>;
+
+export const PurchaseImportedDocumentOriginEnum = z.enum(["XML", "PDF", "IMAGEM", "MANUAL", "DFE"]);
+export type TPurchaseImportedDocumentOriginEnum = z.infer<typeof PurchaseImportedDocumentOriginEnum>;
 
 export const FiscalProviderEnum = z.enum(["MANUAL", "SPEDY"]);
 export type TFiscalProviderEnum = z.infer<typeof FiscalProviderEnum>;

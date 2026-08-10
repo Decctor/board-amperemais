@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { convertLineToProductUnit } from "@/lib/purchase/units";
 import { createEmptyPurchaseItem, normalizeItemValues } from "../Items";
 
-const ACCEPTED_MIME_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+const ACCEPTED_MIME_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp", "application/xml", "text/xml"];
 const MAX_FILE_BASE64_LENGTH = 4_200_000;
 const IMAGE_MAX_DIMENSION = 2000;
 
@@ -37,6 +37,8 @@ type TReviewLine = TImportedLine & {
 	manualOverride: boolean;
 	/** Quantas unidades internas cabem em 1 unidade da nota. Null quando as unidades batem. */
 	fatorConversao: number | null;
+	documentoRef: string;
+	origemImportacao: "XML" | "IA";
 };
 
 /**
@@ -74,6 +76,16 @@ const MATCH_BADGE: Record<TImportedLine["matchTipo"], { label: string; className
 	NAO_MAPEADO: { label: "Não mapeado", className: "border-destructive/30 bg-destructive/10 text-destructive" },
 };
 
+const COST_MODIFIER_LABELS: Record<string, string> = {
+	DESCONTO: "Desconto",
+	FRETE: "Frete",
+	SEGURO: "Seguro",
+	DESPESA_ACESSORIA: "Despesa acessória",
+	IMPOSTOS_IPI: "IPI",
+	IMPOSTOS_ICMS_ST: "ICMS-ST",
+	IMPOSTOS_FCP_ST: "FCP-ST",
+};
+
 function readFileAsBase64(file: File): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const reader = new FileReader();
@@ -106,10 +118,11 @@ async function downscaleImageToJpegBase64(file: File): Promise<string> {
 }
 
 async function prepareFilePayload(file: File) {
-	if (file.type === "application/pdf") {
+	const isXml = file.type === "application/xml" || file.type === "text/xml" || file.name.toLowerCase().endsWith(".xml");
+	if (file.type === "application/pdf" || isXml) {
 		const dataBase64 = await readFileAsBase64(file);
 		if (dataBase64.length > MAX_FILE_BASE64_LENGTH) throw new Error("Arquivo muito grande. O limite é de aproximadamente 3MB por arquivo.");
-		return { dataBase64, mimeType: "application/pdf" as const, fileName: file.name };
+		return { dataBase64, mimeType: isXml ? ("application/xml" as const) : ("application/pdf" as const), fileName: file.name };
 	}
 	const dataBase64 = await downscaleImageToJpegBase64(file);
 	if (dataBase64.length > MAX_FILE_BASE64_LENGTH) throw new Error("Imagem muito grande mesmo após compressão. Tente uma foto menor.");
@@ -120,6 +133,11 @@ async function prepareFilePayload(file: File) {
 function getLineTotal(line: TReviewLine) {
 	// O fator de conversão não entra: ele redistribui quantidade e valor unitário entre as unidades,
 	// preservando o total da linha impresso na nota.
+	if (line.modificadoresCusto)
+		return (
+			line.quantidade * line.valorUnitario +
+			line.modificadoresCusto.reduce((total, modifier) => total + (modifier.efeito === "REDUCAO" ? -1 : 1) * (modifier.valorCentavos / 100), 0)
+		);
 	return line.quantidade * line.valorUnitario - (line.desconto ?? 0);
 }
 
@@ -206,6 +224,7 @@ type ImportCompositionWithAIProps = {
 	accountingEntry: TUsePurchaseState["state"]["lancamentoContabil"];
 	updateAccountingEntry: TUsePurchaseState["updateAccountingEntry"];
 	currentFornecedorId: string | null;
+	currentImportedDocuments?: TUsePurchaseState["state"]["purchase"]["documentosImportados"];
 };
 
 export default function ImportCompositionWithAI({
@@ -216,6 +235,7 @@ export default function ImportCompositionWithAI({
 	accountingEntry,
 	updateAccountingEntry,
 	currentFornecedorId,
+	currentImportedDocuments,
 }: ImportCompositionWithAIProps) {
 	const [phase, setPhase] = useState<TPhase>("UPLOAD");
 	const [fileEntries, setFileEntries] = useState<TFileEntry[]>([]);
@@ -223,6 +243,7 @@ export default function ImportCompositionWithAI({
 	const [lines, setLines] = useState<TReviewLine[]>([]);
 	const [fornecedor, setFornecedor] = useState<TImportFornecedor | null>(null);
 	const [documento, setDocumento] = useState<TImportDocumento | null>(null);
+	const [importedDocuments, setImportedDocuments] = useState<TImportDocumento["importado"][]>([]);
 	const [warnings, setWarnings] = useState<string[]>([]);
 	const [rejectedProposals, setRejectedProposals] = useState<Set<TAccountingProposalKey>>(new Set());
 	const [vincularFornecedor, setVincularFornecedor] = useState(true);
@@ -234,6 +255,10 @@ export default function ImportCompositionWithAI({
 	const pendingUnitCount = useMemo(
 		() => lines.filter((line) => line.incluir && line.produto && line.divergenciaUnidade && !line.fatorConversao).length,
 		[lines],
+	);
+	const pendingTaxTreatmentCount = useMemo(
+		() => includedLines.reduce((total, line) => total + (line.modificadoresCusto ?? []).filter((modifier) => modifier.tratamento === null).length, 0),
+		[includedLines],
 	);
 	const includedTotal = useMemo(() => includedLines.reduce((acc, line) => acc + getLineTotal(line), 0), [includedLines]);
 	const accountingProposals = useMemo(
@@ -249,6 +274,7 @@ export default function ImportCompositionWithAI({
 			setLines([]);
 			setFornecedor(null);
 			setDocumento(null);
+			setImportedDocuments([]);
 			setWarnings([]);
 			setRejectedProposals(new Set());
 			setVincularFornecedor(true);
@@ -259,8 +285,9 @@ export default function ImportCompositionWithAI({
 	function addFiles(candidates: File[]) {
 		const accepted: TFileEntry[] = [];
 		for (const file of candidates) {
-			if (!ACCEPTED_MIME_TYPES.includes(file.type)) {
-				toast.error(`"${file.name}" não é suportado. Envie um PDF ou uma imagem (PNG, JPG, WEBP).`);
+			const isXml = file.name.toLowerCase().endsWith(".xml");
+			if (!ACCEPTED_MIME_TYPES.includes(file.type) && !isXml) {
+				toast.error(`"${file.name}" não é suportado. Envie XML, PDF ou uma imagem (PNG, JPG, WEBP).`);
 				continue;
 			}
 			accepted.push({ file, status: "PENDENTE", itemCount: null, errorMessage: null });
@@ -282,12 +309,28 @@ export default function ImportCompositionWithAI({
 		setLines((prev) => prev.map((line, lineIndex) => (lineIndex === index ? { ...line, ...updates } : line)));
 	}
 
+	function updateModifierTreatment(lineIndex: number, modifierIndex: number, tratamento: "CUSTO_ESTOQUE" | "CREDITO_TRIBUTARIO" | "DESPESA_PERIODO") {
+		setLines((previous) =>
+			previous.map((line, currentLineIndex) =>
+				currentLineIndex !== lineIndex
+					? line
+					: {
+							...line,
+							modificadoresCusto: (line.modificadoresCusto ?? []).map((modifier, currentModifierIndex) =>
+								currentModifierIndex === modifierIndex ? { ...modifier, tratamento } : modifier,
+							),
+						},
+			),
+		);
+	}
+
 	async function handleExtract() {
 		if (fileEntries.length === 0) return;
 		setPhase("PROCESSANDO");
 
 		const mergedLines: TReviewLine[] = [];
 		const mergedWarnings: string[] = [];
+		const mergedImportedDocuments: TImportDocumento["importado"][] = [];
 		let mergedFornecedor: TImportFornecedor | null = null;
 		let mergedDocumento: TImportDocumento | null = null;
 
@@ -305,8 +348,11 @@ export default function ImportCompositionWithAI({
 						produtoVariante: null,
 						manualOverride: false,
 						fatorConversao: item.fatorConversaoSugerido,
+						documentoRef: result.data.documento.importado.referencia,
+						origemImportacao: result.data.documento.origem,
 					})),
 				);
+				mergedImportedDocuments.push(result.data.documento.importado);
 				mergedWarnings.push(...result.data.avisos);
 				if (!mergedFornecedor && (result.data.fornecedor.existente || result.data.fornecedor.extraido)) mergedFornecedor = result.data.fornecedor;
 				// O primeiro documento define o cabeçalho da compra; os seguintes só somam itens.
@@ -326,6 +372,7 @@ export default function ImportCompositionWithAI({
 		setLines(mergedLines);
 		setFornecedor(mergedFornecedor);
 		setDocumento(mergedDocumento);
+		setImportedDocuments(mergedImportedDocuments);
 		setWarnings([...new Set(mergedWarnings)]);
 		setRejectedProposals(
 			mergedDocumento
@@ -352,6 +399,10 @@ export default function ImportCompositionWithAI({
 		if (includedLines.length === 0) return;
 		if (pendingUnitCount > 0) {
 			toast.error(`Informe o fator de conversão dos ${pendingUnitCount} itens com unidade divergente antes de adicionar.`);
+			return;
+		}
+		if (pendingTaxTreatmentCount > 0) {
+			toast.error(`Revise o tratamento dos ${pendingTaxTreatmentCount} tributos destacados antes de adicionar.`);
 			return;
 		}
 		setIsConfirming(true);
@@ -408,14 +459,30 @@ export default function ImportCompositionWithAI({
 						quantidade: convertido.quantidade,
 						valorUnitarioBruto: convertido.valorUnitario,
 						descontosTotal: line.desconto ?? 0,
+						modificadoresCusto: {
+							versao: 1,
+							modificadores: (line.modificadoresCusto ?? []).map((modifier) => ({
+								...modifier,
+								tratamento: modifier.tratamento!,
+								origem: line.origemImportacao === "XML" ? "XML" : "IA",
+								documentoRef: line.documentoRef,
+								rateio: { metodo: "INFORMADO_ITEM" },
+							})),
+						},
 						externoQtde: line.extraidoQuantidade,
 						externoValor: line.extraidoValorUnitario,
 						externoUnidade: line.unidade,
 						externoFatorConversao: line.fatorConversao,
-						anotacoes: `Importado via IA: ${line.descricao}`,
+						anotacoes: `Importado via ${line.origemImportacao}: ${line.descricao}`,
 					}),
 				);
 			}
+			updatePurchase({
+				documentosImportados: {
+					versao: 1,
+					documentos: [...(currentImportedDocuments?.documentos ?? []), ...importedDocuments],
+				},
+			});
 
 			// 3. Campos aceitos do lançamento contábil. `valorPrevisto` nunca entra: a nota é o valor
 			//    efetivo, e preenchê-lo faria o orçado bater sempre com o realizado.
@@ -457,12 +524,12 @@ export default function ImportCompositionWithAI({
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2 text-base">
 						<Sparkles className="h-4 w-4 text-primary" />
-						IMPORTAR ITENS COM IA
+						IMPORTAR DOCUMENTO
 					</DialogTitle>
 					<DialogDescription className="text-xs">
 						{phase === "REVISAO"
 							? "Revise os itens extraídos, resolva os não mapeados e adicione-os à composição da compra."
-							: "Envie PDFs de nota fiscal ou fotos de cupom. A IA identifica os itens e tenta mapeá-los aos seus produtos."}
+							: "Envie o XML da NF-e para leitura exata, ou PDF/foto para extração assistida por IA."}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -483,7 +550,7 @@ export default function ImportCompositionWithAI({
 							>
 								<Upload className="h-6 w-6 text-muted-foreground" />
 								<p className="text-sm font-medium">Arraste os arquivos aqui ou clique para selecionar</p>
-								<p className="text-xs text-muted-foreground">PDF de nota fiscal ou foto de cupom · PNG, JPG, WEBP · até 3MB por arquivo</p>
+								<p className="text-xs text-muted-foreground">XML de NF-e, PDF ou foto de cupom · até 3MB por arquivo</p>
 								<input
 									ref={fileInputRef}
 									type="file"
@@ -502,7 +569,7 @@ export default function ImportCompositionWithAI({
 							<div className="flex w-full flex-col overflow-hidden rounded-md border border-border">
 								{fileEntries.map((entry, index) => (
 									<div key={`${entry.file.name}-${index}`} className="flex w-full items-center gap-2 border-t border-border px-3 py-2 first:border-t-0">
-										{entry.file.type === "application/pdf" ? (
+										{entry.file.type === "application/pdf" || entry.file.name.toLowerCase().endsWith(".xml") ? (
 											<FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
 										) : (
 											<ImageIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -742,6 +809,40 @@ export default function ImportCompositionWithAI({
 											</div>
 										</div>
 
+										{line.modificadoresCusto && line.modificadoresCusto.length > 0 ? (
+											<div className="ml-6 overflow-hidden rounded-md border border-border bg-muted/20">
+												<div className="border-b border-border px-2.5 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+													Custos e tributos destacados
+												</div>
+												{line.modificadoresCusto.map((modifier, modifierIndex) => (
+													<div
+														key={`${modifier.chave}-${modifierIndex}`}
+														className="flex flex-col gap-1.5 border-t border-border px-2.5 py-2 first:border-t-0 sm:flex-row sm:items-center"
+													>
+														<div className="min-w-0 flex-1">
+															<p className="text-xs font-medium">{COST_MODIFIER_LABELS[modifier.chave] ?? modifier.chave}</p>
+															<p className="text-[0.68rem] text-muted-foreground">{formatToMoney(modifier.valorCentavos / 100)}</p>
+														</div>
+														<select
+															aria-label={`Tratamento de ${COST_MODIFIER_LABELS[modifier.chave] ?? modifier.chave}`}
+															value={modifier.tratamento ?? ""}
+															onChange={(event) =>
+																updateModifierTreatment(index, modifierIndex, event.target.value as "CUSTO_ESTOQUE" | "CREDITO_TRIBUTARIO" | "DESPESA_PERIODO")
+															}
+															className={cn("h-8 rounded-md border bg-background px-2 text-xs", modifier.tratamento === null && "border-amber-500 text-amber-700")}
+														>
+															<option value="" disabled>
+																Revisar tratamento
+															</option>
+															<option value="CUSTO_ESTOQUE">Custo do estoque</option>
+															<option value="CREDITO_TRIBUTARIO">Crédito tributário</option>
+															<option value="DESPESA_PERIODO">Despesa do período</option>
+														</select>
+													</div>
+												))}
+											</div>
+										) : null}
+
 										{line.produto && line.divergenciaUnidade ? (
 											<div className="ml-6 flex flex-col gap-1.5 rounded-md border border-destructive/25 bg-destructive/5 px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between">
 												<p className="text-[0.68rem] leading-relaxed text-destructive">
@@ -786,7 +887,13 @@ export default function ImportCompositionWithAI({
 								<Button type="button" variant="ghost" size="sm" disabled={isConfirming} onClick={() => setPhase("UPLOAD")}>
 									VOLTAR
 								</Button>
-								<LoadingButton type="button" size="sm" loading={isConfirming} disabled={includedLines.length === 0} onClick={handleConfirm}>
+								<LoadingButton
+									type="button"
+									size="sm"
+									loading={isConfirming}
+									disabled={includedLines.length === 0 || pendingTaxTreatmentCount > 0}
+									onClick={handleConfirm}
+								>
 									ADICIONAR {includedLines.length} {includedLines.length === 1 ? "ITEM" : "ITENS"}
 								</LoadingButton>
 							</div>

@@ -111,6 +111,12 @@ export type TOrganizationPaymentMethodDefaults = z.infer<typeof OrganizationPaym
 
 export const OrganizationDefaultsSchema = z.object({
 	contabilidade: z.object({
+		contasCustosCompra: z
+			.object({
+				creditoTributarioContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de crédito tributário de compras." }).nullable(),
+				despesaPeriodoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de despesas do período de compras." }).nullable(),
+			})
+			.default({ creditoTributarioContaId: null, despesaPeriodoContaId: null }),
 		lancamentosPadrao: z.object({
 			vendas: z.object({
 				debitoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de débito padrão de vendas." }).nullable(),
