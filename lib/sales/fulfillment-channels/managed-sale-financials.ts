@@ -1,4 +1,5 @@
 import type { TCanonicalSale, TCanonicalSalePayment } from "@/lib/data-connectors/types";
+import { writeDefaultAccountingEntryLines } from "@/lib/finances/accounting-entry-lines";
 import { ensureFirstPartyFinancialAccount, type TFirstPartyAccountKey } from "@/lib/finances/first-party-accounts";
 import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 import { getOrganizationPaymentMethodsConfig } from "@/lib/payments/defaults";
@@ -107,6 +108,15 @@ export async function processManagedSaleFinancials(
 			autorId: null,
 		})
 		.returning({ id: accountingEntries.id });
+
+	await writeDefaultAccountingEntryLines({
+		trx: tx,
+		organizationId,
+		accountingEntryId: entry.id,
+		entryValue: paymentsTotal,
+		debitAccountId,
+		creditAccountId,
+	});
 
 	for (const payment of payments) {
 		const isOnline = payment.pagoOnline;

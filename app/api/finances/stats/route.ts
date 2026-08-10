@@ -4,11 +4,11 @@ import { canViewFinances } from "@/lib/permissions/finances";
 import { FINANCIAL_TRANSFER_METHOD, getAccountChartIdsByNatureza } from "@/lib/finances";
 import { getPreviousPeriod } from "@/lib/finances/analytics/periods";
 import { db } from "@/services/drizzle";
-import { accountingEntries, financialTransactions } from "@/services/drizzle/schema";
+import { accountingEntries, accountingEntryLines, financialTransactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import createHttpError from "http-errors";
 import z from "zod";
-import { and, eq, gte, inArray, lte, ne, sum } from "drizzle-orm";
+import { and, eq, gte, lte, ne, sum } from "drizzle-orm";
 import { formatAsNumber } from "@/lib/formatting";
 import { appApiHandler } from "@/lib/app-api";
 import { NextRequest, NextResponse } from "next/server";
@@ -68,37 +68,33 @@ async function getFinancesOverallStats({ input, session }: { input: TGetFinances
 	const endDate = dayjs(periodBefore).toISOString();
 	const datesStrs = getDayStringsBetweenDates({ initialDate, endDate });
 
-	// Query for total credited amounts by account
-	const creditedByAccount = await db
-		.select({
-			accountId: accountingEntries.idContaCredito,
-			totalCredited: sum(accountingEntries.valor),
-		})
-		.from(accountingEntries)
-		.where(
-			and(
-				eq(accountingEntries.organizacaoId, userOrgId),
-				gte(accountingEntries.dataCompetencia, periodAfter),
-				lte(accountingEntries.dataCompetencia, periodBefore),
-			),
-		)
-		.groupBy(accountingEntries.idContaCredito);
+	// Agregação pelas linhas contábeis (conta + natureza), não pelo par legado do lançamento: partidas
+	// compostas atribuem cada valor à sua própria conta. Ver ADR-0001.
+	const groupedLinesForRange = (range: { after: Date; before: Date }) =>
+		db
+			.select({
+				accountId: accountingEntryLines.contaContabilId,
+				natureza: accountingEntryLines.natureza,
+				total: sum(accountingEntryLines.valor),
+			})
+			.from(accountingEntryLines)
+			.innerJoin(accountingEntries, eq(accountingEntryLines.lancamentoContabilId, accountingEntries.id))
+			.where(
+				and(
+					eq(accountingEntryLines.organizacaoId, userOrgId),
+					gte(accountingEntries.dataCompetencia, range.after),
+					lte(accountingEntries.dataCompetencia, range.before),
+				),
+			)
+			.groupBy(accountingEntryLines.contaContabilId, accountingEntryLines.natureza);
 
-	// Query for total debited amounts by account
-	const debitedByAccount = await db
-		.select({
-			accountId: accountingEntries.idContaDebito,
-			totalDebited: sum(accountingEntries.valor),
-		})
-		.from(accountingEntries)
-		.where(
-			and(
-				eq(accountingEntries.organizacaoId, userOrgId),
-				gte(accountingEntries.dataCompetencia, periodAfter),
-				lte(accountingEntries.dataCompetencia, periodBefore),
-			),
-		)
-		.groupBy(accountingEntries.idContaDebito);
+	const currentLineRows = await groupedLinesForRange({ after: periodAfter, before: periodBefore });
+	const creditedByAccount = currentLineRows
+		.filter((row) => row.natureza === "CREDITO")
+		.map((row) => ({ accountId: row.accountId, totalCredited: row.total }));
+	const debitedByAccount = currentLineRows
+		.filter((row) => row.natureza === "DEBITO")
+		.map((row) => ({ accountId: row.accountId, totalDebited: row.total }));
 
 	// Fetch account details for proper naming
 	const accounts = await db.query.accountsCharts.findMany({
@@ -154,36 +150,26 @@ async function getFinancesOverallStats({ input, session }: { input: TGetFinances
 	}
 	const resultByAccounts = Array.from(resultMap.values());
 
-	// Soma dos lançamentos de um lado (crédito p/ receita, débito p/ custo e despesa) num intervalo.
-	const sumEntriesTotal = async (accountIds: string[], side: "credito" | "debito", range: { after: Date; before: Date }) => {
+	// Soma das linhas de um lado (crédito p/ receita, débito p/ custo e despesa) já agrupadas acima —
+	// o período anterior é a única consulta extra.
+	const sumLineRows = (rows: Awaited<ReturnType<typeof groupedLinesForRange>>, accountIds: string[], side: "CREDITO" | "DEBITO") => {
 		if (accountIds.length === 0) return 0;
-		const sideColumn = side === "credito" ? accountingEntries.idContaCredito : accountingEntries.idContaDebito;
-		const result = await db
-			.select({ total: sum(accountingEntries.valor) })
-			.from(accountingEntries)
-			.where(
-				and(
-					eq(accountingEntries.organizacaoId, userOrgId),
-					gte(accountingEntries.dataCompetencia, range.after),
-					lte(accountingEntries.dataCompetencia, range.before),
-					inArray(sideColumn, accountIds),
-				),
-			);
-		return formatAsNumber(result[0]?.total || 0);
+		const accountIdSet = new Set(accountIds);
+		return rows
+			.filter((row) => row.natureza === side && accountIdSet.has(row.accountId))
+			.reduce((total, row) => total + formatAsNumber(row.total), 0);
 	};
 
 	const currentRange = { after: periodAfter, before: periodBefore };
 	const previousRange = getPreviousPeriod(currentRange);
+	const previousLineRows = await groupedLinesForRange(previousRange);
 
-	const [totalRevenueResultValue, totalExpenseResultValue, totalCostResultValue, previousTotalRevenue, previousTotalExpense, previousTotalCost] =
-		await Promise.all([
-			sumEntriesTotal(revenueAccountIds, "credito", currentRange),
-			sumEntriesTotal(expenseAccountIds, "debito", currentRange),
-			sumEntriesTotal(costAccountIds, "debito", currentRange),
-			sumEntriesTotal(revenueAccountIds, "credito", previousRange),
-			sumEntriesTotal(expenseAccountIds, "debito", previousRange),
-			sumEntriesTotal(costAccountIds, "debito", previousRange),
-		]);
+	const totalRevenueResultValue = sumLineRows(currentLineRows, revenueAccountIds, "CREDITO");
+	const totalExpenseResultValue = sumLineRows(currentLineRows, expenseAccountIds, "DEBITO");
+	const totalCostResultValue = sumLineRows(currentLineRows, costAccountIds, "DEBITO");
+	const previousTotalRevenue = sumLineRows(previousLineRows, revenueAccountIds, "CREDITO");
+	const previousTotalExpense = sumLineRows(previousLineRows, expenseAccountIds, "DEBITO");
+	const previousTotalCost = sumLineRows(previousLineRows, costAccountIds, "DEBITO");
 
 	// Transferências entre contas zeram no líquido, mas inflariam os fluxos medidos abaixo.
 	const totalInFlowResult = await db

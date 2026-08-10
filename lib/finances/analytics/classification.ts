@@ -44,20 +44,24 @@ export type TDreCategoryTotals = {
 };
 
 /**
- * Acumula totais diretos por conta a partir de linhas agrupadas (crédito, débito, total).
- * Receita reconhecida pelo lado do crédito; custo e despesa pelo lado do débito.
+ * Acumula totais diretos por conta a partir de linhas contábeis agrupadas por conta + natureza.
+ * Receita reconhecida pelo crédito; custo e despesa pelo débito — a mesma convenção da versão
+ * baseada no par débito/crédito que este acumulador substitui (ADR-0001).
  */
 export function accumulateCategoryTotals(
-	rows: Array<{ creditId: string; debitId: string; total: number }>,
+	rows: Array<{ contaId: string; natureza: "DEBITO" | "CREDITO"; total: number }>,
 	classification: TDreClassification,
 ): TDreCategoryTotals {
 	const revenueByAccount = new Map<string, number>();
 	const costByAccount = new Map<string, number>();
 	const expenseByAccount = new Map<string, number>();
 	for (const row of rows) {
-		if (classification.revenueIds.has(row.creditId)) revenueByAccount.set(row.creditId, (revenueByAccount.get(row.creditId) || 0) + row.total);
-		if (classification.costIds.has(row.debitId)) costByAccount.set(row.debitId, (costByAccount.get(row.debitId) || 0) + row.total);
-		else if (classification.expenseIds.has(row.debitId)) expenseByAccount.set(row.debitId, (expenseByAccount.get(row.debitId) || 0) + row.total);
+		if (row.natureza === "CREDITO") {
+			if (classification.revenueIds.has(row.contaId)) revenueByAccount.set(row.contaId, (revenueByAccount.get(row.contaId) || 0) + row.total);
+			continue;
+		}
+		if (classification.costIds.has(row.contaId)) costByAccount.set(row.contaId, (costByAccount.get(row.contaId) || 0) + row.total);
+		else if (classification.expenseIds.has(row.contaId)) expenseByAccount.set(row.contaId, (expenseByAccount.get(row.contaId) || 0) + row.total);
 	}
 	return { revenueByAccount, costByAccount, expenseByAccount };
 }

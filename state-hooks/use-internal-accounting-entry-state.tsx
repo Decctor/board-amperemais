@@ -5,10 +5,21 @@ import { useCallback, useState } from "react";
 
 type TAccountingEntryState = TUpdateAccountingEntryInput;
 export type TAccountingEntryFinancialTransactionState = TAccountingEntryState["entryFinancialTransactions"][number];
+export type TAccountingEntryLineState = TAccountingEntryState["entryLines"][number];
 
 type UseInternalAccountingEntryStateParams = {
 	initialState?: Partial<TAccountingEntryState>;
 };
+
+export function getDefaultAccountingEntryLineState(patch?: Partial<TAccountingEntryLineState>): TAccountingEntryLineState {
+	return {
+		contaContabilId: "",
+		natureza: "DEBITO",
+		valor: 0,
+		descricao: null,
+		...patch,
+	};
+}
 
 function getDefaultState(): TAccountingEntryState {
 	return {
@@ -22,6 +33,9 @@ function getDefaultState(): TAccountingEntryState {
 			valorPrevisto: null,
 			dataCompetencia: new Date(),
 		},
+		// Todo lançamento nasce com o esqueleto mínimo da partida dobrada; o par legado acima é
+		// derivado das linhas no servidor.
+		entryLines: [getDefaultAccountingEntryLineState({ natureza: "DEBITO" }), getDefaultAccountingEntryLineState({ natureza: "CREDITO" })],
 		entryFinancialTransactions: [],
 	};
 }
@@ -51,6 +65,7 @@ export function useInternalAccountingEntryState({ initialState }: UseInternalAcc
 			...defaultState.entry,
 			...initialState?.entry,
 		},
+		entryLines: initialState?.entryLines ?? defaultState.entryLines,
 		entryFinancialTransactions: initialState?.entryFinancialTransactions ?? defaultState.entryFinancialTransactions,
 	});
 
@@ -61,6 +76,35 @@ export function useInternalAccountingEntryState({ initialState }: UseInternalAcc
 				...prev.entry,
 				...patch,
 			},
+		}));
+	}, []);
+
+	const addEntryLine = useCallback((line?: Partial<TAccountingEntryLineState>) => {
+		setState((prev) => ({
+			...prev,
+			entryLines: [...prev.entryLines, getDefaultAccountingEntryLineState(line)],
+		}));
+	}, []);
+
+	const updateEntryLine = useCallback(({ index, changes }: { index: number; changes: Partial<TAccountingEntryLineState> }) => {
+		setState((prev) => ({
+			...prev,
+			entryLines: prev.entryLines.map((line, lineIndex) => (lineIndex === index ? { ...line, ...changes } : line)),
+		}));
+	}, []);
+
+	// Sem soft-delete: as linhas são sincronizadas por substituição no servidor, então remover é filtrar.
+	const removeEntryLine = useCallback((index: number) => {
+		setState((prev) => ({
+			...prev,
+			entryLines: prev.entryLines.filter((_, lineIndex) => lineIndex !== index),
+		}));
+	}, []);
+
+	const redefineEntryLines = useCallback((nextLines: TAccountingEntryState["entryLines"]) => {
+		setState((prev) => ({
+			...prev,
+			entryLines: nextLines,
 		}));
 	}, []);
 
@@ -117,6 +161,7 @@ export function useInternalAccountingEntryState({ initialState }: UseInternalAcc
 				...prev.entry,
 				...nextState.entry,
 			},
+			entryLines: nextState.entryLines ?? prev.entryLines,
 			entryFinancialTransactions: nextState.entryFinancialTransactions ?? prev.entryFinancialTransactions,
 		}));
 	}, []);
@@ -128,6 +173,7 @@ export function useInternalAccountingEntryState({ initialState }: UseInternalAcc
 	function getCreatePayload(): TCreateAccountingEntryInput {
 		return {
 			entry: state.entry,
+			entryLines: state.entryLines,
 			entryFinancialTransactions: state.entryFinancialTransactions.filter((transaction) => !transaction.deletar),
 		};
 	}
@@ -135,6 +181,10 @@ export function useInternalAccountingEntryState({ initialState }: UseInternalAcc
 	return {
 		state,
 		updateEntry,
+		addEntryLine,
+		updateEntryLine,
+		removeEntryLine,
+		redefineEntryLines,
 		addFinancialTransaction,
 		updateFinancialTransaction,
 		removeFinancialTransaction,

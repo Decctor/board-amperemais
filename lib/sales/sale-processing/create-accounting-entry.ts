@@ -1,3 +1,4 @@
+import { writeDefaultAccountingEntryLines } from "@/lib/finances/accounting-entry-lines";
 import { accountingEntries } from "@/services/drizzle/schema";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { PgTransaction } from "drizzle-orm/pg-core";
@@ -35,6 +36,16 @@ export async function createAccountingEntry(tx: TransactionClient, params: Creat
 			autorId: params.autorId,
 		})
 		.returning({ id: accountingEntries.id });
+
+	if (entry?.id)
+		await writeDefaultAccountingEntryLines({
+			trx: tx,
+			organizationId: params.organizacaoId,
+			accountingEntryId: entry.id,
+			entryValue: params.valor,
+			debitAccountId: params.idContaDebito,
+			creditAccountId: params.idContaCredito,
+		});
 
 	return entry;
 }

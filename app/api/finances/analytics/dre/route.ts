@@ -10,7 +10,7 @@ import { getPreviousPeriod, getTrailingMonthKeys, getTrailingMonthsRange } from 
 import { formatAsNumber } from "@/lib/formatting";
 import { canViewFinances } from "@/lib/permissions/finances";
 import { db } from "@/services/drizzle";
-import { accountingEntries } from "@/services/drizzle/schema";
+import { accountingEntries, accountingEntryLines } from "@/services/drizzle/schema";
 
 const GetFinancesDreInputSchema = z.object({
 	periodAfter: z
@@ -39,40 +39,49 @@ async function getFinancesDre({ input, session }: { input: TGetFinancesDreInput;
 	});
 	const classification = buildDreClassification(chartAccounts);
 
+	// Agregação pelas linhas contábeis, não pelo par legado: uma partida composta (compra com crédito
+	// tributário, lançamento manual multi-linha) atribui cada valor à sua própria conta. A competência
+	// e o recorte de período continuam vindo do lançamento-pai. Ver ADR-0001.
 	const groupedByAccountsForRange = (range: { after: Date; before: Date }) =>
 		db
 			.select({
-				creditId: accountingEntries.idContaCredito,
-				debitId: accountingEntries.idContaDebito,
-				total: sum(accountingEntries.valor),
+				contaId: accountingEntryLines.contaContabilId,
+				natureza: accountingEntryLines.natureza,
+				total: sum(accountingEntryLines.valor),
 			})
-			.from(accountingEntries)
+			.from(accountingEntryLines)
+			.innerJoin(accountingEntries, eq(accountingEntryLines.lancamentoContabilId, accountingEntries.id))
 			.where(
 				and(
-					eq(accountingEntries.organizacaoId, organizationId),
+					eq(accountingEntryLines.organizacaoId, organizationId),
 					gte(accountingEntries.dataCompetencia, range.after),
 					lte(accountingEntries.dataCompetencia, range.before),
 				),
 			)
-			.groupBy(accountingEntries.idContaCredito, accountingEntries.idContaDebito);
+			.groupBy(accountingEntryLines.contaContabilId, accountingEntryLines.natureza);
 
 	const [monthlyRows, currentRows, previousRows] = await Promise.all([
 		db
 			.select({
 				month: sql<string>`to_char(date_trunc('month', ${accountingEntries.dataCompetencia}), 'YYYY-MM')`,
-				creditId: accountingEntries.idContaCredito,
-				debitId: accountingEntries.idContaDebito,
-				total: sum(accountingEntries.valor),
+				contaId: accountingEntryLines.contaContabilId,
+				natureza: accountingEntryLines.natureza,
+				total: sum(accountingEntryLines.valor),
 			})
-			.from(accountingEntries)
+			.from(accountingEntryLines)
+			.innerJoin(accountingEntries, eq(accountingEntryLines.lancamentoContabilId, accountingEntries.id))
 			.where(
 				and(
-					eq(accountingEntries.organizacaoId, organizationId),
+					eq(accountingEntryLines.organizacaoId, organizationId),
 					gte(accountingEntries.dataCompetencia, seriesRange.after),
 					lte(accountingEntries.dataCompetencia, seriesRange.before),
 				),
 			)
-			.groupBy(sql`date_trunc('month', ${accountingEntries.dataCompetencia})`, accountingEntries.idContaCredito, accountingEntries.idContaDebito),
+			.groupBy(
+				sql`date_trunc('month', ${accountingEntries.dataCompetencia})`,
+				accountingEntryLines.contaContabilId,
+				accountingEntryLines.natureza,
+			),
 		groupedByAccountsForRange(period),
 		groupedByAccountsForRange(previousPeriod),
 	]);
@@ -85,9 +94,12 @@ async function getFinancesDre({ input, session }: { input: TGetFinancesDreInput;
 		const bucket = seriesBuckets.get(row.month);
 		if (!bucket) continue;
 		const total = formatAsNumber(row.total);
-		if (classification.revenueIds.has(row.creditId)) bucket.receita += total;
-		if (classification.costIds.has(row.debitId)) bucket.custo += total;
-		else if (classification.expenseIds.has(row.debitId)) bucket.despesa += total;
+		if (row.natureza === "CREDITO") {
+			if (classification.revenueIds.has(row.contaId)) bucket.receita += total;
+			continue;
+		}
+		if (classification.costIds.has(row.contaId)) bucket.custo += total;
+		else if (classification.expenseIds.has(row.contaId)) bucket.despesa += total;
 	}
 	const serie = [...seriesBuckets.entries()].map(([mes, bucket]) => {
 		const lucroBruto = bucket.receita - bucket.custo;
@@ -104,8 +116,8 @@ async function getFinancesDre({ input, session }: { input: TGetFinancesDreInput;
 		};
 	});
 
-	const toNumericRows = (rows: Array<{ creditId: string; debitId: string; total: string | number | null }>) =>
-		rows.map((row) => ({ creditId: row.creditId, debitId: row.debitId, total: formatAsNumber(row.total) }));
+	const toNumericRows = (rows: Array<{ contaId: string; natureza: "DEBITO" | "CREDITO"; total: string | number | null }>) =>
+		rows.map((row) => ({ contaId: row.contaId, natureza: row.natureza, total: formatAsNumber(row.total) }));
 	const currentTotals = accumulateCategoryTotals(toNumericRows(currentRows), classification);
 	const previousTotals = accumulateCategoryTotals(toNumericRows(previousRows), classification);
 

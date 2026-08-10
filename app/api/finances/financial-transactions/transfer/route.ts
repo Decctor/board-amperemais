@@ -3,6 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { canCreateFinances } from "@/lib/permissions/finances";
 import { db } from "@/services/drizzle";
+import { writeDefaultAccountingEntryLines } from "@/lib/finances/accounting-entry-lines";
 import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 import { accountingEntries, accountsCharts, financialAccounts, financialTransactions } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
@@ -136,6 +137,15 @@ async function createFinancialTransfer({ input, session }: { input: TCreateFinan
 			})
 			.returning({ id: accountingEntries.id });
 		if (!entry) throw new createHttpError.InternalServerError("Erro ao criar lançamento contábil da transferência.");
+		await writeDefaultAccountingEntryLines({
+			trx: tx,
+			organizationId: orgId,
+			accountingEntryId: entry.id,
+			entryValue: transfer.valor,
+			expectedValue: transfer.valor,
+			debitAccountId: accountingAccountIds.debitAccountId,
+			creditAccountId: accountingAccountIds.creditAccountId,
+		});
 
 		const transactions = await tx
 			.insert(financialTransactions)

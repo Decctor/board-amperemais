@@ -4,6 +4,7 @@ import type { TRegisterSalesSessionMovementInput } from "@/schemas/sales-session
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
+import { writeDefaultAccountingEntryLines } from "@/lib/finances/accounting-entry-lines";
 
 /**
  * Registra um movimento manual de caixa (sangria/suprimento) numa sessão aberta.
@@ -57,6 +58,15 @@ export async function registerSalesSessionMovement({
 				autorId,
 			})
 			.returning({ id: accountingEntries.id });
+
+		await writeDefaultAccountingEntryLines({
+			trx: tx,
+			organizationId: orgId,
+			accountingEntryId: entry.id,
+			entryValue: input.valor,
+			debitAccountId: idContaDebito,
+			creditAccountId: idContaCredito,
+		});
 
 		const [transaction] = await tx
 			.insert(financialTransactions)

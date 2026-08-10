@@ -1,6 +1,6 @@
 "use client";
 
-import AccountingEntryAccountsBlock from "@/components/Modals/AccountingEntries/Blocks/Accounts";
+import AccountingEntryLinesBlock, { getEntryLinesError } from "@/components/Modals/AccountingEntries/Blocks/Lines";
 import AccountingEntryFinancialTransactionsBlock from "@/components/Modals/AccountingEntries/Blocks/FinancialTransactions";
 import AccountingEntryGeneralBlock from "@/components/Modals/AccountingEntries/Blocks/General";
 import AccountingEntryValuesBlock from "@/components/Modals/AccountingEntries/Blocks/Values";
@@ -35,6 +35,9 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 	const {
 		state,
 		updateEntry,
+		addEntryLine,
+		updateEntryLine,
+		removeEntryLine,
 		addFinancialTransaction,
 		updateFinancialTransaction,
 		removeFinancialTransaction,
@@ -59,6 +62,20 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 				valorPrevisto: entryData.valorPrevisto,
 				dataCompetencia: entryData.dataCompetencia,
 			},
+			// Lançamentos anteriores às linhas hidratam a partida a partir do par legado — a mesma
+			// derivação que o servidor faria ao salvar sem linhas explícitas.
+			entryLines:
+				entryData.linhas.length > 0
+					? entryData.linhas.map((line) => ({
+							contaContabilId: line.contaContabilId,
+							natureza: line.natureza,
+							valor: line.valor,
+							descricao: line.descricao,
+						}))
+					: [
+							{ contaContabilId: entryData.idContaDebito, natureza: "DEBITO", valor: entryData.valor, descricao: null },
+							{ contaContabilId: entryData.idContaCredito, natureza: "CREDITO", valor: entryData.valor, descricao: null },
+						],
 			entryFinancialTransactions: entryData.transacoesFinanceiras.map((transaction) => ({
 				id: transaction.id,
 				deletar: false,
@@ -137,12 +154,21 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 			menuDescription="Ajuste os dados do lançamento e suas transações financeiras vinculadas."
 			menuActionButtonText="SALVAR LANÇAMENTO"
 			menuCancelButtonText="CANCELAR"
-			actionFunction={() => mutate({ entryPayload: state, config: recurrenceConfig })}
+			actionFunction={() => {
+				// Só a origem MANUAL grava linhas por aqui; nas demais elas viajam apenas para exibição.
+				if (canEditAccountingFields) {
+					const linesError = getEntryLinesError(state.entry, state.entryLines);
+					if (linesError) return toast.error(linesError);
+				}
+				mutate({ entryPayload: state, config: recurrenceConfig });
+			}}
 			actionIsLoading={isPending}
 			stateIsLoading={isLoading}
 			stateError={isError ? getErrorMessage(error) : null}
 			closeMenu={closeModal}
 			lockClose={isPending}
+			dialogVariant="lg"
+			drawerVariant="lg"
 		>
 			{entryData ? (
 				<div className="flex flex-col gap-3 rounded-md border border-border bg-muted/40 px-3 py-3 text-sm">
@@ -191,8 +217,16 @@ export default function ControlAccountingEntry({ entryId, closeModal, callbacks 
 				competenceEditable={canEditAccountingFields}
 				annotationsEditable={canEditAnnotations}
 			/>
-			<AccountingEntryAccountsBlock entry={state.entry} updateEntry={updateEntry} editable={canEditAccountingFields} />
 			<AccountingEntryValuesBlock entry={state.entry} updateEntry={updateEntry} editable={canEditAccountingFields} />
+			<AccountingEntryLinesBlock
+				entry={state.entry}
+				entryLines={state.entryLines}
+				updateEntry={updateEntry}
+				addEntryLine={addEntryLine}
+				updateEntryLine={updateEntryLine}
+				removeEntryLine={removeEntryLine}
+				editable={canEditAccountingFields}
+			/>
 			<AccountingEntryFinancialTransactionsBlock
 				entryTotalValue={state.entry.valor}
 				entryCompetenceDate={state.entry.dataCompetencia}

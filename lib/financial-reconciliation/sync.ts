@@ -1,3 +1,4 @@
+import { writeDefaultAccountingEntryLines } from "@/lib/finances/accounting-entry-lines";
 import { effectFinancialTransactionCore } from "@/lib/finances/effect-financial-transaction";
 import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 import { db } from "@/services/drizzle";
@@ -195,6 +196,15 @@ export async function createEntryFromStatementLine({
 				autorId,
 			})
 			.returning({ id: accountingEntries.id });
+
+		await writeDefaultAccountingEntryLines({
+			trx: tx,
+			organizationId: organizacaoId,
+			accountingEntryId: entry.id,
+			entryValue: linha.valor,
+			debitAccountId: contaContabilDebitoId,
+			creditAccountId: contaContabilCreditoId,
+		});
 
 		const [transaction] = await tx
 			.insert(financialTransactions)

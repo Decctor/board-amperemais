@@ -5,9 +5,15 @@ import { canCreateFinances, canEditFinances, canViewFinances } from "@/lib/permi
 import { getCreditCardForecastDate } from "@/lib/finances/credit-card";
 import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 import { getNextRecurringOccurrence } from "@/lib/finances/recurrence";
+import {
+	assertAccountingEntryLinesBalanced,
+	buildDefaultAccountingEntryLines,
+	syncAccountingEntryLines,
+	type TAccountingEntryLineInput,
+} from "@/lib/finances/accounting-entry-lines";
 import { db, type DBTransaction } from "@/services/drizzle";
 import { accountingEntries, accountsCharts, financialAccounts, financialRecurringRules, financialTransactions } from "@/services/drizzle/schema";
-import { AccountingEntrySchema, FinancialTransactionSchema } from "@/schemas/financial";
+import { AccountingEntryLineSchema, AccountingEntrySchema, FinancialTransactionSchema } from "@/schemas/financial";
 import { FinancialRecurringRuleConfigSchema } from "@/schemas/financial-recurring";
 import { AccountingEntryOriginTypeEnum, TAccountingEntryOriginTypeEnum } from "@/schemas/enums";
 import type { TFinancialAccountConfiguration } from "@/schemas/financial";
@@ -64,6 +70,10 @@ async function getAccountingEntries({ input, session }: { input: TGetAccountingE
 			with: {
 				contaDebito: { columns: { id: true, nome: true, codigo: true, natureza: true } },
 				contaCredito: { columns: { id: true, nome: true, codigo: true, natureza: true } },
+				linhas: {
+					with: { contaContabil: { columns: { id: true, nome: true, codigo: true, natureza: true } } },
+					orderBy: (fields, { asc }) => asc(fields.ordem),
+				},
 				autor: { columns: { id: true, nome: true, avatarUrl: true } },
 				transacoesFinanceiras: {
 					with: {
@@ -184,8 +194,19 @@ const FinancialTransactionMutationSchema = FinancialTransactionSchema.pick({
 	totalParcelas: true,
 });
 
+const AccountingEntryLineInputSchema = AccountingEntryLineSchema.pick({
+	contaContabilId: true,
+	natureza: true,
+	valor: true,
+	descricao: true,
+});
+export type TAccountingEntryLineInputState = z.infer<typeof AccountingEntryLineInputSchema>;
+
 const CreateAccountingEntryInputSchema = z.object({
 	entry: AccountingEntryMutationSchema,
+	// Vazio = lançamento de par único; o par vira as duas linhas padrão. Preenchido = partida
+	// composta; o par das colunas legadas é derivado da primeira linha de cada natureza.
+	entryLines: z.array(AccountingEntryLineInputSchema).default([]),
 	entryFinancialTransactions: z.array(FinancialTransactionMutationSchema).default([]),
 	recurrenceRule: FinancialRecurringRuleConfigSchema.optional().nullable(),
 });
@@ -197,6 +218,7 @@ const UpdateAccountingEntryInputSchema = z.object({
 		invalid_type_error: "Tipo inválido para ID do lançamento contábil.",
 	}),
 	entry: AccountingEntryMutationSchema,
+	entryLines: z.array(AccountingEntryLineInputSchema).default([]),
 	entryFinancialTransactions: z
 		.array(
 			FinancialTransactionMutationSchema.extend({
@@ -282,34 +304,75 @@ function assertLockedEntryFieldsUnchanged({
 	}
 }
 
+/**
+ * Resolve as linhas efetivas do lançamento e o par legado que as espelha. Sem linhas explícitas o
+ * par informado É o lançamento, materializado como as duas linhas padrão; com linhas, o par vira
+ * sombra derivada (primeira linha de cada natureza) apenas porque as colunas ainda são NOT NULL —
+ * os leitores migrados consultam as linhas. Ver ADR-0001.
+ */
+function resolveManualEntryLines({
+	entry,
+	entryLines,
+}: {
+	entry: TCreateAccountingEntryInput["entry"];
+	entryLines: TAccountingEntryLineInputState[];
+}): { lines: TAccountingEntryLineInput[]; idContaDebito: string; idContaCredito: string } {
+	if (entryLines.length === 0) {
+		if (entry.idContaDebito === entry.idContaCredito) {
+			throw new createHttpError.BadRequest("A conta de débito e a conta de crédito precisam ser diferentes.");
+		}
+		return {
+			lines: buildDefaultAccountingEntryLines({
+				debitAccountId: entry.idContaDebito,
+				creditAccountId: entry.idContaCredito,
+				value: entry.valor,
+				expectedValue: entry.valorPrevisto,
+			}),
+			idContaDebito: entry.idContaDebito,
+			idContaCredito: entry.idContaCredito,
+		};
+	}
+
+	const lines: TAccountingEntryLineInput[] = entryLines.map((line, index) => ({
+		contaContabilId: line.contaContabilId,
+		natureza: line.natureza,
+		valor: line.valor,
+		descricao: line.descricao ?? null,
+		ordem: index,
+	}));
+	try {
+		assertAccountingEntryLinesBalanced({ entryValue: entry.valor, lines });
+	} catch (error) {
+		throw new createHttpError.BadRequest(error instanceof Error ? error.message : "Linhas contábeis inválidas.");
+	}
+	const firstDebit = lines.find((line) => line.natureza === "DEBITO");
+	const firstCredit = lines.find((line) => line.natureza === "CREDITO");
+	if (!firstDebit || !firstCredit) throw new createHttpError.BadRequest("O lançamento precisa de ao menos uma linha de débito e uma de crédito.");
+	return { lines, idContaDebito: firstDebit.contaContabilId, idContaCredito: firstCredit.contaContabilId };
+}
+
 async function validateAccountingEntryRelations({
 	tx,
 	orgId,
-	entry,
+	chartAccountIds,
 	transactions,
 }: {
 	tx: DBTransaction;
 	orgId: string;
-	entry: TCreateAccountingEntryInput["entry"];
+	chartAccountIds: string[];
 	transactions: TAccountingEntryTransactionInput[];
 }) {
-	if (entry.idContaDebito === entry.idContaCredito) {
-		throw new createHttpError.BadRequest("A conta de débito e a conta de crédito precisam ser diferentes.");
+	const uniqueChartIds = Array.from(new Set(chartAccountIds));
+	if (uniqueChartIds.length > 0) {
+		const charts = await tx.query.accountsCharts.findMany({
+			where: and(eq(accountsCharts.organizacaoId, orgId), inArray(accountsCharts.id, uniqueChartIds)),
+			columns: { id: true },
+		});
+		const foundChartIds = new Set(charts.map((chart) => chart.id));
+		for (const chartId of uniqueChartIds) {
+			if (!foundChartIds.has(chartId)) throw new createHttpError.NotFound("Conta contábil não encontrada para esta organização.");
+		}
 	}
-
-	const [debitAccount, creditAccount] = await Promise.all([
-		tx.query.accountsCharts.findFirst({
-			where: and(eq(accountsCharts.id, entry.idContaDebito), eq(accountsCharts.organizacaoId, orgId)),
-			columns: { id: true },
-		}),
-		tx.query.accountsCharts.findFirst({
-			where: and(eq(accountsCharts.id, entry.idContaCredito), eq(accountsCharts.organizacaoId, orgId)),
-			columns: { id: true },
-		}),
-	]);
-
-	if (!debitAccount) throw new createHttpError.NotFound("Conta de débito não encontrada.");
-	if (!creditAccount) throw new createHttpError.NotFound("Conta de crédito não encontrada.");
 
 	const financialAccountIds = Array.from(new Set(transactions.map((transaction) => transaction.contaFinanceiraId).filter(Boolean))) as string[];
 	const accountById = new Map<string, { id: string; tipo: string; configuracao: TFinancialAccountConfiguration }>();
@@ -365,12 +428,18 @@ async function createAccountingEntry({ input, session }: { input: TCreateAccount
 
 	const orgId = userMembership.organizacao.id;
 	validateTransactionTotal({ entryValue: input.entry.valor, transactions: input.entryFinancialTransactions });
+	const resolvedLines = resolveManualEntryLines({ entry: input.entry, entryLines: input.entryLines });
+	// O template de recorrência ainda guarda só o par; uma partida composta geraria ocorrências que
+	// não reproduzem as linhas originais. Duas linhas custom equivalem ao par derivado, então passam.
+	if (input.recurrenceRule && input.entryLines.length > 2) {
+		throw new createHttpError.BadRequest("Lançamentos com mais de duas linhas contábeis ainda não suportam recorrência.");
+	}
 
 	const transactionReturn = await db.transaction(async (tx) => {
 		const accountById = await validateAccountingEntryRelations({
 			tx,
 			orgId,
-			entry: input.entry,
+			chartAccountIds: resolvedLines.lines.map((line) => line.contaContabilId),
 			transactions: input.entryFinancialTransactions,
 		});
 
@@ -381,8 +450,8 @@ async function createAccountingEntry({ input, session }: { input: TCreateAccount
 				origemTipo: "MANUAL",
 				titulo: input.entry.titulo,
 				anotacoes: input.entry.anotacoes ?? null,
-				idContaDebito: input.entry.idContaDebito,
-				idContaCredito: input.entry.idContaCredito,
+				idContaDebito: resolvedLines.idContaDebito,
+				idContaCredito: resolvedLines.idContaCredito,
 				valor: input.entry.valor,
 				valorPrevisto: input.entry.valorPrevisto ?? null,
 				dataCompetencia: input.entry.dataCompetencia,
@@ -393,6 +462,14 @@ async function createAccountingEntry({ input, session }: { input: TCreateAccount
 		if (!createdEntry?.id) {
 			throw new createHttpError.InternalServerError("Erro ao criar lançamento contábil.");
 		}
+
+		await syncAccountingEntryLines({
+			trx: tx,
+			organizationId: orgId,
+			accountingEntryId: createdEntry.id,
+			entryValue: input.entry.valor,
+			lines: resolvedLines.lines,
+		});
 
 		if (input.entryFinancialTransactions.length > 0) {
 			await tx.insert(financialTransactions).values(
@@ -433,8 +510,8 @@ async function createAccountingEntry({ input, session }: { input: TCreateAccount
 					templateLancamento: {
 						titulo: input.entry.titulo,
 						anotacoes: input.entry.anotacoes ?? null,
-						idContaDebito: input.entry.idContaDebito,
-						idContaCredito: input.entry.idContaCredito,
+						idContaDebito: resolvedLines.idContaDebito,
+						idContaCredito: resolvedLines.idContaCredito,
 						valor: input.entry.valor,
 						valorPrevisto: input.entry.valorPrevisto ?? null,
 						dataCompetencia: input.entry.dataCompetencia,
@@ -488,8 +565,10 @@ async function updateAccountingEntry({ input, session }: { input: TUpdateAccount
 	// de pagamento pode ser ajustada aqui — é onde o time financeiro trabalha.
 	const canUpdateTransactions = existingEntry.origemTipo === "MANUAL" || existingEntry.origemTipo === "VENDA" || existingEntry.origemTipo === "COMPRA";
 
+	let resolvedLines: ReturnType<typeof resolveManualEntryLines> | null = null;
 	if (canUpdateAccountingFields) {
 		validateTransactionTotal({ entryValue: input.entry.valor, transactions: input.entryFinancialTransactions });
+		resolvedLines = resolveManualEntryLines({ entry: input.entry, entryLines: input.entryLines });
 	} else {
 		assertLockedEntryFieldsUnchanged({ inputEntry: input.entry, existingEntry });
 		if (canUpdateTransactions) {
@@ -498,11 +577,11 @@ async function updateAccountingEntry({ input, session }: { input: TUpdateAccount
 	}
 
 	const transactionReturn = await db.transaction(async (tx) => {
-		if (canUpdateAccountingFields) {
+		if (resolvedLines) {
 			await validateAccountingEntryRelations({
 				tx,
 				orgId,
-				entry: input.entry,
+				chartAccountIds: resolvedLines.lines.map((line) => line.contaContabilId),
 				transactions: input.entryFinancialTransactions,
 			});
 		}
@@ -511,11 +590,11 @@ async function updateAccountingEntry({ input, session }: { input: TUpdateAccount
 			.update(accountingEntries)
 			.set({
 				anotacoes: input.entry.anotacoes ?? null,
-				...(canUpdateAccountingFields
+				...(resolvedLines
 					? {
 							titulo: input.entry.titulo,
-							idContaDebito: input.entry.idContaDebito,
-							idContaCredito: input.entry.idContaCredito,
+							idContaDebito: resolvedLines.idContaDebito,
+							idContaCredito: resolvedLines.idContaCredito,
 							valor: input.entry.valor,
 							valorPrevisto: input.entry.valorPrevisto ?? null,
 							dataCompetencia: input.entry.dataCompetencia,
@@ -529,12 +608,23 @@ async function updateAccountingEntry({ input, session }: { input: TUpdateAccount
 			throw new createHttpError.InternalServerError("Erro ao atualizar lançamento contábil.");
 		}
 
+		if (resolvedLines) {
+			await syncAccountingEntryLines({
+				trx: tx,
+				organizationId: orgId,
+				accountingEntryId: updatedEntry.id,
+				entryValue: input.entry.valor,
+				lines: resolvedLines.lines,
+			});
+		}
+
 		if (!canUpdateTransactions) return updatedEntry.id;
 
 		const accountById = await validateAccountingEntryRelations({
 			tx,
 			orgId,
-			entry: existingEntry,
+			// Origens travadas já têm as contas validadas; aqui só o mapa de contas financeiras importa.
+			chartAccountIds: [],
 			transactions: input.entryFinancialTransactions,
 		});
 

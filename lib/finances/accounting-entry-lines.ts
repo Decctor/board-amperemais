@@ -128,6 +128,38 @@ export function buildPurchaseAccountingEntryLines({
 	return lines;
 }
 
+/**
+ * Caminho padrão para origens de par único (venda, transferência, perda, fatura de cartão…): o
+ * lançamento continua nascendo com `idContaDebito`/`idContaCredito`, e este helper materializa o
+ * mesmo par como linhas. Quando os leitores só consultarem linhas, o par vira sombra derivada e a
+ * remoção das colunas é uma migração trivial. Ver ADR-0001.
+ */
+export async function writeDefaultAccountingEntryLines({
+	trx,
+	organizationId,
+	accountingEntryId,
+	entryValue,
+	expectedValue,
+	debitAccountId,
+	creditAccountId,
+}: {
+	trx: DBTransaction;
+	organizationId: string;
+	accountingEntryId: string;
+	entryValue: number;
+	expectedValue?: number | null;
+	debitAccountId: string;
+	creditAccountId: string;
+}) {
+	await syncAccountingEntryLines({
+		trx,
+		organizationId,
+		accountingEntryId,
+		entryValue,
+		lines: buildDefaultAccountingEntryLines({ debitAccountId, creditAccountId, value: entryValue, expectedValue }),
+	});
+}
+
 export async function syncAccountingEntryLines({
 	trx,
 	organizationId,

@@ -1,6 +1,6 @@
 "use client";
 
-import AccountingEntryAccountsBlock from "@/components/Modals/AccountingEntries/Blocks/Accounts";
+import AccountingEntryLinesBlock, { getEntryLinesError } from "@/components/Modals/AccountingEntries/Blocks/Lines";
 import AccountingEntryFinancialTransactionsBlock from "@/components/Modals/AccountingEntries/Blocks/FinancialTransactions";
 import AccountingEntryGeneralBlock from "@/components/Modals/AccountingEntries/Blocks/General";
 import AccountingEntryValuesBlock from "@/components/Modals/AccountingEntries/Blocks/Values";
@@ -30,6 +30,9 @@ export default function NewAccountingEntry({ closeModal, callbacks }: NewAccount
 	const {
 		state,
 		updateEntry,
+		addEntryLine,
+		updateEntryLine,
+		removeEntryLine,
 		addFinancialTransaction,
 		updateFinancialTransaction,
 		removeFinancialTransaction,
@@ -73,15 +76,29 @@ export default function NewAccountingEntry({ closeModal, callbacks }: NewAccount
 			menuDescription="Preencha os dados do lançamento e, se necessário, vincule as transações financeiras."
 			menuActionButtonText="CRIAR LANÇAMENTO"
 			menuCancelButtonText="CANCELAR"
-			actionFunction={() => mutate({ entryPayload: getCreatePayload(), config: recurrenceConfig })}
+			actionFunction={() => {
+				// O servidor rejeita partidas desbalanceadas; a tela já sabe o erro, então não gasta o round-trip.
+				const linesError = getEntryLinesError(state.entry, state.entryLines);
+				if (linesError) return toast.error(linesError);
+				mutate({ entryPayload: getCreatePayload(), config: recurrenceConfig });
+			}}
 			actionIsLoading={isPending}
 			stateIsLoading={false}
 			closeMenu={closeModal}
 			lockClose={isPending}
+			dialogVariant="lg"
+			drawerVariant="lg"
 		>
 			<AccountingEntryGeneralBlock entry={state.entry} updateEntry={updateEntry} />
-			<AccountingEntryAccountsBlock entry={state.entry} updateEntry={updateEntry} />
 			<AccountingEntryValuesBlock entry={state.entry} updateEntry={updateEntry} />
+			<AccountingEntryLinesBlock
+				entry={state.entry}
+				entryLines={state.entryLines}
+				updateEntry={updateEntry}
+				addEntryLine={addEntryLine}
+				updateEntryLine={updateEntryLine}
+				removeEntryLine={removeEntryLine}
+			/>
 			<AccountingEntryFinancialTransactionsBlock
 				entryTotalValue={state.entry.valor}
 				entryCompetenceDate={state.entry.dataCompetencia}

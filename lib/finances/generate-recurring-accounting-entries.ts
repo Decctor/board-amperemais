@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import { and, eq, inArray } from "drizzle-orm";
+import { writeDefaultAccountingEntryLines } from "./accounting-entry-lines";
 import { getCreditCardForecastDate } from "./credit-card";
 import { normalizeFinancialTransactionValue } from "./financial-transaction-value";
 import { getNextRecurringOccurrence, getRecurringOccurrencesUntil } from "./recurrence";
@@ -81,6 +82,15 @@ export async function generateRecurringAccountingEntries(db: DB, referenceDate =
 						.onConflictDoNothing({ target: [accountingEntries.recorrenciaRegraId, accountingEntries.recorrenciaInstanciaData] })
 						.returning({ id: accountingEntries.id });
 					if (!entry) return false;
+					await writeDefaultAccountingEntryLines({
+						trx: tx,
+						organizationId: rule.organizacaoId,
+						accountingEntryId: entry.id,
+						entryValue: rule.templateLancamento.valor,
+						expectedValue: rule.templateLancamento.valorPrevisto,
+						debitAccountId: rule.templateLancamento.idContaDebito,
+						creditAccountId: rule.templateLancamento.idContaCredito,
+					});
 					if (rule.templateTransacoes.length > 0) {
 						await tx.insert(financialTransactions).values(
 							rule.templateTransacoes.map((template) => ({

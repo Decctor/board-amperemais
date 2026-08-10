@@ -4,6 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { canCreateFinances } from "@/lib/permissions/finances";
 import { deriveCreditCardInvoice, getCreditCardInvoiceDateKey, type TCreditCardInvoiceTransaction } from "@/lib/finances/credit-card-invoice";
 import { isCashLikeFinancialAccountType } from "@/lib/finances/financial-account-configuration";
+import { writeDefaultAccountingEntryLines } from "@/lib/finances/accounting-entry-lines";
 import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 import { db } from "@/services/drizzle";
 import { accountingEntries, accountsCharts, financialAccounts, financialTransactions } from "@/services/drizzle/schema";
@@ -178,6 +179,16 @@ async function createCreditCardPayment({ input, session }: { input: TCreateCredi
 			if (!existing) throw new createHttpError.Conflict("O pagamento já foi processado por outra requisição.");
 			return { entryId: existing.id, transactionIds: existing.transacoesFinanceiras.map((transaction) => transaction.id), alreadyExists: true };
 		}
+
+		await writeDefaultAccountingEntryLines({
+			trx: tx,
+			organizationId: orgId,
+			accountingEntryId: entry.id,
+			entryValue: payment.valor,
+			expectedValue: payment.valor,
+			debitAccountId: cardAccount.contaContabilId!,
+			creditAccountId: sourceAccount.contaContabilId!,
+		});
 
 		const transactions = await tx
 			.insert(financialTransactions)

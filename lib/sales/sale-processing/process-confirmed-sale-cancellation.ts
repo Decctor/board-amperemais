@@ -1,4 +1,5 @@
 import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
+import { writeDefaultAccountingEntryLines } from "@/lib/finances/accounting-entry-lines";
 import { cancelCouponRedemption } from "@/lib/coupons/redemption";
 import { registerRefundCashMovement, resolveActiveSalesSession } from "@/lib/sales-sessions";
 import { reverseSaleItemStock } from "@/lib/sales/sale-processing/reverse-sale-item-stock";
@@ -84,6 +85,16 @@ export async function processConfirmedSaleCancellation({
 					autorId: authorId,
 				})
 				.returning({ id: accountingEntries.id });
+
+			if (reversalEntry?.id)
+				await writeDefaultAccountingEntryLines({
+					trx: tx,
+					organizationId,
+					accountingEntryId: reversalEntry.id,
+					entryValue: originalEntry.valor,
+					debitAccountId: originalEntry.idContaCredito,
+					creditAccountId: originalEntry.idContaDebito,
+				});
 
 			// Saída de dinheiro do caixa na sessão atual, refletindo o estorno na gaveta.
 			if (activeSession && reversalEntry?.id) {

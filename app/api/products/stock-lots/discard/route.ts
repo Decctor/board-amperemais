@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { writeDefaultAccountingEntryLines } from "@/lib/finances/accounting-entry-lines";
 import { resolveAccountingDefaultAccountIds } from "@/lib/finances/resolve-accounting-default-accounts";
 import { applyStockMovement, isStockTrackingActive } from "@/lib/stock/apply-stock-movement";
 import { db, type DBTransaction } from "@/services/drizzle";
@@ -153,6 +154,14 @@ async function discardProductStockLot({ input, session }: { input: TDiscardProdu
 				.returning({ id: accountingEntries.id });
 			lossAccountingEntryId = entry?.id ?? null;
 			if (!lossAccountingEntryId) throw new createHttpError.InternalServerError("Erro ao criar lançamento contábil da perda.");
+			await writeDefaultAccountingEntryLines({
+				trx: tx,
+				organizationId,
+				accountingEntryId: lossAccountingEntryId,
+				entryValue: lossValue,
+				debitAccountId,
+				creditAccountId,
+			});
 		}
 
 		return {

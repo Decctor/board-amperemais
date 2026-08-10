@@ -39,7 +39,9 @@ A compra preserva seus documentos de origem em `purchases.documentos_importados`
 
 O par fixo débito/crédito será substituído gradualmente por `accounting_entry_lines`, uma primitiva genérica para todas as origens contábeis. Cada linha contém conta, natureza, valor, descrição, ordem e metadados opcionais.
 
-A gradualidade está nas origens, não num interruptor: a compra já grava suas linhas sempre, e as demais origens (venda, transferência, perda de estoque, pagamento de cartão) passam a gravar conforme forem migradas. Não há flag de ambiente — o balanceamento é validado na mesma chamada que persiste, então uma linha só existe se fecha.
+Todas as origens gravam linhas: compra (composição por tratamento), lançamento manual (partida de N linhas pela UI), e as origens de par único — venda, estorno, transferência, movimento de sessão, conciliação, recorrência, pagamento de cartão e perda de estoque — via `writeDefaultAccountingEntryLines`. Não há flag de ambiente — o balanceamento é validado na mesma chamada que persiste, então uma linha só existe se fecha.
+
+Os leitores agregados (DRE e stats financeiros) consultam exclusivamente `accounting_entry_lines`; um lançamento sem linhas não aparece nos relatórios, e o backfill (`scripts/backfill-purchase-cost-composition.ts --only=lines`) é o que garante que não exista nenhum. `idContaDebito`/`idContaCredito` viraram sombra derivada — no lançamento manual, a primeira linha de cada natureza — mantida apenas porque as colunas são NOT NULL e a lista de lançamentos, o template de recorrência e o estorno ainda as leem. Removê-las é um passo pequeno e isolado: migrar esses três leitores pontuais, tornar as colunas anuláveis e então dropá-las.
 
 Não haverá enum global de chaves para linhas contábeis. A classificação efetiva é `contaContabilId + natureza`; a chave de um modificador explica origem econômica e não deve competir com o plano de contas.
 
