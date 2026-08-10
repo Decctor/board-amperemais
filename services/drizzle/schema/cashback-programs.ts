@@ -37,6 +37,7 @@ export const cashbackPrograms = newTable("cashback_programs", {
 	// Configurations for accumulation source
 	acumuloPermitirViaIntegracao: boolean("acumulo_permitir_via_integracao").notNull().default(false),
 	acumuloPermitirViaPontoIntegracao: boolean("acumulo_permitir_via_ponto_integracao").notNull().default(false),
+	resgatePermitirViaPontoIntegracao: boolean("resgate_permitir_via_ponto_integracao").notNull().default(true),
 	expiracaoRegraValidadeValor: doublePrecision("expiracao_regra_validade_valor").notNull().default(0),
 	resgateLimiteTipo: cashbackProgramRedemptionLimitTypeEnum(),
 	resgateLimiteValor: doublePrecision("resgate_limite_valor"),
