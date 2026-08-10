@@ -14,8 +14,9 @@ import { createClient } from "@supabase/supabase-js";
 import { eq, isNotNull, sql } from "drizzle-orm";
 
 /**
- * Backfill de 0072_purchase_cost_composition.sql. Rodar DEPOIS da migração e ANTES de ligar
- * ACCOUNTING_ENTRY_LINES_ENABLED.
+ * Backfill de 0072_purchase_cost_composition.sql. Rodar DEPOIS da migração e logo após o deploy: as
+ * linhas contábeis passam a ser gravadas em toda compra, e sem esta execução os lançamentos
+ * anteriores ficariam sendo os únicos sem linhas.
  *
  *   npx tsx ./scripts/backfill-purchase-cost-composition.ts --dry-run
  *   npx tsx ./scripts/backfill-purchase-cost-composition.ts

@@ -39,6 +39,8 @@ A compra preserva seus documentos de origem em `purchases.documentos_importados`
 
 O par fixo débito/crédito será substituído gradualmente por `accounting_entry_lines`, uma primitiva genérica para todas as origens contábeis. Cada linha contém conta, natureza, valor, descrição, ordem e metadados opcionais.
 
+A gradualidade está nas origens, não num interruptor: a compra já grava suas linhas sempre, e as demais origens (venda, transferência, perda de estoque, pagamento de cartão) passam a gravar conforme forem migradas. Não há flag de ambiente — o balanceamento é validado na mesma chamada que persiste, então uma linha só existe se fecha.
+
 Não haverá enum global de chaves para linhas contábeis. A classificação efetiva é `contaContabilId + natureza`; a chave de um modificador explica origem econômica e não deve competir com o plano de contas.
 
 Para todo lançamento:

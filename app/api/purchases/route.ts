@@ -4,12 +4,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
 import { getAccountingEntryBalanceError } from "@/lib/finances/accounting-entry-balance";
-import {
-	accountingEntryLinesAreEnabled,
-	buildDefaultAccountingEntryLines,
-	buildPurchaseAccountingEntryLines,
-	syncAccountingEntryLines,
-} from "@/lib/finances/accounting-entry-lines";
+import { buildDefaultAccountingEntryLines, buildPurchaseAccountingEntryLines, syncAccountingEntryLines } from "@/lib/finances/accounting-entry-lines";
 import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 import { calculatePurchaseItemCost, centsToMoney, moneyToCents } from "@/lib/purchase/costing";
 import {
@@ -416,8 +411,6 @@ async function syncPurchaseAccountingLines({
 	items: TPurchaseItemInput[];
 	purchaseIsReceived: boolean;
 }) {
-	if (!accountingEntryLinesAreEnabled()) return;
-
 	if (!purchaseIsReceived) {
 		await syncAccountingEntryLines({
 			trx,

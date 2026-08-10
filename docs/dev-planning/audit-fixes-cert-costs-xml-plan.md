@@ -80,8 +80,9 @@ Ordem obrigatória, executada manualmente pelo responsável do projeto:
 2. Deploy do código.
 3. `npx tsx ./scripts/backfill-purchase-cost-composition.ts --dry-run` e depois sem a flag. Cobre: linhas contábeis dos lançamentos históricos, contas de crédito tributário e despesa do período nas organizações existentes, remoção da senha e do `storagePath` do certificado no JSONB, cópia dos objetos fiscais de `files/public/organizations/fiscal/**` para `private-files/fiscal/**` e reescrita dos caminhos no banco. A cópia precede a reescrita; o script força essa ordem.
 4. Validar um download de XML e de DANFE pela rota autenticada e só então apagar os objetos antigos em `files/public/organizations/fiscal/**`. O script nunca apaga a origem.
-5. Só então ligar `ACCOUNTING_ENTRY_LINES_ENABLED=true`.
-6. Opcional e destrutivo, depois de conferir o `--dry-run`: `--only=orphan-imports` remove documentos importados que nenhuma compra referencia.
+5. Opcional e destrutivo, depois de conferir o `--dry-run`: `--only=orphan-imports` remove documentos importados que nenhuma compra referencia.
+
+Não há flag para as linhas contábeis: toda compra grava suas linhas. O que torna a etapa 3 obrigatória logo após o deploy é justamente isso — sem ela, os lançamentos anteriores seriam os únicos sem linhas.
 
 Antes de habilitar o novo armazenamento fiscal, o responsável do projeto deve:
 

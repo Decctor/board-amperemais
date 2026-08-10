@@ -13,8 +13,8 @@
 --   documentos_importados snapshot documental da compra. Nao guarda caminho de arquivo: o objeto e
 --                        localizado por `referencia` + organizacao (lib/purchase/imported-documents.ts).
 --
--- accounting_entry_lines fica atras da flag ACCOUNTING_ENTRY_LINES_ENABLED. Criar a tabela antes de
--- ligar a flag e deliberado: o backfill precisa dela para popular os lancamentos historicos.
+-- accounting_entry_lines e gravada em toda compra, sem flag. Por isso a tabela precisa existir antes
+-- do deploy, e o backfill dos lancamentos historicos deve rodar logo em seguida.
 
 DO $$ BEGIN
 	CREATE TYPE "accounting_entry_line_nature" AS ENUM ('DEBITO', 'CREDITO');

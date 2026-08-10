@@ -27,10 +27,6 @@ export type TPurchaseAccountingAccounts = {
 	despesaPeriodoContaId?: string | null;
 };
 
-export function accountingEntryLinesAreEnabled(): boolean {
-	return process.env.ACCOUNTING_ENTRY_LINES_ENABLED === "true";
-}
-
 export function assertAccountingEntryLinesBalanced({ entryValue, lines }: { entryValue: number; lines: TAccountingEntryLineInput[] }) {
 	if (lines.length < 2) throw new Error("O lançamento contábil precisa ter ao menos uma linha de débito e uma de crédito.");
 	const debitCents = lines.filter((line) => line.natureza === "DEBITO").reduce((total, line) => total + moneyToCents(line.valor), 0);
@@ -87,7 +83,10 @@ export function buildPurchaseAccountingEntryLines({
 		const valueCents = moneyToCents(value);
 		if (valueCents === 0) return;
 		if (valueCents < 0) throw new Error("Valores contábeis por tratamento não podem ser negativos.");
-		if (!accountId) throw new Error(`Conta contábil não configurada para ${description.toLowerCase()}.`);
+		// Sem flag para desligar as linhas, esta é a falha que o operador realmente encontra: a mensagem
+		// precisa dizer onde resolver, não apenas o que faltou.
+		if (!accountId)
+			throw new Error(`Conta contábil não configurada para ${description.toLowerCase()}. Defina-a em Configurações › Financeiro › Lançamentos padrão › Compras.`);
 		lines.push({
 			contaContabilId: accountId,
 			natureza: "DEBITO",
@@ -143,7 +142,6 @@ export async function syncAccountingEntryLines({
 	lines: TAccountingEntryLineInput[];
 }) {
 	assertAccountingEntryLinesBalanced({ entryValue, lines });
-	if (!accountingEntryLinesAreEnabled()) return;
 
 	await trx
 		.delete(accountingEntryLines)
