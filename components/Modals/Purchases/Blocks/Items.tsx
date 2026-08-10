@@ -6,7 +6,9 @@ import MobileEditableField from "@/components/Spreadsheet/MobileEditableField";
 import SpreadsheetCellWrapper from "@/components/Spreadsheet/SpreadsheetCellWrapper";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import { formatDateForInputValue, formatDateOnInputChange, formatNameAsInitials, formatToMoney } from "@/lib/formatting";
+import { calculatePurchaseItemCost, resolvePurchaseCostModifierSnapshot } from "@/lib/purchase/costing";
 import {
 	consumeProgrammaticSpreadsheetFocus,
 	handleSpreadsheetNavigationKeyDown,
@@ -15,7 +17,7 @@ import {
 } from "@/lib/spreadsheet-navigation";
 import { cn } from "@/lib/utils";
 import { TUsePurchaseState } from "@/state-hooks/use-purchase-state";
-import { BadgeDollarSign, BoxIcon, CalendarClock, CalendarOff, Lock, Plus, ShoppingCart, Sparkles } from "lucide-react";
+import { BadgeDollarSign, BoxIcon, CalendarClock, CalendarOff, Lock, Plus, ReceiptText, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -42,6 +44,7 @@ type PurchaseItemsBlockProps = {
 	accountingEntry?: TUsePurchaseState["state"]["lancamentoContabil"];
 	updateAccountingEntry?: TUsePurchaseState["updateAccountingEntry"];
 	fornecedorId?: string | null;
+	importedDocuments?: TUsePurchaseState["state"]["purchase"]["documentosImportados"];
 	/** When the purchase is already received, items are frozen to preserve the lots they spawned. */
 	locked?: boolean;
 };
@@ -58,6 +61,7 @@ export default function PurchaseItemsBlock({
 	accountingEntry,
 	updateAccountingEntry,
 	fornecedorId = null,
+	importedDocuments,
 	locked = false,
 }: PurchaseItemsBlockProps) {
 	const [importModalIsOpen, setImportModalIsOpen] = useState(false);
@@ -78,7 +82,7 @@ export default function PurchaseItemsBlock({
 					<div className="flex w-full items-center justify-end">
 						<Button type="button" variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setImportModalIsOpen(true)}>
 							<Sparkles className="h-3.5 w-3.5" />
-							IMPORTAR COM IA
+							IMPORTAR DOCUMENTO
 						</Button>
 					</div>
 					<ImportCompositionWithAI
@@ -89,6 +93,7 @@ export default function PurchaseItemsBlock({
 						accountingEntry={accountingEntry}
 						updateAccountingEntry={updateAccountingEntry}
 						currentFornecedorId={fornecedorId}
+						currentImportedDocuments={importedDocuments}
 					/>
 				</>
 			) : null}
@@ -171,6 +176,7 @@ function PurchaseCompositionTableItem({ item, locked, gridRow, gridBounds, handl
 						)}
 					</div>
 					<PurchaseItemExpiryControl item={item} locked={locked} lots={lots} handleUpdate={handleUpdate} />
+					<PurchaseItemCostModifiersControl item={item} locked={locked} handleUpdate={handleUpdate} />
 				</div>
 				<p className="w-[9%] truncate px-2 text-center text-muted-foreground">{item.produto.unidade || "UN"}</p>
 				<div className="w-[9%] px-1">
@@ -205,7 +211,7 @@ function PurchaseCompositionTableItem({ item, locked, gridRow, gridBounds, handl
 					)}
 				</div>
 				<div className="w-[11%] px-1">
-					{locked ? (
+					{locked || item.modificadoresCusto ? (
 						<StaticNumberCell value={item.descontosTotal ?? 0} format={(value) => (value > 0 ? formatToMoney(value) : "-")} />
 					) : (
 						<EditableNumberCell
@@ -221,7 +227,7 @@ function PurchaseCompositionTableItem({ item, locked, gridRow, gridBounds, handl
 					)}
 				</div>
 				<div className="w-[11%] px-1">
-					{locked ? (
+					{locked || item.modificadoresCusto ? (
 						<StaticNumberCell value={item.acrescimosTotal ?? 0} format={(value) => (value > 0 ? formatToMoney(value) : "-")} />
 					) : (
 						<EditableNumberCell
@@ -251,6 +257,7 @@ function PurchaseCompositionTableItem({ item, locked, gridRow, gridBounds, handl
 					<div className="min-w-0 flex-1">{locked ? <StaticProductLabel item={item} /> : <ProductCell item={item} onChange={handleUpdate} />}</div>
 					<div className="flex shrink-0 items-center gap-1.5">
 						<PurchaseItemExpiryControl item={item} locked={locked} lots={lots} handleUpdate={handleUpdate} />
+						<PurchaseItemCostModifiersControl item={item} locked={locked} handleUpdate={handleUpdate} />
 						{locked ? (
 							<Lock className="mt-1 h-3.5 w-3.5 text-muted-foreground" />
 						) : (
@@ -284,7 +291,7 @@ function PurchaseCompositionTableItem({ item, locked, gridRow, gridBounds, handl
 							/>
 						)}
 					</MobileEditableField>
-					{locked ? null : (
+					{locked || item.modificadoresCusto ? null : (
 						<MobileEditableField label="Desc.">
 							<EditableNumberCell
 								value={item.descontosTotal ?? 0}
@@ -295,7 +302,7 @@ function PurchaseCompositionTableItem({ item, locked, gridRow, gridBounds, handl
 							/>
 						</MobileEditableField>
 					)}
-					{locked ? null : (
+					{locked || item.modificadoresCusto ? null : (
 						<MobileEditableField label="Acrésc.">
 							<EditableNumberCell
 								value={item.acrescimosTotal ?? 0}
@@ -313,6 +320,208 @@ function PurchaseCompositionTableItem({ item, locked, gridRow, gridBounds, handl
 				</div>
 			</div>
 		</div>
+	);
+}
+
+const PURCHASE_MODIFIER_OPTIONS = [
+	["DESCONTO", "Desconto"],
+	["FRETE", "Frete"],
+	["SEGURO", "Seguro"],
+	["DESPESA_ACESSORIA", "Despesa acessória"],
+	["IMPOSTOS_IPI", "IPI"],
+	["IMPOSTOS_ICMS_ST", "ICMS-ST"],
+	["IMPOSTOS_FCP_ST", "FCP-ST"],
+	["OUTRO", "Outro acréscimo"],
+] as const;
+
+function PurchaseItemCostModifiersControl({
+	item,
+	locked,
+	handleUpdate,
+}: {
+	item: TPurchaseItemState;
+	locked: boolean;
+	handleUpdate: (item: Partial<TPurchaseItemState>) => void;
+}) {
+	const [open, setOpen] = useState(false);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const dialogContainer = (triggerRef.current?.closest("[data-dialog-container]") as HTMLElement) || null;
+	const snapshot = resolvePurchaseCostModifierSnapshot({
+		quantidade: Number(item.quantidade) || 1,
+		valorTotalBruto: Number(item.valorTotalBruto) || 0,
+		descontosTotal: item.descontosTotal,
+		acrescimosTotal: item.acrescimosTotal,
+		modificadoresCusto: item.modificadoresCusto,
+	});
+	const count = snapshot.modificadores.length;
+	const costing =
+		item.modificadoresCusto && Number(item.quantidade) > 0
+			? calculatePurchaseItemCost({
+					quantidade: Number(item.quantidade),
+					valorTotalBruto: Number(item.valorTotalBruto) || Number(item.quantidade) * Number(item.valorUnitarioBruto),
+					modificadoresCusto: item.modificadoresCusto,
+				})
+			: null;
+
+	function replaceModifiers(modificadores: typeof snapshot.modificadores) {
+		handleUpdate({ modificadoresCusto: { versao: 1, modificadores } });
+	}
+
+	return (
+		<Popover modal={false} open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<button
+					ref={triggerRef}
+					type="button"
+					title="Custos e tributos do item"
+					aria-label="Editar custos e tributos do item"
+					className={cn(
+						"flex h-7 shrink-0 items-center gap-1 rounded-md border px-1.5 text-[0.7rem] font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40",
+						count > 0
+							? "border-primary/30 bg-primary/5 text-primary"
+							: "border-dashed border-border text-muted-foreground hover:border-primary/50 hover:text-primary",
+					)}
+				>
+					<ReceiptText className="h-3.5 w-3.5" />
+					{count > 0 ? <span>{count}</span> : null}
+				</button>
+			</PopoverTrigger>
+			<PopoverContent container={dialogContainer} align="start" className="w-[min(32rem,calc(100vw-2rem))] space-y-3">
+				<div>
+					<p className="text-xs font-semibold uppercase tracking-wide">Custos e tributos</p>
+					<p className="mt-0.5 text-[0.68rem] leading-relaxed text-muted-foreground">
+						O tratamento define se o valor altera o custo médio do produto, vira crédito tributário ou despesa do período.
+					</p>
+				</div>
+				{count === 0 ? (
+					<p className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">Nenhum modificador informado.</p>
+				) : null}
+				<div className="space-y-2">
+					{snapshot.modificadores.map((modifier, index) => (
+						<div
+							key={`${modifier.chave}-${index}`}
+							className="grid grid-cols-[1fr_6.5rem] gap-2 rounded-md border p-2 sm:grid-cols-[1fr_6.5rem_9.5rem_auto]"
+						>
+							<select
+								disabled={locked}
+								value={modifier.chave}
+								onChange={(event) =>
+									replaceModifiers(
+										snapshot.modificadores.map((current, currentIndex) =>
+											currentIndex === index
+												? {
+														...current,
+														chave: event.target.value as (typeof PURCHASE_MODIFIER_OPTIONS)[number][0],
+														efeito: event.target.value === "DESCONTO" ? "REDUCAO" : "ACRESCIMO",
+														tratamento: event.target.value === "DESCONTO" ? "CUSTO_ESTOQUE" : current.tratamento,
+														descricao: event.target.value === "OUTRO" ? current.descricao || "Outro acréscimo" : current.descricao,
+													}
+												: current,
+										),
+									)
+								}
+								className="h-8 rounded-md border bg-background px-2 text-xs"
+							>
+								{PURCHASE_MODIFIER_OPTIONS.map(([value, label]) => (
+									<option key={value} value={value}>
+										{label}
+									</option>
+								))}
+							</select>
+							<Input
+								type="number"
+								min={0.01}
+								step={0.01}
+								disabled={locked}
+								value={modifier.valorCentavos / 100}
+								onChange={(event) =>
+									replaceModifiers(
+										snapshot.modificadores.map((current, currentIndex) =>
+											currentIndex === index ? { ...current, valorCentavos: Math.max(1, Math.round(Number(event.target.value) * 100)) } : current,
+										),
+									)
+								}
+								className="h-8 text-xs"
+							/>
+							<select
+								disabled={locked}
+								value={modifier.tratamento}
+								onChange={(event) =>
+									replaceModifiers(
+										snapshot.modificadores.map((current, currentIndex) =>
+											currentIndex === index ? { ...current, tratamento: event.target.value as typeof current.tratamento } : current,
+										),
+									)
+								}
+								className="col-span-2 h-8 rounded-md border bg-background px-2 text-xs sm:col-span-1"
+							>
+								<option value="CUSTO_ESTOQUE">Custo do estoque</option>
+								{modifier.chave === "DESCONTO" ? null : <option value="CREDITO_TRIBUTARIO">Crédito tributário</option>}
+								{modifier.chave === "DESCONTO" ? null : <option value="DESPESA_PERIODO">Despesa do período</option>}
+							</select>
+							{locked ? null : (
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									className="h-8 w-8 text-muted-foreground hover:text-destructive"
+									onClick={() => replaceModifiers(snapshot.modificadores.filter((_, currentIndex) => currentIndex !== index))}
+								>
+									<Trash2 className="h-3.5 w-3.5" />
+								</Button>
+							)}
+						</div>
+					))}
+				</div>
+				{locked ? null : (
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						className="w-full gap-1.5 text-xs"
+						onClick={() =>
+							replaceModifiers([
+								...snapshot.modificadores,
+								{
+									chave: "FRETE",
+									valorCentavos: 1,
+									efeito: "ACRESCIMO",
+									tratamento: "CUSTO_ESTOQUE",
+									origem: "MANUAL",
+									rateio: { metodo: "INFORMADO_ITEM" },
+								},
+							])
+						}
+					>
+						<Plus className="h-3.5 w-3.5" /> ADICIONAR MODIFICADOR
+					</Button>
+				)}
+				{costing ? (
+					<div className="grid grid-cols-2 gap-2 border-t pt-2 text-xs sm:grid-cols-3">
+						<div>
+							<span className="text-muted-foreground">Valor financeiro</span>
+							<p className="font-mono font-medium">{formatToMoney(costing.valorTotalLiquido)}</p>
+						</div>
+						<div>
+							<span className="text-muted-foreground">Custo do estoque</span>
+							<p className="font-mono font-medium">{formatToMoney(costing.valorTotalCusto)}</p>
+						</div>
+						<div>
+							<span className="text-muted-foreground">Custo unitário</span>
+							<p className="font-mono font-medium">{formatToMoney(costing.valorUnitarioCusto)}</p>
+						</div>
+						<div>
+							<span className="text-muted-foreground">Crédito tributário</span>
+							<p className="font-mono font-medium">{formatToMoney(costing.valorTotalCreditoTributario)}</p>
+						</div>
+						<div>
+							<span className="text-muted-foreground">Despesa do período</span>
+							<p className="font-mono font-medium">{formatToMoney(costing.valorTotalDespesaPeriodo)}</p>
+						</div>
+					</div>
+				) : null}
+			</PopoverContent>
+		</Popover>
 	);
 }
 
@@ -730,6 +939,21 @@ export function normalizeItemValues(item: TPurchaseItemState): TPurchaseItemStat
 	const descontosTotal = Number(item.descontosTotal) || 0;
 	const acrescimosTotal = Number(item.acrescimosTotal) || 0;
 	const valorTotalBruto = roundTo2(quantidade * valorUnitarioBruto);
+	if (item.modificadoresCusto && quantidade > 0) {
+		const calculated = calculatePurchaseItemCost({ quantidade, valorTotalBruto, modificadoresCusto: item.modificadoresCusto });
+		return {
+			...item,
+			quantidade,
+			valorUnitarioBruto,
+			valorTotalBruto,
+			descontosTotal: calculated.descontosTotal,
+			acrescimosTotal: calculated.acrescimosTotal,
+			valorTotalLiquido: calculated.valorTotalLiquido,
+			valorUnitarioLiquido: calculated.valorUnitarioLiquido,
+			valorTotalCusto: calculated.valorTotalCusto,
+			valorUnitarioCusto: calculated.valorUnitarioCusto,
+		};
+	}
 	const valorTotalLiquido = roundTo2(valorTotalBruto - descontosTotal + acrescimosTotal);
 	const valorUnitarioLiquido = quantidade > 0 ? roundTo2(valorTotalLiquido / quantidade) : 0;
 
@@ -745,9 +969,24 @@ export function normalizeItemValues(item: TPurchaseItemState): TPurchaseItemStat
 	};
 }
 
-function getItemTotal(item: TPurchaseItemState) {
+type TPurchaseItemTotalLike = {
+	quantidade: number;
+	valorUnitarioBruto: number;
+	valorTotalBruto?: number | null;
+	valorTotalLiquido?: number | null;
+	descontosTotal?: number | null;
+	acrescimosTotal?: number | null;
+	deletar?: boolean | null;
+};
+
+function getItemTotal(item: TPurchaseItemTotalLike) {
 	const valorTotalBruto = Number(item.valorTotalBruto) || (Number(item.quantidade) || 0) * (Number(item.valorUnitarioBruto) || 0);
 	return Number(item.valorTotalLiquido) || valorTotalBruto - (Number(item.descontosTotal) || 0) + (Number(item.acrescimosTotal) || 0);
+}
+
+/** Total financeiro da composição — a mesma soma que o servidor exige do lançamento no recebimento. */
+export function getPurchaseItemsTotal(items: TPurchaseItemTotalLike[]) {
+	return roundTo2(items.filter((item) => !item.deletar).reduce((total, item) => total + getItemTotal(item), 0));
 }
 
 function getItemDisplayName(item: TPurchaseItemState) {

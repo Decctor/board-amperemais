@@ -115,7 +115,8 @@ export type TProviderCompanySyncResult = {
 };
 
 export type TProviderCompanyCertificateSyncInput = {
-	storagePath: string;
+	certificate: ArrayBuffer;
+	fileName: string;
 	password: string;
 };
 
@@ -123,7 +124,7 @@ export type TProviderCompanyCertificateSyncResult = {
 	cpfCnpj: string;
 	sincronizado: boolean;
 	certificado: {
-		storagePath: string;
+		providerManaged: true;
 		serialNumber?: string | null;
 		issuerName?: string | null;
 		subjectName?: string | null;

@@ -72,7 +72,10 @@ export const RecompraCRMDefaultAccountCharts: TOnboardingAccountChartNode[] = [
 			{ key: "caixa_bancos", nome: "Caixa e Bancos", codigo: "1.1", natureza: "ATIVO" },
 			{ key: "contas_receber", nome: "Contas a Receber", codigo: "1.2", natureza: "ATIVO" },
 			{ key: "estoques", nome: "Estoques", codigo: "1.3", natureza: "ATIVO" },
-			{ key: "outros_ativos", nome: "Outros Ativos", codigo: "1.4", natureza: "ATIVO" },
+			// Tributos destacados na compra que a organização tem direito a recuperar não são custo da
+			// mercadoria: são um ativo contra o fisco. Ver docs/domain/purchase-costing.md.
+			{ key: "tributos_recuperar", nome: "Tributos a Recuperar", codigo: "1.4", natureza: "ATIVO" },
+			{ key: "outros_ativos", nome: "Outros Ativos", codigo: "1.5", natureza: "ATIVO" },
 		],
 	},
 	{
@@ -138,14 +141,19 @@ export const RecompraCRMDefaultAccountCharts: TOnboardingAccountChartNode[] = [
 export const RecompraCRMDefaultAccountingDefaults: {
 	lancamentosPadrao: {
 		vendas: { debitoKey: string; creditoKey: string };
-		compras: { debitoKey: string; creditoKey: string };
+		compras: { debitoKey: string; creditoKey: string; debitoCreditoTributarioKey: string; debitoDespesaPeriodoKey: string };
 		transferencias: { debitoKey: string; creditoKey: string };
 		perdasEstoque: { debitoKey: string; creditoKey: string };
 	};
 } = {
 	lancamentosPadrao: {
 		vendas: { debitoKey: "contas_receber", creditoKey: "receitas_operacionais" },
-		compras: { debitoKey: "estoques", creditoKey: "fornecedores" },
+		compras: {
+			debitoKey: "estoques",
+			creditoKey: "fornecedores",
+			debitoCreditoTributarioKey: "tributos_recuperar",
+			debitoDespesaPeriodoKey: "despesas_operacionais",
+		},
 		transferencias: {
 			debitoKey: "caixa_bancos",
 			creditoKey: "caixa_bancos",
@@ -302,6 +310,12 @@ export function buildOrganizationAccountingDefaults(accountIdsByKey: Map<string,
 				debitoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoKey,
 				creditoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.creditoKey) ?? null,
 				creditoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.creditoKey,
+				debitoCreditoTributarioContaId:
+					accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoCreditoTributarioKey) ?? null,
+				debitoCreditoTributarioContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoCreditoTributarioKey,
+				debitoDespesaPeriodoContaId:
+					accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoDespesaPeriodoKey) ?? null,
+				debitoDespesaPeriodoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoDespesaPeriodoKey,
 			},
 			transferencias: {
 				debitoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.transferencias.debitoKey) ?? null,

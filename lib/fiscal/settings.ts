@@ -47,7 +47,7 @@ export async function updateFiscalSettings({
 		if (!parsedConfig.spedy?.nfce?.csc || !parsedConfig.spedy?.nfce?.tokenId) {
 			throw new createHttpError.BadRequest("CSC e token da NFC-e devem estar configurados para emissao automatica.");
 		}
-		if (!parsedConfig.spedy?.certificado?.storagePath) {
+		if (!parsedConfig.spedy?.certificado?.providerManaged && !parsedConfig.spedy?.certificado?.storagePath) {
 			throw new createHttpError.BadRequest("Certificado digital deve estar configurado para emissao automatica.");
 		}
 		if (!parsedConfig.spedy?.companyApiKey) {
@@ -114,11 +114,13 @@ export async function syncFiscalCompany(organizacaoId: string) {
 
 export async function syncFiscalCompanyCertificate({
 	organizacaoId,
-	storagePath,
+	certificate,
+	fileName,
 	password,
 }: {
 	organizacaoId: string;
-	storagePath: string;
+	certificate: ArrayBuffer;
+	fileName: string;
 	password: string;
 }) {
 	const organization = await loadFiscalOrganization(organizacaoId);
@@ -126,7 +128,7 @@ export async function syncFiscalCompanyCertificate({
 	if (!organization.fiscalConfiguracao) throw new createHttpError.BadRequest("Configuracao fiscal nao encontrada.");
 
 	const provider = resolveFiscalProvider(organization.fiscalProvedor);
-	const result = await provider.sincronizarCertificadoEmpresa(organization, { storagePath, password });
+	const result = await provider.sincronizarCertificadoEmpresa(organization, { certificate, fileName, password });
 	const fiscalConfiguracao = OrganizationFiscalConfigSchema.parse({
 		...organization.fiscalConfiguracao,
 		spedy: {

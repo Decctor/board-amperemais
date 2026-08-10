@@ -1,8 +1,26 @@
 import { gateway, generateText, Output } from "ai";
 import { z } from "zod";
+import { PurchaseCostModifierEffectEnum, PurchaseCostModifierKeyEnum, PurchaseCostTreatmentEnum } from "@/schemas/enums";
 
-export const IMPORT_COMPOSITION_ALLOWED_MIME_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"] as const;
+export const IMPORT_COMPOSITION_ALLOWED_MIME_TYPES = [
+	"application/pdf",
+	"image/png",
+	"image/jpeg",
+	"image/webp",
+	"application/xml",
+	"text/xml",
+] as const;
 export type TImportCompositionMimeType = (typeof IMPORT_COMPOSITION_ALLOWED_MIME_TYPES)[number];
+
+export const ExtractedCostModifierSchema = z.object({
+	chave: PurchaseCostModifierKeyEnum,
+	valorCentavos: z.number().int().positive(),
+	efeito: PurchaseCostModifierEffectEnum,
+	// XML identifies the tax, but not the organization's right to a tax credit.
+	tratamento: PurchaseCostTreatmentEnum.nullable(),
+	descricao: z.string().optional().nullable(),
+});
+export type TExtractedCostModifier = z.infer<typeof ExtractedCostModifierSchema>;
 
 export const ExtractedCompositionItemSchema = z.object({
 	descricao: z.string({ invalid_type_error: "Tipo não válido para a descrição do item extraído." }),
@@ -13,6 +31,7 @@ export const ExtractedCompositionItemSchema = z.object({
 	valorUnitario: z.number({ invalid_type_error: "Tipo não válido para o valor unitário do item extraído." }),
 	valorTotal: z.number({ invalid_type_error: "Tipo não válido para o valor total do item extraído." }),
 	desconto: z.number({ invalid_type_error: "Tipo não válido para o desconto do item extraído." }).nullable(),
+	modificadoresCusto: z.array(ExtractedCostModifierSchema).optional(),
 });
 export type TExtractedCompositionItem = z.infer<typeof ExtractedCompositionItemSchema>;
 
@@ -30,6 +49,22 @@ export const ExtractedCompositionSchema = z.object({
 	valorTotalDocumento: z.number({ invalid_type_error: "Tipo não válido para o valor total do documento extraído." }).nullable(),
 	valorFrete: z.number({ invalid_type_error: "Tipo não válido para o valor do frete extraído." }).nullable(),
 	valorDesconto: z.number({ invalid_type_error: "Tipo não válido para o valor de desconto extraído." }).nullable(),
+	origem: z.enum(["XML", "IA"]).optional(),
+	chaveAcesso: z.string().optional().nullable(),
+	serieDocumento: z.string().optional().nullable(),
+	totaisOriginais: z
+		.object({
+			produtosCentavos: z.number().int().optional().nullable(),
+			descontoCentavos: z.number().int().optional().nullable(),
+			freteCentavos: z.number().int().optional().nullable(),
+			seguroCentavos: z.number().int().optional().nullable(),
+			despesasAcessoriasCentavos: z.number().int().optional().nullable(),
+			ipiCentavos: z.number().int().optional().nullable(),
+			icmsStCentavos: z.number().int().optional().nullable(),
+			fcpStCentavos: z.number().int().optional().nullable(),
+			documentoCentavos: z.number().int().optional().nullable(),
+		})
+		.optional(),
 	itens: z.array(ExtractedCompositionItemSchema),
 });
 export type TExtractedComposition = z.infer<typeof ExtractedCompositionSchema>;
@@ -80,5 +115,5 @@ export async function extractCompositionFromFile({ dataBase64, mimeType }: { dat
 		],
 	});
 
-	return ExtractedCompositionSchema.parse(output);
+	return ExtractedCompositionSchema.parse({ ...output, origem: "IA" });
 }

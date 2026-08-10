@@ -14,7 +14,10 @@ import type { TSyncReconciliationInput, TSyncReconciliationOutput } from "@/app/
 import axios from "axios";
 
 export async function createStatementImport(input: TCreateStatementImportInput) {
-	const { data } = await axios.post<TCreateStatementImportOutput>(`/api/finances/reconciliation/imports`, input);
+	const formData = new FormData();
+	formData.append("contaFinanceiraId", input.contaFinanceiraId);
+	formData.append("file", input.file);
+	const { data } = await axios.post<TCreateStatementImportOutput>(`/api/finances/reconciliation/imports`, formData);
 	return data;
 }
 

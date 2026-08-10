@@ -1,4 +1,5 @@
-import { doublePrecision, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import type { TPurchaseCostModifiersSnapshot, TPurchaseImportedDocumentsSnapshot } from "@/schemas/purchases";
+import { doublePrecision, jsonb, numeric, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import { organizations } from "./organizations";
 import { accountingEntries, fiscalOutboundDocuments } from "./financial";
@@ -17,6 +18,8 @@ export const purchases = newTable("purchases", {
 
 	status: purchaseStatusEnum("status").default("RASCUNHO").notNull(),
 	titulo: text("titulo").notNull(),
+	// Snapshot documental pertencente à compra. Consulte docs/adr/0001 e docs/domain/purchase-costing.md.
+	documentosImportados: jsonb("documentos_importados").$type<TPurchaseImportedDocumentsSnapshot>(),
 
 	lancamentoContabilId: varchar("lancamento_contabil_id", { length: 255 }).references(() => accountingEntries.id, { onDelete: "set null" }),
 
@@ -95,6 +98,12 @@ export const purchaseItems = newTable("purchase_items", {
 	// Value modifiers
 	descontosTotal: doublePrecision("descontos_total"), // sum of everything that reduces the total "expected" value
 	acrescimosTotal: doublePrecision("acrescimos_total"), // sum of everything that increases the total "expected" value
+	// Snapshot versionado dos valores que explicam a diferença entre mercadoria, financeiro e custo.
+	// Não inferir tratamento pela chave: IMPOSTOS_IPI, por exemplo, pode ser crédito ou custo de estoque.
+	modificadoresCusto: jsonb("modificadores_custo").$type<TPurchaseCostModifiersSnapshot>(),
+	// Projeções exatas consumidas pelo estoque; o downstream não deve interpretar o JSONB.
+	valorTotalCusto: numeric("valor_total_custo", { precision: 14, scale: 2, mode: "number" }),
+	valorUnitarioCusto: numeric("valor_unitario_custo", { precision: 18, scale: 6, mode: "number" }),
 
 	// External values (suppliers, etc)
 	externoQtde: doublePrecision("externo_qtde"),

@@ -1,7 +1,7 @@
 import type { TFiscalDocumentTypeEnum } from "@/schemas/enums";
 import type { TEmitirDocumentoInput } from "./types";
 
-export const FISCAL_STORAGE_PREFIX = "public/organizations/fiscal";
+export const FISCAL_STORAGE_PREFIX = "fiscal";
 
 export const SUPPORTED_AUTOMATIC_DOCUMENT_TYPES: TFiscalDocumentTypeEnum[] = ["NFCE", "NFE"];
 

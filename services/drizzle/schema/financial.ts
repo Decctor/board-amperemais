@@ -7,6 +7,7 @@ import {
 	index,
 	integer,
 	jsonb,
+	numeric,
 	text,
 	timestamp,
 	uniqueIndex,
@@ -16,6 +17,7 @@ import type { TFinancialAccountConfiguration } from "@/schemas/financial";
 import { newTable } from "./common";
 import {
 	accountChartNatureEnum,
+	accountingEntryLineNatureEnum,
 	accountingEntryOriginTypeEnum,
 	bankAccountTypeEnum,
 	financialAccountTypeEnum,
@@ -76,6 +78,7 @@ export const accountsChartsRelations = relations(accountsCharts, ({ one, many })
 	}),
 	lancamentosContabeisDebito: many(accountingEntries, { relationName: "conta-debito" }),
 	lancamentosContabeisCredito: many(accountingEntries, { relationName: "conta-credito" }),
+	linhasContabeis: many(accountingEntryLines),
 	contasFinanceiras: many(financialAccounts),
 }));
 
@@ -131,6 +134,57 @@ export const accountingEntries = newTable(
 	}),
 );
 
+// Linhas de partidas dobradas genéricas. A conta + natureza constituem a classificação contábil;
+// chaves de modificadores de compra não formam uma taxonomia paralela. Consulte ADR-0001.
+export const accountingEntryLines = newTable(
+	"accounting_entry_lines",
+	{
+		id: varchar("id", { length: 255 })
+			.notNull()
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		lancamentoContabilId: varchar("lancamento_contabil_id", { length: 255 })
+			.references(() => accountingEntries.id, { onDelete: "cascade" })
+			.notNull(),
+		contaContabilId: varchar("conta_contabil_id", { length: 255 })
+			.references(() => accountsCharts.id)
+			.notNull(),
+		natureza: accountingEntryLineNatureEnum("natureza").notNull(),
+		valor: numeric("valor", { precision: 14, scale: 2, mode: "number" }).notNull(),
+		valorPrevisto: numeric("valor_previsto", { precision: 14, scale: 2, mode: "number" }),
+		descricao: text("descricao"),
+		ordem: integer("ordem").default(0).notNull(),
+		metadados: jsonb("metadados").$type<Record<string, unknown>>(),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+	},
+	(table) => ({
+		organizacaoIdIdx: index("idx_accounting_entry_lines_organizacao_id").on(table.organizacaoId),
+		lancamentoContabilIdIdx: index("idx_accounting_entry_lines_lancamento_id").on(table.lancamentoContabilId),
+		contaContabilIdIdx: index("idx_accounting_entry_lines_conta_id").on(table.contaContabilId),
+	}),
+);
+
+export const accountingEntryLinesRelations = relations(accountingEntryLines, ({ one }) => ({
+	organizacao: one(organizations, {
+		fields: [accountingEntryLines.organizacaoId],
+		references: [organizations.id],
+	}),
+	lancamentoContabil: one(accountingEntries, {
+		fields: [accountingEntryLines.lancamentoContabilId],
+		references: [accountingEntries.id],
+	}),
+	contaContabil: one(accountsCharts, {
+		fields: [accountingEntryLines.contaContabilId],
+		references: [accountsCharts.id],
+	}),
+}));
+
+export type TAccountingEntryLine = typeof accountingEntryLines.$inferSelect;
+export type TNewAccountingEntryLine = typeof accountingEntryLines.$inferInsert;
+
 export const accountingEntriesRelations = relations(accountingEntries, ({ one, many }) => ({
 	organizacao: one(organizations, {
 		fields: [accountingEntries.organizacaoId],
@@ -159,6 +213,7 @@ export const accountingEntriesRelations = relations(accountingEntries, ({ one, m
 		references: [users.id],
 	}),
 	transacoesFinanceiras: many(financialTransactions),
+	linhas: many(accountingEntryLines),
 	documentosFiscais: many(fiscalOutboundDocuments),
 }));
 

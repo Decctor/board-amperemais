@@ -39,7 +39,10 @@ export async function syncFiscalCompany() {
 }
 
 export async function syncFiscalCompanyCertificate(input: TSyncFiscalCertificateInput) {
-	const { data } = await axios.post<TSyncFiscalCertificateOutput>("/api/fiscal/company/sync-certificate", input);
+	const formData = new FormData();
+	formData.append("file", input.file);
+	formData.append("password", input.password);
+	const { data } = await axios.post<TSyncFiscalCertificateOutput>("/api/fiscal/company/sync-certificate", formData);
 	return data;
 }
 

@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import PurchaseAccountingEntryBlock from "./Blocks/AccountingEntry";
 import PurchaseGeneralBlock from "./Blocks/General";
 import PurchaseOrderBlock from "./Blocks/Order";
-import PurchaseItemsBlock from "./Blocks/Items";
+import PurchaseItemsBlock, { getPurchaseItemsTotal } from "./Blocks/Items";
 import PurchaseTransportBlock from "./Blocks/Transport";
 import PurchaseDeliveryBlock from "./Blocks/Delivery";
 
@@ -49,6 +49,12 @@ export default function NewPurchase({ closeModal, callbacks }: NewPurchaseProps)
 	});
 	const balanceDelta =
 		state.lancamentoContabil.valor - state.lancamentoContabil.transacoes.filter((t) => !t.deletar).reduce((acc, t) => acc + (t.valor || 0), 0);
+	const itemsTotal = getPurchaseItemsTotal(state.purchaseItems);
+	// Só o recebimento exige a igualdade no servidor; antes disso a divergência é apenas sinalizada.
+	const itemsTotalError =
+		state.purchase.status === "RECEBIDA" && Math.round(itemsTotal * 100) !== Math.round(state.lancamentoContabil.valor * 100)
+			? `O valor efetivo precisa ser igual ao total dos itens (${formatToMoney(itemsTotal)}) para receber a compra.`
+			: null;
 
 	const { mutate: handleCreatePurchaseMutation, isPending } = useMutation({
 		mutationKey: ["create-purchase"],
@@ -83,7 +89,8 @@ export default function NewPurchase({ closeModal, callbacks }: NewPurchaseProps)
 				// O servidor rejeita um lançamento desbalanceado; a tela já sabe o delta, então não faz
 				// sentido gastar um round-trip para descobrir.
 				if (balanceError) return toast.error(balanceError);
-				handleCreatePurchaseMutation(state);
+				if (itemsTotalError) return toast.error(itemsTotalError);
+				handleCreatePurchaseMutation({ ...state, importedDocuments: state.purchase.documentosImportados?.documentos ?? [] });
 			}}
 			menuActionButtonText={balanceError ? `FALTAM ${formatToMoney(Math.abs(balanceDelta))}` : "CRIAR COMPRA"}
 			actionIsLoading={isPending}
@@ -102,6 +109,7 @@ export default function NewPurchase({ closeModal, callbacks }: NewPurchaseProps)
 				accountingEntry={state.lancamentoContabil}
 				updateAccountingEntry={updateAccountingEntry}
 				fornecedorId={state.purchase.fornecedorId}
+				importedDocuments={state.purchase.documentosImportados}
 			/>
 			<PurchaseAccountingEntryBlock
 				accountingEntry={state.lancamentoContabil}
@@ -109,6 +117,7 @@ export default function NewPurchase({ closeModal, callbacks }: NewPurchaseProps)
 				addAccountingEntryTransaction={addAccountingEntryTransaction}
 				updateAccountingEntryTransaction={updateAccountingEntryTransaction}
 				removeAccountingEntryTransaction={removeAccountingEntryTransaction}
+				itemsTotal={itemsTotal}
 			/>
 			<PurchaseOrderBlock purchase={state.purchase} updatePurchase={updatePurchase} />
 			<PurchaseTransportBlock purchase={state.purchase} updatePurchase={updatePurchase} />

@@ -1,6 +1,8 @@
 import { DBTransaction } from "@/services/drizzle";
 import { productStockLots, productStockTransactions, productVariants, products, purchaseItems } from "@/services/drizzle/schema";
+import { calculatePurchaseItemCost } from "@/lib/purchase/costing";
 import { isStockTrackingActive } from "@/lib/stock/apply-stock-movement";
+import type { TPurchaseCostModifiersSnapshot } from "@/schemas/purchases";
 import { and, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 
@@ -20,6 +22,9 @@ export type TPurchaseItemInput = {
 	valorTotalLiquido?: number | null;
 	descontosTotal?: number | null;
 	acrescimosTotal?: number | null;
+	modificadoresCusto?: TPurchaseCostModifiersSnapshot | null;
+	valorTotalCusto?: number | null;
+	valorUnitarioCusto?: number | null;
 	externoQtde?: number | null;
 	externoValor?: number | null;
 	externoUnidade?: string | null;
@@ -57,6 +62,9 @@ export async function handlePurchaseItemStockProcessing({
 	item,
 	reasonOverride,
 }: HandlePurchaseItemStockProcessingParams) {
+	// Um item em remoção não precisa de composição de custo válida — e não pode ser impedido de sair
+	// por ela. Ver `normalizePurchaseItems` em app/api/purchases/route.ts.
+	if (!item.deletar) item = normalizePurchaseItemCostValues(item);
 	const isExisting = !!item.id;
 	const shouldDelete = !!item.deletar;
 	const unitCost = resolveUnitCost(item);
@@ -169,8 +177,22 @@ export async function handlePurchaseItemStockProcessing({
 	throw new createHttpError.InternalServerError("Operação de estoque de compra não suportada.");
 }
 
-function resolveUnitCost(item: { valorUnitarioLiquido?: number | null; valorUnitarioBruto: number }) {
-	return item.valorUnitarioLiquido != null ? item.valorUnitarioLiquido : item.valorUnitarioBruto;
+export function normalizePurchaseItemCostValues<T extends TPurchaseItemInput>(item: T): T {
+	const calculated = calculatePurchaseItemCost(item);
+	return {
+		...item,
+		modificadoresCusto: calculated.modificadoresCusto,
+		descontosTotal: calculated.descontosTotal,
+		acrescimosTotal: calculated.acrescimosTotal,
+		valorTotalLiquido: calculated.valorTotalLiquido,
+		valorUnitarioLiquido: calculated.valorUnitarioLiquido,
+		valorTotalCusto: calculated.valorTotalCusto,
+		valorUnitarioCusto: calculated.valorUnitarioCusto,
+	};
+}
+
+function resolveUnitCost(item: { valorUnitarioCusto?: number | null; valorUnitarioLiquido?: number | null; valorUnitarioBruto: number }) {
+	return item.valorUnitarioCusto ?? item.valorUnitarioLiquido ?? item.valorUnitarioBruto;
 }
 
 type CreatePurchaseItemLotParams = {
@@ -264,6 +286,9 @@ async function persistPurchaseItemRow({ trx, organizationId, purchaseId, item }:
 				valorTotalLiquido: item.valorTotalLiquido ?? null,
 				descontosTotal: item.descontosTotal ?? null,
 				acrescimosTotal: item.acrescimosTotal ?? null,
+				modificadoresCusto: item.modificadoresCusto ?? null,
+				valorTotalCusto: item.valorTotalCusto ?? null,
+				valorUnitarioCusto: item.valorUnitarioCusto ?? null,
 				externoQtde: item.externoQtde ?? null,
 				externoValor: item.externoValor ?? null,
 				externoUnidade: item.externoUnidade ?? null,
@@ -291,6 +316,9 @@ async function persistPurchaseItemRow({ trx, organizationId, purchaseId, item }:
 			valorTotalLiquido: item.valorTotalLiquido ?? null,
 			descontosTotal: item.descontosTotal ?? null,
 			acrescimosTotal: item.acrescimosTotal ?? null,
+			modificadoresCusto: item.modificadoresCusto ?? null,
+			valorTotalCusto: item.valorTotalCusto ?? null,
+			valorUnitarioCusto: item.valorUnitarioCusto ?? null,
 			externoQtde: item.externoQtde ?? null,
 			externoValor: item.externoValor ?? null,
 			externoUnidade: item.externoUnidade ?? null,
@@ -351,7 +379,6 @@ async function applyStockEntry({ trx, organizationId, userId, purchaseId, purcha
 			userId,
 			purchaseId,
 			purchaseItemId,
-			produtoId: item.produtoId,
 			variantId: item.produtoVarianteId,
 			signedQuantity: item.quantidade,
 			unitCost,
@@ -406,7 +433,6 @@ async function applyStockExit({
 			userId,
 			purchaseId,
 			purchaseItemId,
-			produtoId,
 			variantId: produtoVarianteId,
 			signedQuantity: -quantidade,
 			unitCost,
@@ -500,7 +526,6 @@ type ApplyVariantStockMovementParams = {
 	userId: string;
 	purchaseId: string;
 	purchaseItemId: string;
-	produtoId: string;
 	variantId: string;
 	signedQuantity: number;
 	unitCost: number;
@@ -514,7 +539,6 @@ async function applyVariantStockMovement({
 	userId,
 	purchaseId,
 	purchaseItemId,
-	produtoId,
 	variantId,
 	signedQuantity,
 	unitCost,

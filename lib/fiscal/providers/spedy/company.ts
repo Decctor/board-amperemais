@@ -1,4 +1,3 @@
-import { downloadStoredFiscalAsset } from "@/lib/fiscal/storage";
 import type {
 	TFiscalOrganization,
 	TProviderCompanyCertificateSyncInput,
@@ -91,18 +90,16 @@ function normalizeDateTime(value: string | null | undefined) {
 
 function mapSpedyCertificateSyncResult({
 	cpfCnpj,
-	storagePath,
 	certificate,
 }: {
 	cpfCnpj: string;
-	storagePath: string;
 	certificate: TSpedyCertificateResponse;
 }): TProviderCompanyCertificateSyncResult {
 	return {
 		cpfCnpj,
 		sincronizado: true,
 		certificado: {
-			storagePath,
+			providerManaged: true,
 			serialNumber: certificate.id ?? null,
 			issuerName: certificate.issuer ?? null,
 			subjectName: certificate.subject ?? null,
@@ -197,19 +194,16 @@ export async function syncSpedyCompanyCertificate(
 	if (!fiscal?.cpfCnpj) throw new createHttpError.BadRequest("CPF/CNPJ fiscal nao configurado.");
 	if (!companyId) throw new createHttpError.BadRequest("Sincronize a empresa na Spedy antes de enviar o certificado.");
 
-	const certificateBuffer = await downloadStoredFiscalAsset(input.storagePath);
 	const formData = new FormData();
-	formData.append("certificateFile", new Blob([certificateBuffer]), "certificado.pfx");
+	formData.append("certificateFile", new Blob([input.certificate]), input.fileName);
 	formData.append("password", input.password);
 
 	const client = getSpedyOwnerClient(organizacao);
 	try {
-		const { data } = await client.post<TSpedyCertificateResponse>(`/v1/companies/${companyId}/certificates`, formData, {
-			headers: { "Content-Type": "multipart/form-data" },
-		});
+		const { data } = await client.post<TSpedyCertificateResponse>(`/v1/companies/${companyId}/certificates`, formData);
 		console.log("[DEBUG] [SPEDY] Certificado sincronizado.", JSON.stringify(data, null, 2));
 
-		return mapSpedyCertificateSyncResult({ cpfCnpj: fiscal.cpfCnpj, storagePath: input.storagePath, certificate: data });
+		return mapSpedyCertificateSyncResult({ cpfCnpj: fiscal.cpfCnpj, certificate: data });
 	} catch (error) {
 		if (axios.isAxiosError(error) && error.response?.data !== undefined) {
 			console.error("[SPEDY] Erro ao sincronizar certificado.", JSON.stringify(error.response.data, null, 2));
@@ -219,7 +213,7 @@ export async function syncSpedyCompanyCertificate(
 			const certificate = pickCurrentCertificate(certificates);
 			if (certificate) {
 				console.log("[DEBUG] [SPEDY] Certificado ja cadastrado. Usando certificado existente.", certificate.id);
-				return mapSpedyCertificateSyncResult({ cpfCnpj: fiscal.cpfCnpj, storagePath: input.storagePath, certificate });
+				return mapSpedyCertificateSyncResult({ cpfCnpj: fiscal.cpfCnpj, certificate });
 			}
 			throw new createHttpError.Conflict("Certificado ja cadastrado na Spedy, mas nao foi possivel recuperar os metadados do certificado existente.");
 		}

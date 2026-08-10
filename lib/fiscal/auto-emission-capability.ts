@@ -16,7 +16,7 @@ export function isOrganizationAutoFiscalCapable(organization: {
 
 	const config = organization.fiscalConfiguracao;
 	if (!config?.spedy?.nfce?.csc || !config.spedy.nfce.tokenId) return false;
-	if (!config.spedy?.certificado?.storagePath) return false;
+	if (!config.spedy?.certificado?.providerManaged && !config.spedy?.certificado?.storagePath) return false;
 	if (!config.spedy?.companyApiKey) return false;
 
 	return true;

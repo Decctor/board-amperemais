@@ -84,13 +84,13 @@ export class ManualFiscalProvider implements IFiscalProvider {
 
 	async sincronizarCertificadoEmpresa(
 		organizacao: TFiscalOrganization,
-		input: TProviderCompanyCertificateSyncInput,
+		_input: TProviderCompanyCertificateSyncInput,
 	): Promise<TProviderCompanyCertificateSyncResult> {
 		return {
 			cpfCnpj: organizacao.fiscalConfiguracao?.cpfCnpj ?? organizacao.cnpj,
 			sincronizado: true,
 			certificado: {
-				storagePath: input.storagePath,
+				providerManaged: true,
 				uploadedAt: new Date().toISOString(),
 			},
 		};

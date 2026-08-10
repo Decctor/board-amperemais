@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
 	AccountChartNatureEnum,
+	AccountingEntryLineNatureEnum,
 	AccountingEntryOriginTypeEnum,
 	BankAccountTypeEnum,
 	FinancialAccountTypeEnum,
@@ -80,6 +81,38 @@ export const AccountingEntrySchema = z.object({
 		.transform((val) => new Date(val)),
 });
 export type TAccountingEntry = z.infer<typeof AccountingEntrySchema>;
+
+export const AccountingEntryLineSchema = z.object({
+	organizacaoId: z.string({
+		required_error: "ID da organização não informado.",
+		invalid_type_error: "Tipo não válido para o ID da organização.",
+	}),
+	lancamentoContabilId: z.string({
+		required_error: "ID do lançamento contábil não informado.",
+		invalid_type_error: "Tipo não válido para o ID do lançamento contábil.",
+	}),
+	contaContabilId: z.string({
+		required_error: "Conta contábil da linha não informada.",
+		invalid_type_error: "Tipo não válido para a conta contábil da linha.",
+	}),
+	natureza: AccountingEntryLineNatureEnum,
+	valor: z
+		.number({
+			required_error: "Valor da linha contábil não informado.",
+			invalid_type_error: "Tipo não válido para o valor da linha contábil.",
+		})
+		.positive("O valor da linha contábil deve ser maior que zero."),
+	valorPrevisto: z.number({ invalid_type_error: "Tipo não válido para o valor previsto da linha contábil." }).positive().optional().nullable(),
+	descricao: z.string({ invalid_type_error: "Tipo não válido para a descrição da linha contábil." }).optional().nullable(),
+	ordem: z.number({ invalid_type_error: "Tipo não válido para a ordem da linha contábil." }).int().nonnegative().default(0),
+	metadados: z.record(z.unknown()).optional().nullable(),
+	dataInsercao: z
+		.string({ invalid_type_error: "Tipo não válido para a data de inserção da linha contábil." })
+		.datetime({ message: "Tipo não válido para a data de inserção da linha contábil." })
+		.default(new Date().toISOString())
+		.transform((val) => new Date(val)),
+});
+export type TAccountingEntryLine = z.infer<typeof AccountingEntryLineSchema>;
 
 // ============================================================================
 // FINANCIAL ACCOUNTS (Contas Financeiras)

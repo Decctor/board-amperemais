@@ -7,7 +7,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Progress } from "@/components/ui/progress";
 import { getErrorMessage } from "@/lib/errors";
 import { createStatementImport } from "@/lib/mutations/financial-reconciliation";
-import { uploadFileToSupabaseWithProgress } from "@/lib/uploads/supabase-upload-with-progress";
 import { cn } from "@/lib/utils";
 import { CircleAlert, CircleCheck, FileCheck2, FileText, Loader2, Upload, X } from "lucide-react";
 import { useMemo, useRef, useState, type DragEvent } from "react";
@@ -123,29 +122,19 @@ export default function NewStatementImport({ contaFinanceiraId, closeModal, call
 		let sucessos = 0;
 		let firstError: Error | null = null;
 
-		// Sequencial de propósito: cada arquivo passa por upload + parse + matching no servidor.
+		// Sequencial de propósito: cada arquivo passa por upload privado + parse + matching no servidor.
 		for (let index = 0; index < fileEntries.length; index++) {
 			const entry = fileEntries[index];
 			try {
 				updateFileEntry(index, { status: "ENVIANDO", uploadProgress: 0 });
-				const uploaded = await uploadFileToSupabaseWithProgress({
-					file: entry.file,
-					fileName: entry.file.name,
-					prefix: "bank-statements",
-					onProgress: ({ progressPercent }) => updateFileEntry(index, { uploadProgress: progressPercent }),
-				});
-
-				updateFileEntry(index, { status: "PROCESSANDO", uploadProgress: 100 });
+				updateFileEntry(index, { status: "PROCESSANDO", uploadProgress: 50 });
 				const result = await createStatementImport({
 					contaFinanceiraId,
-					storagePath: uploaded.storagePath,
-					nomeArquivo: entry.file.name,
-					mimeType: uploaded.mimeType ?? resolveMimeType(entry.file),
-					tamanhoBytes: uploaded.tamanhoBytes ?? entry.file.size,
+					file: new File([entry.file], entry.file.name, { type: resolveMimeType(entry.file) }),
 				});
 
 				sucessos++;
-				updateFileEntry(index, { status: "CONCLUIDO", resultado: result.data });
+				updateFileEntry(index, { status: "CONCLUIDO", uploadProgress: 100, resultado: result.data });
 			} catch (error) {
 				if (!firstError) firstError = error instanceof Error ? error : new Error(getErrorMessage(error));
 				updateFileEntry(index, { status: "ERRO", errorMessage: getErrorMessage(error) });

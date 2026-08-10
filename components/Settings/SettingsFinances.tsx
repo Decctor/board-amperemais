@@ -234,7 +234,7 @@ export default function SettingsFinances({ membership }: SettingsFinancesProps) 
 
 	function updateAccounting(
 		tipo: "vendas" | "compras" | "perdasEstoque",
-		partial: Partial<TOrganizationDefaults["contabilidade"]["lancamentosPadrao"]["vendas"]>,
+		partial: Partial<TOrganizationDefaults["contabilidade"]["lancamentosPadrao"]["compras"]>,
 	) {
 		setDraft((current) =>
 			current
@@ -307,6 +307,42 @@ export default function SettingsFinances({ membership }: SettingsFinancesProps) 
 									onReset={() => updateAccounting(tipo, { creditoContaId: null, creditoContaKey: null })}
 								/>
 							</div>
+							{/* Só a compra reparte o débito: o que o fornecedor cobra vira estoque, crédito tributário
+							    ou despesa do período conforme o tratamento de cada item. */}
+							{tipo === "compras" ? (
+								<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+									<SelectInput
+										label="CONTA DE CRÉDITO TRIBUTÁRIO"
+										value={draft.contabilidade.lancamentosPadrao.compras.debitoCreditoTributarioContaId ?? null}
+										options={accountChartsOptions}
+										resetOptionLabel="Nenhuma conta"
+										editable={canEdit}
+										handleChange={(selected) => {
+											const account = accountChartsOptions.find((option) => option.value === selected);
+											updateAccounting(tipo, {
+												debitoCreditoTributarioContaId: account?.value ?? null,
+												debitoCreditoTributarioContaKey: account?.label ?? null,
+											});
+										}}
+										onReset={() => updateAccounting(tipo, { debitoCreditoTributarioContaId: null, debitoCreditoTributarioContaKey: null })}
+									/>
+									<SelectInput
+										label="CONTA DE DESPESAS DO PERÍODO"
+										value={draft.contabilidade.lancamentosPadrao.compras.debitoDespesaPeriodoContaId ?? null}
+										options={accountChartsOptions}
+										resetOptionLabel="Nenhuma conta"
+										editable={canEdit}
+										handleChange={(selected) => {
+											const account = accountChartsOptions.find((option) => option.value === selected);
+											updateAccounting(tipo, {
+												debitoDespesaPeriodoContaId: account?.value ?? null,
+												debitoDespesaPeriodoContaKey: account?.label ?? null,
+											});
+										}}
+										onReset={() => updateAccounting(tipo, { debitoDespesaPeriodoContaId: null, debitoDespesaPeriodoContaKey: null })}
+									/>
+								</div>
+							) : null}
 						</div>
 					);
 				})}

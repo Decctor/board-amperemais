@@ -118,11 +118,33 @@ export const OrganizationDefaultsSchema = z.object({
 				creditoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de crédito padrão de vendas." }).nullable(),
 				creditoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de crédito padrão de vendas." }).nullable(),
 			}),
+			// A compra é o único lançamento padrão com mais de um débito: o valor devido ao fornecedor se
+			// reparte entre estoque, crédito tributário e despesa do período conforme o `tratamento` de cada
+			// modificador do item. Por isso os débitos extras moram aqui, e não num bloco paralelo — são
+			// pernas do mesmo lançamento. Ver docs/domain/purchase-costing.md.
 			compras: z.object({
 				debitoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de débito padrão de compras." }).nullable(),
 				debitoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de débito padrão de compras." }).nullable(),
 				creditoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de crédito padrão de compras." }).nullable(),
 				creditoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de crédito padrão de compras." }).nullable(),
+				// `.default(null)` e não `.nullable()` puro: configurações gravadas antes destes campos
+				// existirem não trazem a chave, e um `null` obrigatório faria o parse delas quebrar.
+				debitoCreditoTributarioContaId: z
+					.string({ invalid_type_error: "Tipo não válido para a conta de débito de crédito tributário de compras." })
+					.nullable()
+					.default(null),
+				debitoCreditoTributarioContaKey: z
+					.string({ invalid_type_error: "Tipo não válido para a chave da conta de débito de crédito tributário de compras." })
+					.nullable()
+					.default(null),
+				debitoDespesaPeriodoContaId: z
+					.string({ invalid_type_error: "Tipo não válido para a conta de débito de despesas do período de compras." })
+					.nullable()
+					.default(null),
+				debitoDespesaPeriodoContaKey: z
+					.string({ invalid_type_error: "Tipo não válido para a chave da conta de débito de despesas do período de compras." })
+					.nullable()
+					.default(null),
 			}),
 			transferencias: z
 				.object({

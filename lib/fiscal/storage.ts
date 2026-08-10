@@ -1,4 +1,5 @@
-import { supabaseClient } from "@/services/supabase";
+import "server-only";
+import { downloadPrivateFile, storePrivateFile } from "@/lib/files-storage/private";
 import { FISCAL_STORAGE_PREFIX } from "./constants";
 
 export type TFiscalAssetType = "xml" | "pdf";
@@ -25,16 +26,9 @@ export async function storeFiscalAsset({
 }) {
 	const path = buildFiscalAssetPath({ documentoId, tipo, asset });
 	const contentType = getFiscalAssetContentType(asset);
-	const { error } = await supabaseClient.storage.from("files").upload(path, buffer, {
-		contentType,
-		upsert: true,
-	});
-	if (error) throw error;
-	return path;
+	return storePrivateFile({ path, data: buffer, contentType, upsert: true });
 }
 
 export async function downloadStoredFiscalAsset(path: string) {
-	const { data, error } = await supabaseClient.storage.from("files").download(path);
-	if (error) throw error;
-	return data.arrayBuffer();
+	return downloadPrivateFile(path);
 }
