@@ -121,7 +121,18 @@ novo custo médio =
 
 Composição, valores, quantidade e produto ficam congelados depois que a entrada de estoque é criada. Correções precisam reverter ou reprocessar a entrada explicitamente.
 
+O valor efetivo do lançamento congela junto: depois do recebimento ele já bate com os itens e com as linhas contábeis gravadas, então alterá-lo desfaria a igualdade sem nada a reprocessar. Reprogramar pagamento continua livre. A tela desabilita o campo e o servidor recusa a mudança.
+
 ## Linhas contábeis
+
+As contas ficam em `configuracao.defaults.contabilidade.lancamentosPadrao.compras`: a compra é o único lançamento padrão com mais de um débito, e os débitos extras são pernas do mesmo lançamento, não um bloco de configuração paralelo.
+
+| Tratamento           | Conta                              |
+| -------------------- | ---------------------------------- |
+| `CUSTO_ESTOQUE`      | `debitoContaId`                    |
+| `CREDITO_TRIBUTARIO` | `debitoCreditoTributarioContaId`   |
+| `DESPESA_PERIODO`    | `debitoDespesaPeriodoContaId`      |
+| total a pagar        | `creditoContaId` (crédito)         |
 
 As linhas são geradas pela conta resultante, não pelas chaves dos modificadores:
 
@@ -159,7 +170,9 @@ soma dos débitos = soma dos créditos = valor do lançamento
 
 XML de NF-e é interpretado deterministicamente e nunca enviado a um modelo de IA. PDF e imagem usam o extrator visual existente, mas ambos produzem a mesma forma normalizada.
 
-O snapshot do documento preserva referência local, chave de acesso, identificação, totais originais, hash e caminho privado. Modificadores dos itens apontam para essa referência local.
+O snapshot do documento preserva referência local, chave de acesso, identificação, totais originais e hash. Modificadores dos itens apontam para essa referência local.
+
+O snapshot **não** guarda bucket nem caminho: o objeto privado é localizado por `referencia` mais a organização da sessão, em `buildPurchaseImportedDocumentPath` (`lib/purchase/imported-documents.ts`). Um caminho transportado no payload seria um caminho forjável, e `documentosImportados` não entra pelo cabeçalho da compra — entra por `importedDocuments`, validado à parte.
 
 ## Casos que devem permanecer cobertos por testes
 

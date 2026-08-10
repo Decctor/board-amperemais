@@ -21,7 +21,13 @@ import {
 import { createSimplifiedSearchCondition } from "@/lib/search";
 import { PurchaseStatusEnum, TPurchaseStatusEnum } from "@/schemas/enums";
 import { AccountingEntrySchema, FinancialTransactionSchema } from "@/schemas/financial";
-import { PurchaseItemSchema, PurchaseSchema, refinePurchaseStatusAndDeliveryDate } from "@/schemas/purchases";
+import {
+	PurchaseImportedDocumentSchema,
+	PurchaseItemSchema,
+	PurchaseSchema,
+	refinePurchaseStatusAndDeliveryDate,
+	type TPurchaseImportedDocument,
+} from "@/schemas/purchases";
 import { db, type DBTransaction } from "@/services/drizzle";
 import { accountingEntries, financialTransactions, organizations, productStockLots, purchases } from "@/services/drizzle/schema";
 import { and, count, eq, inArray, or } from "drizzle-orm";
@@ -251,7 +257,10 @@ export const GET = appApiHandler({
 	GET: getPurchasesRoute,
 });
 
+// `documentosImportados` fica fora do cabeçalho e entra por `importedDocuments`, sem caminho de
+// arquivo: o snapshot descreve o documento, mas quem localiza o objeto é o servidor.
 const PurchaseHeaderInputSchema = PurchaseSchema.omit({
+	documentosImportados: true,
 	organizacaoId: true,
 	autorId: true,
 	dataInsercao: true,
@@ -281,6 +290,7 @@ const PurchaseAccountingEntryFieldsSchema = AccountingEntrySchema.omit({
 
 const CreatePurchaseInputSchema = z.object({
 	purchase: PurchaseHeaderInputSchema,
+	importedDocuments: z.array(PurchaseImportedDocumentSchema).optional(),
 	purchaseItems: z.array(PurchaseItemSchema.omit({ organizacaoId: true, compraId: true, dataInsercao: true })),
 	lancamentoContabil: PurchaseAccountingEntryFieldsSchema.extend({
 		transacoes: z.array(PurchaseAccountingEntryTransactionInputSchema),
@@ -317,12 +327,18 @@ function normalizePurchaseFinancialTransaction<T extends { valor: number }>(tran
 	}
 }
 
+// Itens marcados para remoção não passam pelo cálculo: eles vão sair, e uma linha inválida (quantidade
+// zerada, por exemplo) não pode impedir justamente a operação que a remove.
 function normalizePurchaseItems<T extends TPurchaseItemInput>(items: T[]): T[] {
 	try {
-		return items.map((item) => normalizePurchaseItemCostValues(item));
+		return items.map((item) => (item.deletar ? item : normalizePurchaseItemCostValues(item)));
 	} catch (error) {
 		throw new createHttpError.BadRequest(error instanceof Error ? error.message : "Composição de custo da compra inválida.");
 	}
+}
+
+function buildPurchaseImportedDocumentsSnapshot(documents: TPurchaseImportedDocument[] | undefined) {
+	return { versao: 1 as const, documentos: documents ?? [] };
 }
 
 function assertPurchaseEntryMatchesItems({ entryValue, items }: { entryValue: number; items: TPurchaseItemInput[] }) {
@@ -330,6 +346,32 @@ function assertPurchaseEntryMatchesItems({ entryValue, items }: { entryValue: nu
 	if (itemsTotalCents !== moneyToCents(entryValue)) {
 		throw new createHttpError.BadRequest("O valor do lançamento contábil precisa corresponder ao valor financeiro dos itens da compra.");
 	}
+}
+
+/**
+ * Depois do recebimento, o valor efetivo é um fato: ele bate com os itens congelados e com as linhas
+ * contábeis já gravadas. Reprogramar pagamento continua livre; mudar quanto se deve, não — para isso
+ * a compra é cancelada e refeita.
+ */
+async function assertReceivedPurchaseEntryValueUnchanged({
+	tx,
+	orgId,
+	accountingEntryId,
+	payloadValue,
+}: {
+	tx: DBTransaction;
+	orgId: string;
+	accountingEntryId: string | null;
+	payloadValue: number;
+}) {
+	if (!accountingEntryId) return;
+	const previousEntry = await tx.query.accountingEntries.findFirst({
+		where: and(eq(accountingEntries.id, accountingEntryId), eq(accountingEntries.organizacaoId, orgId)),
+		columns: { valor: true },
+	});
+	if (!previousEntry) return;
+	if (moneyToCents(previousEntry.valor) !== moneyToCents(payloadValue))
+		throw new createHttpError.BadRequest("O valor efetivo de uma compra recebida não pode ser alterado. Cancele a compra para corrigir.");
 }
 
 function getPurchaseAccountingAmounts(items: TPurchaseItemInput[]) {
@@ -392,7 +434,7 @@ async function syncPurchaseAccountingLines({
 		columns: { configuracao: true },
 	});
 	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");
-	const treatmentAccounts = organization.configuracao.defaults.contabilidade.contasCustosCompra;
+	const purchaseDefaults = organization.configuracao.defaults.contabilidade.lancamentosPadrao.compras;
 	const amounts = getPurchaseAccountingAmounts(items);
 	await syncAccountingEntryLines({
 		trx,
@@ -404,8 +446,8 @@ async function syncPurchaseAccountingLines({
 			accounts: {
 				estoqueContaId: debitAccountId,
 				fornecedoresContaId: creditAccountId,
-				creditoTributarioContaId: treatmentAccounts?.creditoTributarioContaId,
-				despesaPeriodoContaId: treatmentAccounts?.despesaPeriodoContaId,
+				creditoTributarioContaId: purchaseDefaults?.debitoCreditoTributarioContaId,
+				despesaPeriodoContaId: purchaseDefaults?.debitoDespesaPeriodoContaId,
 			},
 		}),
 	});
@@ -462,6 +504,7 @@ async function createPurchase({ input, session }: { input: TCreatePurchaseInput;
 			.insert(purchases)
 			.values({
 				...payloadPurchase,
+				documentosImportados: buildPurchaseImportedDocumentsSnapshot(input.importedDocuments),
 				lancamentoContabilId: insertedAccountingEntryId,
 				organizacaoId: userOrgId,
 				autorId: session.user.id,
@@ -521,6 +564,7 @@ const UpdatePurchaseInputSchema = z.object({
 		invalid_type_error: "Tipo não válido para ID da compra.",
 	}),
 	purchase: PurchaseHeaderInputSchema,
+	importedDocuments: z.array(PurchaseImportedDocumentSchema).optional(),
 	purchaseItems: z.array(
 		PurchaseItemSchema.omit({ organizacaoId: true, compraId: true, dataInsercao: true }).extend({
 			id: z
@@ -793,9 +837,17 @@ async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput;
 		// re-apply stock on every save (and desync spawned lots), so we only update the header.
 		if (operation === "UPDATING_RECEIVED") {
 			assertReceivedPurchaseItemsUnchanged({ previousItems: previousPurchase.itens, payloadItems: normalizedPurchaseItems });
+			// O valor efetivo espelha itens que já geraram lotes e linhas contábeis. Congelá-lo aqui é o que
+			// permite pular a resincronização das linhas logo abaixo sem deixá-las defasadas.
+			await assertReceivedPurchaseEntryValueUnchanged({
+				tx,
+				orgId: userOrgId,
+				accountingEntryId: previousPurchase.lancamentoContabilId,
+				payloadValue: payloadAccountingEntry.valor,
+			});
 			await tx
 				.update(purchases)
-				.set({ ...payloadPurchase, dataUltimaAtualizacao: new Date() })
+				.set({ ...payloadPurchase, documentosImportados: buildPurchaseImportedDocumentsSnapshot(input.importedDocuments), dataUltimaAtualizacao: new Date() })
 				.where(and(eq(purchases.id, purchaseId), eq(purchases.organizacaoId, userOrgId)));
 			// O congelamento vale para os itens (que geraram lotes), não para a programação de pagamento:
 			// reprogramar um pagamento após o recebimento é o caso de uso principal.
@@ -826,6 +878,7 @@ async function updatePurchase({ input, session }: { input: TUpdatePurchaseInput;
 			.update(purchases)
 			.set({
 				...payloadPurchase,
+				documentosImportados: buildPurchaseImportedDocumentsSnapshot(input.importedDocuments),
 				dataUltimaAtualizacao: new Date(),
 			})
 			.where(and(eq(purchases.id, purchaseId), eq(purchases.organizacaoId, userOrgId)));

@@ -1,7 +1,8 @@
 import "server-only";
+import { PRIVATE_FILES_BUCKET } from "@/lib/files-storage/buckets";
 import { getSupabaseAdminClient } from "@/services/supabase/admin";
 
-export const PRIVATE_FILES_BUCKET = process.env.SUPABASE_PRIVATE_FILES_BUCKET ?? "private-files";
+export { PRIVATE_FILES_BUCKET };
 
 export async function storePrivateFile({
 	path,

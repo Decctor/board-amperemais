@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { downloadPrivateFile } from "@/lib/files-storage/private";
+import { buildPurchaseImportedDocumentPath } from "@/lib/purchase/imported-documents";
 import { PurchaseImportedDocumentsSnapshotSchema } from "@/schemas/purchases";
 import { db } from "@/services/drizzle";
 import { purchases } from "@/services/drizzle/schema";
@@ -29,11 +30,15 @@ async function getPurchaseImportedDocument(input: TGetPurchaseImportedDocumentIn
 	const snapshot = PurchaseImportedDocumentsSnapshotSchema.parse(purchase.documentosImportados ?? { versao: 1, documentos: [] });
 	const document = snapshot.documentos.find((candidate) => candidate.referencia === input.referencia);
 	if (!document?.arquivo) throw new createHttpError.NotFound("Arquivo importado não encontrado.");
-	const data = await downloadPrivateFile(document.arquivo.caminho);
+	// O caminho é reconstruído a partir da organização da sessão — nunca lido do snapshot —, então uma
+	// referência gravada por um payload malicioso continua confinada à própria organização.
+	const data = await downloadPrivateFile(
+		buildPurchaseImportedDocumentPath({ organizationId: session.membership.organizacao.id, referencia: document.referencia }),
+	);
 	return {
 		data,
 		mimeType: document.arquivo.mimeType ?? "application/octet-stream",
-		fileName: document.arquivo.caminho.split("/").pop() ?? "documento",
+		fileName: document.arquivo.nomeOriginal ?? `documento-${document.referencia}`,
 	};
 }
 

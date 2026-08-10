@@ -74,6 +74,15 @@ Este plano é governado pelo [ADR-0001](../adr/0001-purchase-cost-composition-an
 
 ## Verificação e rollout
 
+Ordem obrigatória, executada manualmente pelo responsável do projeto:
+
+1. `npx tsx ./scripts/apply-sql-migration.ts drizzle/0072_purchase_cost_composition.sql` — **antes do deploy**. Sem as colunas novas de `purchase_items` nenhuma compra salva.
+2. Deploy do código.
+3. `npx tsx ./scripts/backfill-purchase-cost-composition.ts --dry-run` e depois sem a flag. Cobre: linhas contábeis dos lançamentos históricos, contas de crédito tributário e despesa do período nas organizações existentes, remoção da senha e do `storagePath` do certificado no JSONB, cópia dos objetos fiscais de `files/public/organizations/fiscal/**` para `private-files/fiscal/**` e reescrita dos caminhos no banco. A cópia precede a reescrita; o script força essa ordem.
+4. Validar um download de XML e de DANFE pela rota autenticada e só então apagar os objetos antigos em `files/public/organizations/fiscal/**`. O script nunca apaga a origem.
+5. Só então ligar `ACCOUNTING_ENTRY_LINES_ENABLED=true`.
+6. Opcional e destrutivo, depois de conferir o `--dry-run`: `--only=orphan-imports` remove documentos importados que nenhuma compra referencia.
+
 Antes de habilitar o novo armazenamento fiscal, o responsável do projeto deve:
 
 - criar um bucket privado `private-files` (ou definir `SUPABASE_PRIVATE_FILES_BUCKET`);
@@ -85,7 +94,8 @@ Antes de habilitar o novo armazenamento fiscal, o responsável do projeto deve:
 - [x] Testes unitários de composição, rateio, arredondamento e linhas balanceadas.
 - [x] Fixtures NF-e válidas, variantes tributárias e XML hostil.
 - [ ] Regressão de importação PDF/imagem.
-- [ ] Testes de isolamento entre organizações e expiração de URLs privadas.
+- [x] Isolamento entre organizações: caminho do documento importado é derivado da sessão, não transportado no payload.
+- [ ] Expiração de URLs privadas.
 - [ ] Typecheck, lint e build sem lockfile estrangeiro.
 - [ ] Migration e backfill executados manualmente antes de habilitar os novos readers em produção.
 - [ ] Documentação, comentários e testes revisados junto da implementação final.

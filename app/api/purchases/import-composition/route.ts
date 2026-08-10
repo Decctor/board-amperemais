@@ -3,6 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
 import { extractCompositionFromFile, IMPORT_COMPOSITION_ALLOWED_MIME_TYPES } from "@/lib/purchase/import";
 import { extractCompositionFromNfeXml } from "@/lib/purchase/import-xml";
+import { buildPurchaseImportedDocumentPath } from "@/lib/purchase/imported-documents";
 import { storePrivateFile } from "@/lib/files-storage/private";
 import { matchCompositionItemsToProducts } from "@/lib/purchase/match-products";
 import { db } from "@/services/drizzle";
@@ -133,12 +134,14 @@ async function importPurchaseComposition({ input, session }: { input: TImportPur
 		);
 
 	const documentReference = randomUUID();
-	const safeFileName = (input.file.fileName?.split(/[\\/]/).pop() || `documento-${documentReference}`)
+	// O nome do arquivo é metadado, não endereço: o objeto vive num caminho derivado da referência,
+	// para que nada no payload consiga escolher onde ler ou escrever depois.
+	const originalFileName = (input.file.fileName?.split(/[\\/]/).pop() || `documento-${documentReference}`)
 		.normalize("NFKD")
 		.replace(/[^a-zA-Z0-9._-]+/g, "-")
 		.slice(0, 120);
-	const privatePath = await storePrivateFile({
-		path: `organizations/${userOrgId}/purchase-imports/${documentReference}/${safeFileName}`,
+	await storePrivateFile({
+		path: buildPurchaseImportedDocumentPath({ organizationId: userOrgId, referencia: documentReference }),
 		data: fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength),
 		contentType: input.file.mimeType,
 	});
@@ -170,8 +173,7 @@ async function importPurchaseComposition({ input, session }: { input: TImportPur
 					serie: extracted.serieDocumento?.trim() || null,
 					dataEmissao: extracted.dataEmissao ?? null,
 					arquivo: {
-						bucket: process.env.SUPABASE_PRIVATE_FILES_BUCKET ?? "private-files",
-						caminho: privatePath,
+						nomeOriginal: originalFileName,
 						sha256: createHash("sha256").update(fileBuffer).digest("hex"),
 						mimeType: input.file.mimeType,
 						tamanhoBytes: fileBuffer.byteLength,

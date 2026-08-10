@@ -969,9 +969,24 @@ export function normalizeItemValues(item: TPurchaseItemState): TPurchaseItemStat
 	};
 }
 
-function getItemTotal(item: TPurchaseItemState) {
+type TPurchaseItemTotalLike = {
+	quantidade: number;
+	valorUnitarioBruto: number;
+	valorTotalBruto?: number | null;
+	valorTotalLiquido?: number | null;
+	descontosTotal?: number | null;
+	acrescimosTotal?: number | null;
+	deletar?: boolean | null;
+};
+
+function getItemTotal(item: TPurchaseItemTotalLike) {
 	const valorTotalBruto = Number(item.valorTotalBruto) || (Number(item.quantidade) || 0) * (Number(item.valorUnitarioBruto) || 0);
 	return Number(item.valorTotalLiquido) || valorTotalBruto - (Number(item.descontosTotal) || 0) + (Number(item.acrescimosTotal) || 0);
+}
+
+/** Total financeiro da composição — a mesma soma que o servidor exige do lançamento no recebimento. */
+export function getPurchaseItemsTotal(items: TPurchaseItemTotalLike[]) {
+	return roundTo2(items.filter((item) => !item.deletar).reduce((total, item) => total + getItemTotal(item), 0));
 }
 
 function getItemDisplayName(item: TPurchaseItemState) {

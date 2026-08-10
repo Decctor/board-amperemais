@@ -213,10 +213,6 @@ const DEFAULT_PAYMENT_METHOD_CONFIGURATION: TOrganizationConfiguration["defaults
 
 export const DEFAULT_ORGANIZATION_CONFIGURATION_DEFAULTS: TOrganizationDefaults = {
 	contabilidade: {
-		contasCustosCompra: {
-			creditoTributarioContaId: null,
-			despesaPeriodoContaId: null,
-		},
 		lancamentosPadrao: {
 			vendas: {
 				debitoContaId: null,
@@ -229,6 +225,10 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_DEFAULTS: TOrganizationDefaults 
 				debitoContaKey: null,
 				creditoContaId: null,
 				creditoContaKey: null,
+				debitoCreditoTributarioContaId: null,
+				debitoCreditoTributarioContaKey: null,
+				debitoDespesaPeriodoContaId: null,
+				debitoDespesaPeriodoContaKey: null,
 			},
 			transferencias: {
 				debitoContaId: null,

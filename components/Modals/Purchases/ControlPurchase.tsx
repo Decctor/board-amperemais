@@ -12,21 +12,11 @@ import { toast } from "sonner";
 import PurchaseAccountingEntryBlock from "./Blocks/AccountingEntry";
 import PurchaseGeneralBlock from "./Blocks/General";
 import PurchaseOrderBlock from "./Blocks/Order";
-import PurchaseItemsBlock from "./Blocks/Items";
+import PurchaseItemsBlock, { getPurchaseItemsTotal } from "./Blocks/Items";
 import PurchaseTransportBlock from "./Blocks/Transport";
 import PurchaseDeliveryBlock from "./Blocks/Delivery";
 import { usePurchaseById } from "@/lib/queries/purchases";
 import { useEffect, useRef } from "react";
-
-type TPurchaseByIdItem = NonNullable<ReturnType<typeof usePurchaseById>["data"]>["itens"][number];
-
-function getPurchaseItemsTotal(items: TPurchaseByIdItem[]) {
-	return items.reduce((acc, item) => {
-		const valorTotalBruto = Number(item.valorTotalBruto) || (Number(item.quantidade) || 0) * (Number(item.valorUnitarioBruto) || 0);
-		const total = Number(item.valorTotalLiquido) || valorTotalBruto - (Number(item.descontosTotal) || 0) + (Number(item.acrescimosTotal) || 0);
-		return acc + total;
-	}, 0);
-}
 
 type ControlPurchaseProps = {
 	purchaseId: string;
@@ -65,6 +55,13 @@ export default function ControlPurchase({ purchaseId, closeModal, callbacks }: C
 	});
 	const balanceDelta =
 		state.lancamentoContabil.valor - state.lancamentoContabil.transacoes.filter((t) => !t.deletar).reduce((acc, t) => acc + (t.valor || 0), 0);
+	const purchaseIsReceived = purchase?.status === "RECEBIDA";
+	const itemsTotal = getPurchaseItemsTotal(state.purchaseItems);
+	// Recebida, o valor já está congelado e conferido; a checagem só vale para a transição.
+	const itemsTotalError =
+		!purchaseIsReceived && state.purchase.status === "RECEBIDA" && Math.round(itemsTotal * 100) !== Math.round(state.lancamentoContabil.valor * 100)
+			? `O valor efetivo precisa ser igual ao total dos itens (${formatToMoney(itemsTotal)}) para receber a compra.`
+			: null;
 
 	const { mutate: handleUpdatePurchaseMutation, isPending } = useMutation({
 		mutationKey: ["update-purchase", purchaseId],
@@ -145,9 +142,11 @@ export default function ControlPurchase({ purchaseId, closeModal, callbacks }: C
 			actionFunction={() => {
 				// O servidor rejeita um lançamento desbalanceado; a tela já sabe o delta.
 				if (balanceError) return toast.error(balanceError);
+				if (itemsTotalError) return toast.error(itemsTotalError);
 				handleUpdatePurchaseMutation({
 					purchaseId,
 					purchase: state.purchase,
+					importedDocuments: state.purchase.documentosImportados?.documentos ?? [],
 					purchaseItems: state.purchaseItems,
 					lancamentoContabil: state.lancamentoContabil,
 				});
@@ -169,16 +168,18 @@ export default function ControlPurchase({ purchaseId, closeModal, callbacks }: C
 				updateAccountingEntry={updateAccountingEntry}
 				fornecedorId={state.purchase.fornecedorId}
 				importedDocuments={state.purchase.documentosImportados}
-				locked={purchase?.status === "RECEBIDA"}
+				locked={purchaseIsReceived}
 			/>
-			{/* O lançamento e sua programação de pagamento seguem editáveis mesmo após o recebimento —
-			    reprogramar um pagamento é justamente o caso de uso principal. */}
+			{/* A programação de pagamento segue editável mesmo após o recebimento — reprogramar um pagamento
+			    é justamente o caso de uso principal. O valor efetivo, não: ele já virou lote e linha contábil. */}
 			<PurchaseAccountingEntryBlock
 				accountingEntry={state.lancamentoContabil}
 				updateAccountingEntry={updateAccountingEntry}
 				addAccountingEntryTransaction={addAccountingEntryTransaction}
 				updateAccountingEntryTransaction={updateAccountingEntryTransaction}
 				removeAccountingEntryTransaction={removeAccountingEntryTransaction}
+				itemsTotal={itemsTotal}
+				valueLocked={purchaseIsReceived}
 			/>
 			<PurchaseOrderBlock purchase={state.purchase} updatePurchase={updatePurchase} />
 			<PurchaseTransportBlock purchase={state.purchase} updatePurchase={updatePurchase} />

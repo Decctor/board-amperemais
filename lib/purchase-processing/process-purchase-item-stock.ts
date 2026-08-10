@@ -62,7 +62,9 @@ export async function handlePurchaseItemStockProcessing({
 	item,
 	reasonOverride,
 }: HandlePurchaseItemStockProcessingParams) {
-	item = normalizePurchaseItemCostValues(item);
+	// Um item em remoção não precisa de composição de custo válida — e não pode ser impedido de sair
+	// por ela. Ver `normalizePurchaseItems` em app/api/purchases/route.ts.
+	if (!item.deletar) item = normalizePurchaseItemCostValues(item);
 	const isExisting = !!item.id;
 	const shouldDelete = !!item.deletar;
 	const unitCost = resolveUnitCost(item);

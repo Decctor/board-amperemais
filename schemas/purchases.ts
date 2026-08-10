@@ -66,16 +66,11 @@ export const PurchaseImportedDocumentSchema = z.object({
 	numero: z.string({ invalid_type_error: "Tipo não válido para o número do documento importado." }).optional().nullable(),
 	serie: z.string({ invalid_type_error: "Tipo não válido para a série do documento importado." }).optional().nullable(),
 	dataEmissao: z.string({ invalid_type_error: "Tipo não válido para a data de emissão do documento importado." }).optional().nullable(),
+	// Sem `bucket` nem `caminho`: o objeto é localizado por `referencia` + organização da sessão
+	// (lib/purchase/imported-documents.ts). Um caminho carregado no payload seria um caminho forjável.
 	arquivo: z
 		.object({
-			bucket: z.string({
-				required_error: "Bucket do documento importado não informado.",
-				invalid_type_error: "Tipo não válido para o bucket do documento importado.",
-			}),
-			caminho: z.string({
-				required_error: "Caminho do documento importado não informado.",
-				invalid_type_error: "Tipo não válido para o caminho do documento importado.",
-			}),
+			nomeOriginal: z.string({ invalid_type_error: "Tipo não válido para o nome original do documento importado." }).optional().nullable(),
 			sha256: z.string({
 				required_error: "Hash do documento importado não informado.",
 				invalid_type_error: "Tipo não válido para o hash do documento importado.",

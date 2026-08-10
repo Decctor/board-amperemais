@@ -33,7 +33,7 @@ Assim, o mesmo IPI pode ser capitalizado ou reconhecido como crédito conforme o
 
 ### Origem documental
 
-A compra preserva seus documentos de origem em `purchases.documentos_importados`, um snapshot JSONB versionado. Cada documento recebe uma referência local usada pelos modificadores dos itens. O arquivo original, quando retido, é privado e identificado por bucket, caminho e hash.
+A compra preserva seus documentos de origem em `purchases.documentos_importados`, um snapshot JSONB versionado. Cada documento recebe uma referência local usada pelos modificadores dos itens. O arquivo original, quando retido, é privado e identificado por referência e hash — nunca por um caminho gravado no snapshot, que o cliente poderia forjar para alcançar objetos de outra organização.
 
 ### Contabilidade
 
