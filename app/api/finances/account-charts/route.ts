@@ -5,7 +5,7 @@ import { canViewFinances } from "@/lib/permissions/finances";
 import { createSimplifiedSearchCondition } from "@/lib/search";
 import { db } from "@/services/drizzle";
 import { accountsCharts } from "@/services/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -57,6 +57,9 @@ async function getAccountCharts({ input, session }: { input: TGetAccountChartsIn
 	}
 	const accountCharts = await db.query.accountsCharts.findMany({
 		where: (fields, { and }) => and(...conditions),
+		// Códigos representam caminhos hierárquicos, então cada segmento precisa ser ordenado como
+		// número (1, 1.1, 1.2, 1.10, 2), não pela ordem física das linhas nem como texto simples.
+		orderBy: (fields) => [sql`string_to_array(${fields.codigo}, '.')::int[] NULLS LAST`, asc(fields.nome)],
 	});
 	return {
 		data: {
