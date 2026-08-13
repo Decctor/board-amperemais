@@ -24,6 +24,11 @@ Posicionamento das mesas em planta. Coordenadas cabem em `servicePoints.metadado
 A v1 recebe solicitacoes (`tabOrderRequests`) para aprovacao do operador.
 **Gatilho:** controles de abuso validados (rate limit, rotacao de token, historico de operacao) e confianca operacional no fluxo de aprovacao.
 
+### Identificacao do cliente por telefone no fluxo publico
+
+Capturar o telefone do cliente na abertura/vinculo da tab (ou no primeiro pedido via QR) para identifica-lo de verdade: vincular `clienteId` a tab, dar continuidade entre dispositivos/navegadores (o `deviceKey` e por dispositivo e morre com o localStorage) e conectar o consumo do salao ao CRM/fidelidade.
+**Gatilho:** fluxo de continuidade por `deviceKey` (implementation-plan, secao 8 / fase 4) testado e validado em operacao real. Telefone adiciona atrito no primeiro pedido e exige verificacao (OTP) para nao virar identidade forjavel — nao antecipar.
+
 ### Mesclar tabs
 
 Transferencia simples entre pontos entra na v1; merge de contas nao.

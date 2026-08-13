@@ -1,7 +1,9 @@
+import { OrgColorsProvider } from "@/components/Providers/OrgColorsProvider";
 import { hashPublicToken, resolveServiceSettings } from "@/lib/tabs";
 import { db } from "@/services/drizzle";
-import { PublicOrderMenu, type TPublicMenuProduct } from "../../_components/PublicOrderMenu";
+import type { TPublicMenuProduct } from "../../_components/PublicOrderMenu";
 import { PublicShell } from "../../_components/PublicShell";
+import { PublicServicePointExperience } from "../../_components/PublicServicePointExperience";
 
 // ============================================================================
 // QR do PONTO (duravel, impresso na mesa): identifica o servicePoint, abre o
@@ -18,14 +20,26 @@ export default async function ServicePointPublicPage({ params }: { params: Promi
 		where: (fields, { and, eq }) => and(eq(fields.tokenPublicoHash, tokenHash), eq(fields.ativo, true)),
 		columns: { id: true, rotulo: true, grupo: true, organizacaoId: true },
 		with: {
-			organizacao: { columns: { id: true, nome: true, logoUrl: true } },
+			organizacao: {
+				columns: {
+					id: true,
+					nome: true,
+					logoUrl: true,
+					corPrimaria: true,
+					corPrimariaForeground: true,
+					corSecundaria: true,
+					corSecundariaForeground: true,
+				},
+			},
 		},
 	});
 
 	if (!servicePoint) {
 		return (
 			<PublicShell title="QR Code inválido">
-				<p className="text-center text-sm text-muted-foreground">Este QR Code não é válido ou foi desativado. Chame um atendente.</p>
+				<div className="rounded-2xl border border-border bg-card px-4 py-8 text-center">
+					<p className="text-sm text-muted-foreground">Este QR Code não é válido ou foi desativado. Chame um atendente.</p>
+				</div>
 			</PublicShell>
 		);
 	}
@@ -36,7 +50,7 @@ export default async function ServicePointPublicPage({ params }: { params: Promi
 	const products = orderingEnabled
 		? await db.query.products.findMany({
 				where: (fields, { and, eq }) => and(eq(fields.organizacaoId, servicePoint.organizacaoId), eq(fields.ativo, true)),
-				columns: { id: true, nome: true, grupo: true, precoVenda: true, imagemCapaUrl: true },
+				columns: { id: true, nome: true, grupo: true, descricao: true, precoVenda: true, imagemCapaUrl: true },
 				with: {
 					variantes: {
 						where: (fields, { eq }) => eq(fields.ativo, true),
@@ -48,14 +62,28 @@ export default async function ServicePointPublicPage({ params }: { params: Promi
 		: [];
 
 	return (
-		<PublicShell title={servicePoint.organizacao?.nome ?? "Cardápio"} subtitle={`${servicePoint.rotulo}${servicePoint.grupo ? ` · ${servicePoint.grupo}` : ""}`}>
-			{orderingEnabled ? (
-				<PublicOrderMenu token={token} contexto="PONTO" products={products as TPublicMenuProduct[]} />
-			) : (
-				<p className="text-center text-sm text-muted-foreground py-8">
-					Pedidos pelo celular não estão habilitados neste estabelecimento. Chame um atendente para fazer seu pedido.
-				</p>
-			)}
-		</PublicShell>
+		<OrgColorsProvider
+			scoped
+			corPrimaria={servicePoint.organizacao?.corPrimaria}
+			corPrimariaForeground={servicePoint.organizacao?.corPrimariaForeground}
+			corSecundaria={servicePoint.organizacao?.corSecundaria}
+			corSecundariaForeground={servicePoint.organizacao?.corSecundariaForeground}
+		>
+			<PublicShell
+				title={servicePoint.organizacao?.nome ?? "Cardápio"}
+				subtitle={`${servicePoint.rotulo}${servicePoint.grupo ? ` · ${servicePoint.grupo}` : ""}`}
+				logoUrl={servicePoint.organizacao?.logoUrl}
+			>
+				{orderingEnabled ? (
+					<PublicServicePointExperience token={token} products={products as TPublicMenuProduct[]} />
+				) : (
+					<div className="rounded-2xl border border-border bg-card px-4 py-8 text-center">
+						<p className="text-sm text-muted-foreground">
+							Pedidos pelo celular não estão habilitados neste estabelecimento. Chame um atendente para fazer seu pedido.
+						</p>
+					</div>
+				)}
+			</PublicShell>
+		</OrgColorsProvider>
 	);
 }

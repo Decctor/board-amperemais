@@ -29,6 +29,8 @@ export const tabOrderRequests = newTable(
 		tabOrderId: varchar("tab_order_id", { length: 255 }).references(() => tabOrders.id, { onDelete: "set null" }),
 		idempotencyKey: varchar("idempotency_key", { length: 255 }).notNull(),
 		payloadHash: varchar("payload_hash", { length: 64 }).notNull(),
+		// Credencial criada pelo navegador. O valor bruto nunca e persistido.
+		deviceKeyHash: varchar("device_key_hash", { length: 64 }),
 		payloadSolicitacao: jsonb("payload_solicitacao").$type<TTabOrderRequestPayload>().notNull(),
 		// varchar + z.enum de proposito: novos estados nao custam migracao de enum no Postgres.
 		status: varchar("status", { length: 30 })
@@ -46,6 +48,7 @@ export const tabOrderRequests = newTable(
 		orgStatusIdx: index("idx_tab_order_requests_org_status").on(table.organizacaoId, table.status),
 		tabIdx: index("idx_tab_order_requests_tab").on(table.tabId),
 		servicePointIdx: index("idx_tab_order_requests_service_point").on(table.servicePointId),
+		servicePointDeviceIdx: index("idx_tab_order_requests_service_point_device").on(table.servicePointId, table.deviceKeyHash),
 	}),
 );
 

@@ -4,7 +4,8 @@ import { hashPublicToken, resolveServiceSettings } from "@/lib/tabs";
 import { enforcePublicRateLimit } from "@/lib/tabs/public-rate-limit";
 import { TabOrderRequestPayloadSchema } from "@/schemas/tab-order-requests";
 import { db } from "@/services/drizzle";
-import { tabOrderRequests } from "@/services/drizzle/schema";
+import { sales, tabOrderRequests, tabs } from "@/services/drizzle/schema";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -19,15 +20,24 @@ import z from "zod";
 const CreatePublicTabOrderRequestInputSchema = z.object({
 	// Token bruto do QR (do ponto ou da tab). Resolvido por hash — nunca persistido.
 	token: z.string({ required_error: "Token nao informado." }).min(16, { message: "Token invalido." }),
-	contexto: z.enum(["PONTO", "TAB"], { required_error: "Contexto nao informado." }),
+	context: z.enum(["PONTO", "TAB"], { required_error: "Contexto nao informado." }),
 	idempotencyKey: z.string({ required_error: "Chave de idempotencia nao informada." }).uuid({ message: "Chave de idempotencia invalida." }),
-	observacoes: z.string({ invalid_type_error: "Tipo nao valido para observacoes." }).max(500).optional().nullable(),
-	itens: TabOrderRequestPayloadSchema.shape.itens,
+	deviceKey: z.string({ required_error: "Identificacao do dispositivo nao informada." }).uuid({ message: "Identificacao do dispositivo invalida." }),
+	notes: z.string({ invalid_type_error: "Tipo nao valido para observacoes." }).max(500).optional().nullable(),
+	tabCode: z.string({ invalid_type_error: "Tipo nao valido para codigo da comanda." }).trim().min(1).max(100).optional().nullable(),
+	items: TabOrderRequestPayloadSchema.shape.itens,
 });
 export type TCreatePublicTabOrderRequestInput = z.infer<typeof CreatePublicTabOrderRequestInputSchema>;
 
+const GetPublicTabOrderSessionInputSchema = z.object({
+	token: z.string({ required_error: "Token nao informado." }).min(16, { message: "Token invalido." }),
+	deviceKey: z.string({ required_error: "Identificacao do dispositivo nao informada." }).uuid({ message: "Identificacao do dispositivo invalida." }),
+});
+export type TGetPublicTabOrderSessionInput = z.infer<typeof GetPublicTabOrderSessionInputSchema>;
+
 async function createPublicTabOrderRequest({ input, clientIp }: { input: TCreatePublicTabOrderRequestInput; clientIp: string }) {
 	const tokenHash = hashPublicToken(input.token);
+	const deviceKeyHash = createHash("sha256").update(input.deviceKey).digest("hex");
 	enforcePublicRateLimit({ key: `${clientIp}:${tokenHash.slice(0, 16)}` });
 
 	// Resolve o contexto pelo hash do token.
@@ -35,7 +45,7 @@ async function createPublicTabOrderRequest({ input, clientIp }: { input: TCreate
 	let servicePointId: string | null = null;
 	let tabId: string | null = null;
 
-	if (input.contexto === "PONTO") {
+	if (input.context === "PONTO") {
 		const point = await db.query.servicePoints.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.tokenPublicoHash, tokenHash), eq(fields.ativo, true)),
 			columns: { id: true, organizacaoId: true },
@@ -43,6 +53,25 @@ async function createPublicTabOrderRequest({ input, clientIp }: { input: TCreate
 		if (!point) throw new createHttpError.NotFound("QR Code invalido ou desativado.");
 		orgId = point.organizacaoId;
 		servicePointId = point.id;
+
+		// Uma aprovacao anterior vincula este dispositivo a uma conta enquanto ela
+		// permanecer aberta. O QR do ponto continua sem listar contas publicamente.
+		const [linkedRequest] = await db
+			.select({ tabId: tabOrderRequests.tabId })
+			.from(tabOrderRequests)
+			.innerJoin(tabs, and(eq(tabOrderRequests.tabId, tabs.id), eq(tabs.status, "ABERTA"), eq(tabs.servicePointId, point.id)))
+			.where(
+				and(
+					eq(tabOrderRequests.organizacaoId, orgId),
+					eq(tabOrderRequests.servicePointId, point.id),
+					eq(tabOrderRequests.deviceKeyHash, deviceKeyHash),
+					eq(tabOrderRequests.status, "CONCLUIDA"),
+					isNotNull(tabOrderRequests.tabId),
+				),
+			)
+			.orderBy(desc(tabOrderRequests.dataInsercao))
+			.limit(1);
+		tabId = linkedRequest?.tabId ?? null;
 	} else {
 		const tab = await db.query.tabs.findFirst({
 			where: (fields, { eq }) => eq(fields.tokenPublicoHash, tokenHash),
@@ -62,7 +91,7 @@ async function createPublicTabOrderRequest({ input, clientIp }: { input: TCreate
 	}
 
 	// Valida os produtos referenciados (existencia/atividade na organizacao — sem precos).
-	const productIds = [...new Set(input.itens.map((item) => item.produtoId))];
+	const productIds = [...new Set(input.items.map((item) => item.produtoId))];
 	const produtos = await db.query.products.findMany({
 		where: (fields, { and, eq, inArray }) => and(inArray(fields.id, productIds), eq(fields.organizacaoId, orgId), eq(fields.ativo, true)),
 		columns: { id: true },
@@ -72,9 +101,10 @@ async function createPublicTabOrderRequest({ input, clientIp }: { input: TCreate
 	}
 
 	const payload = TabOrderRequestPayloadSchema.parse({
-		itens: input.itens,
-		observacoes: input.observacoes ?? null,
-		contexto: input.contexto,
+		itens: input.items,
+		observacoes: input.notes ?? null,
+		codigoTab: input.context === "PONTO" && !tabId ? (input.tabCode ?? null) : null,
+		contexto: input.context,
 	});
 	const payloadHash = createHash("sha256").update(JSON.stringify(payload)).digest("hex");
 
@@ -99,6 +129,7 @@ async function createPublicTabOrderRequest({ input, clientIp }: { input: TCreate
 			tabId,
 			idempotencyKey: input.idempotencyKey,
 			payloadHash,
+			deviceKeyHash,
 			payloadSolicitacao: payload,
 			status: "PENDENTE",
 		})
@@ -123,6 +154,88 @@ async function createPublicTabOrderRequest({ input, clientIp }: { input: TCreate
 }
 export type TCreatePublicTabOrderRequestOutput = Awaited<ReturnType<typeof createPublicTabOrderRequest>>;
 
+async function getPublicTabOrderSession({ input, clientIp }: { input: TGetPublicTabOrderSessionInput; clientIp: string }) {
+	const tokenHash = hashPublicToken(input.token);
+	const deviceKeyHash = createHash("sha256").update(input.deviceKey).digest("hex");
+	enforcePublicRateLimit({ key: `session:${clientIp}:${tokenHash.slice(0, 16)}:${deviceKeyHash.slice(0, 12)}` });
+
+	const point = await db.query.servicePoints.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.tokenPublicoHash, tokenHash), eq(fields.ativo, true)),
+		columns: { id: true, organizacaoId: true, rotulo: true },
+	});
+	if (!point) throw new createHttpError.NotFound("QR Code invalido ou desativado.");
+
+	const requests = await db.query.tabOrderRequests.findMany({
+		where: and(
+			eq(tabOrderRequests.organizacaoId, point.organizacaoId),
+			eq(tabOrderRequests.servicePointId, point.id),
+			eq(tabOrderRequests.deviceKeyHash, deviceKeyHash),
+		),
+		columns: {
+			id: true,
+			status: true,
+			tabId: true,
+			payloadSolicitacao: true,
+			motivoRejeicao: true,
+			erroProcessamento: true,
+			dataInsercao: true,
+			dataAtualizacao: true,
+		},
+		orderBy: (fields, { desc }) => desc(fields.dataInsercao),
+		limit: 20,
+	});
+
+	let linkedTab = null;
+	for (const request of requests) {
+		if (request.status !== "CONCLUIDA" || !request.tabId) continue;
+		linkedTab = await db.query.tabs.findFirst({
+			where: (fields, { and, eq }) =>
+				and(
+					eq(fields.id, request.tabId as string),
+					eq(fields.organizacaoId, point.organizacaoId),
+					eq(fields.servicePointId, point.id),
+					eq(fields.status, "ABERTA"),
+				),
+			columns: { id: true, codigo: true, status: true, dataAbertura: true },
+			with: {
+				servicePoint: { columns: { id: true, rotulo: true } },
+				pedidos: {
+					orderBy: (fields, { asc }) => asc(fields.numero),
+					columns: { id: true, numero: true, status: true, dataEnvio: true },
+					with: {
+						itens: {
+							columns: {
+								id: true,
+								quantidade: true,
+								quantidadeCancelada: true,
+								valorVendaTotalLiquido: true,
+								metadados: true,
+							},
+						},
+					},
+				},
+			},
+		});
+		if (linkedTab) break;
+	}
+
+	const draftSale = linkedTab
+		? await db.query.sales.findFirst({
+				where: and(eq(sales.tabId, linkedTab.id), eq(sales.statusVenda, "ORCAMENTO")),
+				columns: { valorTotal: true },
+			})
+		: null;
+
+	return {
+		data: {
+			requests,
+			tab: linkedTab ? { ...linkedTab, consumoParcial: draftSale?.valorTotal ?? 0 } : null,
+		},
+		message: "Sessao do dispositivo carregada com sucesso.",
+	};
+}
+export type TGetPublicTabOrderSessionOutput = Awaited<ReturnType<typeof getPublicTabOrderSession>>;
+
 async function createPublicTabOrderRequestRoute(request: NextRequest) {
 	const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 	const body = await request.json();
@@ -131,4 +244,16 @@ async function createPublicTabOrderRequestRoute(request: NextRequest) {
 	return NextResponse.json(result);
 }
 
+async function getPublicTabOrderSessionRoute(request: NextRequest) {
+	const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+	const { searchParams } = new URL(request.url);
+	const input = GetPublicTabOrderSessionInputSchema.parse({
+		token: searchParams.get("token"),
+		deviceKey: searchParams.get("deviceKey"),
+	});
+	const result = await getPublicTabOrderSession({ input, clientIp });
+	return NextResponse.json(result);
+}
+
+export const GET = appApiHandler({ GET: getPublicTabOrderSessionRoute });
 export const POST = appApiHandler({ POST: createPublicTabOrderRequestRoute });

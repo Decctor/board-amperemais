@@ -11,7 +11,7 @@ Estado atual do modelo:
 - `sales.comandaNumero` e um campo de texto livre na venda — suficiente apenas para etiquetar uma venda avulsa. Nao suporta conta que agrega pedidos, board de contas abertas, QR duravel ou fechamento consolidado;
 - `deliveryModeEnum` ja possui o valor `COMANDA`;
 - `poiTransactionRequests` ja implementa "point of interaction" para o playbook de fidelidade — outro significado, nao reutilizar o nome;
-- `salesSessions` cobre turno de caixa e segue ortogonal (a comanda fecha *dentro* de um turno).
+- `salesSessions` cobre turno de caixa e segue ortogonal (a comanda fecha _dentro_ de um turno).
 
 A demanda "mesas e comandas" esconde **dois primitivos com ciclos de vida diferentes**:
 
@@ -21,6 +21,23 @@ A demanda "mesas e comandas" esconde **dois primitivos com ciclos de vida difere
 O modelo deve ser excelente para food-service antes de tentar ser universal. Nao criar tabela especifica de `mesas`, mas tambem nao esconder regras essenciais do salao em `metadados` genericos. Outros segmentos (pousada: quarto/estadia; oficina: box/OS; salao de beleza: cadeira) reutilizam os primitivos quando os ciclos de vida forem equivalentes.
 
 O modulo de codigo vive em **`lib/tabs/`** — o `lib/` e organizado por dominio (`lib/sales`, `lib/stock`, ...), nao por vertical de segmento. "Tab" e o primitivo; food-service e apenas o primeiro consumidor.
+
+### Vocabulario do modulo
+
+| Termo             | O que e                                                                | Ciclo de vida                                                        | Observacoes                                                                                                  |
+| ----------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `servicePoint`    | Ancora fisica/logica do atendimento ("Mesa 5", "Balcao", "Quiosque 2") | Duravel — sobrevive a todas as sessoes                               | QR proprio duravel; opcional (balcao puro nao cadastra pontos)                                               |
+| `tab`             | Conta de consumo ("comanda") — o que o cliente deve                    | Efemera: abre → acumula → fecha (`ABERTA`/`FECHADA`/`CANCELADA`)     | Pode existir sem ponto; QR proprio efemero                                                                   |
+| `codigo` (da tab) | Numero da comanda fisica (cartao/ficha reutilizavel)                   | Unico entre tabs `ABERTAS` (partial unique); liberado no fechamento  | Ponte pragmatica: cartao plastico reutilizavel nao carrega token efemero                                     |
+| `tabOrder`        | Rodada/pedido — o ticket que a cozinha enxerga                         | Vive dentro da tab, `numero` sequencial                              | Sem identidade comercial/financeira/fiscal; status reusa `saleAttendanceStatusEnum`; baixa fisica na entrega |
+| venda rascunho    | Identidade comercial da conta                                          | Uma venda `ORCAMENTO` por tab aberta, criada lazy no primeiro pedido | Pagamento/fiscal/contabil acontecem uma unica vez, no fechamento                                             |
+| `tabOrderRequest` | Intencao publica de pedido via QR, aguardando aprovacao                | `PENDENTE → PROCESSANDO → CONCLUIDA/REJEITADA/ERRO`                  | Precificacao autoritativa na aprovacao; idempotente por chave + payload                                      |
+| `serviceSettings` | Politicas de operacao da organizacao (1:1)                             | Configuracao, nao entidade                                           | Presets = combinacoes de politicas, nao um enum de modos                                                     |
+| QR do ponto       | Token duravel impresso no ponto                                        | Rotacionavel por operacao explicita                                  | Abre cardapio e solicita pedido; NUNCA expoe consumo de tabs abertas                                         |
+| QR da tab         | Token efemero da conta (papel/pulseira/cartao impresso por sessao)     | Revogado naturalmente ao fechar a conta                              | Mostra extrato e permite pedir mais                                                                          |
+| `deviceKey`       | Credencial do dispositivo do cliente no fluxo publico                  | Gerada no client (localStorage); apenas o hash e persistido          | Autorizacao derivada: aprovacao vincula dispositivo → tab (secao 8)                                          |
+
+Relacoes centrais: um ponto hospeda **N tabs abertas simultaneamente** (deliberadamente sem unique — varias comandas na mesma mesa e caso real); tab 1—N `tabOrders`; tab 1—1 venda rascunho (estrutural 1:N para fechamento parcial futuro); `saleItems` apontam a venda rascunho **e** o `tabOrder` de origem.
 
 ### Decisoes ja tomadas
 
@@ -54,12 +71,12 @@ serviceSettings {
 
 A UI oferece presets, mas persiste as politicas:
 
-| Preset | Politicas principais | Experiencia |
-| --- | --- | --- |
-| Balcao | pontos e contas desabilitados | venda/pedido avulso pelo fluxo normal |
-| Somente mesas | ponto obrigatorio, identificacao automatica, maximo 1 conta por ponto | operador escolhe a mesa; a tab e aberta/reusada sem expor "comanda" |
-| Somente comandas | pontos desabilitados, codigo manual | operador informa ou le o codigo da comanda |
-| Mesas + comandas | ponto obrigatorio, codigo manual, varias contas por ponto | varias comandas vinculadas a mesma mesa |
+| Preset           | Politicas principais                                                  | Experiencia                                                         |
+| ---------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Balcao           | pontos e contas desabilitados                                         | venda/pedido avulso pelo fluxo normal                               |
+| Somente mesas    | ponto obrigatorio, identificacao automatica, maximo 1 conta por ponto | operador escolhe a mesa; a tab e aberta/reusada sem expor "comanda" |
+| Somente comandas | pontos desabilitados, codigo manual                                   | operador informa ou le o codigo da comanda                          |
+| Mesas + comandas | ponto obrigatorio, codigo manual, varias contas por ponto             | varias comandas vinculadas a mesma mesa                             |
 
 Persistir politicas, em vez de um mega-enum `MESA | COMANDA | HIBRIDO`, evita combinacoes artificiais. As regras nao sao inferidas pela nulabilidade das FKs: a exclusividade por ponto e garantida pelo service de abertura com guarda transacional (secao 4.1), nao por indice global — um unique por ponto impediria o fluxo legitimo de varias comandas na mesma mesa.
 
@@ -117,25 +134,27 @@ Pedidos (`tabOrders`) **reusam** `saleAttendanceStatusEnum` e os helpers de `lib
 
 ```ts
 export const servicePoints = newTable(
-  "service_points",
-  {
-    id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    organizacaoId: varchar("organizacao_id", { length: 255 })
-      .references(() => organizations.id, { onDelete: "cascade" })
-      .notNull(),
-    rotulo: text("rotulo").notNull(),                    // "Mesa 12"
-    grupo: text("grupo"),                                // "Salao", "Varanda"
-    tipo: servicePointTypeEnum("tipo").notNull(),        // MESA, BALCAO, QUIOSQUE, OUTRO
-    capacidade: doublePrecision("capacidade"),
-    tokenPublicoHash: varchar("token_publico_hash", { length: 255 }).notNull(),
-    ativo: boolean("ativo").default(true).notNull(),
-    metadados: jsonb("metadados"),                       // extensoes; nao guarda regras centrais
-    dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
-  },
-  (table) => ({
-    organizacaoAtivoIdx: index("idx_service_points_org_ativo").on(table.organizacaoId, table.ativo),
-    tokenPublicoHashIdx: uniqueIndex("idx_service_points_token_publico_hash").on(table.tokenPublicoHash),
-  }),
+	"service_points",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		rotulo: text("rotulo").notNull(), // "Mesa 12"
+		grupo: text("grupo"), // "Salao", "Varanda"
+		tipo: servicePointTypeEnum("tipo").notNull(), // MESA, BALCAO, QUIOSQUE, OUTRO
+		capacidade: doublePrecision("capacidade"),
+		tokenPublicoHash: varchar("token_publico_hash", { length: 255 }).notNull(),
+		ativo: boolean("ativo").default(true).notNull(),
+		metadados: jsonb("metadados"), // extensoes; nao guarda regras centrais
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+	},
+	(table) => ({
+		organizacaoAtivoIdx: index("idx_service_points_org_ativo").on(table.organizacaoId, table.ativo),
+		tokenPublicoHashIdx: uniqueIndex("idx_service_points_token_publico_hash").on(table.tokenPublicoHash),
+	}),
 );
 ```
 
@@ -145,60 +164,64 @@ Relations: `organizacao`, `tabs: many(tabs)`. Exportar `TServicePointEntity`/`TN
 
 ```ts
 export const tabs = newTable(
-  "tabs",
-  {
-    id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    organizacaoId: varchar("organizacao_id", { length: 255 })
-      .references(() => organizations.id, { onDelete: "cascade" })
-      .notNull(),
-    servicePointId: varchar("service_point_id", { length: 255 }).references(() => servicePoints.id, { onDelete: "set null" }),
-    codigo: text("codigo"),                              // nullable em mesa; obrigatorio quando houver comanda fisica
-    clienteId: varchar("cliente_id", { length: 255 }).references(() => clients.id, { onDelete: "set null" }),
-    status: tabStatusEnum("status").notNull().default("ABERTA"),
-    tokenPublicoHash: varchar("token_publico_hash", { length: 255 }).notNull(),
-    responsavelVendedorId: varchar("responsavel_vendedor_id", { length: 255 }).references(() => sellers.id, { onDelete: "set null" }),
-    abertaPorUsuarioId: varchar("aberta_por_usuario_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
-    fechadaPorUsuarioId: varchar("fechada_por_usuario_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
-    valorTotal: doublePrecision("valor_total"),          // snapshot congelado no fechamento
-    observacoes: text("observacoes"),
-    metadados: jsonb("metadados"),
-    dataAbertura: timestamp("data_abertura").defaultNow().notNull(),
-    dataFechamento: timestamp("data_fechamento"),
-    dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
-  },
-  (table) => ({
-    orgStatusIdx: index("idx_tabs_org_status").on(table.organizacaoId, table.status),
-    pontoIdx: index("idx_tabs_service_point").on(table.servicePointId),
-    tokenPublicoHashIdx: uniqueIndex("idx_tabs_token_publico_hash").on(table.tokenPublicoHash),
-    // Impede duas comandas fisicas com o mesmo codigo abertas ao mesmo tempo; libera reuso apos fechar.
-    codigoAbertaIdx: uniqueIndex("idx_tabs_org_codigo_aberta")
-      .on(table.organizacaoId, table.codigo)
-      .where(sql`status = 'ABERTA' AND codigo IS NOT NULL`),
-  }),
+	"tabs",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		servicePointId: varchar("service_point_id", { length: 255 }).references(() => servicePoints.id, { onDelete: "set null" }),
+		codigo: text("codigo"), // nullable em mesa; obrigatorio quando houver comanda fisica
+		clienteId: varchar("cliente_id", { length: 255 }).references(() => clients.id, { onDelete: "set null" }),
+		status: tabStatusEnum("status").notNull().default("ABERTA"),
+		tokenPublicoHash: varchar("token_publico_hash", { length: 255 }).notNull(),
+		responsavelVendedorId: varchar("responsavel_vendedor_id", { length: 255 }).references(() => sellers.id, { onDelete: "set null" }),
+		abertaPorUsuarioId: varchar("aberta_por_usuario_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+		fechadaPorUsuarioId: varchar("fechada_por_usuario_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+		valorTotal: doublePrecision("valor_total"), // snapshot congelado no fechamento
+		observacoes: text("observacoes"),
+		metadados: jsonb("metadados"),
+		dataAbertura: timestamp("data_abertura").defaultNow().notNull(),
+		dataFechamento: timestamp("data_fechamento"),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+	},
+	(table) => ({
+		orgStatusIdx: index("idx_tabs_org_status").on(table.organizacaoId, table.status),
+		pontoIdx: index("idx_tabs_service_point").on(table.servicePointId),
+		tokenPublicoHashIdx: uniqueIndex("idx_tabs_token_publico_hash").on(table.tokenPublicoHash),
+		// Impede duas comandas fisicas com o mesmo codigo abertas ao mesmo tempo; libera reuso apos fechar.
+		codigoAbertaIdx: uniqueIndex("idx_tabs_org_codigo_aberta")
+			.on(table.organizacaoId, table.codigo)
+			.where(sql`status = 'ABERTA' AND codigo IS NOT NULL`),
+	}),
 );
 
 export const tabOrders = newTable(
-  "tab_orders",
-  {
-    id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    organizacaoId: varchar("organizacao_id", { length: 255 })
-      .references(() => organizations.id, { onDelete: "cascade" })
-      .notNull(),
-    tabId: varchar("tab_id", { length: 255 })
-      .references(() => tabs.id, { onDelete: "cascade" })
-      .notNull(),
-    numero: doublePrecision("numero").notNull(),          // sequencial dentro da conta
-    status: saleAttendanceStatusEnum("status").notNull().default("EM_PREPARO"),
-    observacoes: text("observacoes"),                     // "sem cebola", nome da pessoa da rodada
-    lancadoPorUsuarioId: varchar("lancado_por_usuario_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
-    dataEnvio: timestamp("data_envio").defaultNow().notNull(),
-    dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
-  },
-  (table) => ({
-    tabIdx: index("idx_tab_orders_tab").on(table.tabId),
-    orgStatusIdx: index("idx_tab_orders_org_status").on(table.organizacaoId, table.status),
-    tabNumeroIdx: uniqueIndex("idx_tab_orders_tab_numero").on(table.tabId, table.numero),
-  }),
+	"tab_orders",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		tabId: varchar("tab_id", { length: 255 })
+			.references(() => tabs.id, { onDelete: "cascade" })
+			.notNull(),
+		numero: doublePrecision("numero").notNull(), // sequencial dentro da conta
+		status: saleAttendanceStatusEnum("status").notNull().default("EM_PREPARO"),
+		observacoes: text("observacoes"), // "sem cebola", nome da pessoa da rodada
+		lancadoPorUsuarioId: varchar("lancado_por_usuario_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+		dataEnvio: timestamp("data_envio").defaultNow().notNull(),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+	},
+	(table) => ({
+		tabIdx: index("idx_tab_orders_tab").on(table.tabId),
+		orgStatusIdx: index("idx_tab_orders_org_status").on(table.organizacaoId, table.status),
+		tabNumeroIdx: uniqueIndex("idx_tab_orders_tab_numero").on(table.tabId, table.numero),
+	}),
 );
 ```
 
@@ -275,6 +298,7 @@ Padrao existente: funcao pura recebendo `input` tipado (+ `organization`/`sessio
   ```
 
   (mesmo padrao ja usado em `lib/whatsapp/smb-contacts-sync.ts`). Apos o lock, reconsultar as tabs abertas do ponto e aplicar `maxAbertasPorPonto`. Para comandas com codigo, o partial unique continua defendendo no banco e a violacao vira erro amigavel;
+
 - no preset "Somente mesas", abre ou retorna a tab implicita do ponto sem exigir codigo do operador;
 - gera o token publico, persiste apenas seu hash e retorna o valor bruto somente para montar/regenerar o QR;
 - nao cria venda — a venda rascunho e lazy no primeiro pedido.
@@ -351,11 +375,11 @@ Transferir tab entre pontos preserva pedidos, venda, itens e cliente. Operacao e
 
 O codebase ja tem modulo de producao completo: `productionRecipes`, `productions` com `origem: MANUAL | PEDIDO | AGENDADA`, e links `vendaId`/`vendaItemId`. Tres mecanismos, cada um com seu caso:
 
-| Mecanismo | Caso | Estado |
-| --- | --- | --- |
-| Baixa por composicao (ficha tecnica) | Prato/drink feito na hora, alto volume | **Novo — e a resposta para o prato** |
-| Producao em lote (`MANUAL`/`AGENDADA`) | Pre-preparo: molhos, porcoes, massas | Ja existe |
-| Producao sob demanda (`origem = "PEDIDO"`) | Encomenda com lead time (bolo, evento) | Enum previsto, fiacao futura |
+| Mecanismo                                  | Caso                                   | Estado                               |
+| ------------------------------------------ | -------------------------------------- | ------------------------------------ |
+| Baixa por composicao (ficha tecnica)       | Prato/drink feito na hora, alto volume | **Novo — e a resposta para o prato** |
+| Producao em lote (`MANUAL`/`AGENDADA`)     | Pre-preparo: molhos, porcoes, massas   | Ja existe                            |
+| Producao sob demanda (`origem = "PEDIDO"`) | Encomenda com lead time (bolo, evento) | Enum previsto, fiacao futura         |
 
 ### 5.1 Prato a la minute: composicao, nao ordem de producao
 
@@ -373,16 +397,16 @@ Item com lead time real (bolo sob encomenda): uma `production` por item de venda
 
 Padrao quatro partes (schema de input, service, handler, `appApiHandler`), mensagens em portugues, resposta `{ data, message }`:
 
-| Rota | Metodos | Observacoes |
-| --- | --- | --- |
-| `app/api/service-points/route.ts` | GET (multi-mode `byId`/`default`), POST, PUT | CRUD de pontos; DELETE logico via `ativo` |
-| `app/api/tabs/route.ts` | GET (multi-mode: `byId` com pedidos+itens+totais derivados; `default` = board com filtros `status`, `servicePointId`), POST (abrir/resolver conta) | `TGetTabsInput`, `TCreateTabInput`... |
-| `app/api/tabs/orders/route.ts` | POST (lancar pedido: id gerado no client, itens, observacoes) | payload aninhado, padrao existente |
-| `app/api/tabs/orders/status/route.ts` | POST (transicao de status do pedido) | espelha `app/api/pos/sales/attendance-status` |
-| `app/api/tabs/close/route.ts` | POST (fechar conta: `salePayments`, `sessaoVendaId` resolvido como no POS) | |
-| `app/api/tabs/cancel/route.ts` | POST (cancelar conta ou pedido, com flag de tratamento de estoque p/ entregues) | |
-| `app/api/sales/preparation/route.ts` | GET (novo) | tickets de preparo unificados: vendas confirmadas com preparo + `tabOrders` ativos (`map-tab-order-to-preparation-ticket.ts`) |
-| `app/api/sales/fulfillment/route.ts` | GET (existente) | **intocado** — permanece no grao da venda, para o caixa |
+| Rota                                  | Metodos                                                                                                                                            | Observacoes                                                                                                                   |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `app/api/service-points/route.ts`     | GET (multi-mode `byId`/`default`), POST, PUT                                                                                                       | CRUD de pontos; DELETE logico via `ativo`                                                                                     |
+| `app/api/tabs/route.ts`               | GET (multi-mode: `byId` com pedidos+itens+totais derivados; `default` = board com filtros `status`, `servicePointId`), POST (abrir/resolver conta) | `TGetTabsInput`, `TCreateTabInput`...                                                                                         |
+| `app/api/tabs/orders/route.ts`        | POST (lancar pedido: id gerado no client, itens, observacoes)                                                                                      | payload aninhado, padrao existente                                                                                            |
+| `app/api/tabs/orders/status/route.ts` | POST (transicao de status do pedido)                                                                                                               | espelha `app/api/pos/sales/attendance-status`                                                                                 |
+| `app/api/tabs/close/route.ts`         | POST (fechar conta: `salePayments`, `sessaoVendaId` resolvido como no POS)                                                                         |                                                                                                                               |
+| `app/api/tabs/cancel/route.ts`        | POST (cancelar conta ou pedido, com flag de tratamento de estoque p/ entregues)                                                                    |                                                                                                                               |
+| `app/api/sales/preparation/route.ts`  | GET (novo)                                                                                                                                         | tickets de preparo unificados: vendas confirmadas com preparo + `tabOrders` ativos (`map-tab-order-to-preparation-ticket.ts`) |
+| `app/api/sales/fulfillment/route.ts`  | GET (existente)                                                                                                                                    | **intocado** — permanece no grao da venda, para o caixa                                                                       |
 
 A rota comum de confirmacao de POS (`app/api/pos/sales/confirm`) **rejeita** venda com `tabId` — o fechamento da tab e a unica interface autorizada a confirma-la.
 
@@ -395,6 +419,7 @@ O board de **Preparo** (o "KDS" no jargao de food-service — nome de codigo `pr
   - `tabOrders` ativos de contas abertas — o unico caso em que o grao diverge (1 venda rascunho : N rodadas).
 
   Card centrado no item (itens, modificadores, observacoes, tempo decorrido), origem como badge ("Mesa 12", "iFood", "Retirada"). **Zero pagamento, zero fiscal** — quem prepara sinaliza `PRONTO` e para ai;
+
 - **Atendimento** (fulfillment board existente): permanece intocado, no grao da venda, para o caixa — despacho (`PRONTO -> ENTREGUE`), gate de pagamento e fiscal. `tabOrders` **nao aparecem** aqui: injetar rodadas sem significado financeiro/fiscal poluiria uma superficie comercial. A entrega da rodada e marcada pelo garcom (board de tabs/celular) e o fechamento comercial acontece no board de tabs. O gate de pagamento de `processSaleAttendanceStatusChange` segue intacto — ele guarda o `ENTREGUE`, que o Preparo nunca dispara.
 
 Implementacao: `app/api/sales/preparation/route.ts` compoe as duas queries e mapeia para um `TPreparationTicket` homogeneo com discriminador `origem`, reusando os mappers/enum do fulfillment; a mutation de transicao escolhe o endpoint pelo `origem` do ticket (venda -> `attendance-status` existente; tabOrder -> service de tabs). Componente autocontido em `_components/preparation/` — o destino natural e uma rota fullscreen dedicada (tablet/TV da cozinha, auto-refresh, permissao propria), entao nada do board acopla na pagina; sincronizar a aba ativa via query param. Gate por acesso ao ERP apenas (delivery/retirada se beneficiam do Preparo mesmo sem comandas).
@@ -430,7 +455,19 @@ catalogo + product builder + carrinho + validacao autoritativa de precos
 
 Aprofundar `lib/sales/sale-pricing-validation.ts` como interface compartilhada (produto, variante, modificadores, precos); o calculo local da rota de shop converge gradualmente para ela.
 
-Aprovacao de `tabOrderRequest` executa atomicamente a mesma validacao de precos e o mesmo `launchTabOrder` do operador (reusando o id/idempotencia derivados da solicitacao). No preset "Somente mesas", a aprovacao pode abrir a tab implicita; em "Mesas + comandas", o QR do ponto nao escolhe silenciosamente entre varias tabs — o cliente apresenta sua comanda ou a solicitacao fica para o operador resolver.
+Aprovacao de `tabOrderRequest` executa atomicamente a mesma validacao de precos e o mesmo `launchTabOrder` do operador (reusando o id/idempotencia derivados da solicitacao). No preset "Somente mesas", a aprovacao pode abrir a tab implicita; em "Mesas + comandas", o QR do ponto nao escolhe silenciosamente entre varias tabs — o cliente apresenta sua comanda ou a solicitacao fica para o operador resolver. Se o codigo informado corresponder a uma tab aberta no mesmo ponto, ela e pre-selecionada. Se ainda nao existir, o operador recebe a acao explicita **"Abrir comanda X e aprovar"**; a criacao nunca e silenciosa. Codigo aberto em outro ponto e limite de contas do ponto bloqueiam a criacao com mensagem explicativa.
+
+O contrato de decisao usa nomes estruturais em ingles. Campos de operacao nunca sao traduzidos apenas porque carregam dados de uma entidade:
+
+```ts
+type ApprovalDestination = { type: "EXISTING"; tabId: string } | { type: "NEW"; code: string };
+
+type DecideTabOrderRequestInput =
+	| { requestId: string; action: "APPROVE"; destination?: ApprovalDestination | null }
+	| { requestId: string; action: "REJECT"; rejectionReason?: string | null };
+```
+
+O POST publico tambem usa um envelope estrutural em ingles: `{ token, context, idempotencyKey, deviceKey, notes, tabCode, items }`. Os itens aninhados sao dados e conservam os campos do dominio (`produtoId`, `produtoVarianteId`, `nome`, `quantidade`). Antes de persistir, o service faz o mapeamento explicito para `payloadSolicitacao`: `context -> contexto`, `notes -> observacoes`, `tabCode -> codigoTab` e `items -> itens`. Portanto, `type`, `code`, `tabCode`, `tabId`, `action`, `rejectionReason`, `context`, `notes` e `items` sao contrato de codigo em ingles; `payloadSolicitacao.codigoTab`, `payloadSolicitacao.contexto`, `payloadSolicitacao.observacoes`, `payloadSolicitacao.itens`, `tabs.codigo` e demais campos persistidos continuam em portugues.
 
 Contextos dos QRs:
 
@@ -438,6 +475,15 @@ Contextos dos QRs:
 - **QR da tab** (efemero, papel/pulseira/cartao): identifica uma conta especifica, pode mostrar extrato e iniciar solicitacao de rodada; revogavel/rotacionavel ao fechar ou reabrir.
 
 Persistir hashes dos tokens (pratica de `shopOrderRequests`); token bruto so na criacao/regeneracao. Rate limit nas rotas publicas e operacao explicita de regeneracao do QR do ponto.
+
+### Continuidade digital do cliente (`deviceKey`) — fase 4
+
+O QR do ponto identifica a mesa, nao a pessoa — e o QR da tab e um artefato fisico que muitas operacoes nao imprimem por sessao. Sem uma ponte, o cliente que pediu pelo QR da mesa fica orfao: nao ve o status da solicitacao nem o extrato da propria conta. A ponte **nao** reutiliza o token da tab (hash-only — exigiria rotacao com entrega one-shot e gating por origem); usa uma credencial que o proprio dispositivo cria:
+
+- o client gera um `deviceKey` (UUID em localStorage, mesma mecanica do `idempotencyKey`) e o envia em toda solicitacao publica; persistimos apenas o hash em `tabOrderRequests`;
+- **autorizacao derivada, nunca emitida**: com token do ponto + `deviceKey`, um GET publico (rate-limited) retorna as solicitacoes do dispositivo com status; quando alguma foi aprovada numa tab, retorna tambem o extrato daquela tab enquanto `ABERTA`. Fechou a conta, o acesso morre sozinho — sem rotacao nem revogacao explicita;
+- **varias comandas na mesma mesa**: a solicitacao via QR do ponto ganha campo opcional "numero da sua comanda" — prova de posse do cartao fisico, digitada pelo cliente; nada e listado publicamente (listar as tabs abertas do ponto vazaria o consumo da mesa). A aprovacao pre-seleciona a tab de mesmo `codigo` do ponto ou oferece a abertura explicita quando ela ainda nao existe; o operador, que enxerga a mesa, continua sendo a verificacao de identidade. Apos a primeira aprovacao, o vinculo dispositivo→tab dispensa a pergunta nos pedidos seguintes;
+- a pagina publica do ponto torna-se stateful (secao "Sua conta" com status da solicitacao e extrato); a pagina da tab permanece para o QR fisico, compartilhando os mesmos componentes.
 
 Paginas: `app/(external)/service-point/[token]/` e `app/(external)/tab/[token]/`.
 
@@ -470,5 +516,8 @@ guarda compare-and-set em `processSaleConfirmationInTransaction` (4.6) — corri
 
 **Fase 3 — pedido via QR com aprovacao:**
 `tabOrderRequests`; paginas publicas de ponto e tab; cardapio reutilizado com adapter proprio; aprovacao no board do operador; tokens com hash, rotacao e rate limit; geracao/impressao dos QRs.
+
+**Fase 4 — continuidade digital do cliente (`deviceKey`, secao 8):**
+coluna `deviceKeyHash` em `tabOrderRequests` + campo opcional "numero da comanda" na solicitacao; GET publico de sessao do dispositivo (status das solicitacoes + extrato da tab vinculada, rate-limited); pre-selecao da tab na aprovacao; secao "Sua conta" na pagina publica do ponto.
 
 Evolucoes posteriores: ver `future-improvements.md`.
