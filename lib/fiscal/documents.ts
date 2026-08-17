@@ -1,3 +1,4 @@
+import { processFiscalDocumentDanfeAutoPrintIfEligible } from "@/lib/desktop-agent/auto-print";
 import { db } from "@/services/drizzle";
 import { fiscalDocumentEvents, fiscalOutboundDocuments } from "@/services/drizzle/schema";
 import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
@@ -472,10 +473,16 @@ async function persistAuthorizedAssets(documento: typeof fiscalOutboundDocuments
 	const pdfStoragePath = pdfBuffer
 		? await storeFiscalAsset({ documentoId: documento.id, tipo: documento.tipo, asset: "pdf", buffer: pdfBuffer })
 		: null;
-	return patchFiscalDocument(documento.id, {
+	const patched = await patchFiscalDocument(documento.id, {
 		xmlStoragePath,
 		pdfStoragePath,
 	});
+	// Auto-print da DANFE: hook único para os dois caminhos de autorização (emissão e sync),
+	// depois do pdfStoragePath gravado. Nunca lança; idempotente por DANFE:<documentoId>.
+	if (patched?.pdfStoragePath) {
+		await processFiscalDocumentDanfeAutoPrintIfEligible({ documento: patched });
+	}
+	return patched;
 }
 
 // Parte "preparar": cria/atualiza o rascunho, valida prontidao e tributacao, reserva numeracao

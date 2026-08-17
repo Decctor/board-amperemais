@@ -126,6 +126,7 @@ export async function buildIfoodSandboxIntegrationConfig() {
 		scope: token.scope,
 		expiresAt: token.expiresAt,
 		authorizedAt: new Date().toISOString(),
+		aceiteAutomaticoPedidos: false,
 	};
 }
 

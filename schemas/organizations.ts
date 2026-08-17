@@ -193,6 +193,38 @@ export const OrganizationDefaultsSchema = z.object({
 export type TOrganizationDefaults = z.infer<typeof OrganizationDefaultsSchema>;
 export type TOrganizationAccountingDefaults = TOrganizationDefaults;
 
+// Impressão automática via agente desktop (docs/dev-planning/auto-print-wiring-plan.md).
+// `canais` é allowlist de chaves de política derivadas da venda: canal interno cru ("POS",
+// "SHOP", "COMANDA") ou "INTEGRACAO-<canal>" para vendas externas ("INTEGRACAO-IFOOD").
+// Canal fora da lista (inclusive nulo e integrações novas) não imprime — opt-in explícito.
+const OrganizationAutoPrintRuleSchema = z.object({
+	habilitada: z.boolean({ invalid_type_error: "Tipo não válido para a habilitação da impressão automática." }).default(false),
+	canais: z.array(z.string({ invalid_type_error: "Tipo não válido para o canal de impressão automática." })).default([]),
+	copias: z
+		.number({ invalid_type_error: "Tipo não válido para o número de cópias da impressão automática." })
+		.int()
+		.min(1)
+		.max(5)
+		.default(1),
+});
+export type TOrganizationAutoPrintRule = z.infer<typeof OrganizationAutoPrintRuleSchema>;
+
+// Standalone (não só inline em preferencias): os orquestradores de auto-print parseiam este
+// bloco defensivamente — `configuracao` não é re-parseada em cada leitura e linhas antigas não
+// têm a chave até o próximo save de settings.
+export const OrganizationPrintPreferencesSchema = z
+	.object({
+		automatica: z
+			.object({
+				CUPOM_VENDA: OrganizationAutoPrintRuleSchema.default({}),
+				DANFE_NFCE: OrganizationAutoPrintRuleSchema.default({}),
+				DANFE_NFE: OrganizationAutoPrintRuleSchema.default({}),
+			})
+			.default({}),
+	})
+	.default({});
+export type TOrganizationPrintPreferences = z.infer<typeof OrganizationPrintPreferencesSchema>;
+
 export const OrganizationConfigurationSchema = z.object({
 	recursos: z.object({
 		analytics: z.object({
@@ -323,6 +355,7 @@ export const OrganizationConfigurationSchema = z.object({
 				habilitado: z.boolean({ invalid_type_error: "Tipo não válido para a habilitação de contas de atendimento." }),
 			})
 			.default({ habilitado: false }),
+		impressoes: OrganizationPrintPreferencesSchema,
 	}),
 	defaults: OrganizationDefaultsSchema,
 });

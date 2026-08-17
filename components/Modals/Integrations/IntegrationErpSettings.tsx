@@ -5,11 +5,11 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { getErrorMessage } from "@/lib/errors";
-import { INTEGRATION_SETTINGS_QUERY_KEY, useIntegrationSettings } from "@/lib/queries/integrations";
-import { updateIntegrationSettings } from "@/lib/mutations/integrations";
+import { INTEGRATION_SETTINGS_QUERY_KEY, useIntegrationSettings, useIntegrations } from "@/lib/queries/integrations";
+import { updateIntegration, updateIntegrationSettings } from "@/lib/mutations/integrations";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type LucideIcon, AlertTriangle, FileText, LayoutGrid, Package, Wallet } from "lucide-react";
+import { type LucideIcon, AlertTriangle, CircleCheckBig, FileText, LayoutGrid, Package, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -71,18 +71,51 @@ const DEFAULT_POLICY: TIntegrationErpPolicy = { fulfillment: false, estoque: fal
 export default function IntegrationErpSettings({ canManage, closeMenu }: IntegrationErpSettingsProps) {
 	const queryClient = useQueryClient();
 	const settingsQuery = useIntegrationSettings();
+	const ifoodIntegrationsQuery = useIntegrations({ tipo: "IFOOD" });
 	const [policy, setPolicy] = useState<TIntegrationErpPolicy>(DEFAULT_POLICY);
+	// Aceite automático é POR CONEXÃO iFood (linha de integrations), não política da organização.
+	const [aceitesAutomaticos, setAceitesAutomaticos] = useState<Record<string, boolean>>({});
+
+	const activeIfoodIntegrations = (ifoodIntegrationsQuery.data ?? []).filter(
+		(integration) => integration.ativo && integration.configuracao?.tipo === "IFOOD",
+	);
 
 	useEffect(() => {
 		if (settingsQuery.data?.integracaoERP) setPolicy(settingsQuery.data.integracaoERP);
 	}, [settingsQuery.data?.integracaoERP]);
 
+	useEffect(() => {
+		if (!ifoodIntegrationsQuery.data) return;
+		setAceitesAutomaticos(
+			Object.fromEntries(
+				ifoodIntegrationsQuery.data
+					.filter((integration) => integration.ativo && integration.configuracao?.tipo === "IFOOD")
+					.map((integration) => [
+						integration.id,
+						integration.configuracao?.tipo === "IFOOD" ? (integration.configuracao.aceiteAutomaticoPedidos ?? false) : false,
+					]),
+			),
+		);
+	}, [ifoodIntegrationsQuery.data]);
+
 	const { mutate, isPending } = useMutation({
 		mutationKey: ["update-integration-settings"],
-		mutationFn: updateIntegrationSettings,
+		mutationFn: async () => {
+			const result = await updateIntegrationSettings({ integracaoERP: policy });
+			// Só as conexões cujo aceite mudou — patch cirúrgico por linha na rota.
+			const changed = activeIfoodIntegrations.filter((integration) => {
+				const current = integration.configuracao?.tipo === "IFOOD" ? (integration.configuracao.aceiteAutomaticoPedidos ?? false) : false;
+				return aceitesAutomaticos[integration.id] !== undefined && aceitesAutomaticos[integration.id] !== current;
+			});
+			for (const integration of changed) {
+				await updateIntegration({ id: integration.id, ifoodConfig: { aceiteAutomaticoPedidos: aceitesAutomaticos[integration.id] } });
+			}
+			return result;
+		},
 		onSuccess: (data) => {
 			toast.success(data.message);
 			queryClient.invalidateQueries({ queryKey: INTEGRATION_SETTINGS_QUERY_KEY });
+			queryClient.invalidateQueries({ queryKey: ["integrations"] });
 			closeMenu();
 		},
 		onError: (error) => toast.error(getErrorMessage(error)),
@@ -105,7 +138,7 @@ export default function IntegrationErpSettings({ canManage, closeMenu }: Integra
 			menuDescription="Defina quais efeitos as vendas das integrações (ex.: iFood) geram no seu ERP."
 			menuActionButtonText={canManage ? "SALVAR" : "FECHAR"}
 			menuCancelButtonText="CANCELAR"
-			actionFunction={() => (canManage ? mutate({ integracaoERP: policy }) : closeMenu())}
+			actionFunction={() => (canManage ? mutate() : closeMenu())}
 			actionIsLoading={isPending}
 			stateIsLoading={isLoading}
 			closeMenu={closeMenu}
@@ -167,6 +200,41 @@ export default function IntegrationErpSettings({ canManage, closeMenu }: Integra
 						})}
 					</div>
 				)}
+
+				{activeIfoodIntegrations.length > 0 ? (
+					<div className="flex flex-col gap-2">
+						{activeIfoodIntegrations.map((integration) => {
+							const disabled = !canManage || isPending;
+							return (
+								<div
+									key={integration.id}
+									className={cn("flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-3 transition-opacity", disabled && "opacity-60")}
+								>
+									<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+										<CircleCheckBig className="h-4 w-4" />
+									</div>
+									<div className="min-w-0 flex-1">
+										<div className="flex items-center gap-2">
+											<p className="text-sm font-bold tracking-tight">
+												Aceite automático de pedidos{activeIfoodIntegrations.length > 1 && integration.apelido ? ` — ${integration.apelido}` : ""}
+											</p>
+										</div>
+										<p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+											Aceita automaticamente os pedidos recebidos no iFood, sem depender da fila de confirmação. Sem aceite (automático ou manual), o pedido
+											expira no canal.
+										</p>
+									</div>
+									<Switch
+										checked={aceitesAutomaticos[integration.id] ?? false}
+										disabled={disabled}
+										onCheckedChange={(value) => setAceitesAutomaticos((prev) => ({ ...prev, [integration.id]: value }))}
+										aria-label="Aceite automático de pedidos"
+									/>
+								</div>
+							);
+						})}
+					</div>
+				) : null}
 
 				{!isLoading && policy.fulfillment && policy.estoque ? (
 					<div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-amber-700 dark:text-amber-400">

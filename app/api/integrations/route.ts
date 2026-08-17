@@ -8,7 +8,7 @@ import { DataSourceIntegrationConfigSchema, MetaAdsCapiConfigPatchSchema } from 
 import { db } from "@/services/drizzle";
 import { integrations } from "@/services/drizzle/schema";
 import type { TIntegrationEntity } from "@/services/drizzle/schema";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -135,6 +135,12 @@ const UpdateIntegrationInputSchema = z.object({
 	apelido: z.string({ invalid_type_error: "Tipo inválido para o apelido." }).optional().nullable(),
 	// Settings de CAPI (só aplicável a integrações META_ADS).
 	capiConfig: MetaAdsCapiConfigPatchSchema.optional(),
+	// Settings operacionais do iFood (só aplicável a integrações IFOOD).
+	ifoodConfig: z
+		.object({
+			aceiteAutomaticoPedidos: z.boolean({ invalid_type_error: "Tipo inválido para o aceite automático de pedidos." }),
+		})
+		.optional(),
 });
 export type TUpdateIntegrationInput = z.infer<typeof UpdateIntegrationInputSchema>;
 
@@ -174,6 +180,18 @@ async function updateIntegration({ input, session }: { input: TUpdateIntegration
 		}
 	}
 	if (input.apelido !== undefined) patch.apelido = input.apelido;
+
+	if (input.ifoodConfig) {
+		if (existing.configuracao?.tipo !== "IFOOD") {
+			throw new createHttpError.BadRequest("Aceite automático de pedidos só é aplicável a integrações do iFood.");
+		}
+		// Patch cirúrgico (jsonb_set), NÃO spread do snapshot: o refresh de token reescreve o blob
+		// inteiro em paralelo — um spread aqui poderia reverter tokens recém-renovados (mesmo
+		// racional do merchantIds em lib/integrations/ifood/context.ts).
+		patch.configuracao = sql`jsonb_set(${integrations.configuracao}, '{aceiteAutomaticoPedidos}', ${JSON.stringify(
+			input.ifoodConfig.aceiteAutomaticoPedidos,
+		)}::jsonb)` as unknown as TIntegrationEntity["configuracao"];
+	}
 
 	if (input.capiConfig) {
 		if (existing.configuracao?.tipo !== "META_ADS") {

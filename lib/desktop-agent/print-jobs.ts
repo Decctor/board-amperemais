@@ -144,6 +144,24 @@ export async function enqueuePrintJob(params: TEnqueuePrintJobParams) {
 }
 export type TEnqueuePrintJobOutput = Awaited<ReturnType<typeof enqueuePrintJob>>;
 
+// Guarda anti-lixo do auto-print: sem impressora ativa atendendo a finalidade, não vale
+// enfileirar (acumularia EXPIRADO no dashboard a cada venda). Ignora `disponivel` de propósito:
+// agent temporariamente offline deve continuar recebendo jobs (imprime ao voltar, dentro do TTL);
+// disponivel=false com ativa=true é flutuação de sync, não decisão do lojista.
+export async function organizationHasActivePrinterForFinalidade({
+	organizacaoId,
+	finalidade,
+}: {
+	organizacaoId: string;
+	finalidade: TPrintJobFinalidadeEnum;
+}) {
+	const printers = await db.query.agentPrinters.findMany({
+		where: and(eq(agentPrinters.organizacaoId, organizacaoId), eq(agentPrinters.ativa, true)),
+		columns: { finalidades: true },
+	});
+	return printers.some((printer) => printer.finalidades.includes(finalidade));
+}
+
 // Impressoras do principal aptas a receber trabalho (ativas no dashboard e presentes no último sync).
 export async function getClaimablePrinters(principalId: string) {
 	return await db.query.agentPrinters.findMany({

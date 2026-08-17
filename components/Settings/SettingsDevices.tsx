@@ -15,6 +15,7 @@ import ControlAccessPrincipal from "../Modals/Internal/Access/ControlAccessPrinc
 import NewAccessEnrollment from "../Modals/Internal/Access/NewAccessEnrollment";
 import { Button } from "../ui/button";
 import DesktopAgentDownload from "./DesktopAgentDownload";
+import SettingsAutoPrint from "./SettingsAutoPrint";
 
 type SettingsDevicesProps = {
 	user: TAuthUserSession["user"];
@@ -83,8 +84,15 @@ export default function SettingsDevices({ user: _user, membership }: SettingsDev
 				</div>
 			) : null}
 
-			{/* Fila de impressão: só faz sentido quando há um agente desktop vinculado. */}
-			{isSuccess && principals.some((principal) => principal.tipo === "AGENTE_DESKTOP") ? <PrintJobsPanel /> : null}
+			{/* Impressão automática e fila: só fazem sentido quando há um agente desktop vinculado. */}
+			{isSuccess && principals.some((principal) => principal.tipo === "AGENTE_DESKTOP") ? (
+				<>
+					<div className="pt-3">
+						<SettingsAutoPrint membership={membership} />
+					</div>
+					<PrintJobsPanel />
+				</>
+			) : null}
 
 			{newEnrollmentModalIsOpen ? (
 				<NewAccessEnrollment closeModal={() => setNewEnrollmentModalIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />

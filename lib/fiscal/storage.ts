@@ -1,5 +1,5 @@
 import "server-only";
-import { downloadPrivateFile, storePrivateFile } from "@/lib/files-storage/private";
+import { createSignedPrivateFileUrl, downloadPrivateFile, storePrivateFile } from "@/lib/files-storage/private";
 import { FISCAL_STORAGE_PREFIX } from "./constants";
 
 export type TFiscalAssetType = "xml" | "pdf";
@@ -31,4 +31,10 @@ export async function storeFiscalAsset({
 
 export async function downloadStoredFiscalAsset(path: string) {
 	return downloadPrivateFile(path);
+}
+
+// URL do PDF da DANFE para o job de impressão do agente desktop (principal AGENTE_DESKTOP, sem
+// sessão de usuário — a rota /api/fiscal/document-assets não serve). Assinada na hora do enqueue.
+export async function createSignedFiscalAssetUrl({ storagePath, expiresInSeconds }: { storagePath: string; expiresInSeconds: number }) {
+	return createSignedPrivateFileUrl({ path: storagePath, expiresInSeconds });
 }

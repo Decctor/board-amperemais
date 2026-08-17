@@ -1,5 +1,8 @@
 import { fetchConnectorImportBatch, type TCanonicalImportWindow } from "@/lib/data-connectors";
+import { processSaleCupomAutoPrintIfEligible } from "@/lib/desktop-agent/auto-print";
 import { getActiveDataSourceIntegrations, type TDataSourceIntegration } from "@/lib/integrations/data-sources";
+import { resolveIfoodManagementContext } from "@/lib/integrations/ifood/context";
+import { confirmIfoodOrder } from "@/lib/integrations/ifood/orders";
 import { getChannelErpPolicy } from "@/lib/sales/fulfillment-channels/policy";
 import { processSaleAutomaticFiscalEmissionIfEligible } from "@/lib/sales/sale-processing/process-sale-automatic-fiscal-emission";
 import { processOrganizationInteractionsBatch, type ImmediateProcessingData } from "@/lib/interactions";
@@ -21,6 +24,7 @@ import type {
 	TDataCollectingV2RawBatch,
 	TDataCollectingV2RunError,
 	TDataCollectingV2RunSummary,
+	TPersistedSaleForEffects,
 } from "./types";
 
 dayjs.extend(utc);
@@ -179,10 +183,13 @@ async function processIntegration({
 	const campaignsForOrganization = effects.processCampaigns ? await loadCampaigns(organizationId) : [];
 	let immediateProcessingDataList: ImmediateProcessingData[] = [];
 	let fiscalEmissionCandidateSaleIds: string[] = [];
+	// Hoisted para os hooks pós-commit (aceite automático iFood + cupom automático no becameValid).
+	let persistedSalesForPostCommit: TPersistedSaleForEffects[] = [];
 
 	const summary = await db.transaction(async (tx): Promise<TDataCollectingV2RunSummary> => {
 		const auxiliaryContext = await syncAuxiliaryEntities({ tx, batch });
 		const { persistedSales, saleIdCollisions } = await syncSales({ tx, batch, context: auxiliaryContext, erp });
+		persistedSalesForPostCommit = persistedSales;
 		fiscalEmissionCandidateSaleIds = persistedSales.filter((sale) => sale.managedFiscalEmissionCandidate).map((sale) => sale.id);
 		// Audiences are resolved once from the post-sync state. Keep audience filters independent
 		// from client metrics mutated by this batch; per-sale trigger counters live in persistedSales.
@@ -228,6 +235,58 @@ async function processIntegration({
 	});
 
 	await batch.postProcess?.();
+
+	// Aceite automático iFood (pós-commit): pedidos ainda não válidos e não cancelados = PLACED
+	// (único estado pré-confirmação do ciclo). `skipped` NÃO filtra de propósito: um confirm que
+	// falhou em run anterior deve ser retentado mesmo sem mudança no payload. Confirm repetido
+	// enquanto o evento CONFIRMED não chega pelo polling é benigno (Order API responde 202; erro
+	// é capturado por pedido). Sem promoção local de status — a consolidação fica com o próximo
+	// sync, para que becameValid dispare os efeitos de nova compra pelo caminho canônico.
+	const ifoodConfig = integration.configuracao.tipo === "IFOOD" ? integration.configuracao : null;
+	if (ifoodConfig?.aceiteAutomaticoPedidos) {
+		const pendingAcceptance = persistedSalesForPostCommit.filter((sale) => !sale.previouslyValid && !sale.becameValid && !sale.nowCanceled);
+		if (pendingAcceptance.length > 0) {
+			try {
+				const context = await resolveIfoodManagementContext({ organizacaoId: organizationId, integrationId: integration.id });
+				for (const persisted of pendingAcceptance) {
+					try {
+						await confirmIfoodOrder(context.client, persisted.sourceSaleId);
+						console.log(`[DATA_COLLECTING_V2] [ORG: ${organizationId}] Pedido iFood ${persisted.sourceSaleId} aceito automaticamente.`);
+						// Cupom direto no aceite: não espera o polling consolidar a confirmação. Nunca
+						// lança; a chave de idempotência absorve a sobreposição com o hook do becameValid.
+						await processSaleCupomAutoPrintIfEligible({
+							organizacaoId: organizationId,
+							saleId: persisted.id,
+							configuracao: organizationConfiguration,
+						});
+					} catch (error) {
+						console.error(
+							`[DATA_COLLECTING_V2] [ORG: ${organizationId}] Falha no aceite automático do pedido iFood ${persisted.sourceSaleId}.`,
+							serializeDataCollectingError(error),
+						);
+					}
+				}
+			} catch (error) {
+				console.error(
+					`[DATA_COLLECTING_V2] [ORG: ${organizationId}] Falha ao resolver contexto iFood para aceite automático.`,
+					serializeDataCollectingError(error),
+				);
+			}
+		}
+	}
+
+	// Cupom automático na confirmação consolidada pelo sync — cobre aceite no dispositivo do
+	// iFood, aceite na plataforma e o automático do run anterior. becameValid é exactly-once por
+	// venda, então não se paga chamada por venda a cada polling; a allowlist de canais
+	// (INTEGRACAO-<canal>) decide se a venda imprime.
+	for (const persisted of persistedSalesForPostCommit) {
+		if (!persisted.becameValid || persisted.nowCanceled) continue;
+		await processSaleCupomAutoPrintIfEligible({
+			organizacaoId: organizationId,
+			saleId: persisted.id,
+			configuracao: organizationConfiguration,
+		});
+	}
 
 	// Emissão fiscal de vendas gerenciadas entregues (policy.fiscal): roda APÓS o commit — o
 	// processo de emissão lê via `db` e dentro da transação enxergaria o estado pré-commit.

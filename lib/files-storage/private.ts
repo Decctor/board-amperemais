@@ -27,3 +27,12 @@ export async function downloadPrivateFile(path: string) {
 	if (error) throw error;
 	return data.arrayBuffer();
 }
+
+// URL assinada para consumidores sem sessão (ex.: agente desktop imprimindo DANFE) — a validade
+// deve cobrir o ciclo de vida do consumidor (TTL do job de impressão), não ser "curta por padrão".
+export async function createSignedPrivateFileUrl({ path, expiresInSeconds }: { path: string; expiresInSeconds: number }) {
+	if (path.startsWith("/") || path.includes("..")) throw new Error("Caminho privado inválido.");
+	const { data, error } = await getSupabaseAdminClient().storage.from(PRIVATE_FILES_BUCKET).createSignedUrl(path, expiresInSeconds);
+	if (error) throw error;
+	return data.signedUrl;
+}

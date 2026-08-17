@@ -55,6 +55,7 @@ async function completeIfoodAuthorization({
 				tokenType: token.tokenType,
 				scope: token.scope,
 				expiresAt: token.expiresAt,
+				aceiteAutomaticoPedidos: false,
 			}),
 		);
 		merchantIds = merchants.map((merchant) => merchant.id);
@@ -71,6 +72,8 @@ async function completeIfoodAuthorization({
 		scope: token.scope,
 		expiresAt: token.expiresAt,
 		authorizedAt: new Date().toISOString(),
+		// Conexão nova sempre nasce sem aceite automático — opt-in explícito nas configurações.
+		aceiteAutomaticoPedidos: false,
 	};
 
 	const { integration } = await connectDataSourceIntegration({

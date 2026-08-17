@@ -140,6 +140,15 @@ async function generateCheckoutRoute(request: NextRequest) {
 						financeiro: false,
 						fiscal: false,
 					},
+					// Preferências operacionais da organização — preserva ao trocar de plano.
+					contasAtendimento: organization.configuracao.preferencias.contasAtendimento ?? { habilitado: false },
+					impressoes: organization.configuracao.preferencias.impressoes ?? {
+						automatica: {
+							CUPOM_VENDA: { habilitada: false, canais: [], copias: 1 },
+							DANFE_NFCE: { habilitada: false, canais: [], copias: 1 },
+							DANFE_NFE: { habilitada: false, canais: [], copias: 1 },
+						},
+					},
 				},
 				defaults: organization.configuracao.defaults,
 			},

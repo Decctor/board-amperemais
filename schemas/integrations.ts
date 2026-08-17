@@ -119,6 +119,13 @@ export const IfoodIntegrationConfigSchema = z.object({
 		.datetime({ message: "Tipo não válido para a data de autorização do iFood." })
 		.optional()
 		.nullable(),
+	// Política operacional da conexão: aceite automático de pedidos PLACED na ingestão.
+	// Manter em sincronia com IfoodConfigSchema (lib/data-connectors/ifood/types.ts), que é o
+	// schema de runtime — lá o campo é obrigatório de declarar para sobreviver ao refresh de token.
+	aceiteAutomaticoPedidos: z
+		.boolean({ invalid_type_error: "Tipo não válido para o aceite automático de pedidos do iFood." })
+		.optional()
+		.default(false),
 });
 export type TIfoodIntegrationConfig = z.infer<typeof IfoodIntegrationConfigSchema>;
 

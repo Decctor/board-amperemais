@@ -43,17 +43,7 @@ export default function ActionsSection({
 	}
 
 	return (
-		<div className="grid grid-cols-1 gap-2">
-			{hideDraftAction ? null : (
-				<Button
-					variant="ghost"
-					className={cn("w-full", !saleState.isReadyForDraft && "opacity-50")}
-					onClick={onCreateDraft}
-					disabled={!saleState.isReadyForDraft || isCreatingDraft || isFinalizingSale}
-				>
-					{isCreatingDraft ? "CRIANDO ORÇAMENTO..." : "CRIAR COMO ORÇAMENTO"}
-				</Button>
-			)}
+		<div className="flex flex-col gap-2">
 			<Button
 				className={cn("w-full", (finalizeDisabled || isCreatingDraft) && "opacity-50")}
 				onClick={onFinalizeSale}
@@ -62,6 +52,20 @@ export default function ActionsSection({
 				{isFinalizingSale ? (hideDraftAction ? "CONFIRMANDO VENDA..." : "FINALIZANDO VENDA...") : hideDraftAction ? "CONFIRMAR VENDA" : "FINALIZAR VENDA"}
 			</Button>
 			{blockedNote}
+			{hideDraftAction ? null : (
+				// Ação secundária demovida de propósito: com a mesma largura/altura do CTA primário, o
+				// operador criava orçamentos por engano no balcão. Largura própria + distância criam zona
+				// morta ao redor do toque errado.
+				<Button
+					variant="ghost"
+					size="sm"
+					className={cn("mt-2 self-center px-4 text-muted-foreground", !saleState.isReadyForDraft && "opacity-50")}
+					onClick={onCreateDraft}
+					disabled={!saleState.isReadyForDraft || isCreatingDraft || isFinalizingSale}
+				>
+					{isCreatingDraft ? "CRIANDO ORÇAMENTO..." : "CRIAR COMO ORÇAMENTO"}
+				</Button>
+			)}
 		</div>
 	);
 }

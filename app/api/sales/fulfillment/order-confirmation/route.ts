@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { runDataCollectingV2 } from "@/lib/data-collecting-v2";
+import { processSaleCupomAutoPrintIfEligible } from "@/lib/desktop-agent/auto-print";
 import { resolveIfoodManagementContext } from "@/lib/integrations/ifood/context";
 import { confirmIfoodOrder, getIfoodOrderCancellationReasons, requestIfoodOrderCancellation } from "@/lib/integrations/ifood/orders";
 import { getChannelErpPolicy, resolveFulfillmentChannelForSale } from "@/lib/sales/fulfillment-channels";
@@ -78,6 +79,14 @@ async function postOrderConfirmation({ input, session }: { input: TPostFulfillme
 		if (!sale.statusVenda && sale.statusAtendimento === "NAO_INICIADO") {
 			await db.update(sales).set({ statusVenda: "CONFIRMADA", statusAtendimento: "EM_PREPARO" }).where(eq(sales.id, sale.id));
 		}
+		// Cupom automático na hora do aceite, sem esperar o sync. Nunca lança; a chave de
+		// idempotência absorve a sobreposição com os hooks da ingestão.
+		await processSaleCupomAutoPrintIfEligible({
+			organizacaoId: orgId,
+			saleId: sale.id,
+			configuracao: session.membership!.organizacao.configuracao,
+			solicitadoPorId: session.user.id,
+		});
 	} else {
 		await requestIfoodOrderCancellation(context.client, sale.idExterno, input.cancellationCode as string);
 		// A recusa é assíncrona: o pedido sai da fila quando o evento CANCELLED chegar.

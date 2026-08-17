@@ -15,6 +15,11 @@ export const IfoodConfigSchema = z.object({
 	scope: z.array(z.string()).default([]),
 	expiresAt: z.string().datetime(),
 	authorizedAt: z.string().datetime().optional().nullable(),
+	// Política operacional da conexão (não credencial): aceitar pedidos PLACED automaticamente
+	// na ingestão. PRECISA estar declarada aqui: o refresh de token reescreve o blob inteiro a
+	// partir do parse deste schema — campo não declarado seria descartado no strip do Zod.
+	// Escritas do toggle usam patch cirúrgico jsonb_set (padrão do merchantIds em context.ts).
+	aceiteAutomaticoPedidos: z.boolean().optional().default(false),
 });
 export type TIfoodConfig = z.infer<typeof IfoodConfigSchema>;
 
