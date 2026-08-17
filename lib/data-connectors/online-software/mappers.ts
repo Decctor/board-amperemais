@@ -132,12 +132,14 @@ export function mapOnlineSoftwareSaleItem(item: TOnlineSoftwareSaleItemImportati
 
 export function mapOnlineSoftwareSale(sale: TOnlineSoftwareSaleImportation): TCanonicalSale {
 	const totalCost = sale.itens.reduce((acc, item) => acc + Number(item.vcusto), 0);
-	const isValidSale = sale.natureza === "SN01";
-	const isCanceled = sale.natureza !== "SN01" || Number(sale.valor) === 0;
+	const totalValue = Number(sale.valor);
+	const hasSaleNature = sale.natureza === "SN01" || sale.natureza === "NFCE";
+	const isValidSale = hasSaleNature && totalValue > 0;
+	const isCanceled = hasSaleNature && totalValue <= 0;
 
 	return {
 		sourceSaleId: sale.id,
-		totalValue: Number(sale.valor),
+		totalValue,
 		totalCost,
 		totalDiscount: sale.itens.reduce((acc, item) => acc + Number(item.vdesc), 0),
 		totalSurcharge: 0,
@@ -164,6 +166,69 @@ export function mapOnlineSoftwareSale(sale: TOnlineSoftwareSaleImportation): TCa
 	};
 }
 
+const ONLINE_SOFTWARE_VALUE_TOLERANCE = 0.011;
+
+export function getOnlineSoftwareSaleItemsTotal(sale: TOnlineSoftwareSaleImportation) {
+	return sale.itens.reduce((total, item) => total + Number(item.valorunit) * Number(item.qtde) - Number(item.vdesc), 0);
+}
+
+function valuesMatch(left: number, right: number) {
+	return Math.abs(left - right) < ONLINE_SOFTWARE_VALUE_TOLERANCE;
+}
+
+/**
+ * A Online Software pode repetir o mesmo lancamento para representar movimentos de caixa
+ * (ex.: venda de R$ 24,25 + troco de R$ 75,75). As ocorrencias repetem itens e identidade
+ * fiscal; a venda canonica e a ocorrencia cujo `valor` fecha com o total liquido dos itens.
+ */
+export function reconcileOnlineSoftwareSales(sales: TOnlineSoftwareSaleImportation[]) {
+	const salesById = new Map<string, TOnlineSoftwareSaleImportation[]>();
+	for (const sale of sales) {
+		salesById.set(sale.id, [...(salesById.get(sale.id) ?? []), sale]);
+	}
+
+	const reconciled: TOnlineSoftwareSaleImportation[] = [];
+	let duplicateGroupsCount = 0;
+	for (const [saleId, occurrences] of salesById) {
+		if (occurrences.length === 1) {
+			reconciled.push(occurrences[0]);
+			continue;
+		}
+
+		duplicateGroupsCount++;
+		const matchingOccurrences = occurrences.filter((occurrence) =>
+			valuesMatch(Number(occurrence.valor), getOnlineSoftwareSaleItemsTotal(occurrence)),
+		);
+		if (matchingOccurrences.length === 0) {
+			throw new Error(`Venda duplicada ${saleId} da Online Software sem ocorrencia cujo valor corresponda aos itens.`);
+		}
+
+		const canceledMatches = matchingOccurrences.filter(
+			(occurrence) =>
+				(occurrence.natureza === "SN01" || occurrence.natureza === "NFCE") &&
+				(Number(occurrence.valor) <= 0 || occurrence.situacao === "02"),
+		);
+		if (canceledMatches.length === 1) {
+			reconciled.push(canceledMatches[0]);
+			continue;
+		}
+
+		const distinctMatches = new Set(matchingOccurrences.map((occurrence) => JSON.stringify(occurrence)));
+		if (distinctMatches.size > 1) {
+			throw new Error(`Venda duplicada ${saleId} da Online Software possui multiplas ocorrencias validas divergentes.`);
+		}
+
+		reconciled.push(matchingOccurrences[0]);
+	}
+
+	return {
+		sales: reconciled,
+		receivedRowsCount: sales.length,
+		duplicateGroupsCount,
+		discardedOccurrencesCount: sales.length - reconciled.length,
+	};
+}
+
 function uniqueBy<T>(values: T[], getKey: (value: T) => string | null | undefined) {
 	const map = new Map<string, T>();
 	for (const value of values) {
@@ -183,9 +248,19 @@ export function toCanonicalOnlineSoftwareImportBatch({
 	window: TCanonicalImportWindow;
 	sales: TOnlineSoftwareSaleImportation[];
 }): TCanonicalConnectorBatch {
-	const canonicalSales = sales.map(mapOnlineSoftwareSale);
+	const reconciliation = reconcileOnlineSoftwareSales(sales);
+	if (reconciliation.duplicateGroupsCount > 0) {
+		console.info(`[ONLINE-SOFTWARE] Reconciliacao de vendas repetidas`, {
+			organizationId,
+			receivedRowsCount: reconciliation.receivedRowsCount,
+			uniqueSalesCount: reconciliation.sales.length,
+			duplicateGroupsCount: reconciliation.duplicateGroupsCount,
+			discardedOccurrencesCount: reconciliation.discardedOccurrencesCount,
+		});
+	}
+	const canonicalSales = reconciliation.sales.map(mapOnlineSoftwareSale);
 	const products = uniqueBy(
-		sales.flatMap((sale) => sale.itens.map(mapOnlineSoftwareProduct)),
+		reconciliation.sales.flatMap((sale) => sale.itens.map(mapOnlineSoftwareProduct)),
 		(product) => product.code,
 	);
 	const sellers = uniqueBy(

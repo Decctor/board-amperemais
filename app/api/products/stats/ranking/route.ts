@@ -62,7 +62,7 @@ async function fetchRankingForPeriod({
 	userOrgId: string;
 }) {
 	// Build sale conditions
-	const saleConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.natureza, "SN01")];
+	const saleConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.statusVenda, "CONFIRMADA")];
 	if (periodAfter) saleConditions.push(gte(sales.dataVenda, periodAfter));
 	if (periodBefore) saleConditions.push(lte(sales.dataVenda, periodBefore));
 

@@ -131,7 +131,7 @@ async function handleIndividualOrgEnrichment({ organizationId }: HandleIndividua
 				allTimePurchaseCount: sql<number>`COALESCE(count(${sales.id}), 0)`,
 			})
 			.from(clients)
-			.leftJoin(sales, and(eq(sales.clienteId, clients.id), eq(sales.organizacaoId, organizationId), eq(sales.natureza, "SN01")))
+			.leftJoin(sales, and(eq(sales.clienteId, clients.id), eq(sales.organizacaoId, organizationId), eq(sales.statusVenda, "CONFIRMADA")))
 			.where(eq(clients.organizacaoId, organizationId))
 			.groupBy(clients.id),
 		db
@@ -143,7 +143,7 @@ async function handleIndividualOrgEnrichment({ organizationId }: HandleIndividua
 			})
 			.from(saleItems)
 			.innerJoin(products, eq(products.id, saleItems.produtoId))
-			.innerJoin(sales, and(eq(sales.id, saleItems.vendaId), eq(sales.natureza, "SN01")))
+			.innerJoin(sales, and(eq(sales.id, saleItems.vendaId), eq(sales.statusVenda, "CONFIRMADA")))
 			.where(eq(saleItems.organizacaoId, organizationId))
 			.groupBy(saleItems.clienteId, saleItems.produtoId, products.grupo)
 			.orderBy(sql`sum(${saleItems.quantidade}) DESC`),

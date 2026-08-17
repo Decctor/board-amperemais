@@ -194,7 +194,7 @@ async function getRFMHealth({ input, session }: { input: TGetRFMHealthInput; ses
 				isNotNull(sales.dataVenda),
 				gte(sales.dataVenda, intervalStart),
 				lte(sales.dataVenda, intervalEnd),
-				eq(sales.natureza, "SN01"),
+				eq(sales.statusVenda, "CONFIRMADA"),
 			),
 		)
 		.groupBy(sales.clienteId);

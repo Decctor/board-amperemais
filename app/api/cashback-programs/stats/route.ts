@@ -184,7 +184,7 @@ async function getCashbackProgramStats({
 	const currentRedemptionRate = currentGenerated > 0 ? (currentRescued / currentGenerated) * 100 : 0;
 
 	// Client metrics - current period
-	const saleConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.natureza, "SN01")];
+	const saleConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.statusVenda, "CONFIRMADA")];
 
 	const [
 		totalClientsResult,

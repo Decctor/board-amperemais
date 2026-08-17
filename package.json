@@ -21,6 +21,7 @@
 		"backfill:onboarding-conclusao": "tsx ./scripts/backfill-onboarding-conclusao.ts",
 		"backfill:poi-conversion-attribution": "tsx ./scripts/backfill-poi-conversion-attribution.ts",
 		"backfill:poi-sales-processing-source": "tsx ./scripts/backfill-poi-sales-processing-source.ts",
+		"backfill:online-software-sales": "tsx ./scripts/backfill-online-software-sales.ts",
 		"backfill:cashback-prize-organizacao": "tsx ./scripts/backfill-cashback-prize-organizacao.ts",
 		"backfill:stripe-control-metadata": "tsx ./scripts/backfill-stripe-control-metadata.ts",
 		"seed:access-clients": "tsx ./scripts/seed-access-clients.ts",

@@ -173,7 +173,7 @@ async function fetchStatsComparison(filters: TStatsComparisonInput, organizacaoI
 		before: new Date(filters.secondPeriod.before),
 	};
 
-	const conditions = [eq(sales.organizacaoId, organizacaoId), eq(sales.natureza, "SN01")];
+	const conditions = [eq(sales.organizacaoId, organizacaoId), eq(sales.statusVenda, "CONFIRMADA")];
 
 	const { points: bestNumberOfPointsForFirstPeriodDates } = getBestNumberOfPointsBetweenDates({
 		startDate: firstPeriodAjusted.after,

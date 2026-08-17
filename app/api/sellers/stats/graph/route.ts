@@ -55,7 +55,7 @@ async function getSellersGraph({ input, sessionUser }: { input: TGetSellersGraph
 				date: sales.dataVenda,
 			})
 			.from(sales)
-			.where(and(eq(sales.organizacaoId, userOrgId), eq(sales.natureza, "SN01")))
+			.where(and(eq(sales.organizacaoId, userOrgId), eq(sales.statusVenda, "CONFIRMADA")))
 			.orderBy(sql`${sales.dataVenda} asc`)
 			.limit(1);
 		period.after = firstSale[0]?.date ?? undefined;
@@ -93,7 +93,7 @@ async function getSellersGraph({ input, sessionUser }: { input: TGetSellersGraph
 					isNotNull(sales.dataVenda),
 					gte(sales.dataVenda, period.after),
 					lte(sales.dataVenda, period.before),
-					eq(sales.natureza, "SN01"),
+					eq(sales.statusVenda, "CONFIRMADA"),
 				),
 			)
 			.orderBy(sql`date_trunc('day', ${sales.dataVenda})`)
@@ -139,7 +139,7 @@ async function getSellersGraph({ input, sessionUser }: { input: TGetSellersGraph
 					isNotNull(sales.dataVenda),
 					gte(sales.dataVenda, period.after),
 					lte(sales.dataVenda, period.before),
-					eq(sales.natureza, "SN01"),
+					eq(sales.statusVenda, "CONFIRMADA"),
 				),
 			)
 			.orderBy(sql`date_trunc('day', ${sales.dataVenda})`)
@@ -186,7 +186,7 @@ async function getSellersGraph({ input, sessionUser }: { input: TGetSellersGraph
 					isNotNull(sales.vendedorId),
 					gte(sales.dataVenda, period.after),
 					lte(sales.dataVenda, period.before),
-					eq(sales.natureza, "SN01"),
+					eq(sales.statusVenda, "CONFIRMADA"),
 				),
 			)
 			.orderBy(sql`date_trunc('day', ${sales.dataVenda})`)
@@ -233,7 +233,7 @@ async function getSellersGraph({ input, sessionUser }: { input: TGetSellersGraph
 					isNotNull(sales.dataVenda),
 					gte(sales.dataVenda, period.after),
 					lte(sales.dataVenda, period.before),
-					eq(sales.natureza, "SN01"),
+					eq(sales.statusVenda, "CONFIRMADA"),
 				),
 			)
 			.orderBy(sql`date_trunc('day', ${sales.dataVenda})`)

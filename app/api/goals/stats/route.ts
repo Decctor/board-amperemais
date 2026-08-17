@@ -23,7 +23,7 @@ async function computeAchievementForPeriod({
 	const saleConditions = [
 		eq(sales.organizacaoId, organizacaoId),
 		isNotNull(sales.dataVenda),
-		eq(sales.natureza, "SN01"),
+		eq(sales.statusVenda, "CONFIRMADA"),
 		gte(sales.dataVenda, dataInicio),
 		lte(sales.dataVenda, dataFim),
 	];

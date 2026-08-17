@@ -7,7 +7,7 @@ import dayjs from "dayjs";
 import { eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-const VALID_SALE_NATURE = "SN01";
+const VALID_SALE_STATUS = "CONFIRMADA";
 
 // Carteira derivada vendedor × cliente (docs/seller-routine-hub-design.md).
 // Vínculo = frequência de vendas com decay exponencial de recência: uma venda de hoje
@@ -56,7 +56,7 @@ async function insertClientSellerReferences({ tx, organizationId }: { tx: DBTran
 		where ${sales.organizacaoId} = ${organizationId}
 			and ${sales.clienteId} is not null
 			and ${sales.vendedorId} is not null
-			and ${sales.natureza} = ${VALID_SALE_NATURE}
+			and ${sales.statusVenda} = ${VALID_SALE_STATUS}
 			and ${sales.dataVenda} >= ${lookbackStartIso}::timestamp
 		group by ${sales.clienteId}, ${sales.vendedorId}
 	`);

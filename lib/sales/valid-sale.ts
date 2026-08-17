@@ -1,17 +1,16 @@
 import { sales } from "@/services/drizzle/schema";
-import { and, eq, gt, isNull, ne, or, type SQL } from "drizzle-orm";
+import { and, eq, gt, type SQL } from "drizzle-orm";
 
 /**
- * Condições de "venda válida" para métricas de cliente/receita: receita de venda (SN01),
- * valor positivo e não cancelada. Definição única compartilhada entre as rotas de vendas
+ * Condições de "venda válida" para métricas de cliente/receita: venda confirmada e valor
+ * positivo. A natureza pertence ao dado de origem (ex.: SN01 ou NFCE), não ao ciclo comercial.
  * (recalcular metadata do cliente) e as rotas de estatísticas (LTV, lifetime, faturamentos).
  */
 export function getValidSaleConditions({ orgId }: { orgId: string }): SQL[] {
 	return [
 		eq(sales.organizacaoId, orgId),
-		eq(sales.natureza, "SN01"),
 		gt(sales.valorTotal, 0),
-		or(isNull(sales.statusVenda), ne(sales.statusVenda, "CANCELADA")) as SQL,
+		eq(sales.statusVenda, "CONFIRMADA"),
 	];
 }
 

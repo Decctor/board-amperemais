@@ -622,7 +622,7 @@ async function getProducts({ input, session }: GetProductsParams) {
 		productQueryConditions.push(lte(products.precoVenda, input.priceMax));
 	}
 
-	const statsConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.natureza, "SN01")];
+	const statsConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.statusVenda, "CONFIRMADA")];
 	if (input.statsPeriodBefore) statsConditions.push(lte(sales.dataVenda, input.statsPeriodBefore));
 	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
 	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));

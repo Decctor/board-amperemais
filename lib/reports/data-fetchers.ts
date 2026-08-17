@@ -67,7 +67,7 @@ export async function getOverallSalesStats({
 			custoTotal: sum(sales.custoTotal),
 		})
 		.from(sales)
-		.where(and(eq(sales.organizacaoId, organizacaoId), eq(sales.natureza, "SN01"), gte(sales.dataVenda, after), lte(sales.dataVenda, before)));
+		.where(and(eq(sales.organizacaoId, organizacaoId), eq(sales.statusVenda, "CONFIRMADA"), gte(sales.dataVenda, after), lte(sales.dataVenda, before)));
 	console.log("TOTAL SALES STATS RESULT:", totalSalesStatsResult);
 	const totalSalesStats = totalSalesStatsResult[0];
 	const totalSalesQty = totalSalesStats.qtde;
@@ -85,7 +85,7 @@ export async function getOverallSalesStats({
 				db
 					.select({ id: sales.id })
 					.from(sales)
-					.where(and(eq(sales.organizacaoId, organizacaoId), eq(sales.natureza, "SN01"), gte(sales.dataVenda, after), lte(sales.dataVenda, before))),
+					.where(and(eq(sales.organizacaoId, organizacaoId), eq(sales.statusVenda, "CONFIRMADA"), gte(sales.dataVenda, after), lte(sales.dataVenda, before))),
 			),
 		);
 
@@ -105,7 +105,7 @@ export async function getOverallSalesStats({
 		.where(
 			and(
 				eq(sales.organizacaoId, organizacaoId),
-				eq(sales.natureza, "SN01"),
+				eq(sales.statusVenda, "CONFIRMADA"),
 				gte(sales.dataVenda, comparisonAfter),
 				lte(sales.dataVenda, comparisonBefore),
 			),
@@ -130,7 +130,7 @@ export async function getOverallSalesStats({
 					.where(
 						and(
 							eq(sales.organizacaoId, organizacaoId),
-							eq(sales.natureza, "SN01"),
+							eq(sales.statusVenda, "CONFIRMADA"),
 							gte(sales.dataVenda, comparisonAfter),
 							lte(sales.dataVenda, comparisonBefore),
 						),
@@ -241,7 +241,7 @@ export async function getSellerRankings({ after, before, organizacaoId }: Period
 	const saleWhere = and(
 		...saleWhereConditions,
 		eq(sales.organizacaoId, organizacaoId),
-		eq(sales.natureza, "SN01"),
+		eq(sales.statusVenda, "CONFIRMADA"),
 		gte(sales.dataVenda, after),
 		lte(sales.dataVenda, before),
 	);
@@ -374,7 +374,7 @@ export async function getPartnerRankings({ after, before, organizacaoId }: Perio
 	const saleWhere = and(
 		...saleWhereConditions,
 		eq(sales.organizacaoId, organizacaoId),
-		eq(sales.natureza, "SN01"),
+		eq(sales.statusVenda, "CONFIRMADA"),
 		gte(sales.dataVenda, after),
 		lte(sales.dataVenda, before),
 	);
@@ -426,7 +426,7 @@ export async function getProductRankings({ after, before, organizacaoId }: Perio
 	const saleWhere = and(
 		eq(sales.organizacaoId, organizacaoId),
 		isNotNull(sales.dataVenda),
-		eq(sales.natureza, "SN01"),
+		eq(sales.statusVenda, "CONFIRMADA"),
 		gte(sales.dataVenda, after),
 		lte(sales.dataVenda, before),
 	);
@@ -466,7 +466,7 @@ export async function getProductGroupRankings({ after, before, organizacaoId }: 
 	const saleWhere = and(
 		eq(sales.organizacaoId, organizacaoId),
 		isNotNull(sales.dataVenda),
-		eq(sales.natureza, "SN01"),
+		eq(sales.statusVenda, "CONFIRMADA"),
 		gte(sales.dataVenda, after),
 		lte(sales.dataVenda, before),
 	);
@@ -550,7 +550,7 @@ async function getTimelineTotals({
 			total: sum(sales.valorTotal),
 		})
 		.from(sales)
-		.where(and(eq(sales.organizacaoId, organizacaoId), eq(sales.natureza, "SN01"), gte(sales.dataVenda, after), lte(sales.dataVenda, before)))
+		.where(and(eq(sales.organizacaoId, organizacaoId), eq(sales.statusVenda, "CONFIRMADA"), gte(sales.dataVenda, after), lte(sales.dataVenda, before)))
 		.groupBy(bucketSql)
 		.orderBy(bucketSql);
 

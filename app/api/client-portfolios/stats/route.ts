@@ -10,7 +10,7 @@ import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
-const VALID_SALE_NATURE = "SN01";
+const VALID_SALE_STATUS = "CONFIRMADA";
 
 // Janela da métrica de influência (docs/seller-routine-hub-design.md §7): venda do vendedor
 // com interação manual dele para o mesmo cliente nos N dias anteriores. Não toca na
@@ -86,7 +86,7 @@ async function getClientPortfolioStats({ input, session }: { input: TGetClientPo
 			and(
 				eq(sales.organizacaoId, organizacaoId),
 				eq(sales.vendedorId, seller.id),
-				eq(sales.natureza, VALID_SALE_NATURE),
+				eq(sales.statusVenda, VALID_SALE_STATUS),
 				isNotNull(sales.dataVenda),
 				gte(sales.dataVenda, startOfDay),
 			),
@@ -114,7 +114,7 @@ async function getClientPortfolioStats({ input, session }: { input: TGetClientPo
 	const influencedWhere = and(
 		eq(sales.organizacaoId, organizacaoId),
 		eq(sales.vendedorId, seller.id),
-		eq(sales.natureza, VALID_SALE_NATURE),
+		eq(sales.statusVenda, VALID_SALE_STATUS),
 		isNotNull(sales.dataVenda),
 		gte(sales.dataVenda, startOfMonth),
 		influencedSaleExistsCondition(),

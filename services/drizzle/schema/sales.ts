@@ -107,6 +107,9 @@ export const sales = newTable(
 		sessaoVendaIdx: index("idx_sales_sessao").on(table.sessaoVendaId),
 		// Listagem do histórico e stats sempre filtram por organização e ordenam/filtram por data.
 		orgDataVendaIdx: index("idx_sales_org_data_venda").on(table.organizacaoId, table.dataVenda),
+		integrationExternalIdUnique: uniqueIndex("idx_sales_org_integration_external_unique")
+			.on(table.organizacaoId, table.integracaoId, table.idExterno)
+			.where(sql`integracao_id IS NOT NULL`),
 		tabIdx: index("idx_sales_tab").on(table.tabId),
 		// Uma unica venda em rascunho por conta de atendimento.
 		tabRascunhoIdx: uniqueIndex("idx_sales_tab_rascunho")

@@ -13,7 +13,7 @@ const PRODUCT_REFERENCE_WINDOWS = [
 	{ label: "90_DIAS" as const, startDate: dayjs().subtract(90, "day").startOf("day").toDate() },
 ];
 
-const VALID_SALE_NATURE = "SN01";
+const VALID_SALE_STATUS = "CONFIRMADA";
 
 // Suggested-product (cross-sell) computation knobs.
 const SUGGESTION_RECENT_WINDOW_DAYS = 365; // co-occurrence lookback window
@@ -76,7 +76,7 @@ async function insertWindowReferences({
 		where ${saleItems.organizacaoId} = ${organizationId}
 			and ${sales.organizacaoId} = ${organizationId}
 			and ${saleItems.clienteId} is not null
-			and ${sales.natureza} = ${VALID_SALE_NATURE}
+			and ${sales.statusVenda} = ${VALID_SALE_STATUS}
 			${dateFilter}
 		group by ${saleItems.produtoId}, ${saleItems.clienteId}
 		having coalesce(sum(${saleItems.quantidade}), 0) > 0
@@ -137,7 +137,7 @@ async function computeSuggestedProductsForOrganization({ tx, organizationId }: {
 			join ${sales} s on a.venda_id = s.id
 			where a.organizacao_id = ${organizationId}
 				and s.organizacao_id = ${organizationId}
-				and s.natureza = ${VALID_SALE_NATURE}
+				and s.status_venda = ${VALID_SALE_STATUS}
 				and s.data_venda >= ${windowStartIso}::timestamp
 			group by a.produto_id, b.produto_id
 			having count(distinct a.venda_id) >= ${SUGGESTION_MIN_CO_OCCURRENCE}
@@ -205,7 +205,7 @@ async function computeSuggestedProductsFallbackForOrganization({ tx, organizatio
 			join ${products} p on p.id = si.produto_id and p.ativo = true
 			where si.organizacao_id = ${organizationId}
 				and s.organizacao_id = ${organizationId}
-				and s.natureza = ${VALID_SALE_NATURE}
+				and s.status_venda = ${VALID_SALE_STATUS}
 				and s.data_venda >= ${windowStartIso}::timestamp
 			group by si.produto_id
 		),

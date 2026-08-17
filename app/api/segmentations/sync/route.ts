@@ -163,7 +163,7 @@ async function syncSegmentations({ input, session }: { input: TSyncSegmentations
 				eq(sales.organizacaoId, userOrgId),
 				gte(sales.dataVenda, intervalStart),
 				lte(sales.dataVenda, intervalEnd),
-				eq(sales.natureza, "SN01"),
+				eq(sales.statusVenda, "CONFIRMADA"),
 			),
 		)
 		.where(eq(clients.organizacaoId, userOrgId))

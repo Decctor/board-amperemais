@@ -293,10 +293,13 @@ export async function syncSales({
 	erp?: TSyncSalesErpOptions | null;
 }): Promise<TSyncSalesResult> {
 	const saleSourceIds = batch.sales.map((sale) => sale.sourceSaleId);
+	if (new Set(saleSourceIds).size !== saleSourceIds.length) {
+		throw new Error(`O lote canônico da integração ${batch.integrationId} contém IDs de venda repetidos.`);
+	}
 	const existingSales =
 		saleSourceIds.length > 0
 			? await tx.query.sales.findMany({
-					where: and(eq(sales.organizacaoId, batch.organizationId), inArray(sales.idExterno, saleSourceIds)),
+					where: and(eq(sales.organizacaoId, batch.organizationId), eq(sales.integracaoId, batch.integrationId), inArray(sales.idExterno, saleSourceIds)),
 					columns: {
 						id: true,
 						idExterno: true,
@@ -354,9 +357,9 @@ export async function syncSales({
 
 		let saleId: string;
 		let isNewSale = false;
-		const previouslyValid = existingSale ? existingSale.natureza === "SN01" && existingSale.valorTotal > 0 : false;
+		const previouslyValid = existingSale?.statusVenda === "CONFIRMADA";
 		// Tornou-se válida NESTE sync: dispara os efeitos de "nova compra" exatamente uma vez por
-		// venda (na próxima sincronização previouslyValid já é true, pois a natureza persiste SN01).
+		// venda (na próxima sincronização previouslyValid já é true, pois o status persiste CONFIRMADA).
 		const becameValid = sale.isValidSale && !previouslyValid;
 		const nowCanceled = sale.isCanceled;
 		const clientKey = getCanonicalClientResolutionKey(batch, sale.client);
@@ -389,6 +392,16 @@ export async function syncSales({
 				.values({ ...saleValues, assinaturaExterna: externalSignature })
 				.returning({ id: sales.id });
 			saleId = inserted[0].id;
+			existingSalesBySourceId.set(sale.sourceSaleId, {
+				id: saleId,
+				idExterno: sale.sourceSaleId,
+				integracaoId: batch.integrationId,
+				natureza: saleValues.natureza,
+				valorTotal: saleValues.valorTotal,
+				statusVenda: saleValues.statusVenda,
+				statusAtendimento: saleValues.statusAtendimento,
+				assinaturaExterna: externalSignature,
+			});
 			await insertSaleItems({ tx, saleId, rows: itemRows });
 		} else if (skipped) {
 			saleId = existingSale.id;

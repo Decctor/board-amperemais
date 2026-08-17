@@ -168,7 +168,7 @@ async function getGraphDataForPeriod({
 			})
 			.from(sales)
 			.where(
-				and(eq(sales.organizacaoId, userOrgId), gte(sales.dataVenda, period.after), lte(sales.dataVenda, period.before), eq(sales.natureza, "SN01")),
+				and(eq(sales.organizacaoId, userOrgId), gte(sales.dataVenda, period.after), lte(sales.dataVenda, period.before), eq(sales.statusVenda, "CONFIRMADA")),
 			)
 			.orderBy(sql`date_trunc('day', ${sales.dataVenda})`)
 			.groupBy(sql`date_trunc('day', ${sales.dataVenda})`);
