@@ -66,6 +66,12 @@ export const CartItemSchema = z.object({
 		invalid_type_error: "Tipo não válido para valor total líquido.",
 	}),
 	modificadores: z.array(CartItemModifierSchema),
+	// Observação livre do item ("sem cebola") — chega à cozinha e ao cupom impresso.
+	observacoes: z
+		.string({ invalid_type_error: "Tipo não válido para observações do item." })
+		.max(500, { message: "Observação do item deve ter no máximo 500 caracteres." })
+		.optional()
+		.nullable(),
 });
 
 // Recompensa (prêmio) selecionada para resgate via saldo de cashback. `valor` é o débito de
@@ -252,6 +258,15 @@ export const useSaleState = ({ initialState, organizationConfig, contasFinanceir
 				const valorTotalLiquido = valorTotalBruto - valorDesconto;
 				return { ...item, quantidade, valorTotalBruto, valorDesconto, valorTotalLiquido };
 			}),
+		}));
+	}, []);
+
+	// Guarda o texto cru: aparar aqui comeria o espaço em branco enquanto o operador digita
+	// ("sem " viraria "sem"). A normalização para null acontece na borda da API.
+	const updateItemObservacoes = useCallback((tempId: string, observacoes: string) => {
+		setState((prev) => ({
+			...prev,
+			itens: prev.itens.map((item) => (item.tempId === tempId ? { ...item, observacoes } : item)),
 		}));
 	}, []);
 
@@ -549,6 +564,7 @@ export const useSaleState = ({ initialState, organizationConfig, contasFinanceir
 		setVendedor,
 		addItem,
 		updateItemQuantity,
+		updateItemObservacoes,
 		removeItem,
 		repriceItems,
 		clearCart,

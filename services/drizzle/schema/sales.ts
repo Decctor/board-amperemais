@@ -199,6 +199,9 @@ export const saleItems = newTable(
 		quantidadeCancelada: doublePrecision("quantidade_cancelada").notNull().default(0), // quantidade cancelada do item
 		// Pedido/rodada da conta de atendimento ao qual o item pertence (nullable — vendas comuns nao tem rodada).
 		tabOrderId: varchar("tab_order_id", { length: 255 }).references(() => tabOrders.id, { onDelete: "set null" }),
+		// Observação livre do item ("sem cebola", "ponto mal passado"). Coluna e nao chave em
+		// `metadados` porque a cozinha/impressao precisa consultar isto, nao so reidratar o carrinho.
+		observacoes: text("observacoes"),
 		metadados: jsonb("metadados"), // metadados do produto (JSONB)
 	},
 	(table) => ({

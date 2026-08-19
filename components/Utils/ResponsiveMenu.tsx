@@ -8,7 +8,7 @@ import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
 import { LoadingButton } from "../loading-button";
-import { Button } from "../ui/button";
+import { Button, type ButtonProps } from "../ui/button";
 
 const responsiveMenuVariants = cva("flex flex-col", {
 	variants: {
@@ -60,9 +60,11 @@ type ResponsiveMenuBaseProps = PropsWithChildren & {
 type ResponsiveMenuActionProps = {
 	mode?: "actionable";
 	menuActionButtonText: string;
+	menuActionButtonVariant?: ButtonProps["variant"];
 	menuActionButtonClassName?: string;
 	menuActionButtonDisabled?: boolean;
 	menuSecondaryActionButtonText?: string;
+	menuSecondaryActionButtonVariant?: ButtonProps["variant"];
 	menuSecondaryActionButtonClassName?: string;
 	menuSecondaryActionButtonDisabled?: boolean;
 	menuCancelButtonText: string;
@@ -74,9 +76,11 @@ type ResponsiveMenuActionProps = {
 type ResponsiveMenuReadOnlyProps = {
 	mode: "read-only";
 	menuActionButtonText?: never;
+	menuActionButtonVariant?: never;
 	menuActionButtonClassName?: never;
 	menuActionButtonDisabled?: never;
 	menuSecondaryActionButtonText?: never;
+	menuSecondaryActionButtonVariant?: never;
 	menuSecondaryActionButtonClassName?: never;
 	menuSecondaryActionButtonDisabled?: never;
 	menuCancelButtonText?: string;
@@ -157,6 +161,7 @@ function ResponsiveMenu(props: ResponsiveMenuProps) {
 								loading={props.actionIsLoading || stateIsLoading}
 								disabled={props.menuSecondaryActionButtonDisabled}
 								onClick={props.secondaryActionFunction}
+								variant={props.menuSecondaryActionButtonVariant}
 								className={props.menuSecondaryActionButtonClassName}
 							>
 								{props.menuSecondaryActionButtonText}
@@ -166,12 +171,21 @@ function ResponsiveMenu(props: ResponsiveMenuProps) {
 							loading={props.actionIsLoading || stateIsLoading}
 							disabled={props.menuActionButtonDisabled}
 							onClick={props.actionFunction}
+							variant={props.menuActionButtonVariant}
 							className={props.menuActionButtonClassName}
 						>
 							{props.menuActionButtonText}
 						</LoadingButton>
 					</DialogFooter>
-				) : null}
+				) : (
+					<DialogFooter className="flex-wrap gap-y-2">
+						<DialogClose asChild>
+							<Button variant="outline" disabled={lockClose}>
+								{props.menuCancelButtonText ?? "FECHAR"}
+							</Button>
+						</DialogClose>
+					</DialogFooter>
+				)}
 			</DialogContent>
 		</Dialog>
 	) : (
@@ -215,6 +229,7 @@ function ResponsiveMenu(props: ResponsiveMenuProps) {
 								loading={props.actionIsLoading || stateIsLoading}
 								disabled={props.menuSecondaryActionButtonDisabled}
 								onClick={props.secondaryActionFunction}
+								variant={props.menuSecondaryActionButtonVariant}
 								className={props.menuSecondaryActionButtonClassName}
 							>
 								{props.menuSecondaryActionButtonText}
@@ -224,6 +239,7 @@ function ResponsiveMenu(props: ResponsiveMenuProps) {
 							loading={props.actionIsLoading || stateIsLoading}
 							disabled={props.menuActionButtonDisabled}
 							onClick={props.actionFunction}
+							variant={props.menuActionButtonVariant}
 							className={props.menuActionButtonClassName}
 						>
 							{props.menuActionButtonText}

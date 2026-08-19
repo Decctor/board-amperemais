@@ -1,6 +1,7 @@
 import type { TGetAccessPrincipalsOutput } from "@/app/api/access/principals/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import { useMemo } from "react";
 
 export type TAccessPrincipalListItem = NonNullable<TGetAccessPrincipalsOutput["data"]["default"]>[number];
 export type TAccessPrincipalById = NonNullable<TGetAccessPrincipalsOutput["data"]["byId"]>;
@@ -25,8 +26,9 @@ async function fetchAccessPrincipalById(principalId: string) {
 	return principal;
 }
 
+// Memoizada: quem monta um useCallback em cima da queryKey precisa de identidade estável.
 export function useAccessPrincipalById({ principalId }: { principalId: string }) {
-	const queryKey = ["access-principal-by-id", principalId] as const;
+	const queryKey = useMemo(() => ["access-principal-by-id", principalId] as const, [principalId]);
 	return {
 		...useQuery({ queryKey, queryFn: () => fetchAccessPrincipalById(principalId) }),
 		queryKey,

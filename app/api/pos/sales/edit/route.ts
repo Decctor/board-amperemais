@@ -48,6 +48,7 @@ const EditSaleItemInputSchema = z.object({
 	valorDesconto: z.number({ invalid_type_error: "Tipo não válido para desconto." }).default(0),
 	valorTotalLiquido: z.number({ required_error: "Valor total líquido não informado." }),
 	modificadores: z.array(EditSaleItemModifierInputSchema),
+	observacoes: z.string({ invalid_type_error: "Tipo não válido para observações do item." }).max(500).optional().nullable(),
 });
 
 const EditConfirmedSaleInputSchema = z.object({
@@ -127,6 +128,7 @@ async function getSaleForEdit({ input, session }: { input: TGetSaleForEditInput;
 					valorVendaTotalBruto: true,
 					valorTotalDesconto: true,
 					valorVendaTotalLiquido: true,
+					observacoes: true,
 					metadados: true,
 				},
 				with: {

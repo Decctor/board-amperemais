@@ -52,6 +52,7 @@ function mapItemsToApi(saleState: TUseSaleState, deletedItemIds: string[]) {
 		valorDesconto: item.valorDesconto,
 		valorTotalLiquido: item.valorTotalLiquido,
 		modificadores: item.modificadores,
+		observacoes: item.observacoes?.trim() || null,
 	}));
 	// Itens hidratados que saíram do carrinho viram linhas `deletar` (soft-delete no payload).
 	const deletedItems = deletedItemIds.map((id) => ({

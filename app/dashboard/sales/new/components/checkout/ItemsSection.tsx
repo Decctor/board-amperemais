@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { TUseSaleState } from "@/state-hooks/use-sale-state";
-import { Minus, Package, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Minus, Package, Plus, ShoppingCart, StickyNote, Trash2 } from "lucide-react";
 import Image from "next/image";
+import { useState } from "react";
 
 import { formatToMoney } from "@/lib/formatting";
 import type { TCartItem } from "@/state-hooks/use-sale-state";
@@ -35,7 +37,13 @@ export default function ItemsSection({ saleState }: ItemsSectionProps) {
 			<ScrollArea className="max-h-[240px]">
 				<div className="flex flex-col gap-2 pr-3">
 					{saleState.state.itens.map((item) => (
-						<CartItemRow key={item.tempId} item={item} onUpdateQuantity={saleState.updateItemQuantity} onRemove={saleState.removeItem} />
+						<CartItemRow
+							key={item.tempId}
+							item={item}
+							onUpdateQuantity={saleState.updateItemQuantity}
+							onUpdateObservacoes={saleState.updateItemObservacoes}
+							onRemove={saleState.removeItem}
+						/>
 					))}
 					{itemCount === 0 ? (
 						<div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-border/70 py-6 text-center">
@@ -52,14 +60,18 @@ export default function ItemsSection({ saleState }: ItemsSectionProps) {
 type CartItemRowProps = {
 	item: TCartItem;
 	onUpdateQuantity: (tempId: string, quantidade: number) => void;
+	onUpdateObservacoes: (tempId: string, observacoes: string) => void;
 	onRemove: (tempId: string) => void;
 };
 
-function CartItemRow({ item, onUpdateQuantity, onRemove }: CartItemRowProps) {
+function CartItemRow({ item, onUpdateQuantity, onUpdateObservacoes, onRemove }: CartItemRowProps) {
 	const hasDiscount = item.valorDesconto > 0;
 	// Recompensa resgatada: quantidade fixa e sem remoção pelo carrinho. O débito de saldo já está
 	// no ledger — desfazê-lo exige remover a recompensa no resumo (venda em edição: cancelar).
 	const isReward = !!item.recompensaId;
+	// O campo fica escondido até ser pedido para não alongar cada linha do carrinho, mas abre sozinho
+	// quando o item já veio com observação (venda hidratada para edição).
+	const [mostrandoObservacao, setMostrandoObservacao] = useState(!!item.observacoes);
 
 	return (
 		<div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-2.5">
@@ -81,6 +93,16 @@ function CartItemRow({ item, onUpdateQuantity, onRemove }: CartItemRowProps) {
 					{isReward ? <span className="text-[0.65rem] font-bold uppercase text-amber-600">Recompensa resgatada</span> : null}
 				</div>
 
+				<Button
+					size="icon"
+					variant="ghost"
+					className={`h-7 w-7 shrink-0 hover:bg-primary/10 hover:text-primary ${item.observacoes ? "text-primary" : "text-muted-foreground"}`}
+					onClick={() => setMostrandoObservacao((prev) => !prev)}
+					aria-label={item.observacoes ? "Editar observação do item" : "Adicionar observação ao item"}
+				>
+					<StickyNote className="w-3.5 h-3.5" />
+				</Button>
+
 				{isReward ? null : (
 					<Button
 						size="icon"
@@ -93,6 +115,19 @@ function CartItemRow({ item, onUpdateQuantity, onRemove }: CartItemRowProps) {
 					</Button>
 				)}
 			</div>
+
+			{/* Observação do item — segue para a cozinha e para o cupom impresso */}
+			{mostrandoObservacao ? (
+				<div className="ml-[3.25rem]">
+					<Input
+						value={item.observacoes ?? ""}
+						onChange={(event) => onUpdateObservacoes(item.tempId, event.target.value)}
+						placeholder="Ex.: sem cebola, ponto mal passado"
+						maxLength={500}
+						className="h-8 text-xs"
+					/>
+				</div>
+			) : null}
 
 			{/* Modificadores — bloco indentado com fundo, sem faixa lateral */}
 			{item.modificadores.length > 0 ? (

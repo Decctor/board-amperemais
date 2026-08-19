@@ -2,6 +2,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
 import { type TAccessPrincipalListItem, useAccessPrincipals } from "@/lib/queries/access";
+import { PRINT_JOB_FINALIDADE_LABELS } from "@/lib/desktop-agent/print-labels";
 import { type TPrintJobListItem, useAgentPrintJobs } from "@/lib/queries/desktop-agent";
 import { cn, copyToClipboard } from "@/lib/utils";
 import type { TPrintJobStatusEnum } from "@/schemas/enums";
@@ -16,6 +17,7 @@ import NewAccessEnrollment from "../Modals/Internal/Access/NewAccessEnrollment";
 import { Button } from "../ui/button";
 import DesktopAgentDownload from "./DesktopAgentDownload";
 import SettingsAutoPrint from "./SettingsAutoPrint";
+import SettingsPanelSection from "./SettingsPanelSection";
 
 type SettingsDevicesProps = {
 	user: TAuthUserSession["user"];
@@ -33,63 +35,71 @@ export default function SettingsDevices({ user: _user, membership }: SettingsDev
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
 
 	return (
-		<div className="flex w-full flex-col gap-3">
+		// A régua entre seções mora aqui, escrita uma vez só: cada grupo é um <section> e todo
+		// irmão depois do primeiro ganha o filete. Sem isso os quatro grupos empilhados liam como
+		// um bloco contínuo, e o card de download parecia cabeçalho da lista de dispositivos.
+		<div className="flex w-full flex-col gap-6 [&>section+section]:border-t [&>section+section]:border-border [&>section+section]:pt-6">
 			<DesktopAgentDownload />
 
-			<div className="flex flex-wrap items-center justify-end gap-2">
-				<Button
-					variant="ghost"
-					size="sm"
-					className="flex items-center gap-2 whitespace-nowrap"
-					onClick={() => copyToClipboard(`${process.env.NEXT_PUBLIC_APP_URL}/point-of-interaction/${membership.organizacao.id}`)}
-				>
-					<Presentation className="h-4 w-4 min-h-4 min-w-4" />
-					COPIAR LINK DO PONTO DE INTERAÇÃO
-				</Button>
-				{canManage ? (
-					<Button size="sm" className="flex items-center gap-2 whitespace-nowrap" onClick={() => setNewEnrollmentModalIsOpen(true)}>
-						<Plus className="h-4 w-4 min-h-4 min-w-4" />
-						ATIVAR DISPOSITIVO
-					</Button>
-				) : null}
-			</div>
-
-			{isLoading ? <LoadingComponent /> : null}
-			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
-			{isSuccess && principals.length === 0 ? (
-				<div className="flex w-full flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-4 py-12 text-center">
-					<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-						<TabletSmartphone className="h-6 w-6" />
-					</div>
-					<div className="flex flex-col gap-1">
-						<h2 className="text-base font-bold tracking-tight">Nenhum dispositivo ativado</h2>
-						<p className="max-w-md text-sm text-muted-foreground">
-							Gere um código de ativação, digite-o no tablet ou kiosk e o dispositivo passa a operar o Ponto de Interação com credencial própria, que você
-							pode revogar a qualquer momento.
-						</p>
-					</div>
-					{canManage ? (
-						<Button size="sm" className="flex items-center gap-2" onClick={() => setNewEnrollmentModalIsOpen(true)}>
-							<Plus className="h-4 w-4 min-h-4 min-w-4" />
-							ATIVAR PRIMEIRO DISPOSITIVO
+			<SettingsPanelSection
+				title="DISPOSITIVOS VINCULADOS"
+				icon={<TabletSmartphone className="h-4 w-4 min-h-4 min-w-4" />}
+				description="Cada aparelho opera com credencial própria, que você pode revogar a qualquer momento."
+				action={
+					<>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="flex items-center gap-2 whitespace-nowrap"
+							onClick={() => copyToClipboard(`${process.env.NEXT_PUBLIC_APP_URL}/point-of-interaction/${membership.organizacao.id}`)}
+						>
+							<Presentation className="h-4 w-4 min-h-4 min-w-4" />
+							COPIAR LINK DO PONTO
 						</Button>
-					) : null}
-				</div>
-			) : null}
-			{isSuccess && principals.length > 0 ? (
-				<div className="flex w-full flex-col gap-1.5">
-					{principals.map((principal) => (
-						<DeviceCard key={principal.id} principal={principal} handleClick={setControlPrincipalId} />
-					))}
-				</div>
-			) : null}
+						{canManage ? (
+							<Button size="sm" className="flex items-center gap-2 whitespace-nowrap" onClick={() => setNewEnrollmentModalIsOpen(true)}>
+								<Plus className="h-4 w-4 min-h-4 min-w-4" />
+								ATIVAR DISPOSITIVO
+							</Button>
+						) : null}
+					</>
+				}
+			>
+				{isLoading ? <LoadingComponent /> : null}
+				{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+				{isSuccess && principals.length === 0 ? (
+					<div className="flex w-full flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-4 py-12 text-center">
+						<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+							<TabletSmartphone className="h-6 w-6" />
+						</div>
+						<div className="flex flex-col gap-1">
+							<h3 className="text-base font-bold tracking-tight">Nenhum dispositivo ativado</h3>
+							<p className="max-w-md text-sm text-muted-foreground">
+								Gere um código de ativação, digite-o no tablet ou kiosk e o dispositivo passa a operar o Ponto de Interação com credencial própria, que
+								você pode revogar a qualquer momento.
+							</p>
+						</div>
+						{canManage ? (
+							<Button size="sm" className="flex items-center gap-2" onClick={() => setNewEnrollmentModalIsOpen(true)}>
+								<Plus className="h-4 w-4 min-h-4 min-w-4" />
+								ATIVAR PRIMEIRO DISPOSITIVO
+							</Button>
+						) : null}
+					</div>
+				) : null}
+				{isSuccess && principals.length > 0 ? (
+					<div className="flex w-full flex-col gap-1.5">
+						{principals.map((principal) => (
+							<DeviceCard key={principal.id} principal={principal} handleClick={setControlPrincipalId} />
+						))}
+					</div>
+				) : null}
+			</SettingsPanelSection>
 
 			{/* Impressão automática e fila: só fazem sentido quando há um agente desktop vinculado. */}
 			{isSuccess && principals.some((principal) => principal.tipo === "AGENTE_DESKTOP") ? (
 				<>
-					<div className="pt-3">
-						<SettingsAutoPrint membership={membership} />
-					</div>
+					<SettingsAutoPrint membership={membership} />
 					<PrintJobsPanel />
 				</>
 			) : null}
@@ -167,14 +177,6 @@ const PRINT_JOB_STATUS_META: Record<TPrintJobStatusEnum, { label: string; classN
 	EXPIRADO: { label: "EXPIRADO", className: "border-yellow-200 bg-yellow-100 text-yellow-800" },
 };
 
-const PRINT_JOB_FINALIDADE_LABELS: Record<string, string> = {
-	CUPOM_VENDA: "CUPOM DE VENDA",
-	ETIQUETA_LOTE: "ETIQUETA DE LOTE",
-	DANFE_NFCE: "DANFE NFC-e",
-	DANFE_NFE: "DANFE NF-e",
-	TESTE: "TESTE",
-};
-
 const PRINT_JOB_STATUS_FILTERS: Array<{ value: TPrintJobStatusEnum | null; label: string }> = [
 	{ value: null, label: "TODOS" },
 	{ value: "PENDENTE", label: "PENDENTES" },
@@ -188,13 +190,12 @@ function PrintJobsPanel() {
 	const { data: jobs, isLoading, isError, error, refetch, isRefetching } = useAgentPrintJobs({ status: statusFilter });
 
 	return (
-		<div className="mt-2 flex w-full flex-col gap-2">
-			<div className="flex flex-wrap items-center justify-between gap-2">
-				<div className="flex items-center gap-2">
-					<Printer className="h-4 w-4 min-h-4 min-w-4 text-muted-foreground" />
-					<h2 className="text-sm font-bold tracking-tight">FILA DE IMPRESSÃO</h2>
-				</div>
-				<div className="flex items-center gap-1.5">
+		<SettingsPanelSection
+			title="FILA DE IMPRESSÃO"
+			icon={<Printer className="h-4 w-4 min-h-4 min-w-4" />}
+			description="Últimos trabalhos enviados ao agente, com o erro quando algum falha."
+			action={
+				<>
 					{PRINT_JOB_STATUS_FILTERS.map((filter) => (
 						<button
 							key={filter.label}
@@ -214,9 +215,9 @@ function PrintJobsPanel() {
 					<Button variant="ghost" size="icon" aria-label="Atualizar fila de impressão" disabled={isRefetching} onClick={() => refetch()}>
 						<RefreshCw className={cn("h-3.5 w-3.5 min-h-3.5 min-w-3.5", isRefetching && "animate-spin")} />
 					</Button>
-				</div>
-			</div>
-
+				</>
+			}
+		>
 			{isLoading ? <LoadingComponent /> : null}
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{jobs && jobs.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum job de impressão registrado.</p> : null}
@@ -227,7 +228,7 @@ function PrintJobsPanel() {
 					))}
 				</div>
 			) : null}
-		</div>
+		</SettingsPanelSection>
 	);
 }
 

@@ -55,6 +55,7 @@ export type TEditSaleItemInput = {
 	valorDesconto: number;
 	valorTotalLiquido: number;
 	modificadores: TEditSaleItemModifierInput[];
+	observacoes?: string | null;
 };
 
 export type TProcessConfirmedSaleEditInput = {
@@ -439,6 +440,7 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 					valorTotalDesconto: item.valorDesconto,
 					valorVendaTotalLiquido: item.valorTotalLiquido,
 					valorCustoTotal: valorCustoUnitario * item.quantidade,
+					observacoes: item.observacoes ?? null,
 					metadados: buildItemMetadataSnapshot(item),
 				})
 				.where(and(eq(saleItems.id, existing.id), eq(saleItems.organizacaoId, organizationId)));
@@ -490,6 +492,7 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 				valorTotalDesconto: item.valorDesconto,
 				valorVendaTotalLiquido: item.valorTotalLiquido,
 				valorCustoTotal: valorCustoUnitario * item.quantidade,
+				observacoes: item.observacoes ?? null,
 				metadados: buildItemMetadataSnapshot(item),
 			})
 			.returning({ id: saleItems.id });

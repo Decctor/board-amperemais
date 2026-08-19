@@ -1,19 +1,26 @@
-import * as React from 'react'
+import * as React from "react";
 
+const EMPTY_SUBSCRIBE = () => () => {};
+
+// useSyncExternalStore em vez de useState + useEffect: com o estado iniciando em `false`, todo
+// ResponsiveMenu montava a árvore do Drawer (mobile) e só no efeito trocava pelo Dialog — duas
+// montagens completas por abertura de modal. Aqui a leitura já é correta no primeiro render de
+// cliente, e o getServerSnapshot mantém a hidratação estável para quem renderiza no servidor.
 export function useMediaQuery(query: string) {
-  const [value, setValue] = React.useState(false)
+	const subscribe = React.useCallback(
+		(onStoreChange: () => void) => {
+			if (typeof window === "undefined" || typeof window.matchMedia !== "function") return EMPTY_SUBSCRIBE();
+			const result = window.matchMedia(query);
+			result.addEventListener("change", onStoreChange);
+			return () => result.removeEventListener("change", onStoreChange);
+		},
+		[query],
+	);
 
-  React.useEffect(() => {
-    function onChange(event: MediaQueryListEvent) {
-      setValue(event.matches)
-    }
+	const getSnapshot = React.useCallback(() => {
+		if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+		return window.matchMedia(query).matches;
+	}, [query]);
 
-    const result = matchMedia(query)
-    result.addEventListener('change', onChange)
-    setValue(result.matches)
-
-    return () => result.removeEventListener('change', onChange)
-  }, [query])
-
-  return value
+	return React.useSyncExternalStore(subscribe, getSnapshot, () => false);
 }

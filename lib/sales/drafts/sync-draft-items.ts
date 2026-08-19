@@ -26,6 +26,7 @@ export type TDraftItemInput = {
 	valorDesconto: number;
 	valorTotalLiquido: number;
 	modificadores: TDraftItemModifierInput[];
+	observacoes?: string | null;
 };
 
 /** Duas listas de modificadores são a mesma escolha quando batem opção a opção, em qualquer ordem. */
@@ -137,6 +138,7 @@ export async function syncDraftItems({
 			valorTotalDesconto: item.valorDesconto,
 			valorVendaTotalLiquido: item.valorTotalLiquido,
 			valorCustoTotal: valorCustoUnitario * item.quantidade,
+			observacoes: item.observacoes ?? null,
 			metadados: buildDraftItemSnapshot(item),
 		};
 

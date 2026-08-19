@@ -63,6 +63,7 @@ function mapItemsToApi(saleState: TUseSaleState) {
 		valorDesconto: item.valorDesconto,
 		valorTotalLiquido: item.valorTotalLiquido,
 		modificadores: item.modificadores,
+		observacoes: item.observacoes?.trim() || null,
 	}));
 }
 

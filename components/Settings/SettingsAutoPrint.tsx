@@ -12,6 +12,7 @@ import type { TOrganizationAutoPrintRule, TOrganizationPrintPreferences } from "
 import { AlertTriangle, Minus, Plus, Printer } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useOrganizationSectionForm } from "./Organization/use-organization-section-form";
+import SettingsPanelSection from "./SettingsPanelSection";
 import SettingsSectionActions from "./SettingsSectionActions";
 
 // Impressão automática (docs/dev-planning/auto-print-wiring-plan.md): política por finalidade em
@@ -91,12 +92,11 @@ export default function SettingsAutoPrint({ membership }: SettingsAutoPrintProps
 	}
 
 	return (
-		<div className="flex w-full flex-col gap-3">
-			<div className="flex items-center gap-2">
-				<Printer className="h-4 w-4" />
-				<h2 className="text-sm font-bold tracking-tight">IMPRESSÃO AUTOMÁTICA</h2>
-			</div>
-
+		<SettingsPanelSection
+			title="IMPRESSÃO AUTOMÁTICA"
+			icon={<Printer className="h-4 w-4 min-h-4 min-w-4" />}
+			description="O que sai da impressora sozinho, sem ninguém clicar em imprimir."
+		>
 			{FINALIDADE_METADATA.map((finalidade) => {
 				const rule = draft.automatica[finalidade.key];
 				const missingPrinter = rule.habilitada && !organizationHasPrinterForFinalidade(printers, finalidade.key);
@@ -189,6 +189,6 @@ export default function SettingsAutoPrint({ membership }: SettingsAutoPrintProps
 					/>
 				</div>
 			) : null}
-		</div>
+		</SettingsPanelSection>
 	);
 }

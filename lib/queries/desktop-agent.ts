@@ -15,13 +15,16 @@ async function fetchAgentPrinters() {
 	return data.data.impressoras;
 }
 
+// Constante de módulo, não literal por render: quem monta um useCallback/useMemo em cima da
+// queryKey precisa de identidade estável, senão o memo dos filhos nunca segura.
+export const AGENT_PRINTERS_QUERY_KEY = ["agent-printers"] as const;
+
 // Query org-wide única: alimenta o estado dos botões de impressão em vendas/produções e a
 // gestão em configurações — mesmo queryKey, um fetch por página.
 export function useAgentPrinters() {
-	const queryKey = ["agent-printers"] as const;
 	return {
-		...useQuery({ queryKey, queryFn: fetchAgentPrinters }),
-		queryKey,
+		...useQuery({ queryKey: AGENT_PRINTERS_QUERY_KEY, queryFn: fetchAgentPrinters }),
+		queryKey: AGENT_PRINTERS_QUERY_KEY,
 	};
 }
 

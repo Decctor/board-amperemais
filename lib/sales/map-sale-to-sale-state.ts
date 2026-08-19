@@ -50,6 +50,7 @@ export type TMappableSaleItem = {
 	valorVendaTotalBruto: number;
 	valorTotalDesconto: number;
 	valorVendaTotalLiquido: number;
+	observacoes?: string | null;
 	metadados?: unknown;
 	produto?: { nome?: string | null; codigo?: string | null; imagemCapaUrl?: string | null } | null;
 	produtoVariante?: { nome?: string | null; codigo?: string | null } | null;
@@ -89,6 +90,7 @@ export function mapItemToCartItem(item: TMappableSaleItem): TCartItem {
 		valorDesconto: item.valorTotalDesconto,
 		valorTotalLiquido: item.valorVendaTotalLiquido,
 		modificadores,
+		observacoes: item.observacoes ?? null,
 	};
 }
 

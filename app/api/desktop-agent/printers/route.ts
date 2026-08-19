@@ -29,7 +29,10 @@ async function getAgentPrinters({ organizacaoId }: { organizacaoId: string }) {
 		with: {
 			principal: { columns: { id: true, nome: true, status: true } },
 		},
-		orderBy: (fields, { asc }) => asc(fields.dataInsercao),
+		// O agente sincroniza todas as impressoras no mesmo instante, então dataInsercao empata e a
+		// ordem ficava indefinida — a lista reordenava a cada UPDATE. nomeSistema é imutável (vem do
+		// SO) e o id desempata: a ordem não muda quando o usuário renomeia ou (des)ativa uma delas.
+		orderBy: (fields, { asc }) => [asc(fields.nomeSistema), asc(fields.id)],
 	});
 	return { data: { impressoras: printers }, message: "Impressoras listadas com sucesso." };
 }
