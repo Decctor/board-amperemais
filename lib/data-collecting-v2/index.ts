@@ -7,19 +7,19 @@ import { getChannelErpPolicy } from "@/lib/sales/fulfillment-channels/policy";
 import { processSaleAutomaticFiscalEmissionIfEligible } from "@/lib/sales/sale-processing/process-sale-automatic-fiscal-emission";
 import { processOrganizationInteractionsBatch, type ImmediateProcessingData } from "@/lib/interactions";
 import { db } from "@/services/drizzle";
-import { campaigns, integrations, organizations } from "@/services/drizzle/schema";
+import { integrations, organizations } from "@/services/drizzle/schema";
 import { isAxiosError } from "axios";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
-import { and, eq, inArray, ne, or } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { resolveCampaignAudiences } from "./campaign-audiences";
 import { processDataCollectingV2Effects } from "./effects";
+import { loadPurchaseEffectCampaigns } from "./purchase-effect-campaigns";
 import { syncAuxiliaryEntities } from "./sync-auxiliary-entities";
 import { syncSales, type TSyncSalesErpOptions } from "./sync-sales";
 import type {
-	TCampaignWithAudienceRelations,
 	TDataCollectingV2EffectsOptions,
 	TDataCollectingV2RawBatch,
 	TDataCollectingV2RunError,
@@ -122,39 +122,6 @@ async function loadOrganizationConfigurations(organizationIds: string[]) {
 }
 type TOrganizationConfigurationRow = { id: string; configuracao: (typeof organizations.$inferSelect)["configuracao"] };
 
-async function loadCampaigns(organizationId: string): Promise<TCampaignWithAudienceRelations[]> {
-	const result = await db.query.campaigns.findMany({
-		where: and(
-			eq(campaigns.organizacaoId, organizationId),
-			eq(campaigns.ativo, true),
-			or(
-				eq(campaigns.gatilhoTipo, "NOVA-COMPRA"),
-				eq(campaigns.gatilhoTipo, "PRIMEIRA-COMPRA"),
-				eq(campaigns.gatilhoTipo, "CASHBACK-ACUMULADO"),
-				eq(campaigns.gatilhoTipo, "QUANTIDADE-TOTAL-COMPRAS"),
-				eq(campaigns.gatilhoTipo, "VALOR-TOTAL-COMPRAS"),
-			),
-		),
-		with: {
-			whatsappConexaoTelefone: {
-				columns: { id: true },
-				with: {
-					conexao: {
-						columns: {
-							token: true,
-							gatewaySessaoId: true,
-						},
-					},
-				},
-			},
-			segmentacoes: true,
-			whatsappTemplate: true,
-		},
-	});
-
-	return result as unknown as TCampaignWithAudienceRelations[];
-}
-
 async function processIntegration({
 	integration,
 	organizationConfiguration,
@@ -180,7 +147,7 @@ async function processIntegration({
 		config: integration.configuracao,
 		window,
 	});
-	const campaignsForOrganization = effects.processCampaigns ? await loadCampaigns(organizationId) : [];
+	const campaignsForOrganization = effects.processCampaigns ? await loadPurchaseEffectCampaigns(db, organizationId) : [];
 	let immediateProcessingDataList: ImmediateProcessingData[] = [];
 	let fiscalEmissionCandidateSaleIds: string[] = [];
 	// Hoisted para os hooks pós-commit (aceite automático iFood + cupom automático no becameValid).

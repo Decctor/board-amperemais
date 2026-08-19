@@ -185,14 +185,11 @@ existe em lugar nenhum:
   `becameValid` → cupom. A chave de idempotência absorve sobreposição entre os três caminhos
   (aceite automático, aceite na plataforma, aceite no dispositivo).
 
-> **Observação (fora deste plano, verificar em separado)**: a promoção local da rota de aceite
-> seta `statusVenda = CONFIRMADA` antes do sync, o que faz `previouslyValid = true` →
-> `becameValid = false` no sync seguinte — apesar de o comentário da rota afirmar que os efeitos
-> de nova compra "disparam pelo becameValid do sync". Pelo rastreio atual, nada mais os dispara
-> nesse caminho: pedidos aceitos manualmente podem estar pulando cashback/campanhas/métricas em
-> silêncio. É também o motivo de o aceite automático acima **não** fazer promoção local. Para o
-> cupom isso é inofensivo (enfileiramos direto nos caminhos de aceite, chave dedupe), mas o bug
-> suspeito merece investigação própria.
+> **Resolvido após este plano**: o aceite manual agora executa a transição local e os efeitos de
+> nova compra na mesma transação, antes de o sync reconciliar o evento `CONFIRMED`. Enquanto não
+> houver um ledger próprio de efeitos, `statusVenda = CONFIRMADA` é o marcador temporário de
+> idempotência; um comentário junto à transição documenta a evolução futura. O aceite automático
+> continua sem promoção local e permanece no caminho canônico do `becameValid`.
 
 ## Pontos de wiring
 
@@ -202,7 +199,7 @@ existe em lugar nenhum:
 | --- | --- | --- |
 | POS (create-and-confirm), POS confirm, fechamento de comanda, checkout do Shop | `processSaleConfirmationPostCommit` (`lib/sales/sale-processing/process-sale-confirmation.ts:431`) | Um único ponto cobre os quatro caminhos internos — mesmo lugar onde a emissão fiscal automática já é disparada. Chamar o orquestrador **antes** da emissão fiscal (cupom é latência-sensível; TTL 30min). |
 | iFood — aceite automático | Pós-commit do `runDataCollectingV2`, após o `confirmIfoodOrder` | Enfileira direto, sem promoção local — ver seção iFood. |
-| iFood — aceite na plataforma | `app/api/sales/fulfillment/order-confirmation/route.ts`, após a promoção local `null → CONFIRMADA` | O cupom sai na hora do aceite, sem esperar o sync. |
+| iFood — aceite na plataforma | `app/api/sales/fulfillment/order-confirmation/route.ts`, após a transação local de confirmação | Os efeitos de nova compra e o cupom saem no aceite, sem esperar o sync. |
 | iFood — aceite no dispositivo iFood / consolidação | Pós-commit do `runDataCollectingV2` (junto ao loop de `fiscalEmissionCandidateSaleIds`) | Disparar apenas para vendas com `becameValid && !nowCanceled` — exactly-once por construção; a chave dedupe a sobreposição com os caminhos de aceite, e não se paga insert-conflito por venda a cada polling. |
 
 ### `DANFE_NFCE` / `DANFE_NFE`

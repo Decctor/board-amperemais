@@ -2,14 +2,16 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { runDataCollectingV2 } from "@/lib/data-collecting-v2";
+import { processIntegratedSaleConfirmation } from "@/lib/data-collecting-v2/process-integrated-sale-confirmation";
+import { getIfoodOrder } from "@/lib/data-connectors/ifood";
+import { mapIfoodSale } from "@/lib/data-connectors/ifood/mappers";
 import { processSaleCupomAutoPrintIfEligible } from "@/lib/desktop-agent/auto-print";
 import { resolveIfoodManagementContext } from "@/lib/integrations/ifood/context";
 import { confirmIfoodOrder, getIfoodOrderCancellationReasons, requestIfoodOrderCancellation } from "@/lib/integrations/ifood/orders";
+import { processOrganizationInteractionsBatch } from "@/lib/interactions";
 import { getChannelErpPolicy, resolveFulfillmentChannelForSale } from "@/lib/sales/fulfillment-channels";
 import { db } from "@/services/drizzle";
-import { sales } from "@/services/drizzle/schema";
 import { waitUntil } from "@vercel/functions";
-import { eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -73,11 +75,23 @@ async function postOrderConfirmation({ input, session }: { input: TPostFulfillme
 	const context = await resolveIfoodManagementContext({ organizacaoId: orgId, integrationId: sale.integracaoId });
 
 	if (input.decision === "CONFIRMAR") {
+		const canonicalSale = mapIfoodSale(await getIfoodOrder(context.client, sale.idExterno));
 		await confirmIfoodOrder(context.client, sale.idExterno);
-		// Promoção local imediata (UX): a ingestão consolida quando o evento CONFIRMED chegar —
-		// a transição vira no-op e os efeitos de "nova compra" disparam pelo becameValid do sync.
-		if (!sale.statusVenda && sale.statusAtendimento === "NAO_INICIADO") {
-			await db.update(sales).set({ statusVenda: "CONFIRMADA", statusAtendimento: "EM_PREPARO" }).where(eq(sales.id, sale.id));
+		const confirmation = await db.transaction((tx) =>
+			processIntegratedSaleConfirmation({
+				tx,
+				organizationId: orgId,
+				saleId: sale.id,
+				sale: canonicalSale,
+				organizationConfiguration: session.membership!.organizacao.configuracao,
+			}),
+		);
+		if (confirmation.immediateProcessingDataList.length > 0) {
+			waitUntil(
+				processOrganizationInteractionsBatch({ organizationId: orgId, interactions: confirmation.immediateProcessingDataList }).catch((error) => {
+					console.error("[ERROR] [FULFILLMENT_ORDER_CONFIRMATION] Falha ao processar interações imediatas", error);
+				}),
+			);
 		}
 		// Cupom automático na hora do aceite, sem esperar o sync. Nunca lança; a chave de
 		// idempotência absorve a sobreposição com os hooks da ingestão.
