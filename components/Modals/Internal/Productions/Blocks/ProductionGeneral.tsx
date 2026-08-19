@@ -5,21 +5,22 @@ import TextInput from "@/components/Inputs/TextInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { useProductionRecipes } from "@/lib/queries/productions";
 import type { TUseInternalProductionState } from "@/state-hooks/use-internal-production-state";
-import { CalendarClock, ClipboardList } from "lucide-react";
+import { CalendarClock, ClipboardList, Factory, FilePenLine } from "lucide-react";
 
 const PRODUCTION_STATUS_OPTIONS = [
-	{ id: "RASCUNHO", label: "RASCUNHO", value: "RASCUNHO" },
-	{ id: "PLANEJADA", label: "PLANEJADA", value: "PLANEJADA" },
-	{ id: "EM_PRODUCAO", label: "EM PRODUÇÃO", value: "EM_PRODUCAO" },
+	{ id: "RASCUNHO", label: "RASCUNHO", value: "RASCUNHO", startContent: <FilePenLine className="text-muted-foreground" /> },
+	{ id: "PLANEJADA", label: "PLANEJADA", value: "PLANEJADA", startContent: <CalendarClock className="text-primary" /> },
+	{ id: "EM_PRODUCAO", label: "EM PRODUÇÃO", value: "EM_PRODUCAO", startContent: <Factory className="text-amber-600" /> },
 ];
 
 type ProductionGeneralBlockProps = {
 	production: TUseInternalProductionState["state"]["production"];
 	updateProduction: TUseInternalProductionState["updateProduction"];
 	recipeSelectionEnabled?: boolean;
+	onRecipeChange?: (recipeId: string | null) => void;
 };
 
-export default function ProductionGeneralBlock({ production, updateProduction, recipeSelectionEnabled = true }: ProductionGeneralBlockProps) {
+export default function ProductionGeneralBlock({ production, updateProduction, recipeSelectionEnabled = true, onRecipeChange }: ProductionGeneralBlockProps) {
 	const { data: recipesData } = useProductionRecipes({
 		initialFilters: { page: 1, search: "", activeOnly: true },
 	});
@@ -28,6 +29,7 @@ export default function ProductionGeneralBlock({ production, updateProduction, r
 			id: recipe.id,
 			label: recipe.titulo,
 			value: recipe.id,
+			startContent: <ClipboardList className="text-primary" />,
 		})) ?? [];
 
 	return (
@@ -46,8 +48,8 @@ export default function ProductionGeneralBlock({ production, updateProduction, r
 						value={production.receitaId}
 						resetOptionLabel="Produção manual"
 						options={recipeOptions}
-						handleChange={(receitaId) => updateProduction({ receitaId })}
-						onReset={() => updateProduction({ receitaId: null })}
+						handleChange={(receitaId) => (onRecipeChange ? onRecipeChange(receitaId) : updateProduction({ receitaId }))}
+						onReset={() => (onRecipeChange ? onRecipeChange(null) : updateProduction({ receitaId: null }))}
 					/>
 				) : null}
 				<SelectInput

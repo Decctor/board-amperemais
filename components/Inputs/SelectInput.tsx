@@ -75,7 +75,10 @@ function SelectInput({
 							<ChevronsUpDown className="w-4 h-4 min-w-4 min-h-4" />
 						</Button>
 					</PopoverTrigger>
-					<PopoverContent className="z-60 w-[var(--radix-popover-trigger-width)] p-0" onWheel={(event) => event.stopPropagation()}>
+					<PopoverContent
+						className="z-60 max-h-[min(22rem,var(--radix-popover-content-available-height))] w-[var(--radix-popover-trigger-width)] overflow-hidden p-0"
+						onWheel={(event) => event.stopPropagation()}
+					>
 						<OptionsList
 							value={value}
 							placeholderText={resetOptionLabel}
@@ -105,8 +108,8 @@ function SelectInput({
 							<ChevronsUpDown className="w-3 h-3 min-w-3 min-h-3" />
 						</Button>
 					</DrawerTrigger>
-					<DrawerContent>
-						<div className="mt-4 border-t">
+					<DrawerContent className="max-h-[85dvh] overflow-hidden">
+						<div className="mt-4 min-h-0 overflow-hidden border-t">
 							<OptionsList
 								value={value}
 								placeholderText={resetOptionLabel}
@@ -148,7 +151,7 @@ function OptionsList({
 	closeMenu,
 }: OptionsListProps) {
 	return (
-		<Command className="flex max-h-72 w-full flex-col overflow-hidden">
+		<Command className="flex max-h-[min(18rem,65dvh)] min-h-0 w-full flex-col overflow-hidden">
 			<CommandInput placeholder={placeholderText} className="h-9 w-full" />
 			<CommandList className="min-h-0 flex-1 overflow-y-auto max-h-none">
 				<CommandEmpty className="w-full p-3">Nenhuma opção encontrada.</CommandEmpty>

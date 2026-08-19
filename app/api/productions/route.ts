@@ -5,7 +5,7 @@ import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
 import { getProductionPricingItems, getProductPricingMap, resolveProductionValuation } from "@/lib/productions/valuation";
 import { ProductionBaseSchema, ProductionInputSchema, ProductionOutputBaseSchema } from "@/schemas/productions";
 import { db } from "@/services/drizzle";
-import { productionInputs, productionOutputs, productionRecipes, productions, productVariants, products } from "@/services/drizzle/schema";
+import { productionInputs, productionOutputs, productions, productVariants, products } from "@/services/drizzle/schema";
 import { ProductionOriginEnum, ProductionStatusEnum } from "@/schemas/enums";
 import { and, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -194,35 +194,6 @@ async function validateProductionItemsOrganization({
 	}
 }
 
-async function materializeRecipeItems({ organizationId, receitaId }: { organizationId: string; receitaId: string }) {
-	const recipe = await db.query.productionRecipes.findFirst({
-		where: and(eq(productionRecipes.id, receitaId), eq(productionRecipes.organizacaoId, organizationId), eq(productionRecipes.ativo, true)),
-		with: {
-			insumos: true,
-			saidas: true,
-		},
-	});
-	if (!recipe) throw new createHttpError.BadRequest("Receita de produção não encontrada.");
-
-	return {
-		inputs: recipe.insumos.map((input) => ({
-			produtoId: input.produtoId,
-			produtoVarianteId: input.produtoVarianteId,
-			quantidadePrevista: input.quantidade,
-			quantidadeReal: input.quantidade,
-		})),
-		outputs: recipe.saidas.map((output) => ({
-			produtoId: output.produtoId,
-			produtoVarianteId: output.produtoVarianteId,
-			quantidadePrevista: output.quantidade,
-			quantidadeReal: output.quantidade,
-			prazoValidadeMedida: output.prazoValidadeMedida,
-			prazoValidadeValor: output.prazoValidadeValor,
-			dataValidade: null,
-		})),
-	};
-}
-
 async function getProductions({ input, session }: { input: TGetProductionsInput; session: TAuthUserSession }) {
 	const organizationId = session.membership?.organizacao.id;
 	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
@@ -326,17 +297,10 @@ async function createProduction({ input, session }: { input: TCreateProductionIn
 	const userId = session.user.id;
 	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização.");
 
-	const recipeItems =
-		input.production.receitaId && input.productionInputs.length === 0 && input.productionOutputs.length === 0
-			? await materializeRecipeItems({ organizationId, receitaId: input.production.receitaId })
-			: null;
-	const productionInputsPayload = recipeItems?.inputs ?? input.productionInputs;
-	const productionOutputsPayload = recipeItems?.outputs ?? input.productionOutputs;
-
 	await validateProductionItemsOrganization({
 		organizationId,
-		inputs: productionInputsPayload,
-		outputs: productionOutputsPayload,
+		inputs: input.productionInputs,
+		outputs: input.productionOutputs,
 	});
 
 	return await db.transaction(async (tx) => {
@@ -351,9 +315,9 @@ async function createProduction({ input, session }: { input: TCreateProductionIn
 
 		if (!insertedProduction?.id) throw new createHttpError.InternalServerError("Erro ao criar produção.");
 
-		if (productionInputsPayload.length > 0) {
+		if (input.productionInputs.length > 0) {
 			await tx.insert(productionInputs).values(
-				productionInputsPayload.map((productionInput) => ({
+				input.productionInputs.map((productionInput) => ({
 					...productionInput,
 					organizacaoId: organizationId,
 					producaoId: insertedProduction.id,
@@ -361,9 +325,9 @@ async function createProduction({ input, session }: { input: TCreateProductionIn
 			);
 		}
 
-		if (productionOutputsPayload.length > 0) {
+		if (input.productionOutputs.length > 0) {
 			await tx.insert(productionOutputs).values(
-				productionOutputsPayload.map((productionOutput) => ({
+				input.productionOutputs.map((productionOutput) => ({
 					...productionOutput,
 					organizacaoId: organizationId,
 					producaoId: insertedProduction.id,

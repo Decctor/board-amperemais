@@ -11,6 +11,26 @@ async function fetchActionApprovals(status: TActionApprovalStatusEnum) {
 	return data.data.default ?? [];
 }
 
+type ActionApprovalHistoryFilters = {
+	search: string;
+	periodAfter: Date | null;
+	periodBefore: Date | null;
+};
+
+async function fetchActionApprovalHistory(filters: ActionApprovalHistoryFilters) {
+	const searchParams = new URLSearchParams({ scope: "HISTORY" });
+	if (filters.search) searchParams.set("search", filters.search);
+	if (filters.periodAfter) searchParams.set("periodAfter", filters.periodAfter.toISOString());
+	if (filters.periodBefore) searchParams.set("periodBefore", filters.periodBefore.toISOString());
+	const { data } = await axios.get<TGetActionApprovalsOutput>(`/api/action-approvals?${searchParams.toString()}`);
+	return data.data.default ?? [];
+}
+
+export function useActionApprovalHistory(filters: ActionApprovalHistoryFilters) {
+	const queryKey = ["action-approval-history", filters];
+	return { ...useQuery({ queryKey, queryFn: () => fetchActionApprovalHistory(filters) }), queryKey };
+}
+
 export function useActionApprovals({ status = "PENDENTE" }: { status?: TActionApprovalStatusEnum } = {}) {
 	const queryKey = ["action-approvals", status];
 	return {

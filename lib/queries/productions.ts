@@ -126,7 +126,7 @@ export function useProductionRecipes({ initialFilters }: UseProductionRecipesPar
 	};
 }
 
-async function fetchProductionRecipeById(input: TGetProductionRecipeByIdInput) {
+export async function fetchProductionRecipeById(input: TGetProductionRecipeByIdInput) {
 	const { data } = await axios.get<TGetProductionRecipesOutput>(`/api/productions/recipes?id=${input.id}`);
 	const result = data.data.byId;
 	if (!result) throw new Error("Receita de produção não encontrada.");

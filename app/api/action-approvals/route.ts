@@ -6,7 +6,7 @@ import { ActionApprovalPayloadSchema } from "@/schemas/action-approvals";
 import { ActionApprovalStatusEnum, ActionApprovalTypeEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { actionApprovalRequests } from "@/services/drizzle/schema";
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq, gte, ilike, lte, lt, ne, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -79,6 +79,10 @@ export type TCreateActionApprovalOutput = Awaited<ReturnType<typeof createAction
 const GetActionApprovalsInputSchema = z.object({
 	id: z.string({ invalid_type_error: "Tipo não válido para o ID da solicitação." }).optional().nullable(),
 	status: ActionApprovalStatusEnum.optional().nullable(),
+	scope: z.enum(["QUEUE", "HISTORY"]).optional().default("QUEUE"),
+	search: z.string().optional().nullable().transform((value) => value?.trim() || null),
+	periodAfter: z.string().optional().nullable().transform((value) => (value ? new Date(value) : null)),
+	periodBefore: z.string().optional().nullable().transform((value) => (value ? new Date(value) : null)),
 });
 export type TGetActionApprovalsInput = z.infer<typeof GetActionApprovalsInputSchema>;
 
@@ -103,15 +107,24 @@ async function getActionApprovals({ input, session }: { input: TGetActionApprova
 		getActionApprovalHandler(tipo).autorizaDecisao(session.membership!.permissoes),
 	);
 	const status = input.status ?? "PENDENTE";
+	const filters = [
+		eq(actionApprovalRequests.organizacaoId, orgId),
+		input.scope === "HISTORY" ? ne(actionApprovalRequests.status, "PENDENTE") : eq(actionApprovalRequests.status, status),
+		...(input.search
+			? [or(ilike(actionApprovalRequests.tipo, `%${input.search}%`), sql`${actionApprovalRequests.resumo}::text ILIKE ${`%${input.search}%`}`)!]
+			: []),
+		...(input.periodAfter ? [gte(actionApprovalRequests.dataInsercao, input.periodAfter)] : []),
+		...(input.periodBefore ? [lte(actionApprovalRequests.dataInsercao, input.periodBefore)] : []),
+		...(canDecideAny ? [] : [eq(actionApprovalRequests.solicitanteId, session.user.id)]),
+	];
 	const requests = await db.query.actionApprovalRequests.findMany({
-		where: (fields, { and, eq }) =>
-			and(eq(fields.organizacaoId, orgId), eq(fields.status, status), ...(canDecideAny ? [] : [eq(fields.solicitanteId, session.user.id)])),
+		where: and(...filters),
 		with: {
 			solicitante: { columns: { id: true, nome: true } },
 			decididaPor: { columns: { id: true, nome: true } },
 		},
 		orderBy: (fields, { desc }) => [desc(fields.dataInsercao)],
-		limit: 50,
+		limit: input.scope === "HISTORY" ? 100 : 50,
 	});
 
 	return { data: { byId: null, default: requests }, message: "Solicitações encontradas." };
@@ -136,6 +149,10 @@ async function getActionApprovalsRoute(request: NextRequest) {
 	const input = GetActionApprovalsInputSchema.parse({
 		id: searchParams.get("id"),
 		status: searchParams.get("status"),
+		scope: searchParams.get("scope") ?? undefined,
+		search: searchParams.get("search"),
+		periodAfter: searchParams.get("periodAfter"),
+		periodBefore: searchParams.get("periodBefore"),
 	});
 	const result = await getActionApprovals({ input, session });
 	return NextResponse.json(result);
