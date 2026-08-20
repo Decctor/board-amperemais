@@ -296,6 +296,9 @@ export type TFiscalTaxRuleScopeEnum = z.infer<typeof FiscalTaxRuleScopeEnum>;
 // Eventos de manifestacao do destinatario (DF-e / notas recebidas).
 export const FiscalInboundManifestEventEnum = z.enum(["CIENCIA", "CONFIRMACAO", "DESCONHECIMENTO", "NAO_REALIZADA"]);
 export type TFiscalInboundManifestEventEnum = z.infer<typeof FiscalInboundManifestEventEnum>;
+// Situacao de uma nota recebida na SEFAZ (antes varchar livre vindo do provedor).
+export const FiscalInboundSituacaoEnum = z.enum(["AUTORIZADA", "DENEGADA", "CANCELADA"]);
+export type TFiscalInboundSituacaoEnum = z.infer<typeof FiscalInboundSituacaoEnum>;
 export const StockMovementTypeEnum = z.enum([
 	"ENTRADA_AQUISICAO",
 	"SAIDA",
@@ -727,7 +730,7 @@ export type TAccessEventTypeEnum = z.infer<typeof AccessEventTypeEnum>;
 
 // Origem de um evento externo arquivado no inbox (ampmais_external_events). Espelha o
 // varchar do schema — nova origem entra aqui sem migração de enum no Postgres.
-export const ExternalEventSourceEnum = z.enum(["META-WHATSAPP", "WHATSAPP-GATEWAY", "STRIPE"]);
+export const ExternalEventSourceEnum = z.enum(["META-WHATSAPP", "WHATSAPP-GATEWAY", "STRIPE", "SPEDY"]);
 export type TExternalEventSourceEnum = z.infer<typeof ExternalEventSourceEnum>;
 
 export const ExternalEventProcessingStatusEnum = z.enum(["RECEBIDO", "PROCESSADO", "FALHOU"]);

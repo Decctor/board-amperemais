@@ -67,6 +67,12 @@ function mapOrganizationToSpedySettings(organizacao: TFiscalOrganization) {
 		},
 		productInvoice: {
 			environmentType,
+			// Sempre enviar o bloco inbound junto: a doc garante independencia entre blocos, mas nao
+			// merge dentro de productInvoice — omitir aqui poderia desligar a importacao a cada sync.
+			inbound: {
+				enabled: fiscal.dfe.habilitado,
+				startDate: fiscal.dfe.dataInicio ?? null,
+			},
 		},
 		consumerInvoice: {
 			environmentType,

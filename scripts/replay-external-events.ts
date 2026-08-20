@@ -1,6 +1,7 @@
 import "@/utils/scripts/load-next-env";
 
 import { runArchivedEventProcessing } from "@/lib/external-events/archive";
+import { processSpedyWebhookBody, resolveSpedyWebhookOrganizationId, type TSpedyWebhookBody } from "@/lib/fiscal/providers/spedy/webhook";
 import { processGatewayWebhookBody, resolveGatewayWebhookOrganizationId, type TGatewayWebhookBody } from "@/lib/whatsapp/gateway-webhook-processing";
 import { processMetaWebhookBody, resolveMetaWebhookOrganizationId, type TMetaWebhookBody } from "@/lib/whatsapp/webhook-processing";
 import { ExternalEventSourceEnum, type TExternalEventSourceEnum } from "@/schemas/enums";
@@ -25,7 +26,7 @@ function hasFlag(name: string) {
 function printHelp() {
 	console.log(`
 Uso:
-  npm run replay:external-events -- --origem=<META-WHATSAPP|WHATSAPP-GATEWAY> [filtros] [--apply]
+  npm run replay:external-events -- --origem=<META-WHATSAPP|WHATSAPP-GATEWAY|SPEDY> [filtros] [--apply]
 
 Reprocessa eventos arquivados no inbox (ampmais_external_events) pelo MESMO caminho do
 webhook (seams em lib/whatsapp/*-webhook-processing.ts). Substitui o scraping de runtime
@@ -112,6 +113,13 @@ function buildEventRunner(event: TExternalEventEntity): { run: () => Promise<voi
 		return {
 			run: () => processMetaWebhookBody(body),
 			resolveOrganizationId: () => resolveMetaWebhookOrganizationId(body),
+		};
+	}
+	if (event.origem === "SPEDY") {
+		const body = event.payload as TSpedyWebhookBody;
+		return {
+			run: () => processSpedyWebhookBody(body),
+			resolveOrganizationId: () => resolveSpedyWebhookOrganizationId(body),
 		};
 	}
 	const body = event.payload as TGatewayWebhookBody;

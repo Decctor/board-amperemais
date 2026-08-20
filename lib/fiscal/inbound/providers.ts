@@ -1,17 +1,25 @@
-import type { IFiscalInboundProvider, TInboundDistribuicaoResult, TInboundManifestResult } from "./types";
+import { SpedyInboundProvider } from "@/lib/fiscal/providers/spedy/inbound";
+import createHttpError from "http-errors";
+import type { TFiscalOrganization } from "../types";
+import type { IFiscalInboundProvider, TInboundListResult, TInboundManifestResult } from "./types";
 
+// Stub sem provedor real: lista vazia e manifestacao recusada com mensagem clara.
 class ManualInboundProvider implements IFiscalInboundProvider {
-	async consultarDistribuicao(input: { ultNSU: string }): Promise<TInboundDistribuicaoResult> {
-		return { ultNSU: input.ultNSU, maxNSU: input.ultNSU, documentos: [] };
+	async listDocuments({ checkpoint }: { checkpoint: string | null }): Promise<TInboundListResult> {
+		return { documentos: [], checkpoint, hasMore: false };
 	}
 
-	async manifestarDocumento(): Promise<TInboundManifestResult> {
-		return { registrado: true, protocolo: null, mensagens: ["Manifestacao registrada (manual)."] };
+	async manifest(): Promise<TInboundManifestResult> {
+		throw new createHttpError.BadRequest("Manifestacao indisponivel sem provedor fiscal configurado.");
 	}
 }
 
-// A OpenAPI Spedy disponivel cobre emissao/cadastro, mas nao distribuicao DF-e recebida.
-// Mantemos o inbound como manual ate mapear essa parte com a Spedy.
-export function resolveInboundProvider(): IFiscalInboundProvider {
-	return new ManualInboundProvider();
+// Espelha getFiscalProvider (lib/fiscal/index.ts): o provedor inbound acompanha o de emissao.
+export function resolveInboundProvider(organization: Pick<TFiscalOrganization, "fiscalProvedor">): IFiscalInboundProvider {
+	switch (organization.fiscalProvedor) {
+		case "SPEDY":
+			return new SpedyInboundProvider();
+		default:
+			return new ManualInboundProvider();
+	}
 }

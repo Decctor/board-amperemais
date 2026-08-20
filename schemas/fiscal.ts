@@ -133,8 +133,21 @@ export const OrganizationFiscalConfigSchema = z.object({
 			NFE: z.string({ invalid_type_error: "Tipo não valido para a operacao padrao da NF-e." }).optional().nullable(),
 		})
 		.default({ NFCE: null, NFE: null }),
-	// DF-e (notas recebidas): registrar ciencia automaticamente ao receber novas notas (destrava XML completo).
-	dfeAutoCiencia: z.boolean({ invalid_type_error: "Tipo não valido para a flag de auto-ciencia DF-e." }).default(true),
+	// DF-e (notas recebidas contra o CNPJ da organizacao).
+	dfe: z
+		.object({
+			habilitado: z.boolean({ invalid_type_error: "Tipo não valido para a flag de notas recebidas." }).default(false),
+			// Corte de importacao: so notas emitidas depois desta data entram (SEFAZ retem ~90 dias).
+			// ISO string (sem transform): o valor mora no JSON de configuracao e precisa fazer roundtrip.
+			dataInicio: z
+				.string({ invalid_type_error: "Tipo não valido para a data de inicio das notas recebidas." })
+				.datetime({ message: "Data de inicio das notas recebidas invalida." })
+				.optional()
+				.nullable(),
+			// Registrar ciencia automaticamente ao receber novas notas (destrava o XML completo).
+			autoCiencia: z.boolean({ invalid_type_error: "Tipo não valido para a flag de auto-ciencia DF-e." }).default(true),
+		})
+		.default({ habilitado: false, dataInicio: null, autoCiencia: true }),
 	emissaoAutomatica: z
 		.object({
 			// Exceções combinadas por OR: qualquer condição que casar suprime a emissão automática

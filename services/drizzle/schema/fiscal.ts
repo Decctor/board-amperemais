@@ -8,10 +8,12 @@ import {
 	fiscalDocumentTypeEnum,
 	fiscalIcmsCsosnEnum,
 	fiscalInboundManifestEventEnum,
+	fiscalInboundSituacaoEnum,
 	fiscalOperationConsumerPresenceEnum,
 	fiscalOperationFinalityEnum,
 	fiscalPisCofinsCstEnum,
 	fiscalProductOriginEnum,
+	fiscalProviderEnum,
 	fiscalTaxRuleScopeEnum,
 } from "./enums";
 import { fiscalOutboundDocuments } from "./financial";
@@ -342,30 +344,45 @@ export const fiscalInboundDocuments = newTable(
 			.references(() => organizations.id, { onDelete: "cascade" })
 			.notNull(),
 		fornecedorId: varchar("fornecedor_id", { length: 255 }).references(() => suppliers.id, { onDelete: "set null" }),
+		// Identidade universal da NF-e (dedupe, sobrevive a troca de provedor).
 		chaveAcesso: varchar("chave_acesso", { length: 44 }).notNull(),
-		nsu: varchar("nsu", { length: 30 }).notNull(),
+		// Handle operacional no provedor (manifestar, baixar assets) — descartavel.
+		provedor: fiscalProviderEnum("provedor").notNull().default("MANUAL"),
+		provedorDocumentoId: varchar("provedor_documento_id", { length: 255 }),
 		completo: boolean("completo").notNull().default(false),
+		situacao: fiscalInboundSituacaoEnum("situacao"),
 		emitenteCnpj: varchar("emitente_cnpj", { length: 20 }),
 		emitenteNome: varchar("emitente_nome", { length: 255 }),
 		valorTotal: doublePrecision("valor_total"),
 		dataEmissao: timestamp("data_emissao"),
-		situacao: varchar("situacao", { length: 30 }),
+		// Manifestacao: sempre o readback confirmado pelo provedor/SEFAZ, nunca o valor otimista.
 		manifestacaoAtual: fiscalInboundManifestEventEnum("manifestacao_atual"),
+		manifestacaoProtocolo: varchar("manifestacao_protocolo", { length: 60 }),
+		manifestacaoData: timestamp("manifestacao_data"),
+		manifestacaoJustificativa: varchar("manifestacao_justificativa", { length: 255 }),
 		xmlStoragePath: varchar("xml_storage_path", { length: 500 }),
+		pdfStoragePath: varchar("pdf_storage_path", { length: 500 }),
+		// Eventos SEFAZ vinculados (cancelamento, CC-e...) e retorno cru do provedor, em JSON.
+		eventosPayload: text("eventos_payload"),
 		resumoPayload: text("resumo_payload"),
 		compraId: varchar("compra_id", { length: 255 }).references(() => purchases.id, { onDelete: "set null" }),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+		dataAtualizacao: timestamp("data_atualizacao").defaultNow().notNull(),
 	},
 	(table) => ({
 		organizacaoIdIdx: index("idx_fiscal_inbound_documents_organizacao_id").on(table.organizacaoId),
-		// Dedupe de notas recebidas: uma chave de acesso por organizacao (o cron pode rodar em paralelo).
+		// Dedupe de notas recebidas: uma chave de acesso por organizacao (cron e webhook podem correr).
 		chaveAcessoUq: uniqueIndex("uq_fiscal_inbound_documents_organizacao_chave").on(table.organizacaoId, table.chaveAcesso),
-		nsuIdx: index("idx_fiscal_inbound_documents_nsu").on(table.organizacaoId, table.nsu),
+		provedorDocumentoUq: uniqueIndex("uq_fiscal_inbound_documents_organizacao_provedor_doc")
+			.on(table.organizacaoId, table.provedorDocumentoId)
+			.where(sql`provedor_documento_id IS NOT NULL`),
 	}),
 );
 
-export const fiscalInboundCursors = newTable(
-	"fiscal_inbound_cursors",
+// Estado de sincronizacao inbound por organizacao. `checkpoint` e um blob opaco do provedor
+// (Spedy: watermark + cursor; SEFAZ crua: ultNSU) — o core persiste e devolve, nunca interpreta.
+export const fiscalInboundSyncStates = newTable(
+	"fiscal_inbound_sync_states",
 	{
 		id: varchar("id", { length: 255 })
 			.notNull()
@@ -374,12 +391,17 @@ export const fiscalInboundCursors = newTable(
 		organizacaoId: varchar("organizacao_id", { length: 255 })
 			.references(() => organizations.id, { onDelete: "cascade" })
 			.notNull(),
-		ultNSU: varchar("ult_nsu", { length: 30 }).notNull().default("0"),
-		maxNSU: varchar("max_nsu", { length: 30 }).notNull().default("0"),
+		checkpoint: text("checkpoint"),
+		ultimaSincronizacao: timestamp("ultima_sincronizacao"),
+		// Rate limit da SEFAZ: proxima janela permitida para sync sob demanda.
+		proximaSincronizacaoPermitida: timestamp("proxima_sincronizacao_permitida"),
+		// Telemetria no vocabulario do provedor (ex.: outcomes do sync-status da Spedy).
+		ultimoDesfecho: varchar("ultimo_desfecho", { length: 60 }),
+		ultimaMensagem: text("ultima_mensagem"),
 		dataAtualizacao: timestamp("data_atualizacao").defaultNow().notNull(),
 	},
 	(table) => ({
-		organizacaoIdIdx: index("idx_fiscal_inbound_cursors_organizacao_id").on(table.organizacaoId),
+		organizacaoIdUq: uniqueIndex("uq_fiscal_inbound_sync_states_organizacao_id").on(table.organizacaoId),
 	}),
 );
 
@@ -398,14 +420,14 @@ export const fiscalInboundDocumentsRelations = relations(fiscalInboundDocuments,
 	}),
 }));
 
-export const fiscalInboundCursorsRelations = relations(fiscalInboundCursors, ({ one }) => ({
+export const fiscalInboundSyncStatesRelations = relations(fiscalInboundSyncStates, ({ one }) => ({
 	organizacao: one(organizations, {
-		fields: [fiscalInboundCursors.organizacaoId],
+		fields: [fiscalInboundSyncStates.organizacaoId],
 		references: [organizations.id],
 	}),
 }));
 
 export type TFiscalInboundDocumentEntity = typeof fiscalInboundDocuments.$inferSelect;
 export type TNewFiscalInboundDocumentEntity = typeof fiscalInboundDocuments.$inferInsert;
-export type TFiscalInboundCursorEntity = typeof fiscalInboundCursors.$inferSelect;
-export type TNewFiscalInboundCursorEntity = typeof fiscalInboundCursors.$inferInsert;
+export type TFiscalInboundSyncStateEntity = typeof fiscalInboundSyncStates.$inferSelect;
+export type TNewFiscalInboundSyncStateEntity = typeof fiscalInboundSyncStates.$inferInsert;

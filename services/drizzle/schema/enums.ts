@@ -383,6 +383,8 @@ export const shopCompositionBlockTypeEnum = pgEnum("shop_composition_block_type"
 
 export const fiscalInboundManifestEventEnum = pgEnum("fiscal_inbound_manifest_event", ["CIENCIA", "CONFIRMACAO", "DESCONHECIMENTO", "NAO_REALIZADA"]);
 
+export const fiscalInboundSituacaoEnum = pgEnum("fiscal_inbound_situacao", ["AUTORIZADA", "DENEGADA", "CANCELADA"]);
+
 export const platformPartnerStatusEnum = pgEnum("platform_partner_status", ["PENDENTE_APROVACAO", "ATIVO", "SUSPENSO", "REJEITADO"]);
 
 export const platformPartnerReferralStatusEnum = pgEnum("platform_partner_referral_status", [

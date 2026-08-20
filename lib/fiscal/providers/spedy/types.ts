@@ -70,3 +70,59 @@ export type TSpedyDisablementResponse = {
 };
 
 export type TSpedyCreateInvoicePayload = Record<string, unknown>;
+
+// --- NF-e recebidas (inbound product invoices) ---
+
+export type TSpedyManifestationStatus = "none" | "acknowledged" | "confirmed" | "unknown" | "notPerformed" | "rejected";
+export type TSpedyInboundInvoiceStatus = "authorized" | "denied" | "canceled";
+
+export type TSpedyManifestation = {
+	status?: TSpedyManifestationStatus | null;
+	date?: string | null;
+	protocol?: string | null;
+	justification?: string | null;
+};
+
+export type TSpedyInboundInvoice = {
+	id: string;
+	environmentType?: TSpedyEnvironmentType | null;
+	accessKey?: string | null;
+	nsu?: number | null;
+	isComplete?: boolean | null;
+	status?: TSpedyInboundInvoiceStatus | null;
+	issuedOn?: string | null;
+	amount?: number | null;
+	operationType?: "incoming" | "outgoing" | null;
+	issuer?: {
+		name?: string | null;
+		legalName?: string | null;
+		federalTaxNumber?: string | null;
+		stateTaxNumber?: string | null;
+		cityTaxNumber?: string | null;
+	} | null;
+	// Presente apenas no detalhe (GET por id) e nos webhooks.
+	company?: {
+		name?: string | null;
+		legalName?: string | null;
+		federalTaxNumber?: string | null;
+	} | null;
+	manifestation?: TSpedyManifestation | null;
+	events?: unknown[] | null;
+	creationTime?: string | null;
+	lastModificationTime?: string | null;
+};
+
+export type TSpedyInboundInvoicePage = {
+	items?: TSpedyInboundInvoice[] | null;
+	nextCursor?: string | null;
+	hasNext?: boolean | null;
+};
+
+export type TSpedyInboundSyncStatus = {
+	lastNsu?: number | null;
+	lastSyncAt?: string | null;
+	nextAllowedSyncAt?: string | null;
+	lastAttemptOutcome?: string | null;
+	lastAttemptMessage?: string | null;
+	lastAttemptAt?: string | null;
+};

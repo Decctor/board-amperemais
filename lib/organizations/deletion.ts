@@ -39,8 +39,8 @@ import {
 	financialStatementTransactions,
 	financialTransactions,
 	fiscalDocumentEvents,
-	fiscalInboundCursors,
 	fiscalInboundDocuments,
+	fiscalInboundSyncStates,
 	fiscalOperationProfiles,
 	fiscalOutboundDocuments,
 	fiscalSeries,
@@ -212,7 +212,7 @@ export async function deleteAllOrganizationData({
 	// --- Fiscal (documentos referenciam compras/vendas/lançamentos; deletar antes deles) ---
 	await trx.delete(fiscalOutboundDocuments).where(eq(fiscalOutboundDocuments.organizacaoId, organizationId));
 	await trx.delete(fiscalInboundDocuments).where(eq(fiscalInboundDocuments.organizacaoId, organizationId));
-	await trx.delete(fiscalInboundCursors).where(eq(fiscalInboundCursors.organizacaoId, organizationId));
+	await trx.delete(fiscalInboundSyncStates).where(eq(fiscalInboundSyncStates.organizacaoId, organizationId));
 
 	// --- Compras (itens referenciam produtos; compras referenciam lançamentos/fornecedores) ---
 	await trx.delete(purchaseItems).where(eq(purchaseItems.organizacaoId, organizationId));

@@ -62,6 +62,10 @@ function normalizeFiscalConfig(config?: Partial<TInternalFiscalSettingsState["fi
 			...DEFAULT_FISCAL_CONFIG.operacaoPadraoPorTipo,
 			...existingConfig.operacaoPadraoPorTipo,
 		},
+		dfe: {
+			...DEFAULT_FISCAL_CONFIG.dfe,
+			...existingConfig.dfe,
+		},
 		emissaoAutomatica: {
 			...DEFAULT_FISCAL_CONFIG.emissaoAutomatica,
 			...existingConfig.emissaoAutomatica,
