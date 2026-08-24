@@ -28,6 +28,7 @@ import NuvemshopLogo from "@/utils/images/integrations/nuvemshop-logo.png";
 import OnlineSoftwareLogo from "@/utils/images/integrations/online-software-logo.png";
 import IfoodLogo from "@/utils/images/integrations/ifood-logo.png";
 import BlingLogo from "@/utils/images/integrations/bling-logo.png";
+import ErpFlexLogo from "@/utils/images/integrations/erpflex.png";
 import { Chip } from "../ui/chip";
 import ConfigureIntegration from "../Modals/Integrations/ConfigureIntegration";
 // SANDBOX: remover import e voltar IfoodIntegrationMenu ao deletar fluxo sandbox
@@ -96,6 +97,16 @@ const INTEGRATIONS: TIntegrationDefinition[] = [
 		brandClassName: "bg-[#34AD61] text-white hover:bg-[#34AD61]/80",
 		authUrl: "/api/integrations/bling/auth",
 	},
+	{
+		id: "ERP-FLEX",
+		name: "ERPFlex",
+		logo: ErpFlexLogo,
+		description:
+			"Conecte sua conta ERPFlex para importar faturamentos, clientes e produtos com as credenciais de API fornecidas pelo time do ERPFlex.",
+		buttonText: "CONECTAR COM ERPFLEX",
+		brandColor: "#1B5FAA",
+		brandClassName: "bg-[#1B5FAA] text-white hover:bg-[#1B5FAA]/80",
+	},
 ];
 
 function isDataSourceSummary(integration: TAuthSessionIntegrationSummary) {
@@ -113,7 +124,7 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 
 	// Menu State
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
-	const [selectedIntegrationId, setSelectedIntegrationId] = useState<"ONLINE-SOFTWARE" | "CARDAPIO-WEB" | null>(null);
+	const [selectedIntegrationId, setSelectedIntegrationId] = useState<"ONLINE-SOFTWARE" | "CARDAPIO-WEB" | "ERP-FLEX" | null>(null);
 	const [ifoodMenuIsOpen, setIfoodMenuIsOpen] = useState(false);
 	// Reconexão explícita (D9): a linha desativada a reativar com as credenciais novas — preserva
 	// o `integrationId` e a proveniência das vendas históricas.
@@ -211,7 +222,7 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 			setIfoodMenuIsOpen(true);
 			return;
 		}
-		if (connection.tipo === "ONLINE-SOFTWARE" || connection.tipo === "CARDAPIO-WEB") {
+		if (connection.tipo === "ONLINE-SOFTWARE" || connection.tipo === "CARDAPIO-WEB" || connection.tipo === "ERP-FLEX") {
 			setReconnectIntegrationId(connection.id);
 			setSelectedIntegrationId(connection.tipo);
 			setIsMenuOpen(true);

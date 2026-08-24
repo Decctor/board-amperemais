@@ -10,7 +10,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 type ViewIntegrationProps = {
-	integrationType: "ONLINE-SOFTWARE" | "CARDAPIO-WEB";
+	integrationType: "ONLINE-SOFTWARE" | "CARDAPIO-WEB" | "ERP-FLEX";
 	/** true quando já existe conexão ativa do mesmo tipo — o apelido vira obrigatório (D5). */
 	requireApelido?: boolean;
 	/** Reconexão explícita (D9): id da linha de `integrations` a reativar com as credenciais novas. */
@@ -24,7 +24,7 @@ type ViewIntegrationProps = {
 	closeMenu: () => void;
 };
 
-const INITIAL_CONFIG: Record<"ONLINE-SOFTWARE" | "CARDAPIO-WEB", TOrganizationIntegrationConfig> = {
+const INITIAL_CONFIG: Record<"ONLINE-SOFTWARE" | "CARDAPIO-WEB" | "ERP-FLEX", TOrganizationIntegrationConfig> = {
 	"ONLINE-SOFTWARE": {
 		tipo: "ONLINE-SOFTWARE",
 		token: "",
@@ -34,6 +34,12 @@ const INITIAL_CONFIG: Record<"ONLINE-SOFTWARE" | "CARDAPIO-WEB", TOrganizationIn
 		tipo: "CARDAPIO-WEB",
 		merchantId: "",
 		apiKey: "",
+	},
+	"ERP-FLEX": {
+		tipo: "ERP-FLEX",
+		username: "",
+		password: "",
+		database: "",
 	},
 };
 export default function ViewIntegration({ integrationType, requireApelido, reconnectIntegrationId, callbacks, closeMenu }: ViewIntegrationProps) {
@@ -64,6 +70,18 @@ export default function ViewIntegration({ integrationType, requireApelido, recon
 		});
 	}
 
+	function updateOrganizationErpFlexConfig(changes: Partial<Extract<TOrganizationIntegrationConfig, { tipo: "ERP-FLEX" }>>) {
+		setOrganizationIntegrationConfig((prev) => {
+			if (prev.tipo === "ERP-FLEX") {
+				return {
+					...prev,
+					...changes,
+				};
+			}
+			return prev;
+		});
+	}
+
 	async function handleValidateAndCommit(integration: TOrganizationIntegrationConfig) {
 		if (integration.tipo === "ONLINE-SOFTWARE") {
 			if (!integration.token.trim()) {
@@ -73,6 +91,11 @@ export default function ViewIntegration({ integrationType, requireApelido, recon
 		if (integration.tipo === "CARDAPIO-WEB") {
 			if (!integration.merchantId.trim() || !integration.apiKey.trim()) {
 				throw new Error("O Merchant ID e API Key são obrigatórios para a integração Cardápio Web.");
+			}
+		}
+		if (integration.tipo === "ERP-FLEX") {
+			if (!integration.username.trim() || !integration.password.trim() || !integration.database.trim()) {
+				throw new Error("O usuário, a senha e o nome da base são obrigatórios para a integração ERPFlex.");
 			}
 		}
 		if (requireApelido && !apelido.trim()) {
@@ -153,6 +176,13 @@ export default function ViewIntegration({ integrationType, requireApelido, recon
 				/>
 			) : null}
 
+			{organizationIntegrationConfig.tipo === "ERP-FLEX" ? (
+				<ErpFlexIntegrationDetails
+					organizationIntegrationConfig={organizationIntegrationConfig}
+					updateOrganizationIntegrationConfig={updateOrganizationErpFlexConfig}
+				/>
+			) : null}
+
 			<ResponsiveMenuSection title="IDENTIFICAÇÃO" icon={<Tag className="w-4 h-4" />}>
 				<TextInput
 					label={requireApelido ? "APELIDO (OBRIGATÓRIO)" : "APELIDO (OPCIONAL)"}
@@ -209,6 +239,39 @@ function CardapioWebIntegrationDetails({ organizationIntegrationConfig, updateOr
 				value={organizationIntegrationConfig.apiKey}
 				placeholder="Preencha aqui a chave de API..."
 				handleChange={(value) => updateOrganizationIntegrationConfig({ apiKey: value })}
+			/>
+		</ResponsiveMenuSection>
+	);
+}
+
+type ErpFlexIntegrationDetailsProps = {
+	organizationIntegrationConfig: Extract<TOrganizationIntegrationConfig, { tipo: "ERP-FLEX" }>;
+	updateOrganizationIntegrationConfig: (changes: Partial<Extract<TOrganizationIntegrationConfig, { tipo: "ERP-FLEX" }>>) => void;
+};
+function ErpFlexIntegrationDetails({ organizationIntegrationConfig, updateOrganizationIntegrationConfig }: ErpFlexIntegrationDetailsProps) {
+	return (
+		<ResponsiveMenuSection title="INTEGRAÇÃO ERPFLEX" icon={<Globe className="w-4 h-4" />}>
+			<p className="text-xs text-muted-foreground">
+				As credenciais de API do ERPFlex são criadas pelo time deles (api@erpflex.com.br) — use o usuário e a senha de API, não o login do
+				sistema.
+			</p>
+			<TextInput
+				label="USUÁRIO DA API"
+				value={organizationIntegrationConfig.username}
+				placeholder="Preencha aqui o usuário da API..."
+				handleChange={(value) => updateOrganizationIntegrationConfig({ username: value })}
+			/>
+			<TextInput
+				label="SENHA DA API"
+				value={organizationIntegrationConfig.password}
+				placeholder="Preencha aqui a senha da API..."
+				handleChange={(value) => updateOrganizationIntegrationConfig({ password: value })}
+			/>
+			<TextInput
+				label="NOME DA BASE"
+				value={organizationIntegrationConfig.database}
+				placeholder="Preencha aqui o nome da base no ERPFlex..."
+				handleChange={(value) => updateOrganizationIntegrationConfig({ database: value })}
 			/>
 		</ResponsiveMenuSection>
 	);

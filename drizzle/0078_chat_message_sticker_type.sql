@@ -1,3 +1,4 @@
+
 -- Figurinhas do WhatsApp viram um tipo de conteúdo próprio.
 -- Antes elas caíam no ramo default do parser (placeholder de texto) na Meta Cloud API
 -- e eram achatadas em IMAGEM no Gateway Interno — os dois caminhos discordavam.

@@ -15,6 +15,10 @@ import type {
 	TUpdateCashbackProgramPrizeInput,
 	TUpdateCashbackProgramPrizeOutput,
 } from "@/app/api/cashback-programs/prizes/route";
+import type {
+	TGetCashbackProgramPrizesShareImageInput,
+	TGetCashbackProgramPrizesShareImageOutput,
+} from "@/app/api/cashback-programs/prizes/share-image/route";
 
 export async function createCashbackProgram(input: TCreateCashbackProgramInput) {
 	const { data } = await axios.post<TCreateCashbackProgramOutput>("/api/cashback-programs", input);
@@ -38,5 +42,11 @@ export async function createCashbackProgramPrize(input: TCreateCashbackProgramPr
 
 export async function updateCashbackProgramPrize(input: TUpdateCashbackProgramPrizeInput) {
 	const { data } = await axios.put<TUpdateCashbackProgramPrizeOutput>("/api/cashback-programs/prizes", input);
+	return data;
+}
+
+export async function getCashbackProgramPrizesShareImage(input: TGetCashbackProgramPrizesShareImageInput) {
+	const searchParams = new URLSearchParams({ mode: input.mode });
+	const { data } = await axios.get<TGetCashbackProgramPrizesShareImageOutput>(`/api/cashback-programs/prizes/share-image?${searchParams.toString()}`);
 	return data;
 }

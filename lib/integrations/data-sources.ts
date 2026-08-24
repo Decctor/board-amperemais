@@ -17,7 +17,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
  *     INTEGRAÇÃO, não por org; N conexões do mesmo tipo são suportadas, D5).
  */
 
-export const DATA_SOURCE_INTEGRATION_TYPES = ["ONLINE-SOFTWARE", "CARDAPIO-WEB", "NUVEM-SHOP", "IFOOD", "BLING"] as const;
+export const DATA_SOURCE_INTEGRATION_TYPES = ["ONLINE-SOFTWARE", "CARDAPIO-WEB", "NUVEM-SHOP", "IFOOD", "BLING", "ERP-FLEX"] as const;
 export type TDataSourceIntegrationType = (typeof DATA_SOURCE_INTEGRATION_TYPES)[number];
 
 export type TDataSourceExecutor = DB | DBTransaction;
@@ -101,6 +101,8 @@ export function deriveDataSourceRefExterno(config: TDataSourceIntegrationConfig)
 			return String(config.storeId);
 		case "CARDAPIO-WEB":
 			return config.merchantId;
+		case "ERP-FLEX":
+			return config.database;
 		default:
 			// IFOOD (merchants ficam em configuracao.merchantIds, D3), BLING e ONLINE-SOFTWARE
 			// não carregam identificador estável de conta.

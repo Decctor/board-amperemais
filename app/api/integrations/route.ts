@@ -18,7 +18,7 @@ import z from "zod";
  *
  * Conexões OAuth (Meta Ads, Bling, iFood, Nuvemshop) são CRIADAS pelos fluxos específicos em
  * `/api/integrations/<provedor>/auth/*`, não por esta rota. O POST cobre os tipos de credencial
- * manual (ONLINE-SOFTWARE, CARDAPIO-WEB). Segredos nunca voltam crus: tudo passa por
+ * manual (ONLINE-SOFTWARE, CARDAPIO-WEB, ERP-FLEX). Segredos nunca voltam crus: tudo passa por
  * `maskIntegrationConfig`. N conexões ativas do mesmo tipo por organização são permitidas; a
  * mesma conta externa não duplica (D5).
  */

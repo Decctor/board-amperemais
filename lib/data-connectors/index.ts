@@ -1,5 +1,6 @@
 import { blingDataConnector } from "./bling";
 import { fetchCardapioWebImportBatch } from "./cardapio-web/canonical";
+import { erpFlexDataConnector } from "./erp-flex";
 import { fetchIfoodImportBatch } from "./ifood";
 import { fetchNuvemshopImportBatch } from "./nuvemshop";
 import { fetchOnlineSoftwareImportBatch } from "./online-software";
@@ -51,6 +52,15 @@ async function fetchConnectorBatch(input: TDataConnectorFetchInput) {
 
 	if (input.config.tipo === "BLING") {
 		return blingDataConnector.fetchImportBatch({
+			organizationId: input.organizationId,
+			integrationId: input.integrationId,
+			config: input.config,
+			window: input.window,
+		});
+	}
+
+	if (input.config.tipo === "ERP-FLEX") {
+		return erpFlexDataConnector.fetchImportBatch({
 			organizationId: input.organizationId,
 			integrationId: input.integrationId,
 			config: input.config,

@@ -1,5 +1,6 @@
 import { DataSourceIntegrationTipoEnum, type TDataSourceIntegrationTipoEnum, type TIntegrationTipoEnum } from "@/schemas/enums";
 import BlingLogo from "@/utils/images/integrations/bling-logo.png";
+import ErpFlexLogo from "@/utils/images/integrations/erpflex.png";
 import CardapioWebLogo from "@/utils/images/integrations/cardapio-web.png";
 import IfoodLogo from "@/utils/images/integrations/ifood-logo.png";
 import NuvemshopLogo from "@/utils/images/integrations/nuvemshop-logo.png";
@@ -18,6 +19,7 @@ const SALES_INTEGRATION_META: Record<TDataSourceIntegrationTipoEnum, TSalesInteg
 	"NUVEM-SHOP": { nome: "Nuvem Shop", logo: NuvemshopLogo },
 	IFOOD: { nome: "iFood", logo: IfoodLogo },
 	BLING: { nome: "Bling", logo: BlingLogo },
+	"ERP-FLEX": { nome: "ERPFlex", logo: ErpFlexLogo },
 };
 
 export type TSalesIntegrationPillValue =

@@ -29,6 +29,8 @@ export function maskIntegrationConfig(config: TIntegrationConfig | null | undefi
 				accessToken: config.accessToken ? MASK : config.accessToken,
 				refreshToken: config.refreshToken ? MASK : config.refreshToken,
 			};
+		case "ERP-FLEX":
+			return { ...config, password: config.password ? MASK : config.password };
 		default:
 			return config;
 	}

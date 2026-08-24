@@ -501,9 +501,19 @@ export type TSalesSessionMovementTypeEnum = z.infer<typeof SalesSessionMovementT
 
 // Fundação de integrations. Espelha os enums Drizzle integrationTypeEnum/integrationStatusEnum.
 // Inclui marketing/parceiros e as fontes de dados ERP/marketplace (grafia hifenizada legada — D1).
-export const IntegrationTipoEnum = z.enum(["META_ADS", "META_CAPI", "TRACKING", "ONLINE-SOFTWARE", "CARDAPIO-WEB", "NUVEM-SHOP", "IFOOD", "BLING"]);
+export const IntegrationTipoEnum = z.enum([
+	"META_ADS",
+	"META_CAPI",
+	"TRACKING",
+	"ONLINE-SOFTWARE",
+	"CARDAPIO-WEB",
+	"NUVEM-SHOP",
+	"IFOOD",
+	"BLING",
+	"ERP-FLEX",
+]);
 // Subconjunto de fonte de dados — espelha DATA_SOURCE_INTEGRATION_TYPES em lib/integrations/data-sources.ts.
-export const DataSourceIntegrationTipoEnum = z.enum(["ONLINE-SOFTWARE", "CARDAPIO-WEB", "NUVEM-SHOP", "IFOOD", "BLING"]);
+export const DataSourceIntegrationTipoEnum = z.enum(["ONLINE-SOFTWARE", "CARDAPIO-WEB", "NUVEM-SHOP", "IFOOD", "BLING", "ERP-FLEX"]);
 export type TDataSourceIntegrationTipoEnum = z.infer<typeof DataSourceIntegrationTipoEnum>;
 export type TIntegrationTipoEnum = z.infer<typeof IntegrationTipoEnum>;
 

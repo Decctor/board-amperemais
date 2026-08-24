@@ -144,12 +144,26 @@ export const BlingIntegrationConfigSchema = z.object({
 });
 export type TBlingIntegrationConfig = z.infer<typeof BlingIntegrationConfigSchema>;
 
+/**
+ * ERPFlex usa HTTP Basic Auth com usuário/senha de API provisionados manualmente pelo time
+ * comercial deles (api@erpflex.com.br). `database` é o nome da base do cliente no ERPFlex —
+ * identidade estável da conta (vira `refExterno`).
+ */
+export const ErpFlexIntegrationConfigSchema = z.object({
+	tipo: z.literal("ERP-FLEX"),
+	username: z.string({ invalid_type_error: "Tipo não válido para o usuário da API do ERPFlex." }),
+	password: z.string({ invalid_type_error: "Tipo não válido para a senha da API do ERPFlex." }),
+	database: z.string({ invalid_type_error: "Tipo não válido para o nome da base do ERPFlex." }),
+});
+export type TErpFlexIntegrationConfig = z.infer<typeof ErpFlexIntegrationConfigSchema>;
+
 export const DataSourceIntegrationConfigSchema = z.discriminatedUnion("tipo", [
 	OnlineSoftwareIntegrationConfigSchema,
 	CardapioWebIntegrationConfigSchema,
 	NuvemshopIntegrationConfigSchema,
 	IfoodIntegrationConfigSchema,
 	BlingIntegrationConfigSchema,
+	ErpFlexIntegrationConfigSchema,
 ]);
 export type TDataSourceIntegrationConfig = z.infer<typeof DataSourceIntegrationConfigSchema>;
 
@@ -161,5 +175,6 @@ export const IntegrationConfigSchema = z.discriminatedUnion("tipo", [
 	NuvemshopIntegrationConfigSchema,
 	IfoodIntegrationConfigSchema,
 	BlingIntegrationConfigSchema,
+	ErpFlexIntegrationConfigSchema,
 ]);
 export type TIntegrationConfig = z.infer<typeof IntegrationConfigSchema>;
