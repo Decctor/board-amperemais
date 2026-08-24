@@ -4,7 +4,7 @@ import { getChatListMessagePreview } from "@/lib/chats/chat-list-preview";
 import { getWhatsappWindowDisplay } from "@/lib/chats/whatsapp-window-status";
 import type { TChatInboxItem } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
-import { FileText, Image as ImageIcon, Mic, Smartphone, Sparkles, Video } from "lucide-react";
+import { FileText, Image as ImageIcon, Mic, Smartphone, Sparkles, Sticker, Video } from "lucide-react";
 import { PRIORITY_META, STATUS_META } from "./attendance-meta";
 
 type ChatInboxListItemProps = {
@@ -15,7 +15,7 @@ type ChatInboxListItemProps = {
 	onSelect: (chatId: string) => void;
 };
 
-const MEDIA_ICONS = { IMAGEM: ImageIcon, VIDEO: Video, AUDIO: Mic, DOCUMENTO: FileText } as const;
+const MEDIA_ICONS = { IMAGEM: ImageIcon, VIDEO: Video, AUDIO: Mic, DOCUMENTO: FileText, FIGURINHA: Sticker } as const;
 
 /**
  * Só os estados acionáveis recebem cor. Numa inbox com dezenas de conversas, colorir

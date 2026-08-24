@@ -1,3 +1,4 @@
+import { STICKER_MIME_TYPE } from "@/lib/chats/sticker";
 import type { TWhatsappReferral } from "@/schemas/chats";
 import type { TChatMessageContentTypeEnum } from "@/schemas/enums";
 import { formatWhatsappIdAsPhone } from "./utils";
@@ -202,6 +203,8 @@ type TParsedMessageContent = {
 	mimeType?: string;
 	filename?: string;
 	caption?: string;
+	/** Só em figurinhas: webp animado. */
+	stickerAnimated?: boolean;
 };
 
 function parseMessageContent(message: Record<string, unknown>): TParsedMessageContent {
@@ -241,6 +244,18 @@ function parseMessageContent(message: Record<string, unknown>): TParsedMessageCo
 				messageType: messageType === "audio" ? "AUDIO" : "VIDEO",
 				mediaId: mediaObj?.id as string | undefined,
 				mimeType: mediaObj?.mime_type as string | undefined,
+			};
+		}
+
+		// Figurinha é mídia como as demais (webp, baixado por media id), mas nunca tem legenda.
+		// https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/payload-examples#sticker-messages
+		case "sticker": {
+			const stickerObj = message.sticker as Record<string, unknown> | undefined;
+			return {
+				messageType: "FIGURINHA",
+				mediaId: stickerObj?.id as string | undefined,
+				mimeType: (stickerObj?.mime_type as string | undefined) ?? STICKER_MIME_TYPE,
+				stickerAnimated: stickerObj?.animated === true,
 			};
 		}
 

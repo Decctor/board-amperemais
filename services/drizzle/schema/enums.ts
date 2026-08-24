@@ -100,7 +100,7 @@ export const integrationStatusEnum = pgEnum("integration_status", ["CONECTADO", 
 // Audiences (públicos) — status de sincronização de um destino (ex.: Custom Audience na Meta).
 export const audienceDestinationStatusEnum = pgEnum("audience_destination_status", ["PENDENTE", "SINCRONIZADO", "ERRO"]);
 
-export const chatMessageContentTypeEnum = pgEnum("chat_message_content_type", ["TEXTO", "IMAGEM", "VIDEO", "AUDIO", "DOCUMENTO"]);
+export const chatMessageContentTypeEnum = pgEnum("chat_message_content_type", ["TEXTO", "IMAGEM", "VIDEO", "AUDIO", "DOCUMENTO", "FIGURINHA"]);
 
 export const chatMessageAuthorTypeEnum = pgEnum("chat_message_author_type", ["CLIENTE", "USUÁRIO", "AI", "BUSINESS-APP"]);
 

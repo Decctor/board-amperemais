@@ -74,6 +74,10 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 	const isFailed = message.statusEntrega === "FALHA";
 	const isAutomated = message.autorTipo === "AI" || message.autorTipo === "BUSINESS-APP" || message.whatsappEcho;
 	const hasMedia = message.conteudoMidiaTipo !== "TEXTO";
+	// Figurinha se desenha sem bolha, como no WhatsApp: fundo transparente, tamanho próprio,
+	// sem a coluna estável de mídia. A "análise da IA" também some — o texto processado de
+	// figurinha é fixo, não uma leitura.
+	const isSticker = message.conteudoMidiaTipo === "FIGURINHA";
 	// Bolha de saída (azul) e de falha (vermelha) são superfícies coloridas: links, code
 	// e fundos de anexo precisam derivar da cor do texto em vez de usar tokens fixos.
 	const onColoredSurface = !isIncoming && !isAutomated;
@@ -92,19 +96,22 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 
 			<div
 				className={cn(
-					"max-w-[72%] rounded-2xl px-3 py-2 text-sm shadow-sm",
+					"max-w-[72%] rounded-2xl text-sm",
+					!isSticker && "px-3 py-2 shadow-sm",
 					// Como no WhatsApp, mensagens com mídia têm uma coluna estável: a
 					// legenda quebra dentro dela em vez de alargar a bubble sozinha.
-					hasMedia && "w-[20rem]",
+					hasMedia && !isSticker && "w-[20rem]",
 					// Rabinho assimétrico do lado do autor.
 					isIncoming ? "rounded-tl-lg" : "rounded-tr-lg",
-					isIncoming
-						? "border border-border bg-card text-card-foreground"
-						: isFailed
-							? "bg-destructive text-destructive-foreground"
-							: isAutomated
-								? "bg-muted text-muted-foreground"
-								: "bg-primary text-primary-foreground",
+					isSticker
+						? "bg-transparent"
+						: isIncoming
+							? "border border-border bg-card text-card-foreground"
+							: isFailed
+								? "bg-destructive text-destructive-foreground"
+								: isAutomated
+									? "bg-muted text-muted-foreground"
+									: "bg-primary text-primary-foreground",
 					message.optimistic && "opacity-70",
 				)}
 			>
@@ -120,7 +127,8 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 					</div>
 				)}
 
-				{hasMedia && (
+				{/* Checagem inline em vez de `hasMedia`: o narrowing do union não atravessa o alias. */}
+				{message.conteudoMidiaTipo !== "TEXTO" && (
 					<div className="mb-1">
 						<ChatMediaAttachment
 							tipo={message.conteudoMidiaTipo}
@@ -134,7 +142,7 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 
 				{message.conteudoTexto && <WhatsAppMessageText text={message.conteudoTexto} onColoredSurface={onColoredSurface} />}
 
-				{hasMedia && aiContext && (
+				{hasMedia && !isSticker && aiContext && (
 					<Collapsible className="mt-1.5">
 						<CollapsibleTrigger className="flex items-center gap-1 text-[11px] opacity-80 hover:opacity-100">
 							<ChevronDown className="h-3 w-3" />
@@ -144,7 +152,14 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 					</Collapsible>
 				)}
 
-				<div className={cn("mt-1 flex items-center gap-1 text-[11px] opacity-80", isIncoming ? "justify-start" : "justify-end")}>
+				<div
+					className={cn(
+						"mt-1 flex items-center gap-1 text-[11px] opacity-80",
+						isIncoming ? "justify-start" : "justify-end",
+						// Fora da bolha colorida não há cor herdada para o carimbo de hora.
+						isSticker && "text-muted-foreground",
+					)}
+				>
 					<span>{formatTime(message.dataEnvio)}</span>
 					{!isIncoming && <DeliveryTicks status={message.statusEntrega} />}
 				</div>

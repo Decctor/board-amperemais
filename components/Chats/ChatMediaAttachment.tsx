@@ -72,6 +72,24 @@ export function ChatMediaAttachment({ tipo, url, arquivoNome, arquivoTamanho, mi
 
 	if (tipo === "AUDIO") return <ChatAudioPlayer audioUrl={url} fileName={arquivoNome} className={className} />;
 
+	if (tipo === "FIGURINHA") {
+		// Como no WhatsApp: sem moldura nem lightbox, tamanho próprio, fundo transparente
+		// (a bolha em volta também abre mão da cor). Um webp animado anima sozinho no <img>.
+		if (imageFailed) return <UnavailableMedia label="Figurinha indisponível" />;
+		return (
+			// biome-ignore lint/performance/noImgElement: mídia dinâmica do usuário não deve passar pelo otimizador do Next
+			<img
+				src={url}
+				alt="Figurinha enviada na conversa"
+				width={512}
+				height={512}
+				loading="lazy"
+				onError={() => setImageFailed(true)}
+				className={cn("h-36 w-36 object-contain", className)}
+			/>
+		);
+	}
+
 	if (tipo === "IMAGEM") {
 		if (imageFailed) return <UnavailableMedia label="Imagem indisponível" />;
 		return (

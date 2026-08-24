@@ -2,6 +2,7 @@ import { ensureOrganizationAgent } from "@/lib/ai/agent/provisioning";
 import { handleAIAudioProcessing, handleAIDocumentProcessing, handleAIImageProcessing, handleAIVideoProcessing } from "@/lib/ai/ai-media-processing";
 import { AI_RESPONSE_DELAY_MS } from "@/lib/chats/ai-trigger";
 import { dispatchAiTurn } from "@/lib/chats/ai-turn-dispatch";
+import { STICKER_PROCESSED_TEXT } from "@/lib/chats/sticker";
 import {
 	applyProviderDeliveryStatus,
 	mapProviderStatusToDeliveryStatus,
@@ -46,6 +47,7 @@ import {
 	parseWhatsappMessageHistoryWebhook,
 	type TWhatsappMessageHistoryEvent,
 } from "@/lib/whatsapp/smb-message-history-sync";
+import type { TChatMessageContentTypeEnum } from "@/schemas/enums";
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
 import type { TMessageTemplateMetadata } from "@/schemas/message-templates";
 import { db } from "@/services/drizzle";
@@ -485,6 +487,14 @@ async function handleIncomingMessage(incomingMessage: ReturnType<typeof parseWeb
 
 	const midiaTipo = incomingMessage.messageType;
 
+	const metadados =
+		incomingMessage.referral || midiaTipo === "FIGURINHA"
+			? {
+					...(incomingMessage.referral ? { whatsappReferral: incomingMessage.referral } : {}),
+					...(midiaTipo === "FIGURINHA" ? { whatsappMidia: { animated: incomingMessage.stickerAnimated ?? false } } : {}),
+				}
+			: null;
+
 	// Persiste, atualiza a denormalização do chat, renova a janela de 24h e reabre a
 	// pendência do atendimento — tudo em lib/chats/incoming-message.ts, compartilhado
 	// com o webhook do Gateway Interno.
@@ -497,7 +507,7 @@ async function handleIncomingMessage(incomingMessage: ReturnType<typeof parseWeb
 		conteudoTexto: incomingMessage.textContent || incomingMessage.caption || null,
 		conteudoMidiaTipo: midiaTipo,
 		midia: mediaData ? { ...mediaData, whatsappMediaId: incomingMessage.mediaId } : null,
-		metadados: incomingMessage.referral ? { whatsappReferral: incomingMessage.referral } : null,
+		metadados,
 		now: new Date(incomingMessage.timestamp),
 	});
 
@@ -647,6 +657,7 @@ async function handleMessageEcho(messageEcho: ReturnType<typeof parseWebhookMess
 		conteudoTexto: messageEcho.textContent || messageEcho.caption || null,
 		conteudoMidiaTipo: midiaTipo,
 		midia: mediaData ? { ...mediaData, whatsappMediaId: messageEcho.mediaId } : null,
+		metadados: midiaTipo === "FIGURINHA" ? { whatsappMidia: { animated: messageEcho.stickerAnimated ?? false } } : null,
 		now: new Date(messageEcho.timestamp),
 	});
 	if (!insertedEcho) {
@@ -664,8 +675,15 @@ async function handleAIMediaProcessing(
 	messageId: string,
 	storageId: string,
 	mimeType: string,
-	mediaType: "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO",
+	mediaType: Exclude<TChatMessageContentTypeEnum, "TEXTO">,
 ) {
+	// Figurinha é conteúdo expressivo, não informativo: pular o modelo de visão — um webp
+	// por reação seria custo puro. O texto fixo é o que agentes e prévias leem.
+	if (mediaType === "FIGURINHA") {
+		await db.update(chatMessages).set({ conteudoMidiaTextoProcessado: STICKER_PROCESSED_TEXT }).where(eq(chatMessages.id, messageId));
+		return;
+	}
+
 	try {
 		// Download file from Supabase Storage
 		const { data: fileData, error: downloadError } = await supabaseClient.storage.from("files").download(storageId);

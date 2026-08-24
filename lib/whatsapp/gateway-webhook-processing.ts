@@ -14,6 +14,8 @@ import { updateInteractionDeliveryState } from "@/lib/interactions/delivery-stat
 import { downloadMedia } from "@/lib/whatsapp/internal-gateway";
 import { type AppWhatsappStatus, mapWhatsAppStatusToAppStatus } from "@/lib/whatsapp/parsing";
 import { resolveWhatsappClient } from "@/lib/whatsapp/contact-identity";
+import { STICKER_PROCESSED_TEXT } from "@/lib/chats/sticker";
+import type { TChatMessageContentTypeEnum } from "@/schemas/enums";
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
 import { db } from "@/services/drizzle";
 import { chatMessages } from "@/services/drizzle/schema/chats";
@@ -307,8 +309,10 @@ async function handleIncomingMessage(body: Extract<TGatewayWebhookBody, { event:
 	}
 
 	// Determine media type
-	let midiaTipo: "TEXTO" | "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO" = "TEXTO";
-	if (data.content.mediaType === "image" || data.content.mediaType === "sticker") midiaTipo = "IMAGEM";
+	let midiaTipo: TChatMessageContentTypeEnum = "TEXTO";
+	if (data.content.mediaType === "image") midiaTipo = "IMAGEM";
+	// Antes a figurinha era achatada em IMAGEM, divergindo do caminho da Meta Cloud API.
+	else if (data.content.mediaType === "sticker") midiaTipo = "FIGURINHA";
 	else if (data.content.mediaType === "document") midiaTipo = "DOCUMENTO";
 	else if (data.content.mediaType === "video") midiaTipo = "VIDEO";
 	else if (data.content.mediaType === "audio") midiaTipo = "AUDIO";
@@ -541,8 +545,15 @@ async function handleAIMediaProcessing(
 	messageId: string,
 	storageId: string,
 	mimeType: string,
-	mediaType: "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO",
+	mediaType: Exclude<TChatMessageContentTypeEnum, "TEXTO">,
 ) {
+	// Figurinha é conteúdo expressivo, não informativo: pular o modelo de visão — um webp
+	// por reação seria custo puro. O texto fixo é o que agentes e prévias leem.
+	if (mediaType === "FIGURINHA") {
+		await db.update(chatMessages).set({ conteudoMidiaTextoProcessado: STICKER_PROCESSED_TEXT }).where(eq(chatMessages.id, messageId));
+		return;
+	}
+
 	try {
 		// Download file from Supabase Storage
 		const { data: fileData, error: downloadError } = await supabaseClient.storage.from("files").download(storageId);

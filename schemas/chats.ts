@@ -248,6 +248,8 @@ export const ChatMessageMetadataSchema = z.object({
 			mimeType: z.string().optional(),
 			fileName: z.string().optional(),
 			fileSize: z.number().optional(),
+			/** Só em figurinhas: webp animado, como informado pelo webhook da Meta. */
+			animated: z.boolean().optional(),
 		})
 		.optional()
 		.nullable(),

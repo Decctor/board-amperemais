@@ -16,11 +16,11 @@ import type { TChatBoardCard } from "@/lib/queries/chats-board";
 import { cn } from "@/lib/utils";
 import { ChatAssignmentPriorityEnum, type TChatAssignmentPriority, type TChatAssignmentStatus } from "@/schemas/enums";
 import type { DraggableAttributes, DraggableSyntheticListeners } from "@dnd-kit/core";
-import { FileText, Flag, GripVertical, Image as ImageIcon, Loader2, Mic, MoveRight, Smartphone, Sparkles, Video, XCircle } from "lucide-react";
+import { FileText, Flag, GripVertical, Image as ImageIcon, Loader2, Mic, MoveRight, Smartphone, Sparkles, Sticker, Video, XCircle } from "lucide-react";
 import { forwardRef, type CSSProperties } from "react";
 import { CHAT_ASSIGNMENT_STATUS_LABEL, CHAT_PRIORITY_LABEL, CHAT_PRIORITY_PILL_CLASS, CHAT_WINDOW_DOT_CLASS } from "./config";
 
-const MEDIA_ICONS = { IMAGEM: ImageIcon, VIDEO: Video, AUDIO: Mic, DOCUMENTO: FileText } as const;
+const MEDIA_ICONS = { IMAGEM: ImageIcon, VIDEO: Video, AUDIO: Mic, DOCUMENTO: FileText, FIGURINHA: Sticker } as const;
 
 function formatRelative(date: Date | string | null | undefined) {
 	if (!date) return "";

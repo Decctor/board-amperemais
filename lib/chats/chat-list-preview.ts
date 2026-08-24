@@ -1,3 +1,4 @@
+import { STICKER_LABEL } from "@/lib/chats/sticker";
 import type { TChatMessageAuthorTypeEnum, TChatMessageContentTypeEnum } from "@/schemas/enums";
 
 /**
@@ -30,6 +31,7 @@ const MEDIA_LABELS: Record<Exclude<TChatMessageContentTypeEnum, "TEXTO">, string
 	VIDEO: "Vídeo",
 	AUDIO: "Áudio",
 	DOCUMENTO: "Documento",
+	FIGURINHA: STICKER_LABEL,
 };
 
 function truncatePreviewText(value: string) {
@@ -44,6 +46,9 @@ function resolveTextBody(message: TChatListPreviewMessage) {
 }
 
 function resolveMediaBody(message: TChatListPreviewMessage & { conteudoMidiaTipo: Exclude<TChatMessageContentTypeEnum, "TEXTO"> }) {
+	// Figurinha nunca tem legenda e o texto processado é fixo ("Figurinha recebida.") —
+	// o rótulo curto diz o mesmo em menos espaço.
+	if (message.conteudoMidiaTipo === "FIGURINHA") return MEDIA_LABELS.FIGURINHA;
 	// A legenda vence o rótulo genérico; para documentos sem legenda, o nome do arquivo diz mais.
 	const caption = message.conteudoTexto?.trim() || message.conteudoMidiaTextoProcessado?.trim();
 	if (caption) return truncatePreviewText(caption);

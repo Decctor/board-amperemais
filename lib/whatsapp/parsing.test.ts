@@ -65,6 +65,19 @@ describe("parseWebhookIncomingMessages", () => {
 		assert.equal(document.filename, "nota.pdf");
 	});
 
+	it("trata figurinha como mídia própria, com mime padrão e flag de animação", () => {
+		const payload = buildMessagesPayload([
+			{ id: "wamid.sticker", from: "5534999991111", timestamp: "1755000000", type: "sticker", sticker: { id: "media-9", animated: true } },
+		]);
+
+		const [parsed] = parseWebhookIncomingMessages(payload);
+		assert.equal(parsed.messageType, "FIGURINHA");
+		assert.equal(parsed.mediaId, "media-9");
+		assert.equal(parsed.mimeType, "image/webp");
+		assert.equal(parsed.stickerAnimated, true);
+		assert.equal(parsed.caption, undefined);
+	});
+
 	it("persiste tipos desconhecidos como placeholder de texto em vez de descartar", () => {
 		const payload = buildMessagesPayload([{ id: "wamid.order", from: "5534999991111", timestamp: "1755000000", type: "order", order: {} }]);
 
