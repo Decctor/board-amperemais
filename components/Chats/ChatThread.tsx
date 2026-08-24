@@ -157,6 +157,9 @@ export function ChatThread({ chatId, organizationId, currentUser, quotePermissio
 						statusEntrega: row.status_entrega,
 						whatsappMessageId: row.whatsapp_message_id,
 						conteudoMidiaTextoProcessado: row.conteudo_midia_texto_processado,
+						// Reações anexam na mensagem-alvo via UPDATE de metadados: sem este campo
+						// no patch, o emoji só apareceria num refetch.
+						metadados: row.metadados ?? null,
 					}),
 				);
 			})

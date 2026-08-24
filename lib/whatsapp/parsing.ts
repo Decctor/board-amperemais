@@ -192,11 +192,19 @@ export function parseStatusUpdate(statusPayload: unknown): ParsedStatusUpdate | 
 }
 
 /**
+ * O que o item do webhook representa: uma mensagem de conversa, uma reação a uma mensagem
+ * existente, uma mensagem de sistema (troca de número) ou um tipo que a Cloud API não
+ * renderiza (enquete, edição, gif…).
+ */
+export type TWhatsappIncomingKind = "message" | "reaction" | "system" | "unsupported";
+
+/**
  * Conteúdo de uma mensagem da Cloud API, compartilhado entre a entrada (`messages`) e o eco
  * do app do celular (`smb_message_echoes`) — antes eram dois switches quase idênticos, que
  * divergiam a cada tipo novo.
  */
 type TParsedMessageContent = {
+	kind: TWhatsappIncomingKind;
 	messageType: TChatMessageContentTypeEnum;
 	textContent?: string;
 	mediaId?: string;
@@ -205,20 +213,29 @@ type TParsedMessageContent = {
 	caption?: string;
 	/** Só em figurinhas: webp animado. */
 	stickerAnimated?: boolean;
+	/** Só em botões de resposta rápida: rótulo e payload. */
+	button?: { text: string; payload: string | null };
+	/** Só em reações: a mensagem-alvo e o emoji (ausente quando é um "unreact"). */
+	reaction?: { targetWhatsappMessageId: string; emoji: string | null };
+	/** Só em mensagens de sistema (ex.: troca de número). */
+	system?: { type: string; body: string | null; newWaId: string | null };
+	/** Só em tipos não suportados: o erro informado pela Meta. */
+	unsupported?: { code: number | null; title: string | null; details: string | null };
 };
 
-function parseMessageContent(message: Record<string, unknown>): TParsedMessageContent {
+function parseMessageContent(message: Record<string, unknown>): TParsedMessageContent | null {
 	const messageType = message.type as string;
 
 	switch (messageType) {
 		case "text": {
 			const textObj = message.text as Record<string, unknown> | undefined;
-			return { messageType: "TEXTO", textContent: textObj?.body as string | undefined };
+			return { kind: "message", messageType: "TEXTO", textContent: textObj?.body as string | undefined };
 		}
 
 		case "image": {
 			const imageObj = message.image as Record<string, unknown> | undefined;
 			return {
+				kind: "message",
 				messageType: "IMAGEM",
 				mediaId: imageObj?.id as string | undefined,
 				mimeType: imageObj?.mime_type as string | undefined,
@@ -229,6 +246,7 @@ function parseMessageContent(message: Record<string, unknown>): TParsedMessageCo
 		case "document": {
 			const documentObj = message.document as Record<string, unknown> | undefined;
 			return {
+				kind: "message",
 				messageType: "DOCUMENTO",
 				mediaId: documentObj?.id as string | undefined,
 				mimeType: documentObj?.mime_type as string | undefined,
@@ -241,6 +259,7 @@ function parseMessageContent(message: Record<string, unknown>): TParsedMessageCo
 		case "video": {
 			const mediaObj = message[messageType] as Record<string, unknown> | undefined;
 			return {
+				kind: "message",
 				messageType: messageType === "audio" ? "AUDIO" : "VIDEO",
 				mediaId: mediaObj?.id as string | undefined,
 				mimeType: mediaObj?.mime_type as string | undefined,
@@ -252,10 +271,69 @@ function parseMessageContent(message: Record<string, unknown>): TParsedMessageCo
 		case "sticker": {
 			const stickerObj = message.sticker as Record<string, unknown> | undefined;
 			return {
+				kind: "message",
 				messageType: "FIGURINHA",
 				mediaId: stickerObj?.id as string | undefined,
 				mimeType: (stickerObj?.mime_type as string | undefined) ?? STICKER_MIME_TYPE,
 				stickerAnimated: stickerObj?.animated === true,
+			};
+		}
+
+		// Resposta a um botão de resposta rápida de template: o cliente respondeu tocando o
+		// botão. Vira uma mensagem de texto com o rótulo, como se ele tivesse digitado, e o
+		// payload fica na metadata.
+		case "button": {
+			const buttonObj = message.button as Record<string, unknown> | undefined;
+			const buttonText = (buttonObj?.text as string | undefined) ?? "";
+			return {
+				kind: "message",
+				messageType: "TEXTO",
+				textContent: buttonText,
+				button: { text: buttonText, payload: (buttonObj?.payload as string | undefined) ?? null },
+			};
+		}
+
+		// Reação a uma mensagem existente. Não é uma mensagem de conversa: anexa o emoji na
+		// mensagem-alvo. Um "unreact" chega sem `emoji`.
+		case "reaction": {
+			const reactionObj = message.reaction as Record<string, unknown> | undefined;
+			const targetWhatsappMessageId = reactionObj?.message_id as string | undefined;
+			if (!targetWhatsappMessageId) return null;
+			return {
+				kind: "reaction",
+				messageType: "TEXTO",
+				reaction: { targetWhatsappMessageId, emoji: (reactionObj?.emoji as string | undefined) ?? null },
+			};
+		}
+
+		// Mensagem de sistema — ex.: troca de número do cliente. Registrada sem criar mensagem.
+		case "system": {
+			const systemObj = message.system as Record<string, unknown> | undefined;
+			return {
+				kind: "system",
+				messageType: "TEXTO",
+				system: {
+					type: (systemObj?.type as string | undefined) ?? "",
+					body: (systemObj?.body as string | undefined) ?? null,
+					newWaId: ((systemObj?.wa_id ?? systemObj?.new_wa_id) as string | undefined) ?? null,
+				},
+			};
+		}
+
+		// Tipo que a Cloud API não renderiza (enquete, edição, gif…). Vira uma nota honesta,
+		// com o erro informado, em vez de um placeholder que finge ser um tipo desconhecido.
+		case "unsupported": {
+			const errors = message.errors as unknown[] | undefined;
+			const error = (Array.isArray(errors) ? errors[0] : undefined) as Record<string, unknown> | undefined;
+			const errorData = error?.error_data as Record<string, unknown> | undefined;
+			return {
+				kind: "unsupported",
+				messageType: "TEXTO",
+				unsupported: {
+					code: typeof error?.code === "number" ? error.code : null,
+					title: (error?.title as string | undefined) ?? null,
+					details: (errorData?.details as string | undefined) ?? null,
+				},
 			};
 		}
 
@@ -265,6 +343,7 @@ function parseMessageContent(message: Record<string, unknown>): TParsedMessageCo
 			// lidas e a renovação da janela de 24h — para o operador a mensagem nunca existiu.
 			console.log("[WHATSAPP_WEBHOOK] Unsupported message type received; persisting placeholder:", messageType);
 			return {
+				kind: "message",
 				messageType: "TEXTO",
 				textContent: `[Mensagem do tipo "${messageType}" recebida — conteúdo não suportado]`,
 			};
@@ -313,6 +392,7 @@ function parseSingleIncomingMessage(message: Record<string, unknown>, value: Rec
 	const profile = contact?.profile as Record<string, unknown> | undefined;
 
 	const content = parseMessageContent(message);
+	if (!content) return null;
 	const from = (message.from as string | undefined) || (contact?.wa_id as string | undefined);
 
 	return {
@@ -592,6 +672,11 @@ function parseSingleEcho(message: Record<string, unknown>, value: Record<string,
 	const whatsappPhoneNumberId = metadata?.phone_number_id as string;
 
 	const content = parseMessageContent(message);
+	// Reação/sistema/não-suportado ecoados pelo app do celular não viram mensagem do hub.
+	if (!content || content.kind !== "message") {
+		if (content) console.log("[WHATSAPP_WEBHOOK] Ignoring non-message echo kind:", content.kind);
+		return null;
+	}
 	const from = message.from as string | undefined;
 	const to = message.to as string | undefined;
 

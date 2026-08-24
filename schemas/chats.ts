@@ -253,6 +253,38 @@ export const ChatMessageMetadataSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+	/** Resposta a um botão de resposta rápida de template: texto e payload da Meta. */
+	whatsappButton: z
+		.object({
+			text: z.string(),
+			payload: z.string().optional().nullable(),
+		})
+		.optional()
+		.nullable(),
+	/**
+	 * Reações do cliente à mensagem (histórico de ações; a última por emoji vence).
+	 * Um "unreact" chega sem emoji. Guardado na mensagem-alvo, não em uma mensagem própria.
+	 */
+	whatsappReactions: z
+		.array(
+			z.object({
+				action: z.enum(["react", "unreact"]),
+				emoji: z.string().optional().nullable(),
+				senderPhoneNumber: z.string().optional().nullable(),
+				date: z.string().optional().nullable(),
+			}),
+		)
+		.optional()
+		.nullable(),
+	/** Mensagem que a Cloud API não sabe renderizar (enquete, edição, gif…). Guarda o erro informado. */
+	whatsappUnsupported: z
+		.object({
+			code: z.number().optional().nullable(),
+			title: z.string().optional().nullable(),
+			details: z.string().optional().nullable(),
+		})
+		.optional()
+		.nullable(),
 	gatewayInterno: z
 		.object({
 			sessaoId: z.string().optional(),

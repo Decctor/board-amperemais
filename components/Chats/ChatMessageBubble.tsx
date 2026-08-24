@@ -83,6 +83,18 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 	const onColoredSurface = !isIncoming && !isAutomated;
 	const referral = message.metadados?.whatsappReferral;
 	const aiContext = message.conteudoMidiaTextoProcessado || message.conteudoMidiaTextoProcessadoResumo;
+	// O metadata guarda o histórico de react/unreact. No WhatsApp cada remetente tem no
+	// máximo uma reação por mensagem e o "unreact" chega sem emoji, então a redução é a
+	// última ação por remetente — não por emoji, que deixaria uma reação trocada para trás.
+	const activeReactions = (() => {
+		const reactions = message.metadados?.whatsappReactions ?? [];
+		if (!reactions.length) return [] as string[];
+		const lastBySender = new Map<string, (typeof reactions)[number]>();
+		for (const reaction of reactions) {
+			lastBySender.set(reaction.senderPhoneNumber ?? "", reaction);
+		}
+		return [...lastBySender.values()].filter((reaction) => reaction.action === "react").map((reaction) => reaction.emoji ?? "❤️");
+	})();
 
 	return (
 		<div className={cn("flex w-full flex-col gap-0.5", isIncoming ? "items-start" : "items-end")}>
@@ -140,7 +152,16 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 					</div>
 				)}
 
-				{message.conteudoTexto && <WhatsAppMessageText text={message.conteudoTexto} onColoredSurface={onColoredSurface} />}
+				{message.metadados?.whatsappUnsupported ? (
+					// Nota honesta: a Cloud API não entrega o conteúdo (enquete, edição, gif…),
+					// então mostramos isso em vez de fingir que é uma mensagem comum.
+					<p className="text-xs italic opacity-80">
+						{message.conteudoTexto || "Mensagem não suportada pelo WhatsApp."}
+						{message.metadados.whatsappUnsupported.code ? ` (código ${message.metadados.whatsappUnsupported.code})` : ""}
+					</p>
+				) : (
+					message.conteudoTexto && <WhatsAppMessageText text={message.conteudoTexto} onColoredSurface={onColoredSurface} />
+				)}
 
 				{hasMedia && !isSticker && aiContext && (
 					<Collapsible className="mt-1.5">
@@ -164,6 +185,16 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 					{!isIncoming && <DeliveryTicks status={message.statusEntrega} />}
 				</div>
 			</div>
+
+			{activeReactions.length > 0 && (
+				// O chip sobrepõe a borda inferior da bolha (-mt) e precisa de z próprio para
+				// pintar por cima dela.
+				<div className={cn("relative z-10 -mt-2 flex", isIncoming ? "justify-start pl-2" : "justify-end pr-2")}>
+					<span className="rounded-full bg-card px-1.5 py-0.5 text-[11px] leading-none shadow-sm ring-1 ring-inset ring-border" aria-label="Reações">
+						{activeReactions.join(" ")}
+					</span>
+				</div>
+			)}
 
 			{/* O módulo equivalente do Control nunca passa onRetry, então este botão é
 			    invisível lá mesmo quando o envio falha. */}

@@ -78,6 +78,77 @@ describe("parseWebhookIncomingMessages", () => {
 		assert.equal(parsed.caption, undefined);
 	});
 
+	it("transforma resposta de botão de template em texto, com o payload preservado", () => {
+		const payload = buildMessagesPayload([
+			{ id: "wamid.btn", from: "5534999991111", timestamp: "1755000000", type: "button", button: { text: "Confirmar pedido", payload: "CONFIRMAR" } },
+		]);
+
+		const [parsed] = parseWebhookIncomingMessages(payload);
+		assert.equal(parsed.kind, "message");
+		assert.equal(parsed.messageType, "TEXTO");
+		assert.equal(parsed.textContent, "Confirmar pedido");
+		assert.deepEqual(parsed.button, { text: "Confirmar pedido", payload: "CONFIRMAR" });
+	});
+
+	it("classifica reação como kind próprio, apontando a mensagem-alvo", () => {
+		const payload = buildMessagesPayload([
+			{ id: "wamid.react", from: "5534999991111", timestamp: "1755000000", type: "reaction", reaction: { message_id: "wamid.target", emoji: "👍" } },
+			{ id: "wamid.unreact", from: "5534999991111", timestamp: "1755000001", type: "reaction", reaction: { message_id: "wamid.target" } },
+			{ id: "wamid.broken", from: "5534999991111", timestamp: "1755000002", type: "reaction", reaction: {} },
+		]);
+
+		const parsed = parseWebhookIncomingMessages(payload);
+		// A reação sem message_id não tem onde anexar e é descartada.
+		assert.equal(parsed.length, 2);
+		assert.equal(parsed[0].kind, "reaction");
+		assert.deepEqual(parsed[0].reaction, { targetWhatsappMessageId: "wamid.target", emoji: "👍" });
+		assert.deepEqual(parsed[1].reaction, { targetWhatsappMessageId: "wamid.target", emoji: null });
+	});
+
+	it("classifica mensagem de sistema e tipo não suportado com os dados do erro", () => {
+		const payload = buildMessagesPayload([
+			{ id: "wamid.sys", from: "5534999991111", timestamp: "1755000000", type: "system", system: { type: "user_changed_number", body: "trocou de número", wa_id: "5534988880000" } },
+			{
+				id: "wamid.unsup",
+				from: "5534999991111",
+				timestamp: "1755000001",
+				type: "unsupported",
+				errors: [{ code: 131051, title: "Message type unknown", error_data: { details: "Message type is currently not supported." } }],
+			},
+		]);
+
+		const [system, unsupported] = parseWebhookIncomingMessages(payload);
+		assert.equal(system.kind, "system");
+		assert.deepEqual(system.system, { type: "user_changed_number", body: "trocou de número", newWaId: "5534988880000" });
+		assert.equal(unsupported.kind, "unsupported");
+		assert.deepEqual(unsupported.unsupported, { code: 131051, title: "Message type unknown", details: "Message type is currently not supported." });
+	});
+
+	it("descarta ecos que não são mensagens de conversa", () => {
+		const payload = {
+			entry: [
+				{
+					changes: [
+						{
+							field: "smb_message_echoes",
+							value: {
+								metadata: { phone_number_id: "phone-echo" },
+								message_echoes: [
+									{ id: "wamid.echo-react", from: "5534999990000", to: "5534999991111", timestamp: "1755000000", type: "reaction", reaction: { message_id: "wamid.x", emoji: "❤" } },
+									{ id: "wamid.echo-text", from: "5534999990000", to: "5534999991111", timestamp: "1755000001", type: "text", text: { body: "segue o link" } },
+								],
+							},
+						},
+					],
+				},
+			],
+		};
+
+		const parsed = parseWebhookMessageEchoes(payload);
+		assert.equal(parsed.length, 1);
+		assert.equal(parsed[0].whatsappMessageId, "wamid.echo-text");
+	});
+
 	it("persiste tipos desconhecidos como placeholder de texto em vez de descartar", () => {
 		const payload = buildMessagesPayload([{ id: "wamid.order", from: "5534999991111", timestamp: "1755000000", type: "order", order: {} }]);
 

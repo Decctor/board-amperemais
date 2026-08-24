@@ -47,6 +47,7 @@ import {
 	parseWhatsappMessageHistoryWebhook,
 	type TWhatsappMessageHistoryEvent,
 } from "@/lib/whatsapp/smb-message-history-sync";
+import type { TChatMessageMetadata } from "@/schemas/chats";
 import type { TChatMessageContentTypeEnum } from "@/schemas/enums";
 import type { TInteractionsStatusEnum } from "@/schemas/interactions";
 import type { TMessageTemplateMetadata } from "@/schemas/message-templates";
@@ -428,6 +429,28 @@ async function handleIncomingMessage(incomingMessage: ReturnType<typeof parseWeb
 	const whatsappConexaoTelefoneId = connectionPhone.id;
 	const allowsAIService = connectionPhone.permitirAtendimentoIa;
 
+	// A reação não é uma mensagem de conversa: anexa o emoji à mensagem-alvo e encerra.
+	if (incomingMessage.kind === "reaction" && incomingMessage.reaction) {
+		await attachWhatsappReaction({
+			organizacaoId,
+			reaction: incomingMessage.reaction,
+			senderPhoneNumber: incomingMessage.fromPhoneNumber,
+			date: new Date(incomingMessage.timestamp),
+		});
+		return;
+	}
+
+	// Mensagem de sistema (ex.: troca de número): registrada sem criar mensagem vazia no chat.
+	if (incomingMessage.kind === "system" && incomingMessage.system) {
+		console.log("[WHATSAPP_WEBHOOK] [SYSTEM] Mensagem de sistema recebida:", {
+			organizacaoId,
+			type: incomingMessage.system.type,
+			body: incomingMessage.system.body,
+			newWaId: incomingMessage.system.newWaId,
+		});
+		return;
+	}
+
 	// ESTÁGIO 1 — IDENTIDADE, sem gate: a base de contatos e o BSUID crescem com o tráfego
 	// de WhatsApp mesmo para organizações sem hub de atendimentos.
 	const resolvedClient = await resolveWhatsappClient({
@@ -487,13 +510,16 @@ async function handleIncomingMessage(incomingMessage: ReturnType<typeof parseWeb
 
 	const midiaTipo = incomingMessage.messageType;
 
-	const metadados =
-		incomingMessage.referral || midiaTipo === "FIGURINHA"
-			? {
-					...(incomingMessage.referral ? { whatsappReferral: incomingMessage.referral } : {}),
-					...(midiaTipo === "FIGURINHA" ? { whatsappMidia: { animated: incomingMessage.stickerAnimated ?? false } } : {}),
-				}
-			: null;
+	const metadados: TChatMessageMetadata = {
+		...(incomingMessage.referral ? { whatsappReferral: incomingMessage.referral } : {}),
+		...(midiaTipo === "FIGURINHA" ? { whatsappMidia: { animated: incomingMessage.stickerAnimated ?? false } } : {}),
+		...(incomingMessage.button ? { whatsappButton: incomingMessage.button } : {}),
+		...(incomingMessage.unsupported ? { whatsappUnsupported: incomingMessage.unsupported } : {}),
+	};
+
+	// Tipo não suportado não tem texto próprio: entra como nota honesta, em vez de um
+	// placeholder que finge ser um tipo desconhecido.
+	const fallbackTextContent = incomingMessage.kind === "unsupported" ? "Mensagem não suportada pelo WhatsApp." : null;
 
 	// Persiste, atualiza a denormalização do chat, renova a janela de 24h e reabre a
 	// pendência do atendimento — tudo em lib/chats/incoming-message.ts, compartilhado
@@ -504,10 +530,10 @@ async function handleIncomingMessage(incomingMessage: ReturnType<typeof parseWeb
 		clienteId: clientId,
 		tipoConexao: "META_CLOUD_API",
 		whatsappMessageId: incomingMessage.whatsappMessageId,
-		conteudoTexto: incomingMessage.textContent || incomingMessage.caption || null,
+		conteudoTexto: incomingMessage.textContent || incomingMessage.caption || fallbackTextContent,
 		conteudoMidiaTipo: midiaTipo,
 		midia: mediaData ? { ...mediaData, whatsappMediaId: incomingMessage.mediaId } : null,
-		metadados,
+		metadados: Object.keys(metadados).length > 0 ? metadados : null,
 		now: new Date(incomingMessage.timestamp),
 	});
 
@@ -553,6 +579,43 @@ async function handleIncomingMessage(incomingMessage: ReturnType<typeof parseWeb
 		},
 		{ delayMs: agent.capacidades?.atendimento?.atrasoRespostaMs ?? AI_RESPONSE_DELAY_MS },
 	);
+}
+
+/**
+ * Anexa uma reação (ou o "unreact") na mensagem-alvo, no histórico
+ * `metadados.whatsappReactions` — a última ação por emoji vence na renderização.
+ */
+async function attachWhatsappReaction(input: {
+	organizacaoId: string;
+	reaction: { targetWhatsappMessageId: string; emoji: string | null };
+	senderPhoneNumber: string | null;
+	date: Date;
+}): Promise<void> {
+	const targetMessage = await db.query.chatMessages.findFirst({
+		where: and(
+			eq(chatMessages.organizacaoId, input.organizacaoId),
+			eq(chatMessages.whatsappMessageId, input.reaction.targetWhatsappMessageId),
+		),
+		columns: { id: true, metadados: true },
+	});
+	if (!targetMessage) {
+		console.warn("[WHATSAPP_WEBHOOK] [REACTION] Mensagem-alvo da reação não encontrada:", input.reaction.targetWhatsappMessageId);
+		return;
+	}
+
+	const metadados = targetMessage.metadados ?? {};
+	const reactions = [...(metadados.whatsappReactions ?? [])];
+	reactions.push({
+		action: input.reaction.emoji ? "react" : "unreact",
+		emoji: input.reaction.emoji,
+		senderPhoneNumber: input.senderPhoneNumber,
+		date: input.date.toISOString(),
+	});
+
+	await db
+		.update(chatMessages)
+		.set({ metadados: { ...metadados, whatsappReactions: reactions } })
+		.where(eq(chatMessages.id, targetMessage.id));
 }
 
 /**
