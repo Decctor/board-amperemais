@@ -28,12 +28,12 @@ import {
 	isStatusUpdate,
 	isTemplateEvent,
 	mapWhatsAppStatusToAppStatus,
-	parseStatusUpdate,
 	parseTemplateCategoryUpdate,
 	parseTemplateQualityUpdate,
 	parseTemplateStatusUpdate,
-	parseWebhookIncomingMessage,
-	parseWebhookMessageEcho,
+	parseWebhookIncomingMessages,
+	parseWebhookMessageEchoes,
+	parseWebhookStatusUpdates,
 } from "@/lib/whatsapp/parsing";
 import {
 	parseSmbAppStateSyncWebhook,
@@ -129,26 +129,20 @@ export async function processMetaWebhookBody(body: TMetaWebhookBody): Promise<vo
 		await handleWhatsappMessageHistory(messageHistoryEvents);
 		return;
 	}
-	// Handle template events
+	// Sem early return entre as categorias: um body "MISTO" (a Meta agrupa statuses e
+	// messages numa entrega só) precisa processar todas, não só a primeira reconhecida.
 	if (isTemplateEvent(body)) {
 		await handleTemplateEvent(body);
-		return;
 	}
-
-	// Handle status updates
 	if (isStatusUpdate(body)) {
-		await handleStatusUpdate(body);
-		return;
+		await handleStatusUpdates(body);
 	}
-	// Handle incoming messages
 	if (isMessageEvent(body)) {
-		await handleIncomingMessage(body);
-		return;
+		await handleIncomingMessages(body);
 	}
-	// Handle message echoes (WhatsApp Coexistence)
+	// Message echoes (WhatsApp Coexistence)
 	if (isMessageEchoEvent(body)) {
-		await handleMessageEcho(body);
-		return;
+		await handleMessageEchoes(body);
 	}
 }
 
@@ -345,9 +339,13 @@ const INTERACTION_STATUS_MAPPING: Record<AppWhatsappStatus, TInteractionsStatusE
 /**
  * Handle message status updates (sent, delivered, read, failed)
  */
-async function handleStatusUpdate(body: TMetaWebhookBody): Promise<void> {
-	const statusUpdate = parseStatusUpdate(body);
-	if (!statusUpdate) return;
+async function handleStatusUpdates(body: TMetaWebhookBody): Promise<void> {
+	for (const statusUpdate of parseWebhookStatusUpdates(body)) {
+		await handleStatusUpdate(statusUpdate);
+	}
+}
+
+async function handleStatusUpdate(statusUpdate: ReturnType<typeof parseWebhookStatusUpdates>[number]): Promise<void> {
 	const { whatsappStatus } = mapWhatsAppStatusToAppStatus(statusUpdate.status);
 
 	const previousInteraction = await db.query.interactions.findFirst({
@@ -389,13 +387,19 @@ async function handleStatusUpdate(body: TMetaWebhookBody): Promise<void> {
 /**
  * Handle incoming messages from clients
  */
-async function handleIncomingMessage(body: TMetaWebhookBody): Promise<void> {
-	const incomingMessage = parseWebhookIncomingMessage(body);
-	console.log("[WHATSAPP_WEBHOOK] Incoming message:", incomingMessage);
-	if (!incomingMessage) {
-		console.error("[WHATSAPP_WEBHOOK] Failed to parse incoming message");
+async function handleIncomingMessages(body: TMetaWebhookBody): Promise<void> {
+	const incomingMessages = parseWebhookIncomingMessages(body);
+	if (incomingMessages.length === 0) {
+		console.error("[WHATSAPP_WEBHOOK] Failed to parse incoming messages");
 		return;
 	}
+	for (const incomingMessage of incomingMessages) {
+		await handleIncomingMessage(incomingMessage);
+	}
+}
+
+async function handleIncomingMessage(incomingMessage: ReturnType<typeof parseWebhookIncomingMessages>[number]): Promise<void> {
+	console.log("[WHATSAPP_WEBHOOK] Incoming message:", incomingMessage);
 
 	// Find WhatsApp connection by phone number ID (including organization config)
 	const connectionPhone = await db.query.whatsappConnectionPhones.findFirst({
@@ -479,12 +483,7 @@ async function handleIncomingMessage(body: TMetaWebhookBody): Promise<void> {
 		}
 	}
 
-	// Determine media type
-	let midiaTipo: "TEXTO" | "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO" = "TEXTO";
-	if (incomingMessage.messageType === "image") midiaTipo = "IMAGEM";
-	else if (incomingMessage.messageType === "document") midiaTipo = "DOCUMENTO";
-	else if (incomingMessage.messageType === "video") midiaTipo = "VIDEO";
-	else if (incomingMessage.messageType === "audio") midiaTipo = "AUDIO";
+	const midiaTipo = incomingMessage.messageType;
 
 	// Persiste, atualiza a denormalização do chat, renova a janela de 24h e reabre a
 	// pendência do atendimento — tudo em lib/chats/incoming-message.ts, compartilhado
@@ -498,6 +497,7 @@ async function handleIncomingMessage(body: TMetaWebhookBody): Promise<void> {
 		conteudoTexto: incomingMessage.textContent || incomingMessage.caption || null,
 		conteudoMidiaTipo: midiaTipo,
 		midia: mediaData ? { ...mediaData, whatsappMediaId: incomingMessage.mediaId } : null,
+		metadados: incomingMessage.referral ? { whatsappReferral: incomingMessage.referral } : null,
 		now: new Date(incomingMessage.timestamp),
 	});
 
@@ -548,13 +548,18 @@ async function handleIncomingMessage(body: TMetaWebhookBody): Promise<void> {
 /**
  * Handle message echoes from WhatsApp Business phone app (Coexistence)
  */
-async function handleMessageEcho(body: TMetaWebhookBody): Promise<void> {
-	const messageEcho = parseWebhookMessageEcho(body);
-	if (!messageEcho) {
-		console.error("[WHATSAPP_WEBHOOK] Failed to parse message echo");
+async function handleMessageEchoes(body: TMetaWebhookBody): Promise<void> {
+	const messageEchoes = parseWebhookMessageEchoes(body);
+	if (messageEchoes.length === 0) {
+		console.error("[WHATSAPP_WEBHOOK] Failed to parse message echoes");
 		return;
 	}
+	for (const messageEcho of messageEchoes) {
+		await handleMessageEcho(messageEcho);
+	}
+}
 
+async function handleMessageEcho(messageEcho: ReturnType<typeof parseWebhookMessageEchoes>[number]): Promise<void> {
 	// Find WhatsApp connection (including organization config)
 	const connectionPhone = await db.query.whatsappConnectionPhones.findFirst({
 		where: (fields, { eq }) => eq(fields.whatsappTelefoneId, messageEcho.whatsappPhoneNumberId),
@@ -629,12 +634,7 @@ async function handleMessageEcho(body: TMetaWebhookBody): Promise<void> {
 		}
 	}
 
-	// Determine media type
-	let midiaTipo: "TEXTO" | "IMAGEM" | "DOCUMENTO" | "VIDEO" | "AUDIO" = "TEXTO";
-	if (messageEcho.messageType === "image") midiaTipo = "IMAGEM";
-	else if (messageEcho.messageType === "document") midiaTipo = "DOCUMENTO";
-	else if (messageEcho.messageType === "video") midiaTipo = "VIDEO";
-	else if (messageEcho.messageType === "audio") midiaTipo = "AUDIO";
+	const midiaTipo = messageEcho.messageType;
 
 	// O echo marca o atendimento como EXTERNO ("atendido pelo telefone") — mas apenas se
 	// nenhum humano do hub já for o dono, o que markChatAttendedExternally garante.

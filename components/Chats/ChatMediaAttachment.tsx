@@ -138,6 +138,10 @@ export function ChatMediaAttachment({ tipo, url, arquivoNome, arquivoTamanho, mi
 		);
 	}
 
+	// Exaustividade: um valor novo no enum sem ramo próprio caía aqui em silêncio e virava
+	// um card de "arquivo" quebrado — agora vira erro de compilação.
+	tipo satisfies "DOCUMENTO";
+
 	const tamanho = formatFileSize(arquivoTamanho);
 	const tipoArquivo = mimeType ? getFileTypeTitle(mimeType) : null;
 

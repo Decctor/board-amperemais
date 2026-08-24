@@ -219,14 +219,6 @@ function buildCandidates(logs: TVercelLog[]): { candidates: TBackfillCandidate[]
 	};
 }
 
-function getMediaType(messageType: TIncomingMessage["messageType"] | TMessageEcho["messageType"]) {
-	if (messageType === "image") return "IMAGEM" as const;
-	if (messageType === "document") return "DOCUMENTO" as const;
-	if (messageType === "video") return "VIDEO" as const;
-	if (messageType === "audio") return "AUDIO" as const;
-	return "TEXTO" as const;
-}
-
 async function messageAlreadyExists(whatsappMessageId: string): Promise<boolean> {
 	const existing = await db.query.chatMessages.findFirst({
 		where: (fields, { eq }) => eq(fields.whatsappMessageId, whatsappMessageId),
@@ -270,7 +262,7 @@ async function persistOlderCandidate({
 		autorTipo: isIncoming ? "CLIENTE" : "BUSINESS-APP",
 		autorClienteId: isIncoming ? clientId : null,
 		conteudoTexto: candidate.message.textContent || candidate.message.caption || null,
-		conteudoMidiaTipo: getMediaType(candidate.message.messageType),
+		conteudoMidiaTipo: candidate.message.messageType,
 		conteudoMidiaUrl: media?.publicUrl ?? null,
 		conteudoMidiaStorageId: media?.storageId ?? null,
 		conteudoMidiaMimeType: media?.mimeType ?? null,
@@ -388,7 +380,7 @@ async function applyCandidate(candidate: TBackfillCandidate): Promise<"created" 
 		clienteId: clientId,
 		whatsappMessageId: candidate.message.whatsappMessageId,
 		conteudoTexto: candidate.message.textContent || candidate.message.caption || null,
-		conteudoMidiaTipo: getMediaType(candidate.message.messageType),
+		conteudoMidiaTipo: candidate.message.messageType,
 		midia: media,
 		now: new Date(candidate.message.timestamp),
 	};

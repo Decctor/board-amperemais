@@ -1,3 +1,5 @@
+import type { TWhatsappReferral } from "@/schemas/chats";
+import type { TChatMessageContentTypeEnum } from "@/schemas/enums";
 import { formatWhatsappIdAsPhone } from "./utils";
 
 type WhatsAppMessageStatus = "pending" | "sent" | "delivered" | "read" | "failed";
@@ -134,35 +136,145 @@ export function getWhatsappStatusErrorMessage(errors: ParsedWhatsappStatusError[
 	return error.code ? `${fallbackMessage} (Código ${error.code})` : fallbackMessage;
 }
 
-export function parseStatusUpdate(statusPayload: unknown): ParsedStatusUpdate | null {
+/**
+ * Varre todos os entries/changes do payload e devolve os `value` que têm o campo pedido.
+ * A Meta agrupa vários itens numa entrega só — ler apenas `entry[0].changes[0]`, como o
+ * código antigo fazia, descartava silenciosamente os demais.
+ */
+function collectWebhookValues(webhookPayload: unknown, options?: { field?: string }): Record<string, unknown>[] {
+	const values: Record<string, unknown>[] = [];
 	try {
-		// Type assertion for webhook payload structure
-		const payload = statusPayload as Record<string, unknown>;
-		const entry = (payload.entry as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const change = (entry?.changes as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const value = change?.value as Record<string, unknown> | undefined;
+		const payload = webhookPayload as Record<string, unknown>;
+		const entries = Array.isArray(payload?.entry) ? (payload.entry as Record<string, unknown>[]) : [];
+		for (const entry of entries) {
+			const changes = Array.isArray(entry?.changes) ? (entry.changes as Record<string, unknown>[]) : [];
+			for (const change of changes) {
+				if (options?.field && (change?.field as string | undefined) !== options.field) continue;
+				const value = change?.value as Record<string, unknown> | undefined;
+				if (value && typeof value === "object") values.push(value);
+			}
+		}
+	} catch (error) {
+		console.error("[WHATSAPP_WEBHOOK_PARSE_ERROR]", error);
+	}
+	return values;
+}
 
-		const statuses = value?.statuses as unknown[] | undefined;
-		if (statuses && Array.isArray(statuses) && statuses.length > 0) {
-			const status = statuses[0] as Record<string, unknown>;
-			const errors = parseStatusErrors(status);
+function parseSingleStatus(status: Record<string, unknown>): ParsedStatusUpdate | null {
+	if (!status?.id) return null;
+	const errors = parseStatusErrors(status);
+	return {
+		whatsappMessageId: status.id as string,
+		status: status.status as WhatsAppMessageStatus,
+		timestamp: status.timestamp ? Number.parseInt(status.timestamp as string) * 1000 : Date.now(),
+		errorMessage: getWhatsappStatusErrorMessage(errors),
+		errors,
+	};
+}
+
+/** Todos os recibos de status do payload — a Meta agrupa enviado/entregue/lido numa entrega só. */
+export function parseWebhookStatusUpdates(webhookPayload: unknown): ParsedStatusUpdate[] {
+	const parsed: ParsedStatusUpdate[] = [];
+	for (const value of collectWebhookValues(webhookPayload)) {
+		const statuses = value.statuses as unknown[] | undefined;
+		if (!Array.isArray(statuses)) continue;
+		for (const rawStatus of statuses) {
+			const single = parseSingleStatus(rawStatus as Record<string, unknown>);
+			if (single) parsed.push(single);
+		}
+	}
+	return parsed;
+}
+
+export function parseStatusUpdate(statusPayload: unknown): ParsedStatusUpdate | null {
+	return parseWebhookStatusUpdates(statusPayload)[0] ?? null;
+}
+
+/**
+ * Conteúdo de uma mensagem da Cloud API, compartilhado entre a entrada (`messages`) e o eco
+ * do app do celular (`smb_message_echoes`) — antes eram dois switches quase idênticos, que
+ * divergiam a cada tipo novo.
+ */
+type TParsedMessageContent = {
+	messageType: TChatMessageContentTypeEnum;
+	textContent?: string;
+	mediaId?: string;
+	mimeType?: string;
+	filename?: string;
+	caption?: string;
+};
+
+function parseMessageContent(message: Record<string, unknown>): TParsedMessageContent {
+	const messageType = message.type as string;
+
+	switch (messageType) {
+		case "text": {
+			const textObj = message.text as Record<string, unknown> | undefined;
+			return { messageType: "TEXTO", textContent: textObj?.body as string | undefined };
+		}
+
+		case "image": {
+			const imageObj = message.image as Record<string, unknown> | undefined;
 			return {
-				whatsappMessageId: status.id as string,
-				status: status.status as WhatsAppMessageStatus,
-				timestamp: status.timestamp ? Number.parseInt(status.timestamp as string) * 1000 : Date.now(),
-				errorMessage: getWhatsappStatusErrorMessage(errors),
-				errors,
+				messageType: "IMAGEM",
+				mediaId: imageObj?.id as string | undefined,
+				mimeType: imageObj?.mime_type as string | undefined,
+				caption: imageObj?.caption as string | undefined,
 			};
 		}
 
-		return null;
-	} catch (error) {
-		console.error("[WHATSAPP_STATUS_PARSE_ERROR]", error);
-		return null;
+		case "document": {
+			const documentObj = message.document as Record<string, unknown> | undefined;
+			return {
+				messageType: "DOCUMENTO",
+				mediaId: documentObj?.id as string | undefined,
+				mimeType: documentObj?.mime_type as string | undefined,
+				filename: documentObj?.filename as string | undefined,
+				caption: documentObj?.caption as string | undefined,
+			};
+		}
+
+		case "audio":
+		case "video": {
+			const mediaObj = message[messageType] as Record<string, unknown> | undefined;
+			return {
+				messageType: messageType === "audio" ? "AUDIO" : "VIDEO",
+				mediaId: mediaObj?.id as string | undefined,
+				mimeType: mediaObj?.mime_type as string | undefined,
+			};
+		}
+
+		default:
+			// Tipos ainda sem tratamento próprio viram um placeholder de texto: descartar a
+			// mensagem inteira, como antes, perdia o registro da conversa, o incremento de não
+			// lidas e a renovação da janela de 24h — para o operador a mensagem nunca existiu.
+			console.log("[WHATSAPP_WEBHOOK] Unsupported message type received; persisting placeholder:", messageType);
+			return {
+				messageType: "TEXTO",
+				textContent: `[Mensagem do tipo "${messageType}" recebida — conteúdo não suportado]`,
+			};
 	}
 }
 
-type ParsedIncomingMessage = {
+/** Referral de anúncio Meta (Click-to-WhatsApp), no shape do `ChatMessageMetadataSchema`. */
+function parseMessageReferral(message: Record<string, unknown>): TWhatsappReferral | null {
+	const referral = message.referral as Record<string, unknown> | undefined;
+	if (!referral || typeof referral !== "object") return null;
+	return {
+		sourceUrl: (referral.source_url as string | undefined) ?? null,
+		sourceType: (referral.source_type as string | undefined) ?? null,
+		sourceId: (referral.source_id as string | undefined) ?? null,
+		headline: (referral.headline as string | undefined) ?? null,
+		body: (referral.body as string | undefined) ?? null,
+		mediaType: (referral.media_type as string | undefined) ?? null,
+		imageUrl: (referral.image_url as string | undefined) ?? null,
+		videoUrl: (referral.video_url as string | undefined) ?? null,
+		thumbnailUrl: (referral.thumbnail_url as string | undefined) ?? null,
+		ctwaClid: (referral.ctwa_clid as string | undefined) ?? null,
+	};
+}
+
+type ParsedIncomingMessage = TParsedMessageContent & {
 	whatsappPhoneNumberId: string;
 	whatsappMessageId: string;
 	/** Null quando a Meta omite `from`/`wa_id` (regra de 30 dias, usernames) — o BSUID assume. */
@@ -170,137 +282,68 @@ type ParsedIncomingMessage = {
 	/** Business-scoped user ID (`contacts[].user_id` / `messages[].from_user_id`): a chave garantida. */
 	whatsappUserId: string | null;
 	profileName: string;
-	messageType: "text" | "image" | "video" | "audio" | "document";
-	textContent?: string;
-	mediaId?: string;
-	mimeType?: string;
-	filename?: string;
-	caption?: string;
+	/** O `type` cru da Meta — `messageType` é o enum da aplicação. */
+	messageTypeRaw: string;
+	referral: TWhatsappReferral | null;
 	timestamp: number;
 };
 
-export function parseWebhookIncomingMessage(webhookPayload: unknown): ParsedIncomingMessage | null {
-	try {
-		// Type assertion for webhook payload structure
-		const payload = webhookPayload as Record<string, unknown>;
-		const entry = (payload.entry as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const change = (entry?.changes as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const value = change?.value as Record<string, unknown> | undefined;
+function parseSingleIncomingMessage(message: Record<string, unknown>, value: Record<string, unknown>): ParsedIncomingMessage | null {
+	if (!message?.id) return null;
 
-		// Check if this is a message event
-		const messages = value?.messages as unknown[] | undefined;
-		if (!messages || !Array.isArray(messages) || messages.length === 0) {
-			return null;
+	const metadata = value.metadata as Record<string, unknown> | undefined;
+	const whatsappPhoneNumberId = metadata?.phone_number_id as string;
+	const contacts = value.contacts as unknown[] | undefined;
+	const contact = (Array.isArray(contacts) ? contacts[0] : undefined) as Record<string, unknown> | undefined;
+	const profile = contact?.profile as Record<string, unknown> | undefined;
+
+	const content = parseMessageContent(message);
+	const from = (message.from as string | undefined) || (contact?.wa_id as string | undefined);
+
+	return {
+		...content,
+		whatsappPhoneNumberId: whatsappPhoneNumberId || "",
+		whatsappMessageId: message.id as string,
+		fromPhoneNumber: from ? formatWhatsappIdAsPhone(from) : null,
+		whatsappUserId: (contact?.user_id as string | undefined) || (message.from_user_id as string | undefined) || null,
+		profileName: (profile?.name as string) || "Cliente",
+		messageTypeRaw: message.type as string,
+		referral: parseMessageReferral(message),
+		timestamp: message.timestamp ? Number.parseInt(message.timestamp as string) * 1000 : Date.now(),
+	};
+}
+
+/** Todas as mensagens de entrada de todos os entries/changes — entregas em lote da Meta trazem mais de uma. */
+export function parseWebhookIncomingMessages(webhookPayload: unknown): ParsedIncomingMessage[] {
+	const parsed: ParsedIncomingMessage[] = [];
+	for (const value of collectWebhookValues(webhookPayload)) {
+		const messages = value.messages as unknown[] | undefined;
+		if (!Array.isArray(messages)) continue;
+		for (const rawMessage of messages) {
+			try {
+				const single = parseSingleIncomingMessage(rawMessage as Record<string, unknown>, value);
+				if (single) parsed.push(single);
+			} catch (error) {
+				console.error("[WHATSAPP_MESSAGE_PARSE_ERROR]", error);
+			}
 		}
-
-		const metadata = value?.metadata as Record<string, unknown> | undefined;
-		const whatsappPhoneNumberId = metadata?.phone_number_id as string;
-		const message = messages[0] as Record<string, unknown>;
-		const contacts = value?.contacts as unknown[] | undefined;
-		const contact = (Array.isArray(contacts) ? contacts[0] : undefined) as Record<string, unknown> | undefined;
-
-		const profile = contact?.profile as Record<string, unknown> | undefined;
-		const messageType = message.type as string;
-
-		let textContent: string | undefined;
-		let mediaId: string | undefined;
-		let mimeType: string | undefined;
-		let filename: string | undefined;
-		let caption: string | undefined;
-
-		// Handle different message types
-		switch (messageType) {
-			case "text": {
-				const textObj = message.text as Record<string, unknown> | undefined;
-				textContent = textObj?.body as string | undefined;
-				break;
-			}
-
-			case "image": {
-				const imageObj = message.image as Record<string, unknown> | undefined;
-				mediaId = imageObj?.id as string | undefined;
-				mimeType = imageObj?.mime_type as string | undefined;
-				caption = imageObj?.caption as string | undefined;
-				break;
-			}
-
-			case "document": {
-				const documentObj = message.document as Record<string, unknown> | undefined;
-				mediaId = documentObj?.id as string | undefined;
-				mimeType = documentObj?.mime_type as string | undefined;
-				filename = documentObj?.filename as string | undefined;
-				caption = documentObj?.caption as string | undefined;
-				break;
-			}
-
-			case "audio":
-			case "video": {
-				// For audio and video, we'll handle them similarly to documents for now
-				const mediaObj = message[messageType] as Record<string, unknown> | undefined;
-				mediaId = mediaObj?.id as string | undefined;
-				mimeType = mediaObj?.mime_type as string | undefined;
-				break;
-			}
-
-			default:
-				console.log("[WHATSAPP_WEBHOOK] Unsupported message type received:", messageType);
-				return null;
-		}
-
-		const from = (message.from as string | undefined) || (contact?.wa_id as string | undefined);
-
-		return {
-			whatsappPhoneNumberId: whatsappPhoneNumberId || "",
-			whatsappMessageId: message.id as string,
-			fromPhoneNumber: from ? formatWhatsappIdAsPhone(from) : null,
-			whatsappUserId: (contact?.user_id as string | undefined) || (message.from_user_id as string | undefined) || null,
-			profileName: (profile?.name as string) || "Cliente",
-			messageType: messageType as "text" | "image" | "video" | "audio" | "document",
-			textContent,
-			mediaId,
-			mimeType,
-			filename,
-			caption,
-			timestamp: message.timestamp ? Number.parseInt(message.timestamp as string) * 1000 : Date.now(),
-		};
-	} catch (error) {
-		console.error("[WHATSAPP_MESSAGE_PARSE_ERROR]", error);
-		return null;
 	}
+	return parsed;
+}
+
+export function parseWebhookIncomingMessage(webhookPayload: unknown): ParsedIncomingMessage | null {
+	return parseWebhookIncomingMessages(webhookPayload)[0] ?? null;
 }
 
 export function isStatusUpdate(webhookPayload: unknown): boolean {
-	try {
-		const payload = webhookPayload as Record<string, unknown>;
-		const entry = (payload.entry as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const change = (entry?.changes as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const value = change?.value as Record<string, unknown> | undefined;
-
-		const statuses = value?.statuses as unknown[] | undefined;
-		return !!(statuses && Array.isArray(statuses) && statuses.length > 0);
-	} catch (error) {
-		return false;
-	}
+	return collectWebhookValues(webhookPayload).some((value) => Array.isArray(value.statuses) && value.statuses.length > 0);
 }
 
 export function isMessageEvent(webhookPayload: unknown): boolean {
-	try {
-		const payload = webhookPayload as Record<string, unknown>;
-		const entry = (payload.entry as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const change = (entry?.changes as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const value = change?.value as Record<string, unknown> | undefined;
-
-		const messages = value?.messages as unknown[] | undefined;
-		return !!(messages && Array.isArray(messages) && messages.length > 0);
-	} catch (error) {
-		return false;
-	}
+	return collectWebhookValues(webhookPayload).some((value) => Array.isArray(value.messages) && value.messages.length > 0);
 }
 
 // Template Webhook Event Types
-type WhatsAppTemplateStatus = "APPROVED" | "REJECTED" | "PENDING" | "DISABLED" | "PAUSED";
-type WhatsAppTemplateQuality = "GREEN" | "YELLOW" | "RED" | "UNKNOWN";
-
 type AppTemplateStatus = "RASCUNHO" | "PENDENTE" | "APROVADO" | "REJEITADO" | "PAUSADO" | "DESABILITADO";
 type AppTemplateQuality = "PENDENTE" | "ALTA" | "MEDIA" | "BAIXA";
 
@@ -368,30 +411,25 @@ type ParsedTemplateCategoryUpdate = {
 	timestamp: number;
 };
 
+const TEMPLATE_WEBHOOK_FIELDS = ["message_template_status_update", "message_template_quality_update", "template_category_update"];
+
 export function isTemplateEvent(webhookPayload: unknown): boolean {
 	try {
 		const payload = webhookPayload as Record<string, unknown>;
-		const entry = (payload.entry as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const change = (entry?.changes as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const field = change?.field as string | undefined;
-
-		return field === "message_template_status_update" || field === "message_template_quality_update" || field === "template_category_update";
-	} catch (error) {
+		const entries = Array.isArray(payload?.entry) ? (payload.entry as Record<string, unknown>[]) : [];
+		return entries.some((entry) => {
+			const changes = Array.isArray(entry?.changes) ? (entry.changes as Record<string, unknown>[]) : [];
+			return changes.some((change) => TEMPLATE_WEBHOOK_FIELDS.includes(change?.field as string));
+		});
+	} catch {
 		return false;
 	}
 }
 
 export function parseTemplateStatusUpdate(webhookPayload: unknown): ParsedTemplateStatusUpdate | null {
 	try {
-		const payload = webhookPayload as Record<string, unknown>;
-		const entry = (payload.entry as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const change = (entry?.changes as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const value = change?.value as Record<string, unknown> | undefined;
-		const field = change?.field as string | undefined;
-
-		if (field !== "message_template_status_update") {
-			return null;
-		}
+		const value = collectWebhookValues(webhookPayload, { field: "message_template_status_update" })[0];
+		if (!value) return null;
 
 		// A Meta envia message_template_id como número no webhook, mas o idExterno é salvo como string na criação.
 		// Normalizamos para string para que o matching com o idExterno salvo funcione.
@@ -438,15 +476,8 @@ export function parseTemplateStatusUpdate(webhookPayload: unknown): ParsedTempla
 
 export function parseTemplateQualityUpdate(webhookPayload: unknown): ParsedTemplateQualityUpdate | null {
 	try {
-		const payload = webhookPayload as Record<string, unknown>;
-		const entry = (payload.entry as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const change = (entry?.changes as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const value = change?.value as Record<string, unknown> | undefined;
-		const field = change?.field as string | undefined;
-
-		if (field !== "message_template_quality_update") {
-			return null;
-		}
+		const value = collectWebhookValues(webhookPayload, { field: "message_template_quality_update" })[0];
+		if (!value) return null;
 
 		// A Meta envia message_template_id como número no webhook, mas o idExterno é salvo como string na criação.
 		// Normalizamos para string para que o matching com o idExterno salvo funcione.
@@ -485,15 +516,8 @@ export function parseTemplateQualityUpdate(webhookPayload: unknown): ParsedTempl
 
 export function parseTemplateCategoryUpdate(webhookPayload: unknown): ParsedTemplateCategoryUpdate | null {
 	try {
-		const payload = webhookPayload as Record<string, unknown>;
-		const entry = (payload.entry as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const change = (entry?.changes as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const value = change?.value as Record<string, unknown> | undefined;
-		const field = change?.field as string | undefined;
-
-		if (field !== "template_category_update") {
-			return null;
-		}
+		const value = collectWebhookValues(webhookPayload, { field: "template_category_update" })[0];
+		if (!value) return null;
 
 		// A Meta envia message_template_id como número no webhook, mas o idExterno é salvo como string na criação.
 		// Normalizamos para string para que o matching com o idExterno salvo funcione.
@@ -527,7 +551,7 @@ export function parseTemplateCategoryUpdate(webhookPayload: unknown): ParsedTemp
 
 // SMB Message Echoes (WhatsApp Coexistence)
 // These are messages sent from the WhatsApp Business phone app that are echoed to the webhook
-type ParsedMessageEcho = {
+type ParsedMessageEcho = TParsedMessageContent & {
 	whatsappPhoneNumberId: string;
 	whatsappMessageId: string;
 	fromPhoneNumber: string | null; // Business phone number (sender)
@@ -535,114 +559,57 @@ type ParsedMessageEcho = {
 	toPhoneNumber: string | null; // Client phone number (recipient)
 	/** Business-scoped user ID do destinatário (`message.to_user_id`), quando presente. */
 	toUserId: string | null;
-	messageType: "text" | "image" | "video" | "audio" | "document";
-	textContent?: string;
-	mediaId?: string;
-	mimeType?: string;
-	filename?: string;
-	caption?: string;
+	/** O `type` cru da Meta — `messageType` é o enum da aplicação. */
+	messageTypeRaw: string;
 	timestamp: number;
 };
 
 export function isMessageEchoEvent(webhookPayload: unknown): boolean {
-	try {
-		const payload = webhookPayload as Record<string, unknown>;
-		const entry = (payload.entry as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const change = (entry?.changes as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const field = change?.field as string | undefined;
+	return collectWebhookValues(webhookPayload, { field: "smb_message_echoes" }).some(
+		(value) => Array.isArray(value.message_echoes) && value.message_echoes.length > 0,
+	);
+}
 
-		return field === "smb_message_echoes";
-	} catch (error) {
-		return false;
+function parseSingleEcho(message: Record<string, unknown>, value: Record<string, unknown>): ParsedMessageEcho | null {
+	if (!message?.id) return null;
+
+	const metadata = value.metadata as Record<string, unknown> | undefined;
+	const whatsappPhoneNumberId = metadata?.phone_number_id as string;
+
+	const content = parseMessageContent(message);
+	const from = message.from as string | undefined;
+	const to = message.to as string | undefined;
+
+	return {
+		...content,
+		whatsappPhoneNumberId: whatsappPhoneNumberId || "",
+		whatsappMessageId: message.id as string,
+		fromPhoneNumber: from ? formatWhatsappIdAsPhone(from) : null,
+		toPhoneNumber: to ? formatWhatsappIdAsPhone(to) : null,
+		toUserId: (message.to_user_id as string | undefined) || null,
+		messageTypeRaw: message.type as string,
+		timestamp: message.timestamp ? Number.parseInt(message.timestamp as string) * 1000 : Date.now(),
+	};
+}
+
+/** Todos os ecos do app do celular — antes só o primeiro era lido, perdendo ecos em entregas agrupadas. */
+export function parseWebhookMessageEchoes(webhookPayload: unknown): ParsedMessageEcho[] {
+	const parsed: ParsedMessageEcho[] = [];
+	for (const value of collectWebhookValues(webhookPayload, { field: "smb_message_echoes" })) {
+		const messageEchoes = value.message_echoes as unknown[] | undefined;
+		if (!Array.isArray(messageEchoes)) continue;
+		for (const rawEcho of messageEchoes) {
+			try {
+				const single = parseSingleEcho(rawEcho as Record<string, unknown>, value);
+				if (single) parsed.push(single);
+			} catch (error) {
+				console.error("[WHATSAPP_MESSAGE_ECHO_PARSE_ERROR]", error);
+			}
+		}
 	}
+	return parsed;
 }
 
 export function parseWebhookMessageEcho(webhookPayload: unknown): ParsedMessageEcho | null {
-	try {
-		const payload = webhookPayload as Record<string, unknown>;
-		const entry = (payload.entry as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const change = (entry?.changes as unknown[])?.[0] as Record<string, unknown> | undefined;
-		const value = change?.value as Record<string, unknown> | undefined;
-		const field = change?.field as string | undefined;
-
-		if (field !== "smb_message_echoes") {
-			return null;
-		}
-
-		// Check if this is a message echo event
-		const messageEchoes = value?.message_echoes as unknown[] | undefined;
-		if (!messageEchoes || !Array.isArray(messageEchoes) || messageEchoes.length === 0) {
-			return null;
-		}
-
-		const metadata = value?.metadata as Record<string, unknown> | undefined;
-		const whatsappPhoneNumberId = metadata?.phone_number_id as string;
-		const message = messageEchoes[0] as Record<string, unknown>;
-		const messageType = message.type as string;
-
-		let textContent: string | undefined;
-		let mediaId: string | undefined;
-		let mimeType: string | undefined;
-		let filename: string | undefined;
-		let caption: string | undefined;
-
-		// Handle different message types
-		switch (messageType) {
-			case "text": {
-				const textObj = message.text as Record<string, unknown> | undefined;
-				textContent = textObj?.body as string | undefined;
-				break;
-			}
-
-			case "image": {
-				const imageObj = message.image as Record<string, unknown> | undefined;
-				mediaId = imageObj?.id as string | undefined;
-				mimeType = imageObj?.mime_type as string | undefined;
-				caption = imageObj?.caption as string | undefined;
-				break;
-			}
-
-			case "document": {
-				const documentObj = message.document as Record<string, unknown> | undefined;
-				mediaId = documentObj?.id as string | undefined;
-				mimeType = documentObj?.mime_type as string | undefined;
-				filename = documentObj?.filename as string | undefined;
-				caption = documentObj?.caption as string | undefined;
-				break;
-			}
-
-			case "audio":
-			case "video": {
-				const mediaObj = message[messageType] as Record<string, unknown> | undefined;
-				mediaId = mediaObj?.id as string | undefined;
-				mimeType = mediaObj?.mime_type as string | undefined;
-				break;
-			}
-
-			default:
-				console.log("[WHATSAPP_WEBHOOK] Unsupported message echo type received:", messageType);
-				return null;
-		}
-
-		const from = message.from as string | undefined;
-		const to = message.to as string | undefined;
-
-		return {
-			whatsappPhoneNumberId: whatsappPhoneNumberId || "",
-			whatsappMessageId: message.id as string,
-			fromPhoneNumber: from ? formatWhatsappIdAsPhone(from) : null,
-			toPhoneNumber: to ? formatWhatsappIdAsPhone(to) : null,
-			toUserId: (message.to_user_id as string | undefined) || null,
-			messageType: messageType as "text" | "image" | "video" | "audio" | "document",
-			textContent,
-			mediaId,
-			mimeType,
-			filename,
-			caption,
-			timestamp: message.timestamp ? Number.parseInt(message.timestamp as string) * 1000 : Date.now(),
-		};
-	} catch (error) {
-		console.error("[WHATSAPP_MESSAGE_ECHO_PARSE_ERROR]", error);
-		return null;
-	}
+	return parseWebhookMessageEchoes(webhookPayload)[0] ?? null;
 }
