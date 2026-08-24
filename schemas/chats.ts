@@ -285,6 +285,29 @@ export const ChatMessageMetadataSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+	/** Localização compartilhada pelo cliente; nome/endereço só em locais de negócio. */
+	whatsappLocation: z
+		.object({
+			latitude: z.number(),
+			longitude: z.number(),
+			name: z.string().optional().nullable(),
+			address: z.string().optional().nullable(),
+			url: z.string().optional().nullable(),
+		})
+		.optional()
+		.nullable(),
+	/** Cartões de contato (vCard) compartilhados pelo cliente. */
+	whatsappContacts: z
+		.array(
+			z.object({
+				formattedName: z.string().optional().nullable(),
+				phones: z.array(z.object({ phone: z.string(), waId: z.string().optional().nullable(), type: z.string().optional().nullable() })).optional(),
+				emails: z.array(z.object({ email: z.string(), type: z.string().optional().nullable() })).optional(),
+				org: z.string().optional().nullable(),
+			}),
+		)
+		.optional()
+		.nullable(),
 	gatewayInterno: z
 		.object({
 			sessaoId: z.string().optional(),

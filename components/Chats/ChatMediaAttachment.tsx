@@ -21,7 +21,8 @@ import { ChatAudioPlayer } from "./ChatAudioPlayer";
  */
 
 type ChatMediaAttachmentProps = {
-	tipo: Exclude<TChatMessageContentTypeEnum, "TEXTO">;
+	/** Localização fica de fora: não há arquivo — o cartão com link de mapa vive na bolha. */
+	tipo: Exclude<TChatMessageContentTypeEnum, "TEXTO" | "LOCALIZACAO">;
 	url: string | null;
 	arquivoNome?: string | null;
 	arquivoTamanho?: number | null;

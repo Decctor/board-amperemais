@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { TChatThreadMessage } from "@/lib/queries/chats";
 import { cn } from "@/lib/utils";
-import { AlertCircle, Check, CheckCheck, ChevronDown, Clock, RotateCw, Smartphone, Sparkles } from "lucide-react";
+import type { TChatMessageMetadata } from "@/schemas/chats";
+import { AlertCircle, Check, CheckCheck, ChevronDown, Clock, MapPin, RotateCw, Smartphone, Sparkles } from "lucide-react";
 import { ChatMediaAttachment } from "./ChatMediaAttachment";
 import { WhatsAppMessageText } from "./WhatsAppMessageText";
 
@@ -59,6 +60,32 @@ function DeliveryTicks({ status }: { status: TChatThreadMessage["statusEntrega"]
 			{icon}
 			<span className="sr-only">{DELIVERY_LABELS[status]}</span>
 		</span>
+	);
+}
+
+/**
+ * Cartão de localização compartilhada: link para o próprio local (negócios) ou um pin no
+ * mapa pelas coordenadas. Não há arquivo a baixar, então não passa pelo ChatMediaAttachment.
+ */
+function LocationCard({ location }: { location: NonNullable<TChatMessageMetadata["whatsappLocation"]> }) {
+	const title = location.name?.trim() || "Localização compartilhada";
+	const description = location.address?.trim() || `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`;
+	const href = location.url?.trim() || `https://www.google.com/maps?q=${location.latitude},${location.longitude}`;
+
+	return (
+		<a
+			href={href}
+			target="_blank"
+			rel="noopener noreferrer"
+			aria-label={`Abrir ${title} no mapa`}
+			className="mb-1 flex items-center gap-2.5 rounded-lg bg-current/10 p-2.5 transition-colors hover:bg-current/15 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-current/30"
+		>
+			<MapPin className="h-5 w-5 shrink-0 opacity-70" />
+			<span className="flex min-w-0 flex-1 flex-col">
+				<span className="truncate text-xs font-semibold">{title}</span>
+				<span className="truncate text-[11px] opacity-70">{description}</span>
+			</span>
+		</a>
 	);
 }
 
@@ -139,8 +166,12 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 					</div>
 				)}
 
+				{message.conteudoMidiaTipo === "LOCALIZACAO" && message.metadados?.whatsappLocation && (
+					<LocationCard location={message.metadados.whatsappLocation} />
+				)}
+
 				{/* Checagem inline em vez de `hasMedia`: o narrowing do union não atravessa o alias. */}
-				{message.conteudoMidiaTipo !== "TEXTO" && (
+				{message.conteudoMidiaTipo !== "TEXTO" && message.conteudoMidiaTipo !== "LOCALIZACAO" && (
 					<div className="mb-1">
 						<ChatMediaAttachment
 							tipo={message.conteudoMidiaTipo}
@@ -160,7 +191,11 @@ export function ChatMessageBubble({ message, showAuthor, onRetry, isRetrying }: 
 						{message.metadados.whatsappUnsupported.code ? ` (código ${message.metadados.whatsappUnsupported.code})` : ""}
 					</p>
 				) : (
-					message.conteudoTexto && <WhatsAppMessageText text={message.conteudoTexto} onColoredSurface={onColoredSurface} />
+					// O texto de localização repete o que o cartão já mostra — só serve a prévias e agentes.
+					message.conteudoTexto &&
+					!(message.conteudoMidiaTipo === "LOCALIZACAO" && message.metadados?.whatsappLocation) && (
+						<WhatsAppMessageText text={message.conteudoTexto} onColoredSurface={onColoredSurface} />
+					)
 				)}
 
 				{hasMedia && !isSticker && aiContext && (

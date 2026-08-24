@@ -78,6 +78,53 @@ describe("parseWebhookIncomingMessages", () => {
 		assert.equal(parsed.caption, undefined);
 	});
 
+	it("trata localização como tipo próprio, com coordenadas na estrutura e resumo no texto", () => {
+		const payload = buildMessagesPayload([
+			{
+				id: "wamid.loc",
+				from: "5534999991111",
+				timestamp: "1755000000",
+				type: "location",
+				location: { latitude: -18.9186, longitude: -48.2772, name: "Mercado Central", address: "Av. Afonso Pena, 500" },
+			},
+			{ id: "wamid.loc-broken", from: "5534999991111", timestamp: "1755000001", type: "location", location: { latitude: "abc" } },
+		]);
+
+		const [location, broken] = parseWebhookIncomingMessages(payload);
+		assert.equal(location.messageType, "LOCALIZACAO");
+		assert.deepEqual(location.location, { latitude: -18.9186, longitude: -48.2772, name: "Mercado Central", address: "Av. Afonso Pena, 500", url: null });
+		assert.equal(location.textContent, "Mercado Central — Av. Afonso Pena, 500");
+		// Coordenadas inválidas não têm o que plotar: degrada para texto.
+		assert.equal(broken.messageType, "TEXTO");
+		assert.match(broken.textContent ?? "", /coordenadas inválidas/);
+	});
+
+	it("transforma contatos compartilhados em texto legível com os vCards na estrutura", () => {
+		const payload = buildMessagesPayload([
+			{
+				id: "wamid.contacts",
+				from: "5534999991111",
+				timestamp: "1755000000",
+				type: "contacts",
+				contacts: [
+					{
+						name: { formatted_name: "João da Silva" },
+						org: { company: "Padaria Estrela" },
+						phones: [{ phone: "+55 34 98888-0000", wa_id: "5534988880000", type: "CELL" }],
+						emails: [{ email: "joao@estrela.com", type: "WORK" }],
+					},
+				],
+			},
+		]);
+
+		const [parsed] = parseWebhookIncomingMessages(payload);
+		assert.equal(parsed.messageType, "TEXTO");
+		assert.equal(parsed.textContent, "Contato compartilhado:\nJoão da Silva · +55 34 98888-0000");
+		assert.equal(parsed.contacts?.[0].org, "Padaria Estrela");
+		assert.equal(parsed.contacts?.[0].phones[0].waId, "5534988880000");
+		assert.equal(parsed.contacts?.[0].emails[0].email, "joao@estrela.com");
+	});
+
 	it("transforma resposta de botão de template em texto, com o payload preservado", () => {
 		const payload = buildMessagesPayload([
 			{ id: "wamid.btn", from: "5534999991111", timestamp: "1755000000", type: "button", button: { text: "Confirmar pedido", payload: "CONFIRMAR" } },

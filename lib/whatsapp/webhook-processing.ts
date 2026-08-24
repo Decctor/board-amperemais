@@ -515,6 +515,8 @@ async function handleIncomingMessage(incomingMessage: ReturnType<typeof parseWeb
 		...(midiaTipo === "FIGURINHA" ? { whatsappMidia: { animated: incomingMessage.stickerAnimated ?? false } } : {}),
 		...(incomingMessage.button ? { whatsappButton: incomingMessage.button } : {}),
 		...(incomingMessage.unsupported ? { whatsappUnsupported: incomingMessage.unsupported } : {}),
+		...(incomingMessage.location ? { whatsappLocation: incomingMessage.location } : {}),
+		...(incomingMessage.contacts && incomingMessage.contacts.length > 0 ? { whatsappContacts: incomingMessage.contacts } : {}),
 	};
 
 	// Tipo não suportado não tem texto próprio: entra como nota honesta, em vez de um

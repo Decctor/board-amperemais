@@ -32,6 +32,7 @@ const MEDIA_LABELS: Record<Exclude<TChatMessageContentTypeEnum, "TEXTO">, string
 	AUDIO: "Áudio",
 	DOCUMENTO: "Documento",
 	FIGURINHA: STICKER_LABEL,
+	LOCALIZACAO: "Localização",
 };
 
 function truncatePreviewText(value: string) {

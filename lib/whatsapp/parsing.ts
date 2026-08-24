@@ -221,6 +221,15 @@ type TParsedMessageContent = {
 	system?: { type: string; body: string | null; newWaId: string | null };
 	/** Só em tipos não suportados: o erro informado pela Meta. */
 	unsupported?: { code: number | null; title: string | null; details: string | null };
+	/** Só em localização: coordenadas e, quando é um local de negócio, nome/endereço. */
+	location?: { latitude: number; longitude: number; name: string | null; address: string | null; url: string | null };
+	/** Só em contatos (vCard): os cartões compartilhados. */
+	contacts?: Array<{
+		formattedName: string | null;
+		phones: Array<{ phone: string; waId: string | null; type: string | null }>;
+		emails: Array<{ email: string; type: string | null }>;
+		org: string | null;
+	}>;
 };
 
 function parseMessageContent(message: Record<string, unknown>): TParsedMessageContent | null {
@@ -276,6 +285,65 @@ function parseMessageContent(message: Record<string, unknown>): TParsedMessageCo
 				mediaId: stickerObj?.id as string | undefined,
 				mimeType: (stickerObj?.mime_type as string | undefined) ?? STICKER_MIME_TYPE,
 				stickerAnimated: stickerObj?.animated === true,
+			};
+		}
+
+		// Localização compartilhada: coordenadas sempre, nome/endereço só em locais de negócio.
+		case "location": {
+			const locationObj = message.location as Record<string, unknown> | undefined;
+			const latitude = Number(locationObj?.latitude);
+			const longitude = Number(locationObj?.longitude);
+			if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+				return { kind: "message", messageType: "TEXTO", textContent: "[Localização recebida — coordenadas inválidas]" };
+			}
+			const name = (locationObj?.name as string | undefined) ?? null;
+			const address = (locationObj?.address as string | undefined) ?? null;
+			return {
+				kind: "message",
+				messageType: "LOCALIZACAO",
+				location: { latitude, longitude, name, address, url: (locationObj?.url as string | undefined) ?? null },
+				textContent: [name, address].filter(Boolean).join(" — ") || `${latitude}, ${longitude}`,
+			};
+		}
+
+		// Cartões de contato (vCard). Vira mensagem de texto legível (o contato compartilhado
+		// costuma ser um lead) com os dados estruturados guardados na metadata.
+		case "contacts": {
+			const rawContacts = message.contacts as unknown[] | undefined;
+			const parsedContacts: NonNullable<TParsedMessageContent["contacts"]> = (Array.isArray(rawContacts) ? rawContacts : []).map((raw) => {
+				const contactObj = raw as Record<string, unknown>;
+				const nameObj = contactObj.name as Record<string, unknown> | undefined;
+				const orgObj = contactObj.org as Record<string, unknown> | undefined;
+				const rawPhones = (contactObj.phones as unknown[] | undefined) ?? [];
+				const rawEmails = (contactObj.emails as unknown[] | undefined) ?? [];
+				return {
+					formattedName: (nameObj?.formatted_name as string | undefined) ?? null,
+					phones: rawPhones.map((phone) => {
+						const phoneObj = phone as Record<string, unknown>;
+						return {
+							phone: (phoneObj.phone as string | undefined) ?? "",
+							waId: (phoneObj.wa_id as string | undefined) ?? null,
+							type: (phoneObj.type as string | undefined) ?? null,
+						};
+					}),
+					emails: rawEmails.map((email) => {
+						const emailObj = email as Record<string, unknown>;
+						return { email: (emailObj.email as string | undefined) ?? "", type: (emailObj.type as string | undefined) ?? null };
+					}),
+					org: (orgObj?.company as string | undefined) ?? null,
+				};
+			});
+			const summaryLines = parsedContacts.map((contact) => {
+				const parts = [contact.formattedName ?? "Contato"];
+				const firstPhone = contact.phones.find((phone) => phone.phone)?.phone;
+				if (firstPhone) parts.push(firstPhone);
+				return parts.join(" · ");
+			});
+			return {
+				kind: "message",
+				messageType: "TEXTO",
+				contacts: parsedContacts,
+				textContent: summaryLines.length > 0 ? `Contato compartilhado:\n${summaryLines.join("\n")}` : "Contato compartilhado.",
 			};
 		}
 
