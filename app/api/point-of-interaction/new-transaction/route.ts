@@ -721,6 +721,10 @@ async function preparePointOfInteractionTransaction({ input, operatorContext, tx
 					situacao: "00",
 					tipo: "Venda de produtos",
 					processamentoOrigem: "INTERNO",
+					// Venda de balcão já concluída: sem CONFIRMADA ela fica invisível para
+					// getValidSaleConditions e o cron enrich-clients zera os contadores do cliente.
+					statusVenda: "CONFIRMADA",
+					statusAtendimento: "ENTREGUE",
 					dataVenda: saleDate,
 				})
 				.returning({ id: sales.id });
