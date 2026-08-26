@@ -4,9 +4,11 @@ import type {
 } from "@/app/api/organizations/memberships/invitations/route";
 import type { TGetUserMembershipsOutput } from "@/app/api/organizations/memberships/route";
 import type { TGetOrganizationOutput } from "@/app/api/organizations/route";
+import type { TGetOrganizationSlugAvailabilityOutput } from "@/app/api/organizations/slug-availability/route";
 import type { TGetSubscriptionStatusOutput } from "@/app/api/organizations/subscription-status/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import { useDebounceMemo } from "../hooks/use-debounce";
 
 async function fetchOrganization() {
 	const { data } = await axios.get<TGetOrganizationOutput>("/api/organizations");
@@ -68,5 +70,24 @@ export function useOrganizationSubscriptionStatus() {
 			refetchOnWindowFocus: true,
 		}),
 		queryKey,
+	};
+}
+
+async function fetchOrganizationSlugAvailability(slug: string) {
+	const { data } = await axios.get<TGetOrganizationSlugAvailabilityOutput>(`/api/organizations/slug-availability?slug=${encodeURIComponent(slug)}`);
+	return data.data;
+}
+
+export function useOrganizationSlugAvailability({ slug, enabled = true }: { slug: string; enabled?: boolean }) {
+	const debounced = useDebounceMemo({ slug }, 500);
+	const queryKey = ["organization-slug-availability", debounced.slug];
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchOrganizationSlugAvailability(debounced.slug),
+			enabled: enabled && debounced.slug.trim().length > 0,
+		}),
+		queryKey,
+		debouncedSlug: debounced.slug,
 	};
 }

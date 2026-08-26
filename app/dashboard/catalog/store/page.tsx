@@ -15,5 +15,5 @@ export default async function Shop() {
 	const userOrg = sessionUser.membership?.organizacao;
 	if (!userOrg) redirect("/dashboard");
 
-	return <ShopPage organizationId={userOrg.id} />;
+	return <ShopPage slug={userOrg.slug} />;
 }

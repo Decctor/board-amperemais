@@ -39,6 +39,7 @@ export function useOrganizationState() {
 		organization: {
 			nome: "",
 			cnpj: "",
+			slug: "",
 			logoUrl: null,
 			telefone: null,
 			email: null,
@@ -232,6 +233,7 @@ export function useOrganizationBaseState() {
 		organization: {
 			nome: "",
 			cnpj: "",
+			slug: "",
 			logoUrl: null,
 			telefone: null,
 			email: null,

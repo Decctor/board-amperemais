@@ -7,15 +7,15 @@ import { toast } from "sonner";
 import { SectionWrapper } from "@/components/ui/section-wrapper";
 
 type ShopShareCardProps = {
-	organizationId: string;
+	slug: string;
 	shopQrCode: string;
 	isActive: boolean;
 };
 
-export default function ShopShareCard({ organizationId, shopQrCode, isActive }: ShopShareCardProps) {
+export default function ShopShareCard({ slug, shopQrCode, isActive }: ShopShareCardProps) {
 	const [copied, setCopied] = useState(false);
 
-	const shopUrl = typeof window !== "undefined" ? `${window.location.origin}/shop/${organizationId}` : `/shop/${organizationId}`;
+	const shopUrl = typeof window !== "undefined" ? `${window.location.origin}/shop/${slug}` : `/shop/${slug}`;
 
 	const handleCopy = async () => {
 		try {

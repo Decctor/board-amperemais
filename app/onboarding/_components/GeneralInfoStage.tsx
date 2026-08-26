@@ -1,14 +1,17 @@
 import TextInput from "@/components/Inputs/TextInput";
+import { OrganizationSlugFeedback } from "@/components/Organizations/OrganizationSlugFeedback";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OrganizationNicheOptions } from "@/config/onboarding";
 import { formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
+import { slugifyOrganizationName } from "@/lib/organizations/slug";
 import { useAvailableDealLicense } from "@/lib/queries/deals";
 import { cn } from "@/lib/utils";
 import type { TUseOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
 import { BadgeCheck, Check, LayoutGrid, Store } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { MdAttachFile } from "react-icons/md";
 
 type GeneralInfoStageProps = {
@@ -22,6 +25,24 @@ export function GeneralInfoStage({ state, updateOrganization, updateOrganization
 	// Licença de deal (venda B2B multi-licença): se o usuário é obtentor de um deal ativo
 	// com licença disponível, a organização será ativada sem trial e sem checkout.
 	const { data: dealLicense } = useAvailableDealLicense();
+
+	// O endereço acompanha o nome até o usuário mexer nele; se ele limpar o campo, volta a acompanhar.
+	const [slugEdited, setSlugEdited] = useState(() => Boolean(state.organization.slug));
+
+	const handleNomeChange = (value: string) => {
+		updateOrganization(slugEdited ? { nome: value } : { nome: value, slug: slugifyOrganizationName(value) });
+	};
+
+	const handleSlugChange = (value: string) => {
+		// Normalização leve para não mutilar a digitação (hífen no fim é válido enquanto digita);
+		// o blur e o servidor aplicam a normalização completa.
+		const typed = value
+			.toLowerCase()
+			.replace(/\s+/g, "-")
+			.replace(/[^a-z0-9-]/g, "");
+		setSlugEdited(typed.length > 0);
+		updateOrganization({ slug: typed || slugifyOrganizationName(state.organization.nome) });
+	};
 
 	return (
 		<>
@@ -51,9 +72,21 @@ export function GeneralInfoStage({ state, updateOrganization, updateOrganization
 							labelClassName="text-black"
 							holderClassName="dark:border-black/20 text-black"
 							placeholder="Preencha aqui o nome da sua empresa..."
-							handleChange={(value) => updateOrganization({ nome: value })}
+							handleChange={handleNomeChange}
 							required
 						/>
+						<div className="flex w-full flex-col gap-1">
+							<TextInput
+								value={state.organization.slug}
+								label="ENDEREÇO DA SUA LOJA ONLINE"
+								labelClassName="text-black"
+								holderClassName="dark:border-black/20 text-black"
+								placeholder="endereco-da-sua-loja"
+								handleChange={handleSlugChange}
+								handleOnBlur={() => updateOrganization({ slug: slugifyOrganizationName(state.organization.slug) })}
+							/>
+							<OrganizationSlugFeedback slug={state.organization.slug} onApplySuggestion={(suggestion) => updateOrganization({ slug: suggestion })} />
+						</div>
 						<TextInput
 							value={state.organization.cnpj || ""}
 							label="CNPJ DA EMPRESA"

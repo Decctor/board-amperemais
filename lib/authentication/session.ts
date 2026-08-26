@@ -100,6 +100,7 @@ export async function validateSession(token: string) {
 				organizacao: {
 					id: membership.organizacao.id,
 					nome: membership.organizacao.nome,
+					slug: membership.organizacao.slug,
 					cnpj: membership.organizacao.cnpj,
 					logoUrl: membership.organizacao.logoUrl,
 					assinaturaAtiva: resolveSubscriptionAccess({
@@ -144,6 +145,7 @@ export async function validateSession(token: string) {
 				organizacao: {
 					id: mostRecentMembership.organizacao.id,
 					nome: mostRecentMembership.organizacao.nome,
+					slug: mostRecentMembership.organizacao.slug,
 					cnpj: mostRecentMembership.organizacao.cnpj,
 					logoUrl: mostRecentMembership.organizacao.logoUrl,
 					assinaturaAtiva: resolveSubscriptionAccess({

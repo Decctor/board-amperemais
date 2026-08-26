@@ -29,7 +29,7 @@ const SHOP_ORDER_PUBLIC_TOKEN_CONFLICT_MESSAGE = "Este pedido foi alterado após
 
 export default function CheckoutSheet() {
 	const router = useRouter();
-	const { orgId, availability, orderState, isCheckoutOpen, setIsCheckoutOpen, setIsCartOpen } = useShop();
+	const { orgId, slug, availability, orderState, isCheckoutOpen, setIsCheckoutOpen, setIsCartOpen } = useShop();
 	const { checkoutStep } = orderState.state;
 	const isOpen = availability.status === "ABERTA";
 
@@ -40,7 +40,7 @@ export default function CheckoutSheet() {
 			triggerHaptic(HAPTICS.success);
 			orderState.clearCart();
 			setIsCheckoutOpen(false);
-			router.replace("/shop/" + orgId + "/pedidos/" + data.data.publicAccessToken);
+			router.replace("/shop/" + slug + "/pedidos/" + data.data.publicAccessToken);
 		},
 		onError: (error) => {
 			triggerHaptic(HAPTICS.warning);

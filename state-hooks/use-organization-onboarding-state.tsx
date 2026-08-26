@@ -96,6 +96,7 @@ export function useOrganizationOnboardingState({ initialStage, existingOrganizat
 			organization: {
 				nome: org?.nome ?? "",
 				cnpj: org?.cnpj ?? "",
+				slug: org?.slug ?? "",
 				atuacaoCanais: org?.atuacaoCanais ?? "",
 				atuacaoNicho: org?.atuacaoNicho ?? "",
 				origemLead: org?.origemLead ?? "",

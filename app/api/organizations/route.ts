@@ -21,7 +21,12 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { getDealWithAvailableLicense, linkOrganizationToDeal } from "@/lib/deals";
 import { getDefaultFinancialAccountConfiguration } from "@/lib/finances/financial-account-configuration";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { OrganizationConfigurationSchema, OrganizationDefaultsSchema, OrganizationSchema } from "@/schemas/organizations";
+import {
+	OrganizationConfigurationSchema,
+	OrganizationDefaultsSchema,
+	OrganizationSchema,
+	OrganizationSlugCreateInputSchema,
+} from "@/schemas/organizations";
 import { db } from "@/services/drizzle";
 import {
 	authSessions,
@@ -37,6 +42,8 @@ import { stripe } from "@/services/stripe";
 import { eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { generateOrganizationPoiQrCodes, getAppBaseUrl } from "@/lib/organizations/poi-qr-codes";
+import { isValidOrganizationSlug, ORGANIZATION_SLUG_INVALID_MESSAGE } from "@/lib/organizations/slug";
+import { getUniqueOrganizationSlug, isOrganizationSlugTaken } from "@/lib/organizations/slug-server";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
 import { getActivePlatformPartnerByCode, normalizeIndicadorCodigo } from "@/lib/platform-partnerships/attribution";
@@ -51,6 +58,9 @@ export const CreateOrganizationInputSchema = z.object({
 		poiQrCodeMobileDataUrl: true,
 		poiConfirmacaoValorObrigatoria: true,
 		dataOnboardingConclusao: true,
+	}).extend({
+		// O endereço da loja é opcional no cadastro: sem um válido, o servidor gera a partir do nome.
+		slug: OrganizationSlugCreateInputSchema,
 	}),
 	subscription: z
 		.enum(["ESSENCIAL-MONTHLY", "ESSENCIAL-YEARLY", "CRESCIMENTO-MONTHLY", "CRESCIMENTO-YEARLY", "ESCALA-MONTHLY", "ESCALA-YEARLY", "FREE-TRIAL"])
@@ -204,6 +214,10 @@ async function createOrganization({
 
 	console.log("[INFO] [CREATE_ORGANIZATION] Starting the organization onboarding conclusion process:", JSON.stringify(input, null, 2));
 
+	// Endereço público da loja: usa o escolhido no onboarding como base e resolve
+	// colisões com sufixo — a unicidade é garantida aqui, não no cliente.
+	const organizationSlug = await getUniqueOrganizationSlug({ base: organization.slug || organization.nome });
+
 	// Pré-Stripe: grava apenas dados locais em uma transação curta.
 	const { createdOrgId: insertedOrgId, organizationDefaults } = await db.transaction(async (tx) => {
 		// 1. Insert organization first
@@ -211,6 +225,7 @@ async function createOrganization({
 			.insert(organizations)
 			.values({
 				...organization,
+				slug: organizationSlug,
 				configuracao: {
 					recursos: DEFAULT_ORGANIZATION_CONFIGURATION_RESOURCES,
 					preferencias: DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES,
@@ -545,6 +560,19 @@ async function updateOrganization({ input, session }: { input: TUpdateOrganizati
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let updatePayload: Record<string, any> = { ...organization };
+
+	// Endereço da loja: normaliza, valida (formato + reservados) e garante unicidade.
+	// `null` não limpa o slug — remover o endereço não é uma operação suportada aqui.
+	if (organization?.slug === null) {
+		delete updatePayload.slug;
+	} else if (typeof organization?.slug === "string") {
+		const normalizedSlug = organization.slug.trim().toLowerCase();
+		if (!isValidOrganizationSlug(normalizedSlug)) throw new createHttpError.BadRequest(ORGANIZATION_SLUG_INVALID_MESSAGE);
+		if (await isOrganizationSlugTaken({ slug: normalizedSlug, excludeOrgId: userOrgId })) {
+			throw new createHttpError.Conflict("Este endereço já está em uso por outra organização.");
+		}
+		updatePayload.slug = normalizedSlug;
+	}
 
 	if (configuracao) {
 		const currentOrg = await db.query.organizations.findFirst({

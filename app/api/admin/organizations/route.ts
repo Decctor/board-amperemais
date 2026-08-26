@@ -1,9 +1,11 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { deleteAllOrganizationData, organizationHasBlockingSubscription } from "@/lib/organizations/deletion";
+import { isValidOrganizationSlug, ORGANIZATION_SLUG_INVALID_MESSAGE } from "@/lib/organizations/slug";
+import { getUniqueOrganizationSlug, isOrganizationSlugTaken } from "@/lib/organizations/slug-server";
 import { createSimplifiedSearchCondition } from "@/lib/search";
 import { deleteSession as deleteGatewaySession } from "@/lib/whatsapp/internal-gateway";
-import { OrganizationSchema } from "@/schemas/organizations";
+import { OrganizationSchema, OrganizationSlugCreateInputSchema } from "@/schemas/organizations";
 import { NewUserSchema } from "@/schemas/users";
 import { db } from "@/services/drizzle";
 import { organizationMembers, organizations, products, users } from "@/services/drizzle/schema";
@@ -155,7 +157,10 @@ async function getOrganizationsRoute(request: NextRequest) {
 
 // Create Organization
 const CreateOrganizationInputSchema = z.object({
-	organization: OrganizationSchema.omit({ dataInsercao: true }),
+	organization: OrganizationSchema.omit({ dataInsercao: true }).extend({
+		// O endereço da loja é opcional no cadastro: sem um válido, o servidor gera a partir do nome.
+		slug: OrganizationSlugCreateInputSchema,
+	}),
 	mainUser: NewUserSchema.omit({ dataInsercao: true, organizacaoId: true }),
 	productsData: z.array(ProductExcelSchema).optional().nullable(),
 });
@@ -164,11 +169,15 @@ export type TCreateOrganizationInput = z.infer<typeof CreateOrganizationInputSch
 async function createOrganization({ input }: { input: TCreateOrganizationInput }) {
 	let logoUrl: string | null = null;
 
+	// Endereço público da loja: gerado a partir do informado (ou do nome), com sufixo em colisão.
+	const organizationSlug = await getUniqueOrganizationSlug({ base: input.organization.slug || input.organization.nome });
+
 	// Create organization
 	const insertedOrganization = await db
 		.insert(organizations)
 		.values({
 			...input.organization,
+			slug: organizationSlug,
 			logoUrl: logoUrl || input.organization.logoUrl,
 		})
 		.returning({ id: organizations.id });
@@ -252,9 +261,18 @@ export type TUpdateOrganizationInput = z.infer<typeof UpdateOrganizationInputSch
 
 async function updateOrganization({ input }: { input: TUpdateOrganizationInput }) {
 	const { organizationId, organization } = input;
+
+	// O PUT admin substitui o objeto inteiro; o slug hidratado no modal passa por aqui inalterado,
+	// mas se vier editado precisa das mesmas garantias do fluxo self-service.
+	const organizationSlug = organization.slug.trim().toLowerCase();
+	if (!isValidOrganizationSlug(organizationSlug)) throw new createHttpError.BadRequest(ORGANIZATION_SLUG_INVALID_MESSAGE);
+	if (await isOrganizationSlugTaken({ slug: organizationSlug, excludeOrgId: organizationId })) {
+		throw new createHttpError.Conflict("Este endereço já está em uso por outra organização.");
+	}
+
 	const updatedOrganization = await db
 		.update(organizations)
-		.set(organization)
+		.set({ ...organization, slug: organizationSlug })
 		.where(eq(organizations.id, organizationId))
 		.returning({ id: organizations.id });
 

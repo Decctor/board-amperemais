@@ -24,6 +24,8 @@
 		"backfill:online-software-sales": "tsx ./scripts/backfill-online-software-sales.ts",
 		"backfill:cashback-prize-organizacao": "tsx ./scripts/backfill-cashback-prize-organizacao.ts",
 		"backfill:stripe-control-metadata": "tsx ./scripts/backfill-stripe-control-metadata.ts",
+		"backfill:organization-slugs": "tsx ./scripts/backfill-organization-slugs.ts",
+		"verify:organization-slugs": "tsx ./scripts/verify-organization-slugs.ts",
 		"seed:access-clients": "tsx ./scripts/seed-access-clients.ts",
 		"backfill:interactions-relationship": "tsx ./scripts/backfill-interactions-relationship-fields.ts",
 		"backfill:whatsapp-webhook-logs": "tsx --conditions=react-server ./scripts/backfill-whatsapp-webhook-logs.ts",

@@ -10,10 +10,11 @@ import ShopShell from "./_components/ShopShell";
 
 type ShopPageProps = {
 	orgId: string;
+	slug: string;
 	initialCatalog: TShopCatalogData | null;
 };
 
-export default function ShopPage({ orgId, initialCatalog }: ShopPageProps) {
+export default function ShopPage({ orgId, slug, initialCatalog }: ShopPageProps) {
 	const { data, isLoading, isError, error } = useShopCatalog({ orgId, initialData: initialCatalog ?? undefined });
 
 	if (isLoading) {
@@ -44,7 +45,7 @@ export default function ShopPage({ orgId, initialCatalog }: ShopPageProps) {
 			corSecundaria={data.organization.corSecundaria}
 			corSecundariaForeground={data.organization.corSecundariaForeground}
 		>
-			<ShopProvider orgId={orgId} catalog={data}>
+			<ShopProvider orgId={orgId} slug={slug} catalog={data}>
 				<ShopShell />
 			</ShopProvider>
 		</OrgColorsProvider>

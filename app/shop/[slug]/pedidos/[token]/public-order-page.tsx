@@ -29,6 +29,7 @@ import Link from "next/link";
 
 type PublicOrderPageProps = {
 	orgId: string;
+	slug: string;
 	token: string;
 };
 
@@ -96,7 +97,7 @@ function OrderLoading() {
 	);
 }
 
-function OrderError({ orgId, retry }: { orgId: string; retry: () => void }) {
+function OrderError({ slug, retry }: { slug: string; retry: () => void }) {
 	return (
 		<main className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
 			<div className="flex w-full max-w-sm flex-col items-center text-center">
@@ -111,7 +112,7 @@ function OrderError({ orgId, retry }: { orgId: string; retry: () => void }) {
 						TENTAR NOVAMENTE
 					</Button>
 					<Button asChild variant="outline" className="h-11 rounded-xl font-bold">
-						<Link href={"/shop/" + orgId}>VOLTAR PARA A LOJA</Link>
+						<Link href={"/shop/" + slug}>VOLTAR PARA A LOJA</Link>
 					</Button>
 				</div>
 			</div>
@@ -119,7 +120,7 @@ function OrderError({ orgId, retry }: { orgId: string; retry: () => void }) {
 	);
 }
 
-function StoreHeader({ organization, orgId }: { organization: PublicOrderData["organization"]; orgId: string }) {
+function StoreHeader({ organization, slug }: { organization: PublicOrderData["organization"]; slug: string }) {
 	return (
 		<header className="border-b border-brand-foreground/20 bg-brand text-brand-foreground rounded-bl-2xl rounded-br-2xl">
 			<div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-3 sm:py-4">
@@ -142,7 +143,7 @@ function StoreHeader({ organization, orgId }: { organization: PublicOrderData["o
 					size="sm"
 					className="shrink-0 rounded-xl bg-brand-foreground/10 font-bold text-brand-foreground transition-colors hover:bg-brand-foreground/20"
 				>
-					<Link href={"/shop/" + orgId}>
+					<Link href={"/shop/" + slug}>
 						<Store className="size-4" />
 						<span className="hidden sm:inline">VER LOJA</span>
 					</Link>
@@ -440,19 +441,19 @@ function CashbackSummary({ order }: { order: PublicOrder }) {
 
 function OrderContent({
 	data,
-	orgId,
+	slug,
 	isRefetching,
 	onRefresh,
 }: {
 	data: PublicOrderData;
-	orgId: string;
+	slug: string;
 	isRefetching: boolean;
 	onRefresh: () => void;
 }) {
 	const { order, organization } = data;
 	return (
 		<div className="min-h-screen bg-muted/30">
-			<StoreHeader organization={organization} orgId={orgId} />
+			<StoreHeader organization={organization} slug={slug} />
 			<main className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-5 sm:py-7">
 				<OrderStatus order={order} isRefetching={isRefetching} onRefresh={onRefresh} />
 				<CashbackEarnedBanner order={order} />
@@ -476,7 +477,7 @@ function OrderContent({
 				<div className="flex flex-col items-center gap-2 py-4 text-center">
 					<p className="text-xs text-muted-foreground">Esta página atualiza automaticamente enquanto o pedido está em andamento.</p>
 					<Button asChild variant="ghost" size="sm" className="rounded-xl">
-						<Link href={"/shop/" + orgId}>
+						<Link href={"/shop/" + slug}>
 							<RotateCcw className="size-4" />
 							FAZER OUTRO PEDIDO
 						</Link>
@@ -487,11 +488,11 @@ function OrderContent({
 	);
 }
 
-export default function PublicOrderPage({ orgId, token }: PublicOrderPageProps) {
+export default function PublicOrderPage({ orgId, slug, token }: PublicOrderPageProps) {
 	const { data, isLoading, isError, isRefetching, refetch } = usePublicShopOrder({ orgId, token });
 
 	if (isLoading) return <OrderLoading />;
-	if (isError || !data) return <OrderError orgId={orgId} retry={() => void refetch()} />;
+	if (isError || !data) return <OrderError slug={slug} retry={() => void refetch()} />;
 
 	const { organization } = data;
 	return (
@@ -502,7 +503,7 @@ export default function PublicOrderPage({ orgId, token }: PublicOrderPageProps) 
 			corSecundaria={organization.corSecundaria}
 			corSecundariaForeground={organization.corSecundariaForeground}
 		>
-			<OrderContent data={data} orgId={orgId} isRefetching={isRefetching} onRefresh={() => void refetch()} />
+			<OrderContent data={data} slug={slug} isRefetching={isRefetching} onRefresh={() => void refetch()} />
 		</OrgColorsProvider>
 	);
 }

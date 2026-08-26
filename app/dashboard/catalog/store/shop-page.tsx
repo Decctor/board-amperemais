@@ -11,7 +11,7 @@ import { useShopSettings } from "@/lib/queries/shop";
 import { Clock3, Copy, ExternalLink, QrCode } from "lucide-react";
 import ShopSettingsPanel from "./components/ShopSettingsPanel";
 
-export default function ShopPage({ organizationId }: { organizationId: string }) {
+export default function ShopPage({ slug }: { slug: string | null }) {
 	const { data: settings, isLoading, isError, error } = useShopSettings();
 
 	if (isLoading) return <LoadingComponent />;
@@ -19,7 +19,8 @@ export default function ShopPage({ organizationId }: { organizationId: string })
 	if (!settings) return <ErrorComponent msg="Configurações da loja digital não encontradas." />;
 
 	const availability = getShopAvailability({ ativo: settings.ativo, configuracoes: settings.configuracoes });
-	const shopUrl = `/shop/${organizationId}`;
+	// Org sem slug não deveria existir após o backfill; ainda assim não montamos link quebrado.
+	const shopUrl = slug ? `/shop/${slug}` : null;
 
 	return (
 		<div className="flex w-full flex-col gap-4">
@@ -34,15 +35,27 @@ export default function ShopPage({ organizationId }: { organizationId: string })
 					) : null}
 				</div>
 				<div className="flex flex-wrap gap-2">
-					<Button variant="ghost" size="sm" className="gap-2" onClick={() => copyToClipboard(`${window.location.origin}${shopUrl}`)}>
+					<Button
+						variant="ghost"
+						size="sm"
+						className="gap-2"
+						onClick={() => shopUrl && copyToClipboard(`${window.location.origin}${shopUrl}`)}
+						disabled={!shopUrl}
+					>
 						<Copy className="size-4" />
 						COPIAR LINK
 					</Button>
-					<Button variant="outline" size="sm" className="gap-2" onClick={() => window.open(shopUrl, "_blank")} disabled={!settings.ativo}>
+					<Button
+						variant="outline"
+						size="sm"
+						className="gap-2"
+						onClick={() => shopUrl && window.open(shopUrl, "_blank")}
+						disabled={!settings.ativo || !shopUrl}
+					>
 						<ExternalLink className="size-4" />
 						VER LOJA
 					</Button>
-					<Button size="sm" className="gap-2" onClick={() => copyToClipboard(`${window.location.origin}${shopUrl}`)}>
+					<Button size="sm" className="gap-2" onClick={() => shopUrl && copyToClipboard(`${window.location.origin}${shopUrl}`)} disabled={!shopUrl}>
 						<QrCode className="size-4" />
 						COMPARTILHAR
 					</Button>

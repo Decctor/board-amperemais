@@ -56,12 +56,12 @@ async function loadLogoDataUrl(logoUrl: string | null): Promise<string | null> {
 	}
 }
 
-export default async function OpengraphImage({ params }: { params: Promise<{ orgId: string }> }) {
-	const { orgId } = await params;
+export default async function OpengraphImage({ params }: { params: Promise<{ slug: string }> }) {
+	const { slug } = await params;
 
 	const [organization, ralewayRegular, ralewaySemiBold, ralewayBold] = await Promise.all([
 		db.query.organizations.findFirst({
-			where: (fields, { eq }) => eq(fields.id, orgId),
+			where: (fields, { eq }) => eq(fields.slug, slug.trim().toLowerCase()),
 			columns: { nome: true, logoUrl: true, corPrimaria: true, corPrimariaForeground: true },
 		}),
 		readFile(join(process.cwd(), "utils/fonts/Raleway-Regular.ttf")),

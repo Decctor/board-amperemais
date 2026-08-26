@@ -8,6 +8,7 @@ import {
 } from "./enums";
 import { OrganizationFiscalConfigSchema } from "./fiscal";
 import { DataSourceIntegrationConfigSchema } from "./integrations";
+import { ORGANIZATION_SLUG_INVALID_MESSAGE, ORGANIZATION_SLUG_REGEX } from "@/lib/organizations/slug";
 import { PaymentEffectivenessTypeEnum } from "@/lib/payments/schemas";
 
 /**
@@ -200,12 +201,7 @@ export type TOrganizationAccountingDefaults = TOrganizationDefaults;
 const OrganizationAutoPrintRuleSchema = z.object({
 	habilitada: z.boolean({ invalid_type_error: "Tipo não válido para a habilitação da impressão automática." }).default(false),
 	canais: z.array(z.string({ invalid_type_error: "Tipo não válido para o canal de impressão automática." })).default([]),
-	copias: z
-		.number({ invalid_type_error: "Tipo não válido para o número de cópias da impressão automática." })
-		.int()
-		.min(1)
-		.max(5)
-		.default(1),
+	copias: z.number({ invalid_type_error: "Tipo não válido para o número de cópias da impressão automática." }).int().min(1).max(5).default(1),
 });
 export type TOrganizationAutoPrintRule = z.infer<typeof OrganizationAutoPrintRuleSchema>;
 
@@ -370,6 +366,13 @@ export const OrganizationSchema = z.object({
 		required_error: "CNPJ da organização não informado.",
 		invalid_type_error: "Tipo não válido para o CNPJ da organização.",
 	}),
+	// Endereço público da loja (/shop/{slug}) — obrigatório e único.
+	slug: z
+		.string({
+			required_error: "Endereço da loja da organização não informado.",
+			invalid_type_error: "Tipo não válido para o endereço da loja da organização.",
+		})
+		.regex(ORGANIZATION_SLUG_REGEX, { message: ORGANIZATION_SLUG_INVALID_MESSAGE }),
 	logoUrl: z.string({ invalid_type_error: "Tipo não válido para a url do logo da organização." }).optional().nullable(),
 	telefone: z.string({ invalid_type_error: "Tipo não válido para o telefone da organização." }).optional().nullable(),
 	email: z.string({ invalid_type_error: "Tipo não válido para o email da organização." }).optional().nullable(),
@@ -506,6 +509,16 @@ export const OrganizationSchema = z.object({
 		.transform((val) => new Date(val)),
 });
 export type TOrganizationFiscalConfig = z.infer<typeof OrganizationFiscalConfigSchema>;
+
+/**
+ * Slug no cadastro de organização: opcional e tolerante a vazio/null — quando não chega um
+ * endereço válido, o servidor gera um a partir do nome (getUniqueOrganizationSlug). O contrato
+ * estrito (obrigatório) continua sendo o de `OrganizationSchema`.
+ */
+export const OrganizationSlugCreateInputSchema = z
+	.union([OrganizationSchema.shape.slug, z.literal("")])
+	.optional()
+	.nullable();
 
 export const OrganizationMemberPermissionsSchema = z.object({
 	empresa: z.object({

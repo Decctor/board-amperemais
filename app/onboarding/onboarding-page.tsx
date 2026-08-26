@@ -14,6 +14,7 @@ import {
 	updateOrganization,
 	upsertOnboardingCashback,
 } from "@/lib/mutations/organizations";
+import { isValidOrganizationSlug, slugifyOrganizationName } from "@/lib/organizations/slug";
 import { PLATFORM_PARTNER_COOKIE_NAME } from "@/lib/platform-partnerships/constants";
 import { isValidCNPJ } from "@/lib/validation";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
@@ -132,8 +133,10 @@ export function OnboardingPage({ user, initialStage, existingOrganization }: Onb
 			logoUrl = url;
 		}
 
+		// Slug fora do formato (ex.: nome com 2 letras) vai vazio — o servidor gera um válido do nome.
+		const normalizedSlug = slugifyOrganizationName(state.organization.slug || "");
 		await createOrganization({
-			organization: { ...state.organization, logoUrl },
+			organization: { ...state.organization, slug: isValidOrganizationSlug(normalizedSlug) ? normalizedSlug : "", logoUrl },
 			subscription: "FREE-TRIAL",
 			indicadorCodigo: state.indicadorCodigo,
 		});

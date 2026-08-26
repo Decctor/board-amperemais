@@ -15,6 +15,8 @@ type TShopAvailability = TShopCatalog["disponibilidade"];
 // and only the sheets/steps subscribe to the order context.
 type TShopDataContextValue = {
 	orgId: string;
+	/** Endereço público da loja — usado nos links; as chamadas de API seguem com `orgId`. */
+	slug: string;
 	catalog: TShopCatalog;
 	availability: TShopAvailability;
 };
@@ -41,11 +43,12 @@ const ShopOrderContext = createContext<TShopOrderContextValue | null>(null);
 
 type ShopProviderProps = {
 	orgId: string;
+	slug: string;
 	catalog: TShopCatalog;
 	children: ReactNode;
 };
 
-export function ShopProvider({ orgId, catalog, children }: ShopProviderProps) {
+export function ShopProvider({ orgId, slug, catalog, children }: ShopProviderProps) {
 	const orderState = useShopOrderState({ orgId, mode: catalog.shopSettings.modo });
 	const [builderProduct, setBuilderProductState] = useState<TShopCatalogProduct | null>(null);
 	const [builderEditItem, setBuilderEditItem] = useState<TShopCartItem | null>(null);
@@ -65,8 +68,8 @@ export function ShopProvider({ orgId, catalog, children }: ShopProviderProps) {
 	}, []);
 
 	const dataValue = useMemo<TShopDataContextValue>(
-		() => ({ orgId, catalog, availability: availability ?? catalog.disponibilidade }),
-		[orgId, catalog, availability],
+		() => ({ orgId, slug, catalog, availability: availability ?? catalog.disponibilidade }),
+		[orgId, slug, catalog, availability],
 	);
 
 	const actionsValue = useMemo<TShopActionsContextValue>(
@@ -115,6 +118,7 @@ export function useShop() {
 	}
 	return {
 		orgId: data.orgId,
+		slug: data.slug,
 		catalog: data.catalog,
 		availability: data.availability,
 		orderState: order.orderState,

@@ -10,16 +10,19 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { uploadFile } from "@/lib/files-storage";
 import { formatToCPForCNPJ, formatToPhone } from "@/lib/formatting";
+import { slugifyOrganizationName } from "@/lib/organizations/slug";
 import { Building2, Camera, ImageIcon, Palette } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { OrganizationSlugFeedback } from "../Organizations/OrganizationSlugFeedback";
 import { useOrganizationSectionForm } from "./Organization/use-organization-section-form";
 import { SettingsFormCard, SettingsFormSection } from "./SettingsFormCard";
 import SettingsSectionActions from "./SettingsSectionActions";
 
 type TOrganizationIdentityDraft = {
 	nome: string;
+	slug: string;
 	cnpj: string;
 	telefone: string | null;
 	email: string | null;
@@ -35,6 +38,7 @@ type TOrganizationData = NonNullable<ReturnType<typeof useOrganizationSectionFor
 function toIdentityDraft(organization: TOrganizationData): TOrganizationIdentityDraft {
 	return {
 		nome: organization.nome,
+		slug: organization.slug ?? "",
 		cnpj: organization.cnpj,
 		telefone: organization.telefone,
 		email: organization.email,
@@ -124,7 +128,9 @@ export default function SettingsOrg({ membership }: SettingsOrgProps) {
 				setIsUploadingLogo(false);
 			}
 		}
-		save({ organization: { ...draft, logoUrl } });
+		// Slug vazio não é enviado (não dá para limpar o endereço por aqui); o servidor valida o resto.
+		const normalizedSlug = slugifyOrganizationName(draft.slug);
+		save({ organization: { ...draft, slug: normalizedSlug || undefined, logoUrl } });
 		setLogoFile(null);
 	};
 
@@ -179,6 +185,31 @@ export default function SettingsOrg({ membership }: SettingsOrgProps) {
 							handleChange={(value) => updateDraft({ nome: value })}
 							editable={canEdit}
 						/>
+						<div className="flex flex-col gap-1">
+							<TextInput
+								label="ENDEREÇO DA LOJA ONLINE"
+								value={draft.slug}
+								placeholder="endereco-da-sua-loja"
+								handleChange={(value) =>
+									updateDraft({
+										slug: value
+											.toLowerCase()
+											.replace(/\s+/g, "-")
+											.replace(/[^a-z0-9-]/g, ""),
+									})
+								}
+								handleOnBlur={() => updateDraft({ slug: slugifyOrganizationName(draft.slug) })}
+								editable={canEdit}
+							/>
+							<OrganizationSlugFeedback
+								slug={draft.slug}
+								savedSlug={organization.slug}
+								onApplySuggestion={(suggestion) => updateDraft({ slug: suggestion })}
+							/>
+							{draft.slug && organization.slug && draft.slug !== organization.slug ? (
+								<p className="text-xs text-amber-600">Alterar o endereço quebra os links da loja já compartilhados com seus clientes.</p>
+							) : null}
+						</div>
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<TextInput
 								label="CNPJ"

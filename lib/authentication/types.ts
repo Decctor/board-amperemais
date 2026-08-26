@@ -41,6 +41,7 @@ export type TAuthUserSession = {
 		organizacao: {
 			id: TOrganizationEntity["id"];
 			nome: TOrganizationEntity["nome"];
+			slug: TOrganizationEntity["slug"];
 			cnpj: TOrganizationEntity["cnpj"];
 			logoUrl: TOrganizationEntity["logoUrl"];
 			assinaturaAtiva: boolean;

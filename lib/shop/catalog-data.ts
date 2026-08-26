@@ -10,6 +10,7 @@ export async function getShopCatalogData(orgId: string) {
 		columns: {
 			id: true,
 			nome: true,
+			slug: true,
 			logoUrl: true,
 			telefone: true,
 			localizacaoCep: true,
