@@ -4,9 +4,9 @@ import type {
 	TProviderCompanyCertificateSyncResult,
 	TProviderCompanySyncResult,
 } from "@/lib/fiscal/types";
-import axios from "axios";
 import createHttpError from "http-errors";
 import { getSpedyOwnerClient } from "./client";
+import { describeSpedyError, extractSpedyErrorMessages, toSpedyHttpError } from "./errors";
 import { mapFiscalEnvironmentToSpedy } from "./status";
 import type { TSpedyCertificateResponse, TSpedyCompanyResponse } from "./types";
 import { mapTaxRegistration, nonEmptyString, onlyDigits } from "./mappers/utils";
@@ -117,21 +117,7 @@ function mapSpedyCertificateSyncResult({
 }
 
 function isDuplicateCertificateError(error: unknown) {
-	if (!axios.isAxiosError(error)) return false;
-	const data = error.response?.data;
-	const messages: string[] = [];
-
-	if (typeof data === "string") messages.push(data);
-	if (data && typeof data === "object" && "errors" in data) {
-		const errors = (data as { errors?: Array<{ message?: unknown }> }).errors;
-		if (Array.isArray(errors)) {
-			for (const item of errors) {
-				if (typeof item.message === "string") messages.push(item.message);
-			}
-		}
-	}
-
-	return messages.some((message) => {
+	return extractSpedyErrorMessages(error).some((message) => {
 		const normalized = message
 			.normalize("NFD")
 			.replace(/[\u0300-\u036f]/g, "")
@@ -171,10 +157,8 @@ export async function syncSpedyCompany(organizacao: TFiscalOrganization): Promis
 			company = data;
 		}
 	} catch (error) {
-		if (axios.isAxiosError(error) && error.response?.data !== undefined) {
-			console.error("[SPEDY] Erro ao sincronizar empresa.", JSON.stringify(error.response.data, null, 2));
-		}
-		throw error;
+		console.error("[SPEDY] Erro ao sincronizar empresa.", describeSpedyError(error));
+		throw toSpedyHttpError(error, "Nao foi possivel sincronizar a empresa na Spedy.");
 	}
 
 	if (!company.id) throw new createHttpError.InternalServerError("Spedy nao retornou o ID da empresa.");
@@ -191,6 +175,8 @@ export async function syncSpedyCompany(organizacao: TFiscalOrganization): Promis
 	};
 }
 
+const CERTIFICATE_MIME_TYPE = "application/x-pkcs12";
+
 export async function syncSpedyCompanyCertificate(
 	organizacao: TFiscalOrganization,
 	input: TProviderCompanyCertificateSyncInput,
@@ -201,28 +187,28 @@ export async function syncSpedyCompanyCertificate(
 	if (!companyId) throw new createHttpError.BadRequest("Sincronize a empresa na Spedy antes de enviar o certificado.");
 
 	const formData = new FormData();
-	formData.append("certificateFile", new Blob([input.certificate]), input.fileName);
+	formData.append("certificateFile", new Blob([input.certificate], { type: CERTIFICATE_MIME_TYPE }), input.fileName);
 	formData.append("password", input.password);
 
 	const client = getSpedyOwnerClient(organizacao);
 	try {
-		const { data } = await client.post<TSpedyCertificateResponse>(`/v1/companies/${companyId}/certificates`, formData);
-		console.log("[DEBUG] [SPEDY] Certificado sincronizado.", JSON.stringify(data, null, 2));
+		// O client tem `application/json` como padrao, e nesse caso o axios serializaria o FormData como JSON
+		// (`{"certificateFile":{}}`). O header abaixo devolve o controle ao adapter, que monta o multipart com boundary.
+		const { data } = await client.post<TSpedyCertificateResponse>(`/v1/companies/${companyId}/certificates`, formData, {
+			headers: { "Content-Type": "multipart/form-data" },
+		});
 
 		return mapSpedyCertificateSyncResult({ cpfCnpj: fiscal.cpfCnpj, certificate: data });
 	} catch (error) {
-		if (axios.isAxiosError(error) && error.response?.data !== undefined) {
-			console.error("[SPEDY] Erro ao sincronizar certificado.", JSON.stringify(error.response.data, null, 2));
-		}
+		console.error("[SPEDY] Erro ao sincronizar certificado.", describeSpedyError(error));
 		if (isDuplicateCertificateError(error)) {
 			const { data: certificates } = await client.get<TSpedyCertificateResponse[]>(`/v1/companies/${companyId}/certificates`);
 			const certificate = pickCurrentCertificate(certificates);
 			if (certificate) {
-				console.log("[DEBUG] [SPEDY] Certificado ja cadastrado. Usando certificado existente.", certificate.id);
 				return mapSpedyCertificateSyncResult({ cpfCnpj: fiscal.cpfCnpj, certificate });
 			}
 			throw new createHttpError.Conflict("Certificado ja cadastrado na Spedy, mas nao foi possivel recuperar os metadados do certificado existente.");
 		}
-		throw error;
+		throw toSpedyHttpError(error, "Nao foi possivel sincronizar o certificado na Spedy.");
 	}
 }

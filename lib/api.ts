@@ -4,6 +4,7 @@ import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 
 import type { Method } from "axios";
 import { ZodError } from "zod";
+import { describeErrorForLogging } from "./errors";
 
 interface ErrorResponse {
 	error: {
@@ -87,7 +88,8 @@ type ApiMethodHandlers = {
 // }
 // Criando o handler de erros
 function errorHandler(err: unknown, res: NextApiResponse<ErrorResponse>) {
-	console.log("ERROR", err);
+	// Ver a nota em lib/app-api.ts: o erro cru pode conter credenciais, entao so o resumo vai para o log.
+	console.error("ERROR", describeErrorForLogging(err));
 	if (createHttpError.isHttpError(err) && err.expose) {
 		// Lidar com os erros lançados pelo módulo http-errors
 		return res.status(err.statusCode).json({ error: { message: err.message } });
@@ -98,8 +100,8 @@ function errorHandler(err: unknown, res: NextApiResponse<ErrorResponse>) {
 	}
 	// Erro de servidor padrão 500
 	return res.status(500).json({
-		error: { message: "Oops, algo deu errado!", err: err },
-		status: createHttpError.isHttpError(err) ? err.statusCode : 500,
+		error: { message: "Oops, algo deu errado!" },
+		status: 500,
 	});
 }
 
