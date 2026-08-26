@@ -1,5 +1,6 @@
 import "dotenv/config";
 import axios from "axios";
+import { SPEDY_BASE_URL } from "@/lib/fiscal/providers/spedy/client";
 
 /**
  * Registro one-shot dos webhooks inbound da Spedy. Webhooks sao por CONTA (owner key), nao por
@@ -53,7 +54,7 @@ async function main() {
 
   const webhookUrl = `${hostArg.replace(/\/$/, "")}/api/webhooks/spedy?secret=${encodeURIComponent(secret)}`;
   const client = axios.create({
-    baseURL: process.env.SPEDY_BASE_URL || "https://api.spedy.com.br",
+    baseURL: SPEDY_BASE_URL,
     headers: { "X-Api-Key": apiKey, "Content-Type": "application/json" },
   });
 

@@ -77,11 +77,6 @@ export const FiscalCertificateMetadataSchema = z.object({
 });
 export type TFiscalCertificateMetadata = z.infer<typeof FiscalCertificateMetadataSchema>;
 
-export const SpedyApiConfigSchema = z.object({
-	baseUrl: z.string({ invalid_type_error: "Tipo não valido para a URL base da Spedy." }).default("https://api.spedy.com.br"),
-});
-export type TSpedyApiConfig = z.infer<typeof SpedyApiConfigSchema>;
-
 export const OrganizationFiscalConfigSchema = z.object({
 	ambiente: FiscalDocumentEnvironmentEnum.default("HOMOLOGACAO"),
 	regimeTributario: z
@@ -109,7 +104,6 @@ export const OrganizationFiscalConfigSchema = z.object({
 	endereco: FiscalAddressSchema,
 	spedy: z
 		.object({
-			api: SpedyApiConfigSchema.default({ baseUrl: "https://api.spedy.com.br" }),
 			companyId: z.string({ invalid_type_error: "Tipo não valido para o ID da empresa na Spedy." }).optional().nullable(),
 			companyApiKey: z.string({ invalid_type_error: "Tipo não valido para a chave de emissão da empresa na Spedy." }).optional().nullable(),
 			certificado: FiscalCertificateMetadataSchema.default({}),
@@ -120,7 +114,6 @@ export const OrganizationFiscalConfigSchema = z.object({
 			nfe: z.object({}).default({}),
 		})
 		.default({
-			api: { baseUrl: "https://api.spedy.com.br" },
 			companyId: null,
 			companyApiKey: null,
 			certificado: {},

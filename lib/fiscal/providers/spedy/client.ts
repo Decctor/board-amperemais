@@ -2,16 +2,25 @@ import type { TFiscalOrganization } from "@/lib/fiscal/types";
 import axios, { type AxiosInstance } from "axios";
 import createHttpError from "http-errors";
 
-const DEFAULT_SPEDY_BASE_URL = "https://api.spedy.com.br";
+/**
+ * Host fixo da Spedy. Nao e configuravel por organizacao de proposito.
+ *
+ * A URL ja morou no JSON de configuracao fiscal de cada organizacao, e a credencial sempre veio
+ * do ambiente (`SPEDY_OWNER_API_KEY`). As duas fontes divergiam sem nenhuma validacao: uma
+ * organizacao apontada para `sandbox-api.spedy.com.br` recebia a chave de producao e falhava com
+ * 401 "Usuario nao autenticado" — sintoma que parece credencial errada quando o problema e o host.
+ *
+ * Host e credencial pertencem ao mesmo ambiente; separa-los em escopos diferentes (um por
+ * organizacao, outro global) torna a combinacao invalida representavel. Fixar o host elimina a
+ * classe inteira de erro. O ambiente de teste da emissao continua sendo o `ambiente`
+ * (HOMOLOGACAO/PRODUCAO), que e o da propria SEFAZ.
+ */
+export const SPEDY_BASE_URL = "https://api.spedy.com.br";
 
-function normalizeBaseUrl(value: string | null | undefined) {
-	return value?.trim() || process.env.SPEDY_BASE_URL || DEFAULT_SPEDY_BASE_URL;
-}
-
-export function createSpedyClient({ apiKey, baseUrl }: { apiKey?: string | null; baseUrl?: string | null }): AxiosInstance {
+export function createSpedyClient({ apiKey }: { apiKey?: string | null }): AxiosInstance {
 	if (!apiKey) throw new createHttpError.BadRequest("Chave de API da Spedy não configurada.");
 	return axios.create({
-		baseURL: normalizeBaseUrl(baseUrl),
+		baseURL: SPEDY_BASE_URL,
 		headers: {
 			"X-Api-Key": apiKey,
 			"Content-Type": "application/json",
@@ -19,17 +28,10 @@ export function createSpedyClient({ apiKey, baseUrl }: { apiKey?: string | null;
 	});
 }
 
-export function getSpedyOwnerClient(organizacao?: TFiscalOrganization) {
-	return createSpedyClient({
-		apiKey: process.env.SPEDY_OWNER_API_KEY,
-		baseUrl: organizacao?.fiscalConfiguracao?.spedy?.api?.baseUrl,
-	});
+export function getSpedyOwnerClient() {
+	return createSpedyClient({ apiKey: process.env.SPEDY_OWNER_API_KEY });
 }
 
 export function getSpedyCompanyClient(organizacao: TFiscalOrganization) {
-	const config = organizacao.fiscalConfiguracao?.spedy;
-	return createSpedyClient({
-		apiKey: config?.companyApiKey,
-		baseUrl: config?.api?.baseUrl,
-	});
+	return createSpedyClient({ apiKey: organizacao.fiscalConfiguracao?.spedy?.companyApiKey });
 }

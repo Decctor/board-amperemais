@@ -142,7 +142,7 @@ export async function syncSpedyCompany(organizacao: TFiscalOrganization): Promis
 	const fiscal = organizacao.fiscalConfiguracao;
 	if (!fiscal?.cpfCnpj) throw new createHttpError.BadRequest("CPF/CNPJ fiscal nao configurado.");
 
-	const client = getSpedyOwnerClient(organizacao);
+	const client = getSpedyOwnerClient();
 	const payload = mapOrganizationToSpedyCompany(organizacao);
 	let company: TSpedyCompanyResponse;
 
@@ -190,7 +190,7 @@ export async function syncSpedyCompanyCertificate(
 	formData.append("certificateFile", new Blob([input.certificate], { type: CERTIFICATE_MIME_TYPE }), input.fileName);
 	formData.append("password", input.password);
 
-	const client = getSpedyOwnerClient(organizacao);
+	const client = getSpedyOwnerClient();
 	try {
 		// O client tem `application/json` como padrao, e nesse caso o axios serializaria o FormData como JSON
 		// (`{"certificateFile":{}}`). O header abaixo devolve o controle ao adapter, que monta o multipart com boundary.

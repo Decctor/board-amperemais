@@ -41,10 +41,6 @@ function normalizeFiscalConfig(config?: Partial<TInternalFiscalSettingsState["fi
 		spedy: {
 			...DEFAULT_FISCAL_CONFIG.spedy,
 			...existingSpedy,
-			api: {
-				...DEFAULT_FISCAL_CONFIG.spedy.api,
-				...existingSpedy.api,
-			},
 			certificado: {
 				...DEFAULT_FISCAL_CONFIG.spedy.certificado,
 				...existingSpedy.certificado,
