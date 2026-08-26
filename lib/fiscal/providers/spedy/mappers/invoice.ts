@@ -19,7 +19,14 @@ import {
 	resolveFiscalItemName,
 } from "./utils";
 
-function mapReceiver(snapshot: TFiscalSaleContext["destinatarioSnapshot"]) {
+/**
+ * Razao social obrigatoria do destinatario em homologacao (NT 2013.005). A SEFAZ recusa qualquer
+ * documento de teste cujo `xNome` nao seja exatamente esta string — o nome real do cliente so pode
+ * trafegar em producao. Sem acentos e em caixa alta, como o leiaute exige.
+ */
+const NOME_DESTINATARIO_HOMOLOGACAO = "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL";
+
+function mapReceiver(snapshot: TFiscalSaleContext["destinatarioSnapshot"], isHomologacao: boolean) {
 	if (!snapshot) return undefined;
 	const address = snapshot.endereco as
 		| {
@@ -32,8 +39,10 @@ function mapReceiver(snapshot: TFiscalSaleContext["destinatarioSnapshot"]) {
 				complemento?: string | null;
 		  }
 		| undefined;
+	const nomeReal = typeof snapshot.nome === "string" ? snapshot.nome : undefined;
+
 	return {
-		name: typeof snapshot.nome === "string" ? snapshot.nome : undefined,
+		name: isHomologacao ? NOME_DESTINATARIO_HOMOLOGACAO : nomeReal,
 		federalTaxNumber: onlyDigits(String(snapshot.cpfCnpj ?? "")),
 		stateTaxNumber: mapTaxRegistration(typeof snapshot.inscricaoEstadual === "string" ? snapshot.inscricaoEstadual : null),
 		email: nonEmptyString(typeof snapshot.email === "string" ? snapshot.email : null),
@@ -65,10 +74,18 @@ export function mapSaleContextToSpedyInvoicePayload(context: TFiscalSaleContext,
 		? buildFiscalPaymentsForManagedSale({ payments: context.pagamentos, integracaoMetadados, fiscalTotal: taxation.totais.vNF })
 		: context.pagamentos;
 
+	// A Spedy usa `effectiveDate` como a data de emissao do documento (dhEmi) — o retorno dela
+	// ecoa esse valor em `issuedOn`, nao o `issuedOn` que enviamos. Preenche-lo com a data da
+	// venda datava a NF-e no passado e a SEFAZ nao autoriza dhEmi retroativa: emitir hoje uma
+	// venda de 21 dias atras voltava sem autorizacao. Uma nota e emitida no instante em que e
+	// transmitida; a data do fato gerador e informacao de negocio, nao dhEmi.
+	const emissaoAgora = new Date().toISOString();
+	const ambienteSpedy = mapFiscalEnvironmentToSpedy(context.organizacao.fiscalConfiguracao?.ambiente);
+
 	return {
 		integrationId: buildSpedyIntegrationId(documento.referencia),
-		issuedOn: new Date().toISOString(),
-		effectiveDate: context.venda.dataVenda?.toISOString?.() ?? new Date().toISOString(),
+		issuedOn: emissaoAgora,
+		effectiveDate: emissaoAgora,
 		number: documento.numero ? Number(documento.numero) : context.serie.proximoNumero,
 		status: "created",
 		sendEmailToCustomer: false,
@@ -78,12 +95,12 @@ export function mapSaleContextToSpedyInvoicePayload(context: TFiscalSaleContext,
 		purposeType: mapPurposeType(context.operacao.finalidade),
 		issueType: "normal",
 		operationNature: context.operacao.naturezaOperacao,
-		operationDate: new Date().toISOString(),
+		operationDate: emissaoAgora,
 		destination: isNfce ? "internal" : mapDestinationType(taxation.scenario.escopo),
 		presenceType: mapPresenceType(context.operacao.presencaConsumidor),
 		isFinalCustomer: context.operacao.consumidorFinal,
-		environmentType: mapFiscalEnvironmentToSpedy(context.organizacao.fiscalConfiguracao?.ambiente),
-		receiver: mapReceiver(context.destinatarioSnapshot),
+		environmentType: ambienteSpedy,
+		receiver: mapReceiver(context.destinatarioSnapshot, ambienteSpedy === "development"),
 		items: taxation.itens.map(({ item, result }, index) => {
 			const perfil = context.perfisProdutos.find((profile) => profile.produtoId === item.produtoId);
 			return {

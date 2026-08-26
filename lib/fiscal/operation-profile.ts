@@ -62,7 +62,7 @@ export async function resolveOperationProfileForSale({
 		return profile;
 	}
 
-	const candidates = resolveExpectedConsumerPresenceCandidates(signals);
+	const candidates = resolveExpectedConsumerPresenceCandidates({ ...signals, tipoDocumento });
 
 	if (operacaoPadraoPorTipoId) {
 		const configuredProfile = await findFiscalOperationProfileById({
