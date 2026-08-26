@@ -43,6 +43,8 @@
 		"test:data-collecting-template-vars": "tsx ./scripts/validate-data-collecting-template-variables.ts",
 		"test:goals": "node --import tsx --test lib/goals/pacing.test.ts lib/operation-timezone.test.ts",
 		"test:whatsapp-parsing": "node --import tsx --test lib/whatsapp/parsing.test.ts",
+		"test:geo": "node --import tsx --test lib/geo/brazilian-locations.test.ts",
+		"normalize:client-locations": "tsx ./scripts/normalize-client-locations.ts",
 		"test:ai-quotes": "node --import tsx --test lib/ai/operations/hash.test.ts lib/ai/tools/quotes.test.ts lib/ai/tools/product-availability.test.ts lib/products/availability.test.ts lib/sales/resolve-sale-items.test.ts lib/sales/quote-freshness.test.ts lib/payments/resolve-payment-financial-account.test.ts lib/sales/drafts/sync-draft-items.test.ts lib/sales/sale-processing/process-sale-fulfillment-correction.test.ts schemas/ai-agents.test.ts lib/finances/resolve-accounting-default-accounts.test.ts",
 		"pilot:ai-quotes": "tsx ./scripts/prepare-ai-agent-quotes-pilot.ts",
 		"sync:nuvemshop-manual": "tsx ./utils/scripts/sync-nuvemshop-manual-collecting.ts",

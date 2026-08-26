@@ -1,4 +1,5 @@
 import { formatPhoneAsBase, formatToCEP, formatToPhone } from "@/lib/formatting";
+import { normalizeCityName, normalizeUf } from "@/lib/geo/brazilian-locations";
 import type { TGetCardapioWebOrderDetailsOutput } from "./types";
 import { TClientEntity } from "@/services/drizzle/schema";
 import { getCardapioWebAddOnOptionExternalId } from "./external-ids";
@@ -126,8 +127,9 @@ export function mapCardapioWebClient(
 		telefone: phone,
 		telefoneBase: phoneBase,
 		localizacaoCep: deliveryAddress?.postal_code ? formatToCEP(deliveryAddress.postal_code) : null,
-		localizacaoEstado: deliveryAddress?.state?.toUpperCase() || null,
-		localizacaoCidade: deliveryAddress?.city?.toUpperCase() || null,
+		// toUpperCase sozinho nao resolve nome por extenso nem acentuacao divergente.
+		localizacaoEstado: normalizeUf(deliveryAddress?.state),
+		localizacaoCidade: normalizeCityName(deliveryAddress?.city, deliveryAddress?.state),
 		localizacaoBairro: deliveryAddress?.neighborhood || "",
 		localizacaoLogradouro: deliveryAddress?.street || "",
 		localizacaoNumero: deliveryAddress?.number || "",

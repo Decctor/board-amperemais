@@ -1,4 +1,5 @@
 import type { TCanonicalClient, TCanonicalImportBatch } from "@/lib/data-connectors";
+import { normalizeLocation } from "@/lib/geo/brazilian-locations";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
 import { clients, partners, productAddOnOptions, productAddOns, productVariants, products, sellers } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -180,6 +181,11 @@ export async function syncAuxiliaryEntities({
 		const firstSale = getFirstValidSaleForClient(batch, client);
 		const firstPurchaseDate = firstSale?.occurredAt ?? null;
 		const authorSellerId = firstSale?.seller ? (context.sellersByIdentifier.get(firstSale.seller.identifier) ?? null) : null;
+		// Cada conector entrega a UF num formato: a NuvemShop manda "Paraná" por extenso, o
+		// CardapioWeb manda a sigla. Normalizar aqui — o ponto por onde toda integracao passa —
+		// evita gravar torto e quebrar o escopo fiscal (CFOP intra vs interestadual) e os
+		// filtros de publico de campanha, que casam por igualdade exata.
+		const location = normalizeLocation({ estado: client.location?.state, cidade: client.location?.city });
 		const inserted = await tx
 			.insert(clients)
 			.values({
@@ -193,8 +199,8 @@ export async function syncAuxiliaryEntities({
 				telefoneBase: client.basePhone,
 				email: client.email,
 				localizacaoCep: client.location?.cep,
-				localizacaoEstado: client.location?.state,
-				localizacaoCidade: client.location?.city,
+				localizacaoEstado: location.estado,
+				localizacaoCidade: location.cidade,
 				localizacaoBairro: client.location?.neighborhood,
 				localizacaoLogradouro: client.location?.street,
 				localizacaoNumero: client.location?.number,
