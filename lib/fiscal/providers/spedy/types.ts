@@ -47,6 +47,16 @@ export type TSpedyCompanyResponse = {
 	} | null;
 };
 
+// Envelope de paginacao das listagens da Spedy. `hasNext` e o sinal de parada — nao ha
+// filtro por CNPJ na query, entao a busca por documento percorre as paginas.
+export type TSpedyCompanyListResponse = {
+	totalCount?: number | null;
+	pageCount?: number | null;
+	pageSize?: number | null;
+	hasNext?: boolean | null;
+	items?: TSpedyCompanyResponse[] | null;
+};
+
 export type TSpedyCertificateResponse = {
 	id?: string | null;
 	expirationAt?: string | null;

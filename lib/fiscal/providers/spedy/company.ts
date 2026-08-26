@@ -8,7 +8,7 @@ import createHttpError from "http-errors";
 import { getSpedyOwnerClient } from "./client";
 import { describeSpedyError, extractSpedyErrorMessages, toSpedyHttpError } from "./errors";
 import { mapFiscalEnvironmentToSpedy } from "./status";
-import type { TSpedyCertificateResponse, TSpedyCompanyResponse } from "./types";
+import type { TSpedyCertificateResponse, TSpedyCompanyListResponse, TSpedyCompanyResponse } from "./types";
 import { mapTaxRegistration, nonEmptyString, onlyDigits } from "./mappers/utils";
 
 function mapTaxRegime(regime: number) {
@@ -138,6 +138,35 @@ function pickCurrentCertificate(certificates: TSpedyCertificateResponse[]) {
 		})[0];
 }
 
+// Paginacao da listagem de empresas: a API ignora filtros por CNPJ na query, entao a busca
+// percorre as paginas. `hasNext` encerra o laco; o teto de paginas so existe para o caso
+// patologico de a API nunca zerar essa flag.
+const SPEDY_COMPANY_PAGE_SIZE = 50;
+const SPEDY_COMPANY_MAX_PAGES = 100;
+
+/**
+ * Procura na conta da Spedy uma empresa ja cadastrada com este CNPJ.
+ *
+ * A Spedy trata o CNPJ como chave natural: criar uma segunda empresa com o mesmo documento
+ * responde 400 "O CNPJ ja possui uma conta vinculada". Nosso `companyId` pode faltar por motivos
+ * legitimos — configuracao recriada, empresa cadastrada direto no painel da Spedy, duas
+ * organizacoes nossas com o mesmo CNPJ — e nesses casos criar e a acao errada. Adotar o vinculo
+ * existente torna a sincronizacao idempotente em vez de irrecuperavel pela UI.
+ */
+async function findSpedyCompanyIdByCnpj(client: ReturnType<typeof getSpedyOwnerClient>, cpfCnpj: string): Promise<string | null> {
+	const target = onlyDigits(cpfCnpj);
+	if (!target) return null;
+
+	for (let page = 1; page <= SPEDY_COMPANY_MAX_PAGES; page++) {
+		const { data } = await client.get<TSpedyCompanyListResponse>(`/v1/companies?pageSize=${SPEDY_COMPANY_PAGE_SIZE}&page=${page}`);
+		const items = data?.items ?? [];
+		const match = items.find((company) => onlyDigits(company.federalTaxNumber ?? "") === target);
+		if (match?.id) return match.id;
+		if (!data?.hasNext) return null;
+	}
+	return null;
+}
+
 export async function syncSpedyCompany(organizacao: TFiscalOrganization): Promise<TProviderCompanySyncResult> {
 	const fiscal = organizacao.fiscalConfiguracao;
 	if (!fiscal?.cpfCnpj) throw new createHttpError.BadRequest("CPF/CNPJ fiscal nao configurado.");
@@ -147,9 +176,11 @@ export async function syncSpedyCompany(organizacao: TFiscalOrganization): Promis
 	let company: TSpedyCompanyResponse;
 
 	try {
-		if (fiscal.spedy.companyId) {
-			console.log("[DEBUG] [SPEDY] Sincronizando empresa existente.", fiscal.spedy.companyId);
-			const { data } = await client.put<TSpedyCompanyResponse>(`/v1/companies/${fiscal.spedy.companyId}`, { ...payload, id: fiscal.spedy.companyId });
+		const companyId = fiscal.spedy.companyId ?? (await findSpedyCompanyIdByCnpj(client, fiscal.cpfCnpj));
+
+		if (companyId) {
+			console.log("[DEBUG] [SPEDY] Sincronizando empresa existente.", companyId);
+			const { data } = await client.put<TSpedyCompanyResponse>(`/v1/companies/${companyId}`, { ...payload, id: companyId });
 			company = data;
 		} else {
 			console.log("[DEBUG] [SPEDY] Criando nova empresa.");
