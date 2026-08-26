@@ -46,7 +46,7 @@ export default function SimplePricing() {
 						</ul>
 
 						<a
-							href="https://app.recompracrm.com.br/auth/signup"
+							href="https://www.recompracrm.com.br/auth/signup"
 							className="flex items-center justify-center w-full bg-[#FFB900] hover:bg-[#e6a700] text-zinc-900 font-black text-base px-6 py-4 rounded-xl hover:-translate-y-0.5 transition-all duration-200 shadow-lg shadow-amber-500/25"
 						>
 							Começar agora — 15 dias grátis →

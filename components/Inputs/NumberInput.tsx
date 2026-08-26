@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { memo, useCallback, useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 import { Field, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
+import { RequiredIndicator } from "./RequiredIndicator";
 
 type NumberInputProps = {
 	label: string;
@@ -58,7 +59,7 @@ function NumberInput({
 			{showLabel ? (
 				<FieldLabel htmlFor={inputIdentifier} className={cn("text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 					{label}
-					{required ? <span className="text-red-500">*</span> : null}
+					{required ? <RequiredIndicator /> : null}
 				</FieldLabel>
 			) : null}
 

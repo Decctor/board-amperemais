@@ -73,9 +73,7 @@ function OAuthConnectMockup({ logo, name }: MockupProps) {
 			<div className="mx-auto flex max-w-sm flex-col items-center gap-4 text-center">
 				<LogoLockup logo={logo} name={name} size={48} />
 				<div>
-					<h4 className="text-sm font-black tracking-tight text-slate-900">
-						O RecompraCRM quer acessar sua conta {name}
-					</h4>
+					<h4 className="text-sm font-black tracking-tight text-slate-900">O RecompraCRM quer acessar sua conta {name}</h4>
 					<p className="mt-1 text-xs text-slate-500">Acesso somente leitura aos seus dados de venda</p>
 				</div>
 				<div className="flex w-full flex-col gap-1.5">
@@ -89,7 +87,10 @@ function OAuthConnectMockup({ logo, name }: MockupProps) {
 				</div>
 				<div className="flex w-full gap-2">
 					<div className="flex-1 rounded-xl border border-slate-200 py-2.5 text-center text-xs font-bold text-slate-500">Cancelar</div>
-					<div className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-center text-xs font-black text-white" style={{ backgroundColor: BLUE }}>
+					<div
+						className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-center text-xs font-black text-white"
+						style={{ backgroundColor: BLUE }}
+					>
 						<ShieldCheck className="h-3.5 w-3.5" /> Autorizar
 					</div>
 				</div>
@@ -105,7 +106,7 @@ function OAuthConnectMockup({ logo, name }: MockupProps) {
 function CredentialConnectMockup({ logo, name }: MockupProps) {
 	const fields = ["Identificador da loja", "Chave de acesso"];
 	return (
-		<BrowserFrame url="app.recompracrm.com.br/configuracoes">
+		<BrowserFrame url="www.recompracrm.com.br/configuracoes">
 			<div className="mx-auto flex max-w-sm flex-col gap-4">
 				<div className="flex items-center gap-3">
 					<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white p-1.5 ring-1 ring-slate-100">
@@ -164,7 +165,10 @@ function SyncStatusMockup({ logo, name }: MockupProps) {
 				</div>
 				<div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ backgroundColor: "rgba(36,84,156,0.06)" }}>
 					<span className="relative flex h-2 w-2">
-						<span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 motion-reduce:animate-none" style={{ backgroundColor: BLUE }} />
+						<span
+							className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 motion-reduce:animate-none"
+							style={{ backgroundColor: BLUE }}
+						/>
 						<span className="relative inline-flex h-2 w-2 rounded-full" style={{ backgroundColor: BLUE }} />
 					</span>
 					<span className="text-xs font-semibold" style={{ color: BLUE }}>
@@ -250,7 +254,10 @@ function ImportedSalesMockup({ logo, name }: MockupProps) {
 							<span className="flex items-center gap-1 rounded-md bg-green-50 px-2 py-1 text-[0.6rem] font-bold text-green-600">
 								<BadgePercent className="h-3 w-3" /> +R$ 6,00
 							</span>
-							<span className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-bold text-slate-900" style={{ backgroundColor: "rgba(36,84,156,0.10)" }}>
+							<span
+								className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-bold text-slate-900"
+								style={{ backgroundColor: "rgba(36,84,156,0.10)" }}
+							>
 								<BadgeDollarSign className="h-3.5 w-3.5" /> R$ 120,00
 							</span>
 						</div>

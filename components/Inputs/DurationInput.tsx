@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Field, FieldDescription, FieldLabel } from "../ui/field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { RequiredIndicator } from "./RequiredIndicator";
 
 type DurationOption<TMeasure extends string = string> = {
 	id: string | number;
@@ -81,7 +82,7 @@ function DurationInput<TMeasure extends string = string>({
 		<Field className={cn("gap-1.5", className)} data-disabled={!editable}>
 			<FieldLabel htmlFor={`${inputIdentifier}_value`} className={cn("text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 				{label}
-				{required && <span className="text-red-500">*</span>}
+				{required ? <RequiredIndicator /> : null}
 			</FieldLabel>
 			<div
 				className={cn(

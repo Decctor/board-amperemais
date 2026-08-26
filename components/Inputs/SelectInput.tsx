@@ -7,6 +7,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
 import { Field, FieldLabel } from "../ui/field";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { RequiredIndicator } from "./RequiredIndicator";
 
 type SelectOption = {
 	id: string | number;
@@ -54,7 +55,7 @@ function SelectInput({
 			{showLabel && (
 				<FieldLabel htmlFor={inputIdentifier} className={cn("text-start text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 					{label}
-					{required ? <span className="text-red-500">*</span> : null}
+					{required ? <RequiredIndicator /> : null}
 				</FieldLabel>
 			)}
 

@@ -3,6 +3,8 @@ import type { TGetSaleDiscountContextOutput } from "@/app/api/pos/sales/discount
 import type { TActionApprovalStatusEnum } from "@/schemas/enums";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import { useState } from "react";
+import { useDebounceMemo } from "../hooks/use-debounce";
 
 async function fetchActionApprovals(status: TActionApprovalStatusEnum) {
 	const searchParams = new URLSearchParams();
@@ -26,9 +28,23 @@ async function fetchActionApprovalHistory(filters: ActionApprovalHistoryFilters)
 	return data.data.default ?? [];
 }
 
-export function useActionApprovalHistory(filters: ActionApprovalHistoryFilters) {
-	const queryKey = ["action-approval-history", filters];
-	return { ...useQuery({ queryKey, queryFn: () => fetchActionApprovalHistory(filters) }), queryKey };
+export function useActionApprovalHistory({ initialFilters }: { initialFilters?: Partial<ActionApprovalHistoryFilters> } = {}) {
+	const [filters, setFilters] = useState<ActionApprovalHistoryFilters>({
+		search: initialFilters?.search ?? "",
+		periodAfter: initialFilters?.periodAfter ?? null,
+		periodBefore: initialFilters?.periodBefore ?? null,
+	});
+	const debouncedSearch = useDebounceMemo({ search: filters.search }, 500);
+	const finalFilters = { ...filters, ...debouncedSearch };
+	const queryKey = ["action-approval-history", finalFilters];
+
+	return {
+		...useQuery({ queryKey, queryFn: () => fetchActionApprovalHistory(finalFilters) }),
+		queryKey,
+		filters,
+		updateFilters: (newFilters: Partial<ActionApprovalHistoryFilters>) => setFilters((previous) => ({ ...previous, ...newFilters })),
+		debouncedFilters: finalFilters,
+	};
 }
 
 export function useActionApprovals({ status = "PENDENTE" }: { status?: TActionApprovalStatusEnum } = {}) {

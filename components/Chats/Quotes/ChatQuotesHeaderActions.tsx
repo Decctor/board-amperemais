@@ -33,13 +33,7 @@ type ChatQuotesHeaderActionsProps = {
 	onInsertInConversation?: (texto: string) => void;
 };
 
-export function ChatQuotesHeaderActions({
-	chatId,
-	clientId,
-	clientName,
-	permissions,
-	onInsertInConversation,
-}: ChatQuotesHeaderActionsProps) {
+export function ChatQuotesHeaderActions({ chatId, clientId, clientName, permissions, onInsertInConversation }: ChatQuotesHeaderActionsProps) {
 	const [isBuilderOpen, setIsBuilderOpen] = useState(false);
 	const { data } = useClientOpenQuotes({ clientId });
 
@@ -89,16 +83,14 @@ export function ChatQuotesHeaderActions({
 											clientId={clientId}
 											quotes={quotes}
 											permissions={permissions}
-											onInsertInConversation={
-												onInsertInConversation ? (quote) => onInsertInConversation(buildQuoteMessage(quote)) : undefined
-											}
+											onInsertInConversation={onInsertInConversation ? (quote) => onInsertInConversation(buildQuoteMessage(quote)) : undefined}
 										/>
 									</div>
 
 									{permissions.criar && (
 										<Button variant="ghost" size="sm" className="mt-2 w-full text-xs" onClick={() => setIsBuilderOpen(true)}>
 											<Plus className="size-3.5" />
-											Novo orçamento
+											NOVO ORÇAMENTO
 										</Button>
 									)}
 								</PopoverContent>

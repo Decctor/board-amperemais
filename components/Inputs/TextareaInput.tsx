@@ -3,6 +3,7 @@ import type React from "react";
 import { useId } from "react";
 import { Field, FieldLabel } from "../ui/field";
 import { Textarea } from "../ui/textarea";
+import { RequiredIndicator } from "./RequiredIndicator";
 
 type TextareaInputProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
 	label: string;
@@ -36,7 +37,7 @@ function TextareaInput({
 			{showLabel ? (
 				<FieldLabel htmlFor={inputIdentifier} className={cn("text-foreground/80 text-start text-sm font-medium tracking-tight", labelClassName)}>
 					{label}
-					{required ? <span className="text-red-500">*</span> : null}
+					{required ? <RequiredIndicator /> : null}
 				</FieldLabel>
 			) : null}
 			<Textarea

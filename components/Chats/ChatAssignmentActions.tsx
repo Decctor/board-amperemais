@@ -198,14 +198,14 @@ export function ChatAssignmentActions({ chatId, atendimento, atendimentoIa, curr
 				<span
 					className={cn("flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground", !compact && "col-span-2 w-fit")}
 				>
-					<Sparkles className="h-3 w-3" /> Automação
+					<Sparkles className="h-3 w-3" /> AUTOMAÇÃO
 				</span>
 			)}
 			{atendimento?.responsavelTipo === "EXTERNO" && (
 				<span
 					className={cn("flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground", !compact && "col-span-2 w-fit")}
 				>
-					<Smartphone className="h-3 w-3" /> Atendido pelo telefone
+					<Smartphone className="h-3 w-3" /> TELEFONE
 				</span>
 			)}
 		</div>

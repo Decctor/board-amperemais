@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { useId } from "react";
 import { Field, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
+import { RequiredIndicator } from "./RequiredIndicator";
 type TextInputProps = {
 	label: string;
 	labelClassName?: string;
@@ -29,7 +30,7 @@ function DateInput({
 			{showLabel ? (
 				<FieldLabel htmlFor={inputIdentifier} className={cn("text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 					{label}
-					{required ? <span className="text-red-500">*</span> : null}
+					{required ? <RequiredIndicator /> : null}
 				</FieldLabel>
 			) : null}
 			<Input

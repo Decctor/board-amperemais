@@ -89,5 +89,5 @@ export function getMessageTemplateButtonPreset(presetId: string): TMessageTempla
 }
 
 export function getDefaultAppOrigin() {
-	return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_URL || "https://app.recompracrm.com.br";
+	return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_URL || "https://www.recompracrm.com.br";
 }

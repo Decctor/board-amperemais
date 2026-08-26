@@ -394,7 +394,7 @@ function POIFlowDevice() {
 					<div className="w-2 h-2 rounded-full bg-yellow-500/60" />
 					<div className="w-2 h-2 rounded-full bg-green-500/60" />
 					<div className="ml-2 flex-1 h-3 bg-white/5 rounded-full max-w-[120px]" />
-					<div className="ml-auto text-[8px] text-white/30 font-medium">app.recompracrm.com.br/poi</div>
+					<div className="ml-auto text-[8px] text-white/30 font-medium">www.recompracrm.com.br/poi</div>
 				</div>
 
 				{/* Content */}

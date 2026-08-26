@@ -480,14 +480,7 @@ function ActivityTab({ chat }: { chat: TChatMessagesPage["chat"] }) {
 	);
 }
 
-export function ChatContextPanel({
-	chatId,
-	chat,
-	currentUserId,
-	quotePermissions,
-	onInsertQuoteInConversation,
-	className,
-}: ChatContextPanelProps) {
+export function ChatContextPanel({ chatId, chat, currentUserId, quotePermissions, onInsertQuoteInConversation, className }: ChatContextPanelProps) {
 	return (
 		<Tabs defaultValue="atendimento" className={cn("flex h-full min-h-0 flex-col", className)}>
 			<div className="shrink-0 px-3 pt-3">
@@ -512,12 +505,7 @@ export function ChatContextPanel({
 					<AttendanceTab chatId={chatId} chat={chat} currentUserId={currentUserId} />
 				</TabsContent>
 				<TabsContent value="cliente" className="mt-0">
-					<ClientTab
-						chatId={chatId}
-						chat={chat}
-						quotePermissions={quotePermissions}
-						onInsertQuoteInConversation={onInsertQuoteInConversation}
-					/>
+					<ClientTab chatId={chatId} chat={chat} quotePermissions={quotePermissions} onInsertQuoteInConversation={onInsertQuoteInConversation} />
 				</TabsContent>
 				<TabsContent value="atividade" className="mt-0">
 					<ActivityTab chat={chat} />

@@ -18,6 +18,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Building2, Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
+import { RequiredIndicator } from "./RequiredIndicator";
 
 export type TSelectSupplierValue = {
 	id: string;
@@ -156,7 +157,7 @@ function SelectSupplierInput({
 			</button>
 			<div className="flex flex-col gap-1">
 				<label className="text-xs font-medium tracking-tight text-foreground/80">
-					NOME<span className="text-red-500">*</span>
+					NOME <RequiredIndicator />
 				</label>
 				<Input
 					value={draft?.nome ?? ""}

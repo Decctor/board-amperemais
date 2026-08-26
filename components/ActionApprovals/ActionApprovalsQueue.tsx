@@ -10,7 +10,21 @@ import { decideActionApproval } from "@/lib/mutations/action-approvals";
 import { useActionApprovalHistory, useActionApprovals } from "@/lib/queries/action-approvals";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BadgeDollarSign, BadgePercent, CalendarDays, CheckCheck, CircleUser, Clock3, Database, GitPullRequestArrow, RefreshCcw, Search, ShieldCheck, ShieldX, X } from "lucide-react";
+import {
+	BadgeDollarSign,
+	BadgePercent,
+	CalendarDays,
+	CheckCheck,
+	CircleUser,
+	Clock3,
+	Database,
+	GitPullRequestArrow,
+	RefreshCcw,
+	Search,
+	ShieldCheck,
+	ShieldX,
+	X,
+} from "lucide-react";
 import { BsCalendarPlus } from "react-icons/bs";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -46,84 +60,140 @@ export function ActionApprovalsQueue({ orgId, canApprove }: ActionApprovalsQueue
 
 	return (
 		<div className="flex w-full flex-col gap-4">
-		<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
-			<div className="flex flex-col">
-				<div className="flex items-center justify-between">
-					<h1 className="text-xs font-medium tracking-tight uppercase">APROVAÇÕES PENDENTES</h1>
-					<GitPullRequestArrow className="w-4 h-4 min-w-4 min-h-4" />
+			<div className="bg-card border-border flex w-full flex-col gap-1 rounded-xl border px-3 py-4 shadow-2xs">
+				<div className="flex flex-col">
+					<div className="flex items-center justify-between">
+						<h1 className="text-xs font-medium tracking-tight uppercase">APROVAÇÕES PENDENTES</h1>
+						<GitPullRequestArrow className="w-4 h-4 min-w-4 min-h-4" />
+					</div>
+					<p className="text-[0.65rem] text-muted-foreground">
+						Solicitações de ações que excedem os limites dos operadores (ex: descontos acima do teto no PDV).
+					</p>
 				</div>
-				<p className="text-[0.65rem] text-muted-foreground">
-					Solicitações de ações que excedem os limites dos operadores (ex: descontos acima do teto no PDV).
-				</p>
-			</div>
 
-			{isLoading ? (
-				<div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-					<RefreshCcw className="h-4 w-4 animate-spin" /> Carregando solicitações...
-				</div>
-			) : requests.length === 0 ? (
-				<p className="py-4 text-sm text-muted-foreground">Nenhuma solicitação pendente no momento.</p>
-			) : (
-				<div className="mt-4 flex flex-col gap-3">
-					{requests.map((request) => (
-						<ActionApprovalRequestCard
-							key={request.id}
-							request={request}
-							canApprove={canApprove}
-							disabled={isDeciding}
-							onDecide={(decisao, motivo) => decide({ id: request.id, decisao, motivo })}
-						/>
-					))}
-				</div>
-			)}
-		</div>
-		<ActionApprovalHistory />
+				{isLoading ? (
+					<div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+						<RefreshCcw className="h-4 w-4 animate-spin" /> Carregando solicitações...
+					</div>
+				) : requests.length === 0 ? (
+					<p className="py-4 text-sm text-muted-foreground">Nenhuma solicitação pendente no momento.</p>
+				) : (
+					<div className="mt-4 flex flex-col gap-3">
+						{requests.map((request) => (
+							<ActionApprovalRequestCard
+								key={request.id}
+								request={request}
+								canApprove={canApprove}
+								disabled={isDeciding}
+								onDecide={(decisao, motivo) => decide({ id: request.id, decisao, motivo })}
+							/>
+						))}
+					</div>
+				)}
+			</div>
+			<ActionApprovalHistory />
 		</div>
 	);
 }
 
 const HISTORY_STATUS_CONFIG = {
-	APROVADA: { label: "Aprovada", icon: ShieldCheck, className: "bg-primary/10 text-primary" },
-	REJEITADA: { label: "Rejeitada", icon: ShieldX, className: "bg-destructive/10 text-destructive" },
-	CANCELADA: { label: "Cancelada", icon: X, className: "bg-muted text-muted-foreground" },
-	EXPIRADA: { label: "Expirada", icon: Clock3, className: "bg-amber-500/10 text-amber-700" },
-	CONSUMIDA: { label: "Consumida", icon: CheckCheck, className: "bg-green-500/10 text-green-700" },
+	APROVADA: { label: "APROVADA", icon: ShieldCheck, className: "bg-primary/10 text-primary" },
+	REJEITADA: { label: "REJEITADA", icon: ShieldX, className: "bg-destructive/10 text-destructive" },
+	CANCELADA: { label: "CANCELADA", icon: X, className: "bg-muted text-muted-foreground" },
+	EXPIRADA: { label: "EXPIRADA", icon: Clock3, className: "bg-amber-500/10 text-amber-700" },
+	CONSUMIDA: { label: "CONSUMIDA", icon: CheckCheck, className: "bg-green-500/10 text-green-700" },
 } as const;
 
 function ActionApprovalHistory() {
-	const [search, setSearch] = useState("");
-	const [periodAfter, setPeriodAfter] = useState<Date | null>(null);
-	const [periodBefore, setPeriodBefore] = useState<Date | null>(null);
-	const { data: requests = [], isLoading, isError, error } = useActionApprovalHistory({ search, periodAfter, periodBefore });
+	const { data: requests = [], isLoading, isError, error, filters, updateFilters } = useActionApprovalHistory();
 
 	return (
 		<section className="overflow-hidden rounded-xl border border-border bg-card shadow-2xs">
 			<header className="flex flex-col gap-3 border-b border-border px-4 py-4 lg:flex-row lg:items-end lg:justify-between">
 				<div>
-					<div className="flex items-center gap-2"><Database className="h-4 w-4 text-primary" /><h2 className="text-sm font-bold">Histórico de solicitações</h2></div>
+					<div className="flex items-center gap-2">
+						<Database className="h-4 w-4 text-primary" />
+						<h2 className="text-sm font-bold">HISTÓRICO DE SOLICITAÇÕES</h2>
+					</div>
 					<p className="mt-1 text-xs text-muted-foreground">Registro de decisões, cancelamentos, expirações e consumos.</p>
 				</div>
 				<div className="grid w-full gap-2 sm:grid-cols-3 lg:max-w-3xl">
-					<label className="relative sm:col-span-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Pesquisar histórico" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar solicitação..." className="pl-9" /></label>
-					<label className="relative"><CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Data inicial" type="date" className="pl-9" onChange={(event) => setPeriodAfter(event.target.value ? new Date(`${event.target.value}T00:00:00`) : null)} /></label>
-					<label className="relative"><CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Data final" type="date" className="pl-9" onChange={(event) => setPeriodBefore(event.target.value ? new Date(`${event.target.value}T23:59:59`) : null)} /></label>
+					<label className="relative sm:col-span-1">
+						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+						<Input
+							aria-label="Pesquisar histórico"
+							value={filters.search}
+							onChange={(event) => updateFilters({ search: event.target.value })}
+							placeholder="Buscar solicitação..."
+							className="pl-9"
+						/>
+					</label>
+					<label className="relative">
+						<CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+						<Input
+							aria-label="Data inicial"
+							type="date"
+							className="pl-9"
+							onChange={(event) => updateFilters({ periodAfter: event.target.value ? new Date(`${event.target.value}T00:00:00`) : null })}
+						/>
+					</label>
+					<label className="relative">
+						<CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+						<Input
+							aria-label="Data final"
+							type="date"
+							className="pl-9"
+							onChange={(event) => updateFilters({ periodBefore: event.target.value ? new Date(`${event.target.value}T23:59:59`) : null })}
+						/>
+					</label>
 				</div>
 			</header>
 			<div className="overflow-x-auto">
 				<table className="w-full min-w-[760px] text-left text-xs">
-					<thead className="bg-muted/50 text-[0.65rem] uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Solicitação</th><th className="px-4 py-3">Solicitante</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Decisão</th><th className="px-4 py-3 text-right">Valor</th></tr></thead>
+					<thead className="bg-muted/50 text-[0.65rem] uppercase tracking-wide text-muted-foreground">
+						<tr>
+							<th className="px-4 py-3">Solicitação</th>
+							<th className="px-4 py-3">Solicitante</th>
+							<th className="px-4 py-3">Status</th>
+							<th className="px-4 py-3">Decisão</th>
+							<th className="px-4 py-3 text-right">Valor</th>
+						</tr>
+					</thead>
 					<tbody className="divide-y divide-border">
 						{requests.map((request) => {
 							const config = HISTORY_STATUS_CONFIG[request.status as keyof typeof HISTORY_STATUS_CONFIG];
 							const StatusIcon = config?.icon ?? Clock3;
-							return <tr key={request.id} className="hover:bg-muted/30"><td className="px-4 py-3"><p className="font-semibold">{request.resumo.titulo}</p><p className="max-w-md truncate text-muted-foreground">{request.resumo.descricao}</p></td><td className="px-4 py-3">{request.solicitante?.nome ?? "Não identificado"}</td><td className="px-4 py-3"><span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold", config?.className)}><StatusIcon className="h-3.5 w-3.5" />{config?.label ?? request.status}</span></td><td className="px-4 py-3"><p>{request.decididaPor?.nome ?? "Automática"}</p><p className="text-muted-foreground">{request.dataDecisao ? formatDateAsLocale(request.dataDecisao, true) : "Sem decisão manual"}</p></td><td className="px-4 py-3 text-right font-semibold tabular-nums">{request.resumo.valorPrincipal !== null ? formatToMoney(request.resumo.valorPrincipal) : "–"}</td></tr>;
+							return (
+								<tr key={request.id} className="hover:bg-muted/30">
+									<td className="px-4 py-3">
+										<p className="font-semibold">{request.resumo.titulo}</p>
+										<p className="max-w-md truncate text-muted-foreground">{request.resumo.descricao}</p>
+									</td>
+									<td className="px-4 py-3">{request.solicitante?.nome ?? "Não identificado"}</td>
+									<td className="px-4 py-3">
+										<span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold", config?.className)}>
+											<StatusIcon className="h-3.5 w-3.5" />
+											{config?.label ?? request.status}
+										</span>
+									</td>
+									<td className="px-4 py-3">
+										<p>{request.decididaPor?.nome ?? "Automática"}</p>
+										<p className="text-muted-foreground">{request.dataDecisao ? formatDateAsLocale(request.dataDecisao, true) : "Sem decisão manual"}</p>
+									</td>
+									<td className="px-4 py-3 text-right font-semibold tabular-nums">
+										{request.resumo.valorPrincipal !== null ? formatToMoney(request.resumo.valorPrincipal) : "–"}
+									</td>
+								</tr>
+							);
 						})}
 					</tbody>
 				</table>
 			</div>
 			{isLoading ? <p className="px-4 py-8 text-center text-sm text-muted-foreground">Carregando histórico...</p> : null}
 			{isError ? <p className="px-4 py-8 text-center text-sm text-destructive">{getErrorMessage(error)}</p> : null}
-			{!isLoading && !isError && requests.length === 0 ? <p className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma solicitação encontrada com estes filtros.</p> : null}
+			{!isLoading && !isError && requests.length === 0 ? (
+				<p className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma solicitação encontrada com estes filtros.</p>
+			) : null}
 		</section>
 	);
 }

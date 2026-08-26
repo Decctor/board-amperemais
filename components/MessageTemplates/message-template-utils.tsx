@@ -77,5 +77,5 @@ export function getMessageTemplateButtonPreviewHref({ button, organizationId }: 
 
 function getDefaultAppOrigin() {
 	if (typeof window !== "undefined") return window.location.origin;
-	return process.env.NEXT_PUBLIC_APP_URL || "https://app.recompracrm.com.br";
+	return process.env.NEXT_PUBLIC_APP_URL || "https://www.recompracrm.com.br";
 }

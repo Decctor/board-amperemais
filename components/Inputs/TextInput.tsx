@@ -3,6 +3,7 @@ import type React from "react";
 import { useId } from "react";
 import { Field, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
+import { RequiredIndicator } from "./RequiredIndicator";
 
 type TextInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 	label: string;
@@ -15,7 +16,7 @@ type TextInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 	required?: boolean;
 	handleChange: (value: string) => void;
 	handleOnBlur?: () => void;
-	inputType?: "text" | "tel";
+	inputType?: "text" | "tel" | "password";
 };
 function TextInput({
 	label,
@@ -41,7 +42,7 @@ function TextInput({
 			{showLabel ? (
 				<FieldLabel htmlFor={inputIdentifier} className={cn("text-sm font-medium tracking-tight text-foreground/80", labelClassName)}>
 					{label}
-					{required ? <span className="text-red-500">*</span> : null}
+					{required ? <RequiredIndicator /> : null}
 				</FieldLabel>
 			) : null}
 

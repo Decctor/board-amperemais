@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, PencilLine } from "lucide-react";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { MarkdownViewer } from "./MarkdownViewer";
+import { RequiredIndicator } from "./RequiredIndicator";
 
 type MarkdownFieldProps = {
 	label: string;
@@ -20,7 +21,7 @@ export function MarkdownField({ label, value, handleChange, placeholder, editabl
 		<Field className="gap-2" data-disabled={!editable}>
 			<FieldLabel className="text-foreground/80 text-start text-sm font-medium tracking-tight">
 				{label}
-				{required ? <span className="text-red-500">*</span> : null}
+				{required ? <RequiredIndicator /> : null}
 			</FieldLabel>
 			<Tabs defaultValue={editable ? "editor" : "preview"}>
 				<TabsList aria-label={`Modos de ${label.toLowerCase()}`}>
@@ -36,11 +37,7 @@ export function MarkdownField({ label, value, handleChange, placeholder, editabl
 				</TabsContent>
 				<TabsContent value="preview">
 					<div className="border-border bg-background min-h-56 rounded-lg border px-4 py-3 shadow-xs">
-						{value.trim() ? (
-							<MarkdownViewer value={value} />
-						) : (
-							<p className="text-muted-foreground text-sm italic">Nada para pré-visualizar ainda.</p>
-						)}
+						{value.trim() ? <MarkdownViewer value={value} /> : <p className="text-muted-foreground text-sm italic">Nada para pré-visualizar ainda.</p>}
 					</div>
 				</TabsContent>
 			</Tabs>

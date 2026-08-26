@@ -17,7 +17,7 @@ function escapeHtml(value: unknown) {
 }
 
 function getAppBaseUrl() {
-	return process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "https://app.recompracrm.com.br";
+	return process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.recompracrm.com.br";
 }
 
 async function listFiscalNotificationRecipients(organization: TOrganizationEntity) {

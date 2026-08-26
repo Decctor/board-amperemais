@@ -5,8 +5,9 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { ActionApprovalPayloadSchema } from "@/schemas/action-approvals";
 import { ActionApprovalStatusEnum, ActionApprovalTypeEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
-import { actionApprovalRequests } from "@/services/drizzle/schema";
-import { and, eq, gte, ilike, lte, lt, ne, or, sql } from "drizzle-orm";
+import { actionApprovalRequests, users } from "@/services/drizzle/schema";
+import { and, eq, exists, gte, ilike, lte, lt, ne, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -80,9 +81,21 @@ const GetActionApprovalsInputSchema = z.object({
 	id: z.string({ invalid_type_error: "Tipo não válido para o ID da solicitação." }).optional().nullable(),
 	status: ActionApprovalStatusEnum.optional().nullable(),
 	scope: z.enum(["QUEUE", "HISTORY"]).optional().default("QUEUE"),
-	search: z.string().optional().nullable().transform((value) => value?.trim() || null),
-	periodAfter: z.string().optional().nullable().transform((value) => (value ? new Date(value) : null)),
-	periodBefore: z.string().optional().nullable().transform((value) => (value ? new Date(value) : null)),
+	search: z
+		.string()
+		.optional()
+		.nullable()
+		.transform((value) => value?.trim() || null),
+	periodAfter: z
+		.string()
+		.optional()
+		.nullable()
+		.transform((value) => (value ? new Date(value) : null)),
+	periodBefore: z
+		.string()
+		.optional()
+		.nullable()
+		.transform((value) => (value ? new Date(value) : null)),
 });
 export type TGetActionApprovalsInput = z.infer<typeof GetActionApprovalsInputSchema>;
 
@@ -107,18 +120,42 @@ async function getActionApprovals({ input, session }: { input: TGetActionApprova
 		getActionApprovalHandler(tipo).autorizaDecisao(session.membership!.permissoes),
 	);
 	const status = input.status ?? "PENDENTE";
-	const filters = [
-		eq(actionApprovalRequests.organizacaoId, orgId),
-		input.scope === "HISTORY" ? ne(actionApprovalRequests.status, "PENDENTE") : eq(actionApprovalRequests.status, status),
-		...(input.search
-			? [or(ilike(actionApprovalRequests.tipo, `%${input.search}%`), sql`${actionApprovalRequests.resumo}::text ILIKE ${`%${input.search}%`}`)!]
-			: []),
-		...(input.periodAfter ? [gte(actionApprovalRequests.dataInsercao, input.periodAfter)] : []),
-		...(input.periodBefore ? [lte(actionApprovalRequests.dataInsercao, input.periodBefore)] : []),
-		...(canDecideAny ? [] : [eq(actionApprovalRequests.solicitanteId, session.user.id)]),
-	];
+	const solicitante = alias(users, "action_approval_solicitante_search");
+	const decisor = alias(users, "action_approval_decisor_search");
+	const searchPattern = input.search ? `%${input.search}%` : null;
 	const requests = await db.query.actionApprovalRequests.findMany({
-		where: and(...filters),
+		where: (fields) => {
+			const filters = [
+				eq(fields.organizacaoId, orgId),
+				input.scope === "HISTORY" ? ne(fields.status, "PENDENTE") : eq(fields.status, status),
+				...(searchPattern
+					? [
+							or(
+								ilike(fields.tipo, searchPattern),
+								sql`${fields.status}::text ILIKE ${searchPattern}`,
+								sql`${fields.resumo}::text ILIKE ${searchPattern}`,
+								ilike(fields.motivoDecisao, searchPattern),
+								exists(
+									db
+										.select({ id: solicitante.id })
+										.from(solicitante)
+										.where(and(eq(solicitante.id, fields.solicitanteId), ilike(solicitante.nome, searchPattern))),
+								),
+								exists(
+									db
+										.select({ id: decisor.id })
+										.from(decisor)
+										.where(and(eq(decisor.id, fields.decididaPorId), ilike(decisor.nome, searchPattern))),
+								),
+							)!,
+						]
+					: []),
+				...(input.periodAfter ? [gte(fields.dataInsercao, input.periodAfter)] : []),
+				...(input.periodBefore ? [lte(fields.dataInsercao, input.periodBefore)] : []),
+				...(canDecideAny ? [] : [eq(fields.solicitanteId, session.user.id)]),
+			];
+			return and(...filters);
+		},
 		with: {
 			solicitante: { columns: { id: true, nome: true } },
 			decididaPor: { columns: { id: true, nome: true } },

@@ -1051,17 +1051,19 @@ function CompanyBasicInformation({ fiscalConfig, updateFiscalConfig, callbacks }
 				</div>
 				<div className="w-full lg:w-1/3">
 					<TextInput
-						label="TOKEN NFC-E"
+						label="ID DO TOKEN CSC"
 						value={fiscalConfig.spedy?.nfce.tokenId ?? ""}
-						placeholder="Token NFC-e"
+						placeholder="Identificador fornecido pela SEFAZ"
 						handleChange={(value) => updateFiscalConfig({ spedy: { ...fiscalConfig.spedy, nfce: { ...fiscalConfig.spedy.nfce, tokenId: value } } })}
 					/>
 				</div>
 				<div className="w-full lg:w-1/3">
 					<TextInput
-						label="CSC"
+						label="CSC (CÓDIGO DE SEGURANÇA)"
 						value={fiscalConfig.spedy?.nfce?.csc ?? ""}
-						placeholder="CSC"
+						placeholder="Código fornecido pela SEFAZ"
+						inputType="password"
+						autoComplete="off"
 						handleChange={(value) => updateFiscalConfig({ spedy: { ...fiscalConfig.spedy, nfce: { ...fiscalConfig.spedy.nfce, csc: value } } })}
 					/>
 				</div>
