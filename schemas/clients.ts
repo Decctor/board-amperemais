@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ClientTagIconEnum, FiscalClientTaxIndicatorEnum, SaleNatureEnum } from "./enums";
+import { ClientTagIconEnum, FiscalClientTaxIndicatorEnum } from "./enums";
 import type { TSale } from "./sales";
 
 export const ClientTagMetadataSchema = z.discriminatedUnion("tipo", [
@@ -265,12 +265,6 @@ export const ClientSearchQueryParams = z.object({
 		min: z.number({ invalid_type_error: "Tipo não válido para valor mínimo da venda." }).optional().nullable(),
 		max: z.number({ invalid_type_error: "Tipo não válido para valor máximo da venda." }).optional().nullable(),
 	}),
-	saleNatures: z.array(
-		z.string({
-			required_error: "Natureza de venda não informado.",
-			invalid_type_error: "Tipo não válido para natureza de venda.",
-		}),
-	),
 	excludedSalesIds: z.array(z.string({ required_error: "ID da venda não informado.", invalid_type_error: "Tipo não válido para o ID da venda." })),
 	period: z.object({
 		after: z

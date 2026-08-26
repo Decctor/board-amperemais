@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { getSalesIntegrationCondition } from "@/lib/sales/integration-filter";
 import {
 	getBestNumberOfPointsBetweenDates,
 	getDateBuckets,
@@ -200,13 +201,14 @@ async function getSalesGrouped({ filters, organizacaoId }: GetSalesGroupedParams
 	const ajustedAfter = filters.period.after ? dayjs(filters.period.after).toDate() : null;
 	const ajustedBefore = filters.period.before ? dayjs(filters.period.before).endOf("day").toDate() : null;
 	try {
-		const conditions = [eq(sales.organizacaoId, organizacaoId)];
+		const conditions = [eq(sales.organizacaoId, organizacaoId), eq(sales.statusVenda, "CONFIRMADA")];
 		if (ajustedAfter) conditions.push(gte(sales.dataVenda, ajustedAfter));
 		if (ajustedBefore) conditions.push(lte(sales.dataVenda, ajustedBefore));
 		if (filters.total.min) conditions.push(gte(sales.valorTotal, filters.total.min));
 		if (filters.total.max) conditions.push(gte(sales.valorTotal, filters.total.max));
 
-		if (filters.saleNatures.length > 0) conditions.push(inArray(sales.natureza, filters.saleNatures));
+		const integrationCondition = getSalesIntegrationCondition(filters.integrationsIds);
+		if (integrationCondition) conditions.push(integrationCondition);
 
 		if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
 

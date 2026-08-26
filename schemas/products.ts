@@ -320,15 +320,6 @@ export const ProductAddOnReferenceSchema = z.object({
 		invalid_type_error: "Tipo não válido para ordem.",
 	}),
 });
-// Product Stats Query Params for Frontend
-export type TProductStatsQueryParams = {
-	periodAfter: string | null;
-	periodBefore: string | null;
-	sellerId: string | null;
-	partnerId: string | null;
-	saleNatures: string[];
-};
-
 export const ProductStockTransactionSchema = z.object({
 	organizacaoId: z.string({
 		required_error: "ID da organização não informado.",

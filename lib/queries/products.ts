@@ -23,7 +23,7 @@ async function fetchProducts(input: TGetProductsDefaultInput) {
 		if (input.groups) searchParams.set("groups", input.groups.join(","));
 		if (input.statsPeriodBefore) searchParams.set("statsPeriodBefore", input.statsPeriodBefore.toISOString());
 		if (input.statsPeriodAfter) searchParams.set("statsPeriodAfter", input.statsPeriodAfter.toISOString());
-		if (input.statsSaleNatures) searchParams.set("statsSaleNatures", input.statsSaleNatures.join(","));
+		if (input.statsIntegrationsIds) searchParams.set("statsIntegrationsIds", input.statsIntegrationsIds.join(","));
 		if (input.statsExcludedSalesIds) searchParams.set("statsExcludedSalesIds", input.statsExcludedSalesIds.join(","));
 		if (input.statsTotalMin) searchParams.set("statsTotalMin", input.statsTotalMin.toString());
 		if (input.statsTotalMax) searchParams.set("statsTotalMax", input.statsTotalMax.toString());
@@ -78,7 +78,7 @@ export function useProducts({ initialFilters }: UseProductsParams) {
 		statsSellerIds: initialFilters?.statsSellerIds || [],
 		statsPeriodBefore: initialFilters?.statsPeriodBefore || null,
 		statsPeriodAfter: initialFilters?.statsPeriodAfter || null,
-		statsSaleNatures: initialFilters?.statsSaleNatures || [],
+		statsIntegrationsIds: initialFilters?.statsIntegrationsIds || [],
 		statsExcludedSalesIds: initialFilters?.statsExcludedSalesIds || [],
 		statsTotalMin: initialFilters?.statsTotalMin || null,
 		statsTotalMax: initialFilters?.statsTotalMax || null,
@@ -142,7 +142,7 @@ export function useProductsStock({ initialFilters }: UseProductsStockParams = {}
 		statsSellerIds: [],
 		statsPeriodBefore: initialFilters?.statsPeriodBefore || null,
 		statsPeriodAfter: initialFilters?.statsPeriodAfter || null,
-		statsSaleNatures: [],
+		statsIntegrationsIds: [],
 		statsExcludedSalesIds: [],
 		statsTotalMin: null,
 		statsTotalMax: null,
@@ -178,8 +178,8 @@ async function fetchProductStats(input: TGetProductStatsInput) {
 		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore);
 		if (input.sellerId) searchParams.set("sellerId", input.sellerId);
 		if (input.partnerId) searchParams.set("partnerId", input.partnerId);
-		if (input.saleNatures && input.saleNatures.length > 0) {
-			searchParams.set("saleNatures", JSON.stringify(input.saleNatures));
+		if (input.integrationsIds && input.integrationsIds.length > 0) {
+			searchParams.set("integrationsIds", JSON.stringify(input.integrationsIds));
 		}
 		const { data } = await axios.get<TGetProductStatsOutput>(`/api/products/stats?${searchParams.toString()}`);
 		return data.data;
@@ -200,7 +200,7 @@ export function useProductStats({ productId, initialFilters, enabled = true }: U
 		periodBefore: initialFilters?.periodBefore || null,
 		sellerId: initialFilters?.sellerId || null,
 		partnerId: initialFilters?.partnerId || null,
-		saleNatures: initialFilters?.saleNatures || null,
+		integrationsIds: initialFilters?.integrationsIds || null,
 	});
 	function updateFilters(newFilters: Partial<Omit<TGetProductStatsInput, "productId">>) {
 		setFilters((prevFilters) => ({ ...prevFilters, ...newFilters }));
@@ -226,8 +226,8 @@ async function fetchProductGraph(input: TGetProductGraphInput) {
 		if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore);
 		if (input.sellerId) searchParams.set("sellerId", input.sellerId);
 		if (input.partnerId) searchParams.set("partnerId", input.partnerId);
-		if (input.saleNatures && input.saleNatures.length > 0) {
-			searchParams.set("saleNatures", JSON.stringify(input.saleNatures));
+		if (input.integrationsIds && input.integrationsIds.length > 0) {
+			searchParams.set("integrationsIds", JSON.stringify(input.integrationsIds));
 		}
 		const { data } = await axios.get<TGetProductGraphOutput>(`/api/products/graph?${searchParams.toString()}`);
 		return data.data;

@@ -1,16 +1,21 @@
 import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { DATA_SOURCE_INTEGRATION_TYPES } from "@/lib/integrations/data-sources";
+import type { TDataSourceIntegrationTipoEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
-import { partners, products, sales, sellers } from "@/services/drizzle/schema";
-import { and, eq } from "drizzle-orm";
+import { integrations, partners, products, sellers } from "@/services/drizzle/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import createHttpError from "http-errors";
 
 export type TSaleQueryFilterOptions = {
-	saleNatures: {
+	integrations: {
 		id: string;
 		label: string;
 		value: string;
+		tipo: TDataSourceIntegrationTipoEnum;
+		apelido: string | null;
+		ativo: boolean;
 	}[];
 	sellers: {
 		id: string;
@@ -35,13 +40,18 @@ const getSaleQueryFiltersRoute: PagesRouteHandler<{ data: TSaleQueryFilterOption
 	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const groupedSaleNatures = await db
-		.select({
-			saleNature: sales.natureza,
-		})
-		.from(sales)
-		.where(eq(sales.organizacaoId, userOrgId))
-		.groupBy(sales.natureza);
+	// Conexões de fonte de dados da organização (inclui desativadas — vendas históricas
+	// continuam apontando para elas via `integracaoId`).
+	const orgIntegrations = await db.query.integrations.findMany({
+		where: and(eq(integrations.organizacaoId, userOrgId), inArray(integrations.tipo, [...DATA_SOURCE_INTEGRATION_TYPES])),
+		columns: {
+			id: true,
+			tipo: true,
+			apelido: true,
+			ativo: true,
+		},
+		orderBy: [integrations.dataInsercao, integrations.id],
+	});
 
 	const groupedSellers = await db.query.sellers.findMany({
 		where: and(eq(sellers.organizacaoId, userOrgId), eq(sellers.ativo, true)),
@@ -71,8 +81,6 @@ const getSaleQueryFiltersRoute: PagesRouteHandler<{ data: TSaleQueryFilterOption
 		.groupBy(products.grupo);
 	// const salesCollection: Collection<TSale> = db.collection("sales");
 
-	// const saleNaturesResult = await salesCollection.aggregate([{ $group: { _id: "$natureza" } }]).toArray();
-	// const saleNatures = saleNaturesResult.map((current) => current._id);
 	// const sellersResult = await salesCollection.aggregate([{ $group: { _id: "$vendedor" } }]).toArray();
 	// const sellers = sellersResult.map((current) => current._id);
 
@@ -82,10 +90,13 @@ const getSaleQueryFiltersRoute: PagesRouteHandler<{ data: TSaleQueryFilterOption
 	// const productsGroups = productsGroupsResult.map((current) => current._id);
 	return res.status(200).json({
 		data: {
-			saleNatures: groupedSaleNatures.map((s) => ({
-				id: s.saleNature,
-				label: s.saleNature,
-				value: s.saleNature,
+			integrations: orgIntegrations.map((integration) => ({
+				id: integration.id,
+				label: integration.apelido?.trim() || integration.tipo,
+				value: integration.id,
+				tipo: integration.tipo as TDataSourceIntegrationTipoEnum,
+				apelido: integration.apelido,
+				ativo: integration.ativo,
 			})),
 			sellers: groupedSellers.map((s) => ({
 				id: s.id,

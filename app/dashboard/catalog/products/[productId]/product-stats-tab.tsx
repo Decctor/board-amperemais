@@ -2,6 +2,7 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
+import { buildSalesIntegrationFilterOptions } from "@/components/Sales/sales-integration-filter-options";
 import { Button } from "@/components/ui/button";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
@@ -58,7 +59,7 @@ export default function ProductStatsTab({ productId, enabled = true }: ProductSt
 			periodBefore: dayjs().endOf("month").toISOString(),
 			sellerId: null,
 			partnerId: null,
-			saleNatures: null,
+			integrationsIds: null,
 		},
 	});
 
@@ -156,7 +157,7 @@ export default function ProductStatsTab({ productId, enabled = true }: ProductSt
 						periodBefore={filters.periodBefore}
 						sellerId={filters.sellerId ?? null}
 						partnerId={filters.partnerId ?? null}
-						saleNatures={filters.saleNatures ?? null}
+						integrationsIds={filters.integrationsIds ?? null}
 					/>
 
 					{/* Seasonality Analysis */}
@@ -206,17 +207,17 @@ type ProductInlineFiltersProps = {
 		periodBefore?: string | null | undefined;
 		sellerId?: string | null | undefined;
 		partnerId?: string | null | undefined;
-		saleNatures?: string[] | null | undefined;
+		integrationsIds?: string[] | null | undefined;
 	};
 	updateFilters: (filters: Partial<ProductInlineFiltersProps["filters"]>) => void;
 };
 
 function ProductInlineFilters({ filters, updateFilters }: ProductInlineFiltersProps) {
 	const { data: filterOptions } = useSaleQueryFilterOptions();
-	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const integrationOptions = buildSalesIntegrationFilterOptions(filterOptions?.integrations);
 	const sellerOptions = (filterOptions?.sellers ?? []) as InteractiveFilterOption<string>[];
 	const partnerOptions = (filterOptions?.partners ?? []) as InteractiveFilterOption<string>[];
-	const hasSaleNatures = (filters.saleNatures ?? []).length > 0;
+	const hasIntegrations = (filters.integrationsIds ?? []).length > 0;
 	const hasSeller = Boolean(filters.sellerId);
 	const hasPartner = Boolean(filters.partnerId);
 
@@ -242,13 +243,13 @@ function ProductInlineFilters({ filters, updateFilters }: ProductInlineFiltersPr
 				</InteractiveFilter.Content>
 			</InteractiveFilter.Root>
 
-			{hasSaleNatures ? (
+			{hasIntegrations ? (
 				<ProductMultiFilter
-					label="NATUREZAS"
-					options={saleNatureOptions}
-					value={filters.saleNatures ?? []}
-					onChange={(saleNatures) => updateFilters({ saleNatures })}
-					onClear={() => updateFilters({ saleNatures: null })}
+					label="INTEGRAÇÕES"
+					options={integrationOptions}
+					value={filters.integrationsIds ?? []}
+					onChange={(integrationsIds) => updateFilters({ integrationsIds })}
+					onClear={() => updateFilters({ integrationsIds: null })}
 				/>
 			) : null}
 			{hasSeller ? (
@@ -277,13 +278,13 @@ function ProductInlineFilters({ filters, updateFilters }: ProductInlineFiltersPr
 				</InteractiveFilter.AddFilterTrigger>
 				<InteractiveFilter.AddFilterContent>
 					<InteractiveFilter.AddFilterSection heading="Filtros">
-						{!hasSaleNatures ? (
-							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}>
+						{!hasIntegrations ? (
+							<InteractiveFilter.AddFilterItem id="integrations" label="INTEGRAÇÕES" icon={<ListFilter className="h-4 w-4" />}>
 								<InteractiveFilter.MultiContent
-									options={saleNatureOptions}
-									value={filters.saleNatures ?? []}
-									onChange={(saleNatures) => updateFilters({ saleNatures })}
-									onClear={() => updateFilters({ saleNatures: null })}
+									options={integrationOptions}
+									value={filters.integrationsIds ?? []}
+									onChange={(integrationsIds) => updateFilters({ integrationsIds })}
+									onClear={() => updateFilters({ integrationsIds: null })}
 									clearLabel="TODAS"
 								/>
 							</InteractiveFilter.AddFilterItem>
@@ -1116,16 +1117,16 @@ function ProductGraphBlock({
 	periodBefore,
 	sellerId,
 	partnerId,
-	saleNatures,
+	integrationsIds,
 }: {
 	productId: string;
 	periodAfter: string | null | undefined;
 	periodBefore: string | null | undefined;
 	sellerId: string | null;
 	partnerId: string | null;
-	saleNatures: string[] | null;
+	integrationsIds: string[] | null;
 }) {
-	console.log("[INFO] [PRODUCT GRAPH BLOCK] Input:", { productId, periodAfter, periodBefore, sellerId, partnerId, saleNatures });
+	console.log("[INFO] [PRODUCT GRAPH BLOCK] Input:", { productId, periodAfter, periodBefore, sellerId, partnerId, integrationsIds });
 	const [graphMetric, setGraphMetric] = useState<"quantidade" | "valorLiquido" | "margemPercentual" | "ticketMedio">("valorLiquido");
 
 	const { data: productGraph, isLoading: productGraphLoading } = useProductGraph({
@@ -1134,7 +1135,7 @@ function ProductGraphBlock({
 		periodBefore: periodBefore,
 		sellerId,
 		partnerId,
-		saleNatures,
+		integrationsIds,
 	});
 
 	async function handleExportData(data: TGetProductGraphOutput["data"] | undefined) {

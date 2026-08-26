@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { getSalesIntegrationCondition } from "@/lib/sales/integration-filter";
 import { SalesGeneralStatsFiltersSchema, type TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import { db } from "@/services/drizzle";
 import { clients, saleItems, sales } from "@/services/drizzle/schema";
@@ -213,11 +214,12 @@ async function getOverallSaleGoal({ after, before, organizacaoId }: GetOverallSa
 }
 
 async function getOverallStats(filters: TSaleStatsGeneralQueryParams, organizacaoId: string) {
-	const conditions = [eq(sales.organizacaoId, organizacaoId)];
+	const conditions = [eq(sales.organizacaoId, organizacaoId), eq(sales.statusVenda, "CONFIRMADA")];
 
 	if (filters.total.min) conditions.push(gte(sales.valorTotal, filters.total.min));
 	if (filters.total.max) conditions.push(gte(sales.valorTotal, filters.total.max));
-	if (filters.saleNatures.length > 0) conditions.push(inArray(sales.natureza, filters.saleNatures));
+	const integrationCondition = getSalesIntegrationCondition(filters.integrationsIds);
+	if (integrationCondition) conditions.push(integrationCondition);
 	if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
 	if (filters.clientRFMTitles.length > 0)
 		conditions.push(

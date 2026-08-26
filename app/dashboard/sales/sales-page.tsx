@@ -1,4 +1,5 @@
 "use client";
+import { buildSalesIntegrationFilterOptions } from "@/components/Sales/sales-integration-filter-options";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
@@ -160,7 +161,7 @@ export function SalesHistoryView({ canEditSales }: { canEditSales: boolean }) {
 			periodBefore: null,
 			sellersIds: [],
 			partnersIds: [],
-			saleNatures: [],
+			integrationsIds: [],
 		},
 	});
 
@@ -575,10 +576,10 @@ type SalesInlineFiltersProps = {
 
 function SalesInlineFilters({ filters, updateFilters }: SalesInlineFiltersProps) {
 	const { data: filterOptions } = useSaleQueryFilterOptions();
-	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const integrationOptions = buildSalesIntegrationFilterOptions(filterOptions?.integrations);
 	const sellerOptions = (filterOptions?.sellers ?? []) as InteractiveFilterOption<string>[];
 	const partnerOptions = (filterOptions?.partners ?? []) as InteractiveFilterOption<string>[];
-	const hasSaleNatures = (filters.saleNatures ?? []).length > 0;
+	const hasIntegrations = (filters.integrationsIds ?? []).length > 0;
 	const hasSellers = (filters.sellersIds ?? []).length > 0;
 	const hasPartners = (filters.partnersIds ?? []).length > 0;
 
@@ -604,15 +605,15 @@ function SalesInlineFilters({ filters, updateFilters }: SalesInlineFiltersProps)
 				</InteractiveFilter.Content>
 			</InteractiveFilter.Root>
 
-			{hasSaleNatures ? (
+			{hasIntegrations ? (
 				<SalesMultiFilter
 					icon={<Tag className="h-4 w-4" />}
-					label="NATUREZAS"
-					options={saleNatureOptions}
-					value={filters.saleNatures ?? []}
-					onChange={(saleNatures) => updateFilters({ saleNatures, page: 1 })}
-					onClear={() => updateFilters({ saleNatures: [], page: 1 })}
-					clearLabel="NENHUMA"
+					label="INTEGRAÇÕES"
+					options={integrationOptions}
+					value={filters.integrationsIds ?? []}
+					onChange={(integrationsIds) => updateFilters({ integrationsIds, page: 1 })}
+					onClear={() => updateFilters({ integrationsIds: [], page: 1 })}
+					clearLabel="TODAS"
 				/>
 			) : null}
 			{hasSellers ? (
@@ -643,14 +644,14 @@ function SalesInlineFilters({ filters, updateFilters }: SalesInlineFiltersProps)
 				</InteractiveFilter.AddFilterTrigger>
 				<InteractiveFilter.AddFilterContent>
 					<InteractiveFilter.AddFilterSection heading="Filtros">
-						{!hasSaleNatures ? (
-							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<Tag className="h-4 w-4" />}>
+						{!hasIntegrations ? (
+							<InteractiveFilter.AddFilterItem id="integrations" label="INTEGRAÇÕES" icon={<Tag className="h-4 w-4" />}>
 								<InteractiveFilter.MultiContent
-									options={saleNatureOptions}
-									value={filters.saleNatures ?? []}
-									onChange={(saleNatures) => updateFilters({ saleNatures, page: 1 })}
-									onClear={() => updateFilters({ saleNatures: [], page: 1 })}
-									clearLabel="NENHUMA"
+									options={integrationOptions}
+									value={filters.integrationsIds ?? []}
+									onChange={(integrationsIds) => updateFilters({ integrationsIds, page: 1 })}
+									onClear={() => updateFilters({ integrationsIds: [], page: 1 })}
+									clearLabel="TODAS"
 								/>
 							</InteractiveFilter.AddFilterItem>
 						) : null}

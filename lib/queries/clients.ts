@@ -19,7 +19,7 @@ async function fetchClients(input: TGetClientsInput) {
 		if (input.segmentationTitles.length > 0) searchParams.set("segmentationTitles", input.segmentationTitles.join(","));
 		if (input.statsPeriodAfter) searchParams.set("statsPeriodAfter", input.statsPeriodAfter.toISOString());
 		if (input.statsPeriodBefore) searchParams.set("statsPeriodBefore", input.statsPeriodBefore.toISOString());
-		if (input.statsSaleNatures.length > 0) searchParams.set("statsSaleNatures", input.statsSaleNatures.join(","));
+		if (input.statsIntegrationsIds.length > 0) searchParams.set("statsIntegrationsIds", input.statsIntegrationsIds.join(","));
 		if (input.statsExcludedSalesIds.length > 0) searchParams.set("statsExcludedSalesIds", input.statsExcludedSalesIds.join(","));
 		if (input.orderByField) searchParams.set("orderByField", input.orderByField);
 		if (input.orderByDirection) searchParams.set("orderByDirection", input.orderByDirection);
@@ -75,7 +75,7 @@ export function useClients({ initialFilters }: UseClientsParams) {
 		segmentationTitles: initialFilters?.segmentationTitles || [],
 		statsPeriodAfter: initialFilters?.statsPeriodAfter || null,
 		statsPeriodBefore: initialFilters?.statsPeriodBefore || null,
-		statsSaleNatures: initialFilters?.statsSaleNatures || [],
+		statsIntegrationsIds: initialFilters?.statsIntegrationsIds || [],
 		statsExcludedSalesIds: initialFilters?.statsExcludedSalesIds || [],
 		orderByField: initialFilters?.orderByField || "nome",
 		orderByDirection: initialFilters?.orderByDirection || "asc",
@@ -217,7 +217,6 @@ async function fetchClientsOverallStats(input: TGetClientsOverallStatsInput) {
 	const searchParams = new URLSearchParams();
 	if (input.periodAfter) searchParams.set("periodAfter", input.periodAfter.toISOString());
 	if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
-	// if (input.saleNatures && input.saleNatures.length > 0) searchParams.set("saleNatures", input.saleNatures.join(","));
 	// if (input.excludedSalesIds && input.excludedSalesIds.length > 0) searchParams.set("excludedSalesIds", input.excludedSalesIds.join(","));
 	// if (input.totalMin) searchParams.set("totalMin", input.totalMin.toString());
 	// if (input.totalMax) searchParams.set("totalMax", input.totalMax.toString());

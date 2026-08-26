@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { getSalesIntegrationCondition } from "@/lib/sales/integration-filter";
 import { SellerSchema } from "@/schemas/sellers";
 import { db } from "@/services/drizzle";
 import { sales, sellers } from "@/services/drizzle/schema";
@@ -52,10 +53,10 @@ const GetSellersDefaultInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
-	statsSaleNatures: z
+	statsIntegrationsIds: z
 		.string({
-			required_error: "Naturezas de venda não informadas.",
-			invalid_type_error: "Tipo inválido para naturezas de venda.",
+			required_error: "IDs de integração não informados.",
+			invalid_type_error: "Tipo inválido para os IDs de integração.",
 		})
 		.optional()
 		.nullable()
@@ -155,10 +156,11 @@ async function getSellers({ input, session }: GetSellersParams) {
 	if (input.sellersIds && input.sellersIds.length > 0) sellerQueryConditions.push(inArray(sellers.id, input.sellersIds));
 	if (input.activeOnly) sellerQueryConditions.push(eq(sellers.ativo, input.activeOnly));
 
-	const statsConditions = [eq(sales.organizacaoId, userOrgId)];
+	const statsConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.statusVenda, "CONFIRMADA")];
 	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
 	if (input.statsPeriodBefore) statsConditions.push(lte(sales.dataVenda, input.statsPeriodBefore));
-	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
+	const integrationCondition = getSalesIntegrationCondition(input.statsIntegrationsIds);
+	if (integrationCondition) statsConditions.push(integrationCondition);
 	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
 
 	const havingConditions = [];
@@ -277,7 +279,7 @@ const getSellersHandler: PagesRouteHandler<TGetSellersOutput> = async (req, res)
 		simplified: req.query.simplified as string | undefined,
 		sellersIds: req.query.sellersIds as string | undefined,
 		activeOnly: req.query.activeOnly as string | undefined,
-		statsSaleNatures: req.query.statsSaleNatures as string | undefined,
+		statsIntegrationsIds: req.query.statsIntegrationsIds as string | undefined,
 		statsExcludedSalesIds: req.query.statsExcludedSalesIds as string | undefined,
 		statsTotalMin: req.query.statsTotalMin as string | undefined,
 		statsTotalMax: req.query.statsTotalMax as string | undefined,

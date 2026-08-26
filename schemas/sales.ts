@@ -48,15 +48,6 @@ export const SaleSchema = z.object({
 	custoTotal: z.number(),
 });
 
-export const SalesQueryFilters = z.object({
-	saleNature: z.array(SaleNatureEnum),
-	total: z.object({
-		min: z.number().optional().nullable(),
-		max: z.number().optional().nullable(),
-	}),
-	sellers: z.array(z.string()),
-});
-
 export const SalesSimplifiedSearchQueryParams = z.object({
 	search: z.string({ required_error: "Parâmetro de busca não informado.", invalid_type_error: "Parâmetro de busca não informado." }),
 	page: z

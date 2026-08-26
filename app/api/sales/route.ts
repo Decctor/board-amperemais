@@ -4,6 +4,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
 import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { getSalesIntegrationCondition } from "@/lib/sales/integration-filter";
 import { campaignAudienceHasClient, resolveCampaignAudiencesByCampaignId } from "@/lib/campaigns/filters";
 import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } from "@/lib/dates";
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
@@ -133,9 +134,9 @@ const GetSalesInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? val.split(",") : null)),
-	saleNatures: z
+	integrationsIds: z
 		.string({
-			invalid_type_error: "Tipo inválido para natureza de venda.",
+			invalid_type_error: "Tipo inválido para os IDs de integração.",
 		})
 		.optional()
 		.nullable()
@@ -281,7 +282,7 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	const PAGE_SIZE = 25;
 	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-	const { id, search, periodAfter, periodBefore, sellersIds, partnersIds, saleNatures, clientId, productGroups, productIds, totalMin, totalMax } =
+	const { id, search, periodAfter, periodBefore, sellersIds, partnersIds, integrationsIds, clientId, productGroups, productIds, totalMin, totalMax } =
 		input;
 
 	if (id) {
@@ -470,7 +471,8 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	if (periodBefore) conditions.push(lte(sales.dataVenda, periodBefore));
 	if (sellersIds && sellersIds.length > 0) conditions.push(inArray(sales.vendedorId, sellersIds));
 	if (partnersIds && partnersIds.length > 0) conditions.push(inArray(sales.parceiroId, partnersIds));
-	if (saleNatures && saleNatures.length > 0) conditions.push(inArray(sales.natureza, saleNatures));
+	const integrationCondition = getSalesIntegrationCondition(integrationsIds);
+	if (integrationCondition) conditions.push(integrationCondition);
 	if (clientId) conditions.push(eq(sales.clienteId, clientId));
 	if (totalMin !== null && totalMin !== undefined) conditions.push(gte(sales.valorTotal, totalMin));
 	if (totalMax !== null && totalMax !== undefined) conditions.push(lte(sales.valorTotal, totalMax));

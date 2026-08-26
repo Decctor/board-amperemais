@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { getSalesIntegrationCondition } from "@/lib/sales/integration-filter";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getBestNumberOfPointsBetweenDates, getDateBuckets, getEvenlySpacedDates } from "@/lib/dates";
 import { db } from "@/services/drizzle";
@@ -45,7 +46,7 @@ const GetProductGraphInputSchema = z.object({
 		})
 		.optional()
 		.nullable(),
-	saleNatures: z.array(z.string()).optional().nullable(),
+	integrationsIds: z.array(z.string()).optional().nullable(),
 });
 
 export type TGetProductGraphInput = z.infer<typeof GetProductGraphInputSchema>;
@@ -116,7 +117,7 @@ async function fetchProductGraph(input: TGetProductGraphInput, session: TAuthUse
 
 	// Build where conditions
 	const saleItemWhereConditions = [eq(saleItems.organizacaoId, userOrgId), eq(saleItems.produtoId, input.productId)];
-	const saleWhereConditions = [eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda)];
+	const saleWhereConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.statusVenda, "CONFIRMADA"), isNotNull(sales.dataVenda)];
 
 	const saleWhere = and(
 		...saleWhereConditions,
@@ -124,7 +125,7 @@ async function fetchProductGraph(input: TGetProductGraphInput, session: TAuthUse
 		lte(sales.dataVenda, currentPeriodAdjusted.before),
 		input.sellerId ? eq(sales.vendedorId, input.sellerId) : undefined,
 		input.partnerId ? eq(sales.parceiroId, input.partnerId) : undefined,
-		input.saleNatures && input.saleNatures.length > 0 ? inArray(sales.natureza, input.saleNatures) : undefined,
+		getSalesIntegrationCondition(input.integrationsIds),
 	);
 
 	const saleItemWhere = and(...saleItemWhereConditions, inArray(saleItems.vendaId, db.select({ id: sales.id }).from(sales).where(saleWhere)));
@@ -200,7 +201,7 @@ const handleGetProductGraphRoute: PagesRouteHandler<TGetProductGraphOutput> = as
 		periodBefore: req.query.periodBefore as string,
 		sellerId: (req.query.sellerId as string | undefined) ?? null,
 		partnerId: (req.query.partnerId as string | undefined) ?? null,
-		saleNatures: req.query.saleNatures ? JSON.parse(req.query.saleNatures as string) : null,
+		integrationsIds: req.query.integrationsIds ? JSON.parse(req.query.integrationsIds as string) : null,
 	});
 
 	const productGraph = await fetchProductGraph(input, sessionUser);

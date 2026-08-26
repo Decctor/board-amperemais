@@ -1,4 +1,5 @@
 ﻿"use client";
+import { buildSalesIntegrationFilterOptions } from "@/components/Sales/sales-integration-filter-options";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
@@ -183,7 +184,7 @@ type SellersInlineFiltersProps = {
 function SellersInlineFilters({ filters, updateFilters }: SellersInlineFiltersProps) {
 	const { data: filterOptions } = useSaleQueryFilterOptions();
 	const sellerOptions = (filterOptions?.sellers ?? []) as InteractiveFilterOption<string>[];
-	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const integrationOptions = buildSalesIntegrationFilterOptions(filterOptions?.integrations);
 	const orderFieldOptions = [
 		{ id: "nome", label: "NOME", value: "nome" },
 		{ id: "dataInsercao", label: "DATA DE INSERÇÃO", value: "dataInsercao" },
@@ -199,7 +200,7 @@ function SellersInlineFilters({ filters, updateFilters }: SellersInlineFiltersPr
 		direction: filters.orderByDirection ?? defaultSort.direction,
 	} satisfies InteractiveFilterSortValue<NonNullable<TGetSellersDefaultInput["orderByField"]>>;
 	const hasSellers = (filters.sellersIds ?? []).length > 0;
-	const hasSaleNatures = (filters.statsSaleNatures ?? []).length > 0;
+	const hasIntegrations = (filters.statsIntegrationsIds ?? []).length > 0;
 	const hasTotal = filters.statsTotalMin != null || filters.statsTotalMax != null;
 	const hasExcludedSales = (filters.statsExcludedSalesIds ?? []).length > 0;
 	const hasActiveSort = isInteractiveSortActive(sortValue, defaultSort);
@@ -235,13 +236,13 @@ function SellersInlineFilters({ filters, updateFilters }: SellersInlineFiltersPr
 					onClear={() => updateFilters({ sellersIds: [], page: 1 })}
 				/>
 			) : null}
-			{hasSaleNatures ? (
+			{hasIntegrations ? (
 				<SellersMultiFilter
-					label="NATUREZAS"
-					options={saleNatureOptions}
-					value={filters.statsSaleNatures ?? []}
-					onChange={(statsSaleNatures) => updateFilters({ statsSaleNatures, page: 1 })}
-					onClear={() => updateFilters({ statsSaleNatures: [], page: 1 })}
+					label="INTEGRAÇÕES"
+					options={integrationOptions}
+					value={filters.statsIntegrationsIds ?? []}
+					onChange={(statsIntegrationsIds) => updateFilters({ statsIntegrationsIds, page: 1 })}
+					onClear={() => updateFilters({ statsIntegrationsIds: [], page: 1 })}
 				/>
 			) : null}
 			{hasTotal ? <SellersTotalFilter filters={filters} updateFilters={updateFilters} /> : null}
@@ -273,13 +274,13 @@ function SellersInlineFilters({ filters, updateFilters }: SellersInlineFiltersPr
 								/>
 							</InteractiveFilter.AddFilterItem>
 						) : null}
-						{!hasSaleNatures ? (
-							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}>
+						{!hasIntegrations ? (
+							<InteractiveFilter.AddFilterItem id="integrations" label="INTEGRAÇÕES" icon={<ListFilter className="h-4 w-4" />}>
 								<InteractiveFilter.MultiContent
-									options={saleNatureOptions}
-									value={filters.statsSaleNatures ?? []}
-									onChange={(statsSaleNatures) => updateFilters({ statsSaleNatures, page: 1 })}
-									onClear={() => updateFilters({ statsSaleNatures: [], page: 1 })}
+									options={integrationOptions}
+									value={filters.statsIntegrationsIds ?? []}
+									onChange={(statsIntegrationsIds) => updateFilters({ statsIntegrationsIds, page: 1 })}
+									onClear={() => updateFilters({ statsIntegrationsIds: [], page: 1 })}
 									clearLabel="TODAS"
 								/>
 							</InteractiveFilter.AddFilterItem>

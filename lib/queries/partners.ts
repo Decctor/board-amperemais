@@ -12,7 +12,7 @@ async function fetchPartners(input: TGetPartnersInput) {
 	if (input.search) searchParams.set("search", input.search);
 	if (input.statsPeriodAfter) searchParams.set("statsPeriodAfter", input.statsPeriodAfter.toISOString());
 	if (input.statsPeriodBefore) searchParams.set("statsPeriodBefore", input.statsPeriodBefore.toISOString());
-	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) searchParams.set("statsSaleNatures", input.statsSaleNatures.join(","));
+	if (input.statsIntegrationsIds && input.statsIntegrationsIds.length > 0) searchParams.set("statsIntegrationsIds", input.statsIntegrationsIds.join(","));
 	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0)
 		searchParams.set("statsExcludedSalesIds", input.statsExcludedSalesIds.join(","));
 	if (input.statsTotalMin) searchParams.set("statsTotalMin", input.statsTotalMin.toString());
@@ -33,7 +33,7 @@ export function usePartners({ initialParams }: UsePartnersParams) {
 		search: initialParams.search || "",
 		statsPeriodAfter: initialParams.statsPeriodAfter || null,
 		statsPeriodBefore: initialParams.statsPeriodBefore || null,
-		statsSaleNatures: initialParams.statsSaleNatures || [],
+		statsIntegrationsIds: initialParams.statsIntegrationsIds || [],
 		statsExcludedSalesIds: initialParams.statsExcludedSalesIds || [],
 		statsTotalMin: initialParams.statsTotalMin || null,
 		statsTotalMax: initialParams.statsTotalMax || null,
