@@ -6,20 +6,28 @@ export type TAutoDocumentTypeSignals = {
 	destinatarioCpfCnpj?: string | null;
 };
 
-export type TFiscalOperationProfileSignals = Pick<TAutoDocumentTypeSignals, "canal" | "entregaModalidade">;
+export type TFiscalOperationProfileSignals = Pick<TAutoDocumentTypeSignals, "canal" | "entregaModalidade"> & {
+	// O modelo do documento muda o indPres aceitavel para a mesma modalidade de entrega.
+	tipoDocumento?: Extract<TFiscalDocumentTypeEnum, "NFCE" | "NFE"> | null;
+};
 
 // Deriva candidatos de presenca do consumidor (indPres) a partir da modalidade/canal da venda.
 // A ordem do array define prioridade na busca do perfil fiscal compativel.
 export function resolveExpectedConsumerPresenceCandidates({
 	canal,
 	entregaModalidade,
+	tipoDocumento,
 }: TFiscalOperationProfileSignals): TFiscalOperationConsumerPresenceEnum[] {
 	const modalidade = (entregaModalidade ?? "PRESENCIAL").toUpperCase();
 	const canalUpper = (canal ?? "").toUpperCase();
 
 	switch (modalidade) {
 		case "ENTREGA":
-			return ["ENTREGA_DOMICILIO"];
+			// indPres=4 ("NFC-e em operacao com entrega a domicilio") e exclusivo do modelo 65 —
+			// a SEFAZ rejeita NF-e que o use (rejeicao 794). Numa venda online com entrega, a NF-e
+			// e operacao nao presencial pela internet (indPres=2). O ENTREGA_DOMICILIO segue como
+			// fallback para nao quebrar a resolucao de quem so tem esse perfil cadastrado.
+			return tipoDocumento === "NFE" ? ["INTERNET", "ENTREGA_DOMICILIO"] : ["ENTREGA_DOMICILIO"];
 		case "COMANDA":
 		case "PRESENCIAL":
 			return ["OPERACAO_PRESENCIAL"];

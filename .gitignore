@@ -51,3 +51,5 @@ scripts/output/
 pnpm-lock.yaml
 yarn.lock
 bun.lockb
+
+tmp/
