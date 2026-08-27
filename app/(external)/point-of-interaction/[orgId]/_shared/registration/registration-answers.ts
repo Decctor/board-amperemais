@@ -1,4 +1,6 @@
+import { formatToCPForCNPJ } from "@/lib/formatting";
 import type { TPoiRegistrationFieldDefinition } from "@/lib/point-of-interaction/registration";
+import { isValidCpfCnpj } from "@/lib/validation";
 import type { TCustomFieldValue, TCustomFieldValueInput } from "@/schemas/custom-fields";
 import { parseBirthDateDigitsToIso, parseDateDigitsToIso } from "../helpers/date-digits";
 
@@ -71,6 +73,12 @@ export function resolveAnswerValue({
 			if (!texto) return { valor: null, erro: "Preencha o campo para continuar." };
 			if (campo.chaveNativa === "email" && !EMAIL_PATTERN.test(texto)) {
 				return { valor: null, erro: "Confira o e-mail digitado — algo como nome@email.com." };
+			}
+			// O documento mora no rascunho como dígitos crus (o teclado do balcão só produz dígitos) e
+			// sai daqui formatado — o mesmo formato que a gaveta do cadastro rápido já grava na coluna.
+			if (campo.chaveNativa === "cpf-cnpj") {
+				if (!isValidCpfCnpj(texto)) return { valor: null, erro: "CPF/CNPJ inválido. Confira os números digitados." };
+				return { valor: formatToCPForCNPJ(texto), erro: null };
 			}
 			return { valor: texto, erro: null };
 		}

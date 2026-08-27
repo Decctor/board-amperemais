@@ -100,6 +100,11 @@ export function RegistrationWizard({ org, cashbackProgram, registrationConfig, m
 
 	const steps = useMemo(() => buildRegistrationSteps(registrationConfig.campos), [registrationConfig.campos]);
 
+	// Quando a organização ativa o campo pronto CPF/CNPJ, ele vira um passo do assistente (com
+	// obrigatoriedade e ordem próprias) e grava a coluna por write-through. A gaveta "outros dados"
+	// some junto: perguntar o mesmo documento duas vezes na mesma tela é o pior dos dois mundos.
+	const documentIsConfiguredField = useMemo(() => registrationConfig.campos.some((campo) => campo.chaveNativa === "cpf-cnpj"), [registrationConfig.campos]);
+
 	// No quiosque a tela ociosa do hub já é a apresentação do clube (cartão da organização com os
 	// benefícios do programa): repeti-la aqui só adicionaria um toque na frente da fila. No celular
 	// o cliente chega direto do teclado do telefone, então a boas-vindas é a primeira coisa que
@@ -213,7 +218,9 @@ export function RegistrationWizard({ org, cashbackProgram, registrationConfig, m
 			client: {
 				nome: nome.trim(),
 				telefone: phone,
-				cpfCnpj: cpfCnpj || null,
+				// Com o campo pronto ativo, o documento chega em `customFieldAnswers` e o servidor o
+				// grava na coluna — mandá-lo aqui também abriria duas escritas para o mesmo dado.
+				cpfCnpj: documentIsConfiguredField ? null : cpfCnpj || null,
 				// O assistente coleta a data de nascimento como campo configurável (`birth-date`),
 				// que o servidor grava na coluna real via write-through — nunca por aqui.
 				dataNascimento: null,
@@ -546,23 +553,25 @@ export function RegistrationWizard({ org, cashbackProgram, registrationConfig, m
 										/>
 									) : null}
 
-									{/* CPF continua aqui, e não como campo configurável, porque não existe no catálogo de
-									    campos personalizados — sem esta gaveta o fluxo COMPLETO perderia uma captura que
-									    o cadastro rápido oferece. */}
-									<div className="w-full flex items-center justify-center">
-										<Button
-											type="button"
-											variant="ghost"
-											size="fit"
-											className="w-fit flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold"
-											onClick={() => setShowOptionalIdentity((prev) => !prev)}
-										>
-											{showOptionalIdentity ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-											{showOptionalIdentity ? "OCULTAR OUTROS DADOS" : "MOSTRAR OUTROS DADOS"}
-										</Button>
-									</div>
+									{/* A gaveta é a captura de CPF de quem NÃO configurou o campo pronto "CPF/CNPJ": aqui
+									    ele é sempre opcional. Quem ativou o campo pergunta pelo assistente, onde a
+									    organização decide a ordem e a obrigatoriedade. */}
+									{documentIsConfiguredField ? null : (
+										<div className="w-full flex items-center justify-center">
+											<Button
+												type="button"
+												variant="ghost"
+												size="fit"
+												className="w-fit flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold"
+												onClick={() => setShowOptionalIdentity((prev) => !prev)}
+											>
+												{showOptionalIdentity ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+												{showOptionalIdentity ? "OCULTAR OUTROS DADOS" : "MOSTRAR OUTROS DADOS"}
+											</Button>
+										</div>
+									)}
 
-									{showOptionalIdentity ? (
+									{showOptionalIdentity && !documentIsConfiguredField ? (
 										<div className="flex flex-col gap-1.5">
 											<span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">CPF/CNPJ (OPCIONAL)</span>
 											{isKiosk ? (
