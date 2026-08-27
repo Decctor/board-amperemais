@@ -61,9 +61,12 @@ default possível. A agregação cross-org chega com as ferramentas `platform_*`
   `agent:products:read`, `agent:campaigns:read` — com rótulos em `ACCESS_SCOPE_CATALOG`
   (grupo `AGENTE_IA`), que é o que a tela de permissões vai renderizar.
 - `AccessPrincipalTypeEnum` ganhou `CONTA_PLATAFORMA`.
-- `access_principals.organizacao_id` virou nulo **só** para esse tipo, com CHECK constraint
-  (`drizzle/0082_agent_access_foundation.sql`). A garantia saiu do `NOT NULL` e virou uma exceção
-  nomeada, em vez de afrouxar.
+- `access_principals.organizacao_id` virou nulo **só** para esse tipo, com CHECK constraint. A
+  garantia saiu do `NOT NULL` e virou uma exceção nomeada, em vez de afrouxar.
+- São **dois arquivos de migração, e a ordem importa**: `0082` cria o valor de enum e `0083` usa
+  esse valor na CHECK. `ALTER TYPE ... ADD VALUE` não pode ser consumido na mesma transação que o
+  criou, e `scripts/apply-sql-migration.ts` aplica cada arquivo dentro de uma transação — juntos,
+  eles falhariam com *unsafe use of new value of enum type*.
 - `authenticateExternalRequest` foi dividida: `verifyAccessCredentialFromRequest` verifica a
   credencial e devolve a organização possivelmente nula; o wrapper antigo exige organização e
   recusa credencial de plataforma. As oito rotas de dispositivo não mudaram uma linha.
@@ -132,8 +135,14 @@ por todos os clientes, e limitar por ele puniria organizações inocentes.
 Enquanto a tela de "Conexões de IA" não existe (fase 1):
 
 ```bash
-npm run seed:access-clients                 # garante AGENT_CLAUDE / AGENT_CHATGPT / AGENT_CONTROL
-npx tsx ./scripts/apply-sql-migration.ts drizzle/0082_agent_access_foundation.sql
+# 1. Migrações, nesta ordem (a segunda consome o valor de enum criado pela primeira)
+npx tsx ./scripts/apply-sql-migration.ts drizzle/0082_agent_principal_type.sql
+npx tsx ./scripts/apply-sql-migration.ts drizzle/0083_agent_access_foundation.sql
+
+# 2. Aplicações clientes do catálogo (AGENT_CLAUDE / AGENT_CHATGPT / AGENT_CONTROL)
+npm run seed:access-clients
+
+# 3. Credencial
 
 # Conexão de uma organização
 npm run access:issue-agent -- --client AGENT_CLAUDE --org minha-loja --nome "Claude do João"
