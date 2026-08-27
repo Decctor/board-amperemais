@@ -492,7 +492,7 @@ export const accessClientCategoryEnum = pgEnum("access_client_category", [
 export const accessClientStatusEnum = pgEnum("access_client_status", ["ATIVO", "INATIVO"]);
 
 // O principal é o ator concreto autorizado a chamar a plataforma: um tablet, um agente ou uma conta de serviço.
-export const accessPrincipalTypeEnum = pgEnum("access_principal_type", ["DISPOSITIVO", "AGENTE_DESKTOP", "CONTA_SERVICO"]);
+export const accessPrincipalTypeEnum = pgEnum("access_principal_type", ["DISPOSITIVO", "AGENTE_DESKTOP", "CONTA_SERVICO", "CONTA_PLATAFORMA"]);
 
 export const accessPrincipalStatusEnum = pgEnum("access_principal_status", ["ATIVO", "INATIVO", "REVOGADO"]);
 

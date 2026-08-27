@@ -21,6 +21,16 @@ export const DESKTOP_AGENT_ACCESS_SCOPES: TAccessScopeEnum[] = [
 	"desktop-agent:print-jobs:update",
 ];
 
+// Scopes de leitura dos agentes de IA (MCP). `agent:clients:pii` fica de fora do teto padrão:
+// é o único que expõe contato de cliente, e um cliente MCP genérico não deveria poder pedi-lo —
+// quando um agente precisar, o teto daquela aplicação é ampliado explicitamente.
+export const AGENT_READ_ACCESS_SCOPES: TAccessScopeEnum[] = [
+	"agent:results:read",
+	"agent:clients:read",
+	"agent:products:read",
+	"agent:campaigns:read",
+];
+
 type TNativeAccessClientDefinition = {
 	codigo: string;
 	nome: string;
@@ -47,6 +57,27 @@ export const NATIVE_ACCESS_CLIENTS: TNativeAccessClientDefinition[] = [
 		nome: "Agente desktop local (periféricos)",
 		categoria: "NATIVO_DESKTOP",
 		escoposPermitidos: DESKTOP_AGENT_ACCESS_SCOPES,
+	},
+	// Um cliente por aplicação de IA, e não um "MCP" genérico: é o que permite revogar o Claude
+	// de uma organização sem derrubar o ChatGPT, e o que faz a auditoria dizer quem consultou.
+	{
+		codigo: "AGENT_CLAUDE",
+		nome: "Claude (conector MCP)",
+		categoria: "APLICACAO_PARCEIRA",
+		escoposPermitidos: AGENT_READ_ACCESS_SCOPES,
+	},
+	{
+		codigo: "AGENT_CHATGPT",
+		nome: "ChatGPT (conector MCP)",
+		categoria: "APLICACAO_PARCEIRA",
+		escoposPermitidos: AGENT_READ_ACCESS_SCOPES,
+	},
+	{
+		codigo: "AGENT_CONTROL",
+		nome: "Syncroniza Control (agentes internos)",
+		categoria: "SERVIDOR_EXTERNO",
+		// Único com PII no teto: é sistema nosso, sob nosso contrato de dados.
+		escoposPermitidos: [...AGENT_READ_ACCESS_SCOPES, "agent:clients:pii"],
 	},
 ];
 

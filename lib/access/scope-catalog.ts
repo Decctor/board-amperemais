@@ -4,7 +4,7 @@ import type { TAccessScopeEnum } from "@/schemas/enums";
 // Quem abre a tela de dispositivos é o lojista: cada scope precisa dizer o que o aparelho passa a
 // conseguir fazer no balcão. Este catálogo é a única fonte desses rótulos.
 
-export type TAccessScopeGroup = "PONTO_DE_INTERACAO" | "AGENTE_DESKTOP" | "OUTROS";
+export type TAccessScopeGroup = "PONTO_DE_INTERACAO" | "AGENTE_DESKTOP" | "AGENTE_IA" | "OUTROS";
 
 export type TAccessScopeDescriptor = {
 	label: string;
@@ -15,11 +15,12 @@ export type TAccessScopeDescriptor = {
 export const ACCESS_SCOPE_GROUP_LABELS: Record<TAccessScopeGroup, string> = {
 	PONTO_DE_INTERACAO: "Ponto de interação",
 	AGENTE_DESKTOP: "Agente desktop",
+	AGENTE_IA: "Agente de IA",
 	OUTROS: "Outras permissões",
 };
 
 // Ordem de renderização dos grupos — estável, independente da ordem que os scopes chegam da API.
-export const ACCESS_SCOPE_GROUP_ORDER: TAccessScopeGroup[] = ["PONTO_DE_INTERACAO", "AGENTE_DESKTOP", "OUTROS"];
+export const ACCESS_SCOPE_GROUP_ORDER: TAccessScopeGroup[] = ["PONTO_DE_INTERACAO", "AGENTE_DESKTOP", "AGENTE_IA", "OUTROS"];
 
 export const ACCESS_SCOPE_CATALOG: Record<TAccessScopeEnum, TAccessScopeDescriptor> = {
 	"poi:configuration:read": {
@@ -76,6 +77,31 @@ export const ACCESS_SCOPE_CATALOG: Record<TAccessScopeEnum, TAccessScopeDescript
 		label: "Confirmar impressões",
 		description: "Marcar cada trabalho como impresso ou reportar o erro que ocorreu.",
 		group: "AGENTE_DESKTOP",
+	},
+	"agent:results:read": {
+		label: "Consultar resultados comerciais",
+		description: "Ver faturamento, margem, ticket médio e o quanto a meta do período já foi atingida.",
+		group: "AGENTE_IA",
+	},
+	"agent:clients:read": {
+		label: "Consultar clientes",
+		description: "Buscar clientes e ver histórico de compras, categoria RFM e tempo desde a última visita.",
+		group: "AGENTE_IA",
+	},
+	"agent:clients:pii": {
+		label: "Ver dados de contato dos clientes",
+		description: "Enxergar telefone, e-mail e CPF/CNPJ completos em vez de mascarados. Conceda apenas se o agente precisar entrar em contato.",
+		group: "AGENTE_IA",
+	},
+	"agent:products:read": {
+		label: "Consultar produtos",
+		description: "Buscar no catálogo e ver preço, estoque e o que mais vendeu no período.",
+		group: "AGENTE_IA",
+	},
+	"agent:campaigns:read": {
+		label: "Consultar campanhas",
+		description: "Ver as campanhas cadastradas, quando disparam e para quantos clientes.",
+		group: "AGENTE_IA",
 	},
 };
 
