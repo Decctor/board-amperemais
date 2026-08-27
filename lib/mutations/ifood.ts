@@ -44,10 +44,16 @@ import type {
 import type { TCatalogActionInput, TCatalogActionOutput } from "@/app/api/integrations/ifood/catalog/route";
 import type { TUpdateIfoodOpeningHoursInput, TUpdateIfoodOpeningHoursOutput } from "@/app/api/integrations/ifood/merchants/opening-hours/route";
 import type { TPostIfoodOrderActionInput, TPostIfoodOrderActionOutput } from "@/app/api/integrations/ifood/orders/actions/route";
+import type { TPostIfoodDisputeResponseInput, TPostIfoodDisputeResponseOutput } from "@/app/api/integrations/ifood/orders/disputes/route";
 import axios from "axios";
 
 export async function postIfoodOrderAction(input: TPostIfoodOrderActionInput) {
 	const { data } = await axios.post<TPostIfoodOrderActionOutput>("/api/integrations/ifood/orders/actions", input);
+	return data;
+}
+
+export async function postIfoodDisputeResponse(input: TPostIfoodDisputeResponseInput) {
+	const { data } = await axios.post<TPostIfoodDisputeResponseOutput>("/api/integrations/ifood/orders/disputes", input);
 	return data;
 }
 

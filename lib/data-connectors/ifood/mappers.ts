@@ -20,22 +20,98 @@ type TIfoodOrderEventState = {
 	concludedAt: string | null;
 	cancelledAt: string | null;
 	/**
-	 * Cancelamento SOLICITADO e ainda pendente de resposta da loja. Fica FORA de `statusText` de
-	 * proposito: o pedido continua no estagio em que estava (pode seguir para preparo/entrega se a
-	 * solicitacao for negada), entao tratar isto como avanco de status corromperia o quadro.
-	 * Zerado quando o cancelamento se efetiva (CANCELLED) -- ai o estado terminal ja responde.
+	 * Solicitacao de cancelamento REGISTRADA e ainda sem desfecho. Informativa — nao exige resposta
+	 * da loja (o iFood emite CANCELLATION_REQUESTED logo apos o requestCancellation da propria
+	 * loja). Fica FORA de `statusText` de proposito: o pedido continua no estagio em que estava
+	 * (segue para preparo/entrega se a solicitacao for rejeitada), entao tratar isto como avanco de
+	 * status corromperia o quadro. Zerada pelo desfecho: CANCELLED (efetivado) ou
+	 * CANCELLATION_REQUEST_FAILED (rejeitado, pedido segue).
 	 */
 	cancellationRequestedAt: string | null;
 	cancellationRequestReason: string | null;
+	/**
+	 * Disputa de cancelamento ABERTA na Plataforma de Negociação (HANDSHAKE_DISPUTE) — exige
+	 * resposta da loja antes do prazo, senão o iFood executa a acao de timeout. Encerrada por
+	 * HANDSHAKE_SETTLEMENT ou pelo desfecho terminal do pedido (CANCELLED/CONCLUDED).
+	 */
+	dispute: NonNullable<TSaleIntegrationMetadata["disputaAberta"]> | null;
 };
 
 // Codigos do evento de cancelamento SOLICITADO (curto e completo).
 const IFOOD_CANCELLATION_REQUESTED_CODES = new Set(["CAR", "CANCELLATION_REQUESTED"]);
+// Solicitacao de cancelamento REJEITADA: o pedido segue vivo no estagio em que estava.
+const IFOOD_CANCELLATION_REQUEST_FAILED_CODES = new Set(["CARF", "CANCELLATION_REQUEST_FAILED"]);
+// Plataforma de Negociacao: disputa aberta pelo cliente/iFood e o seu desfecho.
+const IFOOD_HANDSHAKE_DISPUTE_CODES = new Set(["HSD", "HANDSHAKE_DISPUTE"]);
+const IFOOD_HANDSHAKE_SETTLEMENT_CODES = new Set(["HSS", "HANDSHAKE_SETTLEMENT"]);
 
-function isCancellationRequestedEvent(event: TIfoodEvent) {
+function matchesEventCode(event: TIfoodEvent, codes: Set<string>) {
 	const code = event.code.toUpperCase();
 	const fullCode = event.fullCode?.toUpperCase();
-	return IFOOD_CANCELLATION_REQUESTED_CODES.has(code) || (!!fullCode && IFOOD_CANCELLATION_REQUESTED_CODES.has(fullCode));
+	return codes.has(code) || (!!fullCode && codes.has(fullCode));
+}
+
+function isCancellationRequestedEvent(event: TIfoodEvent) {
+	return matchesEventCode(event, IFOOD_CANCELLATION_REQUESTED_CODES);
+}
+
+function isCancellationRequestFailedEvent(event: TIfoodEvent) {
+	return matchesEventCode(event, IFOOD_CANCELLATION_REQUEST_FAILED_CODES);
+}
+
+function isHandshakeDisputeEvent(event: TIfoodEvent) {
+	return matchesEventCode(event, IFOOD_HANDSHAKE_DISPUTE_CODES);
+}
+
+function isHandshakeSettlementEvent(event: TIfoodEvent) {
+	return matchesEventCode(event, IFOOD_HANDSHAKE_SETTLEMENT_CODES);
+}
+
+function readMetadataString(metadata: Record<string, unknown> | null | undefined, key: string): string | null {
+	const value = metadata?.[key];
+	if (typeof value === "string" && value.trim()) return value.trim();
+	if (typeof value === "number") return String(value);
+	return null;
+}
+
+/**
+ * Metadata do HANDSHAKE_DISPUTE → bloco `disputaAberta`. Shape tolerante (o iFood varia campos
+ * entre tipos de disputa): sem `disputeId` nao ha como responder, entao descartamos; o resto cai
+ * em null. Valores monetarios ficam como o canal envia (centavos em string).
+ */
+function parseHandshakeDispute(event: TIfoodEvent): TIfoodOrderEventState["dispute"] {
+	const metadata = event.metadata;
+	const disputeId = readMetadataString(metadata, "disputeId");
+	if (!disputeId) return null;
+
+	const rawAlternatives = Array.isArray(metadata?.alternatives) ? metadata.alternatives : [];
+	const alternativas = rawAlternatives
+		.filter((alternative): alternative is Record<string, unknown> => !!alternative && typeof alternative === "object")
+		.map((alternative) => {
+			const alternativeMetadata =
+				alternative.metadata && typeof alternative.metadata === "object" ? (alternative.metadata as Record<string, unknown>) : null;
+			const maxAmount =
+				alternativeMetadata?.maxAmount && typeof alternativeMetadata.maxAmount === "object"
+					? (alternativeMetadata.maxAmount as Record<string, unknown>)
+					: null;
+			const maxAmountValue = readMetadataString(maxAmount, "value");
+			return {
+				id: readMetadataString(alternative, "id"),
+				tipo: readMetadataString(alternative, "type"),
+				valorMaximo: maxAmountValue ? { valor: maxAmountValue, moeda: readMetadataString(maxAmount, "currency") } : null,
+			};
+		});
+
+	return {
+		disputaId: disputeId,
+		abertaEm: event.createdAt ?? null,
+		expiraEm: readMetadataString(metadata, "expiresAt"),
+		acao: readMetadataString(metadata, "action"),
+		acaoTimeout: readMetadataString(metadata, "timeoutAction"),
+		tipo: readMetadataString(metadata, "handshakeType"),
+		mensagem: readMetadataString(metadata, "message"),
+		alternativas,
+	};
 }
 
 /**
@@ -159,6 +235,7 @@ function getOrderEventState(events: TIfoodEvent[]): TIfoodOrderEventState {
 		cancelledAt: null,
 		cancellationRequestedAt: null,
 		cancellationRequestReason: null,
+		dispute: null,
 	};
 
 	// Eventos podem chegar fora de ordem (garantia at-least-once, sem ordenacao) — o status
@@ -170,10 +247,29 @@ function getOrderEventState(events: TIfoodEvent[]): TIfoodOrderEventState {
 	});
 
 	for (const event of orderedEvents) {
-		// Solicitacao de cancelamento nao mexe em statusText — so liga a pendencia de resposta.
+		// Solicitacao de cancelamento nao mexe em statusText — so liga a pendencia informativa.
 		if (isCancellationRequestedEvent(event)) {
 			state.cancellationRequestedAt = event.createdAt ?? state.cancellationRequestedAt;
 			state.cancellationRequestReason = getCancellationRequestReason(event) ?? state.cancellationRequestReason;
+			continue;
+		}
+
+		// Solicitacao rejeitada: encerra a pendencia sem mexer em statusText — o pedido segue no
+		// estagio em que estava (CARF nao e transicao de ciclo).
+		if (isCancellationRequestFailedEvent(event)) {
+			state.cancellationRequestedAt = null;
+			state.cancellationRequestReason = null;
+			continue;
+		}
+
+		// Disputa da Plataforma de Negociacao: nao mexe em statusText (a negociacao corre em
+		// paralelo ao ciclo do pedido). Settlement encerra; disputa sem disputeId e ignorada.
+		if (isHandshakeDisputeEvent(event)) {
+			state.dispute = parseHandshakeDispute(event) ?? state.dispute;
+			continue;
+		}
+		if (isHandshakeSettlementEvent(event)) {
+			state.dispute = null;
 			continue;
 		}
 
@@ -187,6 +283,9 @@ function getOrderEventState(events: TIfoodEvent[]): TIfoodOrderEventState {
 		if (status === "CONFIRMED") state.confirmedAt = event.createdAt ?? state.confirmedAt;
 		if (status === "CONCLUDED") state.concludedAt = event.createdAt ?? state.concludedAt;
 		if (status === "CANCELLED" || status === "CANCELED") state.cancelledAt = event.createdAt ?? state.cancelledAt;
+		// Desfecho terminal resolve a disputa (cancelamento efetivado ou pedido concluido); eventos
+		// intermediarios NAO — a negociacao corre em paralelo ao preparo/entrega.
+		if (status === "CANCELLED" || status === "CANCELED" || status === "CONCLUDED") state.dispute = null;
 	}
 
 	return state;
@@ -440,6 +539,7 @@ function buildIfoodIntegrationMetadata(order: TIfoodOrder, eventState: TIfoodOrd
 		cancelamentoSolicitado: eventState.cancellationRequestedAt
 			? { solicitadoEm: eventState.cancellationRequestedAt, motivo: eventState.cancellationRequestReason }
 			: null,
+		disputaAberta: eventState.dispute,
 		taxasCanal,
 	};
 }

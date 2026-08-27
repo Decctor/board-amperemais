@@ -68,40 +68,18 @@ export async function dispatchIfoodOrder(client: AxiosInstance, orderId: string)
 	}
 }
 
+/**
+ * Cancelamento iniciado pela LOJA. O body documentado é apenas `{ reason: "<código>" }` — o código
+ * numérico de /cancellationReasons vai em `reason`. Responde 202; o desfecho chega pelo polling
+ * como CANCELLED (aceito) ou CANCELLATION_REQUEST_FAILED (rejeitado). O CANCELLATION_REQUESTED
+ * emitido logo após é só o registro da solicitação — não existe endpoint de resposta a ele
+ * (cancelamento solicitado pelo cliente é negociado na Plataforma de Negociação, via
+ * HANDSHAKE_DISPUTE).
+ */
 export async function requestIfoodOrderCancellation(client: AxiosInstance, orderId: string, cancellationCode: string): Promise<void> {
 	try {
-		// A doc atual documenta `{ reason: "<código>" }`; a variante anterior da Order API usava
-		// `cancellationCode`. Enviamos ambos com o código — campos desconhecidos são ignorados.
-		await client.post(`${IFOOD_ORDER_BASE_URL}/orders/${orderId}/requestCancellation`, {
-			reason: cancellationCode,
-			cancellationCode,
-		});
+		await client.post(`${IFOOD_ORDER_BASE_URL}/orders/${orderId}/requestCancellation`, { reason: cancellationCode });
 	} catch (error) {
 		mapIfoodError("requestIfoodOrderCancellation", error);
-	}
-}
-
-/**
- * Resposta ao cancelamento SOLICITADO pelo cliente/iFood (evento CANCELLATION_REQUESTED / `CAR`).
- *
- * Direção oposta a `requestIfoodOrderCancellation`: ali a loja PEDE o cancelamento; aqui a loja
- * RESPONDE a um pedido que chegou. O evento traz o prazo de resposta — sem resposta dentro dele o
- * iFood decide sozinho e o cenário de homologação reprova.
- *
- * Como as demais ações da Order API, respondem 202 e o desfecho chega como evento CANCELLED.
- */
-export async function acceptIfoodOrderCancellation(client: AxiosInstance, orderId: string, reason?: string | null): Promise<void> {
-	try {
-		await client.post(`${IFOOD_ORDER_BASE_URL}/orders/${orderId}/statuses/cancellationRequested/confirm`, reason ? { reason } : {});
-	} catch (error) {
-		mapIfoodError("acceptIfoodOrderCancellation", error);
-	}
-}
-
-export async function rejectIfoodOrderCancellation(client: AxiosInstance, orderId: string, reason?: string | null): Promise<void> {
-	try {
-		await client.post(`${IFOOD_ORDER_BASE_URL}/orders/${orderId}/statuses/cancellationRequested/reject`, reason ? { reason } : {});
-	} catch (error) {
-		mapIfoodError("rejectIfoodOrderCancellation", error);
 	}
 }

@@ -1,14 +1,16 @@
 "use client";
 
+import type { TIfoodOrderListItem } from "@/app/api/integrations/ifood/orders/route";
+import NumberInput from "@/components/Inputs/NumberInput";
 import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
-import { postIfoodOrderAction } from "@/lib/mutations/ifood";
+import { postIfoodDisputeResponse, postIfoodOrderAction } from "@/lib/mutations/ifood";
 import { useIfoodOrderDetails } from "@/lib/queries/ifood";
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { TriangleAlert } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { IFOOD_ORDER_ACTION_BUTTON_LABELS, getAvailableIfoodOrderActions, getIfoodOrderStatusConfig } from "./ifood-order-status-config";
 import { cn } from "@/lib/utils";
@@ -22,6 +24,11 @@ type ControlIfoodOrderProps = {
 	 * sempre traz `status` no payload — nesses casos este valor é a fonte confiável do estágio.
 	 */
 	fallbackStatus?: string | null;
+	/**
+	 * Disputa de cancelamento aberta (Plataforma de Negociação), vinda da listagem — o
+	 * `GET /orders/{id}` do iFood não traz a disputa; ela vive no nosso banco via eventos.
+	 */
+	dispute?: TIfoodOrderListItem["disputaAberta"];
 	closeModal: () => void;
 	callbacks?: {
 		onSuccess?: () => void;
@@ -35,8 +42,28 @@ const ORDER_TYPE_LABELS: Record<string, string> = {
 	INDOOR: "CONSUMO NO LOCAL",
 };
 
+const DISPUTE_TIMEOUT_ACTION_LABELS: Record<string, string> = {
+	ACCEPT_CANCELLATION: "o iFood ACEITA o cancelamento automaticamente",
+	REJECT_CANCELLATION: "o iFood REJEITA o cancelamento automaticamente",
+};
+
+const DISPUTE_TYPE_LABELS: Record<string, string> = {
+	PREPARATION_TIME: "durante o preparo",
+	AFTER_DELIVERY: "após a entrega",
+};
+
+function useNowTick(enabled: boolean) {
+	const [now, setNow] = useState(() => Date.now());
+	useEffect(() => {
+		if (!enabled) return;
+		const interval = setInterval(() => setNow(Date.now()), 15_000);
+		return () => clearInterval(interval);
+	}, [enabled]);
+	return now;
+}
+
 /** Modal de detalhes do pedido iFood com as ações do ciclo de vida (confirmar, preparo, pronto, despachar, cancelar). */
-export function ControlIfoodOrder({ orderId, canManage, fallbackStatus, closeModal, callbacks }: ControlIfoodOrderProps) {
+export function ControlIfoodOrder({ orderId, canManage, fallbackStatus, dispute, closeModal, callbacks }: ControlIfoodOrderProps) {
 	const detailsQuery = useIfoodOrderDetails({ orderId });
 	const [cancellationCode, setCancellationCode] = useState<string | null>(null);
 
@@ -67,7 +94,7 @@ export function ControlIfoodOrder({ orderId, canManage, fallbackStatus, closeMod
 		if (!cancellationCode) return toast.error("Selecione o motivo de cancelamento do pedido.");
 		mutate({ orderId, action: "requestCancellation", cancellationCode });
 	}
-	console.log(detailsQuery.data);
+
 	return (
 		<ResponsiveMenuV2
 			menuTitle={pedido?.displayId ? `PEDIDO #${pedido.displayId}` : "PEDIDO IFOOD"}
@@ -79,6 +106,9 @@ export function ControlIfoodOrder({ orderId, canManage, fallbackStatus, closeMod
 			actionIsLoading={isPending}
 			stateIsLoading={detailsQuery.isLoading}
 		>
+			{dispute ? (
+				<IfoodOrderDisputeBlock orderId={orderId} dispute={dispute} canManage={canManage} onResponded={() => callbacks?.onSuccess?.()} />
+			) : null}
 			{detailsQuery.isError ? (
 				<p className="text-sm text-destructive">{getErrorMessage(detailsQuery.error)}</p>
 			) : pedido ? (
@@ -194,5 +224,154 @@ export function ControlIfoodOrder({ orderId, canManage, fallbackStatus, closeMod
 				</div>
 			) : null}
 		</ResponsiveMenuV2>
+	);
+}
+
+/**
+ * Disputa de cancelamento aberta na Plataforma de Negociação (HANDSHAKE_DISPUTE). Tem prazo de
+ * resposta — sem resposta o iFood executa a ação de timeout. Respostas possíveis: aceitar o
+ * cancelamento, rejeitar a disputa ou (quando o evento oferece a alternativa) propor um reembolso
+ * parcial para manter o pedido. O desfecho chega pelos eventos e encerra a pendência na ingestão.
+ */
+function IfoodOrderDisputeBlock({
+	orderId,
+	dispute,
+	canManage,
+	onResponded,
+}: {
+	orderId: string;
+	dispute: NonNullable<TIfoodOrderListItem["disputaAberta"]>;
+	canManage: boolean;
+	onResponded?: () => void;
+}) {
+	const now = useNowTick(true);
+	// Aceitar cancela o pedido — exige um segundo clique de confirmação.
+	const [acceptArmed, setAcceptArmed] = useState(false);
+	const [counterOfferOpen, setCounterOfferOpen] = useState(false);
+	const [counterOfferValue, setCounterOfferValue] = useState<number | null>(null);
+	const [responded, setResponded] = useState(false);
+
+	const { mutate, isPending } = useMutation({
+		mutationKey: ["ifood-dispute-response", dispute.disputaId],
+		mutationFn: postIfoodDisputeResponse,
+		onSuccess: (data) => {
+			toast.success(data.message);
+			setResponded(true);
+			onResponded?.();
+		},
+		onError: (error) => {
+			toast.error(getErrorMessage(error));
+		},
+	});
+
+	const expired = !!dispute.expiraEm && new Date(dispute.expiraEm).getTime() <= now;
+	const remainingMinutes = dispute.expiraEm ? Math.ceil((new Date(dispute.expiraEm).getTime() - now) / 60_000) : null;
+	const timeoutLabel = dispute.acaoTimeout ? DISPUTE_TIMEOUT_ACTION_LABELS[dispute.acaoTimeout.toUpperCase()] : null;
+	const typeLabel = dispute.tipo ? (DISPUTE_TYPE_LABELS[dispute.tipo.toUpperCase()] ?? dispute.tipo) : null;
+	const refundAlternative =
+		dispute.alternativas.find((alternative) => alternative.tipo?.toUpperCase() === "REFUND" && alternative.valorMaximo) ?? null;
+	// Valores da Plataforma de Negociação trafegam em centavos como string ("5000" = R$ 50,00).
+	const refundMaxValue = refundAlternative?.valorMaximo ? Number(refundAlternative.valorMaximo.valor) / 100 : null;
+
+	function handleAccept() {
+		if (!acceptArmed) return setAcceptArmed(true);
+		mutate({ orderId, disputeId: dispute.disputaId, action: "ACEITAR", reason: null, counterOffer: null });
+	}
+
+	function handleCounterOffer() {
+		if (!refundAlternative) return;
+		if (!counterOfferValue || counterOfferValue <= 0) return toast.error("Informe o valor do reembolso proposto.");
+		if (refundMaxValue !== null && counterOfferValue > refundMaxValue) {
+			return toast.error(`O reembolso máximo aceito nesta disputa é ${formatToMoney(refundMaxValue)}.`);
+		}
+		mutate({
+			orderId,
+			disputeId: dispute.disputaId,
+			action: "CONTRAPROPOSTA",
+			reason: null,
+			counterOffer: {
+				type: refundAlternative.tipo ?? "REFUND",
+				amountValue: String(Math.round(counterOfferValue * 100)),
+				currency: refundAlternative.valorMaximo?.moeda ?? "BRL",
+			},
+		});
+	}
+
+	return (
+		<div className="mb-4 flex flex-col gap-2 rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-3">
+			<div className="flex items-center justify-between gap-2 flex-wrap">
+				<h3 className="inline-flex items-center gap-1.5 text-xs font-bold tracking-tight text-destructive">
+					<TriangleAlert className="h-4 w-4 min-w-4" />
+					DISPUTA DE CANCELAMENTO
+				</h3>
+				{expired ? (
+					<span className="rounded-md bg-destructive/10 px-2 py-0.5 text-[0.65rem] font-semibold text-destructive">PRAZO ESGOTADO</span>
+				) : remainingMinutes !== null ? (
+					<span
+						className={cn(
+							"rounded-md px-2 py-0.5 text-[0.65rem] font-semibold",
+							remainingMinutes <= 2 ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+						)}
+					>
+						{remainingMinutes} min p/ responder
+					</span>
+				) : null}
+			</div>
+
+			<p className="text-xs text-muted-foreground">
+				O cliente pediu o cancelamento{typeLabel ? ` ${typeLabel}` : ""}
+				{dispute.abertaEm ? ` em ${formatDateAsLocale(dispute.abertaEm, true)}` : ""}.
+			</p>
+			{dispute.mensagem ? <p className="text-xs italic text-muted-foreground">"{dispute.mensagem}"</p> : null}
+
+			{expired ? (
+				<p className="text-[0.65rem] text-muted-foreground">
+					O prazo de resposta terminou{timeoutLabel ? ` — sem resposta, ${timeoutLabel}` : ""}. Aguarde o desfecho pelos eventos do iFood.
+				</p>
+			) : responded ? (
+				<p className="text-[0.65rem] font-medium text-muted-foreground">Resposta enviada — aguardando o desfecho pelos eventos do iFood.</p>
+			) : (
+				<>
+					{timeoutLabel ? <p className="text-[0.65rem] text-muted-foreground">Sem resposta no prazo, {timeoutLabel}.</p> : null}
+					{canManage ? (
+						<div className="flex flex-col gap-2">
+							<div className="flex flex-wrap items-center gap-2">
+								<Button size="sm" variant="outline" className="grow text-destructive hover:text-destructive" disabled={isPending} onClick={handleAccept}>
+									{acceptArmed ? "CONFIRMAR CANCELAMENTO" : "ACEITAR CANCELAMENTO"}
+								</Button>
+								<Button
+									size="sm"
+									className="grow"
+									disabled={isPending}
+									onClick={() => mutate({ orderId, disputeId: dispute.disputaId, action: "REJEITAR", reason: null, counterOffer: null })}
+								>
+									REJEITAR DISPUTA
+								</Button>
+								{refundAlternative ? (
+									<Button size="sm" variant="secondary" className="grow" disabled={isPending} onClick={() => setCounterOfferOpen((open) => !open)}>
+										PROPOR REEMBOLSO
+									</Button>
+								) : null}
+							</div>
+							{refundAlternative && counterOfferOpen ? (
+								<div className="flex items-end gap-2">
+									<div className="grow">
+										<NumberInput
+											label={`REEMBOLSO PROPOSTO${refundMaxValue !== null ? ` (MÁX. ${formatToMoney(refundMaxValue)})` : ""}`}
+											value={counterOfferValue}
+											placeholder="Valor do reembolso em reais..."
+											handleChange={(value) => setCounterOfferValue(value)}
+										/>
+									</div>
+									<Button size="sm" disabled={isPending} onClick={handleCounterOffer}>
+										ENVIAR
+									</Button>
+								</div>
+							) : null}
+						</div>
+					) : null}
+				</>
+			)}
+		</div>
 	);
 }

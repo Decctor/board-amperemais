@@ -35,6 +35,7 @@ async function getIfoodOrders({ input, organizacaoId }: { input: TGetIfoodOrders
 			statusAtendimento: true,
 			entregaModalidade: true,
 			dataVenda: true,
+			integracaoMetadados: true,
 		},
 		with: {
 			cliente: { columns: { id: true, nome: true, telefone: true } },
@@ -55,6 +56,8 @@ async function getIfoodOrders({ input, organizacaoId }: { input: TGetIfoodOrders
 		dataVenda: sale.dataVenda,
 		cliente: sale.cliente ? { id: sale.cliente.id, nome: sale.cliente.nome, telefone: sale.cliente.telefone } : null,
 		quantidadeItens: sale.itens.length,
+		// Disputa de cancelamento aberta na Plataforma de Negociação — exige resposta antes do prazo.
+		disputaAberta: sale.integracaoMetadados?.disputaAberta ?? null,
 	}));
 
 	return { data: { orders }, message: "Pedidos do iFood carregados com sucesso." };

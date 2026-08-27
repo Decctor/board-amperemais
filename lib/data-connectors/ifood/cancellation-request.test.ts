@@ -4,10 +4,13 @@ import { mapIfoodSale } from "./mappers";
 import { IfoodEventSchema, IfoodOrderSchema } from "./types";
 
 /**
- * O cenário "Pedido Cancelado" da homologação reprovou duas vezes porque o evento de cancelamento
- * SOLICITADO (`CAR`) era filtrado da ingestão e ACKado adiante — consumido da fila sem resposta.
- * Estes testes fixam as duas metades da regra: a solicitação precisa aparecer como pendência, e
- * NÃO pode ser confundida com avanço de status (o pedido segue vivo se a solicitação for negada).
+ * Semântica do fluxo de cancelamento (doc oficial, validada na 3ª rodada de homologação):
+ * `CANCELLATION_REQUESTED` (CAR) é INFORMATIVO — o iFood o emite logo após o requestCancellation
+ * da própria loja e ele NÃO exige resposta (não existe endpoint de resposta na Order API v1.0;
+ * cancelamento solicitado pelo cliente chega como HANDSHAKE_DISPUTE, na Plataforma de Negociação).
+ * O desfecho chega como `CANCELLED` (efetivado) ou `CANCELLATION_REQUEST_FAILED` (rejeitado).
+ * Estes testes fixam as regras: a solicitação vira pendência informativa, NÃO é avanço de status,
+ * e é encerrada por qualquer desfecho — inclusive a rejeição, que deixa o pedido seguir vivo.
  */
 
 const baseOrder = IfoodOrderSchema.parse({
@@ -47,8 +50,24 @@ test("solicitação NÃO cancela a venda nem move o status de atendimento", () =
 test("cancelamento efetivado resolve a pendência e cancela a venda", () => {
 	const sale = mapIfoodSale(baseOrder, [event("CAR", "2026-08-26T19:56:00.000Z"), event("CANCELLED", "2026-08-26T19:57:00.000Z")]);
 
-	assert.equal(sale.integrationMetadata?.cancelamentoSolicitado, null, "respondido: não pode reenviar resposta");
+	assert.equal(sale.integrationMetadata?.cancelamentoSolicitado, null, "desfecho chegou: pendência encerrada");
 	assert.equal(sale.isCanceled, true);
+});
+
+test("solicitação rejeitada (CANCELLATION_REQUEST_FAILED) encerra a pendência e o pedido segue vivo", () => {
+	const sale = mapIfoodSale(baseOrder, [event("CAR", "2026-08-26T19:56:00.000Z"), event("CANCELLATION_REQUEST_FAILED", "2026-08-26T19:57:00.000Z")]);
+
+	assert.equal(sale.integrationMetadata?.cancelamentoSolicitado, null);
+	assert.equal(sale.isCanceled, false);
+	assert.equal(sale.statusText, "CONFIRMED", "CARF não é transição de ciclo");
+	assert.equal(sale.attendanceStatus, "EM_PREPARO");
+});
+
+test("código curto CARF é reconhecido igual ao código completo", () => {
+	const sale = mapIfoodSale(baseOrder, [event("CAR", "2026-08-26T19:56:00.000Z"), event("CARF", "2026-08-26T19:57:00.000Z")]);
+
+	assert.equal(sale.integrationMetadata?.cancelamentoSolicitado, null);
+	assert.equal(sale.isCanceled, false);
 });
 
 test("solicitação negada — pedido segue e a pendência some", () => {

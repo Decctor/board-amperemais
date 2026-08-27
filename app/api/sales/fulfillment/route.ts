@@ -6,7 +6,7 @@ import { processSaleFulfillmentCorrection } from "@/lib/sales/sale-processing/pr
 import { DeliveryModeEnum, PaymentMethodEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { sales } from "@/services/drizzle/schema";
-import { and, desc, eq, gte, inArray, isNull, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -270,8 +270,64 @@ async function getSalesFulfillment({ input, orgId, policy }: { input: TGetSalesF
 			}))
 		: [];
 
+	// Fila de disputas de cancelamento abertas (Plataforma de Negociação — HANDSHAKE_DISPUTE):
+	// exigem resposta da loja antes do prazo, senão o canal executa a ação de timeout. Disputas
+	// expiradas saem da fila (o canal já decidiu); o bloco é encerrado pela ingestão no desfecho.
+	const now = Date.now();
+	const pendingDisputes = policy.fulfillment
+		? (
+				await db.query.sales.findMany({
+					where: and(
+						eq(sales.organizacaoId, orgId),
+						eq(sales.processamentoOrigem, "EXTERNO"),
+						eq(sales.modelo, "IFOOD"),
+						// `-> 'disputaAberta'` devolve JSON null quando o bloco foi encerrado — os dois
+						// filtros são necessários.
+						sql`${sales.integracaoMetadados} -> 'disputaAberta' IS NOT NULL AND ${sales.integracaoMetadados} -> 'disputaAberta' <> 'null'::jsonb`,
+						gte(sales.dataVenda, pendingConfirmationCutoff),
+					),
+					columns: {
+						id: true,
+						idExterno: true,
+						documento: true,
+						valorTotal: true,
+						entregaModalidade: true,
+						observacoes: true,
+						dataVenda: true,
+						integracaoMetadados: true,
+					},
+					with: {
+						integracao: { columns: { tipo: true, apelido: true } },
+						cliente: { columns: { id: true, nome: true, telefone: true } },
+						itens: { columns: { id: true } },
+					},
+					orderBy: desc(sales.dataVenda),
+				})
+			)
+				.map((sale) => {
+					const disputa = sale.integracaoMetadados?.disputaAberta;
+					if (!disputa) return null;
+					if (disputa.expiraEm && new Date(disputa.expiraEm).getTime() <= now) return null;
+					return {
+						vendaId: sale.id,
+						orderId: sale.idExterno,
+						displayId: sale.documento,
+						valorTotal: sale.valorTotal,
+						entregaModalidade: sale.entregaModalidade,
+						observacoes: sale.observacoes,
+						dataVenda: sale.dataVenda,
+						integracao: sale.integracao,
+						cliente: sale.cliente,
+						quantidadeItens: sale.itens.length,
+						canal: "IFOOD" as const,
+						disputa,
+					};
+				})
+				.filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+		: [];
+
 	return {
-		data: { default: { cards, pendingConfirmation }, byId: null },
+		data: { default: { cards, pendingConfirmation, pendingDisputes }, byId: null },
 		message: "Pedidos de atendimento carregados com sucesso.",
 	};
 }

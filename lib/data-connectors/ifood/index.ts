@@ -28,10 +28,21 @@ const IFOOD_RELEVANT_ORDER_EVENT_CODES = new Set([
 	"CONCLUDED",
 	"CANCELLED",
 	"CANCELED",
-	// Cancelamento SOLICITADO (ainda nao efetivado): exige resposta da loja dentro do prazo do
-	// evento. Sem ele na lista, o pedido de cancelamento era filtrado aqui e ACKado adiante --
-	// consumido da fila sem nunca ter sido respondido.
+	// Cancelamento SOLICITADO (ainda nao efetivado): informativo, emitido logo apos o
+	// requestCancellation da propria loja — nao exige resposta (o desfecho chega como CANCELLED ou
+	// CANCELLATION_REQUEST_FAILED). Entra na ingestao para a venda registrar a pendencia.
 	"CANCELLATION_REQUESTED",
+	// Solicitacao REJEITADA: sem ela na lista a pendencia acima nunca seria encerrada quando o
+	// iFood nega o cancelamento e o pedido segue vivo.
+	"CARF",
+	"CANCELLATION_REQUEST_FAILED",
+	// Plataforma de Negociacao: disputa aberta pelo cliente/iFood — EXIGE resposta da loja antes
+	// do prazo (accept/reject/alternative na API de disputes), senao o iFood executa a acao de
+	// timeout. O settlement entra para disparar o remapeamento que encerra a pendencia.
+	"HSD",
+	"HANDSHAKE_DISPUTE",
+	"HSS",
+	"HANDSHAKE_SETTLEMENT",
 ]);
 
 function getRelevantOrderEvents(events: TIfoodEvent[]) {

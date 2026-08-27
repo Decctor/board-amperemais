@@ -104,14 +104,45 @@ export const SaleIntegrationMetadataSchema = z.object({
 		),
 	}),
 	/**
-	 * Cancelamento solicitado pelo cliente/canal e ainda pendente de resposta da loja. Só o canal
-	 * escreve aqui (ingestão); a resposta da loja limpa o bloco. Opcional para não invalidar as
-	 * linhas gravadas antes deste campo existir.
+	 * Solicitação de cancelamento registrada no canal e ainda sem desfecho — informativa, não exige
+	 * resposta da loja. Só o canal escreve aqui (ingestão); o desfecho (cancelado ou rejeitado)
+	 * limpa o bloco. Opcional para não invalidar as linhas gravadas antes deste campo existir.
 	 */
 	cancelamentoSolicitado: z
 		.object({
 			solicitadoEm: z.string({ required_error: "Data da solicitação de cancelamento não informada." }),
 			motivo: z.string({ invalid_type_error: "Tipo não válido para o motivo do cancelamento." }).nullable(),
+		})
+		.nullable()
+		.optional(),
+	/**
+	 * Disputa de cancelamento ABERTA na Plataforma de Negociação do canal (iFood HANDSHAKE_DISPUTE)
+	 * — esta sim exige resposta da loja antes de `expiraEm`, senão o canal executa `acaoTimeout`.
+	 * Só o canal escreve aqui (ingestão); o desfecho (HANDSHAKE_SETTLEMENT ou cancelamento
+	 * efetivado) limpa o bloco. Valores monetários trafegam como o canal envia: centavos em string
+	 * (ex.: "5000" = R$ 50,00).
+	 */
+	disputaAberta: z
+		.object({
+			disputaId: z.string({ required_error: "ID da disputa não informado." }),
+			abertaEm: z.string({ invalid_type_error: "Tipo não válido para a data de abertura da disputa." }).nullable(),
+			expiraEm: z.string({ invalid_type_error: "Tipo não válido para o prazo da disputa." }).nullable(),
+			acao: z.string({ invalid_type_error: "Tipo não válido para a ação da disputa." }).nullable(),
+			acaoTimeout: z.string({ invalid_type_error: "Tipo não válido para a ação de timeout da disputa." }).nullable(),
+			tipo: z.string({ invalid_type_error: "Tipo não válido para o tipo da disputa." }).nullable(),
+			mensagem: z.string({ invalid_type_error: "Tipo não válido para a mensagem da disputa." }).nullable(),
+			alternativas: z.array(
+				z.object({
+					id: z.string({ invalid_type_error: "Tipo não válido para o ID da alternativa." }).nullable(),
+					tipo: z.string({ invalid_type_error: "Tipo não válido para o tipo da alternativa." }).nullable(),
+					valorMaximo: z
+						.object({
+							valor: z.string({ required_error: "Valor máximo da alternativa não informado." }),
+							moeda: z.string({ invalid_type_error: "Tipo não válido para a moeda da alternativa." }).nullable(),
+						})
+						.nullable(),
+				}),
+			),
 		})
 		.nullable()
 		.optional(),

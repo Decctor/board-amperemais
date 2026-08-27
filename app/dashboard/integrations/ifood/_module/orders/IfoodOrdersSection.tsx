@@ -9,7 +9,7 @@ import { postIfoodOrderAction } from "@/lib/mutations/ifood";
 import { useIfoodOrders } from "@/lib/queries/ifood";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CircleCheck, CircleUser, Info, Package, RefreshCw, ShoppingBag, Store, Truck } from "lucide-react";
+import { CircleCheck, CircleUser, Info, Package, RefreshCw, ShoppingBag, Store, TriangleAlert, Truck } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { IfoodSectionEmpty } from "../shared/IfoodSectionEmpty";
@@ -101,6 +101,12 @@ export function IfoodOrdersSection({ canManage }: IfoodOrdersSectionProps) {
 												{deliveryMeta.label}
 											</span>
 										) : null}
+										{order.disputaAberta ? (
+											<span className="inline-flex animate-pulse items-center gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[0.65rem] font-semibold text-destructive">
+												<TriangleAlert className="h-3 w-3" />
+												DISPUTA DE CANCELAMENTO
+											</span>
+										) : null}
 									</div>
 									<div className="flex items-center gap-2">
 										{canManage && isNewOrder ? (
@@ -141,6 +147,7 @@ export function IfoodOrdersSection({ canManage }: IfoodOrdersSectionProps) {
 					orderId={selectedOrderId}
 					canManage={canManage}
 					fallbackStatus={orders.find((order) => order.orderId === selectedOrderId)?.situacao ?? null}
+					dispute={orders.find((order) => order.orderId === selectedOrderId)?.disputaAberta ?? null}
 					closeModal={() => setSelectedOrderId(null)}
 					callbacks={{
 						onSuccess: () => {

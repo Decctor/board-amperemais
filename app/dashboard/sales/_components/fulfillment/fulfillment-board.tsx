@@ -31,6 +31,7 @@ import { ATTENDANCE_COLUMN_META, ATTENDANCE_STATUS_LABEL, BOARD_STATUSES, type T
 import { FulfillmentCard } from "./fulfillment-card";
 import { FulfillmentColumn } from "./fulfillment-column";
 import { PendingConfirmationPill } from "./pending-confirmation";
+import { PendingDisputesPill } from "./pending-disputes";
 
 const KANBAN_SCROLL_CLASS = "scrollbar-subtle";
 const BOARD_DESKTOP_MAX_HEIGHT = "md:max-h-[calc(100dvh-10.5rem)] md:overflow-hidden";
@@ -267,6 +268,11 @@ export default function FulfillmentBoard({ organizationConfig, canEditSales, onV
 					{cards.length > 0 ? `${cards.length} pedido(s) em atendimento` : "Nenhum pedido em atendimento no momento"}
 				</p>
 				<div className="flex items-center gap-2">
+					<PendingDisputesPill
+						pending={data?.pendingDisputes ?? []}
+						canManage
+						onChanged={() => queryClient.invalidateQueries({ queryKey: SALES_FULFILLMENT_QUERY_KEY })}
+					/>
 					<PendingConfirmationPill
 						pending={data?.pendingConfirmation ?? []}
 						canManage
