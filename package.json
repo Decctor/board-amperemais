@@ -36,6 +36,7 @@
 		"test:ifood-import": "tsx --conditions=react-server ./scripts/test-ifood-import.ts",
 		"test:message-template-metadata-sql": "tsx ./scripts/test-message-template-metadata-sql.ts",
 		"ifood:homologation-polling": "tsx --conditions=react-server ./scripts/ifood-homologation-polling.ts",
+		"ifood:cancel-order": "tsx --conditions=react-server ./scripts/ifood-cancel-order.ts",
 		"test:ifood-catalog": "tsx ./scripts/test-ifood-catalog.ts",
 		"test:bank-statement": "tsx ./scripts/generate-test-bank-statement.ts",
 		"test:bling-fetch": "tsx ./scripts/test-bling-fetch.ts",
