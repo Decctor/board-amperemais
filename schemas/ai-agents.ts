@@ -1,5 +1,5 @@
 import z from "zod";
-import { AiAgentRunGatilhoEnum, AiAgentRunStatusEnum, AiAgentStatusEnum, AiAgentToolCallStatusEnum, AiAgentToolNameEnum } from "./enums";
+import { AiAgentRunTriggerEnum, AiAgentRunStatusEnum, AiAgentStatusEnum, AiAgentToolCallStatusEnum, AiAgentToolNameEnum } from "./enums";
 
 /**
  * Configuração do agente de IA de atendimento — um por organização.
@@ -16,7 +16,7 @@ import { AiAgentRunGatilhoEnum, AiAgentRunStatusEnum, AiAgentStatusEnum, AiAgent
 
 export const DEFAULT_AI_AGENT_MODEL = "openai/gpt-5";
 
-export const AiAgentModeloConfigSchema = z
+export const AiAgentModelConfigSchema = z
 	.object({
 		modelo: z.string({ invalid_type_error: "Tipo não válido para o modelo do agente." }).default(DEFAULT_AI_AGENT_MODEL),
 		temperatura: z
@@ -36,7 +36,7 @@ export const AiAgentModeloConfigSchema = z
 			.optional(),
 	})
 	.default({});
-export type TAiAgentModeloConfig = z.infer<typeof AiAgentModeloConfigSchema>;
+export type TAiAgentModelConfig = z.infer<typeof AiAgentModelConfigSchema>;
 
 // ============================================================================
 // CAPACIDADES (camada de permissão)
@@ -46,36 +46,36 @@ export type TAiAgentModeloConfig = z.infer<typeof AiAgentModeloConfigSchema>;
 // ferramenta revalida (`assertToolEnabled`). Desabilitar uma ferramenta aqui a remove do
 // prompt e bloqueia sua execução, mesmo que o modelo tente chamá-la.
 
-export const AiAgentFerramentaConfigSchema = z.object({
+export const AiAgentToolConfigSchema = z.object({
 	habilitada: z.boolean({ invalid_type_error: "Tipo não válido para a habilitação da ferramenta." }).default(false),
 });
-export type TAiAgentFerramentaConfig = z.infer<typeof AiAgentFerramentaConfigSchema>;
+export type TAiAgentToolConfig = z.infer<typeof AiAgentToolConfigSchema>;
 
-export const AiAgentFerramentasConfigSchema = z
+export const AiAgentToolsConfigSchema = z
 	.object({
-		"clientes.consultar_compras": AiAgentFerramentaConfigSchema.optional(),
-		"produtos.consultar": AiAgentFerramentaConfigSchema.optional(),
-		"orcamentos.criar": AiAgentFerramentaConfigSchema.optional(),
-		"cashback.consultar": AiAgentFerramentaConfigSchema.optional(),
-		"cupons.consultar": AiAgentFerramentaConfigSchema.optional(),
-		"atendimento.transferir_para_humano": AiAgentFerramentaConfigSchema.optional(),
+		"clientes.consultar_compras": AiAgentToolConfigSchema.optional(),
+		"produtos.consultar": AiAgentToolConfigSchema.optional(),
+		"orcamentos.criar": AiAgentToolConfigSchema.optional(),
+		"cashback.consultar": AiAgentToolConfigSchema.optional(),
+		"cupons.consultar": AiAgentToolConfigSchema.optional(),
+		"atendimento.transferir_para_humano": AiAgentToolConfigSchema.optional(),
 	})
 	.default({});
-export type TAiAgentFerramentasConfig = z.infer<typeof AiAgentFerramentasConfigSchema>;
+export type TAiAgentToolsConfig = z.infer<typeof AiAgentToolsConfigSchema>;
 
-export const AiAgentPrecosConfigSchema = z
+export const AiAgentPricingConfigSchema = z
 	.object({
 		visiveis: z.boolean({ invalid_type_error: "Tipo não válido para a visibilidade dos preços." }).default(true),
 	})
 	.default({});
-export type TAiAgentPrecosConfig = z.infer<typeof AiAgentPrecosConfigSchema>;
+export type TAiAgentPricingConfig = z.infer<typeof AiAgentPricingConfigSchema>;
 
-export const AiAgentOrcamentosConfigSchema = z
+export const AiAgentQuotesConfigSchema = z
 	.object({
 		bloqueio: z.enum(["TRANSFERIR", "INFORMAR"]).default("TRANSFERIR"),
 	})
 	.default({});
-export type TAiAgentOrcamentosConfig = z.infer<typeof AiAgentOrcamentosConfigSchema>;
+export type TAiAgentQuotesConfig = z.infer<typeof AiAgentQuotesConfigSchema>;
 
 /**
  * Política de estoque do agente, em dois eixos deliberadamente ortogonais: dá para não contar o
@@ -90,28 +90,28 @@ export type TAiAgentOrcamentosConfig = z.infer<typeof AiAgentOrcamentosConfigSch
  * combinação com `visibilidade: "OCULTO"` é barrada no `superRefine` e um default inválido
  * derrubaria `parseJsonbWithFallback`, cujo fallback é justamente `schema.parse(undefined)`.
  */
-export const AiAgentEstoqueConfigSchema = z
+export const AiAgentStockConfigSchema = z
 	.object({
 		visibilidade: z.enum(["OCULTO", "DISPONIBILIDADE", "QUANTIDADE"]).default("OCULTO"),
 		excedente: z.enum(["BLOQUEAR", "AVISAR", "PERMITIR"]).default("PERMITIR"),
 	})
 	.default({});
-export type TAiAgentEstoqueConfig = z.infer<typeof AiAgentEstoqueConfigSchema>;
+export type TAiAgentStockConfig = z.infer<typeof AiAgentStockConfigSchema>;
 
-export const AiAgentComercialConfigSchema = z
+export const AiAgentCommercialConfigSchema = z
 	.object({
-		precos: AiAgentPrecosConfigSchema,
-		orcamentos: AiAgentOrcamentosConfigSchema,
-		estoque: AiAgentEstoqueConfigSchema,
+		precos: AiAgentPricingConfigSchema,
+		orcamentos: AiAgentQuotesConfigSchema,
+		estoque: AiAgentStockConfigSchema,
 	})
 	.default({});
-export type TAiAgentComercialConfig = z.infer<typeof AiAgentComercialConfigSchema>;
+export type TAiAgentCommercialConfig = z.infer<typeof AiAgentCommercialConfigSchema>;
 
-export const AiAgentCapacidadesSchema = z
+export const AiAgentCapabilitiesSchema = z
 	.object({
 		version: z.literal(1).default(1),
-		ferramentas: AiAgentFerramentasConfigSchema,
-		comercial: AiAgentComercialConfigSchema,
+		ferramentas: AiAgentToolsConfigSchema,
+		comercial: AiAgentCommercialConfigSchema,
 		limites: z
 			.object({
 				// Vira `stopWhen: stepCountIs(...)` no loop do agente.
@@ -171,19 +171,19 @@ export const AiAgentCapacidadesSchema = z
 		}
 	})
 	.default({});
-export type TAiAgentCapacidades = z.infer<typeof AiAgentCapacidadesSchema>;
+export type TAiAgentCapabilities = z.infer<typeof AiAgentCapabilitiesSchema>;
 
 // ============================================================================
 // EXECUÇÃO (run)
 // ============================================================================
 
-export const AiAgentUsoSchema = z.object({
+export const AiAgentUsageSchema = z.object({
 	tokensEntrada: z.number({ invalid_type_error: "Tipo não válido para os tokens de entrada." }).optional(),
 	tokensSaida: z.number({ invalid_type_error: "Tipo não válido para os tokens de saída." }).optional(),
 	tokensTotal: z.number({ invalid_type_error: "Tipo não válido para o total de tokens." }).optional(),
 	modelo: z.string({ invalid_type_error: "Tipo não válido para o modelo utilizado." }).optional(),
 });
-export type TAiAgentUso = z.infer<typeof AiAgentUsoSchema>;
+export type TAiAgentUsage = z.infer<typeof AiAgentUsageSchema>;
 
 /**
  * Config que estava valendo no momento da execução. Substitui o versionamento: o agente é
@@ -191,8 +191,8 @@ export type TAiAgentUso = z.infer<typeof AiAgentUsoSchema>;
  */
 export const AiAgentConfigSnapshotSchema = z.object({
 	instrucoes: z.string({ invalid_type_error: "Tipo não válido para as instruções." }),
-	modeloConfig: AiAgentModeloConfigSchema,
-	capacidades: AiAgentCapacidadesSchema,
+	modeloConfig: AiAgentModelConfigSchema,
+	capacidades: AiAgentCapabilitiesSchema,
 	conhecimento: z.array(
 		z.object({
 			id: z.string({ invalid_type_error: "Tipo não válido para o ID do bloco de conhecimento." }),
@@ -227,8 +227,8 @@ export const AiAgentSchema = z.object({
 		.string({ required_error: "Instruções do agente não informadas.", invalid_type_error: "Tipo não válido para as instruções do agente." })
 		.min(1, "As instruções do agente não podem ser vazias.")
 		.max(20000, "As instruções do agente devem ter no máximo 20000 caracteres."),
-	modeloConfig: AiAgentModeloConfigSchema,
-	capacidades: AiAgentCapacidadesSchema,
+	modeloConfig: AiAgentModelConfigSchema,
+	capacidades: AiAgentCapabilitiesSchema,
 	dataInsercao: z
 		.string()
 		.datetime()
@@ -279,4 +279,4 @@ export const UpdateAiAgentKnowledgeSchema = AiAgentKnowledgeSchema.omit({
 export type TUpdateAiAgentKnowledge = z.infer<typeof UpdateAiAgentKnowledgeSchema>;
 
 // Re-exports de conveniência para quem consome só este módulo.
-export { AiAgentRunGatilhoEnum, AiAgentRunStatusEnum, AiAgentStatusEnum, AiAgentToolCallStatusEnum, AiAgentToolNameEnum };
+export { AiAgentRunTriggerEnum, AiAgentRunStatusEnum, AiAgentStatusEnum, AiAgentToolCallStatusEnum, AiAgentToolNameEnum };

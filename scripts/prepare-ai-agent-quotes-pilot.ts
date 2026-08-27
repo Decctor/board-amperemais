@@ -2,7 +2,7 @@ import "dotenv/config";
 import { ensureOrganizationAgent } from "@/lib/ai/agent/provisioning";
 import { parseJsonbWithFallback } from "@/lib/ai/shared/json";
 import { getCatalogCommercialReadiness } from "@/lib/products/commercial-readiness";
-import { AiAgentCapacidadesSchema } from "@/schemas/ai-agents";
+import { AiAgentCapabilitiesSchema } from "@/schemas/ai-agents";
 import { connection, db } from "@/services/drizzle";
 import { aiAgents, organizations, productAddOnReferences, products, productVariants } from "@/services/drizzle/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -229,8 +229,8 @@ async function main() {
 		where: eq(aiAgents.organizacaoId, args.orgId),
 		columns: { id: true, status: true, capacidades: true },
 	});
-	const currentCapabilities = parseJsonbWithFallback(AiAgentCapacidadesSchema, agent?.capacidades);
-	const nextCapabilities = AiAgentCapacidadesSchema.parse({
+	const currentCapabilities = parseJsonbWithFallback(AiAgentCapabilitiesSchema, agent?.capacidades);
+	const nextCapabilities = AiAgentCapabilitiesSchema.parse({
 		...currentCapabilities,
 		ferramentas: {
 			...currentCapabilities.ferramentas,

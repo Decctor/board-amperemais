@@ -1,5 +1,5 @@
 import { claimChatAttendanceForAgent, getCurrentChatAttendance } from "@/lib/chats/attendance-state";
-import type { TAiAgentRunGatilhoEnum } from "@/schemas/enums";
+import type { TAiAgentRunTriggerEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { chatMessages } from "@/services/drizzle/schema";
 import { and, desc, eq, gt, inArray } from "drizzle-orm";
@@ -120,7 +120,7 @@ export async function confirmAiDeliveryStillValid({
 }: {
 	organizationId: string;
 	chatId: string;
-	trigger: TAiAgentRunGatilhoEnum;
+	trigger: TAiAgentRunTriggerEnum;
 	triggerMessageId: string | null;
 	runStartedAt: Date;
 }): Promise<TAiTriggerDecision> {

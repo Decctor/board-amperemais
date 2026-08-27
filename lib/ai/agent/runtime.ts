@@ -1,5 +1,5 @@
-import { AiAgentCapacidadesSchema, AiAgentModeloConfigSchema, type TAiAgentTurnOutput } from "@/schemas/ai-agents";
-import type { TAiAgentRunGatilhoEnum } from "@/schemas/enums";
+import { AiAgentCapabilitiesSchema, AiAgentModelConfigSchema, type TAiAgentTurnOutput } from "@/schemas/ai-agents";
+import type { TAiAgentRunTriggerEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import type { DB, DBTransaction } from "@/services/drizzle";
 import { aiAgents } from "@/services/drizzle/schema";
@@ -46,7 +46,7 @@ export type TPreparedAgentExecution = {
 	toolContext: TAgentToolContext;
 	systemPrompt: string;
 	turnPrompt: string;
-	modeloConfig: ReturnType<typeof AiAgentModeloConfigSchema.parse>;
+	modeloConfig: ReturnType<typeof AiAgentModelConfigSchema.parse>;
 	maxSteps: number;
 	previousSummary: string | null;
 };
@@ -85,7 +85,7 @@ export async function prepareAgentExecution({
 }: {
 	organizacaoId: string;
 	chatId: string;
-	gatilho: TAiAgentRunGatilhoEnum;
+	gatilho: TAiAgentRunTriggerEnum;
 	mensagemGatilhoId?: string | null;
 	database?: TDb;
 }): Promise<TPreparedAgentExecution> {
@@ -93,8 +93,8 @@ export async function prepareAgentExecution({
 	if (!agent) throw new AgentInactiveError("A organização não possui um agente de IA configurado.");
 	if (agent.status !== "ATIVO") throw new AgentInactiveError("O agente de IA da organização está pausado.");
 
-	const modeloConfig = parseJsonbWithFallback(AiAgentModeloConfigSchema, agent.modeloConfig);
-	const capacidades = parseJsonbWithFallback(AiAgentCapacidadesSchema, agent.capacidades);
+	const modeloConfig = parseJsonbWithFallback(AiAgentModelConfigSchema, agent.modeloConfig);
+	const capacidades = parseJsonbWithFallback(AiAgentCapabilitiesSchema, agent.capacidades);
 
 	const runsToday = await countAgentRunsToday(database, organizacaoId);
 	if (runsToday >= capacidades.limites.maxRunsDiarios) {
@@ -178,7 +178,7 @@ export async function executeAgentTurn(prepared: TPreparedAgentExecution): Promi
 		const usages: Array<Partial<LanguageModelUsage> | undefined> = [];
 		const usedModels: string[] = [];
 
-		const generate = async ({ modelConfig, prompt }: { modelConfig: ReturnType<typeof AiAgentModeloConfigSchema.parse>; prompt: string }) => {
+		const generate = async ({ modelConfig, prompt }: { modelConfig: ReturnType<typeof AiAgentModelConfigSchema.parse>; prompt: string }) => {
 			usedModels.push(modelConfig.modelo);
 			const loopAgent = new ToolLoopAgent({
 				model: resolveLanguageModel(modelConfig),
@@ -196,7 +196,7 @@ export async function executeAgentTurn(prepared: TPreparedAgentExecution): Promi
 			return result;
 		};
 
-		const generateWithFallback = async (prompt: string, preferredConfig: ReturnType<typeof AiAgentModeloConfigSchema.parse> = modeloConfig) => {
+		const generateWithFallback = async (prompt: string, preferredConfig: ReturnType<typeof AiAgentModelConfigSchema.parse> = modeloConfig) => {
 			try {
 				return await generate({ modelConfig: preferredConfig, prompt });
 			} catch (error) {

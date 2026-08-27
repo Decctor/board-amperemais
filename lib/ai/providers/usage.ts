@@ -1,4 +1,4 @@
-import type { TAiAgentUso } from "@/schemas/ai-agents";
+import type { TAiAgentUsage } from "@/schemas/ai-agents";
 import type { LanguageModelUsage } from "ai";
 
 /**
@@ -6,7 +6,7 @@ import type { LanguageModelUsage } from "ai";
  * O total é recalculado quando o provider não o informa, para que a soma de tokens da
  * organização nunca dependa de um campo opcional.
  */
-export function normalizeAiUsage(usage: Partial<LanguageModelUsage> | undefined, modelo?: string): TAiAgentUso | null {
+export function normalizeAiUsage(usage: Partial<LanguageModelUsage> | undefined, modelo?: string): TAiAgentUsage | null {
 	if (!usage) return modelo ? { modelo } : null;
 
 	const tokensEntrada = usage.inputTokens;

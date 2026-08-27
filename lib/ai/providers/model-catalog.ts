@@ -1,4 +1,4 @@
-import type { TAiAgentModelPerfilEnum } from "@/schemas/enums";
+import type { TAiAgentModelProfileEnum } from "@/schemas/enums";
 
 /**
  * Catálogo de modelos oferecidos na configuração do agente.
@@ -20,7 +20,7 @@ export type TAiAgentModelCatalogEntry = {
 	nome: string;
 	fornecedor: string;
 	fornecedorSlug: string;
-	perfil: TAiAgentModelPerfilEnum;
+	perfil: TAiAgentModelProfileEnum;
 	descricao: string;
 	/** Destaque na UI: melhor relação custo/qualidade testada para atendimento. */
 	recomendado?: boolean;
@@ -189,14 +189,14 @@ export const AI_AGENT_MODEL_CATALOG: TAiAgentModelCatalogEntry[] = [
 	},
 ];
 
-export const AI_AGENT_MODEL_PERFIL_LABELS: Record<TAiAgentModelPerfilEnum, string> = {
+export const AI_AGENT_MODEL_PROFILE_LABELS: Record<TAiAgentModelProfileEnum, string> = {
 	ECONOMICO: "ECONÔMICOS",
 	EQUILIBRADO: "EQUILIBRADOS",
 	AVANCADO: "AVANÇADOS",
 };
 
 /** Ordem de exibição dos grupos: do mais barato ao mais capaz. */
-export const AI_AGENT_MODEL_PERFIL_ORDER: TAiAgentModelPerfilEnum[] = ["ECONOMICO", "EQUILIBRADO", "AVANCADO"];
+export const AI_AGENT_MODEL_PROFILE_ORDER: TAiAgentModelProfileEnum[] = ["ECONOMICO", "EQUILIBRADO", "AVANCADO"];
 
 export function findAiAgentModelInCatalog(id: string): TAiAgentModelCatalogEntry | null {
 	return AI_AGENT_MODEL_CATALOG.find((entry) => entry.id === id) ?? null;

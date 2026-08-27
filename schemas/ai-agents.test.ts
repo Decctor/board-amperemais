@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AiAgentCapacidadesSchema } from "./ai-agents";
+import { AiAgentCapabilitiesSchema } from "./ai-agents";
 
 test("capacidades antigas recebem os defaults comerciais", () => {
-	const capabilities = AiAgentCapacidadesSchema.parse({ ferramentas: {} });
+	const capabilities = AiAgentCapabilitiesSchema.parse({ ferramentas: {} });
 	assert.deepEqual(capabilities.comercial, {
 		precos: { visiveis: true },
 		orcamentos: { bloqueio: "TRANSFERIR" },
@@ -16,12 +16,12 @@ test("os defaults de estoque são válidos por si", () => {
 	// `parseJsonbWithFallback` cai em `schema.parse(undefined)` quando o JSONB persistido não casa.
 	// Se os próprios defaults violassem o superRefine, esse fallback lançaria em vez de salvar a
 	// execução — que é justamente o que ele existe para evitar.
-	assert.doesNotThrow(() => AiAgentCapacidadesSchema.parse(undefined));
-	assert.doesNotThrow(() => AiAgentCapacidadesSchema.parse({ comercial: { estoque: {} } }));
+	assert.doesNotThrow(() => AiAgentCapabilitiesSchema.parse(undefined));
+	assert.doesNotThrow(() => AiAgentCapabilitiesSchema.parse({ comercial: { estoque: {} } }));
 });
 
 test("avisar sobre estoque exige disponibilidade visível", () => {
-	const result = AiAgentCapacidadesSchema.safeParse({
+	const result = AiAgentCapabilitiesSchema.safeParse({
 		comercial: { estoque: { visibilidade: "OCULTO", excedente: "AVISAR" } },
 	});
 	assert.equal(result.success, false);
@@ -29,7 +29,7 @@ test("avisar sobre estoque exige disponibilidade visível", () => {
 
 test("bloquear e permitir funcionam com estoque oculto", () => {
 	for (const excedente of ["BLOQUEAR", "PERMITIR"]) {
-		const result = AiAgentCapacidadesSchema.safeParse({
+		const result = AiAgentCapabilitiesSchema.safeParse({
 			comercial: { estoque: { visibilidade: "OCULTO", excedente } },
 		});
 		assert.equal(result.success, true, excedente);
@@ -38,7 +38,7 @@ test("bloquear e permitir funcionam com estoque oculto", () => {
 
 test("avisar é aceito quando a disponibilidade está visível", () => {
 	for (const visibilidade of ["DISPONIBILIDADE", "QUANTIDADE"]) {
-		const result = AiAgentCapacidadesSchema.safeParse({
+		const result = AiAgentCapabilitiesSchema.safeParse({
 			comercial: { estoque: { visibilidade, excedente: "AVISAR" } },
 		});
 		assert.equal(result.success, true, visibilidade);
@@ -46,7 +46,7 @@ test("avisar é aceito quando a disponibilidade está visível", () => {
 });
 
 test("orçamento não pode ser habilitado com preços ocultos", () => {
-	const result = AiAgentCapacidadesSchema.safeParse({
+	const result = AiAgentCapabilitiesSchema.safeParse({
 		ferramentas: {
 			"orcamentos.criar": { habilitada: true },
 			"atendimento.transferir_para_humano": { habilitada: true },
@@ -57,7 +57,7 @@ test("orçamento não pode ser habilitado com preços ocultos", () => {
 });
 
 test("política de transferência exige a ferramenta correspondente", () => {
-	const result = AiAgentCapacidadesSchema.safeParse({
+	const result = AiAgentCapabilitiesSchema.safeParse({
 		ferramentas: { "orcamentos.criar": { habilitada: true } },
 		comercial: {
 			precos: { visiveis: true },
@@ -68,7 +68,7 @@ test("política de transferência exige a ferramenta correspondente", () => {
 });
 
 test("política de informar permite orçamento sem transferência", () => {
-	const result = AiAgentCapacidadesSchema.safeParse({
+	const result = AiAgentCapabilitiesSchema.safeParse({
 		ferramentas: { "orcamentos.criar": { habilitada: true } },
 		comercial: {
 			precos: { visiveis: true },

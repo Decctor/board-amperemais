@@ -1,4 +1,4 @@
-import type { TAiAgentCapacidades } from "@/schemas/ai-agents";
+import type { TAiAgentCapabilities } from "@/schemas/ai-agents";
 import type { TAiAgentToolNameEnum } from "@/schemas/enums";
 import type { TProductGroupSummary } from "../shared/product-groups";
 import { getEnabledAgentTools } from "../tools/registry";
@@ -29,7 +29,7 @@ import { getEnabledAgentTools } from "../tools/registry";
  * do branch de preços visíveis: quem escondia preços perdia o aviso inteiro, e quem o recebia não
  * tinha o que fazer com ele.
  */
-function buildStockRules(estoque: TAiAgentCapacidades["comercial"]["estoque"]): string[] {
+function buildStockRules(estoque: TAiAgentCapabilities["comercial"]["estoque"]): string[] {
 	const rules: string[] = [];
 
 	if (estoque.visibilidade === "OCULTO") {
@@ -66,7 +66,7 @@ export function buildAgentSystemPrompt({
 	productGroups = [],
 }: {
 	instrucoes: string;
-	capacidades: TAiAgentCapacidades;
+	capacidades: TAiAgentCapabilities;
 	knowledgeContext: string;
 	productGroups?: TProductGroupSummary[];
 }): string {

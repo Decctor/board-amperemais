@@ -4,7 +4,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
 import { getCatalogCommercialReadiness } from "@/lib/products/commercial-readiness";
-import { AiAgentCapacidadesSchema, AiAgentModeloConfigSchema, UpdateAiAgentKnowledgeSchema, UpdateAiAgentSchema } from "@/schemas/ai-agents";
+import { AiAgentCapabilitiesSchema, AiAgentModelConfigSchema, UpdateAiAgentKnowledgeSchema, UpdateAiAgentSchema } from "@/schemas/ai-agents";
 import { db } from "@/services/drizzle";
 import { aiAgentKnowledge, aiAgents } from "@/services/drizzle/schema";
 import { and, asc, eq } from "drizzle-orm";
@@ -37,8 +37,8 @@ async function getAiAgent({ organizacaoId }: { organizacaoId: string }) {
 
 	const parsedAgent = {
 		...agent,
-		modeloConfig: parseJsonbWithFallback(AiAgentModeloConfigSchema, agent.modeloConfig),
-		capacidades: parseJsonbWithFallback(AiAgentCapacidadesSchema, agent.capacidades),
+		modeloConfig: parseJsonbWithFallback(AiAgentModelConfigSchema, agent.modeloConfig),
+		capacidades: parseJsonbWithFallback(AiAgentCapabilitiesSchema, agent.capacidades),
 	};
 	const diagnosticoComercial = await getCatalogCommercialReadiness({ db, organizacaoId });
 

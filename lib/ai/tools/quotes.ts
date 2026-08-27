@@ -1,7 +1,7 @@
 import { completeAgentOperation } from "@/lib/ai/operations/lifecycle";
 import { createSaleDraft } from "@/lib/sales/drafts/create-sale-draft";
 import { findStockShortages, resolveSaleItems, SaleItemResolutionError, type TSaleItemShortage } from "@/lib/sales/resolve-sale-items";
-import type { TAiAgentEstoqueConfig } from "@/schemas/ai-agents";
+import type { TAiAgentStockConfig } from "@/schemas/ai-agents";
 import type { DB, DBTransaction } from "@/services/drizzle";
 import z from "zod";
 import { defineAgentTool } from "./define-tool";
@@ -38,7 +38,7 @@ async function inTransaction<T>(database: DB | DBTransaction, callback: (tx: DBT
  * vazado do mesmo jeito. Sob `DISPONIBILIDADE` o agente pode nomear o item em falta, mas a instrução
  * de não quantificar viaja junto com a frase, porque é ali que ele decide o que escrever.
  */
-function formatShortageWarning(faltas: TSaleItemShortage[], visibilidade: TAiAgentEstoqueConfig["visibilidade"]): string {
+function formatShortageWarning(faltas: TSaleItemShortage[], visibilidade: TAiAgentStockConfig["visibilidade"]): string {
 	if (visibilidade === "OCULTO" || faltas.length === 0) {
 		return "A quantidade pedida precisa ser confirmada pela equipe.";
 	}
@@ -51,7 +51,7 @@ function formatShortageWarning(faltas: TSaleItemShortage[], visibilidade: TAiAge
 }
 
 /** Faltas no payload seguem a mesma regra da mensagem: quantidade só sob `QUANTIDADE`. */
-function formatShortageResult(faltas: TSaleItemShortage[], visibilidade: TAiAgentEstoqueConfig["visibilidade"]) {
+function formatShortageResult(faltas: TSaleItemShortage[], visibilidade: TAiAgentStockConfig["visibilidade"]) {
 	if (visibilidade === "OCULTO") return undefined;
 	return visibilidade === "QUANTIDADE" ? faltas : faltas.map((falta) => ({ nome: falta.nome }));
 }

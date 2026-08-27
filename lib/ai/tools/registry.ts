@@ -19,7 +19,7 @@ import type { TAgentToolContext, TAgentToolDefinitionErased, TAgentToolOutput } 
  * Registro único de ferramentas. Adicionar uma ferramenta são 3 passos:
  *  1. criar `lib/ai/tools/<dominio-em-ingles>.ts` com `defineAgentTool`;
  *  2. adicionar o nome em `AiAgentToolNameEnum` (`schemas/enums.ts`) — o que já a inclui em
- *     `AiAgentFerramentasConfigSchema`;
+ *     `AiAgentToolsConfigSchema`;
  *  3. registrar aqui.
  *
  * O arquivo e a const são inglês (código); o `name` da ferramenta é português porque viaja

@@ -11,7 +11,7 @@ import {
 	ModelSelectorTrigger,
 } from "@/components/ui/model-selector";
 import { Button } from "@/components/ui/button";
-import { AI_AGENT_MODEL_PERFIL_LABELS, AI_AGENT_MODEL_PERFIL_ORDER } from "@/lib/ai/providers/model-catalog";
+import { AI_AGENT_MODEL_PROFILE_LABELS, AI_AGENT_MODEL_PROFILE_ORDER } from "@/lib/ai/providers/model-catalog";
 import { useAiAgentModels } from "@/lib/queries/ai-agents";
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown, Sparkles } from "lucide-react";
@@ -66,11 +66,11 @@ export default function ModelSelectorField({ value, onChange }: ModelSelectorFie
 					<ModelSelectorInput placeholder="Buscar modelo..." />
 					<ModelSelectorList>
 						<ModelSelectorEmpty>Nenhum modelo encontrado.</ModelSelectorEmpty>
-						{AI_AGENT_MODEL_PERFIL_ORDER.map((perfil) => {
+						{AI_AGENT_MODEL_PROFILE_ORDER.map((perfil) => {
 							const group = models.filter((model) => model.perfil === perfil);
 							if (group.length === 0) return null;
 							return (
-								<ModelSelectorGroup heading={AI_AGENT_MODEL_PERFIL_LABELS[perfil]} key={perfil}>
+								<ModelSelectorGroup heading={AI_AGENT_MODEL_PROFILE_LABELS[perfil]} key={perfil}>
 									{group.map((model) => (
 										<ModelSelectorItem
 											key={model.id}

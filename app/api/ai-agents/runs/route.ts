@@ -1,6 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import { AiAgentRunGatilhoEnum, AiAgentRunStatusEnum } from "@/schemas/enums";
+import { AiAgentRunTriggerEnum, AiAgentRunStatusEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { aiAgentRuns, aiAgentToolCalls } from "@/services/drizzle/schema";
 import { and, asc, count, desc, eq } from "drizzle-orm";
@@ -25,7 +25,7 @@ const GetAiAgentRunsInputSchema = z.object({
 		.string({ invalid_type_error: "Tipo inválido para o gatilho." })
 		.optional()
 		.nullable()
-		.transform((v) => (v ? AiAgentRunGatilhoEnum.parse(v) : null)),
+		.transform((v) => (v ? AiAgentRunTriggerEnum.parse(v) : null)),
 	status: z
 		.string({ invalid_type_error: "Tipo inválido para o status." })
 		.optional()

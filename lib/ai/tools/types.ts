@@ -1,5 +1,5 @@
-import type { TAiAgentCapacidades } from "@/schemas/ai-agents";
-import type { TAiAgentOperationTypeEnum, TAiAgentRunGatilhoEnum, TAiAgentToolNameEnum } from "@/schemas/enums";
+import type { TAiAgentCapabilities } from "@/schemas/ai-agents";
+import type { TAiAgentOperationTypeEnum, TAiAgentRunTriggerEnum, TAiAgentToolNameEnum } from "@/schemas/enums";
 import type { DB, DBTransaction } from "@/services/drizzle";
 import type z from "zod";
 
@@ -14,7 +14,7 @@ export type TAgentToolContext = {
 	db: DB | DBTransaction;
 	organizacaoId: string;
 	agent: { id: string; nome: string };
-	run: { id: string; gatilho: TAiAgentRunGatilhoEnum; mensagemGatilhoId: string | null };
+	run: { id: string; gatilho: TAiAgentRunTriggerEnum; mensagemGatilhoId: string | null };
 	chat: { id: string; clienteId: string };
 	/**
 	 * Mensagens recentes do cliente, da mais nova para a mais antiga. É uma janela, e não só a
@@ -22,7 +22,7 @@ export type TAgentToolContext = {
 	 * reais" → "quais são?") — ver `normalizeProductQueryInput`.
 	 */
 	turn: { mensagensRecentesCliente: string[] };
-	capacidades: TAiAgentCapacidades;
+	capacidades: TAiAgentCapabilities;
 	toolCall?: { id: string };
 	operation?: { id: string; tipo: TAiAgentOperationTypeEnum };
 };
