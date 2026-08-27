@@ -4,6 +4,7 @@ import GroupedStatsBlock from "@/components/SalesStats/Blocks/GroupedStatsBlock"
 import OverallStatsBlock from "@/components/SalesStats/Blocks/OverallStatsBlock";
 import SalesGraphBlock from "@/components/SalesStats/Blocks/SalesGraphBlock";
 import MultipleSalesSelectInput from "@/components/Inputs/SelectMultipleSalesInput";
+import { buildSalesIntegrationFilterOptions } from "@/components/Sales/sales-integration-filter-options";
 import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
@@ -22,7 +23,7 @@ function createDefaultParams(initialSellers: string[]): TSaleStatsGeneralQueryPa
 	return {
 		period: { after: initialPeriodStart, before: initialPeriodEnd },
 		total: {},
-		saleNatures: ["SN01"],
+		integrationsIds: [],
 		sellers: initialSellers,
 		clientRFMTitles: [],
 		productGroups: [],
@@ -73,11 +74,11 @@ function CommercialInlineFilters({ membership, queryParams, updateQueryParams }:
 	const selectableSellersIds = membership.permissoes.resultados.escopo ?? null;
 	const sellerOptions = ((selectableSellersIds ? filterOptions?.sellers.filter((s) => selectableSellersIds.includes(s.id)) : filterOptions?.sellers) ?? []) as InteractiveFilterOption<string>[];
 	const productGroupOptions = (filterOptions?.productsGroups ?? []) as InteractiveFilterOption<string>[];
-	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const integrationOptions = buildSalesIntegrationFilterOptions(filterOptions?.integrations);
 	const rfmOptions = RFMLabels.map((item, index) => ({ id: index + 1, label: item.text, value: item.text })) satisfies InteractiveFilterOption<string>[];
 
 	const hasSellers = queryParams.sellers.length > 0;
-	const hasSaleNatures = queryParams.saleNatures.length > 0;
+	const hasIntegrations = queryParams.integrationsIds.length > 0;
 	const hasProductGroups = queryParams.productGroups.length > 0;
 	const hasRFM = queryParams.clientRFMTitles.length > 0;
 	const hasTotal = queryParams.total.min != null || queryParams.total.max != null;
@@ -112,13 +113,13 @@ function CommercialInlineFilters({ membership, queryParams, updateQueryParams }:
 			</InteractiveFilter.Root>
 
 			{hasSellers ? <CommercialMultiFilter label="VENDEDORES" options={sellerOptions} value={queryParams.sellers} onChange={(sellers) => updateQueryParams({ sellers })} onClear={() => updateQueryParams({ sellers: [] })} /> : null}
-			{hasSaleNatures ? (
+			{hasIntegrations ? (
 				<CommercialMultiFilter
-					label="NATUREZAS"
-					options={saleNatureOptions}
-					value={queryParams.saleNatures}
-					onChange={(saleNatures) => updateQueryParams({ saleNatures: saleNatures as TSaleStatsGeneralQueryParams["saleNatures"] })}
-					onClear={() => updateQueryParams({ saleNatures: [] })}
+					label="INTEGRAÇÕES"
+					options={integrationOptions}
+					value={queryParams.integrationsIds}
+					onChange={(integrationsIds) => updateQueryParams({ integrationsIds })}
+					onClear={() => updateQueryParams({ integrationsIds: [] })}
 				/>
 			) : null}
 			{hasProductGroups ? <CommercialMultiFilter label="GRUPOS" options={productGroupOptions} value={queryParams.productGroups} onChange={(productGroups) => updateQueryParams({ productGroups })} onClear={() => updateQueryParams({ productGroups: [] })} /> : null}
@@ -138,9 +139,9 @@ function CommercialInlineFilters({ membership, queryParams, updateQueryParams }:
 								<InteractiveFilter.MultiContent options={sellerOptions} value={queryParams.sellers} onChange={(sellers) => updateQueryParams({ sellers })} onClear={() => updateQueryParams({ sellers: [] })} clearLabel="TODOS" />
 							</InteractiveFilter.AddFilterItem>
 						) : null}
-						{!hasSaleNatures ? (
-							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}>
-								<InteractiveFilter.MultiContent options={saleNatureOptions} value={queryParams.saleNatures} onChange={(saleNatures) => updateQueryParams({ saleNatures: saleNatures as TSaleStatsGeneralQueryParams["saleNatures"] })} onClear={() => updateQueryParams({ saleNatures: [] })} clearLabel="TODAS" />
+						{!hasIntegrations ? (
+							<InteractiveFilter.AddFilterItem id="integrations" label="INTEGRAÇÕES" icon={<ListFilter className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent options={integrationOptions} value={queryParams.integrationsIds} onChange={(integrationsIds) => updateQueryParams({ integrationsIds })} onClear={() => updateQueryParams({ integrationsIds: [] })} clearLabel="TODAS" />
 							</InteractiveFilter.AddFilterItem>
 						) : null}
 						{!hasProductGroups ? (

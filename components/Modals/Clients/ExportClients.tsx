@@ -34,7 +34,7 @@ export default function ExportClients({ filters, closeModal }: ExportClientsProp
 			segmentationTitles: filters.segmentationTitles,
 			statsPeriodAfter: filters.statsPeriodAfter,
 			statsPeriodBefore: filters.statsPeriodBefore,
-			statsSaleNatures: filters.statsSaleNatures,
+			statsIntegrationsIds: filters.statsIntegrationsIds,
 			statsExcludedSalesIds: filters.statsExcludedSalesIds,
 			orderByField: filters.orderByField,
 			orderByDirection: filters.orderByDirection,

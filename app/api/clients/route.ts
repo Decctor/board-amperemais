@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { getSalesIntegrationCondition } from "@/lib/sales/integration-filter";
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { createSimplifiedEmailSearchCondition, createSimplifiedPhoneSearchCondition, createSimplifiedSearchCondition } from "@/lib/search";
 import { ClientLocationSchema, ClientSchema, ClientTagReferenceSchema } from "@/schemas/clients";
@@ -64,9 +65,9 @@ const GetClientsInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
-	statsSaleNatures: z
+	statsIntegrationsIds: z
 		.string({
-			invalid_type_error: "Tipo não válido para natureza de venda.",
+			invalid_type_error: "Tipo não válido para os IDs de integração.",
 		})
 		.optional()
 		.nullable()
@@ -160,10 +161,11 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 	}
 	console.log("CONDITIONS:", clientConditions.length);
 
-	const statsConditions = [eq(sales.organizacaoId, userOrgId)];
+	const statsConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.statusVenda, "CONFIRMADA")];
 	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
 	if (input.statsPeriodBefore) statsConditions.push(lte(sales.dataVenda, input.statsPeriodBefore));
-	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
+	const integrationCondition = getSalesIntegrationCondition(input.statsIntegrationsIds);
+	if (integrationCondition) statsConditions.push(integrationCondition);
 	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
 
 	const statsByClientSubquery = db
@@ -288,7 +290,7 @@ const getClientsRoute = async (req: NextRequest) => {
 		segmentationTitles: searchParams.get("segmentationTitles") ?? undefined,
 		statsPeriodAfter: searchParams.get("statsPeriodAfter") ?? undefined,
 		statsPeriodBefore: searchParams.get("statsPeriodBefore") ?? undefined,
-		statsSaleNatures: searchParams.get("statsSaleNatures") ?? undefined,
+		statsIntegrationsIds: searchParams.get("statsIntegrationsIds") ?? undefined,
 		statsExcludedSalesIds: searchParams.get("statsExcludedSalesIds") ?? undefined,
 		orderByField: searchParams.get("orderByField") ?? undefined,
 		orderByDirection: searchParams.get("orderByDirection") ?? undefined,

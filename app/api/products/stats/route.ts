@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { getSalesIntegrationCondition } from "@/lib/sales/integration-filter";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { ProductSchema } from "@/schemas/products";
 import { db } from "@/services/drizzle";
@@ -43,7 +44,7 @@ const GetProductStatsInputSchema = z.object({
 		})
 		.optional()
 		.nullable(),
-	saleNatures: z.array(z.string()).optional().nullable(),
+	integrationsIds: z.array(z.string()).optional().nullable(),
 });
 export type TGetProductStatsInput = z.infer<typeof GetProductStatsInputSchema>;
 
@@ -66,7 +67,7 @@ async function getProductStats({ session, input }: GetProductStatsParams) {
 
 	// Build where conditions for saleItems and sales
 	const saleItemWhereConditions = [eq(saleItems.organizacaoId, userOrgId), eq(saleItems.produtoId, input.productId)] as const;
-	const saleWhereConditions = [eq(sales.organizacaoId, userOrgId), isNotNull(sales.dataVenda)] as const;
+	const saleWhereConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.statusVenda, "CONFIRMADA"), isNotNull(sales.dataVenda)] as const;
 
 	const saleWhere = and(
 		...saleWhereConditions,
@@ -74,7 +75,7 @@ async function getProductStats({ session, input }: GetProductStatsParams) {
 		periodBeforeDate ? lte(sales.dataVenda, periodBeforeDate) : undefined,
 		input.sellerId ? eq(sales.vendedorId, input.sellerId) : undefined,
 		input.partnerId ? eq(sales.parceiroId, input.partnerId) : undefined,
-		input.saleNatures && input.saleNatures.length > 0 ? inArray(sales.natureza, input.saleNatures) : undefined,
+		getSalesIntegrationCondition(input.integrationsIds),
 	);
 
 	const saleItemWhere = and(...saleItemWhereConditions, inArray(saleItems.vendaId, db.select({ id: sales.id }).from(sales).where(saleWhere)));
@@ -96,7 +97,7 @@ async function getProductStats({ session, input }: GetProductStatsParams) {
 				eq(saleItems.produtoId, input.productId),
 				input.sellerId ? eq(sales.vendedorId, input.sellerId) : undefined,
 				input.partnerId ? eq(sales.parceiroId, input.partnerId) : undefined,
-				input.saleNatures && input.saleNatures.length > 0 ? inArray(sales.natureza, input.saleNatures) : undefined,
+				getSalesIntegrationCondition(input.integrationsIds),
 			),
 		);
 	// Quantitative: Basic metrics
@@ -474,7 +475,7 @@ const getProductStatsHandler: PagesRouteHandler<TGetProductStatsOutput> = async 
 		periodBefore: (req.query.periodBefore as string | undefined) ?? null,
 		sellerId: (req.query.sellerId as string | undefined) ?? null,
 		partnerId: (req.query.partnerId as string | undefined) ?? null,
-		saleNatures: req.query.saleNatures ? JSON.parse(req.query.saleNatures as string) : null,
+		integrationsIds: req.query.integrationsIds ? JSON.parse(req.query.integrationsIds as string) : null,
 	});
 	const data = await getProductStats({ session: sessionUser, input });
 	return res.status(200).json(data);

@@ -14,7 +14,7 @@ async function fetchSellers(input: TGetSellersDefaultInput) {
 		const searchParams = new URLSearchParams();
 		if (input.search) searchParams.set("search", input.search);
 		if (input.sellersIds) searchParams.set("sellersIds", input.sellersIds.join(","));
-		if (input.statsSaleNatures) searchParams.set("statsSaleNatures", input.statsSaleNatures.join(","));
+		if (input.statsIntegrationsIds) searchParams.set("statsIntegrationsIds", input.statsIntegrationsIds.join(","));
 		if (input.statsExcludedSalesIds) searchParams.set("statsExcludedSalesIds", input.statsExcludedSalesIds.join(","));
 		if (input.statsTotalMin) searchParams.set("statsTotalMin", input.statsTotalMin.toString());
 		if (input.statsTotalMax) searchParams.set("statsTotalMax", input.statsTotalMax.toString());
@@ -63,7 +63,7 @@ export function useSellers({ initialFilters }: UseSellersParams) {
 	const [filters, setFilters] = useState<TGetSellersDefaultInput>({
 		page: initialFilters?.page || 1,
 		sellersIds: initialFilters?.sellersIds || [],
-		statsSaleNatures: initialFilters?.statsSaleNatures || [],
+		statsIntegrationsIds: initialFilters?.statsIntegrationsIds || [],
 		statsExcludedSalesIds: initialFilters?.statsExcludedSalesIds || [],
 		statsTotalMin: initialFilters?.statsTotalMin || null,
 		statsTotalMax: initialFilters?.statsTotalMax || null,

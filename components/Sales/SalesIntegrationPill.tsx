@@ -13,7 +13,7 @@ type TSalesIntegrationPillMeta = {
 	logo: StaticImageData;
 };
 
-const SALES_INTEGRATION_META: Record<TDataSourceIntegrationTipoEnum, TSalesIntegrationPillMeta> = {
+export const SALES_INTEGRATION_META: Record<TDataSourceIntegrationTipoEnum, TSalesIntegrationPillMeta> = {
 	"ONLINE-SOFTWARE": { nome: "Online Software", logo: OnlineSoftwareLogo },
 	"CARDAPIO-WEB": { nome: "Cardápio Web", logo: CardapioWebLogo },
 	"NUVEM-SHOP": { nome: "Nuvem Shop", logo: NuvemshopLogo },
@@ -21,6 +21,11 @@ const SALES_INTEGRATION_META: Record<TDataSourceIntegrationTipoEnum, TSalesInteg
 	BLING: { nome: "Bling", logo: BlingLogo },
 	"ERP-FLEX": { nome: "ERPFlex", logo: ErpFlexLogo },
 };
+
+/** Rótulo legível da conexão: apelido quando existe, senão o nome do provedor. */
+export function getSalesIntegrationLabel({ tipo, apelido }: { tipo: TDataSourceIntegrationTipoEnum; apelido: string | null }): string {
+	return apelido?.trim() || SALES_INTEGRATION_META[tipo].nome;
+}
 
 export type TSalesIntegrationPillValue =
 	| {
@@ -47,7 +52,7 @@ export function SalesIntegrationPill({ integracao, className }: SalesIntegration
 	const meta = SALES_INTEGRATION_META[integracao.tipo as TDataSourceIntegrationTipoEnum];
 	if (!meta) return null;
 
-	const label = integracao.apelido?.trim() || meta.nome;
+	const label = getSalesIntegrationLabel({ tipo: integracao.tipo as TDataSourceIntegrationTipoEnum, apelido: integracao.apelido });
 	const accessibleLabel = integracao.apelido?.trim() ? `${meta.nome}: ${integracao.apelido.trim()}` : meta.nome;
 
 	return (

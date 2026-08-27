@@ -1,4 +1,5 @@
 ﻿import ErrorComponent from "@/components/Layouts/ErrorComponent";
+import { buildSalesIntegrationFilterOptions } from "@/components/Sales/sales-integration-filter-options";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Button } from "@/components/ui/button";
 import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
@@ -56,7 +57,7 @@ export default function ClientPurchases({ clientId }: ClientPurchasesProps) {
 			periodBefore: dayjs().endOf("month").toDate(),
 			sellersIds: [],
 			partnersIds: [],
-			saleNatures: [],
+			integrationsIds: [],
 			clientId: clientId,
 			productGroups: [],
 			productIds: [],
@@ -101,11 +102,11 @@ type ClientPurchasesInlineFiltersProps = {
 
 function ClientPurchasesInlineFilters({ filters, updateFilters }: ClientPurchasesInlineFiltersProps) {
 	const { data: filterOptions } = useSaleQueryFilterOptions();
-	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const integrationOptions = buildSalesIntegrationFilterOptions(filterOptions?.integrations);
 	const sellerOptions = (filterOptions?.sellers ?? []) as InteractiveFilterOption<string>[];
 	const partnerOptions = (filterOptions?.partners ?? []) as InteractiveFilterOption<string>[];
 	const productGroupOptions = (filterOptions?.productsGroups ?? []) as InteractiveFilterOption<string>[];
-	const hasSaleNatures = (filters.saleNatures ?? []).length > 0;
+	const hasIntegrations = (filters.integrationsIds ?? []).length > 0;
 	const hasSellers = (filters.sellersIds ?? []).length > 0;
 	const hasPartners = (filters.partnersIds ?? []).length > 0;
 	const hasProductGroups = (filters.productGroups ?? []).length > 0;
@@ -133,13 +134,13 @@ function ClientPurchasesInlineFilters({ filters, updateFilters }: ClientPurchase
 				</InteractiveFilter.Content>
 			</InteractiveFilter.Root>
 
-			{hasSaleNatures ? (
+			{hasIntegrations ? (
 				<ClientPurchasesMultiFilter
-					label="NATUREZAS"
-					options={saleNatureOptions}
-					value={filters.saleNatures ?? []}
-					onChange={(saleNatures) => updateFilters({ saleNatures, page: 1 })}
-					onClear={() => updateFilters({ saleNatures: [], page: 1 })}
+					label="INTEGRAÇÕES"
+					options={integrationOptions}
+					value={filters.integrationsIds ?? []}
+					onChange={(integrationsIds) => updateFilters({ integrationsIds, page: 1 })}
+					onClear={() => updateFilters({ integrationsIds: [], page: 1 })}
 				/>
 			) : null}
 			{hasSellers ? (
@@ -178,13 +179,13 @@ function ClientPurchasesInlineFilters({ filters, updateFilters }: ClientPurchase
 				</InteractiveFilter.AddFilterTrigger>
 				<InteractiveFilter.AddFilterContent>
 					<InteractiveFilter.AddFilterSection heading="Filtros">
-						{!hasSaleNatures ? (
-							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}>
+						{!hasIntegrations ? (
+							<InteractiveFilter.AddFilterItem id="integrations" label="INTEGRAÇÕES" icon={<ListFilter className="h-4 w-4" />}>
 								<InteractiveFilter.MultiContent
-									options={saleNatureOptions}
-									value={filters.saleNatures ?? []}
-									onChange={(saleNatures) => updateFilters({ saleNatures, page: 1 })}
-									onClear={() => updateFilters({ saleNatures: [], page: 1 })}
+									options={integrationOptions}
+									value={filters.integrationsIds ?? []}
+									onChange={(integrationsIds) => updateFilters({ integrationsIds, page: 1 })}
+									onClear={() => updateFilters({ integrationsIds: [], page: 1 })}
 									clearLabel="TODAS"
 								/>
 							</InteractiveFilter.AddFilterItem>

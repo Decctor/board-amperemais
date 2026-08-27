@@ -1,6 +1,7 @@
 ﻿"use client";
 import type { TGetPartnersInput, TGetPartnersOutputDefault } from "@/app/api/partners/route";
 import type { TGetPartnersOverallStatsInput } from "@/app/api/partners/stats/overall/route";
+import { buildSalesIntegrationFilterOptions } from "@/components/Sales/sales-integration-filter-options";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
@@ -82,7 +83,7 @@ function PartnersDatabaseView({ user }: { user: TAuthUserSession["user"] }) {
 			search: "",
 			statsPeriodAfter: dayjs().startOf("month").toDate(),
 			statsPeriodBefore: dayjs().endOf("month").toDate(),
-			statsSaleNatures: [],
+			statsIntegrationsIds: [],
 			statsExcludedSalesIds: [],
 			statsTotalMin: null,
 			statsTotalMax: null,
@@ -152,8 +153,8 @@ type PartnersInlineFiltersProps = {
 
 function PartnersInlineFilters({ queryParams, updateQueryParams }: PartnersInlineFiltersProps) {
 	const { data: filterOptions } = useSaleQueryFilterOptions();
-	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
-	const hasSaleNatures = (queryParams.statsSaleNatures ?? []).length > 0;
+	const integrationOptions = buildSalesIntegrationFilterOptions(filterOptions?.integrations);
+	const hasIntegrations = (queryParams.statsIntegrationsIds ?? []).length > 0;
 	const hasTotal = queryParams.statsTotalMin != null || queryParams.statsTotalMax != null;
 
 	return (
@@ -180,7 +181,7 @@ function PartnersInlineFilters({ queryParams, updateQueryParams }: PartnersInlin
 				</InteractiveFilter.Content>
 			</InteractiveFilter.Root>
 
-			{hasSaleNatures ? <PartnersSaleNatureFilter queryParams={queryParams} updateQueryParams={updateQueryParams} options={saleNatureOptions} /> : null}
+			{hasIntegrations ? <PartnersIntegrationsFilter queryParams={queryParams} updateQueryParams={updateQueryParams} options={integrationOptions} /> : null}
 			{hasTotal ? <PartnersTotalFilter queryParams={queryParams} updateQueryParams={updateQueryParams} /> : null}
 
 			<InteractiveFilter.AddFilterRoot className="w-fit">
@@ -190,9 +191,9 @@ function PartnersInlineFilters({ queryParams, updateQueryParams }: PartnersInlin
 				</InteractiveFilter.AddFilterTrigger>
 				<InteractiveFilter.AddFilterContent>
 					<InteractiveFilter.AddFilterSection heading="Filtros">
-						{!hasSaleNatures ? (
-							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<ListFilter className="h-4 w-4" />}>
-								<PartnersSaleNatureContent queryParams={queryParams} updateQueryParams={updateQueryParams} options={saleNatureOptions} />
+						{!hasIntegrations ? (
+							<InteractiveFilter.AddFilterItem id="integrations" label="INTEGRAÇÕES" icon={<ListFilter className="h-4 w-4" />}>
+								<PartnersIntegrationsContent queryParams={queryParams} updateQueryParams={updateQueryParams} options={integrationOptions} />
 							</InteractiveFilter.AddFilterItem>
 						) : null}
 						{!hasTotal ? (
@@ -207,7 +208,7 @@ function PartnersInlineFilters({ queryParams, updateQueryParams }: PartnersInlin
 	);
 }
 
-function PartnersSaleNatureFilter({
+function PartnersIntegrationsFilter({
 	queryParams,
 	updateQueryParams,
 	options,
@@ -217,19 +218,19 @@ function PartnersSaleNatureFilter({
 			<InteractiveFilter.Trigger>
 				<InteractiveFilter.Icon>
 					<ListFilter className="h-4 w-4" />
-					<InteractiveFilter.Label>NATUREZAS</InteractiveFilter.Label>
+					<InteractiveFilter.Label>INTEGRAÇÕES</InteractiveFilter.Label>
 				</InteractiveFilter.Icon>
-				<InteractiveFilter.Value>{formatInteractiveOptionSummary(options, queryParams.statsSaleNatures ?? [])}</InteractiveFilter.Value>
-				<InteractiveFilter.Clear onClear={() => updateQueryParams({ statsSaleNatures: [], page: 1 })} />
+				<InteractiveFilter.Value>{formatInteractiveOptionSummary(options, queryParams.statsIntegrationsIds ?? [])}</InteractiveFilter.Value>
+				<InteractiveFilter.Clear onClear={() => updateQueryParams({ statsIntegrationsIds: [], page: 1 })} />
 			</InteractiveFilter.Trigger>
 			<InteractiveFilter.Content className="w-72 p-0">
-				<PartnersSaleNatureContent queryParams={queryParams} updateQueryParams={updateQueryParams} options={options} />
+				<PartnersIntegrationsContent queryParams={queryParams} updateQueryParams={updateQueryParams} options={options} />
 			</InteractiveFilter.Content>
 		</InteractiveFilter.Root>
 	);
 }
 
-function PartnersSaleNatureContent({
+function PartnersIntegrationsContent({
 	queryParams,
 	updateQueryParams,
 	options,
@@ -237,9 +238,9 @@ function PartnersSaleNatureContent({
 	return (
 		<InteractiveFilter.MultiContent
 			options={options}
-			value={queryParams.statsSaleNatures ?? []}
-			onChange={(statsSaleNatures) => updateQueryParams({ statsSaleNatures, page: 1 })}
-			onClear={() => updateQueryParams({ statsSaleNatures: [], page: 1 })}
+			value={queryParams.statsIntegrationsIds ?? []}
+			onChange={(statsIntegrationsIds) => updateQueryParams({ statsIntegrationsIds, page: 1 })}
+			onClear={() => updateQueryParams({ statsIntegrationsIds: [], page: 1 })}
 			clearLabel="TODAS"
 		/>
 	);

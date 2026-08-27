@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { getSalesIntegrationCondition } from "@/lib/sales/integration-filter";
 import { ProductFiscalProfileSchema } from "@/schemas/fiscal";
 import {
 	ProductAddOnOptionSchema,
@@ -73,9 +74,9 @@ const GetProductsDefaultInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? val.split(",") : [])),
-	statsSaleNatures: z
+	statsIntegrationsIds: z
 		.string({
-			invalid_type_error: "Tipo não válido para natureza de venda.",
+			invalid_type_error: "Tipo não válido para os IDs de integração.",
 		})
 		.optional()
 		.nullable()
@@ -625,7 +626,8 @@ async function getProducts({ input, session }: GetProductsParams) {
 	const statsConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.statusVenda, "CONFIRMADA")];
 	if (input.statsPeriodBefore) statsConditions.push(lte(sales.dataVenda, input.statsPeriodBefore));
 	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
-	if (input.statsSaleNatures && input.statsSaleNatures.length > 0) statsConditions.push(inArray(sales.natureza, input.statsSaleNatures));
+	const integrationCondition = getSalesIntegrationCondition(input.statsIntegrationsIds);
+	if (integrationCondition) statsConditions.push(integrationCondition);
 	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
 	if (input.statsSellerIds && input.statsSellerIds.length > 0) statsConditions.push(inArray(sales.vendedorId, input.statsSellerIds));
 	const havingConditions = [];
@@ -820,7 +822,7 @@ const getProductsHandler: PagesRouteHandler<TGetProductsOutput> = async (req, re
 		statsPeriodAfter: req.query.statsPeriodAfter as string | undefined,
 		statsPeriodBefore: req.query.statsPeriodBefore as string | undefined,
 		statsSellerIds: req.query.statsSellerIds as string | undefined,
-		statsSaleNatures: req.query.statsSaleNatures as string | undefined,
+		statsIntegrationsIds: req.query.statsIntegrationsIds as string | undefined,
 		statsExcludedSalesIds: req.query.statsExcludedSalesIds as string | undefined,
 		statsTotalMin: req.query.statsTotalMin as string | undefined,
 		statsTotalMax: req.query.statsTotalMax as string | undefined,

@@ -14,7 +14,7 @@ async function fetchSales(input: TGetSalesInput) {
 	if (input.periodBefore) searchParams.set("periodBefore", input.periodBefore.toISOString());
 	if (input.sellersIds) searchParams.set("sellersIds", input.sellersIds.join(","));
 	if (input.partnersIds) searchParams.set("partnersIds", input.partnersIds.join(","));
-	if (input.saleNatures) searchParams.set("saleNatures", input.saleNatures.join(","));
+	if (input.integrationsIds) searchParams.set("integrationsIds", input.integrationsIds.join(","));
 	if (input.clientId) searchParams.set("clientId", input.clientId);
 	if (input.productGroups) searchParams.set("productGroups", input.productGroups.join(","));
 	if (input.productIds) searchParams.set("productIds", input.productIds.join(","));
@@ -37,7 +37,7 @@ export function useSales({ initialParams }: UseSalesParams) {
 		periodBefore: initialParams.periodBefore || null,
 		sellersIds: initialParams.sellersIds || [],
 		partnersIds: initialParams.partnersIds || [],
-		saleNatures: initialParams.saleNatures || [],
+		integrationsIds: initialParams.integrationsIds || [],
 		clientId: initialParams.clientId ?? null,
 		productGroups: initialParams.productGroups ?? [],
 		productIds: initialParams.productIds ?? [],

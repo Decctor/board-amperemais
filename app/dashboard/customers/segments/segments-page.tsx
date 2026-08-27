@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { TSyncSegmentationsInput } from "@/app/api/segmentations/sync/route";
+import { buildSalesIntegrationFilterOptions } from "@/components/Sales/sales-integration-filter-options";
 import CheckboxInput from "@/components/Inputs/CheckboxInput";
 import MultipleSalesSelectInput from "@/components/Inputs/SelectMultipleSalesInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
@@ -127,7 +128,6 @@ function SegmentsPageClients() {
 					},
 					phone: filters.search ?? "",
 					rfmTitles: filters.segmentationTitles,
-					saleNatures: filters.statsSaleNatures,
 					total: { min: null, max: null },
 				},
 			});
@@ -194,7 +194,7 @@ type SegmentsClientsInlineFiltersProps = {
 
 function SegmentsClientsInlineFilters({ filters, updateFilters }: SegmentsClientsInlineFiltersProps) {
 	const { data: filterOptions } = useSaleQueryFilterOptions();
-	const saleNatureOptions = (filterOptions?.saleNatures ?? []) as InteractiveFilterOption<string>[];
+	const integrationOptions = buildSalesIntegrationFilterOptions(filterOptions?.integrations);
 	const acquisitionChannelOptions = CustomersAcquisitionChannels as InteractiveFilterOption<string>[];
 	const segmentationOptions = RFMLabels.map((item, index) => ({
 		id: index + 1,
@@ -203,7 +203,7 @@ function SegmentsClientsInlineFilters({ filters, updateFilters }: SegmentsClient
 	})) satisfies InteractiveFilterOption<string>[];
 	const hasAcquisitionChannels = (filters.acquisitionChannels ?? []).length > 0;
 	const hasSegmentationTitles = (filters.segmentationTitles ?? []).length > 0;
-	const hasSaleNatures = (filters.statsSaleNatures ?? []).length > 0;
+	const hasIntegrations = (filters.statsIntegrationsIds ?? []).length > 0;
 	const hasExcludedSales = (filters.statsExcludedSalesIds ?? []).length > 0;
 
 	return (
@@ -246,13 +246,13 @@ function SegmentsClientsInlineFilters({ filters, updateFilters }: SegmentsClient
 					onClear={() => updateFilters({ segmentationTitles: [], page: 1 })}
 				/>
 			) : null}
-			{hasSaleNatures ? (
+			{hasIntegrations ? (
 				<SegmentsMultiFilter
-					label="NATUREZAS"
-					options={saleNatureOptions}
-					value={filters.statsSaleNatures ?? []}
-					onChange={(statsSaleNatures) => updateFilters({ statsSaleNatures, page: 1 })}
-					onClear={() => updateFilters({ statsSaleNatures: [], page: 1 })}
+					label="INTEGRAÇÕES"
+					options={integrationOptions}
+					value={filters.statsIntegrationsIds ?? []}
+					onChange={(statsIntegrationsIds) => updateFilters({ statsIntegrationsIds, page: 1 })}
+					onClear={() => updateFilters({ statsIntegrationsIds: [], page: 1 })}
 				/>
 			) : null}
 			{hasExcludedSales ? <SegmentsExcludedSalesFilter filters={filters} updateFilters={updateFilters} /> : null}
@@ -286,13 +286,13 @@ function SegmentsClientsInlineFilters({ filters, updateFilters }: SegmentsClient
 								/>
 							</InteractiveFilter.AddFilterItem>
 						) : null}
-						{!hasSaleNatures ? (
-							<InteractiveFilter.AddFilterItem id="saleNatures" label="NATUREZAS" icon={<Filter className="h-4 w-4" />}>
+						{!hasIntegrations ? (
+							<InteractiveFilter.AddFilterItem id="integrations" label="INTEGRAÇÕES" icon={<Filter className="h-4 w-4" />}>
 								<InteractiveFilter.MultiContent
-									options={saleNatureOptions}
-									value={filters.statsSaleNatures ?? []}
-									onChange={(statsSaleNatures) => updateFilters({ statsSaleNatures, page: 1 })}
-									onClear={() => updateFilters({ statsSaleNatures: [], page: 1 })}
+									options={integrationOptions}
+									value={filters.statsIntegrationsIds ?? []}
+									onChange={(statsIntegrationsIds) => updateFilters({ statsIntegrationsIds, page: 1 })}
+									onClear={() => updateFilters({ statsIntegrationsIds: [], page: 1 })}
 									clearLabel="TODAS"
 								/>
 							</InteractiveFilter.AddFilterItem>

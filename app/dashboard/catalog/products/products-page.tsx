@@ -118,7 +118,7 @@ function ProductsDatabaseView({ user, userMembership, organization }: ProductsDa
 			groups: [],
 			statsPeriodAfter: dayjs().startOf("month").toDate(),
 			statsPeriodBefore: dayjs().endOf("month").toDate(),
-			statsSaleNatures: [],
+			statsIntegrationsIds: [],
 			statsExcludedSalesIds: [],
 			statsTotalMin: null,
 			statsTotalMax: null,
