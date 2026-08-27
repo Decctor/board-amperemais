@@ -1,5 +1,12 @@
 import z from "zod";
-import { AiAgentRunTriggerEnum, AiAgentRunStatusEnum, AiAgentStatusEnum, AiAgentToolCallStatusEnum, AiAgentToolNameEnum } from "./enums";
+import {
+	AiAgentRunTriggerEnum,
+	AiAgentRunStatusEnum,
+	AiAgentScopeTypeEnum,
+	AiAgentStatusEnum,
+	AiAgentToolCallStatusEnum,
+	AiAgentToolNameEnum,
+} from "./enums";
 
 /**
  * Configuração do agente de IA de atendimento — um por organização.
@@ -174,6 +181,36 @@ export const AiAgentCapabilitiesSchema = z
 export type TAiAgentCapabilities = z.infer<typeof AiAgentCapabilitiesSchema>;
 
 // ============================================================================
+// ESCOPO (quem o agente atende)
+// ============================================================================
+//
+// Config viva de implantação, e **não** uma capacidade: mora em coluna própria justamente para
+// ficar fora de `AiAgentConfigSnapshotSchema`. Uma lista de clientes copiada para dentro de cada
+// run inflaria `ai_agent_runs.config_snapshot` sem nenhum ganho de auditoria.
+//
+// O enforcement vive na camada de roteamento (`lib/chats/ai-trigger.ts`), nunca na de execução —
+// é o que mantém o playground funcionando enquanto o agente roda numa lista de permissão.
+
+export const AiAgentScopeSchema = z
+	.object({
+		tipo: AiAgentScopeTypeEnum.default("TODOS"),
+		clienteIds: z.array(z.string({ invalid_type_error: "Tipo não válido para o ID do cliente." })).default([]),
+	})
+	.default({});
+export type TAiAgentScope = z.infer<typeof AiAgentScopeSchema>;
+
+/**
+ * Decide se o agente pode atender um cliente. Pura de propósito: é chamada no caminho quente do
+ * webhook, a partir da linha do agente que já está carregada.
+ */
+export function isClientInAgentScope(escopo: TAiAgentScope, clienteId: string): boolean {
+	const clienteIds = escopo.clienteIds ?? [];
+	if (escopo.tipo === "INCLUIR") return clienteIds.includes(clienteId);
+	if (escopo.tipo === "EXCLUIR") return clienteIds.length === 0 || !clienteIds.includes(clienteId);
+	return true;
+}
+
+// ============================================================================
 // EXECUÇÃO (run)
 // ============================================================================
 
@@ -229,6 +266,7 @@ export const AiAgentSchema = z.object({
 		.max(20000, "As instruções do agente devem ter no máximo 20000 caracteres."),
 	modeloConfig: AiAgentModelConfigSchema,
 	capacidades: AiAgentCapabilitiesSchema,
+	escopo: AiAgentScopeSchema,
 	dataInsercao: z
 		.string()
 		.datetime()
@@ -279,4 +317,4 @@ export const UpdateAiAgentKnowledgeSchema = AiAgentKnowledgeSchema.omit({
 export type TUpdateAiAgentKnowledge = z.infer<typeof UpdateAiAgentKnowledgeSchema>;
 
 // Re-exports de conveniência para quem consome só este módulo.
-export { AiAgentRunTriggerEnum, AiAgentRunStatusEnum, AiAgentStatusEnum, AiAgentToolCallStatusEnum, AiAgentToolNameEnum };
+export { AiAgentRunTriggerEnum, AiAgentRunStatusEnum, AiAgentScopeTypeEnum, AiAgentStatusEnum, AiAgentToolCallStatusEnum, AiAgentToolNameEnum };

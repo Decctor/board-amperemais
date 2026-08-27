@@ -1,4 +1,4 @@
-import { AiAgentCapabilitiesSchema, AiAgentModelConfigSchema, type TAiAgentCapabilities } from "@/schemas/ai-agents";
+import { AiAgentCapabilitiesSchema, AiAgentModelConfigSchema, AiAgentScopeSchema, type TAiAgentCapabilities } from "@/schemas/ai-agents";
 import type { DB, DBTransaction } from "@/services/drizzle";
 import { aiAgents, organizations } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -93,6 +93,8 @@ export async function ensureOrganizationAgent(db: TDb, organizacaoId: string) {
 			instrucoes: buildDefaultAgentInstructions(organization.nome),
 			modeloConfig: AiAgentModelConfigSchema.parse({}),
 			capacidades: buildDefaultAgentCapabilities(),
+			// O agente nasce atendendo todo mundo; restringir é a exceção consciente.
+			escopo: AiAgentScopeSchema.parse({}),
 		})
 		.onConflictDoNothing();
 

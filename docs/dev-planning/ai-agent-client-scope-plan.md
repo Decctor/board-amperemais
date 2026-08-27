@@ -88,24 +88,24 @@ ALTER TABLE ampmais_ai_agents
 // services/drizzle/schema/ai-agents.ts — junto de `capacidades`
 // Config viva de implantação: fica FORA de `configSnapshot` de propósito. Uma lista de
 // clientes copiada em toda run inflaria `ai_agent_runs` sem nenhum ganho de auditoria.
-escopo: jsonb("escopo").$type<TAiAgentEscopo>().notNull().default({ tipo: "TODOS", clienteIds: [] }),
+escopo: jsonb("escopo").$type<TAiAgentScope>().notNull().default({ tipo: "TODOS", clienteIds: [] }),
 ```
 
 ### Zod
 
 ```ts
 // schemas/enums.ts — enums não ficam co-locados (CLAUDE.md)
-export const AiAgentEscopoTipoEnum = z.enum(["TODOS", "INCLUIR", "EXCLUIR"]);
-export type TAiAgentEscopoTipoEnum = z.infer<typeof AiAgentEscopoTipoEnum>;
+export const AiAgentScopeTypeEnum = z.enum(["TODOS", "INCLUIR", "EXCLUIR"]);
+export type TAiAgentScopeTypeEnum = z.infer<typeof AiAgentScopeTypeEnum>;
 
 // schemas/ai-agents.ts
-export const AiAgentEscopoSchema = z
+export const AiAgentScopeSchema = z
 	.object({
-		tipo: AiAgentEscopoTipoEnum.default("TODOS"),
+		tipo: AiAgentScopeTypeEnum.default("TODOS"),
 		clienteIds: z.array(z.string({ invalid_type_error: "Tipo não válido para o ID do cliente." })).default([]),
 	})
 	.default({});
-export type TAiAgentEscopo = z.infer<typeof AiAgentEscopoSchema>;
+export type TAiAgentScope = z.infer<typeof AiAgentScopeSchema>;
 ```
 
 Todo campo com `.default()`, pela regra que o próprio arquivo declara no cabeçalho: config gravada
@@ -128,7 +128,7 @@ necessidade de auditoria por linha; nenhuma das duas está no horizonte.
 | `EXCLUIR` | todo mundo | todo mundo menos os listados |
 
 ```ts
-export function isClientInAgentScope(escopo: TAiAgentEscopo, clienteId: string): boolean {
+export function isClientInAgentScope(escopo: TAiAgentScope, clienteId: string): boolean {
 	const ids = escopo.clienteIds ?? [];
 	if (escopo.tipo === "INCLUIR") return ids.includes(clienteId);
 	if (escopo.tipo === "EXCLUIR") return ids.length === 0 || !ids.includes(clienteId);
@@ -218,12 +218,12 @@ precisa ser liberada, porque ninguém está esperando resposta nela.
 
 | Camada | Arquivo | Mudança |
 | --- | --- | --- |
-| Enum | `schemas/enums.ts` | `AiAgentEscopoTipoEnum` |
-| Zod | `schemas/ai-agents.ts:216` | `AiAgentEscopoSchema`; `escopo` em `AiAgentSchema` — `UpdateAiAgentSchema` (`:267`) herda pelo `.omit()` existente |
+| Enum | `schemas/enums.ts` | `AiAgentScopeTypeEnum` |
+| Zod | `schemas/ai-agents.ts:216` | `AiAgentScopeSchema`; `escopo` em `AiAgentSchema` — `UpdateAiAgentSchema` (`:267`) herda pelo `.omit()` existente |
 | Schema | `services/drizzle/schema/ai-agents.ts:53` | Coluna `escopo` |
 | Migration | `drizzle/0082_ai_agent_client_scope.sql` | Aditiva com default |
 | Provisionamento | `lib/ai/agent/provisioning.ts:89` | `escopo` no `.values()` do insert lazy |
-| API | `app/api/ai-agents/route.ts:38` e `:63` | `getAiAgent` parseia com `parseJsonbWithFallback(AiAgentEscopoSchema, …)`; `updateAiAgent` grava `escopo: input.agente.escopo` |
+| API | `app/api/ai-agents/route.ts:38` e `:63` | `getAiAgent` parseia com `parseJsonbWithFallback(AiAgentScopeSchema, …)`; `updateAiAgent` grava `escopo: input.agente.escopo` |
 | State hook | `state-hooks/use-internal-ai-agent-state.tsx:60` | `updateScope` e `toggleScopeClient` (ao lado de `updateAttendanceSettings`), default em `buildInitialState` |
 | UI | `components/Settings/AiAgent/AgentScopeSection.tsx` | **Novo.** Toggle de 3 modos; seletor de clientes só renderiza quando `tipo !== "TODOS"` |
 | Form | `components/Settings/AiAgent/AgentConfigForm.tsx:99` | Quarta seção `QUEM O AGENTE ATENDE`, entre "O QUE O AGENTE PODE CONSULTAR" (`:85`) e "BASE DE CONHECIMENTO" (`:99`) |
@@ -251,7 +251,7 @@ enforcement continua no gate — a UI só evita o clique morto.
 
 ## 8. Ordem de implementação
 
-1. `schemas/enums.ts` + `schemas/ai-agents.ts` — enum, `AiAgentEscopoSchema`, campo em `AiAgentSchema`.
+1. `schemas/enums.ts` + `schemas/ai-agents.ts` — enum, `AiAgentScopeSchema`, `isClientInAgentScope`, campo em `AiAgentSchema`.
 2. `services/drizzle/schema/ai-agents.ts` + `drizzle/0082_*.sql` + `provisioning.ts`.
 3. `lib/chats/ai-trigger.ts` — `isClientInAgentScope` (pura) + helper de release.
 4. `lib/chats/ai-turn-runner.ts` e `lib/ai/agent/hub-turn.ts` — os dois pontos de enforcement.
@@ -318,3 +318,31 @@ Os passos 1–5 já entregam a feature completa no backend; 6–8 são a superf�
   (`SEGMENTO`) resolvida em query, não uma lista de IDs. Só vale quando alguém pedir lista grande —
   que é o mesmo gatilho da migração para tabela filha.
 - **Auditoria de mudanças de escopo.** Nada registra hoje quem tirou quem do escopo e quando.
+
+---
+
+## 12. Desvios do plano durante a implementação
+
+| # | Desvio | Motivo |
+| --- | --- | --- |
+| 1 | Nomes em inglês para schemas e enums do módulo (`AiAgentScopeSchema`, `TAiAgentScope`, `AiAgentScopeTypeEnum`), junto de um refactor que corrigiu os nomes já existentes (`AiAgentCapacidadesSchema` → `AiAgentCapabilitiesSchema`, `AiAgentRunGatilhoEnum` → `AiAgentRunTriggerEnum`, etc.) | CLAUDE.md § Portuguese vs. English: nome de tipo é código. O módulo misturava os dois (`AiAgentToolNameEnum` ao lado de `AiAgentRunGatilhoEnum`). Campos e valores de enum seguem em português — são dado |
+| 2 | `isClientInAgentScope` mora em `schemas/ai-agents.ts`, não em `lib/chats/ai-trigger.ts` | É pura e derivada do schema; deixá-la junto do schema a torna testável sem tocar em `db`, e `ai-trigger.ts` (server-only) não precisa exportá-la para o teste |
+| 3 | `confirmClientInAgentScope` recebe `escopo: unknown` e normaliza com `parseJsonbWithFallback` internamente | Mesmo contrato de `capacidades`: jsonb persistido antes da coluna não pode derrubar a execução. O caller passa `agent.escopo` cru, sem saber disso |
+| 4 | Curto-circuito em `tipo === "TODOS"` antes de ler o chat | O caso comum (toda organização hoje) não paga nem uma query a mais no caminho quente do webhook |
+| 5 | O gate do hub entrou em `resolveAiAssignmentAvailability` (`lib/chats/ai-assignment.ts`), não numa mudança de componente | O resolvedor já existe exatamente para a invariante "o hub não pode produzir um estado que o runtime recusa", já alimenta o GET da thread e o POST da atribuição, e já tem o mecanismo de motivo bloqueante. `CLIENTE_FORA_DO_ESCOPO` cai sozinho no bucket 409 (estado corrigível) |
+| 6 | Reuso de `SelectMultipleClientsInput` em vez de um seletor novo | O componente já faz busca + seleção múltipla de clientes. Escrever outro duplicaria a busca |
+| 7 | `useClientsByIds` + hidratação da seleção dentro do `SelectMultipleClientsInput` | O componente só conhecia os clientes que passaram por uma busca, então uma seleção **persistida** aparecia como "5 CLIENTES SELECIONADOS" sem nomes. Os dois consumidores anteriores (`TestCampaign`, `TestMessageTemplate`) usam seleção transitória e nunca esbarraram nisso; o escopo do agente é o primeiro caso que recarrega do banco |
+| 8 | `escopo` incluído no `redefineState` do `AgentConfigForm` | Sem isso, o formulário hidratava sem o escopo e **salvar zeraria a configuração** de volta para o default |
+
+## 13. Estado da verificação
+
+- `npm run test:ai-quotes`: **70/70** (67 anteriores + 3 do escopo — defaults, os oito casos da
+  tabela de modos, e o parse de jsonb parcial/inválido).
+- `npx tsc --noEmit`: **zero erros nos arquivos tocados**. O projeto tem baseline pré-existente de
+  erros não relacionados (`TS2307` de módulos de imagem sem `next-env.d.ts` gerado, além de
+  `community/` e `sales-campaign/`); nenhum deles menciona identificador renomeado ou código novo.
+- `oxfmt`: formatado. `oxlint`: 2 warnings pré-existentes (`PagesRouteRequest`/`PagesRouteResponse`
+  não usados em `app/api/clients/search/route.ts`), anteriores a esta mudança.
+- **Não verificado:** a migration `0082` não foi aplicada (sem banco nesta sessão) e não houve
+  teste manual em navegador. Os itens 1–7 de §10 seguem pendentes de execução contra um ambiente
+  real — em especial o item 4 (playground funcionando sob `INCLUIR`) e o 5 (release do atendimento).

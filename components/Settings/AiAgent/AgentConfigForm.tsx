@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import GeneralBlock from "./Blocks/GeneralBlock";
 import InstructionsBlock from "./Blocks/InstructionsBlock";
 import KnowledgeBlock from "./Blocks/KnowledgeBlock";
+import ScopeBlock from "./Blocks/ScopeBlock";
 import ToolsBlock from "./Blocks/ToolsBlock";
 
 /**
@@ -27,6 +28,7 @@ export default function AgentConfigForm() {
 		updateModelConfig,
 		updateLimits,
 		updateAttendanceSettings,
+		updateScope,
 		updatePrices,
 		updateQuotes,
 		updateStock,
@@ -47,6 +49,7 @@ export default function AgentConfigForm() {
 				instrucoes: data.agente.instrucoes,
 				modeloConfig: data.agente.modeloConfig,
 				capacidades: data.agente.capacidades,
+				escopo: data.agente.escopo,
 			},
 			conhecimento: data.conhecimento.map((bloco) => ({
 				id: bloco.id,
@@ -93,6 +96,11 @@ export default function AgentConfigForm() {
 					updateQuotes={updateQuotes}
 					updateStock={updateStock}
 				/>
+			</div>
+
+			<div className="flex w-full flex-col gap-4 border-t pt-6">
+				<h2 className="text-sm font-bold uppercase tracking-tight">QUEM O AGENTE ATENDE</h2>
+				<ScopeBlock state={state} updateScope={updateScope} />
 			</div>
 
 			<div className="flex w-full flex-col gap-4 border-t pt-6">

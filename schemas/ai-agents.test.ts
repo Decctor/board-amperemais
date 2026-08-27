@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AiAgentCapabilitiesSchema } from "./ai-agents";
+import { AiAgentCapabilitiesSchema, AiAgentScopeSchema, isClientInAgentScope } from "./ai-agents";
 
 test("capacidades antigas recebem os defaults comerciais", () => {
 	const capabilities = AiAgentCapabilitiesSchema.parse({ ferramentas: {} });
@@ -76,4 +76,43 @@ test("política de informar permite orçamento sem transferência", () => {
 		},
 	});
 	assert.equal(result.success, true);
+});
+
+// ============================================================================
+// ESCOPO DE CLIENTES
+// ============================================================================
+
+test("o escopo default atende todo mundo", () => {
+	// Preserva o comportamento anterior à coluna: organização que nunca tocou na config
+	// continua com o agente atendendo todos os clientes.
+	const scope = AiAgentScopeSchema.parse(undefined);
+	assert.deepEqual(scope, { tipo: "TODOS", clienteIds: [] });
+	assert.equal(isClientInAgentScope(scope, "cliente-qualquer"), true);
+});
+
+test("escopo por cliente cobre os três modos", () => {
+	// A assimetria da lista vazia é o ponto: INCLUIR vazio não atende ninguém (lista de
+	// permissão ainda não preenchida), EXCLUIR vazio atende todo mundo.
+	const cases = [
+		{ tipo: "TODOS", clienteIds: [], clienteId: "a", esperado: true },
+		{ tipo: "TODOS", clienteIds: ["a"], clienteId: "b", esperado: true },
+		{ tipo: "INCLUIR", clienteIds: [], clienteId: "a", esperado: false },
+		{ tipo: "INCLUIR", clienteIds: ["a"], clienteId: "a", esperado: true },
+		{ tipo: "INCLUIR", clienteIds: ["a"], clienteId: "b", esperado: false },
+		{ tipo: "EXCLUIR", clienteIds: [], clienteId: "a", esperado: true },
+		{ tipo: "EXCLUIR", clienteIds: ["a"], clienteId: "a", esperado: false },
+		{ tipo: "EXCLUIR", clienteIds: ["a"], clienteId: "b", esperado: true },
+	] as const;
+
+	for (const { tipo, clienteIds, clienteId, esperado } of cases) {
+		const scope = AiAgentScopeSchema.parse({ tipo, clienteIds });
+		assert.equal(isClientInAgentScope(scope, clienteId), esperado, `${tipo} [${clienteIds.join(",")}] x ${clienteId}`);
+	}
+});
+
+test("escopo persistido antes da coluna recebe os defaults", () => {
+	// Mesmo contrato de `capacidades`: JSONB parcial ou inválido não pode derrubar a execução.
+	assert.deepEqual(AiAgentScopeSchema.parse({}), { tipo: "TODOS", clienteIds: [] });
+	assert.deepEqual(AiAgentScopeSchema.parse({ tipo: "EXCLUIR" }), { tipo: "EXCLUIR", clienteIds: [] });
+	assert.equal(AiAgentScopeSchema.safeParse({ tipo: "QUALQUER_COISA" }).success, false);
 });

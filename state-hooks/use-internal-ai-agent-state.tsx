@@ -1,8 +1,10 @@
 import {
 	AiAgentCapabilitiesSchema,
 	AiAgentModelConfigSchema,
+	AiAgentScopeSchema,
 	type TAiAgentCapabilities,
 	type TAiAgentModelConfig,
+	type TAiAgentScope,
 	type TUpdateAiAgent,
 	type TUpdateAiAgentKnowledge,
 } from "@/schemas/ai-agents";
@@ -22,6 +24,7 @@ function buildInitialState(): TInternalAiAgentState {
 			instrucoes: "",
 			modeloConfig: AiAgentModelConfigSchema.parse({}),
 			capacidades: AiAgentCapabilitiesSchema.parse({}),
+			escopo: AiAgentScopeSchema.parse({}),
 		},
 		conhecimento: [],
 	};
@@ -190,6 +193,24 @@ export function useInternalAiAgentState() {
 		}));
 	}, []);
 
+	const updateScope = useCallback((escopo: Partial<TAiAgentScope>) => {
+		setState((prev) => ({ ...prev, agente: { ...prev.agente, escopo: { ...prev.agente.escopo, ...escopo } } }));
+	}, []);
+
+	/**
+	 * A lista é preservada ao trocar de modo, de propósito: quem monta uma lista de exclusão e
+	 * espia como ficaria em modo de permissão não perde a seleção no caminho. Em `TODOS` a lista
+	 * é ignorada pelo runtime, não apagada.
+	 */
+	const toggleScopeClient = useCallback((clienteId: string) => {
+		setState((prev) => {
+			const clienteIds = prev.agente.escopo.clienteIds.includes(clienteId)
+				? prev.agente.escopo.clienteIds.filter((id) => id !== clienteId)
+				: [...prev.agente.escopo.clienteIds, clienteId];
+			return { ...prev, agente: { ...prev.agente, escopo: { ...prev.agente.escopo, clienteIds } } };
+		});
+	}, []);
+
 	const redefineState = useCallback((newState: TInternalAiAgentState) => setState(newState), []);
 	const resetState = useCallback(() => setState(buildInitialState()), []);
 
@@ -199,6 +220,8 @@ export function useInternalAiAgentState() {
 		updateModelConfig,
 		updateLimits,
 		updateAttendanceSettings,
+		updateScope,
+		toggleScopeClient,
 		updatePrices,
 		updateQuotes,
 		updateStock,

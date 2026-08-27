@@ -553,6 +553,12 @@ export type TActionApprovalTypeEnum = z.infer<typeof ActionApprovalTypeEnum>;
 export const AiAgentStatusEnum = z.enum(["ATIVO", "PAUSADO"]);
 export type TAiAgentStatusEnum = z.infer<typeof AiAgentStatusEnum>;
 
+// Quem o agente atende. A assimetria da lista vazia é deliberada: INCLUIR sem ninguém marcado
+// não atende ninguém (lista de permissão vazia), enquanto EXCLUIR sem ninguém marcado atende
+// todo mundo. Em ambos os casos a lista quer dizer exatamente o que está escrito nela.
+export const AiAgentScopeTypeEnum = z.enum(["TODOS", "INCLUIR", "EXCLUIR"]);
+export type TAiAgentScopeTypeEnum = z.infer<typeof AiAgentScopeTypeEnum>;
+
 // Ciclo de vida de uma execução (run) do agente.
 // CANCELADO = o turno concluiu, mas a entrega foi abortada pela revalidação (run supersedida).
 export const AiAgentRunStatusEnum = z.enum(["PENDENTE", "RODANDO", "CONCLUIDO", "FALHA", "CANCELADO"]);

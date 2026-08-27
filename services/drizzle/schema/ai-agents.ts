@@ -1,4 +1,4 @@
-import type { TAiAgentCapabilities, TAiAgentConfigSnapshot, TAiAgentModelConfig, TAiAgentUsage } from "@/schemas/ai-agents";
+import type { TAiAgentCapabilities, TAiAgentConfigSnapshot, TAiAgentModelConfig, TAiAgentScope, TAiAgentUsage } from "@/schemas/ai-agents";
 import type {
 	TAiAgentRunTriggerEnum,
 	TAiAgentRunStatusEnum,
@@ -51,6 +51,10 @@ export const aiAgents = newTable(
 		instrucoes: text("instrucoes").notNull(),
 		modeloConfig: jsonb("modelo_config").$type<TAiAgentModelConfig>().notNull(),
 		capacidades: jsonb("capacidades").$type<TAiAgentCapabilities>().notNull(),
+		// Quem o agente atende. Config viva de implantação: fica FORA de `configSnapshot` de
+		// propósito — uma lista de clientes copiada em toda run inflaria `ai_agent_runs` sem
+		// nenhum ganho de auditoria. Vale imediatamente, sem republicar nada.
+		escopo: jsonb("escopo").$type<TAiAgentScope>().notNull().default({ tipo: "TODOS", clienteIds: [] }),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 		dataAtualizacao: timestamp("data_atualizacao").$onUpdate(() => new Date()),
 	},
@@ -282,14 +286,14 @@ export const aiAgentToolCallsRelations = relations(aiAgentToolCalls, ({ one }) =
 		fields: [aiAgentToolCalls.runId],
 		references: [aiAgentRuns.id],
 	}),
-		agente: one(aiAgents, {
-			fields: [aiAgentToolCalls.agenteId],
-			references: [aiAgents.id],
-		}),
-		operacao: one(aiAgentOperations, {
-			fields: [aiAgentToolCalls.operacaoId],
-			references: [aiAgentOperations.id],
-		}),
-	}));
+	agente: one(aiAgents, {
+		fields: [aiAgentToolCalls.agenteId],
+		references: [aiAgents.id],
+	}),
+	operacao: one(aiAgentOperations, {
+		fields: [aiAgentToolCalls.operacaoId],
+		references: [aiAgentOperations.id],
+	}),
+}));
 export type TAiAgentToolCallEntity = typeof aiAgentToolCalls.$inferSelect;
 export type TNewAiAgentToolCallEntity = typeof aiAgentToolCalls.$inferInsert;
