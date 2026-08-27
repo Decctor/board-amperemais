@@ -2,7 +2,7 @@ import { fetchConnectorImportBatch, type TCanonicalImportWindow } from "@/lib/da
 import { processSaleCupomAutoPrintIfEligible } from "@/lib/desktop-agent/auto-print";
 import { getActiveDataSourceIntegrations, type TDataSourceIntegration } from "@/lib/integrations/data-sources";
 import { resolveIfoodManagementContext } from "@/lib/integrations/ifood/context";
-import { confirmIfoodOrder } from "@/lib/integrations/ifood/orders";
+import { acceptIfoodOrderCancellation, confirmIfoodOrder } from "@/lib/integrations/ifood/orders";
 import { getChannelErpPolicy } from "@/lib/sales/fulfillment-channels/policy";
 import { processSaleAutomaticFiscalEmissionIfEligible } from "@/lib/sales/sale-processing/process-sale-automatic-fiscal-emission";
 import { processOrganizationInteractionsBatch, type ImmediateProcessingData } from "@/lib/interactions";
@@ -236,6 +236,44 @@ async function processIntegration({
 			} catch (error) {
 				console.error(
 					`[DATA_COLLECTING_V2] [ORG: ${organizationId}] Falha ao resolver contexto iFood para aceite automático.`,
+					serializeDataCollectingError(error),
+				);
+			}
+		}
+	}
+
+	// Resposta ao cancelamento SOLICITADO pelo cliente/iFood (evento CANCELLATION_REQUESTED),
+	// pós-commit: o evento traz prazo de resposta e o iFood decide sozinho se ele estourar. Roda
+	// SEM depender de `aceiteAutomaticoPedidos` — aquela flag governa aceitar pedidos novos, não
+	// responder cancelamentos; deixar de responder não é uma opção, é reprovar o cenário.
+	//
+	// A pendência é zerada pelo mapper quando o cancelamento se efetiva (evento CANCELLED), então
+	// um confirm repetido só acontece na janela entre a resposta e o evento chegar pelo polling —
+	// benigno, e o erro é capturado por pedido.
+	if (ifoodConfig) {
+		const pendingCancellations = persistedSalesForPostCommit.filter(
+			(persisted) => !persisted.nowCanceled && !!persisted.sale.integrationMetadata?.cancelamentoSolicitado,
+		);
+		if (pendingCancellations.length > 0) {
+			try {
+				const context = await resolveIfoodManagementContext({ organizacaoId: organizationId, integrationId: integration.id });
+				for (const persisted of pendingCancellations) {
+					const solicitacao = persisted.sale.integrationMetadata?.cancelamentoSolicitado;
+					try {
+						await acceptIfoodOrderCancellation(context.client, persisted.sourceSaleId, solicitacao?.motivo);
+						console.log(
+							`[DATA_COLLECTING_V2] [ORG: ${organizationId}] Cancelamento do pedido iFood ${persisted.sourceSaleId} aceito automaticamente. Motivo: ${solicitacao?.motivo ?? "não informado"}.`,
+						);
+					} catch (error) {
+						console.error(
+							`[DATA_COLLECTING_V2] [ORG: ${organizationId}] Falha ao responder o cancelamento do pedido iFood ${persisted.sourceSaleId}.`,
+							serializeDataCollectingError(error),
+						);
+					}
+				}
+			} catch (error) {
+				console.error(
+					`[DATA_COLLECTING_V2] [ORG: ${organizationId}] Falha ao resolver contexto iFood para resposta de cancelamento.`,
 					serializeDataCollectingError(error),
 				);
 			}

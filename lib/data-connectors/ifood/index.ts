@@ -16,6 +16,7 @@ const IFOOD_RELEVANT_ORDER_EVENT_CODES = new Set([
 	"COL",
 	"CON",
 	"CAN",
+	"CAR",
 	"PLACED",
 	"CONFIRMED",
 	"PREPARATION_STARTED",
@@ -27,6 +28,10 @@ const IFOOD_RELEVANT_ORDER_EVENT_CODES = new Set([
 	"CONCLUDED",
 	"CANCELLED",
 	"CANCELED",
+	// Cancelamento SOLICITADO (ainda nao efetivado): exige resposta da loja dentro do prazo do
+	// evento. Sem ele na lista, o pedido de cancelamento era filtrado aqui e ACKado adiante --
+	// consumido da fila sem nunca ter sido respondido.
+	"CANCELLATION_REQUESTED",
 ]);
 
 function getRelevantOrderEvents(events: TIfoodEvent[]) {

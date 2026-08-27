@@ -19,7 +19,43 @@ type TIfoodOrderEventState = {
 	confirmedAt: string | null;
 	concludedAt: string | null;
 	cancelledAt: string | null;
+	/**
+	 * Cancelamento SOLICITADO e ainda pendente de resposta da loja. Fica FORA de `statusText` de
+	 * proposito: o pedido continua no estagio em que estava (pode seguir para preparo/entrega se a
+	 * solicitacao for negada), entao tratar isto como avanco de status corromperia o quadro.
+	 * Zerado quando o cancelamento se efetiva (CANCELLED) -- ai o estado terminal ja responde.
+	 */
+	cancellationRequestedAt: string | null;
+	cancellationRequestReason: string | null;
 };
+
+// Codigos do evento de cancelamento SOLICITADO (curto e completo).
+const IFOOD_CANCELLATION_REQUESTED_CODES = new Set(["CAR", "CANCELLATION_REQUESTED"]);
+
+function isCancellationRequestedEvent(event: TIfoodEvent) {
+	const code = event.code.toUpperCase();
+	const fullCode = event.fullCode?.toUpperCase();
+	return IFOOD_CANCELLATION_REQUESTED_CODES.has(code) || (!!fullCode && IFOOD_CANCELLATION_REQUESTED_CODES.has(fullCode));
+}
+
+/**
+ * Motivo declarado pelo cliente/iFood. O metadata do evento nao tem shape estavel entre versoes
+ * da API — lemos as chaves conhecidas e caimos em null em vez de quebrar a ingestao.
+ */
+function getCancellationRequestReason(event: TIfoodEvent): string | null {
+	const metadata = event.metadata;
+	if (!metadata) return null;
+	for (const key of ["cancellationReason", "reason", "details", "reasonDetail", "CANCEL_REASON", "cancelReason"]) {
+		const value = metadata[key];
+		if (typeof value === "string" && value.trim()) return value.trim();
+	}
+	for (const key of ["cancelCodeId", "reason_code", "reasonCode", "cancellationCode"]) {
+		const value = metadata[key];
+		if (typeof value === "string" && value.trim()) return value.trim();
+		if (typeof value === "number") return String(value);
+	}
+	return null;
+}
 
 const IFOOD_EVENT_STATUS_BY_CODE: Record<string, string> = {
 	PLC: "PLACED",
@@ -121,6 +157,8 @@ function getOrderEventState(events: TIfoodEvent[]): TIfoodOrderEventState {
 		confirmedAt: null,
 		concludedAt: null,
 		cancelledAt: null,
+		cancellationRequestedAt: null,
+		cancellationRequestReason: null,
 	};
 
 	// Eventos podem chegar fora de ordem (garantia at-least-once, sem ordenacao) — o status
@@ -132,9 +170,20 @@ function getOrderEventState(events: TIfoodEvent[]): TIfoodOrderEventState {
 	});
 
 	for (const event of orderedEvents) {
+		// Solicitacao de cancelamento nao mexe em statusText — so liga a pendencia de resposta.
+		if (isCancellationRequestedEvent(event)) {
+			state.cancellationRequestedAt = event.createdAt ?? state.cancellationRequestedAt;
+			state.cancellationRequestReason = getCancellationRequestReason(event) ?? state.cancellationRequestReason;
+			continue;
+		}
+
 		const status = getEventStatus(event);
 		if (!status) continue;
 		state.statusText = status;
+		// Eventos vem ordenados por createdAt: qualquer evento de ciclo posterior a solicitacao
+		// resolve a pendencia (cancelamento efetivado, ou negado e o pedido seguiu adiante).
+		state.cancellationRequestedAt = null;
+		state.cancellationRequestReason = null;
 		if (status === "CONFIRMED") state.confirmedAt = event.createdAt ?? state.confirmedAt;
 		if (status === "CONCLUDED") state.concludedAt = event.createdAt ?? state.concludedAt;
 		if (status === "CANCELLED" || status === "CANCELED") state.cancelledAt = event.createdAt ?? state.cancelledAt;
@@ -354,7 +403,7 @@ function allocateMerchantDiscountsToItems(order: TIfoodOrder, items: TCanonicalS
  * `sales.integracaoMetadados`. Frete: benefits MERCHANT de taxa de entrega reduzem o frete
  * cobrado (a loja abriu mão); benefits patrocinados mantêm o frete cheio (o canal paga).
  */
-function buildIfoodIntegrationMetadata(order: TIfoodOrder): TSaleIntegrationMetadata {
+function buildIfoodIntegrationMetadata(order: TIfoodOrder, eventState: TIfoodOrderEventState): TSaleIntegrationMetadata {
 	const deliveredBy = order.delivery?.deliveredBy?.toUpperCase() ?? null;
 
 	let merchantItemAndCartDiscount = 0;
@@ -388,6 +437,9 @@ function buildIfoodIntegrationMetadata(order: TIfoodOrder): TSaleIntegrationMeta
 			loja: round2(merchantItemAndCartDiscount + merchantDeliveryFeeDiscount),
 			patrocinados: [...sponsoredTotals.entries()].map(([patrocinador, valor]) => ({ patrocinador, valor: round2(valor) })),
 		},
+		cancelamentoSolicitado: eventState.cancellationRequestedAt
+			? { solicitadoEm: eventState.cancellationRequestedAt, motivo: eventState.cancellationRequestReason }
+			: null,
 		taxasCanal,
 	};
 }
@@ -474,7 +526,7 @@ export function mapIfoodSale(order: TIfoodOrder, events: TIfoodEvent[] = []): TC
 		isCanceled: canceled,
 		attendanceStatus: mapIfoodAttendanceStatus(statusText),
 		payments: mapIfoodSalePayments(order),
-		integrationMetadata: buildIfoodIntegrationMetadata(order),
+		integrationMetadata: buildIfoodIntegrationMetadata(order, eventState),
 		raw: order,
 	};
 }

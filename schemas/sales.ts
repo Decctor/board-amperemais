@@ -103,6 +103,18 @@ export const SaleIntegrationMetadataSchema = z.object({
 			}),
 		),
 	}),
+	/**
+	 * Cancelamento solicitado pelo cliente/canal e ainda pendente de resposta da loja. Só o canal
+	 * escreve aqui (ingestão); a resposta da loja limpa o bloco. Opcional para não invalidar as
+	 * linhas gravadas antes deste campo existir.
+	 */
+	cancelamentoSolicitado: z
+		.object({
+			solicitadoEm: z.string({ required_error: "Data da solicitação de cancelamento não informada." }),
+			motivo: z.string({ invalid_type_error: "Tipo não válido para o motivo do cancelamento." }).nullable(),
+		})
+		.nullable()
+		.optional(),
 	/** Taxas do canal (ex.: additionalFees do iFood) — receita do canal, fora da NF; material da conciliação. */
 	taxasCanal: z.array(
 		z.object({

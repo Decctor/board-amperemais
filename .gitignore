@@ -53,3 +53,5 @@ yarn.lock
 bun.lockb
 
 tmp/
+# Artefatos de geração de imagem (testes locais) — nunca versionados.
+output/
