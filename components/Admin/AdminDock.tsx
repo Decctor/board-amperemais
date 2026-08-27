@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatNameAsInitials } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
-import { ArrowRightLeft, Handshake, LogOut, MonitorDown, Palette, Shield, VideoIcon } from "lucide-react";
+import { ArrowRightLeft, Clapperboard, Handshake, LogOut, MonitorDown, Palette, Shield, VideoIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -46,6 +46,11 @@ const ADMIN_DOCK_NAV: TAdminDockNavItem[] = [
 		title: "Assets da Marca",
 		url: "/admin-dashboard/brand-assets",
 		icon: <Palette className="size-[18px]" strokeWidth={1.75} />,
+	},
+	{
+		title: "Mídia",
+		url: "/admin-dashboard/media",
+		icon: <Clapperboard className="size-[18px]" strokeWidth={1.75} />,
 	},
 	{
 		title: "Agente Desktop",

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BrandLogo, brandLogoSource } from "@/components/Brand/BrandLogo";
 import { BRAND_COLORS } from "@/lib/brand/tokens";
-import { toJpeg, toPng } from "html-to-image";
+import { exportNode } from "@/lib/media/export-node";
 import {
 	BriefcaseBusiness,
 	CalendarDays,
@@ -87,20 +87,6 @@ const SYMBOLS: { key: string; label: string; icon: LucideIcon }[] = [
 
 const FEATURED_SYMBOLS = SYMBOLS.slice(0, 6);
 const MORE_SYMBOLS = SYMBOLS.slice(6);
-
-function downloadDataUrl(dataUrl: string, filename: string) {
-	const link = document.createElement("a");
-	link.download = filename;
-	link.href = dataUrl;
-	link.click();
-}
-
-async function exportNode(node: HTMLElement, filename: string, format: "png" | "jpeg" = "png") {
-	await document.fonts.ready;
-	const options = { pixelRatio: 2, cacheBust: true, quality: 0.95 };
-	const dataUrl = format === "jpeg" ? await toJpeg(node, options) : await toPng(node, options);
-	downloadDataUrl(dataUrl, `${filename}.${format === "jpeg" ? "jpg" : "png"}`);
-}
 
 function ColorPicker({ value, onChange }: { value: string; onChange: (color: string) => void }) {
 	return (

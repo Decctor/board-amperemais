@@ -655,3 +655,15 @@
 		animation: none;
 	}
 }
+
+/*
+ * Estúdio de mídia (/admin-dashboard/media): durante a captura de um frame,
+ * animações e transições são congeladas para o PNG não sair no meio de um
+ * keyframe. O atributo é aplicado pelo CaptureFrame logo antes do html-to-image.
+ */
+[data-capturing="true"],
+[data-capturing="true"] * {
+	animation: none !important;
+	transition: none !important;
+	caret-color: transparent !important;
+}
