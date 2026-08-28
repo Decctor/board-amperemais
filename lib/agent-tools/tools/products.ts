@@ -1,7 +1,9 @@
+import { resolveChannelAvailability } from "@/lib/products/sales-channels";
+import { channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
 import { createSimilarityExpression, createSimplifiedEqualityCondition, createSimplifiedSearchCondition } from "@/lib/search";
 import { db } from "@/services/drizzle";
 import { products } from "@/services/drizzle/schema";
-import { and, asc, count, desc, eq, or, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, notInArray, or, type SQL } from "drizzle-orm";
 import z from "zod";
 import { resolveOrganizationScope } from "../organization-scope";
 import { roundForModel } from "../serialization";
@@ -15,6 +17,9 @@ const SearchProductsInputSchema = z.object({
 	codigo: z.string({ invalid_type_error: "Tipo inválido para o código." }).optional().nullable(),
 	grupo: z.string({ invalid_type_error: "Tipo inválido para o grupo." }).optional().nullable(),
 	apenasVendaveis: z.boolean({ invalid_type_error: "Tipo inválido para apenas vendáveis." }).optional().nullable(),
+	// Só canais internos: o iFood tem um canal por loja (`ref_externo` = merchant), então
+	// "IFOOD" sozinho seria ambíguo numa organização com mais de uma loja conectada.
+	canal: z.enum(["POS", "SHOP", "COMANDA"]).optional().nullable(),
 	limite: z.number({ invalid_type_error: "Tipo inválido para o limite." }).int().positive().max(MAX_LIMIT).optional().nullable(),
 	organizacaoId: z.string({ invalid_type_error: "Tipo inválido para o id da organização." }).optional().nullable(),
 });
@@ -30,7 +35,9 @@ export const searchProductsTool = defineAgentTool({
 			"Consulta o catálogo da organização por nome, código ou grupo. A busca por `termo` tolera acento e erro de digitação,",
 			"e o resultado vem ordenado por semelhança com o termo.",
 			"`precoVendaBase` é o preço cadastrado no produto, **não necessariamente o preço praticado**: cada canal de venda",
-			"(POS, loja, comanda, iFood) pode ter preço e disponibilidade próprios. Ao falar de preço, diga que é o preço base.",
+			"(POS, loja, comanda, iFood) pode ter preço e disponibilidade próprios.",
+			"Passe `canal` para receber `precoVendaEfetivo` e `disponivelNoCanal` já resolvidos para aquele canal — é o que você deve citar",
+			"quando a pergunta for sobre um canal específico. Sem `canal`, cite `precoVendaBase` e diga que é o preço base.",
 			"`vendavel` e `ativo` são coisas diferentes: um produto inativo saiu do catálogo, um não-vendável continua cadastrado",
 			"mas não pode ser vendido em canal nenhum.",
 			"Preço e quantidade em estoque são **omitidos** quando a organização não os controla — campo ausente significa 'não sei',",
@@ -44,7 +51,17 @@ export const searchProductsTool = defineAgentTool({
 		const organizacaoId = await resolveOrganizationScope(actor, input.organizacaoId);
 		const limite = input.limite ?? DEFAULT_LIMIT;
 
+		// Canal ainda não materializado é ausência de configuração, não erro: o catálogo cai no
+		// comportamento base em vez de devolver vazio e sugerir que a loja não vende nada ali.
+		const channelState = input.canal ? await loadChannelState({ orgId: organizacaoId, canal: input.canal }) : null;
+
 		const conditions: SQL[] = [eq(products.organizacaoId, organizacaoId)];
+
+		if (channelState) {
+			const { includeIds, excludeIds } = channelProductFilter(channelState);
+			if (includeIds) conditions.push(inArray(products.id, includeIds));
+			if (excludeIds) conditions.push(notInArray(products.id, excludeIds));
+		}
 
 		const codigo = input.codigo?.trim();
 		if (codigo) conditions.push(createSimplifiedEqualityCondition(products.codigo, codigo));
@@ -101,6 +118,7 @@ export const searchProductsTool = defineAgentTool({
 			total,
 			exibindo: rows.length,
 			truncado: total > rows.length,
+			canalConsultado: input.canal ?? undefined,
 			produtos: rows.map((product) => ({
 				id: product.id,
 				nome: product.nome,
@@ -110,6 +128,16 @@ export const searchProductsTool = defineAgentTool({
 				descricao: product.descricao,
 				ativo: product.ativo,
 				vendavel: product.vendavel,
+				precoVendaEfetivo: channelState
+					? roundForModel(channelNodePrice(channelState, { produtoId: product.id, precoVenda: product.precoVenda }))
+					: undefined,
+				disponivelNoCanal: channelState
+					? resolveChannelAvailability({
+							product,
+							channel: channelState.channel,
+							overrides: { product: channelState.productOverrides.get(product.id) ?? null },
+						})
+					: undefined,
 				// Nome explícito porque o número é o preço-base do cadastro: canais de venda podem
 				// sobrescrevê-lo (`product_channel_settings.preco_venda`). Devolver isto como
 				// `precoVenda` faria o agente cotar em nome da loja um preço que talvez não valha

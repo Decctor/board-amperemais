@@ -3,8 +3,9 @@
 Expõe o RecompraCRM a agentes de IA (Claude, ChatGPT, os agentes do Syncroniza Control, Cursor)
 através de um servidor **MCP** — o protocolo que todos esses clientes falam nativamente.
 
-**Estado: fase 0 implementada.** Quatro ferramentas de leitura, os dois modos de ator e o endpoint
-MCP funcionando sobre a fundação de acesso existente (`docs/dev-planning/access-foundation-implementation.md`).
+**Estado: fase 1 implementada.** Doze ferramentas de leitura, um recurso, dois prompts e os dois
+modos de ator sobre a fundação de acesso existente (`docs/dev-planning/access-foundation-implementation.md`).
+Falta a tela de Conexões de IA (abaixo), OAuth (fase 2) e as ferramentas de escrita (fase 3).
 
 ---
 
@@ -57,9 +58,13 @@ default possível. A agregação cross-org chega com as ferramentas `platform_*`
 
 ### Acesso
 
-- `AccessScopeEnum` ganhou `agent:results:read`, `agent:clients:read`, `agent:clients:pii`,
-  `agent:products:read`, `agent:campaigns:read` — com rótulos em `ACCESS_SCOPE_CATALOG`
-  (grupo `AGENTE_IA`), que é o que a tela de permissões vai renderizar.
+- `AccessScopeEnum` ganhou `agent:results:read`, `agent:sales:read`, `agent:clients:read`,
+  `agent:clients:pii`, `agent:products:read`, `agent:campaigns:read` (grupo `AGENTE_IA`) e
+  `platform:organizations:read`, `platform:metrics:read` (grupo `PLATAFORMA`) — todos com rótulos
+  em `ACCESS_SCOPE_CATALOG`, que é o que a tela de permissões vai renderizar.
+- Os scopes `platform:*` nunca entram no teto de uma aplicação de lojista. **Modo e scope são
+  exigências independentes**: um principal de plataforma sem `platform:organizations:read` não
+  enxerga as ferramentas `platform_*`, e um principal de organização com o scope também não.
 - `AccessPrincipalTypeEnum` ganhou `CONTA_PLATAFORMA`.
 - `access_principals.organizacao_id` virou nulo **só** para esse tipo, com CHECK constraint. A
   garantia saiu do `NOT NULL` e virou uma exceção nomeada, em vez de afrouxar.
@@ -77,15 +82,29 @@ default possível. A agregação cross-org chega com as ferramentas `platform_*`
 
 ### Ferramentas (`lib/agent-tools/`)
 
-| Ferramenta | Scope | Reaproveita |
-| --- | --- | --- |
-| `get_commercial_results` | `agent:results:read` | `lib/sales/overall-stats` (extraído de `/api/stats/sales-overall`) |
-| `search_clients` | `agent:clients:read` | `lib/search` + tabela `clients` |
-| `search_products` | `agent:products:read` | `lib/search` + tabela `products` |
-| `list_campaigns` | `agent:campaigns:read` | tabela `campaigns` |
+| Ferramenta | Modo | Scope | Reaproveita |
+| --- | --- | --- | --- |
+| `get_commercial_results` | ambos | `agent:results:read` | `lib/sales/overall-stats` |
+| `get_sales` | ambos | `agent:sales:read` | tabela `sales` |
+| `search_clients` | ambos | `agent:clients:read` | `lib/search` + tabela `clients` |
+| `get_client_context` | ambos | `agent:clients:read` | `lib/clients/context` |
+| `list_segments` | ambos | `agent:campaigns:read` | `clients.analiseRFMTitulo` + `audiences` |
+| `search_products` | ambos | `agent:products:read` | `lib/search`, `lib/products/sales-channels*` |
+| `get_product_performance` | ambos | `agent:products:read` | `lib/products/ranking` |
+| `list_campaigns` | ambos | `agent:campaigns:read` | tabela `campaigns` |
+| `get_campaign_results` | ambos | `agent:campaigns:read` | `lib/campaigns/stats` |
+| `platform_search_organizations` | plataforma | `platform:organizations:read` | `organizations` + `max(sales.dataVenda)` |
+| `platform_get_organization_health` | plataforma | `platform:organizations:read` | assinatura + uso agregado |
+| `platform_get_aggregate_metrics` | plataforma | `platform:metrics:read` | agregados da base |
 
-As agregações de resultado foram **extraídas, não reescritas**: painel e agente leem as mesmas
-funções. Número que não bate entre o painel e o agente vale menos que número nenhum.
+Quatro módulos foram **extraídos, não reescritos**, para que painel e agente leiam as mesmas
+funções — `lib/sales/overall-stats`, `lib/clients/context`, `lib/campaigns/stats` e
+`lib/products/ranking`. Cada extração trocou `{ input, session }` por `{ input, organizacaoId }`;
+as rotas passaram a derivar a organização e delegar. Número que não bate entre o painel e o agente
+vale menos que número nenhum.
+
+Em modo plataforma as ferramentas de organização são **as mesmas**, com `organizacaoId`
+obrigatório. Não existem gêmeas administrativas: é o que `resolveOrganizationScope` compra.
 
 Duas disciplinas valem para toda ferramenta:
 
@@ -104,9 +123,10 @@ praticado depende do canal (`product_channel_settings.preco_venda`) — ver
 `docs/product-sales-channels-design.md`. O nome do campo e a descrição da ferramenta dizem isso ao
 modelo, para ele não cotar em nome da loja um preço que não vale no canal do cliente. O filtro
 padrão exige `ativo` **e** `vendavel`, os dois gates independentes de `resolveChannelAvailability`.
-O passo seguinte é um argumento `canal` que resolva preço e disponibilidade efetivos via
-`resolveChannelPrice`/`resolveChannelAvailability`; enquanto ele não existe, a ferramenta é honesta
-sobre estar devolvendo a base.
+`search_products` aceita `canal` (POS, SHOP, COMANDA) e então devolve também `precoVendaEfetivo` e
+`disponivelNoCanal`, resolvidos por `channelNodePrice`/`resolveChannelAvailability` e com o
+catálogo do canal já aplicado no filtro. iFood fica de fora do argumento porque tem um canal por
+loja (`ref_externo` = merchant): "IFOOD" sozinho seria ambíguo numa organização com mais de uma.
 
 ### Protocolo (`lib/mcp/`, `app/api/mcp/route.ts`)
 
@@ -124,6 +144,17 @@ fonte única. É deliberadamente parcial: objeto de escalares, enums e arrays, c
 `.nullable()`, `.default()` e `.describe()`. Fora disso vira `{}` — a validação do Zod continua
 correta, mas o modelo perde a dica. **Precisou de união ou objeto profundo? Troque por
 `zod-to-json-schema` em vez de esticar o subconjunto.**
+
+Além de `tools`, o servidor anuncia `resources` e `prompts`:
+
+- **Recurso** `recompracrm://organization/current` — identidade da organização, moeda, fuso e quais
+  módulos estão habilitados. Existe só em modo ORG: em PLATAFORMA não há "organização atual", e
+  forjar uma escolha seria pior que não oferecer. Módulo desligado não é "sem dados" — é uma
+  sugestão que o agente não deve fazer.
+- **Prompts** `revisao-comercial` e `clientes-em-risco` — roteiros que fixam a **ordem** das
+  chamadas e o formato da resposta. Sem eles o modelo improvisa a sequência, chama
+  `get_campaign_results` sem ter o id, e devolve tabela de números crus onde o lojista queria saber
+  o que fazer na segunda. São o mesmo artefato que vira Agent Skill no bundle da fase 3.
 
 Um desvio conhecido: a especificação manda responder 400 a um `MCP-Protocol-Version` desconhecido;
 aqui o header é aceito e a versão que vale é a negociada no `initialize`. Recusar uma revisão mais
@@ -183,26 +214,28 @@ RecompraCRM, e não existe nenhuma integração entre os dois sistemas que já p
 
 ## 5. Testes
 
-`npm run test:agent-tools` — 48 casos cobrindo o resolvedor de tenancy, a filtragem do registro por
-modo e scope, a serialização (nulo/NaN), o default de período, o conversor de JSON Schema e o
-handshake MCP (`initialize`, `tools/list`, `ping`, notificação, método desconhecido).
+`npm run test:agent-tools` — 56 casos, sem banco: resolvedor de tenancy, filtragem do registro por
+modo **e** scope (incluindo o caso que não pode regredir — scope de plataforma concedido a um ator
+ORG não revela ferramenta nenhuma), serialização (nulo/NaN), default de período, conversor de JSON
+Schema e o protocolo MCP inteiro (`initialize`, `tools/list`, `resources/*`, `prompts/*`, `ping`,
+notificação, método desconhecido).
 
-O que **não** está coberto: execução de ferramenta contra banco real. `tools/call` depende de dados
-e precisa de teste de integração — é a primeira lacuna a fechar.
+`npm run test:agent-tools:db -- --org <slug>` — executa **cada ferramenta contra o banco real** e
+reporta ok/pulado/falha por ferramenta. É o que cobre o que os testes acima não cobrem: se a
+consulta roda. Passo obrigatório antes de apontar um cliente MCP para um ambiente novo. Somente
+leitura. Adicione `--plataforma` para exercitar o modo de plataforma.
 
 ---
 
 ## 6. Próximas fases
 
-**Fase 1 — superfície completa e modo plataforma de verdade.** Argumento `canal` em
-`search_products`, resolvendo preço e disponibilidade efetivos por canal de venda. As cinco ferramentas de leitura que
-faltam (`get_sales`, `get_client_context`, `list_segments`, `get_product_performance`,
-`get_campaign_results`); as três `platform_*` (`search_organizations`, `get_organization_health`,
-`get_aggregate_metrics`) e, com elas, a agregação cross-org que hoje falha de propósito; o resource
-`recompracrm://organization/current` com config da organização (moeda, fuso, módulos ativos,
-limiares de RFM), para o modelo se orientar sem gastar uma chamada; dois prompts MCP (*revisão
-comercial semanal*, *diagnóstico de clientes em risco*); e a tela de Conexões de IA — em boa parte
-um re-skin da tela de dispositivos, já que o catálogo de scopes fornece os rótulos.
+**Falta da fase 1 — a tela de Conexões de IA.** Em boa parte um re-skin da tela de dispositivos, já
+que `ACCESS_SCOPE_CATALOG` fornece os rótulos e `provisionAgentPrincipal` já faz o trabalho. Até
+lá, `npm run access:issue-agent` é o caminho.
+
+Também em aberto, por decisão e não por esquecimento: `get_campaign_results` atende **uma** campanha
+por chamada. A visão "todas as campanhas do período" exigiria N execuções da mesma agregação e vale
+uma consulta própria, não um laço — o modelo deve chamar `list_campaigns` primeiro.
 
 **Fase 2 — OAuth 2.1 como resource server.** PRM (RFC 9728), authorization code com PKCE, resource
 indicators (RFC 8707), CIMD. É o que transforma isto de recurso de desenvolvedor em algo que se

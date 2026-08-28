@@ -722,6 +722,11 @@ export const AccessScopeEnum = z.enum([
 	"agent:clients:pii",
 	"agent:products:read",
 	"agent:campaigns:read",
+	"agent:sales:read",
+	// Prefixo `platform:` só existe para principal CONTA_PLATAFORMA — são as ferramentas que
+	// atravessam organizações. Nenhuma aplicação de lojista tem esses scopes no teto.
+	"platform:organizations:read",
+	"platform:metrics:read",
 ]);
 export type TAccessScopeEnum = z.infer<typeof AccessScopeEnum>;
 

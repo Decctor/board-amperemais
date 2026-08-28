@@ -16,23 +16,45 @@ function createActor(overrides: Partial<TAgentActorContext> = {}): TAgentActorCo
 	};
 }
 
-const ALL_SCOPES = new Set(["agent:results:read", "agent:clients:read", "agent:products:read", "agent:campaigns:read"]);
+const AGENT_SCOPES = ["agent:results:read", "agent:clients:read", "agent:products:read", "agent:campaigns:read", "agent:sales:read"];
+const PLATFORM_SCOPES = ["platform:organizations:read", "platform:metrics:read"];
+const ALL_SCOPES = new Set([...AGENT_SCOPES, ...PLATFORM_SCOPES]);
 
 test("sem scope nenhum, o ator não enxerga ferramenta alguma", () => {
 	assert.deepEqual(listToolsForActor(createActor()), []);
 });
 
-test("cada scope revela apenas a sua ferramenta", () => {
-	const tools = listToolsForActor(createActor({ scopes: new Set(["agent:results:read"]) }));
+test("cada scope revela apenas as suas ferramentas", () => {
 	assert.deepEqual(
-		tools.map((tool) => tool.name),
+		listToolsForActor(createActor({ scopes: new Set(["agent:results:read"]) })).map((tool) => tool.name),
 		["get_commercial_results"],
+	);
+	assert.deepEqual(
+		listToolsForActor(createActor({ scopes: new Set(["agent:products:read"]) })).map((tool) => tool.name),
+		["search_products", "get_product_performance"],
 	);
 });
 
-test("com todos os scopes, o ator enxerga todo o registro", () => {
+test("nem todos os scopes fazem um ator ORG enxergar as ferramentas de plataforma", () => {
+	// O caso que precisa nunca regredir: scope concedido a mais não pode atravessar o modo.
 	const tools = listToolsForActor(createActor({ scopes: ALL_SCOPES }));
+	assert.ok(tools.length > 0);
+	assert.ok(
+		tools.every((tool) => !tool.name.startsWith("platform_")),
+		`vazou ferramenta de plataforma para modo ORG: ${tools.map((tool) => tool.name).join(", ")}`,
+	);
+});
+
+test("o modo plataforma enxerga as ferramentas de organização e as de plataforma", () => {
+	const tools = listToolsForActor(createActor({ mode: "PLATAFORMA", organizationId: null, scopes: ALL_SCOPES }));
 	assert.equal(tools.length, listAllAgentTools().length);
+	assert.ok(tools.some((tool) => tool.name.startsWith("platform_")));
+	assert.ok(tools.some((tool) => tool.name === "get_commercial_results"));
+});
+
+test("scope de plataforma não abre ferramenta de plataforma em modo ORG", () => {
+	const tools = listToolsForActor(createActor({ scopes: new Set(PLATFORM_SCOPES) }));
+	assert.deepEqual(tools, []);
 });
 
 test("scope parecido não conta — a correspondência é por igualdade exata", () => {
@@ -61,14 +83,27 @@ test("toda ferramenta declara ao menos um scope e ao menos um modo", () => {
 	}
 });
 
-test("a descrição muda com o modo e ensina o organizacaoId só onde ele existe", () => {
+test("a descrição das ferramentas de organização ensina o organizacaoId só em modo plataforma", () => {
 	const orgActor = createActor({ scopes: ALL_SCOPES });
 	const platformActor = createActor({ mode: "PLATAFORMA", organizationId: null, scopes: ALL_SCOPES });
 
-	for (const tool of listAllAgentTools()) {
-		const orgDescription = tool.describe(orgActor);
-		const platformDescription = tool.describe(platformActor);
-		assert.ok(platformDescription.includes("organizacaoId"), `${tool.name} não explica organizacaoId em modo plataforma`);
-		assert.ok(!orgDescription.includes("organizacaoId"), `${tool.name} oferece organizacaoId em modo organização`);
+	// Só as ferramentas que existem nos dois modos: as de plataforma nunca são vistas em modo ORG,
+	// e algumas delas (métricas agregadas, busca de organizações) não recebem organizacaoId nenhum.
+	for (const tool of listAllAgentTools().filter((candidate) => candidate.modes.length > 1)) {
+		assert.ok(tool.describe(platformActor).includes("organizacaoId"), `${tool.name} não explica organizacaoId em modo plataforma`);
+		assert.ok(!tool.describe(orgActor).includes("organizacaoId"), `${tool.name} oferece organizacaoId em modo organização`);
 	}
+});
+
+test("toda ferramenta de plataforma é exclusiva do modo plataforma e usa o prefixo platform_", () => {
+	for (const tool of listAllAgentTools()) {
+		const isPlatformScoped = tool.scopes.some((scope) => scope.startsWith("platform:"));
+		assert.equal(isPlatformScoped, tool.name.startsWith("platform_"), `${tool.name}: prefixo e scope discordam`);
+		if (isPlatformScoped) assert.deepEqual(tool.modes, ["PLATAFORMA"], `${tool.name} não é exclusiva do modo plataforma`);
+	}
+});
+
+test("nenhum nome de ferramenta se repete no registro", () => {
+	const names = listAllAgentTools().map((tool) => tool.name);
+	assert.equal(new Set(names).size, names.length);
 });

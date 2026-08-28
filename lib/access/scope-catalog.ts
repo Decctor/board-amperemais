@@ -4,7 +4,7 @@ import type { TAccessScopeEnum } from "@/schemas/enums";
 // Quem abre a tela de dispositivos é o lojista: cada scope precisa dizer o que o aparelho passa a
 // conseguir fazer no balcão. Este catálogo é a única fonte desses rótulos.
 
-export type TAccessScopeGroup = "PONTO_DE_INTERACAO" | "AGENTE_DESKTOP" | "AGENTE_IA" | "OUTROS";
+export type TAccessScopeGroup = "PONTO_DE_INTERACAO" | "AGENTE_DESKTOP" | "AGENTE_IA" | "PLATAFORMA" | "OUTROS";
 
 export type TAccessScopeDescriptor = {
 	label: string;
@@ -16,11 +16,12 @@ export const ACCESS_SCOPE_GROUP_LABELS: Record<TAccessScopeGroup, string> = {
 	PONTO_DE_INTERACAO: "Ponto de interação",
 	AGENTE_DESKTOP: "Agente desktop",
 	AGENTE_IA: "Agente de IA",
+	PLATAFORMA: "Plataforma (interno)",
 	OUTROS: "Outras permissões",
 };
 
 // Ordem de renderização dos grupos — estável, independente da ordem que os scopes chegam da API.
-export const ACCESS_SCOPE_GROUP_ORDER: TAccessScopeGroup[] = ["PONTO_DE_INTERACAO", "AGENTE_DESKTOP", "AGENTE_IA", "OUTROS"];
+export const ACCESS_SCOPE_GROUP_ORDER: TAccessScopeGroup[] = ["PONTO_DE_INTERACAO", "AGENTE_DESKTOP", "AGENTE_IA", "PLATAFORMA", "OUTROS"];
 
 export const ACCESS_SCOPE_CATALOG: Record<TAccessScopeEnum, TAccessScopeDescriptor> = {
 	"poi:configuration:read": {
@@ -102,6 +103,21 @@ export const ACCESS_SCOPE_CATALOG: Record<TAccessScopeEnum, TAccessScopeDescript
 		label: "Consultar campanhas",
 		description: "Ver as campanhas cadastradas, quando disparam e para quantos clientes.",
 		group: "AGENTE_IA",
+	},
+	"agent:sales:read": {
+		label: "Consultar vendas",
+		description: "Ver vendas individuais do período, com valor, vendedor, canal e cliente.",
+		group: "AGENTE_IA",
+	},
+	"platform:organizations:read": {
+		label: "Consultar organizações da plataforma",
+		description: "Listar todas as organizações e ver a saúde de cada conta. Interno — nunca conceda a uma aplicação de lojista.",
+		group: "PLATAFORMA",
+	},
+	"platform:metrics:read": {
+		label: "Consultar métricas da plataforma",
+		description: "Ver totais agregados da base inteira: organizações, usuários e ativação. Interno.",
+		group: "PLATAFORMA",
 	},
 };
 

@@ -17,7 +17,7 @@ function createActor(overrides: Partial<TAgentActorContext> = {}): TAgentActorCo
 		clientId: "client-1",
 		clientCode: "claude",
 		organizationId: "org-1",
-		scopes: new Set(["agent:results:read", "agent:clients:read", "agent:products:read", "agent:campaigns:read"]),
+		scopes: new Set(["agent:results:read", "agent:clients:read", "agent:products:read", "agent:campaigns:read", "agent:sales:read"]),
 		...overrides,
 	};
 }
@@ -37,7 +37,7 @@ test("initialize devolve a versão negociada, as capacidades e as instruções",
 	const result = resultOf(response);
 
 	assert.equal(result.protocolVersion, MCP_LATEST_PROTOCOL_VERSION);
-	assert.deepEqual(result.capabilities, { tools: {} });
+	assert.deepEqual(result.capabilities, { tools: {}, resources: {}, prompts: {} });
 	assert.ok(String(result.instructions).includes("Campo ausente"));
 });
 
@@ -81,22 +81,40 @@ test("tools/list respeita os scopes do ator", async () => {
 	const tools = resultOf(response).tools as Array<{ name: string }>;
 	assert.deepEqual(
 		tools.map((tool) => tool.name),
-		["search_products"],
+		["search_products", "get_product_performance"],
 	);
 });
 
 test("organizacaoId aparece no schema só em modo plataforma", async () => {
 	// Em modo ORG o argumento existe no Zod (para recusar sondagem), mas não deve ser oferecido
 	// ao modelo como algo que ele precise preencher — a descrição é quem carrega essa diferença.
-	const platform = await handleMcpMessage({
+	// Modo e scope são exigências independentes: este ator está em PLATAFORMA mas só tem os scopes
+	// `agent:*`, então as ferramentas `platform_*` continuam invisíveis para ele.
+	const semScopePlataforma = await handleMcpMessage({
 		message: { jsonrpc: "2.0", id: 2, method: "tools/list" },
 		actor: createActor({ mode: "PLATAFORMA", organizationId: null }),
 		request,
 	});
-	const tools = resultOf(platform).tools as Array<{ name: string; description: string }>;
-	for (const tool of tools) {
+	const toolsSemScope = resultOf(semScopePlataforma).tools as Array<{ name: string; description: string }>;
+	assert.ok(!toolsSemScope.some((tool) => tool.name.startsWith("platform_")), "scope de plataforma faltando deveria esconder as platform_*");
+	for (const tool of toolsSemScope) {
 		assert.ok(tool.description.includes("organizacaoId"), `${tool.name} não explica organizacaoId em modo plataforma`);
 	}
+
+	const comScopePlataforma = await handleMcpMessage({
+		message: { jsonrpc: "2.0", id: 3, method: "tools/list" },
+		actor: createActor({
+			mode: "PLATAFORMA",
+			organizationId: null,
+			scopes: new Set(["agent:results:read", "platform:organizations:read", "platform:metrics:read"]),
+		}),
+		request,
+	});
+	const toolsComScope = resultOf(comScopePlataforma).tools as Array<{ name: string }>;
+	assert.ok(
+		toolsComScope.some((tool) => tool.name.startsWith("platform_")),
+		"modo e scope de plataforma deveriam revelar as platform_*",
+	);
 });
 
 test("ping responde vazio", async () => {
@@ -117,9 +135,64 @@ test("id nulo continua sendo requisição, não notificação", async () => {
 });
 
 test("método desconhecido vira erro de protocolo", async () => {
-	const response = await handleMcpMessage({ message: { jsonrpc: "2.0", id: 4, method: "resources/list" }, actor: createActor(), request });
+	const response = await handleMcpMessage({ message: { jsonrpc: "2.0", id: 4, method: "completion/complete" }, actor: createActor(), request });
 	assert.ok(response && "error" in response);
 	assert.equal(response.error.code, -32601);
+});
+
+test("resources/list oferece a organização atual só em modo ORG", async () => {
+	// Em PLATAFORMA não existe "organização atual": oferecer o recurso obrigaria a forjar uma escolha.
+	const org = await handleMcpMessage({ message: { jsonrpc: "2.0", id: 8, method: "resources/list" }, actor: createActor(), request });
+	const resources = resultOf(org).resources as Array<{ uri: string }>;
+	assert.deepEqual(
+		resources.map((resource) => resource.uri),
+		["recompracrm://organization/current"],
+	);
+
+	const platform = await handleMcpMessage({
+		message: { jsonrpc: "2.0", id: 9, method: "resources/list" },
+		actor: createActor({ mode: "PLATAFORMA", organizationId: null }),
+		request,
+	});
+	assert.deepEqual(resultOf(platform).resources, []);
+});
+
+test("resources/read recusa URI desconhecida sem tocar o banco", async () => {
+	const response = await handleMcpMessage({
+		message: { jsonrpc: "2.0", id: 10, method: "resources/read", params: { uri: "recompracrm://nao-existe" } },
+		actor: createActor(),
+		request,
+	});
+	assert.ok(response && "error" in response);
+	assert.equal(response.error.code, -32602);
+});
+
+test("prompts/list e prompts/get devolvem um roteiro utilizável", async () => {
+	const list = await handleMcpMessage({ message: { jsonrpc: "2.0", id: 11, method: "prompts/list" }, actor: createActor(), request });
+	const prompts = resultOf(list).prompts as Array<{ name: string }>;
+	assert.ok(prompts.length > 0);
+
+	const get = await handleMcpMessage({
+		message: { jsonrpc: "2.0", id: 12, method: "prompts/get", params: { name: "revisao-comercial", arguments: { periodo: "março de 2026" } } },
+		actor: createActor(),
+		request,
+	});
+	const messages = resultOf(get).messages as Array<{ role: string; content: { text: string } }>;
+	assert.equal(messages[0].role, "user");
+	// O argumento precisa chegar ao texto — um prompt que ignora o que o usuário digitou é pior
+	// que não ter prompt, porque parece ter funcionado.
+	assert.ok(messages[0].content.text.includes("março de 2026"));
+	assert.ok(messages[0].content.text.includes("get_commercial_results"));
+});
+
+test("prompts/get recusa prompt inexistente", async () => {
+	const response = await handleMcpMessage({
+		message: { jsonrpc: "2.0", id: 13, method: "prompts/get", params: { name: "nao-existe" } },
+		actor: createActor(),
+		request,
+	});
+	assert.ok(response && "error" in response);
+	assert.equal(response.error.code, -32602);
 });
 
 test("tools/call sem nome de ferramenta é erro de parâmetro", async () => {

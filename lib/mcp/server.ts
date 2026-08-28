@@ -1,5 +1,7 @@
 import { recordAgentToolCall } from "@/lib/agent-tools/authentication";
+import { findPromptForActor, listPromptsForActor } from "@/lib/agent-tools/prompts";
 import { findToolForActor, listToolsForActor } from "@/lib/agent-tools/registry";
+import { CURRENT_ORGANIZATION_RESOURCE_URI, listResourcesForActor, readResourceForActor } from "@/lib/agent-tools/resources";
 import { sanitizeForModel } from "@/lib/agent-tools/serialization";
 import type { TAgentActorContext } from "@/lib/agent-tools/types";
 import { describeErrorForLogging } from "@/lib/errors";
@@ -32,10 +34,12 @@ function buildInstructions(actor: TAgentActorContext) {
 	];
 	if (actor.mode === "PLATAFORMA") {
 		base.push(
-			"Esta é uma conexão de plataforma, com acesso a todas as organizações. Toda ferramenta exige `organizacaoId` (id ou slug) — não existe organização padrão.",
+			"Esta é uma conexão de plataforma, com acesso a todas as organizações. Toda ferramenta de organização exige `organizacaoId` (id ou slug) — não existe organização padrão. Comece por `platform_search_organizations` para descobrir o slug.",
 		);
 	} else {
-		base.push("Esta conexão responde por uma única organização; não há como consultar dados de outra.");
+		base.push(
+			`Esta conexão responde por uma única organização; não há como consultar dados de outra. Leia o recurso ${CURRENT_ORGANIZATION_RESOURCE_URI} para saber quais módulos estão habilitados antes de sugerir ações que dependam deles.`,
+		);
 	}
 	return base.join(" ");
 }
@@ -46,7 +50,7 @@ function handleInitialize(message: TJsonRpcMessage, actor: TAgentActorContext): 
 		protocolVersion,
 		// Sem `listChanged`: o conjunto de ferramentas de uma conexão é fixo enquanto ela viver —
 		// muda só com um grant novo, que exige reconectar de qualquer forma.
-		capabilities: { tools: {} },
+		capabilities: { tools: {}, resources: {}, prompts: {} },
 		serverInfo: SERVER_INFO,
 		instructions: buildInstructions(actor),
 	});
@@ -126,6 +130,35 @@ async function handleToolsCall(message: TJsonRpcMessage, actor: TAgentActorConte
 	}
 }
 
+async function handleResourcesRead(message: TJsonRpcMessage, actor: TAgentActorContext): Promise<TJsonRpcResponse> {
+	const uri = typeof message.params?.uri === "string" ? message.params.uri : null;
+	if (!uri) return jsonRpcError(message.id ?? null, JSON_RPC_ERROR_CODES.INVALID_PARAMS, "URI do recurso não informada.");
+
+	try {
+		const payload = await readResourceForActor(actor, uri);
+		return jsonRpcResult(message.id ?? null, {
+			contents: [{ uri, mimeType: "application/json", text: JSON.stringify(sanitizeForModel(payload)) }],
+		});
+	} catch (error) {
+		console.error("[MCP] Falha ao ler recurso", uri, describeErrorForLogging(error));
+		return jsonRpcError(message.id ?? null, JSON_RPC_ERROR_CODES.INVALID_PARAMS, describeToolFailure(error));
+	}
+}
+
+function handlePromptsGet(message: TJsonRpcMessage, actor: TAgentActorContext): TJsonRpcResponse {
+	const name = typeof message.params?.name === "string" ? message.params.name : null;
+	if (!name) return jsonRpcError(message.id ?? null, JSON_RPC_ERROR_CODES.INVALID_PARAMS, "Nome do prompt não informado.");
+
+	const prompt = findPromptForActor(actor, name);
+	if (!prompt) return jsonRpcError(message.id ?? null, JSON_RPC_ERROR_CODES.INVALID_PARAMS, `Prompt não disponível nesta conexão: ${name}.`);
+
+	const args = (message.params?.arguments as Record<string, string | undefined> | undefined) ?? {};
+	return jsonRpcResult(message.id ?? null, {
+		description: prompt.description,
+		messages: [{ role: "user", content: { type: "text", text: prompt.build(args) } }],
+	});
+}
+
 /**
  * Ponto único de despacho. Devolve `null` para notificações — o handler HTTP traduz isso em
  * 202 Accepted sem corpo, como a especificação exige.
@@ -150,8 +183,16 @@ export async function handleMcpMessage({
 			return handleToolsList(message, actor);
 		case "tools/call":
 			return handleToolsCall(message, actor, request);
-		// Anunciamos apenas `tools` em `capabilities`, então recursos e prompts não existem aqui
-		// ainda. Um método fora do conjunto é erro de protocolo, não falha de ferramenta.
+		case "resources/list":
+			return jsonRpcResult(message.id ?? null, { resources: listResourcesForActor(actor) });
+		case "resources/read":
+			return handleResourcesRead(message, actor);
+		case "prompts/list":
+			return jsonRpcResult(message.id ?? null, { prompts: listPromptsForActor(actor) });
+		case "prompts/get":
+			return handlePromptsGet(message, actor);
+		// Um método fora do conjunto anunciado em `capabilities` é erro de protocolo, não falha de
+		// ferramenta: o cliente é quem trata, o modelo não tem o que corrigir.
 		default:
 			return jsonRpcError(message.id ?? null, JSON_RPC_ERROR_CODES.METHOD_NOT_FOUND, `Método não suportado: ${message.method ?? "(vazio)"}.`);
 	}

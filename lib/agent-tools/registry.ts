@@ -1,8 +1,14 @@
 import type { TAgentActorContext, TAgentToolDefinitionErased } from "./types";
+import { campaignResultsTool } from "./tools/campaign-results";
+import { clientContextTool } from "./tools/client-context";
 import { commercialResultsTool } from "./tools/commercial-results";
+import { listCampaignsTool } from "./tools/campaigns";
+import { listSegmentsTool } from "./tools/segments";
+import { platformAggregateMetricsTool, platformOrganizationHealthTool, platformSearchOrganizationsTool } from "./tools/platform";
+import { productPerformanceTool } from "./tools/product-performance";
 import { searchClientsTool } from "./tools/clients";
 import { searchProductsTool } from "./tools/products";
-import { listCampaignsTool } from "./tools/campaigns";
+import { getSalesTool } from "./tools/sales";
 
 /**
  * Registro único das ferramentas expostas via MCP.
@@ -16,7 +22,22 @@ import { listCampaignsTool } from "./tools/campaigns";
  * outro envelope de segurança. O que os dois compartilham são os primitivos de baixo nível
  * (`lib/search`, `lib/products/*`, `lib/sales/*`), não a definição das ferramentas.
  */
-const AGENT_TOOLS = [commercialResultsTool, searchClientsTool, searchProductsTool, listCampaignsTool] as unknown as TAgentToolDefinitionErased[];
+const AGENT_TOOLS = [
+	// Organização — visíveis nos dois modos, com `organizacaoId` obrigatório em PLATAFORMA.
+	commercialResultsTool,
+	getSalesTool,
+	searchClientsTool,
+	clientContextTool,
+	listSegmentsTool,
+	searchProductsTool,
+	productPerformanceTool,
+	listCampaignsTool,
+	campaignResultsTool,
+	// Plataforma — atravessam organizações e por isso não existem em modo ORG.
+	platformSearchOrganizationsTool,
+	platformOrganizationHealthTool,
+	platformAggregateMetricsTool,
+] as unknown as TAgentToolDefinitionErased[];
 
 function isToolAvailableToActor(tool: TAgentToolDefinitionErased, actor: TAgentActorContext) {
 	if (!tool.modes.includes(actor.mode)) return false;
