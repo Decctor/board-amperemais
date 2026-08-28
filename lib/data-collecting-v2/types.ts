@@ -46,6 +46,11 @@ export type TResolvedAuxiliaryEntities = {
 	clientsByName: Map<string, TResolvedClientForImport>;
 	clientsByBasePhone: Map<string, TResolvedClientForImport>;
 	productsByCode: Map<string, string>;
+	/**
+	 * Vínculos de catálogo (catalog_links) por id do item remoto. É o casamento EXATO: o
+	 * `codigo ↔ externalCode` continua como fallback, mas um item vinculado nunca depende dele.
+	 */
+	productsByExternalItemId: Map<string, TResolvedVariantForImport>;
 	variantsByCode: Map<string, TResolvedVariantForImport>;
 	sellersByIdentifier: Map<string, string>;
 	partnersByIdentifier: Map<string, { id: string; clientId: string | null }>;

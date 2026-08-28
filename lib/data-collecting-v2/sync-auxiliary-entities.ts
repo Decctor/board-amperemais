@@ -1,8 +1,8 @@
 import type { TCanonicalClient, TCanonicalImportBatch } from "@/lib/data-connectors";
 import { normalizeLocation } from "@/lib/geo/brazilian-locations";
 import { linkPartnerToClient } from "@/lib/partners/link-partner-to-client";
-import { clients, partners, productAddOnOptions, productAddOns, productVariants, products, sellers } from "@/services/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { catalogLinks, clients, partners, productAddOnOptions, productAddOns, productVariants, products, sellers } from "@/services/drizzle/schema";
+import { and, eq, ne } from "drizzle-orm";
 import type { TDataCollectingV2Executor, TResolvedAuxiliaryEntities, TResolvedClientForImport } from "./types";
 
 function normalizeName(value?: string | null) {
@@ -123,6 +123,7 @@ export async function syncAuxiliaryEntities({
 		clientsByName: new Map(),
 		clientsByBasePhone: new Map(),
 		productsByCode: new Map(),
+		productsByExternalItemId: new Map(),
 		variantsByCode: new Map(),
 		sellersByIdentifier: new Map(),
 		partnersByIdentifier: new Map(),
@@ -254,10 +255,28 @@ export async function syncAuxiliaryEntities({
 		});
 	}
 
+	// Vínculos de catálogo: um item remoto já mapeado dispensa qualquer heurística de código, e
+	// impede a criação de produto duplicado quando o `externalCode` do provedor não bate com o
+	// `codigo` interno — origem do lixo "grupo iFood, preço nulo" no cadastro.
+	const links = await tx.query.catalogLinks.findMany({
+		where: and(eq(catalogLinks.organizacaoId, batch.organizationId), ne(catalogLinks.status, "DESVINCULADO")),
+		columns: { produtoId: true, produtoVarianteId: true, externoItemId: true },
+	});
+	for (const link of links) {
+		if (!link.externoItemId || !link.produtoId) continue;
+		context.productsByExternalItemId.set(link.externoItemId, {
+			produtoId: link.produtoId,
+			produtoVarianteId: link.produtoVarianteId,
+			opcoes: [],
+		});
+	}
+
 	for (const product of uniqueBy(batch.products, (value) => value.code)) {
 		if (context.productsByCode.has(product.code)) continue;
 		// Já existe como variante estruturada: não cria produto plano duplicado.
 		if (context.variantsByCode.has(product.code)) continue;
+		// Já vinculado a um item remoto: o produto existe, só não é encontrável pelo código.
+		if (product.externalId && context.productsByExternalItemId.has(product.externalId)) continue;
 		const inserted = await tx
 			.insert(products)
 			.values({

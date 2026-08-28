@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { requireERPSession } from "@/lib/authentication/erp-session";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { schedulePushForProduct } from "@/lib/integrations/ifood/sync/push";
 import { ensureSalesChannels } from "@/lib/products/sales-channels-store";
 import { db } from "@/services/drizzle";
 import { productChannelSettings, products, salesChannels } from "@/services/drizzle/schema";
@@ -166,6 +167,10 @@ async function updateProductChannelSettings({ orgId, input }: { orgId: string; i
 				});
 		}
 	});
+
+	// Mudar um override do canal iFood É uma mudança de preço/disponibilidade lá — o push é
+	// disparado aqui pelo mesmo motivo que no save do produto.
+	schedulePushForProduct({ orgId, produtoId: input.produtoId });
 
 	return { data: { updated: true }, message: "Configurações dos canais atualizadas com sucesso." };
 }

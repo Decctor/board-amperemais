@@ -87,8 +87,14 @@ function getPartner(context: TResolvedAuxiliaryEntities, sale: TCanonicalSale) {
 	return sale.partnerIdentifier ? (context.partnersByIdentifier.get(sale.partnerIdentifier) ?? null) : null;
 }
 
-// Resolve o item de venda para uma variante estruturada (preferencial) ou para um produto plano.
+// Resolve o item de venda: vínculo de catálogo (exato) > variante estruturada > produto plano.
 function resolveSaleItemTarget(context: TResolvedAuxiliaryEntities, item: TCanonicalSaleItem) {
+	// O vínculo vem primeiro porque é o único casamento que não depende de o provedor ter
+	// preenchido `externalCode` com o mesmo valor do nosso `codigo`.
+	const linked = item.productExternalId ? context.productsByExternalItemId.get(item.productExternalId) : undefined;
+	if (linked) {
+		return { produtoId: linked.produtoId, produtoVarianteId: linked.produtoVarianteId, opcoes: linked.opcoes };
+	}
 	const variant = context.variantsByCode.get(item.productCode);
 	if (variant) {
 		return { produtoId: variant.produtoId, produtoVarianteId: variant.produtoVarianteId, opcoes: variant.opcoes };

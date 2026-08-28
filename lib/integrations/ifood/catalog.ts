@@ -213,19 +213,32 @@ export async function deleteIfoodCategory(client: AxiosInstance, merchantId: str
 // Escritas — produtos + lotes de preço/status
 // ---------------------------------------------------------------------------
 
+/** Porção declarada do produto. `NOT_APPLICABLE` é o neutro para quem não serve por pessoas. */
+export type TIfoodProductServing = "NOT_APPLICABLE" | "SERVES_1" | "SERVES_2" | "SERVES_3" | "SERVES_4";
+
 export type TIfoodProductWritePayload = {
 	nome: string;
 	descricao?: string | null;
 	codigoExterno?: string | null;
 	imagemPath?: string | null;
+	serving?: TIfoodProductServing | null;
 };
 
+/**
+ * `serving` é OBRIGATÓRIO no `PUT /products/{id}`, apesar de ausente na documentação: sem ele a
+ * API responde 400 `PutProductDto.serving must be one of...`. Enviamos `NOT_APPLICABLE` quando o
+ * chamador não declara.
+ *
+ * `shifts` NÃO é enviado de propósito: o PUT reescreve o produto inteiro, e mandar lista vazia
+ * apagaria a agenda de disponibilidade que o lojista configurou no Portal.
+ */
 function toIfoodProductBody(payload: TIfoodProductWritePayload) {
 	return {
 		name: payload.nome,
 		description: payload.descricao ?? undefined,
 		externalCode: payload.codigoExterno ?? undefined,
 		image: payload.imagemPath ?? undefined,
+		serving: payload.serving ?? "NOT_APPLICABLE",
 	};
 }
 

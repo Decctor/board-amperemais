@@ -1,3 +1,4 @@
+import { getIfoodItemFlat } from "@/lib/integrations/ifood/catalog";
 import { IFOOD_IMAGE_ALLOWED_TYPES } from "@/lib/integrations/ifood/catalog-types";
 import { uploadIfoodImage } from "@/lib/integrations/ifood/image";
 import { upsertIfoodItem } from "@/lib/integrations/ifood/catalog-items";
@@ -129,6 +130,31 @@ async function uploadNodeImage({
 }
 
 /**
+ * Lê de volta o item recém-publicado para descobrir o productId que o iFood realmente usou.
+ * Falha na leitura cai no id enviado — melhor um vínculo com id possivelmente errado (detectável
+ * na reconciliação) do que perder a publicação inteira.
+ */
+async function resolveAuthoritativeProductId({
+	client,
+	merchantId,
+	itemId,
+	fallback,
+}: {
+	client: AxiosInstance;
+	merchantId: string;
+	itemId: string;
+	fallback: string;
+}): Promise<string> {
+	try {
+		const flat = await getIfoodItemFlat(client, merchantId, itemId);
+		return flat.produtoId ?? fallback;
+	} catch (error) {
+		console.warn("[IFOOD_PUBLISH] Não foi possível reler o item para confirmar o productId.", { itemId, error });
+		return fallback;
+	}
+}
+
+/**
  * Publica um produto interno no iFood: cria `product` + `item` por nó e grava os vínculos.
  *
  * A imagem só sobe quando a política pede — o upload é a chamada mais cara do fluxo e o
@@ -157,13 +183,19 @@ export async function publishProductToIfood({
 		// dela seria pior do que publicar sem — por isso o erro é engolido com aviso.
 		const imagemPath = node.imagemCapaUrl ? await uploadNodeImage({ client, merchantId, imagemUrl: node.imagemCapaUrl, produtoId }) : null;
 
-		const { itemId, productId: externoProdutoId } = await upsertIfoodItem(client, merchantId, {
+		const { itemId, productId: enviadoProdutoId } = await upsertIfoodItem(client, merchantId, {
 			categoriaId,
 			status: node.disponivel ? "AVAILABLE" : "UNAVAILABLE",
 			preco: node.preco,
 			codigoExterno: node.codigo,
 			produto: { nome: node.nome, descricao: node.descricao, imagemPath },
 		});
+
+		// O iFood NÃO garante o productId que enviamos: medido ao vivo, um item publicado com
+		// productId gerado por nós apareceu depois sob outro id, e o `PUT /products/{id}` com o id
+		// enviado respondia 404 — o que quebraria o push de nome/descrição. Relemos o item para
+		// gravar o id autoritativo. O itemId, esse sim, é respeitado.
+		const externoProdutoId = await resolveAuthoritativeProductId({ client, merchantId, itemId, fallback: enviadoProdutoId });
 
 		await upsertCatalogLink({
 			orgId,
