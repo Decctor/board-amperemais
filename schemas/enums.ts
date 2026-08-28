@@ -436,6 +436,15 @@ export type TSalesChannelTypeEnum = z.infer<typeof SalesChannelTypeEnum>;
 export const SalesChannelCatalogModeEnum = z.enum(["TODOS", "SELECIONADOS"]);
 export type TSalesChannelCatalogModeEnum = z.infer<typeof SalesChannelCatalogModeEnum>;
 
+export const CatalogLinkProviderEnum = z.enum(["IFOOD"]);
+export type TCatalogLinkProviderEnum = z.infer<typeof CatalogLinkProviderEnum>;
+
+export const CatalogLinkTypeEnum = z.enum(["PRODUTO", "VARIANTE", "ADD_ON", "ADD_ON_OPCAO", "CATEGORIA"]);
+export type TCatalogLinkTypeEnum = z.infer<typeof CatalogLinkTypeEnum>;
+
+export const CatalogLinkStatusEnum = z.enum(["PENDENTE", "SINCRONIZADO", "DIVERGENTE", "ERRO", "DESVINCULADO"]);
+export type TCatalogLinkStatusEnum = z.infer<typeof CatalogLinkStatusEnum>;
+
 export const PlatformPartnerStatusEnum = z.enum(["PENDENTE_APROVACAO", "ATIVO", "SUSPENSO", "REJEITADO"]);
 export type TPlatformPartnerStatusEnum = z.infer<typeof PlatformPartnerStatusEnum>;
 

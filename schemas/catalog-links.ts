@@ -1,0 +1,47 @@
+import { z } from "zod";
+
+// Os tipos das entidades vêm do $inferSelect em services/drizzle/schema/catalog-links.ts
+// (convenção do repo). Aqui ficam os validadores de runtime e os tipos dos blocos jsonb.
+
+/**
+ * Quais campos o vínculo mantém em sincronia. O caso canônico do preço mudou com a primitiva de
+ * canais: `preco: true` empurra o PREÇO RESOLVIDO DO CANAL iFood (o override do produto/variante
+ * naquele merchant), não o preço base. `preco: false` continua existindo para quem gerencia o
+ * preço direto no Portal — a reconciliação só registra o valor remoto, sem sobrescrever.
+ */
+export const CatalogLinkSyncPolicySchema = z.object({
+	nome: z.boolean({ invalid_type_error: "Tipo não válido para sincronização de nome." }).default(true),
+	descricao: z.boolean({ invalid_type_error: "Tipo não válido para sincronização de descrição." }).default(true),
+	imagem: z.boolean({ invalid_type_error: "Tipo não válido para sincronização de imagem." }).default(true),
+	preco: z.boolean({ invalid_type_error: "Tipo não válido para sincronização de preço." }).default(true),
+	disponibilidade: z.boolean({ invalid_type_error: "Tipo não válido para sincronização de disponibilidade." }).default(true),
+});
+export type TCatalogLinkSyncPolicy = z.infer<typeof CatalogLinkSyncPolicySchema>;
+
+export const DEFAULT_CATALOG_LINK_SYNC_POLICY: TCatalogLinkSyncPolicy = {
+	nome: true,
+	descricao: true,
+	imagem: true,
+	preco: true,
+	disponibilidade: true,
+};
+
+/** Valores enviados no último push OK — comparados no push seguinte para evitar chamadas inúteis. */
+export const CatalogLinkSnapshotSchema = z.object({
+	nome: z.string().optional().nullable(),
+	descricao: z.string().optional().nullable(),
+	imagemUrl: z.string().optional().nullable(),
+	preco: z.number().optional().nullable(),
+	disponivel: z.boolean().optional().nullable(),
+});
+export type TCatalogLinkSnapshot = z.infer<typeof CatalogLinkSnapshotSchema>;
+
+/** Uma diferença observada entre o estado desejado (interno) e o remoto, na reconciliação. */
+export const CatalogLinkDivergenceSchema = z.object({
+	campo: z.enum(["nome", "descricao", "imagem", "preco", "disponibilidade"]),
+	valorInterno: z.union([z.string(), z.number(), z.boolean()]).optional().nullable(),
+	valorExterno: z.union([z.string(), z.number(), z.boolean()]).optional().nullable(),
+	/** Falso quando o campo não é sincronizado: informativo, sem ação de push. */
+	sincronizado: z.boolean(),
+});
+export type TCatalogLinkDivergence = z.infer<typeof CatalogLinkDivergenceSchema>;

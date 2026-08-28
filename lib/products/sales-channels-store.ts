@@ -144,6 +144,26 @@ export function channelNodePrice(
 }
 
 /**
+ * Materializa o canal de uma loja iFood. Diferente dos internos, canais de integração não nascem
+ * por padrão: só existem quando há uma conexão, e um por merchant (o `ref_externo` é o merchantId),
+ * porque disponibilidade e preço podem divergir entre lojas da mesma organização.
+ *
+ * `catalogoModo` nasce SELECIONADOS: o catálogo do iFood é opt-in por vínculo — jogar o cadastro
+ * inteiro para uma loja pública por padrão seria o oposto do princípio 1 do doc de sync.
+ */
+export async function ensureIfoodSalesChannel({ orgId, integracaoId, merchantId }: { orgId: string; integracaoId: string; merchantId: string }) {
+	const [channel] = await db
+		.insert(salesChannels)
+		.values({ organizacaoId: orgId, canal: "IFOOD", integracaoId, refExterno: merchantId, catalogoModo: "SELECIONADOS" })
+		.onConflictDoUpdate({
+			target: [salesChannels.organizacaoId, salesChannels.canal, salesChannels.integracaoId, salesChannels.refExterno],
+			set: { dataAtualizacao: new Date() },
+		})
+		.returning();
+	return channel;
+}
+
+/**
  * Provisiona os canais internos na primeira leitura e devolve todos os canais da organização.
  *
  * A matriz por produto grava overrides contra o id do canal, então devolver linhas sintéticas
