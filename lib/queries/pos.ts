@@ -18,6 +18,7 @@ async function fetchPOSProducts(input: TGetPOSProductsInput) {
 		if (input.page) searchParams.set("page", input.page.toString());
 		if (input.search) searchParams.set("search", input.search);
 		if (input.group) searchParams.set("group", input.group);
+		if (input.channel) searchParams.set("channel", input.channel);
 
 		const { data } = await axios.get<TGetPOSProductsOutput>(`/api/pos/products?${searchParams.toString()}`);
 		return data.data;
@@ -36,6 +37,7 @@ export function usePOSProducts({ initialFilters }: UsePOSProductsParams = {}) {
 		page: initialFilters?.page || 1,
 		search: initialFilters?.search || "",
 		group: initialFilters?.group || null,
+		channel: initialFilters?.channel || "POS",
 	});
 
 	const updateFilters = useCallback((newParams: Partial<TGetPOSProductsInput>) => {
@@ -61,17 +63,17 @@ export function usePOSProducts({ initialFilters }: UsePOSProductsParams = {}) {
 // Top products ("mais pedidos") — faixa de acesso rápido do PDV
 // ============================================================================
 
-async function fetchPOSTopProducts() {
-	const { data } = await axios.get<TGetPOSTopProductsOutput>("/api/pos/top-products");
+async function fetchPOSTopProducts(channel: "POS" | "COMANDA") {
+	const { data } = await axios.get<TGetPOSTopProductsOutput>(`/api/pos/top-products?channel=${channel}`);
 	return data.data;
 }
 
-export function usePOSTopProducts() {
-	const queryKey = ["pos-top-products"];
+export function usePOSTopProducts({ channel = "POS" }: { channel?: "POS" | "COMANDA" } = {}) {
+	const queryKey = ["pos-top-products", channel];
 	return {
 		...useQuery({
 			queryKey,
-			queryFn: fetchPOSTopProducts,
+			queryFn: () => fetchPOSTopProducts(channel),
 			// O ranking de 90 dias não muda venda a venda; evita refetch a cada montagem do PDV.
 			staleTime: 5 * 60 * 1000,
 		}),

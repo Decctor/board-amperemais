@@ -1,4 +1,4 @@
-import { channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
+import { channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
 import { db } from "@/services/drizzle";
 import { products } from "@/services/drizzle/schema";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
@@ -8,11 +8,11 @@ import { and, eq, inArray, notInArray } from "drizzle-orm";
  * adicionais ativos), para que qualquer lista de sugestão (mais pedidos, cross-sell) possa
  * fluir direto para os handlers de carrinho — produtos complexos abrem o builder modal.
  */
-export async function hydratePOSProducts({ orgId, productIds }: { orgId: string; productIds: string[] }) {
+export async function hydratePOSProducts({ orgId, productIds, canal = "POS" }: { orgId: string; productIds: string[]; canal?: "POS" | "COMANDA" }) {
 	if (productIds.length === 0) return [];
 
-	// Disponibilidade no canal POS: sugestões respeitam as mesmas linhas esparsas da grade.
-	const channelState = await loadChannelState({ orgId, canal: "POS" });
+	// Disponibilidade e preço no canal: sugestões respeitam as mesmas linhas esparsas da grade.
+	const channelState = await loadChannelState({ orgId, canal });
 	const conditions = [eq(products.organizacaoId, orgId), eq(products.ativo, true), eq(products.vendavel, true), inArray(products.id, productIds)];
 	if (channelState) {
 		const filter = channelProductFilter(channelState);
@@ -64,11 +64,13 @@ export async function hydratePOSProducts({ orgId, productIds }: { orgId: string;
 
 	return hydrated.map((product) => ({
 		...product,
+		precoVenda: channelNodePrice(channelState, { produtoId: product.id, precoVenda: product.precoVenda }),
 		addOnsReferencias: product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
 		variantes: product.variantes
-			.filter((variant) => channelState?.variantAvailability.get(variant.id) !== false)
+			.filter((variant) => channelState?.variantOverrides.get(variant.id)?.disponivel !== false)
 			.map((variant) => ({
 				...variant,
+				precoVenda: channelNodePrice(channelState, { produtoId: product.id, produtoVarianteId: variant.id, precoVenda: variant.precoVenda }) ?? 0,
 				addOnsReferencias: variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
 			})),
 	}));

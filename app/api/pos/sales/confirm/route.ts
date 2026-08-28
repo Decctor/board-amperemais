@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, resolvePaymentFinancialAccounts } from "@/lib/payments";
+import { toSalesChannelType } from "@/lib/products/sales-channels";
 import { computeSaleItemsPricingDrift } from "@/lib/sales/sale-pricing-validation";
 import { resolveActiveSalesSession } from "@/lib/sales-sessions";
 import { authorizeSaleDiscount, computeSaleAggregatedDiscount, consumeSaleDiscountApproval } from "@/lib/sales/sale-discount-authorization";
@@ -43,7 +44,16 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		}),
 		db.query.sales.findFirst({
 			where: and(eq(sales.id, input.id), eq(sales.organizacaoId, orgId)),
-			columns: { id: true, rascunhoMetadados: true, vendedorId: true, clienteId: true, descontosTotal: true, custoTotal: true, tabId: true },
+			columns: {
+				id: true,
+				canal: true,
+				rascunhoMetadados: true,
+				vendedorId: true,
+				clienteId: true,
+				descontosTotal: true,
+				custoTotal: true,
+				tabId: true,
+			},
 			with: {
 				itens: {
 					columns: {
@@ -76,6 +86,8 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 	// divergência e oferece a atualização antes de chegar aqui; esta guarda fecha o caminho.
 	const pricing = await computeSaleItemsPricingDrift({
 		orgId,
+		// Drift contra os preços do canal da venda: um orçamento do shop confere contra o SHOP.
+		canal: toSalesChannelType(saleDraft.canal),
 		itens: saleDraft.itens.map((item) => ({
 			id: item.id,
 			nome: item.produtoVariante?.nome ?? item.produto?.nome ?? "Item",

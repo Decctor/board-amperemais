@@ -8,14 +8,14 @@ import { saleItems, sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { and, desc, eq, gte, isNotNull, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 // "Mais pedidos" do PDV: os itens corriqueiros da loja. Janela de 90 dias — fiel ao hábito
 // recente sem carregar sazonalidade antiga (ex.: Panetone em julho).
 const TOP_PRODUCTS_LIMIT = 10;
 const TOP_PRODUCTS_WINDOW_DAYS = 90;
 
-async function getPOSTopProducts({ session }: { session: TAuthUserSession }) {
+async function getPOSTopProducts({ session, channel }: { session: TAuthUserSession; channel: "POS" | "COMANDA" }) {
 	const organizacaoId = session.membership?.organizacao.id;
 	if (!organizacaoId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
@@ -38,7 +38,7 @@ async function getPOSTopProducts({ session }: { session: TAuthUserSession }) {
 		.limit(TOP_PRODUCTS_LIMIT);
 
 	const rankedIds = ranked.map((row) => row.produtoId);
-	const hydrated = await hydratePOSProducts({ orgId: organizacaoId, productIds: rankedIds });
+	const hydrated = await hydratePOSProducts({ orgId: organizacaoId, productIds: rankedIds, canal: channel });
 
 	// Reordena pelo ranking (a hidratação não preserva ordem) e descarta inativos filtrados nela.
 	const rankIndex = new Map(rankedIds.map((id, index) => [id, index]));
@@ -51,11 +51,12 @@ async function getPOSTopProducts({ session }: { session: TAuthUserSession }) {
 }
 export type TGetPOSTopProductsOutput = Awaited<ReturnType<typeof getPOSTopProducts>>;
 
-async function getPOSTopProductsRoute() {
+async function getPOSTopProductsRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 
-	const result = await getPOSTopProducts({ session });
+	const channel = request.nextUrl.searchParams.get("channel") === "COMANDA" ? ("COMANDA" as const) : ("POS" as const);
+	const result = await getPOSTopProducts({ session, channel });
 	return NextResponse.json(result, { status: 200 });
 }
 

@@ -1,3 +1,5 @@
+import { channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
+import type { TSalesChannelTypeEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import createHttpError from "http-errors";
 
@@ -39,28 +41,46 @@ type TCatalogPrices = {
 	optionPriceMap: Map<string, number>;
 };
 
-/** Preços vigentes do catálogo para os produtos/variantes/opções citados pelos itens. */
+/**
+ * Preços vigentes do catálogo para os produtos/variantes/opções citados pelos itens.
+ *
+ * Com `canal`, os preços e a presença passam pelo canal de venda: produtos fora do canal (ou não
+ * vendáveis/inativos) saem dos mapas — o chamador os trata como "não encontrado no catálogo" — e
+ * os overrides de preço do canal substituem o preço base, node-scoped (ver resolver). Modificadores
+ * não têm preço por canal (D3 adiado). Sem `canal`, comportamento histórico: preço base, sem gates.
+ */
 async function loadCatalogPrices({
 	orgId,
 	productIds,
 	variantIds,
 	optionIds,
+	canal,
 }: {
 	orgId: string;
 	productIds: string[];
 	variantIds: string[];
 	optionIds: string[];
+	canal?: TSalesChannelTypeEnum;
 }): Promise<TCatalogPrices> {
+	const channelState = canal ? await loadChannelState({ orgId, canal }) : null;
+	const channelFilter = channelState ? channelProductFilter(channelState) : null;
+
 	const [produtos, variantes, opcoes] = await Promise.all([
 		productIds.length > 0
 			? db.query.products.findMany({
-					where: (fields, { and, eq, inArray }) => and(inArray(fields.id, productIds), eq(fields.organizacaoId, orgId)),
+					where: (fields, { and, eq, inArray }) =>
+						canal
+							? and(inArray(fields.id, productIds), eq(fields.organizacaoId, orgId), eq(fields.ativo, true), eq(fields.vendavel, true))
+							: and(inArray(fields.id, productIds), eq(fields.organizacaoId, orgId)),
 					columns: { id: true, precoVenda: true },
 				})
 			: [],
 		variantIds.length > 0
 			? db.query.productVariants.findMany({
-					where: (fields, { and, eq, inArray }) => and(inArray(fields.id, variantIds), eq(fields.organizacaoId, orgId)),
+					where: (fields, { and, eq, inArray }) =>
+						canal
+							? and(inArray(fields.id, variantIds), eq(fields.organizacaoId, orgId), eq(fields.ativo, true))
+							: and(inArray(fields.id, variantIds), eq(fields.organizacaoId, orgId)),
 					columns: { id: true, produtoId: true, precoVenda: true },
 				})
 			: [],
@@ -72,9 +92,27 @@ async function loadCatalogPrices({
 			: [],
 	]);
 
+	// Presença no canal: fora do include (SELECIONADOS) ou dentro do exclude (TODOS) = fora dos
+	// mapas; variante com linha disponivel=false idem (só restringe — regra do resolver).
+	const channelProducts = produtos.filter((product) => {
+		if (!channelFilter) return true;
+		if (channelFilter.includeIds) return channelFilter.includeIds.includes(product.id);
+		if (channelFilter.excludeIds) return !channelFilter.excludeIds.includes(product.id);
+		return true;
+	});
+	const availableProductIds = new Set(channelProducts.map((product) => product.id));
+	const channelVariants = variantes.filter(
+		(variant) => availableProductIds.has(variant.produtoId) && channelState?.variantOverrides.get(variant.id)?.disponivel !== false,
+	);
+
 	return {
-		productPriceMap: new Map(produtos.map((p) => [p.id, p.precoVenda ?? 0])),
-		variantMap: new Map(variantes.map((v) => [v.id, v])),
+		productPriceMap: new Map(channelProducts.map((p) => [p.id, channelNodePrice(channelState, { produtoId: p.id, precoVenda: p.precoVenda }) ?? 0])),
+		variantMap: new Map(
+			channelVariants.map((v) => [
+				v.id,
+				{ ...v, precoVenda: channelNodePrice(channelState, { produtoId: v.produtoId, produtoVarianteId: v.id, precoVenda: v.precoVenda }) ?? 0 },
+			]),
+		),
 		optionPriceMap: new Map(opcoes.map((o) => [o.id, o.precoDelta])),
 	};
 }
@@ -86,9 +124,18 @@ async function loadCatalogPrices({
  * (não-negativo e limitado ao bruto do item), nunca como fato — sem isso qualquer teto de desconto
  * seria contornável enviando líquidos arbitrários.
  */
-export async function validateSaleItemsPricing({ orgId, itens }: { orgId: string; itens: TSaleItemPricingInput[] }): Promise<void> {
+export async function validateSaleItemsPricing({
+	orgId,
+	itens,
+	canal,
+}: {
+	orgId: string;
+	itens: TSaleItemPricingInput[];
+	canal?: TSalesChannelTypeEnum;
+}): Promise<void> {
 	const { productPriceMap, variantMap, optionPriceMap } = await loadCatalogPrices({
 		orgId,
+		canal,
 		productIds: [...new Set(itens.map((item) => item.produtoId))],
 		variantIds: [...new Set(itens.map((item) => item.produtoVarianteId).filter((id): id is string => !!id))],
 		optionIds: [...new Set(itens.flatMap((item) => item.modificadores.map((mod) => mod.opcaoId)))],
@@ -188,9 +235,18 @@ export type TSalePricingDrift = {
  * a interface do checkout precisa nomear o que mudou e oferecer a atualização antes de bloquear a
  * confirmação. Um orçamento de três semanas confirmado a preço antigo é perda de margem silenciosa.
  */
-export async function computeSaleItemsPricingDrift({ orgId, itens }: { orgId: string; itens: TSaleItemDriftInput[] }): Promise<TSalePricingDrift> {
+export async function computeSaleItemsPricingDrift({
+	orgId,
+	itens,
+	canal,
+}: {
+	orgId: string;
+	itens: TSaleItemDriftInput[];
+	canal?: TSalesChannelTypeEnum;
+}): Promise<TSalePricingDrift> {
 	const { productPriceMap, variantMap, optionPriceMap } = await loadCatalogPrices({
 		orgId,
+		canal,
 		productIds: [...new Set(itens.map((item) => item.produtoId))],
 		variantIds: [...new Set(itens.map((item) => item.produtoVarianteId).filter((id): id is string => !!id))],
 		optionIds: [...new Set(itens.flatMap((item) => item.modificadores.map((mod) => mod.opcaoId).filter((id): id is string => !!id)))],

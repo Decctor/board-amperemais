@@ -5,6 +5,7 @@ import { ACCOUNTING_ENTRY_BALANCE_TOLERANCE, getAccountingEntryBalanceError } fr
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
 import { resolveSaleEditability } from "@/lib/sales/sale-editability";
 import { consumeSaleDiscountApproval } from "@/lib/sales/sale-discount-authorization";
+import { toSalesChannelType } from "@/lib/products/sales-channels";
 import { SALE_PRICING_CENT_TOLERANCE, saleValuesDiverge, validateSaleItemsPricing } from "@/lib/sales/sale-pricing-validation";
 import { POS_REWARD_SALE_ITEM_ORIGIN } from "@/lib/sales/sale-reward-redemption";
 import type { TDeliveryModeEnum } from "@/schemas/enums";
@@ -260,7 +261,9 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 		}
 	}
 	if (itemsForCatalogValidation.length > 0) {
-		await validateSaleItemsPricing({ orgId: organizationId, itens: itemsForCatalogValidation });
+		// Só itens novos/reprecificados chegam aqui — itens intactos mantêm o preço pelo qual foram
+		// vendidos, então o gate do canal não rejeita vendas antigas de produto que saiu do canal.
+		await validateSaleItemsPricing({ orgId: organizationId, itens: itemsForCatalogValidation, canal: toSalesChannelType(sale.canal) });
 	}
 
 	// ------------------------------------------------------------------

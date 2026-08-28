@@ -42,19 +42,21 @@ type SalesChannelsSectionProps = {
 };
 
 /**
- * Matriz de canais de venda do produto (fase 2): presença por canal, com herança explícita —
- * sem linha, vale o modo do canal; a linha da variante só restringe dentro de produto visível.
- * Preço por canal entra na fase 3; iFood ainda não sincroniza (fase 4) — badge deixa claro.
+ * Matriz de canais de venda do produto: presença e preço por canal, com herança explícita —
+ * sem linha, vale o modo do canal (e o preço base); a linha da variante só restringe dentro de
+ * produto visível. iFood ainda não sincroniza (fase 4) — o badge deixa claro.
  */
 export default function SalesChannelsSection({ product }: SalesChannelsSectionProps) {
 	const queryClient = useQueryClient();
 	const { data, isLoading, isError, queryKey } = useProductChannelSettings({ produtoId: product.id });
 	const [choices, setChoices] = useState<Map<string, TAvailabilityChoice>>(new Map());
+	const [prices, setPrices] = useState<Map<string, number | null>>(new Map());
 	const [dirty, setDirty] = useState(false);
 
 	useEffect(() => {
 		if (data) {
 			setChoices(buildInitialState(data.settings));
+			setPrices(new Map(data.settings.map((setting) => [nodeKey(setting.canalVendaId, setting.produtoVarianteId), setting.precoVenda])));
 			setDirty(false);
 		}
 	}, [data]);
@@ -73,7 +75,6 @@ export default function SalesChannelsSection({ product }: SalesChannelsSectionPr
 	if (isError || !data) return null;
 
 	const activeVariants = product.variantes.filter((variant) => variant.ativo);
-	const priceOverridesByNode = new Map(data.settings.map((setting) => [nodeKey(setting.canalVendaId, setting.produtoVarianteId), setting.precoVenda]));
 
 	function cycleChoice(key: string) {
 		setChoices((previous) => {
@@ -86,9 +87,18 @@ export default function SalesChannelsSection({ product }: SalesChannelsSectionPr
 		setDirty(true);
 	}
 
+	function updatePrice(key: string, value: number | null) {
+		setPrices((previous) => {
+			const next = new Map(previous);
+			next.set(key, value);
+			return next;
+		});
+		setDirty(true);
+	}
+
 	function handleSave() {
-		// Envia todos os nós exibidos: o PUT é um patch esparso, então nós com escolha "herdar"
-		// (e sem preço) são limpos, e o preço existente é ecoado para não ser destruído.
+		// Envia todos os nós exibidos: o PUT é um patch esparso, então nós com disponibilidade
+		// "herdar" e preço vazio voltam a herdar (a linha esparsa é removida).
 		const settings: TUpdateProductChannelSettingsInput["settings"] = [];
 		for (const channel of data!.channels) {
 			settings.push({
@@ -96,14 +106,14 @@ export default function SalesChannelsSection({ product }: SalesChannelsSectionPr
 				produtoVarianteId: null,
 				disponivel: choices.get(nodeKey(channel.id, null)) ?? null,
 				// Preço nível-produto só é válido para produto sem variantes (regra do PUT).
-				precoVenda: activeVariants.length === 0 ? (priceOverridesByNode.get(nodeKey(channel.id, null)) ?? null) : null,
+				precoVenda: activeVariants.length === 0 ? (prices.get(nodeKey(channel.id, null)) ?? null) : null,
 			});
 			for (const variant of activeVariants) {
 				settings.push({
 					canalVendaId: channel.id,
 					produtoVarianteId: variant.id,
 					disponivel: choices.get(nodeKey(channel.id, variant.id)) ?? null,
-					precoVenda: priceOverridesByNode.get(nodeKey(channel.id, variant.id)) ?? null,
+					precoVenda: prices.get(nodeKey(channel.id, variant.id)) ?? null,
 				});
 			}
 		}
@@ -143,23 +153,39 @@ export default function SalesChannelsSection({ product }: SalesChannelsSectionPr
 									) : null}
 									<span className="text-[0.6rem] text-muted-foreground">padrão do canal: {inheritedVisible ? "visível" : "oculto"}</span>
 								</div>
-								<AvailabilityCycleButton
-									choice={choices.get(nodeKey(channel.id, null)) ?? null}
-									inheritedVisible={inheritedVisible}
-									onCycle={() => cycleChoice(nodeKey(channel.id, null))}
-								/>
+								<div className="flex items-center gap-2">
+									{activeVariants.length === 0 ? (
+										<ChannelPriceInput
+											value={prices.get(nodeKey(channel.id, null)) ?? null}
+											basePrice={product.precoVenda}
+											onChange={(value) => updatePrice(nodeKey(channel.id, null), value)}
+										/>
+									) : null}
+									<AvailabilityCycleButton
+										choice={choices.get(nodeKey(channel.id, null)) ?? null}
+										inheritedVisible={inheritedVisible}
+										onCycle={() => cycleChoice(nodeKey(channel.id, null))}
+									/>
+								</div>
 							</div>
 							{activeVariants.length > 0 ? (
 								<div className="flex flex-col gap-1 border-l border-border pl-3">
 									{activeVariants.map((variant) => (
 										<div key={variant.id} className="flex items-center justify-between gap-2">
 											<span className="text-[0.65rem] text-muted-foreground">{variant.nome}</span>
-											<AvailabilityCycleButton
-												choice={choices.get(nodeKey(channel.id, variant.id)) ?? null}
-												inheritedVisible
-												variantLevel
-												onCycle={() => cycleChoice(nodeKey(channel.id, variant.id))}
-											/>
+											<div className="flex items-center gap-2">
+												<ChannelPriceInput
+													value={prices.get(nodeKey(channel.id, variant.id)) ?? null}
+													basePrice={variant.precoVenda}
+													onChange={(value) => updatePrice(nodeKey(channel.id, variant.id), value)}
+												/>
+												<AvailabilityCycleButton
+													choice={choices.get(nodeKey(channel.id, variant.id)) ?? null}
+													inheritedVisible
+													variantLevel
+													onCycle={() => cycleChoice(nodeKey(channel.id, variant.id))}
+												/>
+											</div>
 										</div>
 									))}
 								</div>
@@ -204,5 +230,32 @@ function AvailabilityCycleButton({
 		>
 			{label}
 		</button>
+	);
+}
+
+// Campo de preço do canal: vazio = herda o preço base (mostrado no placeholder).
+function ChannelPriceInput({
+	value,
+	basePrice,
+	onChange,
+}: {
+	value: number | null;
+	basePrice: number | null;
+	onChange: (value: number | null) => void;
+}) {
+	return (
+		<input
+			type="number"
+			min={0}
+			step="0.01"
+			inputMode="decimal"
+			value={value ?? ""}
+			placeholder={basePrice != null ? `R$ ${basePrice.toFixed(2)}` : "R$ —"}
+			onChange={(event) => {
+				const raw = event.target.value;
+				onChange(raw === "" ? null : Math.max(0, Number(raw)));
+			}}
+			className="w-24 rounded-md border border-border bg-transparent px-2 py-1 text-right text-[0.65rem] tabular-nums outline-none placeholder:text-primary/40 focus:border-primary/40"
+		/>
 	);
 }

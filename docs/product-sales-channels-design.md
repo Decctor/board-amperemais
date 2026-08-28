@@ -1,11 +1,18 @@
 # Canais de Venda — Vendabilidade e Preço por Canal
 
-> Design doc. **Fases 1 e 2 implementadas** — coluna `vendavel` + gate em todas as superfícies; tabelas de canal e
-> overrides, resolver, rotas; cutover do shop com dual-read/dual-write (§4); disponibilidade por canal aplicada em
-> POS/comanda (`loadChannelState` + `channelProductFilter`); matriz "Canais de venda" na página do produto
-> (`SalesChannelsSection`, disponibilidade apenas — preço entra na fase 3). Pendentes: fase 3 (preço por canal nos
-> pontos de precificação) e fase 4 (iFood via `catalog_links`). A migração `drizzle/0082_product_sales_channels.sql`
-> é aplicada manualmente.
+> Design doc. **Fases 1, 2 e 3 implementadas** — coluna `vendavel` + gate em todas as superfícies; tabelas de canal e
+> overrides, resolver, rotas; cutover do shop com dual-read/dual-write (§4); disponibilidade E preço por canal
+> aplicados em SHOP/POS/COMANDA (catálogos devolvem o preço resolvido; `validateSaleItemsPricing`/
+> `computeSaleItemsPricingDrift` aceitam `canal` e conferem contra o preço do canal da venda); matriz "Canais de
+> venda" na página do produto com disponibilidade e preço por nó. Pendente: fase 4 (iFood via `catalog_links`).
+> A migração `drizzle/0082_product_sales_channels.sql` é aplicada manualmente.
+>
+> Decisão da fase 3: pedidos de comanda usam o canal COMANDA independentemente de quem digita — o composer do
+> operador (`TabOrderComposer`) consome os endpoints de POS com `channel=COMANDA`, e `launchTabOrder` valida com esse
+> canal; o pedido da mesa custa o mesmo venha do QR do cliente ou do balcão. O drift do checkout usa o canal da
+> própria venda (`toSalesChannelType(sale.canal)`) — um orçamento do shop confere contra os preços do SHOP.
+> O gate `precoVenda > 0` da loja roda sobre o preço RESOLVIDO (um override pode tornar vendável um produto de
+> preço base zerado). Fora do canal: `resolve-sale-items.ts` (cotações da IA) segue no preço base.
 > Contexto: organizações ERP vendem pelas superfícies internas (PDV, loja digital, comanda/QR) e por integrações (iFood). Hoje cada superfície inventou sua própria regra de visibilidade de produto, não existe distinção entre produto vendável e matéria-prima, e não existe preço por canal. Este documento desenha a primitiva nativa que unifica isso.
 > Documento irmão: `docs/ifood-catalog-linking-sync-design.md` (mecanismo de sincronização com catálogos remotos — consome a primitiva desenhada aqui, ver §5).
 

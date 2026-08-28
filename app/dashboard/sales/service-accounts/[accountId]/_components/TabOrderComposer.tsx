@@ -1,7 +1,13 @@
 "use client";
 import type { TCreateTabOrderInput } from "@/app/api/tabs/orders/route";
 import TextInput from "@/components/Inputs/TextInput";
-import { ProductBuilderForm, ProductBuilderStepper, type TBuilderProduct, type TBuiltOrderItem, useProductBuilder } from "@/components/Products/ProductBuilderForm";
+import {
+	ProductBuilderForm,
+	ProductBuilderStepper,
+	type TBuilderProduct,
+	type TBuiltOrderItem,
+	useProductBuilder,
+} from "@/components/Products/ProductBuilderForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -243,9 +249,10 @@ function CatalogStage({
 	onChangeSimpleQuantity,
 	onReview,
 }: CatalogStageProps) {
-	const { data: productsResult, filters, updateFilters, isLoading } = usePOSProducts();
+	// Canal COMANDA: o pedido da mesa exibe e cobra o preço do canal, venha do QR ou do operador.
+	const { data: productsResult, filters, updateFilters, isLoading } = usePOSProducts({ initialFilters: { channel: "COMANDA" } });
 	const { data: groupsResult } = usePOSGroups();
-	const { data: topProductsResult } = usePOSTopProducts();
+	const { data: topProductsResult } = usePOSTopProducts({ channel: "COMANDA" });
 
 	const groups = groupsResult?.groups ?? [];
 	const products = productsResult?.products ?? [];
@@ -305,7 +312,12 @@ function CatalogStage({
 				<div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
 					<GroupChip label="Todos" active={!filters.group} onClick={() => updateFilters({ group: null })} />
 					{groups.map((group) => (
-						<GroupChip key={group} label={group} active={filters.group === group} onClick={() => updateFilters({ group: filters.group === group ? null : group })} />
+						<GroupChip
+							key={group}
+							label={group}
+							active={filters.group === group}
+							onClick={() => updateFilters({ group: filters.group === group ? null : group })}
+						/>
 					))}
 				</div>
 			) : null}
@@ -325,7 +337,13 @@ function CatalogStage({
 								className="flex w-[72px] shrink-0 flex-col items-center gap-1 rounded-xl p-1 text-center transition-colors hover:bg-secondary/60 active:bg-secondary"
 								onClick={() => onProductTap(product)}
 							>
-								<ProductThumb src={product.imagemCapaUrl} name={product.nome} className="size-14 rounded-xl" sizes="56px" badgeCount={cartQtyByProduct.get(product.id)} />
+								<ProductThumb
+									src={product.imagemCapaUrl}
+									name={product.nome}
+									className="size-14 rounded-xl"
+									sizes="56px"
+									badgeCount={cartQtyByProduct.get(product.id)}
+								/>
 								<span className="line-clamp-2 w-full text-[10px] font-semibold leading-tight">{product.nome}</span>
 							</button>
 						))}
@@ -368,9 +386,10 @@ function CatalogStage({
 					const complex = isComplexProduct(product);
 					const simpleItem = complex ? undefined : simpleCartItemFor(product.id);
 					const productCartQty = cartQtyByProduct.get(product.id) ?? 0;
-					const priceLabel = complex && product.variantes.length > 0 && product.precoVenda == null
-						? `a partir de ${formatToMoney(product.variantes[0].precoVenda)}`
-						: formatToMoney(product.precoVenda ?? product.variantes[0]?.precoVenda ?? 0);
+					const priceLabel =
+						complex && product.variantes.length > 0 && product.precoVenda == null
+							? `a partir de ${formatToMoney(product.variantes[0].precoVenda)}`
+							: formatToMoney(product.precoVenda ?? product.variantes[0]?.precoVenda ?? 0);
 
 					return (
 						<div key={product.id} className="flex items-center gap-3 border-b border-border/60 py-2 last:border-b-0">
@@ -379,7 +398,13 @@ function CatalogStage({
 								className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left transition-colors active:bg-secondary/50"
 								onClick={() => onProductTap(product)}
 							>
-								<ProductThumb src={product.imagemCapaUrl} name={product.nome} className="size-11 rounded-lg" sizes="44px" badgeCount={complex ? productCartQty : undefined} />
+								<ProductThumb
+									src={product.imagemCapaUrl}
+									name={product.nome}
+									className="size-11 rounded-lg"
+									sizes="44px"
+									badgeCount={complex ? productCartQty : undefined}
+								/>
 								<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 									<span className="truncate text-sm font-semibold tracking-tight">{product.nome}</span>
 									<span className="text-xs font-bold tabular-nums text-muted-foreground">
@@ -390,21 +415,44 @@ function CatalogStage({
 							</button>
 
 							{complex ? (
-								<Button size="icon" variant="outline" className="size-9 shrink-0 rounded-lg" aria-label={`Montar ${product.nome}`} onClick={() => onProductTap(product)}>
+								<Button
+									size="icon"
+									variant="outline"
+									className="size-9 shrink-0 rounded-lg"
+									aria-label={`Montar ${product.nome}`}
+									onClick={() => onProductTap(product)}
+								>
 									<SlidersHorizontal className="size-4" />
 								</Button>
 							) : simpleItem ? (
 								<div className="flex shrink-0 items-center gap-1.5">
-									<Button size="icon" variant="outline" className="size-9 rounded-lg" aria-label={`Remover 1 ${product.nome}`} onClick={() => onChangeSimpleQuantity(simpleItem.cartKey, -1)}>
+									<Button
+										size="icon"
+										variant="outline"
+										className="size-9 rounded-lg"
+										aria-label={`Remover 1 ${product.nome}`}
+										onClick={() => onChangeSimpleQuantity(simpleItem.cartKey, -1)}
+									>
 										<Minus className="size-3.5" />
 									</Button>
 									<span className="w-5 text-center text-sm font-black tabular-nums">{simpleItem.quantidade}</span>
-									<Button size="icon" className="size-9 rounded-lg" aria-label={`Adicionar 1 ${product.nome}`} onClick={() => onChangeSimpleQuantity(simpleItem.cartKey, 1)}>
+									<Button
+										size="icon"
+										className="size-9 rounded-lg"
+										aria-label={`Adicionar 1 ${product.nome}`}
+										onClick={() => onChangeSimpleQuantity(simpleItem.cartKey, 1)}
+									>
 										<Plus className="size-3.5" />
 									</Button>
 								</div>
 							) : (
-								<Button size="icon" variant="outline" className="size-9 shrink-0 rounded-lg" aria-label={`Adicionar ${product.nome}`} onClick={() => onProductTap(product)}>
+								<Button
+									size="icon"
+									variant="outline"
+									className="size-9 shrink-0 rounded-lg"
+									aria-label={`Adicionar ${product.nome}`}
+									onClick={() => onProductTap(product)}
+								>
 									<Plus className="size-4" />
 								</Button>
 							)}

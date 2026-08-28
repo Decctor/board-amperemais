@@ -102,17 +102,18 @@ export async function loadChannelState({ orgId, canal }: { orgId: string; canal:
 
 	const overrides = await db.query.productChannelSettings.findMany({
 		where: eq(productChannelSettings.canalVendaId, channel.id),
-		columns: { produtoId: true, produtoVarianteId: true, disponivel: true },
+		columns: { produtoId: true, produtoVarianteId: true, disponivel: true, precoVenda: true },
 	});
 
-	const productAvailability = new Map<string, boolean | null>();
-	const variantAvailability = new Map<string, boolean | null>();
+	const productOverrides = new Map<string, { disponivel: boolean | null; precoVenda: number | null }>();
+	const variantOverrides = new Map<string, { disponivel: boolean | null; precoVenda: number | null }>();
 	for (const override of overrides) {
-		if (override.produtoVarianteId) variantAvailability.set(override.produtoVarianteId, override.disponivel);
-		else productAvailability.set(override.produtoId, override.disponivel);
+		const entry = { disponivel: override.disponivel, precoVenda: override.precoVenda };
+		if (override.produtoVarianteId) variantOverrides.set(override.produtoVarianteId, entry);
+		else productOverrides.set(override.produtoId, entry);
 	}
 
-	return { channel, productAvailability, variantAvailability };
+	return { channel, productOverrides, variantOverrides };
 }
 export type TChannelState = NonNullable<Awaited<ReturnType<typeof loadChannelState>>>;
 
@@ -123,10 +124,23 @@ export type TChannelState = NonNullable<Awaited<ReturnType<typeof loadChannelSta
  */
 export function channelProductFilter(state: TChannelState) {
 	if (state.channel.catalogoModo === "SELECIONADOS") {
-		return { includeIds: [...state.productAvailability.entries()].filter(([, disponivel]) => disponivel === true).map(([id]) => id), excludeIds: null };
+		return {
+			includeIds: [...state.productOverrides.entries()].filter(([, override]) => override.disponivel === true).map(([id]) => id),
+			excludeIds: null,
+		};
 	}
-	const excluded = [...state.productAvailability.entries()].filter(([, disponivel]) => disponivel === false).map(([id]) => id);
+	const excluded = [...state.productOverrides.entries()].filter(([, override]) => override.disponivel === false).map(([id]) => id);
 	return { includeIds: null, excludeIds: excluded.length ? excluded : null };
+}
+
+/** Preço resolvido de um nó no canal (node-scoped — ver resolver): override do nó, senão o base. */
+export function channelNodePrice(
+	state: TChannelState | null,
+	node: { produtoId: string; produtoVarianteId?: string | null; precoVenda: number | null },
+) {
+	if (!state) return node.precoVenda;
+	const override = node.produtoVarianteId ? state.variantOverrides.get(node.produtoVarianteId) : state.productOverrides.get(node.produtoId);
+	return override?.precoVenda ?? node.precoVenda;
 }
 
 /**

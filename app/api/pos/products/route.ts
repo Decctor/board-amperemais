@@ -2,7 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
+import { channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
 import { db } from "@/services/drizzle";
 import { productAddOnOptions, productAddOnReferences, productAddOns, productVariants, products } from "@/services/drizzle/schema";
 import { and, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
@@ -30,6 +30,15 @@ const GetPOSProductsInputSchema = z.object({
 		})
 		.transform((val) => Number(val))
 		.default("1"),
+	// Canal cuja disponibilidade/preço a grade resolve: o PDV usa POS; o composer de pedidos de
+	// comanda usa COMANDA — o pedido da mesa custa o mesmo venha do QR ou do operador.
+	channel: z
+		.string({
+			invalid_type_error: "Tipo inválido para canal.",
+		})
+		.optional()
+		.nullable()
+		.transform((value) => (value === "COMANDA" ? ("COMANDA" as const) : ("POS" as const))),
 });
 export type TGetPOSProductsInput = z.infer<typeof GetPOSProductsInputSchema>;
 
@@ -44,9 +53,9 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 
 	const conditions = [eq(products.organizacaoId, userOrgId), eq(products.ativo, true), eq(products.vendavel, true)];
 
-	// Disponibilidade no canal POS (linhas esparsas da matriz de canais). Canal ausente = org
-	// não materializada ainda — comporta-se como TODOS sem overrides.
-	const channelState = await loadChannelState({ orgId: userOrgId, canal: "POS" });
+	// Disponibilidade e preço no canal pedido (linhas esparsas da matriz de canais). Canal
+	// ausente = org não materializada ainda — comporta-se como TODOS sem overrides.
+	const channelState = await loadChannelState({ orgId: userOrgId, canal: input.channel });
 	if (channelState) {
 		const filter = channelProductFilter(channelState);
 		if (filter.includeIds) {
@@ -125,12 +134,16 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 
 	const normalizedProducts = productsResult.map((product) => ({
 		...product,
+		// Preço resolvido do canal — a grade exibe e o carrinho envia o mesmo valor que a
+		// validação (validateSaleItemsPricing com canal) vai recalcular.
+		precoVenda: channelNodePrice(channelState, { produtoId: product.id, precoVenda: product.precoVenda }),
 		addOnsReferencias: product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
 		variantes: product.variantes
 			// Linha de variante só restringe dentro de um produto visível (mesma regra do resolver).
-			.filter((variant) => channelState?.variantAvailability.get(variant.id) !== false)
+			.filter((variant) => channelState?.variantOverrides.get(variant.id)?.disponivel !== false)
 			.map((variant) => ({
 				...variant,
+				precoVenda: channelNodePrice(channelState, { produtoId: product.id, produtoVarianteId: variant.id, precoVenda: variant.precoVenda }) ?? 0,
 				addOnsReferencias: variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
 			})),
 	}));

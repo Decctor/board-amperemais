@@ -1,4 +1,4 @@
-import { channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
+import { channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
 import { db } from "@/services/drizzle";
 import { products } from "@/services/drizzle/schema";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
@@ -35,8 +35,15 @@ export async function getComandaMenuProducts({ orgId }: { orgId: string }) {
 
 	return rows.map((product) => ({
 		...product,
+		// Preço resolvido do canal COMANDA — o mesmo que a aprovação/lançamento vai cobrar.
+		precoVenda: channelNodePrice(channelState, { produtoId: product.id, precoVenda: product.precoVenda }),
 		// Linha de variante só restringe dentro de um produto visível (mesma regra do resolver).
-		variantes: product.variantes.filter((variant) => channelState?.variantAvailability.get(variant.id) !== false),
+		variantes: product.variantes
+			.filter((variant) => channelState?.variantOverrides.get(variant.id)?.disponivel !== false)
+			.map((variant) => ({
+				...variant,
+				precoVenda: channelNodePrice(channelState, { produtoId: product.id, produtoVarianteId: variant.id, precoVenda: variant.precoVenda }) ?? 0,
+			})),
 	}));
 }
 

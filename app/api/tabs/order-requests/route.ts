@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { requireERPSession } from "@/lib/authentication/erp-session";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { channelNodePrice, loadChannelState } from "@/lib/products/sales-channels-store";
 import { filterComandaOrderableProductIds, launchTabOrder, openTab, resolveServiceSettings } from "@/lib/tabs";
 import type { TTabOrderItemInput } from "@/lib/tabs";
 import { TabOrderRequestStatusEnum } from "@/schemas/enums";
@@ -170,7 +171,7 @@ async function decideTabOrderRequest({ input, session }: { input: TDecideTabOrde
 		const payload = request.payloadSolicitacao;
 		const productIds = [...new Set(payload.itens.map((item) => item.produtoId))];
 		const variantIds = payload.itens.map((item) => item.produtoVarianteId).filter((id): id is string => !!id);
-		const [produtos, variantes, orderableIds] = await Promise.all([
+		const [produtos, variantes, orderableIds, channelState] = await Promise.all([
 			db.query.products.findMany({
 				where: (fields, { and, eq, inArray }) =>
 					and(inArray(fields.id, productIds), eq(fields.organizacaoId, orgId), eq(fields.ativo, true), eq(fields.vendavel, true)),
@@ -183,6 +184,7 @@ async function decideTabOrderRequest({ input, session }: { input: TDecideTabOrde
 					})
 				: [],
 			filterComandaOrderableProductIds({ orgId, productIds }),
+			loadChannelState({ orgId, canal: "COMANDA" }),
 		]);
 		// Gate do canal COMANDA na aprovacao: a solicitacao pode ter sido feita antes de o produto
 		// sair do canal — a aprovacao e a superficie autoritativa e revalida.
@@ -196,7 +198,10 @@ async function decideTabOrderRequest({ input, session }: { input: TDecideTabOrde
 			if (item.produtoVarianteId && (!variant || variant.produtoId !== product.id)) {
 				throw new createHttpError.BadRequest(`A variante do item "${item.nome}" nao esta mais disponivel.`);
 			}
-			const unitPrice = variant ? variant.precoVenda : (product.precoVenda ?? 0);
+			// Preço resolvido do canal COMANDA — o mesmo exibido no cardápio público.
+			const unitPrice = variant
+				? (channelNodePrice(channelState, { produtoId: product.id, produtoVarianteId: variant.id, precoVenda: variant.precoVenda }) ?? 0)
+				: (channelNodePrice(channelState, { produtoId: product.id, precoVenda: product.precoVenda }) ?? 0);
 			return {
 				produtoId: product.id,
 				produtoVarianteId: variant?.id ?? null,

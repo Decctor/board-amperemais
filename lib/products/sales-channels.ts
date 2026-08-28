@@ -24,6 +24,13 @@ export const DEFAULT_SALES_CHANNELS = [
 	{ canal: "COMANDA", catalogoModo: "TODOS" },
 ] as const satisfies readonly TChannel[];
 
+export const SALES_CHANNEL_TYPES = ["POS", "SHOP", "COMANDA", "IFOOD"] as const;
+
+/** Converte o `sales.canal` (texto livre) para o tipo do registro de canais, quando reconhecido. */
+export function toSalesChannelType(canal: string | null | undefined): TSalesChannelTypeEnum | undefined {
+	return (SALES_CHANNEL_TYPES as readonly string[]).includes(canal ?? "") ? (canal as TSalesChannelTypeEnum) : undefined;
+}
+
 // Preço é node-scoped: o override da variante vale para a variante, o do produto só para produto
 // sem variante. Sem fallback cruzado — produto-com-variantes + override nível-produto é ambíguo
 // e é rejeitado na escrita (PUT /api/products/channel-settings).
