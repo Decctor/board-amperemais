@@ -1,8 +1,8 @@
 -- Fundação de acesso para agentes de IA (MCP). Torna a organização opcional no principal,
 -- mantendo-a obrigatória para todo tipo que não seja de plataforma.
--- PRÉ-REQUISITO: drizzle/0082_agent_principal_type.sql precisa ter sido aplicado e commitado —
+-- PRÉ-REQUISITO: drizzle/0084_agent_principal_type.sql precisa ter sido aplicado e commitado —
 -- a CHECK abaixo referencia o valor de enum criado lá.
--- Aplicar com: npx tsx ./scripts/apply-sql-migration.ts drizzle/0083_agent_access_foundation.sql
+-- Aplicar com: npx tsx ./scripts/apply-sql-migration.ts drizzle/0085_agent_access_foundation.sql
 -- Idempotente (IF NOT EXISTS / DROP NOT NULL é no-op quando já aplicado).
 
 -- A garantia sai do NOT NULL e vai para a CHECK: o isolamento multi-tenant não afrouxa,

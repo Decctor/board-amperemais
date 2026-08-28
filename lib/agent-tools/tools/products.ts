@@ -14,7 +14,7 @@ const SearchProductsInputSchema = z.object({
 	termo: z.string({ invalid_type_error: "Tipo inválido para o termo de busca." }).optional().nullable(),
 	codigo: z.string({ invalid_type_error: "Tipo inválido para o código." }).optional().nullable(),
 	grupo: z.string({ invalid_type_error: "Tipo inválido para o grupo." }).optional().nullable(),
-	apenasAtivos: z.boolean({ invalid_type_error: "Tipo inválido para apenas ativos." }).optional().nullable(),
+	apenasVendaveis: z.boolean({ invalid_type_error: "Tipo inválido para apenas vendáveis." }).optional().nullable(),
 	limite: z.number({ invalid_type_error: "Tipo inválido para o limite." }).int().positive().max(MAX_LIMIT).optional().nullable(),
 	organizacaoId: z.string({ invalid_type_error: "Tipo inválido para o id da organização." }).optional().nullable(),
 });
@@ -29,6 +29,10 @@ export const searchProductsTool = defineAgentTool({
 		[
 			"Consulta o catálogo da organização por nome, código ou grupo. A busca por `termo` tolera acento e erro de digitação,",
 			"e o resultado vem ordenado por semelhança com o termo.",
+			"`precoVendaBase` é o preço cadastrado no produto, **não necessariamente o preço praticado**: cada canal de venda",
+			"(POS, loja, comanda, iFood) pode ter preço e disponibilidade próprios. Ao falar de preço, diga que é o preço base.",
+			"`vendavel` e `ativo` são coisas diferentes: um produto inativo saiu do catálogo, um não-vendável continua cadastrado",
+			"mas não pode ser vendido em canal nenhum.",
 			"Preço e quantidade em estoque são **omitidos** quando a organização não os controla — campo ausente significa 'não sei',",
 			"nunca zero: não afirme que um produto está sem estoque ou é gratuito com base na ausência do campo.",
 			`Devolve no máximo ${MAX_LIMIT} produtos por chamada, acompanhados do total encontrado.`,
@@ -48,7 +52,12 @@ export const searchProductsTool = defineAgentTool({
 		const grupo = input.grupo?.trim();
 		if (grupo) conditions.push(createSimplifiedEqualityCondition(products.grupo, grupo));
 
-		if (input.apenasAtivos !== false) conditions.push(eq(products.ativo, true));
+		// Default liga os dois: a pergunta de quem consulta catálogo é sempre "o que dá para vender".
+		// `ativo` e `vendavel` são gates independentes — ver `resolveChannelAvailability`.
+		if (input.apenasVendaveis !== false) {
+			conditions.push(eq(products.ativo, true));
+			conditions.push(eq(products.vendavel, true));
+		}
 
 		const termo = input.termo?.trim();
 		if (termo && termo.length >= 2) {
@@ -79,6 +88,7 @@ export const searchProductsTool = defineAgentTool({
 					precoVenda: true,
 					quantidade: true,
 					ativo: true,
+					vendavel: true,
 					rastreamentoEstoqueAtivo: true,
 				},
 			}),
@@ -99,7 +109,12 @@ export const searchProductsTool = defineAgentTool({
 				unidade: product.unidade,
 				descricao: product.descricao,
 				ativo: product.ativo,
-				precoVenda: roundForModel(product.precoVenda),
+				vendavel: product.vendavel,
+				// Nome explícito porque o número é o preço-base do cadastro: canais de venda podem
+				// sobrescrevê-lo (`product_channel_settings.preco_venda`). Devolver isto como
+				// `precoVenda` faria o agente cotar em nome da loja um preço que talvez não valha
+				// no canal em que o cliente está comprando.
+				precoVendaBase: roundForModel(product.precoVenda),
 				// Estoque só é informação quando a organização rastreia estoque deste produto.
 				// Fora disso o número guardado é resíduo, e um resíduo vira alucinação.
 				quantidadeEstoque: product.rastreamentoEstoqueAtivo ? roundForModel(product.quantidade, 3) : undefined,

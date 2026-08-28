@@ -63,7 +63,7 @@ default possível. A agregação cross-org chega com as ferramentas `platform_*`
 - `AccessPrincipalTypeEnum` ganhou `CONTA_PLATAFORMA`.
 - `access_principals.organizacao_id` virou nulo **só** para esse tipo, com CHECK constraint. A
   garantia saiu do `NOT NULL` e virou uma exceção nomeada, em vez de afrouxar.
-- São **dois arquivos de migração, e a ordem importa**: `0082` cria o valor de enum e `0083` usa
+- São **dois arquivos de migração, e a ordem importa**: `0084` cria o valor de enum e `0085` usa
   esse valor na CHECK. `ALTER TYPE ... ADD VALUE` não pode ser consumido na mesma transação que o
   criou, e `scripts/apply-sql-migration.ts` aplica cada arquivo dentro de uma transação — juntos,
   eles falhariam com *unsafe use of new value of enum type*.
@@ -98,6 +98,15 @@ Duas disciplinas valem para toda ferramenta:
 
 PII de cliente (telefone, e-mail, CPF/CNPJ) sai mascarada sem `agent:clients:pii`. Um agente que
 responde "quantos clientes em risco?" não precisa de telefone nenhum.
+
+**Canais de venda.** `search_products` devolve `precoVendaBase`, e não `precoVenda`, porque o preço
+praticado depende do canal (`product_channel_settings.preco_venda`) — ver
+`docs/product-sales-channels-design.md`. O nome do campo e a descrição da ferramenta dizem isso ao
+modelo, para ele não cotar em nome da loja um preço que não vale no canal do cliente. O filtro
+padrão exige `ativo` **e** `vendavel`, os dois gates independentes de `resolveChannelAvailability`.
+O passo seguinte é um argumento `canal` que resolva preço e disponibilidade efetivos via
+`resolveChannelPrice`/`resolveChannelAvailability`; enquanto ele não existe, a ferramenta é honesta
+sobre estar devolvendo a base.
 
 ### Protocolo (`lib/mcp/`, `app/api/mcp/route.ts`)
 
@@ -136,8 +145,8 @@ Enquanto a tela de "Conexões de IA" não existe (fase 1):
 
 ```bash
 # 1. Migrações, nesta ordem (a segunda consome o valor de enum criado pela primeira)
-npx tsx ./scripts/apply-sql-migration.ts drizzle/0082_agent_principal_type.sql
-npx tsx ./scripts/apply-sql-migration.ts drizzle/0083_agent_access_foundation.sql
+npx tsx ./scripts/apply-sql-migration.ts drizzle/0084_agent_principal_type.sql
+npx tsx ./scripts/apply-sql-migration.ts drizzle/0085_agent_access_foundation.sql
 
 # 2. Aplicações clientes do catálogo (AGENT_CLAUDE / AGENT_CHATGPT / AGENT_CONTROL)
 npm run seed:access-clients
@@ -185,7 +194,8 @@ e precisa de teste de integração — é a primeira lacuna a fechar.
 
 ## 6. Próximas fases
 
-**Fase 1 — superfície completa e modo plataforma de verdade.** As cinco ferramentas de leitura que
+**Fase 1 — superfície completa e modo plataforma de verdade.** Argumento `canal` em
+`search_products`, resolvendo preço e disponibilidade efetivos por canal de venda. As cinco ferramentas de leitura que
 faltam (`get_sales`, `get_client_context`, `list_segments`, `get_product_performance`,
 `get_campaign_results`); as três `platform_*` (`search_organizations`, `get_organization_health`,
 `get_aggregate_metrics`) e, com elas, a agregação cross-org que hoje falha de propósito; o resource
