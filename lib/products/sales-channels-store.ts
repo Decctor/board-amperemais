@@ -89,14 +89,18 @@ export async function syncShopSalesChannel({ orgId, produtos }: { orgId: string;
  * (migração não aplicada / org não materializada) — o chamador decide o fallback.
  * Nesta fase só a DISPONIBILIDADE é consumida; preço por canal entra na fase 3.
  */
-export async function loadChannelState({ orgId, canal }: { orgId: string; canal: TChannel["canal"] }) {
+export async function loadChannelState({ orgId, canal, refExterno }: { orgId: string; canal: TChannel["canal"]; refExterno?: string | null }) {
+	// Canais internos são identificados pela ausência de integração/ref; canais de integração
+	// (iFood) por merchant, já que preço e disponibilidade podem divergir entre lojas.
 	const channel = await db.query.salesChannels.findFirst({
-		where: and(
-			eq(salesChannels.organizacaoId, orgId),
-			eq(salesChannels.canal, canal),
-			isNull(salesChannels.integracaoId),
-			isNull(salesChannels.refExterno),
-		),
+		where: refExterno
+			? and(eq(salesChannels.organizacaoId, orgId), eq(salesChannels.canal, canal), eq(salesChannels.refExterno, refExterno))
+			: and(
+					eq(salesChannels.organizacaoId, orgId),
+					eq(salesChannels.canal, canal),
+					isNull(salesChannels.integracaoId),
+					isNull(salesChannels.refExterno),
+				),
 	});
 	if (!channel) return null;
 
