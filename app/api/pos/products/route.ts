@@ -41,7 +41,7 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 	const skip = PAGE_SIZE * (input.page - 1);
 	const limit = PAGE_SIZE;
 
-	const conditions = [eq(products.organizacaoId, userOrgId), eq(products.ativo, true)];
+	const conditions = [eq(products.organizacaoId, userOrgId), eq(products.ativo, true), eq(products.vendavel, true)];
 
 	// Search filter — insensível a acentos: unaccent() em ambos os lados normaliza os diacríticos
 	// (ex.: "acai" encontra "Açaí"). Requer a extensão `unaccent` (migration 0033_unaccent_extension).

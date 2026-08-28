@@ -13,6 +13,7 @@ import { toast } from "sonner";
 
 export function mapProductToCoreState(product: TGetProductsOutputById): TProductCoreState {
 	return {
+		vendavel: product.vendavel,
 		nome: product.nome,
 		descricao: product.descricao,
 		codigo: product.codigo,
@@ -69,6 +70,7 @@ export default function ProductCoreMenu({ product, closeMenu, callbacks }: Produ
 			return updateProduct({
 				productId: product.id,
 				product: {
+					vendavel: state.vendavel,
 					nome: state.nome,
 					descricao: state.descricao,
 					codigo: state.codigo,

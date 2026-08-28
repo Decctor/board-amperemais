@@ -1,8 +1,9 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { hydratePOSProducts } from "@/lib/pos/hydrate-pos-products";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { db } from "@/services/drizzle";
-import { productClientReferences, products, saleItems, sales } from "@/services/drizzle/schema";
+import { productClientReferences, saleItems, sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { and, countDistinct, desc, eq, gte, inArray, isNotNull, notInArray, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -147,56 +148,14 @@ async function getCrossSell({ input, session }: { input: TGetCrossSellInput; ses
 		return { data: { products: [], origem }, message: "Nenhuma sugestão disponível." };
 	}
 
-	// Hydrate the candidates with the exact same shape the POS grid uses, so a suggestion
-	// can flow straight into the cart handlers (variants/add-ons open the builder modal).
-	const hydrated = await db.query.products.findMany({
-		where: and(eq(products.organizacaoId, organizacaoId), eq(products.ativo, true), inArray(products.id, rankedIds)),
-		with: {
-			variantes: {
-				where: (fields, { eq: eqOp }) => eqOp(fields.ativo, true),
-				orderBy: (fields, { asc }) => asc(fields.precoVenda),
-				with: {
-					addOnsReferencias: {
-						with: {
-							grupo: {
-								with: {
-									opcoes: {
-										where: (fields, { eq: eqOp }) => eqOp(fields.ativo, true),
-										orderBy: (fields, { asc }) => asc(fields.nome),
-									},
-								},
-							},
-						},
-						orderBy: (fields, { asc }) => asc(fields.ordem),
-					},
-				},
-			},
-			addOnsReferencias: {
-				where: (fields, { isNull }) => isNull(fields.produtoVarianteId),
-				with: {
-					grupo: {
-						with: {
-							opcoes: {
-								where: (fields, { eq: eqOp }) => eqOp(fields.ativo, true),
-								orderBy: (fields, { asc }) => asc(fields.nome),
-							},
-						},
-					},
-				},
-				orderBy: (fields, { asc }) => asc(fields.ordem),
-			},
-		},
-	});
+	// Mesma hidratação da grade do PDV (variantes/adicionais ativos, só produtos vendáveis),
+	// para que a sugestão flua direto para os handlers de carrinho.
+	const hydrated = await hydratePOSProducts({ orgId: organizacaoId, productIds: rankedIds });
 
 	const rankIndex = new Map(rankedIds.map((id, index) => [id, index]));
 	const suggestions = hydrated
 		.map((product) => ({
 			...product,
-			addOnsReferencias: product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
-			variantes: product.variantes.map((variant) => ({
-				...variant,
-				addOnsReferencias: variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
-			})),
 			crossSellMotivo: buildMotivo(scoreMap.get(product.id)?.sources ?? new Set()),
 		}))
 		.sort((a, b) => (rankIndex.get(a.id) ?? 0) - (rankIndex.get(b.id) ?? 0));

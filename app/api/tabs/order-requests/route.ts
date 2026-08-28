@@ -172,7 +172,8 @@ async function decideTabOrderRequest({ input, session }: { input: TDecideTabOrde
 		const variantIds = payload.itens.map((item) => item.produtoVarianteId).filter((id): id is string => !!id);
 		const [produtos, variantes] = await Promise.all([
 			db.query.products.findMany({
-				where: (fields, { and, eq, inArray }) => and(inArray(fields.id, productIds), eq(fields.organizacaoId, orgId), eq(fields.ativo, true)),
+				where: (fields, { and, eq, inArray }) =>
+					and(inArray(fields.id, productIds), eq(fields.organizacaoId, orgId), eq(fields.ativo, true), eq(fields.vendavel, true)),
 				columns: { id: true, nome: true, codigo: true, imagemCapaUrl: true, precoVenda: true },
 			}),
 			variantIds.length > 0

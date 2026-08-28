@@ -430,6 +430,12 @@ export type TShopCompositionBlockTypeEnum = z.infer<typeof ShopCompositionBlockT
 export const ShopWeekdayEnum = z.enum(["DOMINGO", "SEGUNDA", "TERCA", "QUARTA", "QUINTA", "SEXTA", "SABADO"]);
 export type TShopWeekdayEnum = z.infer<typeof ShopWeekdayEnum>;
 
+export const SalesChannelTypeEnum = z.enum(["POS", "SHOP", "COMANDA", "IFOOD"]);
+export type TSalesChannelTypeEnum = z.infer<typeof SalesChannelTypeEnum>;
+
+export const SalesChannelCatalogModeEnum = z.enum(["TODOS", "SELECIONADOS"]);
+export type TSalesChannelCatalogModeEnum = z.infer<typeof SalesChannelCatalogModeEnum>;
+
 export const PlatformPartnerStatusEnum = z.enum(["PENDENTE_APROVACAO", "ATIVO", "SUSPENSO", "REJEITADO"]);
 export type TPlatformPartnerStatusEnum = z.infer<typeof PlatformPartnerStatusEnum>;
 

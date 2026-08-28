@@ -11,7 +11,7 @@ export async function hydratePOSProducts({ orgId, productIds }: { orgId: string;
 	if (productIds.length === 0) return [];
 
 	const hydrated = await db.query.products.findMany({
-		where: and(eq(products.organizacaoId, orgId), eq(products.ativo, true), inArray(products.id, productIds)),
+		where: and(eq(products.organizacaoId, orgId), eq(products.ativo, true), eq(products.vendavel, true), inArray(products.id, productIds)),
 		with: {
 			variantes: {
 				where: (fields, { eq: eqOp }) => eqOp(fields.ativo, true),

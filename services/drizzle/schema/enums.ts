@@ -384,6 +384,9 @@ export const shopModeEnum = pgEnum("shop_mode", ["CARDAPIO", "CATALOGO"]);
 
 export const shopProductsModeEnum = pgEnum("shop_products_mode", ["ATIVOS", "INCLUIR", "EXCLUIR"]);
 
+export const salesChannelTypeEnum = pgEnum("sales_channel_type", ["POS", "SHOP", "COMANDA", "IFOOD"]);
+export const salesChannelCatalogModeEnum = pgEnum("sales_channel_catalog_mode", ["TODOS", "SELECIONADOS"]);
+
 export const shopHeaderCoverTypeEnum = pgEnum("shop_header_cover_type", ["IMAGEM", "VIDEO"]);
 
 export const salesSessionStatusEnum = pgEnum("sales_session_status", ["ABERTA", "FECHADA", "CONFERIDA", "CANCELADA"]);

@@ -90,10 +90,10 @@ async function createPublicTabOrderRequest({ input, clientIp }: { input: TCreate
 		throw new createHttpError.Forbidden("Pedidos pelo QR Code nao estao habilitados. Chame um atendente.");
 	}
 
-	// Valida os produtos referenciados (existencia/atividade na organizacao — sem precos).
+	// Valida os produtos referenciados (existencia/atividade/vendabilidade na organizacao — sem precos).
 	const productIds = [...new Set(input.items.map((item) => item.produtoId))];
 	const produtos = await db.query.products.findMany({
-		where: (fields, { and, eq, inArray }) => and(inArray(fields.id, productIds), eq(fields.organizacaoId, orgId), eq(fields.ativo, true)),
+		where: (fields, { and, eq, inArray }) => and(inArray(fields.id, productIds), eq(fields.organizacaoId, orgId), eq(fields.ativo, true), eq(fields.vendavel, true)),
 		columns: { id: true },
 	});
 	if (produtos.length !== productIds.length) {

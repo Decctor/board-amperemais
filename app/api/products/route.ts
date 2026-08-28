@@ -1320,6 +1320,7 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 		const [updatedProduct] = await tx
 			.update(products)
 			.set({
+				vendavel: input.product.vendavel,
 				nome: input.product.nome,
 				descricao: input.product.descricao,
 				codigo: input.product.codigo,
@@ -1610,6 +1611,7 @@ async function createProduct({ session, input }: { session: TAuthUserSession; in
 			.insert(products)
 			.values({
 				organizacaoId: userOrgId,
+				vendavel: input.product.vendavel,
 				nome: input.product.nome,
 				descricao: input.product.descricao,
 				codigo: input.product.codigo,

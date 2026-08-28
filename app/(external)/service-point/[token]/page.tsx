@@ -49,7 +49,7 @@ export default async function ServicePointPublicPage({ params }: { params: Promi
 
 	const products = orderingEnabled
 		? await db.query.products.findMany({
-				where: (fields, { and, eq }) => and(eq(fields.organizacaoId, servicePoint.organizacaoId), eq(fields.ativo, true)),
+				where: (fields, { and, eq }) => and(eq(fields.organizacaoId, servicePoint.organizacaoId), eq(fields.ativo, true), eq(fields.vendavel, true)),
 				columns: { id: true, nome: true, grupo: true, descricao: true, precoVenda: true, imagemCapaUrl: true },
 				with: {
 					variantes: {

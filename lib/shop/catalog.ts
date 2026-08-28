@@ -6,7 +6,7 @@ import type { TShopSettingsConfiguration } from "@/schemas/shop";
 export const SHOP_MOST_ORDERED_DAYS = 90;
 
 function getProductEligibilityConditions(orgId: string) {
-	return [eq(products.organizacaoId, orgId), eq(products.ativo, true), gt(products.precoVenda, 0)];
+	return [eq(products.organizacaoId, orgId), eq(products.ativo, true), eq(products.vendavel, true), gt(products.precoVenda, 0)];
 }
 
 export function productIsAvailableForShop(product: {

@@ -6,6 +6,16 @@ export const ProductSchema = z.object({
 		required_error: "ID da organização não informado.",
 		invalid_type_error: "Tipo não válido para ID da organização.",
 	}),
+	// Falso para matéria-prima e itens internos (insumos, embalagens): o produto some de todas as
+	// superfícies de venda, mas segue visível no cadastro, nas compras, no estoque e nas fichas técnicas.
+	// Opcional SEM default: payload sem o campo não altera o valor persistido
+	// (clients antigos não reativam a venda em edições não relacionadas).
+	vendavel: z
+		.boolean({
+			required_error: "Status de venda do produto não informado.",
+			invalid_type_error: "Tipo não válido para status de venda do produto.",
+		})
+		.optional(),
 	nome: z.string({
 		required_error: "Nome do produto não informado.",
 		invalid_type_error: "Tipo não válido para nome do produto.",
