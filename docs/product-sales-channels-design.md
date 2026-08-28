@@ -1,6 +1,6 @@
 # Canais de Venda — Vendabilidade e Preço por Canal
 
-> Design doc. **Fases 1, 2 e 3 implementadas** — coluna `vendavel` + gate em todas as superfícies; tabelas de canal e
+> Design doc. **Fases 1 a 4 implementadas** (a 4 no doc irmão de iFood; ver lá os fatos da API descobertos ao vivo). Antes: **fases 1, 2 e 3** — coluna `vendavel` + gate em todas as superfícies; tabelas de canal e
 > overrides, resolver, rotas; cutover do shop com dual-read/dual-write (§4); disponibilidade E preço por canal
 > aplicados em SHOP/POS/COMANDA (catálogos devolvem o preço resolvido; `validateSaleItemsPricing`/
 > `computeSaleItemsPricingDrift` aceitam `canal` e conferem contra o preço do canal da venda); matriz "Canais de

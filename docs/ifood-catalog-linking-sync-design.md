@@ -1,6 +1,26 @@
 # Vínculo e Sincronização de Catálogo — RecompraCRM ↔ iFood
 
-> Design doc — planejamento. Nada aqui está implementado ainda.
+> Design doc — **IMPLEMENTADO** (2026-08-28), com desvios registrados abaixo. Tabela `catalog_links`,
+> vínculo/matching, publish/import, push on-save, reconciliação + cron e ingestão por vínculo estão
+> no ar. Migração `drizzle/0083_catalog_links.sql` aplicada. Validado ao vivo contra o merchant de
+> homologação (org 59c2b238…), restaurando o catálogo remoto ao estado original após cada teste.
+>
+> **Fatos da API descobertos no teste ao vivo — não estão na documentação do iFood:**
+> 1. **Leitura eventualmente consistente**: um `PATCH /items` bem-sucedido ainda devolve o preço
+>    antigo numa leitura imediata. A reconciliação tem janela de graça de 2 min (`propagando`).
+> 2. **Normalização de texto**: o iFood salva "GN" como "Gn". Comparação de nome/descrição ignora
+>    caixa, senão o vínculo fica DIVERGENTE para sempre.
+> 3. **`productId` não é honrado**: o item volta sob outro id; o publish relê o item e grava o id
+>    autoritativo, senão o `PUT /products` responde 404.
+> 4. **`serving` é obrigatório** no `PUT /products/{id}` (400 sem ele), apesar de ausente na doc.
+> 5. **Leituras divergem entre si**: `GET /items/{id}/flat` e a listagem por categoria podem
+>    devolver valores diferentes para o mesmo item no mesmo instante. A reconciliação usa a
+>    listagem por categoria (a que reflete o push mais cedo).
+>
+> **Desvio de escopo**: a política `preco` mudou de sentido. Com a primitiva de canais
+> (`docs/product-sales-channels-design.md`), `preco: true` empurra o **preço resolvido do canal
+> iFood** — o "mesmo produto, preço diferente no iFood" deixou de ser opt-out e virou override de
+> canal com sync ligado. `preco: false` segue existindo para quem gere o preço só no Portal.
 > Contexto: o módulo de gestão iFood (`lib/integrations/ifood/`, `app/dashboard/integrations/ifood/`) já opera o catálogo remoto do iFood via API. Este documento desenha a ponte entre o **cadastro interno de produtos** do Recompra e esse catálogo remoto.
 
 ---
