@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
+import { syncShopSalesChannel } from "@/lib/products/sales-channels-store";
 import { normalizeShopSettingsConfiguration } from "@/lib/shop/config";
 import { ShopModeEnum } from "@/schemas/enums";
 import { DEFAULT_SHOP_SETTINGS_CONFIGURATION, ShopSettingsConfigurationSchema } from "@/schemas/shop";
@@ -126,6 +127,10 @@ async function updateShopSettingsRoute(request: NextRequest) {
 			},
 		})
 		.returning();
+
+	// Dual-write: enquanto o painel edita o bloco produtos do jsonb, o canal SHOP é mantido em
+	// sincronia — é dele que o catálogo lê. O jsonb sai numa release futura.
+	await syncShopSalesChannel({ orgId, produtos: configuracoes.produtos });
 
 	return NextResponse.json({
 		data: {

@@ -1,8 +1,9 @@
 # Canais de Venda — Vendabilidade e Preço por Canal
 
 > Design doc. **Fases 1 e 2 implementadas** (coluna `vendavel` + gate em todas as superfícies de venda; tabelas de
-> canal e overrides, resolver, rotas). Fases 3 (preço por canal nos pontos de precificação) e 4 (iFood via
-> `catalog_links`) ainda não. A migração `drizzle/0082_product_sales_channels.sql` é aplicada manualmente.
+> canal e overrides, resolver, rotas; cutover do shop para o canal com dual-read/dual-write — ver §4). Pendentes: UI da
+> matriz de canais, fase 3 (preço por canal nos pontos de precificação) e fase 4 (iFood via `catalog_links`). A
+> migração `drizzle/0082_product_sales_channels.sql` é aplicada manualmente.
 > Contexto: organizações ERP vendem pelas superfícies internas (PDV, loja digital, comanda/QR) e por integrações (iFood). Hoje cada superfície inventou sua própria regra de visibilidade de produto, não existe distinção entre produto vendável e matéria-prima, e não existe preço por canal. Este documento desenha a primitiva nativa que unifica isso.
 > Documento irmão: `docs/ifood-catalog-linking-sync-design.md` (mecanismo de sincronização com catálogos remotos — consome a primitiva desenhada aqui, ver §5).
 
@@ -117,25 +118,28 @@ product_channel_settings
 Módulo único: `lib/products/sales-channels.ts`. Duas funções, e **nenhuma superfície implementa filtro próprio**:
 
 ```
-resolveChannelAvailability(product, variant?, channel):
-  product.ativo
-  && product.vendavel
-  && (variant ? variant.ativo : true)
-  && (override.disponivel ?? (channel.catalogoModo === "TODOS"))
-  && gates específicos do canal          -- v1: SHOP mantém precoVenda > 0 e gate de estoque
+resolveChannelAvailability({ product, variant?, channel, overrides: { product?, variant? } }):
+  product.ativo && product.vendavel
+  && (overrides.product.disponivel ?? (channel.catalogoModo === "TODOS"))   -- presença do PRODUTO no canal
+  && (variant ? variant.ativo && overrides.variant.disponivel !== false : true)
+  && gates específicos do canal          -- SHOP mantém precoVenda > 0 e gate de estoque
                                          --     (política do canal, aplicada AQUI, não em catalog.ts)
 
-resolveChannelPrice(product, variant?, channel):
-  variant ? (override(variant, channel).precoVenda ?? variant.precoVenda)
-          : (override(product, channel).precoVenda ?? product.precoVenda)
+resolveChannelPrice(product, variant?, overrides):
+  variant ? (overrides.variant.precoVenda ?? variant.precoVenda)
+          : (overrides.product.precoVenda ?? product.precoVenda)
 ```
 
 Regras que ficam explícitas:
 
+- **Disponibilidade herda em cadeia**: o override do produto (senão o `catalogo_modo`) decide a presença do produto no
+  canal; a linha da variante só RESTRINGE dentro de um produto visível. Uma variante `disponivel=true` não ressuscita um
+  produto excluído — e num produto incluído em modo `SELECIONADOS`, as variantes seguem sem precisar de linha própria.
+  (Sem esta cadeia, incluir um produto no cardápio curado esconderia todas as suas variantes.)
 - **Override de preço é node-scoped**: override de variante vale para a variante; override nível-produto vale só para produto sem variantes. Sem fallback cruzado (produto-com-variantes + override nível-produto seria ambíguo — proibido na validação de escrita).
 - **Preço final do item** continua `resolveChannelPrice(...) + Σ precoDelta` dos modificadores. `precoDelta` por canal fica fora da v1 (ver D3).
 - `disponivel` do override tem precedência sobre `catalogo_modo` nos dois sentidos: em modo `TODOS` uma linha `false` exclui; em modo `SELECIONADOS` só linhas `true` incluem.
-- A resolução em lote (catálogo inteiro de um canal) é uma query com left join — a tabela esparsa mantém isso barato.
+- A resolução em lote (catálogo inteiro de um canal) carrega o canal + linhas esparsas em duas queries indexadas — a tabela esparsa mantém isso barato.
 
 ---
 
@@ -159,7 +163,13 @@ Edição de venda existente: filtros valem para **adicionar** itens; itens já l
 - `modo: "INCLUIR"` → `catalogoModo = "SELECIONADOS"` + uma linha `disponivel=true` por `produtoId`.
 - `modo: "EXCLUIR"` → `catalogoModo = "TODOS"` + uma linha `disponivel=false` por `produtoId`.
 - **`destaqueIds` fica em `shop_settings`** (decidido): é merchandising/apresentação, não disponibilidade, e não generaliza para outros canais.
-- Rollout com dual-read por um release (resolver lê tabela; se canal SHOP sem linha e jsonb ainda populado, migra on-read ou via script), depois o bloco `modo/produtoIds` é removido do schema Zod da loja.
+- **IMPLEMENTADO (dual-read + dual-write)**: `getShopCatalogProducts` lê o canal SHOP quando a linha existe e cai no
+  jsonb quando não (proteção para deploy antes da migração/backfill). O PUT de `/api/shop/settings` continua gravando o
+  jsonb E sincroniza o canal (`syncShopSalesChannel` — preserva `preco_venda` das linhas ao reescrever `disponivel`).
+  O provisionamento (`ensureSalesChannels`) é shop-aware: o canal SHOP nasce traduzindo o modo do jsonb, nunca com
+  default cego. Backfill + verificação: `npm run backfill:shop-sales-channels` (compara o catálogo resolvido pelas duas
+  fontes por org e falha se divergirem). Passo restante: remover o bloco `modo/produtoIds` do schema Zod da loja e o
+  caminho legado do catálogo, numa release seguinte, com o painel passando a editar o canal diretamente.
 
 ---
 

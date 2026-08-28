@@ -2,6 +2,7 @@ import type { TSalesChannelCatalogModeEnum, TSalesChannelTypeEnum } from "@/sche
 
 export type TChannel = { canal: TSalesChannelTypeEnum; catalogoModo: TSalesChannelCatalogModeEnum };
 export type TChannelOverride = { disponivel?: boolean | null; precoVenda?: number | null } | null;
+export type TChannelOverrides = { product?: TChannelOverride; variant?: TChannelOverride };
 export type TChannelProduct = {
 	ativo?: boolean | null;
 	vendavel: boolean;
@@ -23,25 +24,37 @@ export const DEFAULT_SALES_CHANNELS = [
 	{ canal: "COMANDA", catalogoModo: "TODOS" },
 ] as const satisfies readonly TChannel[];
 
-export function resolveChannelPrice(product: TChannelProduct, variant: TChannelVariant | null | undefined, override?: TChannelOverride) {
-	return override?.precoVenda ?? (variant ? variant.precoVenda : product.precoVenda) ?? null;
+// Preço é node-scoped: o override da variante vale para a variante, o do produto só para produto
+// sem variante. Sem fallback cruzado — produto-com-variantes + override nível-produto é ambíguo
+// e é rejeitado na escrita (PUT /api/products/channel-settings).
+export function resolveChannelPrice(product: TChannelProduct, variant: TChannelVariant | null | undefined, overrides?: TChannelOverrides) {
+	return variant ? (overrides?.variant?.precoVenda ?? variant.precoVenda ?? null) : (overrides?.product?.precoVenda ?? product.precoVenda ?? null);
 }
 
+// Disponibilidade herda em cadeia: o produto decide sua presença no canal (override do produto,
+// senão o modo do canal); a variante só RESTRINGE dentro de um produto visível — uma linha
+// disponivel=true numa variante não ressuscita um produto excluído do canal.
 export function resolveChannelAvailability({
 	product,
 	variant,
 	channel,
-	override,
+	overrides,
 }: {
 	product: TChannelProduct;
 	variant?: TChannelVariant | null;
 	channel: TChannel;
-	override?: TChannelOverride;
+	overrides?: TChannelOverrides;
 }) {
-	if (!product.ativo || !product.vendavel || (variant && !variant.ativo)) return false;
-	if (!(override?.disponivel ?? channel.catalogoModo === "TODOS")) return false;
+	if (!product.ativo || !product.vendavel) return false;
+	if (!(overrides?.product?.disponivel ?? channel.catalogoModo === "TODOS")) return false;
+	if (variant) {
+		if (!variant.ativo) return false;
+		if (overrides?.variant?.disponivel === false) return false;
+	}
 	if (channel.canal !== "SHOP") return true;
+
+	// Política do canal SHOP: sem preço não lista, sem estoque rastreado não lista.
 	const node = variant ?? product;
-	const price = resolveChannelPrice(product, variant, override);
+	const price = resolveChannelPrice(product, variant, overrides);
 	return (price ?? 0) > 0 && (!node.rastreamentoEstoqueAtivo || (node.quantidade ?? 0) > 0);
 }
