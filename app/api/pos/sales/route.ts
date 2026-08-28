@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { resolveSaleFiscalEmissionOverride } from "@/lib/sales/sale-fiscal-emission-override";
+import { toSalesChannelType } from "@/lib/products/sales-channels";
 import { computeSaleItemsPricingDrift, validateSaleItemsPricing } from "@/lib/sales/sale-pricing-validation";
 import { admitSaleRewardRedemption, buildSaleRewardDraftSnapshot, parseSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-redemption";
 import { syncDraftItems } from "@/lib/sales/drafts/sync-draft-items";
@@ -128,7 +129,7 @@ async function createSaleDraft({ input, session }: { input: TCreateSaleDraftInpu
 	}
 
 	// Nunca confie nos valores do cliente: recalcula os itens contra o catálogo antes de qualquer uso.
-	await validateSaleItemsPricing({ orgId, itens: input.itens });
+	await validateSaleItemsPricing({ orgId, itens: input.itens, canal: "POS" });
 
 	// Recompensa no rascunho: valida e carimba o snapshot autoritativo em rascunhoMetadados.
 	// Item e débito de saldo só nascem na confirmação, que revalida tudo (preços podem mudar).
@@ -338,6 +339,8 @@ async function getSaleDraft({ input, session }: { input: { id: string }; session
 	// O checkout precisa saber, antes de confirmar, se os preços congelados no rascunho ainda valem.
 	const pricing = await computeSaleItemsPricingDrift({
 		orgId,
+		// Drift contra os preços do canal da venda: um orçamento do shop confere contra o SHOP.
+		canal: toSalesChannelType(sale.canal),
 		itens: sale.itens.map((item) => ({
 			id: item.id,
 			nome: item.produtoVariante?.nome ?? item.produto?.nome ?? "Item",
@@ -399,7 +402,7 @@ async function updateSaleDraft({ input, session }: { input: TUpdateSaleDraftInpu
 		if (input.itens.length === 0 && !parseSaleRewardDraftSnapshot(existing.rascunhoMetadados) && !input.recompensaResgate) {
 			throw new createHttpError.BadRequest("O rascunho precisa de pelo menos um item.");
 		}
-		await validateSaleItemsPricing({ orgId, itens: input.itens });
+		await validateSaleItemsPricing({ orgId, itens: input.itens, canal: "POS" });
 	}
 
 	const valorBaseItens = input.itens

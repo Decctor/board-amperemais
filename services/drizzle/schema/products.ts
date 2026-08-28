@@ -27,6 +27,7 @@ export const products = newTable(
 			onDelete: "cascade",
 		}),
 		ativo: boolean("ativo").default(true),
+		vendavel: boolean("vendavel").default(true).notNull(),
 		nome: text("nome").notNull(),
 		descricao: text("descricao"),
 		imagemCapaUrl: text("imagem_capa_url"),

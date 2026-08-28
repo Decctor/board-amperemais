@@ -1,3 +1,4 @@
+import CheckboxInput from "@/components/Inputs/CheckboxInput";
 import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
@@ -72,6 +73,19 @@ export default function ProductStateGeneralBlock({
 					placeholder="Preencha aqui o grupo do produto."
 					handleChange={(value) => updateProduct({ grupo: value })}
 				/>
+				<div className="w-full flex flex-col items-center gap-1">
+					<CheckboxInput
+						checked={product.vendavel}
+						labelTrue="PRODUTO VENDÁVEL"
+						labelFalse="PRODUTO VENDÁVEL"
+						handleChange={(value) => updateProduct({ vendavel: value })}
+					/>
+					{product.vendavel ? null : (
+						<p className="text-center text-[0.6rem] text-primary/60 tracking-tight">
+							Matéria-prima ou item interno: não aparece no PDV, na loja digital nem nas comandas.
+						</p>
+					)}
+				</div>
 
 				{showPricing ? (
 					<div className="w-full flex items-center gap-2 lg:flex-row">

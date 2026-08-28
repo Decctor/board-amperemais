@@ -44,6 +44,8 @@ export type TProductOptionState = z.infer<typeof ProductOptionStateSchema>;
 
 export const ProductStateSchema = z.object({
 	product: ProductSchema.omit({ organizacaoId: true }).extend({
+		// Sempre definido no estado do formulário (o hook aplica o default), embora opcional no payload.
+		vendavel: z.boolean(),
 		imagemCapaHolder: z.object({
 			file: z.instanceof(File).optional().nullable(),
 			previewUrl: z
@@ -207,6 +209,7 @@ type UseProductStateProps = {
 export const useProductState = ({ initialState }: UseProductStateProps = {}) => {
 	const [state, setState] = useState<TProductState>({
 		product: {
+			vendavel: initialState?.product?.vendavel ?? true,
 			codigo: initialState?.product?.codigo ?? "",
 			nome: initialState?.product?.nome ?? "",
 			descricao: initialState?.product?.descricao ?? null,
@@ -1120,6 +1123,8 @@ export function useProductFiscalProfileState({ initialState }: UseProductFiscalP
 export type TUseProductFiscalProfileState = ReturnType<typeof useProductFiscalProfileState>;
 
 export const ProductCoreStateSchema = ProductSchema.omit({ organizacaoId: true }).extend({
+	// Sempre definido no estado do formulário (o hook aplica o default), embora opcional no payload.
+	vendavel: z.boolean(),
 	imagemCapaHolder: z.object({
 		file: z.instanceof(File).optional().nullable(),
 		previewUrl: z
@@ -1141,6 +1146,7 @@ type UseProductCoreStateProps = {
 export function useProductCoreState({ initialState }: UseProductCoreStateProps = {}) {
 	const initialStateComplete = useMemo<TProductCoreState>(
 		() => ({
+			vendavel: initialState?.vendavel ?? true,
 			nome: initialState?.nome ?? "",
 			descricao: initialState?.descricao ?? null,
 			codigo: initialState?.codigo ?? "",

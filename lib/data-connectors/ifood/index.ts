@@ -74,6 +74,16 @@ export async function fetchIfoodImportBatch({
 	const client = createIfoodClient(validConfig);
 	const events = await pollIfoodEvents(client, { merchantIds: validConfig.merchantIds });
 	const relevantEvents = getRelevantOrderEvents(events);
+	// Sem isto o polling fica cego: os codigos crus sao a unica forma de distinguir um cancelamento
+	// da loja (CAN) de uma solicitacao do cliente (CAR) ou de uma disputa (HSD) durante a homologacao.
+	if (events.length)
+		console.log("[IFOOD_EVENTS]", {
+			organizationId,
+			received: events.map((event) => `${event.fullCode ?? event.code}${event.orderId ? `:${event.orderId.slice(0, 8)}` : ""}`),
+			ignored: events
+				.filter((event) => !relevantEvents.includes(event))
+				.map((event) => event.fullCode ?? event.code),
+		});
 	const orderIds = uniqueOrderIds(relevantEvents);
 	const orders = await Promise.all(orderIds.map((orderId) => getIfoodOrder(client, orderId)));
 	const eventIds = events.map((event) => event.id);

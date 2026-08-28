@@ -69,16 +69,22 @@ export async function dispatchIfoodOrder(client: AxiosInstance, orderId: string)
 }
 
 /**
- * Cancelamento iniciado pela LOJA. O body documentado é apenas `{ reason: "<código>" }` — o código
- * numérico de /cancellationReasons vai em `reason`. Responde 202; o desfecho chega pelo polling
- * como CANCELLED (aceito) ou CANCELLATION_REQUEST_FAILED (rejeitado). O CANCELLATION_REQUESTED
- * emitido logo após é só o registro da solicitação — não existe endpoint de resposta a ele
- * (cancelamento solicitado pelo cliente é negociado na Plataforma de Negociação, via
- * HANDSHAKE_DISPUTE).
+ * Cancelamento iniciado pela LOJA. Responde 202; o desfecho chega pelo polling como CANCELLED
+ * (aceito) ou CANCELLATION_REQUEST_FAILED (rejeitado). O CANCELLATION_REQUESTED emitido logo após
+ * é só o registro da solicitação — não existe endpoint de resposta a ele (cancelamento solicitado
+ * pelo cliente é negociado na Plataforma de Negociação, via HANDSHAKE_DISPUTE).
+ *
+ * O body leva o código de /cancellationReasons em `reason` E em `cancellationCode`. A doc descreve
+ * só `reason`, mas a API ao vivo recusa com `Field 'cancellationCode' is required` — enviar apenas
+ * `reason` (como fizemos em eb626f9c, seguindo a doc) quebra todo cancelamento em produção.
+ * Campo desconhecido é ignorado pelo iFood, então o superset é seguro nas duas variantes.
  */
 export async function requestIfoodOrderCancellation(client: AxiosInstance, orderId: string, cancellationCode: string): Promise<void> {
 	try {
-		await client.post(`${IFOOD_ORDER_BASE_URL}/orders/${orderId}/requestCancellation`, { reason: cancellationCode });
+		await client.post(`${IFOOD_ORDER_BASE_URL}/orders/${orderId}/requestCancellation`, {
+			reason: cancellationCode,
+			cancellationCode,
+		});
 	} catch (error) {
 		mapIfoodError("requestIfoodOrderCancellation", error);
 	}

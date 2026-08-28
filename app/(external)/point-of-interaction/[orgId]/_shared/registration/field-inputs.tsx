@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { VirtualKeyboard } from "@/components/ui/virtual-keyboard";
+import { formatToCPForCNPJ } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import type { TCustomFieldOption } from "@/schemas/custom-fields";
 import { Check, Minus, Plus, UserRound } from "lucide-react";
@@ -322,6 +323,53 @@ export function NumberEntry({ label, description, placeholder, value, onChange, 
 			value={value}
 			onChange={(event) => onChange(event.target.value.replace(/[^\d.,]/g, "").slice(0, 12))}
 			className="h-14 rounded-2xl border-2 border-border bg-card px-4 text-base"
+		/>
+	);
+}
+
+type DocumentEntryProps = {
+	label: string;
+	description: string | null;
+	/** Dígitos crus do CPF/CNPJ — a máscara é só de exibição. */
+	value: string;
+	onChange: (digits: string) => void;
+	isKiosk: boolean;
+	/** Documento incompleto não é documento errado: a borda só acusa quando o dígito verificador cai. */
+	isInvalid: boolean;
+};
+
+/**
+ * CPF ou CNPJ na mesma entrada: o que decide é a quantidade de dígitos, então não há alternador de
+ * tipo para o cliente errar. Mesma gramática do `DateEntry` — dígitos no rascunho, máscara na tela.
+ */
+export function DocumentEntry({ label, description, value, onChange, isKiosk, isInvalid }: DocumentEntryProps) {
+	if (isKiosk) {
+		return (
+			<VirtualKeyboard
+				type="numeric"
+				label={label}
+				description={description ?? "Digite apenas os números do documento."}
+				placeholder="Digite o CPF/CNPJ"
+				value={value}
+				onChange={onChange}
+				maxLength={14}
+				formatValue={formatToCPForCNPJ}
+				confirmLabel="Confirmar documento"
+				triggerClassName={cn(
+					"h-16 short:h-14 justify-start text-left px-4 rounded-2xl border-2 border-border bg-card text-base font-medium",
+					isInvalid && "border-destructive",
+				)}
+			/>
+		);
+	}
+	return (
+		<Input
+			type="text"
+			inputMode="numeric"
+			placeholder="000.000.000-00"
+			value={formatToCPForCNPJ(value)}
+			onChange={(event) => onChange(event.target.value.replace(/\D/g, "").slice(0, 14))}
+			className={cn("h-14 rounded-2xl border-2 border-border bg-card px-4 text-base tabular-nums", isInvalid && "border-destructive")}
 		/>
 	);
 }

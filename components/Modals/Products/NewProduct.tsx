@@ -141,6 +141,7 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 		// 4. Build the input for the API
 		const input: TCreateProductInput = {
 			product: {
+				vendavel: state.product.vendavel,
 				nome: state.product.nome,
 				descricao: state.product.descricao,
 				codigo: state.product.codigo,
@@ -172,6 +173,7 @@ export default function NewProduct({ user, userMembership, closeModal, callbacks
 			if (callbacks?.onSuccess) callbacks.onSuccess();
 			resetState({
 				product: {
+					vendavel: true,
 					codigo: "",
 					nome: "",
 					descricao: null,

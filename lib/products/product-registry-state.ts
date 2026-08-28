@@ -5,6 +5,7 @@ import type { TProductState } from "@/state-hooks/use-product-state";
 export function mergeProductStateFromHydration(partial: Partial<TProductState>): TProductState {
 	return {
 		product: {
+			vendavel: partial.product?.vendavel ?? true,
 			codigo: partial.product?.codigo ?? "",
 			nome: partial.product?.nome ?? "",
 			descricao: partial.product?.descricao ?? null,
@@ -97,6 +98,7 @@ export function hydrateAddOnsState(product: TGetProductsOutputById): Partial<TPr
 
 export function buildProductMetadata(product: TGetProductsOutputById): TUpdateProductInput["product"] {
 	return {
+		vendavel: product.vendavel,
 		nome: product.nome,
 		descricao: product.descricao,
 		imagemCapaUrl: product.imagemCapaUrl,

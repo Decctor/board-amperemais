@@ -94,7 +94,7 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 	}
 
 	// Nunca confie nos valores do cliente: recalcula os itens contra o catálogo antes de qualquer uso.
-	await validateSaleItemsPricing({ orgId, itens: input.itens });
+	await validateSaleItemsPricing({ orgId, itens: input.itens, canal: "POS" });
 
 	// Resgate de recompensa: admissão + resolução autoritativa do prêmio contra o catálogo.
 	// Exclusivo com cupom (espelha o POI) e com resgate-desconto (a idempotência do ledger

@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { schedulePushForProduct } from "@/lib/integrations/ifood/sync/push";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getSalesIntegrationCondition } from "@/lib/sales/integration-filter";
 import { ProductFiscalProfileSchema } from "@/schemas/fiscal";
@@ -1320,6 +1321,7 @@ async function updateProduct({ session, input }: { session: TAuthUserSession; in
 		const [updatedProduct] = await tx
 			.update(products)
 			.set({
+				vendavel: input.product.vendavel,
 				nome: input.product.nome,
 				descricao: input.product.descricao,
 				codigo: input.product.codigo,
@@ -1545,6 +1547,10 @@ const updateProductHandler: PagesRouteHandler<TUpdateProductOutput> = async (req
 	if (!sessionUser) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = UpdateProductInputSchema.parse(req.body);
 	const data = await updateProduct({ session: sessionUser, input });
+	// Propaga nome/descrição/preço/disponibilidade para as lojas iFood onde o produto está
+	// vinculado. Assíncrono de propósito: o cadastro não pode falhar por indisponibilidade do
+	// iFood — falhas ficam no vínculo (status ERRO) e o cron diário recupera.
+	schedulePushForProduct({ orgId: sessionUser.membership!.organizacao.id, produtoId: input.productId });
 	return res.status(200).json(data);
 };
 
@@ -1610,6 +1616,7 @@ async function createProduct({ session, input }: { session: TAuthUserSession; in
 			.insert(products)
 			.values({
 				organizacaoId: userOrgId,
+				vendavel: input.product.vendavel,
 				nome: input.product.nome,
 				descricao: input.product.descricao,
 				codigo: input.product.codigo,

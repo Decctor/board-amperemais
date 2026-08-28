@@ -1,7 +1,7 @@
 "use client";
 
 import { IfoodIcon } from "@/components/icons";
-import type { TSalesChannel } from "@/lib/sales-channels/status";
+import type { TSalesChannelStatusKey } from "@/lib/sales-channels/status";
 import { cn } from "@/lib/utils";
 import { Store } from "lucide-react";
 
@@ -14,7 +14,7 @@ import { Store } from "lucide-react";
  */
 
 type ChannelMarkProps = {
-	canal: TSalesChannel;
+	canal: TSalesChannelStatusKey;
 	size?: "sm" | "md";
 };
 

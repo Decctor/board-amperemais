@@ -7,7 +7,7 @@ import type { TCustomFieldTypeEnum } from "@/schemas/enums";
  * criada — a fonte da verdade continua única, e o resto da plataforma (aniversariantes, disparos
  * por e-mail) enxerga o dado sem saber que ele entrou por um campo personalizado.
  */
-export type TNativeCustomFieldWriteThrough = "dataNascimento" | "email";
+export type TNativeCustomFieldWriteThrough = "dataNascimento" | "email" | "cpfCnpj";
 
 export type TNativeCustomField = {
 	/** Chave kebab-case, estável, gravada em `custom_fields.chave_nativa`. */
@@ -74,6 +74,13 @@ export const NATIVE_CUSTOM_FIELDS = {
 		tipo: "TEXTO",
 		titulo: "E-mail",
 		writeThrough: "email",
+	},
+	"cpf-cnpj": {
+		chave: "cpf-cnpj",
+		tipo: "TEXTO",
+		titulo: "CPF/CNPJ",
+		descricao: "Documento do cliente, só os números.",
+		writeThrough: "cpfCnpj",
 	},
 } as const satisfies Record<string, TNativeCustomField>;
 

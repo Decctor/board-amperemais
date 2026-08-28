@@ -22,10 +22,13 @@ import { db } from "@/services/drizzle";
 
 /** Vocabulário único de estado — é ele que deixa o pill do header genérico entre canais. */
 export type TSalesChannelState = "ABERTA" | "FECHADA" | "ATENCAO" | "DESATIVADA" | "INDETERMINADO";
-export type TSalesChannel = "IFOOD" | "LOJA_DIGITAL";
+// Chave do trilho de STATUS do header (aberto/fechado por canal) — não confundir com o registro
+// de canais de venda (`sales_channels`, enum POS|SHOP|COMANDA|IFOOD): vocabulários distintos,
+// "LOJA_DIGITAL" aqui equivale a "SHOP" lá. Unificar quando o trilho migrar para o registro.
+export type TSalesChannelStatusKey = "IFOOD" | "LOJA_DIGITAL";
 
 export type TSalesChannelStatusDTO = {
-	canal: TSalesChannel;
+	canal: TSalesChannelStatusKey;
 	rotulo: string;
 	estado: TSalesChannelState;
 	detalhe: string | null;
@@ -149,8 +152,7 @@ async function buildShopChannel(organizacaoId: string): Promise<TSalesChannelSta
 		configuracoes: normalizeShopSettingsConfiguration(settings.configuracoes),
 	});
 
-	const estado: TSalesChannelState =
-		disponibilidade.status === "ABERTA" ? "ABERTA" : disponibilidade.status === "FECHADA" ? "FECHADA" : "DESATIVADA";
+	const estado: TSalesChannelState = disponibilidade.status === "ABERTA" ? "ABERTA" : disponibilidade.status === "FECHADA" ? "FECHADA" : "DESATIVADA";
 
 	return {
 		canal: "LOJA_DIGITAL",
@@ -186,9 +188,11 @@ export async function getSalesChannelsStatus({
 	permissoes: TOrganizationMemberPermissions | null | undefined;
 }): Promise<TSalesChannelStatusDTO[]> {
 	const cached = readCache(organizacaoId);
-	const canais = cached ?? (await Promise.all([settleChannel(() => buildIfoodChannel(organizacaoId)), settleChannel(() => buildShopChannel(organizacaoId))])).filter(
-		(canal): canal is TSalesChannelStatusDTO => canal !== null,
-	);
+	const canais =
+		cached ??
+		(await Promise.all([settleChannel(() => buildIfoodChannel(organizacaoId)), settleChannel(() => buildShopChannel(organizacaoId))])).filter(
+			(canal): canal is TSalesChannelStatusDTO => canal !== null,
+		);
 
 	if (!cached) writeCache(organizacaoId, canais);
 

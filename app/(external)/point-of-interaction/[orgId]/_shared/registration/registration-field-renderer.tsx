@@ -4,7 +4,8 @@ import { resolveNativeCustomField } from "@/lib/custom-fields/native-catalog";
 import type { TPoiRegistrationFieldDefinition } from "@/lib/point-of-interaction/registration";
 import type { TCustomFieldOption } from "@/schemas/custom-fields";
 import { AlertCircle } from "lucide-react";
-import { ChoiceGroup, DateEntry, HouseholdSelector, MultiChoiceGrid, NumberEntry, TextEntry } from "./field-inputs";
+import { isValidCpfCnpj } from "@/lib/validation";
+import { ChoiceGroup, DateEntry, DocumentEntry, HouseholdSelector, MultiChoiceGrid, NumberEntry, TextEntry } from "./field-inputs";
 import type { TRegistrationAnswerDraft } from "./registration-answers";
 
 /**
@@ -77,6 +78,18 @@ export function RegistrationFieldRenderer({ campo, draft, onChange, isKiosk }: R
 					onChange={onChange}
 					isKiosk={isKiosk}
 					inputMode="email"
+				/>
+			);
+		case "cpf-cnpj":
+			return (
+				<DocumentEntry
+					label={campo.titulo}
+					description={campo.descricao}
+					value={textValue}
+					onChange={onChange}
+					isKiosk={isKiosk}
+					// 11 ou 14 dígitos: só aí o documento está completo e o dígito verificador vale.
+					isInvalid={(textValue.length === 11 || textValue.length === 14) && !isValidCpfCnpj(textValue)}
 				/>
 			);
 		case "gender":

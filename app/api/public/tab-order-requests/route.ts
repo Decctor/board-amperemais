@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { appApiHandler } from "@/lib/app-api";
-import { hashPublicToken, resolveServiceSettings } from "@/lib/tabs";
+import { filterComandaOrderableProductIds, hashPublicToken, resolveServiceSettings } from "@/lib/tabs";
 import { enforcePublicRateLimit } from "@/lib/tabs/public-rate-limit";
 import { TabOrderRequestPayloadSchema } from "@/schemas/tab-order-requests";
 import { db } from "@/services/drizzle";
@@ -90,13 +90,10 @@ async function createPublicTabOrderRequest({ input, clientIp }: { input: TCreate
 		throw new createHttpError.Forbidden("Pedidos pelo QR Code nao estao habilitados. Chame um atendente.");
 	}
 
-	// Valida os produtos referenciados (existencia/atividade na organizacao — sem precos).
+	// Valida os produtos referenciados (existencia/atividade/vendabilidade/canal COMANDA — sem precos).
 	const productIds = [...new Set(input.items.map((item) => item.produtoId))];
-	const produtos = await db.query.products.findMany({
-		where: (fields, { and, eq, inArray }) => and(inArray(fields.id, productIds), eq(fields.organizacaoId, orgId), eq(fields.ativo, true)),
-		columns: { id: true },
-	});
-	if (produtos.length !== productIds.length) {
+	const orderableIds = await filterComandaOrderableProductIds({ orgId, productIds });
+	if (orderableIds.size !== productIds.length) {
 		throw new createHttpError.BadRequest("Um ou mais itens nao estao disponiveis. Atualize a pagina.");
 	}
 

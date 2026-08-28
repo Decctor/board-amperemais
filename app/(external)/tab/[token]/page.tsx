@@ -1,5 +1,5 @@
 import { formatToMoney } from "@/lib/formatting";
-import { hashPublicToken, resolveServiceSettings } from "@/lib/tabs";
+import { getComandaMenuProducts, hashPublicToken, resolveServiceSettings } from "@/lib/tabs";
 import { OrgColorsProvider } from "@/components/Providers/OrgColorsProvider";
 import { db } from "@/services/drizzle";
 import { sales } from "@/services/drizzle/schema";
@@ -87,19 +87,7 @@ export default async function TabPublicPage({ params }: { params: Promise<{ toke
 	const isOpen = tab.status === "ABERTA";
 	const orderingEnabled = isOpen && settings.pedidosCliente !== "DESABILITADO";
 
-	const products = orderingEnabled
-		? await db.query.products.findMany({
-				where: (fields, { and, eq }) => and(eq(fields.organizacaoId, tab.organizacaoId), eq(fields.ativo, true)),
-				columns: { id: true, nome: true, grupo: true, descricao: true, precoVenda: true, imagemCapaUrl: true },
-				with: {
-					variantes: {
-						where: (fields, { eq }) => eq(fields.ativo, true),
-						columns: { id: true, nome: true, precoVenda: true },
-					},
-				},
-				orderBy: (fields, { asc }) => asc(fields.nome),
-			})
-		: [];
+	const products = orderingEnabled ? await getComandaMenuProducts({ orgId: tab.organizacaoId }) : [];
 
 	const etiqueta = tab.servicePoint?.rotulo ?? (tab.codigo ? `Comanda ${tab.codigo}` : "Conta");
 	const activeOrders = tab.pedidos.filter((order) => order.status !== "CANCELADO");

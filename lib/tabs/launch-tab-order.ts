@@ -50,7 +50,9 @@ export async function launchTabOrder({ orgId, userId, input }: { orgId: string; 
 	if (input.itens.length === 0) throw new createHttpError.BadRequest("Informe pelo menos um item para o pedido.");
 
 	// Nunca confie nos valores do cliente: recalcula os itens contra o catalogo antes de qualquer uso.
-	await validateSaleItemsPricing({ orgId, itens: input.itens });
+	// Autoridade do canal COMANDA: preço e presença valem para o pedido da mesa, venha ele do
+	// QR do cliente (aprovação) ou do composer do operador.
+	await validateSaleItemsPricing({ orgId, itens: input.itens, canal: "COMANDA" });
 
 	// Custos atuais do catalogo (mesmo padrao do rascunho de POS).
 	const productIds = [...new Set(input.itens.map((item) => item.produtoId))];
@@ -155,7 +157,10 @@ export async function launchTabOrder({ orgId, userId, input }: { orgId: string; 
 		}
 
 		// Numero sequencial alocado sob o lock da tab; unique (tabId, numero) defende no banco.
-		const [{ maxNumero }] = await tx.select({ maxNumero: max(tabOrders.numero) }).from(tabOrders).where(eq(tabOrders.tabId, tab.id));
+		const [{ maxNumero }] = await tx
+			.select({ maxNumero: max(tabOrders.numero) })
+			.from(tabOrders)
+			.where(eq(tabOrders.tabId, tab.id));
 		const numero = (maxNumero ?? 0) + 1;
 
 		const [createdOrder] = await tx

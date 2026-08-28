@@ -1,45 +1,50 @@
 import { db } from "@/services/drizzle";
 import { productAddOnReferences, products, saleItems, sales } from "@/services/drizzle/schema";
 import { and, desc, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
+import { channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
 import type { TShopSettingsConfiguration } from "@/schemas/shop";
 
 export const SHOP_MOST_ORDERED_DAYS = 90;
 
+// O gate de preço > 0 NÃO fica no SQL: um override de canal pode tornar vendável um produto com
+// preço base zerado, então o gate roda sobre o preço RESOLVIDO, no filtro em JS abaixo.
 function getProductEligibilityConditions(orgId: string) {
-	return [eq(products.organizacaoId, orgId), eq(products.ativo, true), gt(products.precoVenda, 0)];
+	return [eq(products.organizacaoId, orgId), eq(products.ativo, true), eq(products.vendavel, true)];
 }
 
-export function productIsAvailableForShop(product: {
-	rastreamentoEstoqueAtivo: boolean | null;
-	quantidade: number | null;
-}) {
+export function productIsAvailableForShop(product: { rastreamentoEstoqueAtivo: boolean | null; quantidade: number | null }) {
 	return !product.rastreamentoEstoqueAtivo || (product.quantidade ?? 0) > 0;
 }
 
-export function variantIsAvailableForShop(variant: {
-	rastreamentoEstoqueAtivo: boolean | null;
-	quantidade: number | null;
-}) {
+export function variantIsAvailableForShop(variant: { rastreamentoEstoqueAtivo: boolean | null; quantidade: number | null }) {
 	return !variant.rastreamentoEstoqueAtivo || (variant.quantidade ?? 0) > 0;
 }
 
-export async function getShopCatalogProducts({
-	orgId,
-	configuracoes,
-}: {
-	orgId: string;
-	configuracoes: TShopSettingsConfiguration;
-}) {
+export async function getShopCatalogProducts({ orgId, configuracoes }: { orgId: string; configuracoes: TShopSettingsConfiguration }) {
 	const conditions = getProductEligibilityConditions(orgId);
-	const selectedProductIds = configuracoes.produtos.produtoIds;
+	const channelState = await loadChannelState({ orgId, canal: "SHOP" });
 
-	if (configuracoes.produtos.modo === "INCLUIR") {
-		if (selectedProductIds.length === 0) return [];
-		conditions.push(inArray(products.id, selectedProductIds));
-	}
+	if (channelState) {
+		// Fonte nova: modo do canal + linhas esparsas de disponibilidade.
+		const filter = channelProductFilter(channelState);
+		if (filter.includeIds) {
+			if (filter.includeIds.length === 0) return [];
+			conditions.push(inArray(products.id, filter.includeIds));
+		}
+		if (filter.excludeIds) conditions.push(notInArray(products.id, filter.excludeIds));
+	} else {
+		// Caminho legado (dual-read): o bloco produtos do jsonb ainda é a fonte enquanto a org
+		// não tem o canal SHOP materializado. Remover junto com o bloco modo/produtoIds do jsonb.
+		const selectedProductIds = configuracoes.produtos.produtoIds;
 
-	if (configuracoes.produtos.modo === "EXCLUIR" && selectedProductIds.length > 0) {
-		conditions.push(notInArray(products.id, selectedProductIds));
+		if (configuracoes.produtos.modo === "INCLUIR") {
+			if (selectedProductIds.length === 0) return [];
+			conditions.push(inArray(products.id, selectedProductIds));
+		}
+
+		if (configuracoes.produtos.modo === "EXCLUIR" && selectedProductIds.length > 0) {
+			conditions.push(notInArray(products.id, selectedProductIds));
+		}
 	}
 
 	const productsResult = await db.query.products.findMany({
@@ -47,7 +52,7 @@ export async function getShopCatalogProducts({
 		with: {
 			variantes: {
 				where: (fields, { eq, gt, or, isNull, and }) =>
-					and(eq(fields.ativo, true), gt(fields.precoVenda, 0), or(eq(fields.rastreamentoEstoqueAtivo, false), isNull(fields.rastreamentoEstoqueAtivo), gt(fields.quantidade, 0))),
+					and(eq(fields.ativo, true), or(eq(fields.rastreamentoEstoqueAtivo, false), isNull(fields.rastreamentoEstoqueAtivo), gt(fields.quantidade, 0))),
 				orderBy: (fields, { asc }) => asc(fields.precoVenda),
 				with: {
 					addOnsReferencias: {
@@ -91,18 +96,29 @@ export async function getShopCatalogProducts({
 		orderBy: (fields, { asc }) => asc(fields.nome),
 	});
 
-	return productsResult
-		.filter(productIsAvailableForShop)
-		.map((product) => ({
-			...product,
-			addOnsReferencias: product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
-			variantes: product.variantes
-				.filter(variantIsAvailableForShop)
-				.map((variant) => ({
-					...variant,
-					addOnsReferencias: variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
-				})),
-		}));
+	return (
+		productsResult
+			.filter(productIsAvailableForShop)
+			.map((product) => ({
+				...product,
+				// Preço resolvido do canal: exibição e cobrança mudam juntas — o pedido precifica a
+				// partir deste mesmo catálogo (catalogProductMap na rota de orders).
+				precoVenda: channelNodePrice(channelState, { produtoId: product.id, precoVenda: product.precoVenda }),
+				addOnsReferencias: product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+				variantes: product.variantes
+					.filter(variantIsAvailableForShop)
+					// Linha de variante só restringe dentro de um produto visível (mesma regra do resolver).
+					.filter((variant) => channelState?.variantOverrides.get(variant.id)?.disponivel !== false)
+					.map((variant) => ({
+						...variant,
+						precoVenda: channelNodePrice(channelState, { produtoId: product.id, produtoVarianteId: variant.id, precoVenda: variant.precoVenda }) ?? 0,
+						addOnsReferencias: variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+					}))
+					.filter((variant) => variant.precoVenda > 0),
+			}))
+			// Gate de preço da loja, sobre o preço RESOLVIDO (política do canal SHOP).
+			.filter((product) => (product.precoVenda ?? 0) > 0)
+	);
 }
 
 export type TShopCatalogProduct = Awaited<ReturnType<typeof getShopCatalogProducts>>[number];

@@ -1,3 +1,5 @@
+import { formatToCPForCNPJ } from "@/lib/formatting";
+import { isValidCpfCnpj } from "@/lib/validation";
 import type { TCustomFieldValue, TCustomFieldValueInput } from "@/schemas/custom-fields";
 import type { DBTransaction } from "@/services/drizzle";
 import { clientCustomFieldValues, clients, customFields } from "@/services/drizzle/schema";
@@ -86,7 +88,7 @@ export async function saveClientCustomFieldValues({ trx, organizacaoId, clienteI
 
 	const rowsToUpsert: (typeof clientCustomFieldValues.$inferInsert)[] = [];
 	// Tipado por coluna (e não como Record<chave, unknown>) para que o UPDATE continue checado.
-	const clientPatch: { dataNascimento?: Date; email?: string } = {};
+	const clientPatch: { dataNascimento?: Date; email?: string; cpfCnpj?: string } = {};
 
 	for (const entry of valores) {
 		const field = fieldDefinitionsById.get(entry.campoId);
@@ -103,6 +105,15 @@ export async function saveClientCustomFieldValues({ trx, organizacaoId, clienteI
 		}
 		if (nativeField?.writeThrough === "email") {
 			clientPatch.email = parsedValue as string;
+			continue;
+		}
+		if (nativeField?.writeThrough === "cpfCnpj") {
+			// O dígito verificador é checado aqui, e não em `parseValueForField`: a validação vale para
+			// o documento, não para o tipo TEXTO. A coluna guarda o valor formatado — é o que o POI já
+			// grava pela gaveta do cadastro rápido, e dois formatos na mesma coluna quebrariam a busca.
+			const documento = parsedValue as string;
+			if (!isValidCpfCnpj(documento)) throw new createHttpError.BadRequest(`CPF/CNPJ inválido para o campo "${field.titulo}".`);
+			clientPatch.cpfCnpj = formatToCPForCNPJ(documento);
 			continue;
 		}
 
