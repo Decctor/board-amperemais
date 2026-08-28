@@ -1,3 +1,4 @@
+import type { TCreateAgentConnectionInput, TCreateAgentConnectionOutput } from "@/app/api/access/agent-connections/route";
 import type { TRevokeAccessCredentialInput, TRevokeAccessCredentialOutput } from "@/app/api/access/credentials/revoke/route";
 import type { TUpdateAccessGrantInput, TUpdateAccessGrantOutput } from "@/app/api/access/grants/route";
 import type { TRotateAccessCredentialInput, TRotateAccessCredentialOutput } from "@/app/api/access/credentials/rotate/route";
@@ -27,5 +28,10 @@ export async function revokeAccessCredential(input: TRevokeAccessCredentialInput
 
 export async function updateAccessGrant(input: TUpdateAccessGrantInput) {
 	const { data } = await axios.patch<TUpdateAccessGrantOutput>("/api/access/grants", input);
+	return data;
+}
+
+export async function createAgentConnection(input: TCreateAgentConnectionInput) {
+	const { data } = await axios.post<TCreateAgentConnectionOutput>("/api/access/agent-connections", input);
 	return data;
 }

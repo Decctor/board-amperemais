@@ -3,9 +3,10 @@
 Expõe o RecompraCRM a agentes de IA (Claude, ChatGPT, os agentes do Syncroniza Control, Cursor)
 através de um servidor **MCP** — o protocolo que todos esses clientes falam nativamente.
 
-**Estado: fase 1 implementada.** Doze ferramentas de leitura, um recurso, dois prompts e os dois
-modos de ator sobre a fundação de acesso existente (`docs/dev-planning/access-foundation-implementation.md`).
-Falta a tela de Conexões de IA (abaixo), OAuth (fase 2) e as ferramentas de escrita (fase 3).
+**Estado: fase 1 completa.** Doze ferramentas de leitura, um recurso, dois prompts, os dois modos
+de ator e a tela de Conexões de IA, sobre a fundação de acesso existente
+(`docs/dev-planning/access-foundation-implementation.md`). Falta OAuth (fase 2) e as ferramentas de
+escrita (fase 3).
 
 ---
 
@@ -172,7 +173,17 @@ por todos os clientes, e limitar por ele puniria organizações inocentes.
 
 ## 4. Como emitir uma credencial
 
-Enquanto a tela de "Conexões de IA" não existe (fase 1):
+**Pelo painel** (organização): Configurações → Conexões de IA → Nova conexão. Escolhe a aplicação
+(Claude ou ChatGPT), nomeia a conexão, liga as permissões e recebe a chave — **uma única vez**,
+porque só o SHA-256 do segredo fica no banco. Editar permissões, rotacionar e revogar reusam
+`ControlAccessPrincipal`, o mesmo modal dos dispositivos.
+
+A tela lista só principals `CONTA_SERVICO`, e Dispositivos só `DISPOSITIVO`/`AGENTE_DESKTOP` —
+duas listas separadas porque um tablet no balcão e um assistente que lê o faturamento se revogam
+por motivos diferentes.
+
+**Por script** (obrigatório para plataforma, já que principal de plataforma não pertence a
+organização nenhuma):
 
 ```bash
 # 1. Migrações, nesta ordem (a segunda consome o valor de enum criado pela primeira)
@@ -229,11 +240,7 @@ leitura. Adicione `--plataforma` para exercitar o modo de plataforma.
 
 ## 6. Próximas fases
 
-**Falta da fase 1 — a tela de Conexões de IA.** Em boa parte um re-skin da tela de dispositivos, já
-que `ACCESS_SCOPE_CATALOG` fornece os rótulos e `provisionAgentPrincipal` já faz o trabalho. Até
-lá, `npm run access:issue-agent` é o caminho.
-
-Também em aberto, por decisão e não por esquecimento: `get_campaign_results` atende **uma** campanha
+Em aberto, por decisão e não por esquecimento: `get_campaign_results` atende **uma** campanha
 por chamada. A visão "todas as campanhas do período" exigiria N execuções da mesma agregação e vale
 uma consulta própria, não um laço — o modelo deve chamar `list_campaigns` primeiro.
 
