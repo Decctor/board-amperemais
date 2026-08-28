@@ -259,7 +259,7 @@ Cada fase é entregável de forma independente.
 
 - **D1 — Gates do shop como política configurável**: `precoVenda > 0` e ocultar-sem-estoque ficam hardcoded como política do canal SHOP na v1. Promover a colunas de `sales_channels` (ex.: `ocultarSemEstoque`) só se outro canal pedir.
 - **D2 — Ajuste percentual por canal** ("shop é sempre +10%"): caberia como coluna em `sales_channels` aplicada antes dos overrides absolutos. Fora até haver demanda.
-- **D3 — `precoDelta` de add-on por canal**: iFood tem preço próprio de option; internamente o delta é único. Se necessário, `product_channel_settings` ganha `produto_add_on_opcao_id` nullable ou tabela irmã. Fase posterior.
+- **D3 — `precoDelta` de add-on por canal (DECIDIDO 2026-08-28: adiado)**: iFood tem preço próprio de option; internamente o delta é único. Fica fora das fases 3–4; se necessário no futuro, `product_channel_settings` ganha `produto_add_on_opcao_id` nullable ou tabela irmã.
 - **D4 — `sales.canal` (texto livre) → FK `sales_channels`**: normalização desejável mas invasiva (todo writer de venda). Fica para depois; o enum já garante vocabulário comum.
 
 ---

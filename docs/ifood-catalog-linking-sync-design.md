@@ -215,7 +215,11 @@ Card na página do iFood (ou na Visão geral): contadores de vínculos por statu
 ## 8. Decisões em aberto
 
 - **D1 — Autoridade**: o design assume Recompra como fonte da verdade dos campos sincronizados (push + pull manual). Alternativa seria autoridade por campo configurável (ex.: preço com autoridade iFood sincronizando para dentro). Adiciona bastante complexidade — proposta: fica de fora até haver demanda real; o opt-out por campo + gestão direta na aba Catálogo cobre o cenário citado (preço diferente no iFood).
-- **D2 — Variantes**: item próprio por variante vs optionGroup de eixo. Impacta preço (absoluto vs delta) e relatórios do iFood. Decidir na fase 4 com casos reais.
+- **D2 — Variantes (DECIDIDO 2026-08-28): um item do iFood por variante.** Respeita a estrutura existente: o vínculo
+  tipo VARIANTE já aponta `produto_variante_id` → `externo_item_id`, e o preço empurrado é o resolvido por variante
+  na primitiva de canais (override da variante ou `precoVenda` dela) — absoluto, sem conversão para delta. A
+  alternativa (eixo como optionGroup obrigatório) foi descartada: exigiria traduzir preços absolutos em deltas e
+  não casa com os overrides por variante de `product_channel_settings`.
 - **D3 — Deleção**: excluir produto interno vinculado → desvincular apenas (deixar no iFood) ou perguntar se remove lá também? Proposta: nunca deletar no iFood automaticamente; marcar `DESVINCULADO` e avisar.
 - **D4 — Categorias**: v1 vincula categoria só como apoio do publish (achar/criar a categoria alvo). Sincronizar renomeações de `grupo` → categoria fica para depois (grupo é texto livre, N:1 com categorias).
 
