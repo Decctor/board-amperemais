@@ -1,6 +1,7 @@
 import { db } from "@/services/drizzle";
-import { productAddOnReferences, productChannelSettings, products, saleItems, sales, salesChannels } from "@/services/drizzle/schema";
-import { and, desc, eq, gt, inArray, isNull, notInArray, sql } from "drizzle-orm";
+import { productAddOnReferences, products, saleItems, sales } from "@/services/drizzle/schema";
+import { and, desc, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
+import { channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
 import type { TShopSettingsConfiguration } from "@/schemas/shop";
 
 export const SHOP_MOST_ORDERED_DAYS = 90;
@@ -17,52 +18,18 @@ export function variantIsAvailableForShop(variant: { rastreamentoEstoqueAtivo: b
 	return !variant.rastreamentoEstoqueAtivo || (variant.quantidade ?? 0) > 0;
 }
 
-/**
- * Estado do canal SHOP para a leitura do catálogo. Nulo quando a organização ainda não tem a
- * linha do canal (migração 0082 não aplicada ou org não migrada) — o catálogo então cai no
- * caminho legado do jsonb. Nesta fase só a DISPONIBILIDADE vem do canal; o preço por canal
- * entra na fase 3 junto da precificação, para exibição e cobrança mudarem juntas.
- */
-async function loadShopChannelState(orgId: string) {
-	const channel = await db.query.salesChannels.findFirst({
-		where: and(
-			eq(salesChannels.organizacaoId, orgId),
-			eq(salesChannels.canal, "SHOP"),
-			isNull(salesChannels.integracaoId),
-			isNull(salesChannels.refExterno),
-		),
-	});
-	if (!channel) return null;
-
-	const overrides = await db.query.productChannelSettings.findMany({
-		where: eq(productChannelSettings.canalVendaId, channel.id),
-		columns: { produtoId: true, produtoVarianteId: true, disponivel: true },
-	});
-
-	const productAvailability = new Map<string, boolean | null>();
-	const variantAvailability = new Map<string, boolean | null>();
-	for (const override of overrides) {
-		if (override.produtoVarianteId) variantAvailability.set(override.produtoVarianteId, override.disponivel);
-		else productAvailability.set(override.produtoId, override.disponivel);
-	}
-
-	return { channel, productAvailability, variantAvailability };
-}
-
 export async function getShopCatalogProducts({ orgId, configuracoes }: { orgId: string; configuracoes: TShopSettingsConfiguration }) {
 	const conditions = getProductEligibilityConditions(orgId);
-	const channelState = await loadShopChannelState(orgId);
+	const channelState = await loadChannelState({ orgId, canal: "SHOP" });
 
 	if (channelState) {
 		// Fonte nova: modo do canal + linhas esparsas de disponibilidade.
-		if (channelState.channel.catalogoModo === "SELECIONADOS") {
-			const includedIds = [...channelState.productAvailability.entries()].filter(([, disponivel]) => disponivel === true).map(([id]) => id);
-			if (includedIds.length === 0) return [];
-			conditions.push(inArray(products.id, includedIds));
-		} else {
-			const excludedIds = [...channelState.productAvailability.entries()].filter(([, disponivel]) => disponivel === false).map(([id]) => id);
-			if (excludedIds.length > 0) conditions.push(notInArray(products.id, excludedIds));
+		const filter = channelProductFilter(channelState);
+		if (filter.includeIds) {
+			if (filter.includeIds.length === 0) return [];
+			conditions.push(inArray(products.id, filter.includeIds));
 		}
+		if (filter.excludeIds) conditions.push(notInArray(products.id, filter.excludeIds));
 	} else {
 		// Caminho legado (dual-read): o bloco produtos do jsonb ainda é a fonte enquanto a org
 		// não tem o canal SHOP materializado. Remover junto com o bloco modo/produtoIds do jsonb.

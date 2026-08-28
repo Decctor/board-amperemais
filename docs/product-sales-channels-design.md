@@ -1,9 +1,11 @@
 # Canais de Venda — Vendabilidade e Preço por Canal
 
-> Design doc. **Fases 1 e 2 implementadas** (coluna `vendavel` + gate em todas as superfícies de venda; tabelas de
-> canal e overrides, resolver, rotas; cutover do shop para o canal com dual-read/dual-write — ver §4). Pendentes: UI da
-> matriz de canais, fase 3 (preço por canal nos pontos de precificação) e fase 4 (iFood via `catalog_links`). A
-> migração `drizzle/0082_product_sales_channels.sql` é aplicada manualmente.
+> Design doc. **Fases 1 e 2 implementadas** — coluna `vendavel` + gate em todas as superfícies; tabelas de canal e
+> overrides, resolver, rotas; cutover do shop com dual-read/dual-write (§4); disponibilidade por canal aplicada em
+> POS/comanda (`loadChannelState` + `channelProductFilter`); matriz "Canais de venda" na página do produto
+> (`SalesChannelsSection`, disponibilidade apenas — preço entra na fase 3). Pendentes: fase 3 (preço por canal nos
+> pontos de precificação) e fase 4 (iFood via `catalog_links`). A migração `drizzle/0082_product_sales_channels.sql`
+> é aplicada manualmente.
 > Contexto: organizações ERP vendem pelas superfícies internas (PDV, loja digital, comanda/QR) e por integrações (iFood). Hoje cada superfície inventou sua própria regra de visibilidade de produto, não existe distinção entre produto vendável e matéria-prima, e não existe preço por canal. Este documento desenha a primitiva nativa que unifica isso.
 > Documento irmão: `docs/ifood-catalog-linking-sync-design.md` (mecanismo de sincronização com catálogos remotos — consome a primitiva desenhada aqui, ver §5).
 

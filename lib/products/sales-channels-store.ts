@@ -84,6 +84,52 @@ export async function syncShopSalesChannel({ orgId, produtos }: { orgId: string;
 }
 
 /**
+ * Estado de um canal interno para leitura de catálogo: a linha do canal + mapas esparsos de
+ * disponibilidade por produto e por variante. Nulo quando a organização ainda não tem a linha
+ * (migração não aplicada / org não materializada) — o chamador decide o fallback.
+ * Nesta fase só a DISPONIBILIDADE é consumida; preço por canal entra na fase 3.
+ */
+export async function loadChannelState({ orgId, canal }: { orgId: string; canal: TChannel["canal"] }) {
+	const channel = await db.query.salesChannels.findFirst({
+		where: and(
+			eq(salesChannels.organizacaoId, orgId),
+			eq(salesChannels.canal, canal),
+			isNull(salesChannels.integracaoId),
+			isNull(salesChannels.refExterno),
+		),
+	});
+	if (!channel) return null;
+
+	const overrides = await db.query.productChannelSettings.findMany({
+		where: eq(productChannelSettings.canalVendaId, channel.id),
+		columns: { produtoId: true, produtoVarianteId: true, disponivel: true },
+	});
+
+	const productAvailability = new Map<string, boolean | null>();
+	const variantAvailability = new Map<string, boolean | null>();
+	for (const override of overrides) {
+		if (override.produtoVarianteId) variantAvailability.set(override.produtoVarianteId, override.disponivel);
+		else productAvailability.set(override.produtoId, override.disponivel);
+	}
+
+	return { channel, productAvailability, variantAvailability };
+}
+export type TChannelState = NonNullable<Awaited<ReturnType<typeof loadChannelState>>>;
+
+/**
+ * Presença de produtos no canal, em forma de filtro para a query: em SELECIONADOS só entram os
+ * ids com linha disponivel=true (lista vazia = catálogo vazio); em TODOS saem os ids com linha
+ * disponivel=false. Variantes são filtradas depois, no resultado (só restringem — ver resolver).
+ */
+export function channelProductFilter(state: TChannelState) {
+	if (state.channel.catalogoModo === "SELECIONADOS") {
+		return { includeIds: [...state.productAvailability.entries()].filter(([, disponivel]) => disponivel === true).map(([id]) => id), excludeIds: null };
+	}
+	const excluded = [...state.productAvailability.entries()].filter(([, disponivel]) => disponivel === false).map(([id]) => id);
+	return { includeIds: null, excludeIds: excluded.length ? excluded : null };
+}
+
+/**
  * Provisiona os canais internos na primeira leitura e devolve todos os canais da organização.
  *
  * A matriz por produto grava overrides contra o id do canal, então devolver linhas sintéticas

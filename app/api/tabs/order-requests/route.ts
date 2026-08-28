@@ -2,7 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { requireERPSession } from "@/lib/authentication/erp-session";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { launchTabOrder, openTab, resolveServiceSettings } from "@/lib/tabs";
+import { filterComandaOrderableProductIds, launchTabOrder, openTab, resolveServiceSettings } from "@/lib/tabs";
 import type { TTabOrderItemInput } from "@/lib/tabs";
 import { TabOrderRequestStatusEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
@@ -170,7 +170,7 @@ async function decideTabOrderRequest({ input, session }: { input: TDecideTabOrde
 		const payload = request.payloadSolicitacao;
 		const productIds = [...new Set(payload.itens.map((item) => item.produtoId))];
 		const variantIds = payload.itens.map((item) => item.produtoVarianteId).filter((id): id is string => !!id);
-		const [produtos, variantes] = await Promise.all([
+		const [produtos, variantes, orderableIds] = await Promise.all([
 			db.query.products.findMany({
 				where: (fields, { and, eq, inArray }) =>
 					and(inArray(fields.id, productIds), eq(fields.organizacaoId, orgId), eq(fields.ativo, true), eq(fields.vendavel, true)),
@@ -182,8 +182,11 @@ async function decideTabOrderRequest({ input, session }: { input: TDecideTabOrde
 						columns: { id: true, produtoId: true, nome: true, codigo: true, precoVenda: true },
 					})
 				: [],
+			filterComandaOrderableProductIds({ orgId, productIds }),
 		]);
-		const productMap = new Map(produtos.map((product) => [product.id, product]));
+		// Gate do canal COMANDA na aprovacao: a solicitacao pode ter sido feita antes de o produto
+		// sair do canal — a aprovacao e a superficie autoritativa e revalida.
+		const productMap = new Map(produtos.filter((product) => orderableIds.has(product.id)).map((product) => [product.id, product]));
 		const variantMap = new Map(variantes.map((variant) => [variant.id, variant]));
 
 		const itens: TTabOrderItemInput[] = payload.itens.map((item) => {

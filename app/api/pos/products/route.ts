@@ -2,9 +2,10 @@ import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
 import { db } from "@/services/drizzle";
 import { productAddOnOptions, productAddOnReferences, productAddOns, productVariants, products } from "@/services/drizzle/schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 import { count } from "drizzle-orm";
 import createHttpError from "http-errors";
 import z from "zod";
@@ -42,6 +43,20 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 	const limit = PAGE_SIZE;
 
 	const conditions = [eq(products.organizacaoId, userOrgId), eq(products.ativo, true), eq(products.vendavel, true)];
+
+	// Disponibilidade no canal POS (linhas esparsas da matriz de canais). Canal ausente = org
+	// não materializada ainda — comporta-se como TODOS sem overrides.
+	const channelState = await loadChannelState({ orgId: userOrgId, canal: "POS" });
+	if (channelState) {
+		const filter = channelProductFilter(channelState);
+		if (filter.includeIds) {
+			if (filter.includeIds.length === 0) {
+				return { data: { products: [], productsMatched: 0, totalPages: 0, currentPage: input.page } };
+			}
+			conditions.push(inArray(products.id, filter.includeIds));
+		}
+		if (filter.excludeIds) conditions.push(notInArray(products.id, filter.excludeIds));
+	}
 
 	// Search filter — insensível a acentos: unaccent() em ambos os lados normaliza os diacríticos
 	// (ex.: "acai" encontra "Açaí"). Requer a extensão `unaccent` (migration 0033_unaccent_extension).
@@ -111,10 +126,13 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 	const normalizedProducts = productsResult.map((product) => ({
 		...product,
 		addOnsReferencias: product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
-		variantes: product.variantes.map((variant) => ({
-			...variant,
-			addOnsReferencias: variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
-		})),
+		variantes: product.variantes
+			// Linha de variante só restringe dentro de um produto visível (mesma regra do resolver).
+			.filter((variant) => channelState?.variantAvailability.get(variant.id) !== false)
+			.map((variant) => ({
+				...variant,
+				addOnsReferencias: variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+			})),
 	}));
 
 	return {

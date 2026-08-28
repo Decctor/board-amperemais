@@ -1,5 +1,5 @@
 import { OrgColorsProvider } from "@/components/Providers/OrgColorsProvider";
-import { hashPublicToken, resolveServiceSettings } from "@/lib/tabs";
+import { getComandaMenuProducts, hashPublicToken, resolveServiceSettings } from "@/lib/tabs";
 import { db } from "@/services/drizzle";
 import type { TPublicMenuProduct } from "../../_components/PublicOrderMenu";
 import { PublicShell } from "../../_components/PublicShell";
@@ -47,19 +47,7 @@ export default async function ServicePointPublicPage({ params }: { params: Promi
 	const settings = await resolveServiceSettings({ orgId: servicePoint.organizacaoId });
 	const orderingEnabled = settings.pedidosCliente !== "DESABILITADO";
 
-	const products = orderingEnabled
-		? await db.query.products.findMany({
-				where: (fields, { and, eq }) => and(eq(fields.organizacaoId, servicePoint.organizacaoId), eq(fields.ativo, true), eq(fields.vendavel, true)),
-				columns: { id: true, nome: true, grupo: true, descricao: true, precoVenda: true, imagemCapaUrl: true },
-				with: {
-					variantes: {
-						where: (fields, { eq }) => eq(fields.ativo, true),
-						columns: { id: true, nome: true, precoVenda: true },
-					},
-				},
-				orderBy: (fields, { asc }) => asc(fields.nome),
-			})
-		: [];
+	const products = orderingEnabled ? await getComandaMenuProducts({ orgId: servicePoint.organizacaoId }) : [];
 
 	return (
 		<OrgColorsProvider
