@@ -452,6 +452,16 @@ export const OrganizationSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? new Date(val) : null)),
+	// Consultoria / gestão assistida: a conta é operada pelo nosso time. Além do add-on comercial,
+	// é o que autoriza uma conexão MCP de plataforma a executar mutações nesta organização
+	// (ver `resolveResponsibleUser` em lib/agent-tools/organization-scope.ts).
+	consultoriaAtiva: z.boolean({ invalid_type_error: "Tipo não válido para a consultoria ativa." }).optional().default(false),
+	baselineInicio: z
+		.string({ invalid_type_error: "Tipo não válido para a data de início do baseline." })
+		.datetime({ message: "Tipo não válido para a data de início do baseline." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? new Date(val) : null)),
 
 	// Custom Colors
 	corPrimaria: z

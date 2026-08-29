@@ -121,6 +121,8 @@ export function useOrganizationOnboardingState({ initialStage, existingOrganizat
 				localizacaoComplemento: null,
 				periodoTesteInicio: null,
 				periodoTesteFim: null,
+				consultoriaAtiva: false,
+				baselineInicio: null,
 				corPrimaria: null,
 				corPrimariaForeground: null,
 				corSecundaria: null,
