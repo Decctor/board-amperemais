@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assertAgentTemplateMediaPath, getAgentTemplateMediaPrefix, MAX_INLINE_IMAGE_SIZE, uploadAgentTemplateMediaContent } from "./agent-media";
+import {
+	assertAgentTemplateMediaPath,
+	getAgentTemplateMediaPrefix,
+	MAX_INLINE_IMAGE_SIZE,
+	uploadAgentTemplateMediaContent,
+	uploadAgentTemplateMediaFromUrl,
+} from "./agent-media";
 
 test("o prefixo de mídia é isolado por organização", () => {
 	assert.equal(getAgentTemplateMediaPrefix("org-1"), "public/organizations/org-1/agent-message-template-media/");
@@ -35,4 +41,17 @@ test("upload inline recusa mime fora da allowlist, conteúdo vazio e imagem acim
 		() => uploadAgentTemplateMediaContent({ organizationId: "org-1", fileName: "a.png", mimeType: "image/png", conteudoBase64: oversized }),
 		/3 MB/,
 	);
+});
+
+// As barreiras anti-SSRF recusam antes de qualquer conexão: esquema não-https, IP privado
+// (inclusive o endpoint de metadata da cloud) e host interno. Download real exige rede e é
+// coberto no teste de integração.
+test("upload por URL recusa esquema, IP privado e host interno sem tocar na rede", async () => {
+	await assert.rejects(() => uploadAgentTemplateMediaFromUrl({ organizationId: "org-1", url: "http://example.com/a.png" }), /https/);
+	await assert.rejects(
+		() => uploadAgentTemplateMediaFromUrl({ organizationId: "org-1", url: "https://169.254.169.254/latest/meta-data/" }),
+		/privado ou reservado/,
+	);
+	await assert.rejects(() => uploadAgentTemplateMediaFromUrl({ organizationId: "org-1", url: "https://localhost/a.png" }), /interno/);
+	await assert.rejects(() => uploadAgentTemplateMediaFromUrl({ organizationId: "org-1", url: "isso-nao-e-url" }), /inválida/);
 });
