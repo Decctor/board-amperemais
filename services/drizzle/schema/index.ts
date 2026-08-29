@@ -48,3 +48,4 @@ export * from "./external-events";
 export * from "./custom-fields";
 export * from "./sales-channels";
 export * from "./catalog-links";
+export * from "./replenishment";

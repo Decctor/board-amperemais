@@ -873,3 +873,30 @@ export const POI_REGISTRATION_FLOW_LABELS: Record<TPoiRegistrationFlowEnum, stri
 	RAPIDO: "Rápido",
 	COMPLETO: "Completo",
 };
+
+// ============================================================================
+// REPOSIÇÃO DE ESTOQUE
+// ============================================================================
+
+// Situação do item na fila de compra, do mais urgente ao mais parado. RUPTURA é saldo zerado com
+// demanda ativa; CRITICO é cobertura menor que o prazo de entrega (vai faltar antes de chegar);
+// ATENCAO é cobertura abaixo do ponto de pedido; EXCESSO e SEM_GIRO alimentam as ofertas.
+export const ReplenishmentStatusEnum = z.enum(["RUPTURA", "CRITICO", "ATENCAO", "SAUDAVEL", "EXCESSO", "SEM_GIRO"]);
+export type TReplenishmentStatusEnum = z.infer<typeof ReplenishmentStatusEnum>;
+
+// Regularidade da demanda (classificação XYZ). X é previsível, Z é errática — quanto mais errática,
+// mais estoque de segurança o mesmo nível de serviço exige.
+export const DemandRegularityEnum = z.enum(["X", "Y", "Z"]);
+export type TDemandRegularityEnum = z.infer<typeof DemandRegularityEnum>;
+
+export const DemandTrendEnum = z.enum(["ALTA", "ESTAVEL", "QUEDA"]);
+export type TDemandTrendEnum = z.infer<typeof DemandTrendEnum>;
+
+export const StockPositionSourceEnum = z.enum(["SISTEMA", "IMPORTACAO"]);
+export type TStockPositionSourceEnum = z.infer<typeof StockPositionSourceEnum>;
+
+export const StockPositionImportOriginEnum = z.enum(["PLANILHA", "PDF", "MANUAL"]);
+export type TStockPositionImportOriginEnum = z.infer<typeof StockPositionImportOriginEnum>;
+
+export const StockPositionImportStatusEnum = z.enum(["PROCESSANDO", "CONCLUIDA", "ERRO"]);
+export type TStockPositionImportStatusEnum = z.infer<typeof StockPositionImportStatusEnum>;

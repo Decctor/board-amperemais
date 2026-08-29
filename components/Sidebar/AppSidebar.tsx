@@ -26,6 +26,7 @@ import {
 	Megaphone,
 	MessageCircle,
 	Package,
+	PackageSearch,
 	Plug,
 	ReceiptText,
 	ScanBarcode,
@@ -163,9 +164,28 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				id: "purchases",
 				capability: "purchases",
 				title: "Compras",
-				url: appRoutes.purchases(),
+				// Ownership path keeps the group active on detail routes (ex.: reposição).
+				url: appRoutes.purchases.root(),
 				icon: <ShoppingCart className="size-4" />,
-				items: null,
+				items: [
+					{
+						id: "purchases-orders",
+						capability: "purchases",
+						activeMatch: "exact",
+						title: "Pedidos",
+						url: appRoutes.purchases.root(),
+						icon: <ClipboardList className="size-4" />,
+						items: null,
+					},
+					{
+						id: "purchases-replenishment",
+						capability: "purchases",
+						title: "Reposição",
+						url: appRoutes.purchases.replenishment(),
+						icon: <PackageSearch className="size-4" />,
+						items: null,
+					},
+				],
 			},
 			{
 				id: "production",

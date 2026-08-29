@@ -528,3 +528,16 @@ export const customFieldEntityEnum = pgEnum("custom_field_entity", ["CLIENTE"]);
 // O tipo determina o formato do `valor` gravado (jsonb): ESCOLHA_UNICA → string,
 // ESCOLHA_MULTIPLA → string[], TEXTO → string, NUMERO → number, DATA → string ISO.
 export const customFieldTypeEnum = pgEnum("custom_field_type", ["ESCOLHA_UNICA", "ESCOLHA_MULTIPLA", "TEXTO", "NUMERO", "DATA"]);
+
+// ============================================================================
+// REPOSIÇÃO DE ESTOQUE (docs/replenishment-planning-design.md)
+// ============================================================================
+
+// Como a posição de estoque chegou ao RecompraCRM. SISTEMA é o saldo mantido pelas movimentações
+// internas; IMPORTACAO é o snapshot enviado pela loja quando o ERP externo é a fonte da verdade.
+export const stockPositionSourceEnum = pgEnum("stock_position_source", ["SISTEMA", "IMPORTACAO"]);
+
+// Formato do arquivo que originou o snapshot importado.
+export const stockPositionImportOriginEnum = pgEnum("stock_position_import_origin", ["PLANILHA", "PDF", "MANUAL"]);
+
+export const stockPositionImportStatusEnum = pgEnum("stock_position_import_status", ["PROCESSANDO", "CONCLUIDA", "ERRO"]);

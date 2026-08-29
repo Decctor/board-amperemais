@@ -24,7 +24,10 @@ export const appRoutes = {
 		preparation: () => "/dashboard/operations/preparation",
 	},
 	approvals: () => "/dashboard/approvals",
-	purchases: () => "/dashboard/purchases",
+	purchases: {
+		root: () => "/dashboard/purchases",
+		replenishment: () => "/dashboard/purchases/replenishment",
+	},
 	production: () => "/dashboard/production",
 	inventory: {
 		root: () => "/dashboard/inventory",
