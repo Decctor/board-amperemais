@@ -25,8 +25,11 @@ type ReplenishmentFiltersProps = {
 export function ReplenishmentFilters({ filters, grupos, fornecedores, updateFilters, resetFilters }: ReplenishmentFiltersProps) {
 	return (
 		<div className="flex w-full flex-col gap-3">
+			{/* `holderClassName` do MultipleSelectInput cai no botão, que já é `w-full` — largura tem de vir
+			    de um invólucro. Sem ele os selects disputam o espaço com a busca e sobra um campo de
+			    pesquisa de três letras. */}
 			<div className="flex w-full flex-col items-stretch gap-2 lg:flex-row lg:items-center">
-				<div className="relative grow">
+				<div className="relative min-w-0 flex-1">
 					<Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
 					<Input
 						value={filters.search}
@@ -35,36 +38,39 @@ export function ReplenishmentFilters({ filters, grupos, fornecedores, updateFilt
 						className="rounded-xl pl-9"
 					/>
 				</div>
-				<MultipleSelectInput
-					label="Fornecedor"
-					showLabel={false}
-					selected={filters.supplierIds}
-					options={fornecedores.map((fornecedor) => ({ id: fornecedor.id, value: fornecedor.id, label: fornecedor.nome }))}
-					handleChange={(value) => updateFilters({ supplierIds: value })}
-					resetOptionLabel="TODOS OS FORNECEDORES"
-					onReset={() => updateFilters({ supplierIds: [] })}
-					holderClassName="lg:w-56"
-				/>
-				<MultipleSelectInput
-					label="Grupo"
-					showLabel={false}
-					selected={filters.groups}
-					options={grupos.map((grupo) => ({ id: grupo, value: grupo, label: grupo }))}
-					handleChange={(value) => updateFilters({ groups: value })}
-					resetOptionLabel="TODOS OS GRUPOS"
-					onReset={() => updateFilters({ groups: [] })}
-					holderClassName="lg:w-52"
-				/>
-				<MultipleSelectInput
-					label="Situação"
-					showLabel={false}
-					selected={filters.status}
-					options={REPLENISHMENT_STATUS_ORDER.map((status) => ({ id: status, value: status, label: REPLENISHMENT_STATUS_META[status].label }))}
-					handleChange={(value) => updateFilters({ status: value as TReplenishmentFilters["status"] })}
-					resetOptionLabel="TODAS AS SITUAÇÕES"
-					onReset={() => updateFilters({ status: [] })}
-					holderClassName="lg:w-48"
-				/>
+				<div className="w-full shrink-0 lg:w-56">
+					<MultipleSelectInput
+						label="Fornecedor"
+						showLabel={false}
+						selected={filters.supplierIds}
+						options={fornecedores.map((fornecedor) => ({ id: fornecedor.id, value: fornecedor.id, label: fornecedor.nome }))}
+						handleChange={(value) => updateFilters({ supplierIds: value })}
+						resetOptionLabel="TODOS OS FORNECEDORES"
+						onReset={() => updateFilters({ supplierIds: [] })}
+					/>
+				</div>
+				<div className="w-full shrink-0 lg:w-48">
+					<MultipleSelectInput
+						label="Grupo"
+						showLabel={false}
+						selected={filters.groups}
+						options={grupos.map((grupo) => ({ id: grupo, value: grupo, label: grupo }))}
+						handleChange={(value) => updateFilters({ groups: value })}
+						resetOptionLabel="TODOS OS GRUPOS"
+						onReset={() => updateFilters({ groups: [] })}
+					/>
+				</div>
+				<div className="w-full shrink-0 lg:w-48">
+					<MultipleSelectInput
+						label="Situação"
+						showLabel={false}
+						selected={filters.status}
+						options={REPLENISHMENT_STATUS_ORDER.map((status) => ({ id: status, value: status, label: REPLENISHMENT_STATUS_META[status].label }))}
+						handleChange={(value) => updateFilters({ status: value as TReplenishmentFilters["status"] })}
+						resetOptionLabel="TODAS AS SITUAÇÕES"
+						onReset={() => updateFilters({ status: [] })}
+					/>
+				</div>
 				<Button variant="ghost" size="sm" onClick={resetFilters} className="shrink-0" title="Limpar todos os filtros">
 					<RotateCcw className="h-4 w-4" />
 					LIMPAR
@@ -98,20 +104,21 @@ export function ReplenishmentFilters({ filters, grupos, fornecedores, updateFilt
 					/>
 				</div>
 
-				<MultipleSelectInput
-					label="Curva"
-					showLabel={false}
-					selected={filters.abcClasses}
-					options={[
-						{ id: "A", value: "A", label: "Curva A" },
-						{ id: "B", value: "B", label: "Curva B" },
-						{ id: "C", value: "C", label: "Curva C" },
-					]}
-					handleChange={(value) => updateFilters({ abcClasses: value as TReplenishmentFilters["abcClasses"] })}
-					resetOptionLabel="TODAS AS CURVAS"
-					onReset={() => updateFilters({ abcClasses: [] })}
-					holderClassName="w-40"
-				/>
+				<div className="w-44 shrink-0">
+					<MultipleSelectInput
+						label="Curva"
+						showLabel={false}
+						selected={filters.abcClasses}
+						options={[
+							{ id: "A", value: "A", label: "Curva A" },
+							{ id: "B", value: "B", label: "Curva B" },
+							{ id: "C", value: "C", label: "Curva C" },
+						]}
+						handleChange={(value) => updateFilters({ abcClasses: value as TReplenishmentFilters["abcClasses"] })}
+						resetOptionLabel="TODAS AS CURVAS"
+						onReset={() => updateFilters({ abcClasses: [] })}
+					/>
+				</div>
 
 				<label className="flex cursor-pointer items-center gap-2 text-[0.7rem] font-bold tracking-tight">
 					<Switch checked={filters.apenasSugestoes} onCheckedChange={(checked) => updateFilters({ apenasSugestoes: checked })} />

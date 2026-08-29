@@ -6,7 +6,7 @@ import { formatToMoney } from "@/lib/formatting";
 import { appRoutes } from "@/lib/navigation/routes";
 import { buildOfferSuggestion, type TReplenishmentItem } from "@/lib/replenishment";
 import { cn } from "@/lib/utils";
-import { PackageCheck, Percent, Sparkles, Tag } from "lucide-react";
+import { PackageCheck, Sparkles, Tag } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { formatCoverage, formatQuantity, StatusChip } from "./replenishment-formatting";
@@ -100,11 +100,9 @@ export function OffersPanel({ items, diasExcessoLimite }: OffersPanelProps) {
 						<Metric label="Preço atual">{item.valores.precoVenda != null ? formatToMoney(item.valores.precoVenda) : "—"}</Metric>
 						{oferta.elegivel && oferta.descontoSugeridoPercentual != null ? (
 							<>
+								{/* Sem ícone de porcentagem: o número já carrega o "%", e os dois juntos leem "% 23%". */}
 								<Metric label="Desconto sugerido" tone="text-primary">
-									<span className="inline-flex items-center gap-1">
-										<Percent className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />
-										{oferta.descontoSugeridoPercentual.toFixed(0)}%
-									</span>
+									-{oferta.descontoSugeridoPercentual.toFixed(0)}%
 								</Metric>
 								<Metric label="Preço na oferta" title={`Máximo sem furar a margem mínima: ${oferta.descontoMaximoPercentual?.toFixed(0)}% de desconto`}>
 									<span className="inline-flex items-center gap-1">
