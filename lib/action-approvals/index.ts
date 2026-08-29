@@ -49,6 +49,30 @@ export const actionApprovalHandlers: Record<TActionApprovalTypeEnum, TActionAppr
 			};
 		},
 	},
+	AGENTE_ATIVAR_CAMPANHA: {
+		validarCriacao: ({ payload }) => {
+			if (payload.tipo !== "AGENTE_ATIVAR_CAMPANHA") throw new createHttpError.BadRequest("Payload não corresponde ao tipo da solicitação.");
+		},
+		autorizaDecisao: (permissoes) => permissoes.empresa.editar,
+		montarResumo: (payload) => {
+			if (payload.tipo !== "AGENTE_ATIVAR_CAMPANHA") throw new createHttpError.BadRequest("Payload não corresponde ao tipo da solicitação.");
+			return { titulo: "Ativar campanha pelo agente", descricao: `Autorizar a ativação da campanha ${payload.campanhaId}.`, valorPrincipal: null };
+		},
+	},
+	AGENTE_SUBMETER_TEMPLATE: {
+		validarCriacao: ({ payload }) => {
+			if (payload.tipo !== "AGENTE_SUBMETER_TEMPLATE") throw new createHttpError.BadRequest("Payload não corresponde ao tipo da solicitação.");
+		},
+		autorizaDecisao: (permissoes) => permissoes.empresa.editar,
+		montarResumo: (payload) => {
+			if (payload.tipo !== "AGENTE_SUBMETER_TEMPLATE") throw new createHttpError.BadRequest("Payload não corresponde ao tipo da solicitação.");
+			return {
+				titulo: "Submeter template à Meta",
+				descricao: `Autorizar o envio do template ${payload.messageTemplateId} para análise.`,
+				valorPrincipal: null,
+			};
+		},
+	},
 };
 
 export function getActionApprovalHandler(tipo: TActionApprovalTypeEnum): TActionApprovalHandler {

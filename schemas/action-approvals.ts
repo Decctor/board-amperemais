@@ -33,8 +33,25 @@ export const VendaDescontoApprovalPayloadSchema = z.object({
 });
 export type TVendaDescontoApprovalPayload = z.infer<typeof VendaDescontoApprovalPayloadSchema>;
 
+export const AgentActivateCampaignApprovalPayloadSchema = z.object({
+	tipo: z.literal("AGENTE_ATIVAR_CAMPANHA"),
+	campanhaId: z.string({ required_error: "ID da campanha não informado." }),
+	configuracaoHash: z.string({ required_error: "Hash da configuração não informado." }),
+	principalId: z.string({ required_error: "ID do principal não informado." }),
+});
+
+export const AgentSubmitTemplateApprovalPayloadSchema = z.object({
+	tipo: z.literal("AGENTE_SUBMETER_TEMPLATE"),
+	messageTemplateId: z.string({ required_error: "ID do template não informado." }),
+	telefoneId: z.string({ required_error: "ID do telefone não informado." }),
+	configuracaoHash: z.string({ required_error: "Hash da configuração não informado." }),
+	principalId: z.string({ required_error: "ID do principal não informado." }),
+});
+
 export const ActionApprovalPayloadSchema = z.discriminatedUnion("tipo", [
 	VendaDescontoApprovalPayloadSchema,
+	AgentActivateCampaignApprovalPayloadSchema,
+	AgentSubmitTemplateApprovalPayloadSchema,
 	// futuros: VendaCancelamentoPayloadSchema, CompraAcimaLimitePayloadSchema, ...
 ]);
 export type TActionApprovalPayload = z.infer<typeof ActionApprovalPayloadSchema>;
@@ -53,5 +70,7 @@ export type TActionApprovalSummary = z.infer<typeof ActionApprovalSummarySchema>
 /** Referência do consumo da aprovação (one-shot) — ex.: a venda que a utilizou. */
 export const ActionApprovalConsumptionSchema = z.object({
 	vendaId: z.string({ invalid_type_error: "Tipo não válido para o ID da venda." }).optional().nullable(),
+	campanhaId: z.string({ invalid_type_error: "Tipo não válido para o ID da campanha." }).optional().nullable(),
+	messageTemplateId: z.string({ invalid_type_error: "Tipo não válido para o ID do template." }).optional().nullable(),
 });
 export type TActionApprovalConsumption = z.infer<typeof ActionApprovalConsumptionSchema>;

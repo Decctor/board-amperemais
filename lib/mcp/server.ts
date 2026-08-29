@@ -5,6 +5,7 @@ import { CURRENT_ORGANIZATION_RESOURCE_URI, listResourcesForActor, readResourceF
 import { sanitizeForModel } from "@/lib/agent-tools/serialization";
 import type { TAgentActorContext } from "@/lib/agent-tools/types";
 import { resolveOrganizationScope } from "@/lib/agent-tools/organization-scope";
+import { claimMcpMutationOperation, completeMcpMutationOperation, failMcpMutationOperation } from "@/lib/agent-tools/mutation-operations";
 import { describeErrorForLogging } from "@/lib/errors";
 import createHttpError from "http-errors";
 import type { NextRequest } from "next/server";
@@ -32,6 +33,9 @@ function buildInstructions(actor: TAgentActorContext) {
 		"RecompraCRM é uma plataforma de CRM e retenção para varejo brasileiro. Valores monetários estão em reais (BRL) e as datas voltam em ISO 8601.",
 		"Campo ausente significa 'não disponível', nunca zero: não conclua que um produto está sem estoque, sem preço ou que o faturamento foi zero por causa de um campo que não veio.",
 		"Toda listagem traz `total` e `truncado` — quando `truncado` for verdadeiro, refine os filtros em vez de tratar o que veio como o conjunto completo.",
+		"Ferramentas de mutação exigem `chaveIdempotencia`: reutilize a mesma chave somente ao repetir exatamente a mesma operação após uma falha; use uma nova chave para uma nova intenção.",
+		"Criação e atualização de campanhas e templates produzem rascunhos. Ativação de campanha e envio de template à Meta são operações separadas em duas etapas: primeiro solicite a aprovação e, depois da aprovação humana, repita a ferramenta com o `aprovacaoId` retornado.",
+		"Para cabeçalhos de imagem, crie um upload, envie o arquivo pela URL assinada, conclua o upload e passe o `conteudoMidiaCaminho` retornado ao criar ou atualizar o template. Esse caminho é opaco; não construa nem altere caminhos manualmente.",
 	];
 	if (actor.mode === "PLATAFORMA") {
 		base.push(
@@ -63,6 +67,12 @@ function handleToolsList(message: TJsonRpcMessage, actor: TAgentActorContext): T
 		title: tool.title,
 		description: tool.describe(actor),
 		inputSchema: toolInputJsonSchema(tool.inputSchema),
+		annotations: {
+			readOnlyHint: !tool.mutates,
+			destructiveHint: false,
+			idempotentHint: !tool.externalEffect,
+			openWorldHint: !!tool.externalEffect,
+		},
 	}));
 	return jsonRpcResult(message.id ?? null, { tools });
 }
@@ -88,7 +98,20 @@ function describeToolFailure(error: unknown): string {
 	// `expose` marca os erros cujo texto foi escrito para ser lido; o resto vira mensagem genérica
 	// para não vazar detalhe de integração ou de banco para o modelo.
 	if (createHttpError.isHttpError(error) && error.expose) return error.message;
-	return "Não foi possível concluir a consulta.";
+	return "Não foi possível concluir a operação.";
+}
+
+function extractResultReferences(value: unknown): Record<string, string> | null {
+	if (!value || typeof value !== "object") return null;
+	const references: Record<string, string> = {};
+	const visit = (record: Record<string, unknown>) => {
+		for (const [key, child] of Object.entries(record)) {
+			if (typeof child === "string" && (key === "id" || key.endsWith("Id"))) references[key] = child;
+			else if (child && typeof child === "object" && !Array.isArray(child)) visit(child as Record<string, unknown>);
+		}
+	};
+	visit(value as Record<string, unknown>);
+	return Object.keys(references).length > 0 ? references : null;
 }
 
 async function handleToolsCall(message: TJsonRpcMessage, actor: TAgentActorContext, request: NextRequest): Promise<TJsonRpcResponse> {
@@ -103,6 +126,7 @@ async function handleToolsCall(message: TJsonRpcMessage, actor: TAgentActorConte
 	}
 
 	const rawArguments = (message.params?.arguments as Record<string, unknown> | undefined) ?? {};
+	let claimedOperationId: string | null = null;
 
 	try {
 		const input = tool.inputSchema.parse(rawArguments);
@@ -113,14 +137,35 @@ async function handleToolsCall(message: TJsonRpcMessage, actor: TAgentActorConte
 				: typeof requestedOrganizationId === "string"
 					? await resolveOrganizationScope(actor, requestedOrganizationId)
 					: null;
-		const result = await tool.execute(input as never, actor);
-		const payload = sanitizeForModel(result);
+		let payload: unknown;
+		if (tool.mutates) {
+			if (!auditOrganizationId) throw new createHttpError.BadRequest("A organização da mutação não foi resolvida.");
+			const idempotencyKey = (input as Record<string, unknown>).chaveIdempotencia;
+			if (typeof idempotencyKey !== "string") throw new createHttpError.BadRequest("Chave de idempotência não informada.");
+			const claim = await claimMcpMutationOperation({
+				principalId: actor.principalId,
+				credentialId: actor.credentialId,
+				organizationId: auditOrganizationId,
+				toolName: name,
+				idempotencyKey,
+				input,
+			});
+			if (claim.state === "REPLAY") payload = sanitizeForModel(claim.output);
+			else {
+				claimedOperationId = claim.operationId;
+				payload = sanitizeForModel(await tool.execute(input as never, actor));
+				await completeMcpMutationOperation(claimedOperationId, payload);
+			}
+		} else {
+			payload = sanitizeForModel(await tool.execute(input as never, actor));
+		}
 
 		await recordAgentToolCall({
 			actor,
 			request,
 			toolName: name,
 			organizacaoId: auditOrganizationId,
+			resultReferences: extractResultReferences(payload),
 		});
 
 		const text = JSON.stringify(payload, null, 0);
@@ -132,6 +177,13 @@ async function handleToolsCall(message: TJsonRpcMessage, actor: TAgentActorConte
 			structuredContent: payload,
 		});
 	} catch (error) {
+		if (claimedOperationId) {
+			try {
+				await failMcpMutationOperation(claimedOperationId, error);
+			} catch (operationError) {
+				console.error("[MCP] Falha ao registrar erro da operação idempotente", describeErrorForLogging(operationError));
+			}
+		}
 		console.error("[MCP] Falha ao executar ferramenta", name, describeErrorForLogging(error));
 		await recordAgentToolCall({ actor, request, toolName: name, erro: describeToolFailure(error) });
 		return toolErrorResult(message.id, describeToolFailure(error));

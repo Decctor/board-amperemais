@@ -216,21 +216,33 @@ type FetchAndUploadToMetaResponse = {
  * Fetches a file from a URL (e.g., Supabase) and uploads it to Meta
  * This is used server-side when creating templates with media headers
  */
-export async function fetchAndUploadToMeta({
-	fileUrl,
-	appId,
-	accessToken,
-}: FetchAndUploadToMetaParams): Promise<FetchAndUploadToMetaResponse> {
-	console.log(`[INFO] [META_MEDIA_UPLOAD] Fetching file from URL: ${fileUrl}`);
+export async function fetchAndUploadToMeta({ fileUrl, appId, accessToken }: FetchAndUploadToMetaParams): Promise<FetchAndUploadToMetaResponse> {
+	const configuredSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+	if (!configuredSupabaseUrl) throw new Error("URL do Supabase não configurada.");
+	let parsedUrl: URL;
+	try {
+		parsedUrl = new URL(fileUrl);
+	} catch {
+		throw new Error("URL de mídia inválida.");
+	}
+	const allowedOrigin = new URL(configuredSupabaseUrl).origin;
+	if (parsedUrl.origin !== allowedOrigin || !parsedUrl.pathname.startsWith("/storage/v1/object/public/files/")) {
+		throw new Error("A mídia do template precisa pertencer ao armazenamento público do RecompraCRM.");
+	}
+	console.log(`[INFO] [META_MEDIA_UPLOAD] Fetching trusted storage object: ${parsedUrl.pathname}`);
 
 	// Fetch the file from the URL
-	const response = await fetch(fileUrl);
+	const response = await fetch(parsedUrl, { redirect: "error", signal: AbortSignal.timeout(15_000) });
 
 	if (!response.ok) {
 		throw new Error(`Failed to fetch file from URL: ${response.status} ${response.statusText}`);
 	}
 
+	const declaredLength = Number(response.headers.get("content-length") ?? 0);
+	const maximumSize = TEMPLATE_MEDIA_CONSTRAINTS.document.maxSize;
+	if (declaredLength > maximumSize) throw new Error("Arquivo de mídia maior que o limite permitido.");
 	const arrayBuffer = await response.arrayBuffer();
+	if (arrayBuffer.byteLength > maximumSize) throw new Error("Arquivo de mídia maior que o limite permitido.");
 	const buffer = Buffer.from(arrayBuffer);
 
 	// Get content type from response headers

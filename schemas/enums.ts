@@ -553,7 +553,7 @@ export type TActionApprovalDecisionMethodEnum = z.infer<typeof ActionApprovalDec
 
 // Tipos de ação aprovável. Deliberadamente NÃO é pgEnum: a coluna `tipo` é varchar para que novos
 // cenários de aprovação não custem migração de enum no Postgres.
-export const ActionApprovalTypeEnum = z.enum(["VENDA_DESCONTO"]);
+export const ActionApprovalTypeEnum = z.enum(["VENDA_DESCONTO", "AGENTE_ATIVAR_CAMPANHA", "AGENTE_SUBMETER_TEMPLATE"]);
 export type TActionApprovalTypeEnum = z.infer<typeof ActionApprovalTypeEnum>;
 
 // ============================================================================
@@ -723,6 +723,13 @@ export const AccessScopeEnum = z.enum([
 	"agent:products:read",
 	"agent:campaigns:read",
 	"agent:sales:read",
+	"agent:members:read",
+	"agent:campaigns:write",
+	"agent:campaigns:activate",
+	"agent:message-templates:read",
+	"agent:message-templates:write",
+	"agent:message-templates:submit",
+	"agent:message-template-media:write",
 	// Prefixo `platform:` só existe para principal CONTA_PLATAFORMA — são as ferramentas que
 	// atravessam organizações. Nenhuma aplicação de lojista tem esses scopes no teto.
 	"platform:organizations:read",
@@ -767,6 +774,13 @@ export const AccessEventTypeEnum = z.enum([
 	"PRINCIPAL_REVOGADO",
 	"CHAMADA_POI_LEGADO",
 	"CHAMADA_AGENTE",
+	"MUTACOES_AGENTE_CONFIGURADAS",
+	"OPERACAO_AGENTE",
+	// Fluxo OAuth das conexões MCP (registro dinâmico + authorization code).
+	"OAUTH_CLIENTE_REGISTRADO",
+	"OAUTH_CODIGO_EMITIDO",
+	"OAUTH_TOKEN_EMITIDO",
+	"OAUTH_FALHA",
 ]);
 export type TAccessEventTypeEnum = z.infer<typeof AccessEventTypeEnum>;
 

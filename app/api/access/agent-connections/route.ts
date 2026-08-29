@@ -49,6 +49,7 @@ async function createAgentConnection({
 		nome: input.nome,
 		scopes: input.scopes,
 		criadoPorId,
+		responsavelUsuarioId: criadoPorId,
 		descricao: "Conexão de IA criada pelo painel.",
 	});
 

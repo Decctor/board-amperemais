@@ -1,6 +1,6 @@
 import { db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
-import { eq, or } from "drizzle-orm";
+import { organizationMembers, organizations } from "@/services/drizzle/schema";
+import { and, eq, or } from "drizzle-orm";
 import createHttpError from "http-errors";
 import type { TAgentActorContext } from "./types";
 
@@ -55,6 +55,20 @@ export async function resolveOrganizationScope(actor: TAgentActorContext, reques
  */
 export function canReadClientPii(actor: TAgentActorContext) {
 	return actor.scopes.has("agent:clients:pii");
+}
+
+export async function resolveResponsibleUser(actor: TAgentActorContext, organizationId: string) {
+	if (!actor.responsibleUserId) {
+		throw new createHttpError.PreconditionFailed("Esta conexão não possui um usuário responsável configurado.");
+	}
+	const membership = await db.query.organizationMembers.findFirst({
+		where: and(eq(organizationMembers.organizacaoId, organizationId), eq(organizationMembers.usuarioId, actor.responsibleUserId)),
+		columns: { id: true },
+	});
+	if (!membership) {
+		throw new createHttpError.PreconditionFailed("O usuário responsável pela conexão não pertence à organização selecionada.");
+	}
+	return actor.responsibleUserId;
 }
 
 /** Mantém os últimos dígitos para o humano reconhecer o registro sem expor o contato. */

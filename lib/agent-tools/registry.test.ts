@@ -13,12 +13,12 @@ function createActor(overrides: Partial<TAgentActorContext> = {}): TAgentActorCo
 		organizationId: "org-1",
 		scopes: new Set<string>(),
 		...overrides,
+		responsibleUserId: overrides.responsibleUserId === undefined ? "user-1" : overrides.responsibleUserId,
 	};
 }
 
-const AGENT_SCOPES = ["agent:results:read", "agent:clients:read", "agent:products:read", "agent:campaigns:read", "agent:sales:read"];
 const PLATFORM_SCOPES = ["platform:organizations:read", "platform:metrics:read"];
-const ALL_SCOPES = new Set([...AGENT_SCOPES, ...PLATFORM_SCOPES]);
+const ALL_SCOPES = new Set(listAllAgentTools().flatMap((tool) => tool.scopes));
 
 test("sem scope nenhum, o ator não enxerga ferramenta alguma", () => {
 	assert.deepEqual(listToolsForActor(createActor()), []);
@@ -106,4 +106,22 @@ test("toda ferramenta de plataforma é exclusiva do modo plataforma e usa o pref
 test("nenhum nome de ferramenta se repete no registro", () => {
 	const names = listAllAgentTools().map((tool) => tool.name);
 	assert.equal(new Set(names).size, names.length);
+});
+
+test("ferramentas de mutação exigem responsável e scopes exatos", () => {
+	const scopes = new Set(["agent:campaigns:write"]);
+	assert.equal(
+		listToolsForActor(createActor({ scopes, responsibleUserId: null })).some((tool) => tool.mutates),
+		false,
+	);
+	assert.deepEqual(
+		listToolsForActor(createActor({ scopes, responsibleUserId: "user-1" })).map((tool) => tool.name),
+		["create_campaign_draft", "validate_campaign_draft", "update_campaign_draft"],
+	);
+});
+
+test("toda ferramenta com efeito externo também é marcada como mutação", () => {
+	for (const tool of listAllAgentTools()) {
+		if (tool.externalEffect) assert.equal(tool.mutates, true, `${tool.name} marca efeito externo sem marcar mutação`);
+	}
 });

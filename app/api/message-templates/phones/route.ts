@@ -33,10 +33,7 @@ export type TCreateMessageTemplatePhoneInput = z.infer<typeof MessageTemplatePho
 export type TSyncMessageTemplatePhoneInput = z.infer<typeof MessageTemplatePhoneInputSchema>;
 export type TDeleteMessageTemplatePhoneInput = z.infer<typeof DeleteMessageTemplatePhoneInputSchema>;
 
-async function getTemplateAndPhone({ input, session }: { input: z.infer<typeof MessageTemplatePhoneInputSchema>; session: TAuthUserSession }) {
-	const organizationId = session.membership?.organizacao.id;
-	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-
+async function getTemplateAndPhone({ input, organizationId }: { input: z.infer<typeof MessageTemplatePhoneInputSchema>; organizationId: string }) {
 	const template = await db.query.messageTemplates.findFirst({
 		where: and(eq(messageTemplates.id, input.messageTemplateId), eq(messageTemplates.organizacaoId, organizationId)),
 	});
@@ -49,8 +46,8 @@ async function getTemplateAndPhone({ input, session }: { input: z.infer<typeof M
 	return { organizationId, template, phone };
 }
 
-async function createMessageTemplatePhone({ input, session }: { input: TCreateMessageTemplatePhoneInput; session: TAuthUserSession }) {
-	const { organizationId, template, phone } = await getTemplateAndPhone({ input, session });
+export async function createMessageTemplatePhone({ input, organizationId }: { input: TCreateMessageTemplatePhoneInput; organizationId: string }) {
+	const { template, phone } = await getTemplateAndPhone({ input, organizationId });
 	const result = await submitMessageTemplateToWhatsappPhone({
 		template,
 		phone,
@@ -87,12 +84,14 @@ async function createMessageTemplatePhoneRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = MessageTemplatePhoneInputSchema.parse(await request.json());
-	const result = await createMessageTemplatePhone({ input, session });
+	const organizationId = session.membership?.organizacao.id;
+	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const result = await createMessageTemplatePhone({ input, organizationId });
 	return NextResponse.json(result, { status: 201 });
 }
 
-async function syncMessageTemplatePhone({ input, session }: { input: TSyncMessageTemplatePhoneInput; session: TAuthUserSession }) {
-	const { organizationId, template, phone } = await getTemplateAndPhone({ input, session });
+export async function syncMessageTemplatePhone({ input, organizationId }: { input: TSyncMessageTemplatePhoneInput; organizationId: string }) {
+	const { template, phone } = await getTemplateAndPhone({ input, organizationId });
 	const patch = await syncMessageTemplateFromMetaForPhone({ template, phone });
 	const phoneMetadata = patch.metadados.porNumeroTelefone[phone.id];
 	if (!phoneMetadata) throw new createHttpError.InternalServerError("Patch de sincronização não produziu metadados para o telefone.");
@@ -126,12 +125,16 @@ async function syncMessageTemplatePhoneRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = MessageTemplatePhoneInputSchema.parse(await request.json());
-	const result = await syncMessageTemplatePhone({ input, session });
+	const organizationId = session.membership?.organizacao.id;
+	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const result = await syncMessageTemplatePhone({ input, organizationId });
 	return NextResponse.json(result, { status: 200 });
 }
 
 async function deleteMessageTemplatePhone({ input, session }: { input: TDeleteMessageTemplatePhoneInput; session: TAuthUserSession }) {
-	const { organizationId, template, phone } = await getTemplateAndPhone({ input, session });
+	const organizationId = session.membership?.organizacao.id;
+	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const { template, phone } = await getTemplateAndPhone({ input, organizationId });
 	const metaResults = input.deleteFromMeta ? await deleteMessageTemplateFromMetaPhones({ template, phones: [phone] }) : [];
 	await db
 		.update(messageTemplates)

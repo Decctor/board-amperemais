@@ -2,8 +2,8 @@ import "dotenv/config";
 import { ensureNativeAccessClients, getDefaultAgentAccessScopes } from "@/lib/access/clients-catalog";
 import { provisionAgentPrincipal } from "@/lib/access/credentials";
 import { connection, db } from "@/services/drizzle";
-import { organizations } from "@/services/drizzle/schema";
-import { eq, or } from "drizzle-orm";
+import { organizationMembers, organizations, users } from "@/services/drizzle/schema";
+import { and, eq, or } from "drizzle-orm";
 
 /**
  * Emite uma credencial de agente de IA (MCP) — o caminho de provisionamento enquanto a tela de
@@ -19,6 +19,7 @@ import { eq, or } from "drizzle-orm";
  *   --plataforma Sem organização — enxerga todas (modo PLATAFORMA)
  *   --nome       Nome do principal, como aparece na auditoria
  *   --scopes     Lista separada por vírgula; padrão é a leitura completa do agente
+ *   --responsavel ID ou e-mail do usuário que assume autoria nas mutações
  */
 
 function readFlag(name: string): string | null {
@@ -38,6 +39,7 @@ async function main() {
 	const isPlatform = hasFlag("plataforma");
 	const nome = readFlag("nome");
 	const scopesFlag = readFlag("scopes");
+	const responsibleReference = readFlag("responsavel");
 
 	if (!accessClientCodigo) throw new Error("Informe --client (ex.: AGENT_CLAUDE).");
 	if (!nome) throw new Error("Informe --nome para identificar esta conexão na auditoria.");
@@ -70,12 +72,31 @@ async function main() {
 				.filter(Boolean)
 		: getDefaultAgentAccessScopes({ isPlatform });
 
+	let responsavelUsuarioId: string | null = null;
+	if (responsibleReference) {
+		const responsible = await db.query.users.findFirst({
+			where: or(eq(users.id, responsibleReference), eq(users.email, responsibleReference)),
+			columns: { id: true, nome: true },
+		});
+		if (!responsible) throw new Error(`Usuário responsável não encontrado: ${responsibleReference}.`);
+		if (organizacaoId) {
+			const membership = await db.query.organizationMembers.findFirst({
+				where: and(eq(organizationMembers.organizacaoId, organizacaoId), eq(organizationMembers.usuarioId, responsible.id)),
+				columns: { id: true },
+			});
+			if (!membership) throw new Error("O usuário responsável não pertence à organização selecionada.");
+		}
+		responsavelUsuarioId = responsible.id;
+		console.log(`[ACESSO] Responsável: ${responsible.nome} (${responsible.id})`);
+	}
+
 	const result = await provisionAgentPrincipal({
 		accessClientCodigo,
 		organizacaoId,
 		nome,
 		scopes,
 		descricao: "Credencial emitida via scripts/issue-agent-credential.ts.",
+		responsavelUsuarioId,
 	});
 
 	console.log(`\n[ACESSO] Principal criado: ${result.principal.nome} (${result.principal.id}) — tipo ${result.principal.tipo}`);

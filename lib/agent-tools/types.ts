@@ -1,5 +1,13 @@
 import type { TAccessScopeEnum } from "@/schemas/enums";
-import type z from "zod";
+import z from "zod";
+
+export const AgentMutationControlInputSchema = z.object({
+	chaveIdempotencia: z
+		.string({ required_error: "Chave de idempotência não informada.", invalid_type_error: "Tipo inválido para a chave de idempotência." })
+		.trim()
+		.min(8, "A chave de idempotência precisa ter ao menos 8 caracteres.")
+		.max(200, "A chave de idempotência precisa ter no máximo 200 caracteres."),
+});
 
 /**
  * Modo do ator, derivado do **tipo do principal** na autenticação — nunca de um argumento da
@@ -16,6 +24,8 @@ export type TAgentActorContext = {
 	clientCode: string;
 	/** Preenchido exatamente quando `mode === "ORG"`. Ver `resolveOrganizationScope`. */
 	organizationId: string | null;
+	/** Usuário configurado por um administrador para assumir `autorId` nas mutações MCP. */
+	responsibleUserId: string | null;
 	scopes: ReadonlySet<string>;
 };
 
@@ -39,6 +49,12 @@ export type TAgentToolDefinition<TInputSchema extends z.ZodTypeAny = z.ZodTypeAn
 	/** Todos exigidos (E lógico), sempre por igualdade exata — sem wildcards. */
 	scopes: TAccessScopeEnum[];
 	modes: TAgentActorMode[];
+	/** Oculta a ferramenta quando a conexão não tem atribuição humana configurada. */
+	requiresResponsibleUser?: boolean;
+	/** Marca side effects para clientes MCP e impede execução acidental no smoke test de leitura. */
+	mutates?: boolean;
+	/** A mutação atravessa o sistema (ativação/envio) e pode exigir aprovação. */
+	externalEffect?: boolean;
 	inputSchema: TInputSchema;
 	execute: (input: z.infer<TInputSchema>, actor: TAgentActorContext) => Promise<unknown>;
 };

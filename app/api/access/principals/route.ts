@@ -4,7 +4,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { AccessPrincipalStatusEnum, AccessPrincipalTypeEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
-import { accessPrincipals } from "@/services/drizzle/schema";
+import { accessPrincipals, organizationMembers } from "@/services/drizzle/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -35,6 +35,7 @@ async function getAccessPrincipals({ input, organizacaoId }: TGetAccessPrincipal
 		tipo: true,
 		status: true,
 		lojaId: true,
+		responsavelUsuarioId: true,
 		metadados: true,
 		ultimoAcesso: true,
 		dataInsercao: true,
@@ -100,6 +101,7 @@ const UpdateAccessPrincipalInputSchema = z.object({
 		.nullable(),
 	lojaId: z.string({ invalid_type_error: "Tipo não válido para o ID da loja." }).optional().nullable(),
 	status: AccessPrincipalStatusEnum.optional().nullable(),
+	responsavelUsuarioId: z.string({ invalid_type_error: "Tipo não válido para o ID do usuário responsável." }).optional().nullable(),
 });
 export type TUpdateAccessPrincipalInput = z.infer<typeof UpdateAccessPrincipalInputSchema>;
 
@@ -123,12 +125,21 @@ async function updateAccessPrincipal({ input, organizacaoId, enderecoIp, userAge
 
 	if (principal.dataRevogacao) throw new createHttpError.BadRequest("Dispositivo revogado não pode ser alterado.");
 
+	if (input.responsavelUsuarioId) {
+		const membership = await db.query.organizationMembers.findFirst({
+			where: and(eq(organizationMembers.organizacaoId, organizacaoId), eq(organizationMembers.usuarioId, input.responsavelUsuarioId)),
+			columns: { id: true },
+		});
+		if (!membership) throw new createHttpError.BadRequest("O usuário responsável precisa ser membro da organização.");
+	}
+
 	await db
 		.update(accessPrincipals)
 		.set({
 			...(input.nome ? { nome: input.nome } : {}),
 			...(input.lojaId !== undefined ? { lojaId: input.lojaId } : {}),
 			...(input.status ? { status: input.status } : {}),
+			...(input.responsavelUsuarioId !== undefined ? { responsavelUsuarioId: input.responsavelUsuarioId } : {}),
 			dataAtualizacao: new Date(),
 		})
 		.where(eq(accessPrincipals.id, principal.id));

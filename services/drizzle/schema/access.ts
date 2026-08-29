@@ -47,6 +47,9 @@ export const accessPrincipals = newTable(
 		// Sem FK enquanto lojas não forem entidade do schema; coluna própria porque vínculo com loja
 		// participa de política e relatório (não vai para JSON).
 		lojaId: varchar("loja_id", { length: 255 }),
+		// Humano que assume a responsabilidade pelas mutações feitas por esta conexão MCP. O
+		// principal continua sendo o ator real na auditoria.
+		responsavelUsuarioId: varchar("responsavel_usuario_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
 		tipo: accessPrincipalTypeEnum("tipo").notNull(),
 		nome: text("nome").notNull(),
 		referenciaExterna: varchar("referencia_externa", { length: 255 }),
@@ -60,6 +63,7 @@ export const accessPrincipals = newTable(
 	(table) => ({
 		organizacaoIdIdx: index("idx_access_principals_organizacao_id").on(table.organizacaoId),
 		accessClientIdIdx: index("idx_access_principals_access_client_id").on(table.accessClientId),
+		responsavelUsuarioIdIdx: index("idx_access_principals_responsavel_usuario_id").on(table.responsavelUsuarioId),
 	}),
 );
 
@@ -144,6 +148,71 @@ export const accessEnrollmentChallenges = newTable(
 	}),
 );
 
+// Cliente OAuth registrado dinamicamente (RFC 7591) por um conector MCP (Claude, ChatGPT…).
+// Não confundir com `accessClients` (catálogo de aplicações): o registro OAuth é a instância
+// concreta que um conector criou, e aponta para a aplicação do catálogo que lhe dá o teto de
+// scopes. O `id` é o próprio `client_id` OAuth — opaco e sem segredo (cliente público + PKCE).
+export const accessOauthClients = newTable(
+	"access_oauth_clients",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		accessClientId: varchar("access_client_id", { length: 255 })
+			.references(() => accessClients.id, { onDelete: "cascade" })
+			.notNull(),
+		nome: text("nome").notNull(),
+		redirectUris: jsonb("redirect_uris").$type<string[]>().notNull().default([]),
+		// Sempre "none" hoje. A coluna existe para clientes confidenciais futuros não custarem migração.
+		tokenEndpointAuthMethod: varchar("token_endpoint_auth_method", { length: 64 }).notNull().default("none"),
+		// Payload de registro sanitizado, para diagnóstico — nunca decisões de autorização.
+		metadadosRegistro: jsonb("metadados_registro"),
+		status: accessClientStatusEnum("status").notNull().default("ATIVO"),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+		dataAtualizacao: timestamp("data_atualizacao").defaultNow().notNull(),
+	},
+	(table) => ({
+		accessClientIdIdx: index("idx_access_oauth_clients_access_client_id").on(table.accessClientId),
+	}),
+);
+
+// Código de autorização de curta duração (authorization code + PKCE), de uso único.
+// Como toda credencial deste módulo, só o SHA-256 do código fica no banco.
+export const accessOauthAuthorizationCodes = newTable(
+	"access_oauth_authorization_codes",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		oauthClientId: varchar("oauth_client_id", { length: 255 })
+			.references(() => accessOauthClients.id, { onDelete: "cascade" })
+			.notNull(),
+		organizacaoId: varchar("organizacao_id", { length: 255 })
+			.references(() => organizations.id, { onDelete: "cascade" })
+			.notNull(),
+		usuarioId: varchar("usuario_id", { length: 255 })
+			.references(() => users.id, { onDelete: "cascade" })
+			.notNull(),
+		hashCodigo: varchar("hash_codigo", { length: 255 }).notNull(),
+		// A URI exata usada no /authorize: a troca no /token precisa repeti-la (RFC 6749 §4.1.3).
+		redirectUri: text("redirect_uri").notNull(),
+		// Challenge S256 em base64url — único método aceito; "plain" é recusado no endpoint.
+		codeChallenge: varchar("code_challenge", { length: 255 }).notNull(),
+		scopes: jsonb("scopes").$type<string[]>().notNull().default([]),
+		// RFC 8707, quando o cliente informa. Guardado para auditoria; validado contra o endpoint MCP.
+		resource: text("resource"),
+		expiraEm: timestamp("expira_em").notNull(),
+		dataConsumo: timestamp("data_consumo"),
+		// Preenchido na troca: qual principal nasceu deste consentimento.
+		principalId: varchar("principal_id", { length: 255 }).references(() => accessPrincipals.id, { onDelete: "set null" }),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+	},
+	(table) => ({
+		hashCodigoIdx: uniqueIndex("idx_access_oauth_codes_hash_codigo").on(table.hashCodigo),
+		organizacaoIdIdx: index("idx_access_oauth_codes_organizacao_id").on(table.organizacaoId),
+	}),
+);
+
 export const accessEvents = newTable(
 	"access_events",
 	{
@@ -180,6 +249,10 @@ export const accessPrincipalsRelations = relations(accessPrincipals, ({ one, man
 	organizacao: one(organizations, {
 		fields: [accessPrincipals.organizacaoId],
 		references: [organizations.id],
+	}),
+	responsavelUsuario: one(users, {
+		fields: [accessPrincipals.responsavelUsuarioId],
+		references: [users.id],
 	}),
 	credenciais: many(accessCredentials),
 	grants: many(accessGrants),
@@ -222,6 +295,33 @@ export const accessEnrollmentChallengesRelations = relations(accessEnrollmentCha
 	}),
 }));
 
+export const accessOauthClientsRelations = relations(accessOauthClients, ({ one, many }) => ({
+	cliente: one(accessClients, {
+		fields: [accessOauthClients.accessClientId],
+		references: [accessClients.id],
+	}),
+	authorizationCodes: many(accessOauthAuthorizationCodes),
+}));
+
+export const accessOauthAuthorizationCodesRelations = relations(accessOauthAuthorizationCodes, ({ one }) => ({
+	oauthClient: one(accessOauthClients, {
+		fields: [accessOauthAuthorizationCodes.oauthClientId],
+		references: [accessOauthClients.id],
+	}),
+	organizacao: one(organizations, {
+		fields: [accessOauthAuthorizationCodes.organizacaoId],
+		references: [organizations.id],
+	}),
+	usuario: one(users, {
+		fields: [accessOauthAuthorizationCodes.usuarioId],
+		references: [users.id],
+	}),
+	principal: one(accessPrincipals, {
+		fields: [accessOauthAuthorizationCodes.principalId],
+		references: [accessPrincipals.id],
+	}),
+}));
+
 export const accessEventsRelations = relations(accessEvents, ({ one }) => ({
 	organizacao: one(organizations, {
 		fields: [accessEvents.organizacaoId],
@@ -249,3 +349,7 @@ export type TAccessEnrollmentChallengeEntity = typeof accessEnrollmentChallenges
 export type TNewAccessEnrollmentChallengeEntity = typeof accessEnrollmentChallenges.$inferInsert;
 export type TAccessEventEntity = typeof accessEvents.$inferSelect;
 export type TNewAccessEventEntity = typeof accessEvents.$inferInsert;
+export type TAccessOauthClientEntity = typeof accessOauthClients.$inferSelect;
+export type TNewAccessOauthClientEntity = typeof accessOauthClients.$inferInsert;
+export type TAccessOauthAuthorizationCodeEntity = typeof accessOauthAuthorizationCodes.$inferSelect;
+export type TNewAccessOauthAuthorizationCodeEntity = typeof accessOauthAuthorizationCodes.$inferInsert;

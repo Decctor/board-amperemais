@@ -1,9 +1,27 @@
 import type { TAgentActorContext, TAgentToolDefinitionErased } from "./types";
 import { campaignResultsTool } from "./tools/campaign-results";
+import {
+	activateCampaignTool,
+	createCampaignDraftTool,
+	getCampaignConfigurationTool,
+	updateCampaignDraftTool,
+	validateCampaignDraftTool,
+} from "./tools/campaign-mutations";
 import { clientContextTool } from "./tools/client-context";
 import { commercialResultsTool } from "./tools/commercial-results";
 import { listCampaignsTool } from "./tools/campaigns";
 import { listSegmentsTool } from "./tools/segments";
+import { listMembersTool } from "./tools/members";
+import {
+	createMessageTemplateDraftTool,
+	getMessageTemplateTool,
+	listMessageTemplatesTool,
+	updateMessageTemplateDraftTool,
+	listWhatsappTemplateDestinationsTool,
+	submitMessageTemplateForApprovalTool,
+	syncMessageTemplateStatusTool,
+} from "./tools/message-templates";
+import { completeMessageTemplateMediaUploadTool, createMessageTemplateMediaUploadTool } from "./tools/message-template-media";
 import { platformAggregateMetricsTool, platformOrganizationHealthTool, platformSearchOrganizationsTool } from "./tools/platform";
 import { productPerformanceTool } from "./tools/product-performance";
 import { searchClientsTool } from "./tools/clients";
@@ -33,6 +51,21 @@ const AGENT_TOOLS = [
 	productPerformanceTool,
 	listCampaignsTool,
 	campaignResultsTool,
+	getCampaignConfigurationTool,
+	createCampaignDraftTool,
+	validateCampaignDraftTool,
+	updateCampaignDraftTool,
+	activateCampaignTool,
+	listMembersTool,
+	listMessageTemplatesTool,
+	getMessageTemplateTool,
+	createMessageTemplateDraftTool,
+	updateMessageTemplateDraftTool,
+	listWhatsappTemplateDestinationsTool,
+	submitMessageTemplateForApprovalTool,
+	syncMessageTemplateStatusTool,
+	createMessageTemplateMediaUploadTool,
+	completeMessageTemplateMediaUploadTool,
 	// Plataforma — atravessam organizações e por isso não existem em modo ORG.
 	platformSearchOrganizationsTool,
 	platformOrganizationHealthTool,
@@ -41,6 +74,7 @@ const AGENT_TOOLS = [
 
 function isToolAvailableToActor(tool: TAgentToolDefinitionErased, actor: TAgentActorContext) {
 	if (!tool.modes.includes(actor.mode)) return false;
+	if (tool.requiresResponsibleUser && !actor.responsibleUserId) return false;
 	// Igualdade exata, sem wildcards — mesma regra dos grants de dispositivo (§9.4 do plano de acesso).
 	return tool.scopes.every((scope) => actor.scopes.has(scope));
 }

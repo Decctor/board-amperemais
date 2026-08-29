@@ -49,6 +49,7 @@ export async function authenticateAgentRequest(request: NextRequest): Promise<TA
 			clientId: credential.clientId,
 			clientCode: credential.clientCode,
 			organizationId: null,
+			responsibleUserId: credential.responsibleUserId,
 			scopes: credential.scopes,
 		};
 	}
@@ -66,6 +67,7 @@ export async function authenticateAgentRequest(request: NextRequest): Promise<TA
 		clientId: credential.clientId,
 		clientCode: credential.clientCode,
 		organizationId: credential.organizationId,
+		responsibleUserId: credential.responsibleUserId,
 		scopes: credential.scopes,
 	};
 }
@@ -81,12 +83,14 @@ export async function recordAgentToolCall({
 	toolName,
 	organizacaoId,
 	erro,
+	resultReferences,
 }: {
 	actor: TAgentActorContext;
 	request: NextRequest;
 	toolName: string;
 	organizacaoId?: string | null;
 	erro?: string | null;
+	resultReferences?: Record<string, string> | null;
 }) {
 	const { enderecoIp, userAgent } = getRequestClientInfo(request);
 	await recordAccessEvent({
@@ -96,6 +100,6 @@ export async function recordAgentToolCall({
 		credencialId: actor.credentialId,
 		enderecoIp,
 		userAgent,
-		metadados: { ferramenta: toolName, modo: actor.mode, ...(erro ? { erro } : {}) },
+		metadados: { ferramenta: toolName, modo: actor.mode, ...(resultReferences ? { recursos: resultReferences } : {}), ...(erro ? { erro } : {}) },
 	});
 }

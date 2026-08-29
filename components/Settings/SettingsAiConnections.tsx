@@ -40,7 +40,7 @@ export default function SettingsAiConnections({ membership }: SettingsAiConnecti
 			<SettingsPanelSection
 				title="CONEXÕES DE IA"
 				icon={<Bot className="h-4 w-4 min-h-4 min-w-4" />}
-				description="Assistentes como Claude e ChatGPT consultando os dados da sua operação. Cada conexão tem chave própria e só lê o que você permitir."
+				description="Assistentes como Claude e ChatGPT acessando a sua operação. Cada conexão tem chave, responsável e permissões próprias."
 				action={
 					canManage ? (
 						<Button size="sm" className="flex items-center gap-2 whitespace-nowrap" onClick={() => setNewConnectionModalIsOpen(true)}>
@@ -60,8 +60,7 @@ export default function SettingsAiConnections({ membership }: SettingsAiConnecti
 						<div className="flex flex-col gap-1">
 							<h3 className="text-base font-bold tracking-tight">Nenhuma conexão de IA</h3>
 							<p className="max-w-md text-sm text-muted-foreground">
-								Conecte um assistente para perguntar sobre faturamento, clientes, produtos e campanhas em linguagem natural. Ele apenas consulta — nenhuma
-								conexão altera dados da sua operação.
+								Conecte um assistente para consultar dados e, quando autorizado, preparar campanhas e templates em linguagem natural.
 							</p>
 						</div>
 						{canManage ? (

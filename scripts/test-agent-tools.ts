@@ -63,6 +63,7 @@ async function main() {
 		clientId: "script-client",
 		clientCode: "SCRIPT",
 		organizationId: asPlatform ? null : organization.id,
+		responsibleUserId: null,
 		scopes: ALL_SCOPES,
 	};
 
@@ -102,6 +103,11 @@ async function main() {
 
 	for (const tool of listAllAgentTools()) {
 		if (!tool.modes.includes(actor.mode)) continue;
+		if (tool.mutates) {
+			console.log(`  ⊘ ${tool.name} — mutação omitida pelo smoke test de leitura`);
+			skipped++;
+			continue;
+		}
 
 		const rawArguments = argumentsByTool[tool.name] ?? {};
 		// Falta de amostra não é falha da ferramenta — é falta de dado nesta organização.

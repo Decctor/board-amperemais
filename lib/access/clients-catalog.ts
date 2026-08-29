@@ -30,6 +30,16 @@ export const AGENT_READ_ACCESS_SCOPES: TAccessScopeEnum[] = [
 	"agent:products:read",
 	"agent:campaigns:read",
 	"agent:sales:read",
+	"agent:members:read",
+	"agent:message-templates:read",
+];
+
+export const AGENT_MUTATION_ACCESS_SCOPES: TAccessScopeEnum[] = [
+	"agent:campaigns:write",
+	"agent:campaigns:activate",
+	"agent:message-templates:write",
+	"agent:message-templates:submit",
+	"agent:message-template-media:write",
 ];
 
 // Capacidades que atravessam organizações. Pertencem ao teto do AGENT_CONTROL, mas só são
@@ -73,11 +83,20 @@ export const NATIVE_ACCESS_CLIENTS: TNativeAccessClientDefinition[] = [
 		codigo: "AGENT_CLAUDE",
 		nome: "Claude (conector MCP)",
 		categoria: "APLICACAO_PARCEIRA",
-		escoposPermitidos: AGENT_READ_ACCESS_SCOPES,
+		escoposPermitidos: [...AGENT_READ_ACCESS_SCOPES, ...AGENT_MUTATION_ACCESS_SCOPES],
 	},
 	{
 		codigo: "AGENT_CHATGPT",
 		nome: "ChatGPT (conector MCP)",
+		categoria: "APLICACAO_PARCEIRA",
+		escoposPermitidos: [...AGENT_READ_ACCESS_SCOPES, ...AGENT_MUTATION_ACCESS_SCOPES],
+	},
+	// Fallback do registro OAuth dinâmico: um cliente MCP que não reconhecemos pelo redirect
+	// (Cursor, inspetores, apps novos) cai aqui, com teto só de leitura — mutação exige uma
+	// aplicação identificada no catálogo.
+	{
+		codigo: "AGENT_MCP",
+		nome: "Cliente MCP genérico (OAuth)",
 		categoria: "APLICACAO_PARCEIRA",
 		escoposPermitidos: AGENT_READ_ACCESS_SCOPES,
 	},
@@ -87,7 +106,7 @@ export const NATIVE_ACCESS_CLIENTS: TNativeAccessClientDefinition[] = [
 		categoria: "SERVIDOR_EXTERNO",
 		// O teto expressa capacidade, não concessão automática. Principals Control de organização
 		// recebem apenas agent:*; platform:* exige emissão explícita como CONTA_PLATAFORMA.
-		escoposPermitidos: [...AGENT_READ_ACCESS_SCOPES, ...PLATFORM_AGENT_ACCESS_SCOPES, "agent:clients:pii"],
+		escoposPermitidos: [...AGENT_READ_ACCESS_SCOPES, ...AGENT_MUTATION_ACCESS_SCOPES, ...PLATFORM_AGENT_ACCESS_SCOPES, "agent:clients:pii"],
 	},
 ];
 

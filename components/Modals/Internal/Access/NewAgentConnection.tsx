@@ -121,7 +121,8 @@ export function NewAgentConnection({ closeModal, callbacks }: NewAgentConnection
 
 			<ResponsiveMenuSection title="PERMISSÕES" icon={<KeyRound className="h-4 w-4 min-h-4 min-w-4" />}>
 				<p className="max-w-[52ch] text-xs text-muted-foreground">
-					O assistente só consegue consultar o que estiver ligado aqui, e nunca altera nada. Você pode mudar depois, com efeito imediato.
+					O assistente só consegue usar as capacidades ligadas aqui. Permissões de escrita e ações externas devem ser concedidas conscientemente e podem
+					ser revogadas a qualquer momento.
 				</p>
 				<div className="flex w-full flex-col divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
 					{availableScopes.map((scope) => (

@@ -151,6 +151,7 @@ type TProvisionAgentPrincipalParams = {
 	nome: string;
 	scopes: string[];
 	criadoPorId?: string | null;
+	responsavelUsuarioId?: string | null;
 	descricao?: string | null;
 };
 
@@ -188,6 +189,7 @@ export async function provisionAgentPrincipal(params: TProvisionAgentPrincipalPa
 				organizacaoId: params.organizacaoId,
 				tipo,
 				nome: params.nome,
+				responsavelUsuarioId: params.responsavelUsuarioId ?? null,
 			})
 			.returning({ id: accessPrincipals.id, nome: accessPrincipals.nome });
 

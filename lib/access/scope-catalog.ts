@@ -109,6 +109,41 @@ export const ACCESS_SCOPE_CATALOG: Record<TAccessScopeEnum, TAccessScopeDescript
 		description: "Ver vendas individuais do período, com valor, vendedor, canal e cliente.",
 		group: "AGENTE_IA",
 	},
+	"agent:members:read": {
+		label: "Consultar membros",
+		description: "Listar membros da organização para atribuir responsabilidades de negócio.",
+		group: "AGENTE_IA",
+	},
+	"agent:campaigns:write": {
+		label: "Criar e editar rascunhos de campanha",
+		description: "Criar e alterar campanhas sem ativá-las ou realizar envios.",
+		group: "AGENTE_IA",
+	},
+	"agent:campaigns:activate": {
+		label: "Ativar campanhas",
+		description: "Permitir a ativação operacional de campanhas após aprovação.",
+		group: "AGENTE_IA",
+	},
+	"agent:message-templates:read": {
+		label: "Consultar templates de mensagem",
+		description: "Listar templates e acompanhar aprovação e qualidade por número de WhatsApp.",
+		group: "AGENTE_IA",
+	},
+	"agent:message-templates:write": {
+		label: "Criar e editar rascunhos de template",
+		description: "Criar e alterar templates locais sem submetê-los à Meta.",
+		group: "AGENTE_IA",
+	},
+	"agent:message-templates:submit": {
+		label: "Submeter templates à Meta",
+		description: "Enviar templates para análise da Meta após aprovação humana.",
+		group: "AGENTE_IA",
+	},
+	"agent:message-template-media:write": {
+		label: "Enviar mídia de templates",
+		description: "Enviar imagens e outros cabeçalhos para o armazenamento da organização.",
+		group: "AGENTE_IA",
+	},
 	"platform:organizations:read": {
 		label: "Consultar organizações da plataforma",
 		description: "Listar todas as organizações e ver a saúde de cada conta. Interno — nunca conceda a uma aplicação de lojista.",

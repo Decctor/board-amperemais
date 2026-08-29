@@ -19,6 +19,7 @@ export type TVerifiedAccessCredential = {
 	clientCode: string;
 	organizationId: string | null;
 	principalType: TAccessPrincipalTypeEnum;
+	responsibleUserId: string | null;
 	scopes: ReadonlySet<string>;
 };
 
@@ -117,6 +118,7 @@ export async function verifyAccessCredentialFromRequest(request: NextRequest): P
 		clientCode: credential.principal.cliente.codigo,
 		organizationId: credential.principal.organizacaoId,
 		principalType: credential.principal.tipo,
+		responsibleUserId: credential.principal.responsavelUsuarioId,
 		scopes,
 	};
 }

@@ -13,6 +13,7 @@ function createActor(overrides: Partial<TAgentActorContext> = {}): TAgentActorCo
 		organizationId: "org-1",
 		scopes: new Set(["agent:results:read"]),
 		...overrides,
+		responsibleUserId: overrides.responsibleUserId === undefined ? "user-1" : overrides.responsibleUserId,
 	};
 }
 

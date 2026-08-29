@@ -1,4 +1,5 @@
 import TextInput from "@/components/Inputs/TextInput";
+import SelectInput from "@/components/Inputs/SelectInput";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
@@ -7,6 +8,7 @@ import type { TAccessPrincipalById } from "@/lib/queries/access";
 import { useMutation } from "@tanstack/react-query";
 import { AppWindow, Check, KeyRound, Monitor, TabletSmartphone, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useUsers } from "@/lib/queries/users";
 import { toast } from "sonner";
 import AccessStatusBadge from "../AccessStatusBadge";
 
@@ -33,6 +35,7 @@ type DeviceIdentityBlockProps = {
 export function DeviceIdentityBlock({ principal, readOnly, onChanged, callbacks }: DeviceIdentityBlockProps) {
 	const [nome, setNome] = useState(principal.nome);
 	const [revokeArmed, setRevokeArmed] = useState(false);
+	const { data: organizationUsers } = useUsers({ initialFilters: {}, enabled: principal.tipo === "CONTA_SERVICO" && !readOnly });
 
 	// O nome pode mudar por baixo (outra aba, outro operador): o campo segue a fonte da verdade.
 	useEffect(() => setNome(principal.nome), [principal.nome]);
@@ -41,6 +44,7 @@ export function DeviceIdentityBlock({ principal, readOnly, onChanged, callbacks 
 	const metadados = (principal.metadados ?? {}) as TDeviceMetadata;
 	const isRevoked = !!principal.dataRevogacao;
 	const Icon = CLIENT_CATEGORY_ICONS[principal.cliente.categoria] ?? KeyRound;
+	const isAiConnection = principal.tipo === "CONTA_SERVICO";
 
 	const { mutate: mutateRename, isPending: isRenaming } = useMutation({
 		mutationKey: ["update-access-principal", principal.id],
@@ -109,6 +113,23 @@ export function DeviceIdentityBlock({ principal, readOnly, onChanged, callbacks 
 				</div>
 			) : null}
 
+			{isAiConnection ? (
+				<div className="flex w-full flex-col gap-2 rounded-2xl border border-border bg-card p-4">
+					<SelectInput
+						label="USUÁRIO RESPONSÁVEL"
+						value={principal.responsavelUsuarioId}
+						editable={!readOnly && !isRenaming}
+						options={(organizationUsers ?? []).map((user) => ({ id: user.id, value: user.id, label: user.nome }))}
+						resetOptionLabel="Sem usuário responsável"
+						handleChange={(responsavelUsuarioId) => mutateRename({ id: principal.id, responsavelUsuarioId })}
+						onReset={() => mutateRename({ id: principal.id, responsavelUsuarioId: null })}
+					/>
+					<p className="text-xs text-muted-foreground">
+						As mutações feitas por esta conexão usam esse usuário nos campos de autoria. A auditoria continua registrando a conexão MCP real.
+					</p>
+				</div>
+			) : null}
+
 			<dl className="grid grid-cols-2 gap-x-4 gap-y-3">
 				<DeviceFact label="ATIVADO EM" value={formatDateAsLocale(principal.dataInsercao, true)} />
 				<DeviceFact label="ÚLTIMO CONTATO" value={principal.ultimoAcesso ? formatDateAsLocale(principal.ultimoAcesso, true) : "Nunca"} />
@@ -136,12 +157,7 @@ export function DeviceIdentityBlock({ principal, readOnly, onChanged, callbacks 
 					</div>
 					{revokeArmed ? (
 						<div className="flex flex-wrap items-center gap-2">
-							<Button
-								variant="destructive"
-								size="sm"
-								disabled={isRevoking}
-								onClick={() => mutateRevoke({ id: principal.id, status: "REVOGADO" })}
-							>
+							<Button variant="destructive" size="sm" disabled={isRevoking} onClick={() => mutateRevoke({ id: principal.id, status: "REVOGADO" })}>
 								SIM, REVOGAR AGORA
 							</Button>
 							<Button variant="ghost" size="sm" disabled={isRevoking} onClick={() => setRevokeArmed(false)}>

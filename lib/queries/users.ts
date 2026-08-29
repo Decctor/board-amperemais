@@ -1,5 +1,4 @@
 import type { TGetUsersInput, TGetUsersOutput } from "@/app/api/users/route";
-import type { TUserDTO } from "@/schemas/users";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
@@ -22,8 +21,9 @@ async function fetchUserById(id: string) {
 
 type UseUsersParams = {
 	initialFilters?: Partial<Omit<TGetUsersInput, "id">>;
+	enabled?: boolean;
 };
-export function useUsers({ initialFilters }: UseUsersParams) {
+export function useUsers({ initialFilters, enabled = true }: UseUsersParams) {
 	const [filters, setFilters] = useState<Omit<TGetUsersInput, "id">>({
 		search: initialFilters?.search || "",
 	});
@@ -35,6 +35,7 @@ export function useUsers({ initialFilters }: UseUsersParams) {
 		...useQuery({
 			queryKey: ["users"],
 			queryFn: async () => await fetchUsers(debouncedFilters),
+			enabled,
 		}),
 		queryKey: ["users", debouncedFilters],
 		filters,

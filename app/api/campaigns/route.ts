@@ -86,10 +86,14 @@ function validateSingleUseCampaign(campaign: z.infer<typeof CampaignSchema>) {
 	}
 }
 
-async function validateCampaignTemplateTriggerCompatibility(whatsappTemplateId: string | null | undefined, gatilhoTipo: TCampaignTriggerTypeEnum) {
+async function validateCampaignTemplateTriggerCompatibility(
+	whatsappTemplateId: string | null | undefined,
+	gatilhoTipo: TCampaignTriggerTypeEnum,
+	organizationId: string,
+) {
 	if (!whatsappTemplateId) return;
 	const template = await db.query.messageTemplates.findFirst({
-		where: (fields, { eq }) => eq(fields.id, whatsappTemplateId),
+		where: (fields, { and, eq }) => and(eq(fields.id, whatsappTemplateId), eq(fields.organizacaoId, organizationId)),
 		columns: { conteudo: true },
 	});
 	if (!template) return;
@@ -126,15 +130,53 @@ async function validateCampaignCouponGenerationSettings(
 	if (!coupon.ativo) throw new createHttpError.BadRequest("O cupom selecionado está inativo.");
 }
 
-const CreateCampaignInputSchema = z.object({
+export async function validateCampaignConfiguration({
+	campaign,
+	organizationId,
+}: {
+	campaign: z.infer<typeof CampaignSchema>;
+	organizationId: string;
+}) {
+	if (campaign.gatilhoTipo === "PERMANÊNCIA-SEGMENTAÇÃO" && (!campaign.gatilhoTempoPermanenciaMedida || !campaign.gatilhoTempoPermanenciaValor)) {
+		throw new createHttpError.BadRequest("Defina um tempo de permanência para a segmentação.");
+	}
+	validateRecurrentCampaign(campaign);
+	validateSingleUseCampaign(campaign);
+	validateCashbackExpiringTrigger(campaign);
+	validateCampaignFrequencyInterval(campaign);
+	validateExecutionDelayDirection(campaign);
+	await validateCampaignTemplateTriggerCompatibility(campaign.whatsappTemplateId, campaign.gatilhoTipo, organizationId);
+	validateCampaignWeeklyLimit({
+		campaignWeeklyLimit: campaign.limiteEnviosSemanais,
+		organizationWeeklyLimit: await getOrganizationWeeklyCampaignLimit(organizationId),
+	});
+	if (campaign.cashbackGeracaoAtivo) {
+		if (!campaign.cashbackGeracaoTipo) throw new createHttpError.BadRequest("Selecione o tipo de geração de cashback (FIXO ou PERCENTUAL).");
+		if (!campaign.cashbackGeracaoValor || campaign.cashbackGeracaoValor <= 0) {
+			throw new createHttpError.BadRequest("Informe um valor válido para o cashback.");
+		}
+		if (campaign.cashbackGeracaoTipo === "PERCENTUAL" && !["NOVA-COMPRA", "PRIMEIRA-COMPRA"].includes(campaign.gatilhoTipo)) {
+			throw new createHttpError.BadRequest("Cashback percentual só pode ser usado com gatilhos NOVA-COMPRA ou PRIMEIRA-COMPRA.");
+		}
+	}
+	await validateCampaignCouponGenerationSettings(campaign, organizationId);
+}
+
+export const CreateCampaignInputSchema = z.object({
 	campaign: CampaignSchema.omit({ dataInsercao: true, autorId: true }),
 	segmentations: z.array(CampaignSegmentationSchema.omit({ campanhaId: true })),
 });
 export type TCreateCampaignInput = z.infer<typeof CreateCampaignInputSchema>;
 
-async function createCampaign({ input, session }: { input: TCreateCampaignInput; session: TAuthUserSession }) {
-	const userOrgId = session.membership?.organizacao.id;
-	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+export async function createCampaign({
+	input,
+	organizationId: userOrgId,
+	authorId,
+}: {
+	input: TCreateCampaignInput;
+	organizationId: string;
+	authorId: string;
+}) {
 	// Doing some validations before starting the process
 	if (
 		input.campaign.gatilhoTipo === "PERMANÊNCIA-SEGMENTAÇÃO" &&
@@ -151,7 +193,7 @@ async function createCampaign({ input, session }: { input: TCreateCampaignInput;
 	validateExecutionDelayDirection(input.campaign as z.infer<typeof CampaignSchema>);
 
 	// Validate template-trigger compatibility
-	await validateCampaignTemplateTriggerCompatibility(input.campaign.whatsappTemplateId, input.campaign.gatilhoTipo);
+	await validateCampaignTemplateTriggerCompatibility(input.campaign.whatsappTemplateId, input.campaign.gatilhoTipo, userOrgId);
 	const organizationWeeklyLimit = await getOrganizationWeeklyCampaignLimit(userOrgId);
 	validateCampaignWeeklyLimit({
 		campaignWeeklyLimit: input.campaign.limiteEnviosSemanais,
@@ -177,22 +219,23 @@ async function createCampaign({ input, session }: { input: TCreateCampaignInput;
 
 	await validateCampaignCouponGenerationSettings(input.campaign, userOrgId);
 
-	const insertedCampaignResponse = await db
-		.insert(campaigns)
-		.values({ ...input.campaign, organizacaoId: userOrgId, autorId: session.user.id })
-		.returning({ id: campaigns.id });
-
-	const insertedCampaignId = insertedCampaignResponse[0]?.id;
-	if (!insertedCampaignId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar campanha.");
-
-	if (input.segmentations.length > 0)
-		await db.insert(campaignSegmentations).values(
-			input.segmentations.map((segmentation) => ({
-				...segmentation,
-				campanhaId: insertedCampaignId,
-				organizacaoId: userOrgId,
-			})),
-		);
+	const insertedCampaignId = await db.transaction(async (trx) => {
+		const insertedCampaignResponse = await trx
+			.insert(campaigns)
+			.values({ ...input.campaign, organizacaoId: userOrgId, autorId: authorId })
+			.returning({ id: campaigns.id });
+		const campaignId = insertedCampaignResponse[0]?.id;
+		if (!campaignId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao criar campanha.");
+		if (input.segmentations.length > 0)
+			await trx.insert(campaignSegmentations).values(
+				input.segmentations.map((segmentation) => ({
+					...segmentation,
+					campanhaId: campaignId,
+					organizacaoId: userOrgId,
+				})),
+			);
+		return campaignId;
+	});
 
 	return {
 		data: {
@@ -209,7 +252,9 @@ const createCampaignRoute = async (request: NextRequest) => {
 
 	const input = await request.json();
 	const parsedInput = CreateCampaignInputSchema.parse(input);
-	const result = await createCampaign({ input: parsedInput, session: session });
+	const organizationId = session.membership?.organizacao.id;
+	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const result = await createCampaign({ input: parsedInput, organizationId, authorId: session.user.id });
 	return NextResponse.json(result, { status: 201 });
 };
 
@@ -473,7 +518,7 @@ export const GET = appApiHandler({
 	GET: getCampaignsRoute,
 });
 
-const UpdateCampaignInputSchema = z.object({
+export const UpdateCampaignInputSchema = z.object({
 	campaignId: z.string({
 		required_error: "ID da campanha não informado.",
 		invalid_type_error: "Tipo não válido para o ID da campanha.",
@@ -498,9 +543,7 @@ const UpdateCampaignInputSchema = z.object({
 });
 export type TUpdateCampaignInput = z.infer<typeof UpdateCampaignInputSchema>;
 
-async function updateCampaign({ input, session }: { input: TUpdateCampaignInput; session: TAuthUserSession }) {
-	const userOrgId = session.membership?.organizacao.id;
-	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+export async function updateCampaign({ input, organizationId: userOrgId }: { input: TUpdateCampaignInput; organizationId: string }) {
 	const campaignId = input.campaignId;
 
 	// Validate recurrent campaign settings
@@ -511,7 +554,7 @@ async function updateCampaign({ input, session }: { input: TUpdateCampaignInput;
 	validateExecutionDelayDirection(input.campaign as z.infer<typeof CampaignSchema>);
 
 	// Validate template-trigger compatibility
-	await validateCampaignTemplateTriggerCompatibility(input.campaign.whatsappTemplateId, input.campaign.gatilhoTipo);
+	await validateCampaignTemplateTriggerCompatibility(input.campaign.whatsappTemplateId, input.campaign.gatilhoTipo, userOrgId);
 	const organizationWeeklyLimit = await getOrganizationWeeklyCampaignLimit(userOrgId);
 	validateCampaignWeeklyLimit({
 		campaignWeeklyLimit: input.campaign.limiteEnviosSemanais,
@@ -579,7 +622,9 @@ const updateCampaignRoute = async (request: NextRequest) => {
 	const input = await request.json();
 	const parsedInput = UpdateCampaignInputSchema.parse(input);
 	console.log("[INFO] [UPDATE-CAMPAIGN] Parsed input:", parsedInput);
-	const result = await updateCampaign({ input: parsedInput, session: session });
+	const organizationId = session.membership?.organizacao.id;
+	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const result = await updateCampaign({ input: parsedInput, organizationId });
 	return NextResponse.json(result, { status: 200 });
 };
 export const PUT = appApiHandler({

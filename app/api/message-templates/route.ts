@@ -25,7 +25,7 @@ import { createSimplifiedSearchCondition } from "@/lib/search";
 
 // `metadados` é derivado das submissões à Meta e dos webhooks, nunca do cliente: aceitá-lo no payload
 // permitiria que uma aba aberta antes de uma desconexão regravasse entradas de telefones já removidos.
-const CreateMessageTemplateInputSchema = z.object({
+export const CreateMessageTemplateInputSchema = z.object({
 	messageTemplate: MessageTemplateSchema.omit({ autorId: true, dataInsercao: true, metadados: true }),
 	submitWhatsapp: z.boolean().optional().default(true),
 });
@@ -62,10 +62,15 @@ async function persistWhatsappSubmissionPhoneMetadata({
 	});
 }
 
-async function createMessageTemplate({ input, session }: { input: TCreateMessageTemplateInput; session: TAuthUserSession }) {
-	const organizationId = session.membership?.organizacao.id;
-	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-
+export async function createMessageTemplate({
+	input,
+	organizationId,
+	authorId,
+}: {
+	input: TCreateMessageTemplateInput;
+	organizationId: string;
+	authorId: string;
+}) {
 	const content = normalizeMessageTemplateContentParameters(input.messageTemplate.conteudo);
 	assertMessageTemplateValidForWhatsapp(content);
 
@@ -81,7 +86,7 @@ async function createMessageTemplate({ input, session }: { input: TCreateMessage
 			conteudo: content,
 			linguagem: input.messageTemplate.linguagem,
 			categoria: input.messageTemplate.categoria,
-			autorId: session.user.id,
+			autorId: authorId,
 		})
 		.returning();
 
@@ -150,21 +155,20 @@ async function createMessageTemplateRoute(request: NextRequest) {
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const payload = await request.json();
 	const input = CreateMessageTemplateInputSchema.parse(payload);
-	const result = await createMessageTemplate({ input, session });
+	const organizationId = session.membership?.organizacao.id;
+	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const result = await createMessageTemplate({ input, organizationId, authorId: session.user.id });
 	return NextResponse.json(result, { status: 201 });
 }
 
-const UpdateMessageTemplateInputSchema = z.object({
+export const UpdateMessageTemplateInputSchema = z.object({
 	messageTemplateId: z.string({ required_error: "ID do template não informado." }),
 	messageTemplate: MessageTemplateSchema.omit({ autorId: true, dataInsercao: true, metadados: true }).partial(),
 	submitWhatsapp: z.boolean().optional().default(true),
 });
 export type TUpdateMessageTemplateInput = z.infer<typeof UpdateMessageTemplateInputSchema>;
 
-async function updateMessageTemplate({ input, session }: { input: TUpdateMessageTemplateInput; session: TAuthUserSession }) {
-	const organizationId = session.membership?.organizacao.id;
-	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-
+export async function updateMessageTemplate({ input, organizationId }: { input: TUpdateMessageTemplateInput; organizationId: string }) {
 	const existingTemplate = await db.query.messageTemplates.findFirst({
 		where: and(eq(messageTemplates.id, input.messageTemplateId), eq(messageTemplates.organizacaoId, organizationId)),
 	});
@@ -172,7 +176,9 @@ async function updateMessageTemplate({ input, session }: { input: TUpdateMessage
 
 	console.log("[UPDATE_MESSAGE_TEMPLATE] Content pre-normalization:", JSON.stringify(input.messageTemplate.conteudo, null, 2));
 
-	const content = input.messageTemplate.conteudo ? normalizeMessageTemplateContentParameters(input.messageTemplate.conteudo) : existingTemplate.conteudo;
+	const content = input.messageTemplate.conteudo
+		? normalizeMessageTemplateContentParameters(input.messageTemplate.conteudo)
+		: existingTemplate.conteudo;
 	assertMessageTemplateValidForWhatsapp(content);
 	console.log("[UPDATE_MESSAGE_TEMPLATE] Content post-normalization:", JSON.stringify(content, null, 2));
 
@@ -248,7 +254,9 @@ async function updateMessageTemplateRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = UpdateMessageTemplateInputSchema.parse(await request.json());
-	const result = await updateMessageTemplate({ input, session });
+	const organizationId = session.membership?.organizacao.id;
+	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const result = await updateMessageTemplate({ input, organizationId });
 	return NextResponse.json(result, { status: 200 });
 }
 
@@ -292,7 +300,7 @@ async function deleteMessageTemplateRoute(request: NextRequest) {
 	return NextResponse.json(result, { status: 200 });
 }
 
-const GetMessageTemplatesInputSchema = z.object({
+export const GetMessageTemplatesInputSchema = z.object({
 	id: z
 		.string({
 			invalid_type_error: "Tipo inválido para ID do template.",
@@ -313,10 +321,7 @@ const GetMessageTemplatesInputSchema = z.object({
 });
 export type TGetMessageTemplatesInput = z.infer<typeof GetMessageTemplatesInputSchema>;
 
-async function getMessageTemplates({ input, session }: { input: TGetMessageTemplatesInput; session: TAuthUserSession }) {
-	const organizationId = session.membership?.organizacao.id;
-	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-
+export async function getMessageTemplates({ input, organizationId }: { input: TGetMessageTemplatesInput; organizationId: string }) {
 	if (input.id) {
 		const [template, connectedPhoneIds] = await Promise.all([
 			db.query.messageTemplates.findFirst({
@@ -379,7 +384,9 @@ async function getMessageTemplatesRoute(request: NextRequest) {
 		search: request.nextUrl.searchParams.get("search") ?? undefined,
 		page: request.nextUrl.searchParams.get("page") ?? undefined,
 	});
-	const result = await getMessageTemplates({ input, session });
+	const organizationId = session.membership?.organizacao.id;
+	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
+	const result = await getMessageTemplates({ input, organizationId });
 	return NextResponse.json(result, { status: 200 });
 }
 
