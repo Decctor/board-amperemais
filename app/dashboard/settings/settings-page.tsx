@@ -1,6 +1,7 @@
 "use client";
 import CommunicationTemplatesPage from "@/app/dashboard/communication/_components/communication-templates-page";
 import SettingsAiAgent from "@/components/Settings/SettingsAiAgent";
+import SettingsAiConnections from "@/components/Settings/SettingsAiConnections";
 import SettingsDevices from "@/components/Settings/SettingsDevices";
 import SettingsFinances from "@/components/Settings/SettingsFinances";
 import SettingsIntegration from "@/components/Settings/SettingsIntegration";
@@ -57,6 +58,7 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 						{view === "message-templates" ? <CommunicationTemplatesPage organizationName={membership.organizacao.nome} /> : null}
 						{view === "outbound" ? <SettingsOutbound membership={membership} /> : null}
 						{view === "ai-agent" ? <SettingsAiAgent membership={membership} /> : null}
+						{view === "ai-connections" ? <SettingsAiConnections membership={membership} /> : null}
 						{view === "integration" ? <SettingsIntegration user={user} membership={membership} /> : null}
 						{view === "finances" ? <SettingsFinances membership={membership} /> : null}
 						{view === "segments" ? <SettingsSegments user={user} /> : null}

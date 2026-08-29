@@ -687,7 +687,9 @@ export type TAccessClientCategoryEnum = z.infer<typeof AccessClientCategoryEnum>
 export const AccessClientStatusEnum = z.enum(["ATIVO", "INATIVO"]);
 export type TAccessClientStatusEnum = z.infer<typeof AccessClientStatusEnum>;
 
-export const AccessPrincipalTypeEnum = z.enum(["DISPOSITIVO", "AGENTE_DESKTOP", "CONTA_SERVICO"]);
+// CONTA_PLATAFORMA é o único tipo sem organização: representa nós mesmos (Control, time interno)
+// falando com a plataforma inteira. Todo o resto é sempre uma instalação em UMA organização.
+export const AccessPrincipalTypeEnum = z.enum(["DISPOSITIVO", "AGENTE_DESKTOP", "CONTA_SERVICO", "CONTA_PLATAFORMA"]);
 export type TAccessPrincipalTypeEnum = z.infer<typeof AccessPrincipalTypeEnum>;
 
 export const AccessPrincipalStatusEnum = z.enum(["ATIVO", "INATIVO", "REVOGADO"]);
@@ -711,6 +713,20 @@ export const AccessScopeEnum = z.enum([
 	"desktop-agent:printers:sync",
 	"desktop-agent:print-jobs:read",
 	"desktop-agent:print-jobs:update",
+	// Agentes de IA (MCP). Leitura por domínio, no mesmo grão em que o lojista pensa no painel:
+	// quem concede "resultados" está liberando faturamento e metas, não a base de clientes.
+	"agent:results:read",
+	"agent:clients:read",
+	// Separado de `agent:clients:read` de propósito: telefone, e-mail e CPF/CNPJ saem mascarados
+	// sem este scope. Um agente que responde "quantos clientes em risco?" não precisa de PII.
+	"agent:clients:pii",
+	"agent:products:read",
+	"agent:campaigns:read",
+	"agent:sales:read",
+	// Prefixo `platform:` só existe para principal CONTA_PLATAFORMA — são as ferramentas que
+	// atravessam organizações. Nenhuma aplicação de lojista tem esses scopes no teto.
+	"platform:organizations:read",
+	"platform:metrics:read",
 ]);
 export type TAccessScopeEnum = z.infer<typeof AccessScopeEnum>;
 
@@ -750,6 +766,7 @@ export const AccessEventTypeEnum = z.enum([
 	"SCOPE_REMOVIDO",
 	"PRINCIPAL_REVOGADO",
 	"CHAMADA_POI_LEGADO",
+	"CHAMADA_AGENTE",
 ]);
 export type TAccessEventTypeEnum = z.infer<typeof AccessEventTypeEnum>;
 

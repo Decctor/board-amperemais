@@ -28,6 +28,7 @@
 		"backfill:organization-slugs": "tsx ./scripts/backfill-organization-slugs.ts",
 		"verify:organization-slugs": "tsx ./scripts/verify-organization-slugs.ts",
 		"seed:access-clients": "tsx ./scripts/seed-access-clients.ts",
+		"access:issue-agent": "tsx ./scripts/issue-agent-credential.ts",
 		"backfill:interactions-relationship": "tsx ./scripts/backfill-interactions-relationship-fields.ts",
 		"backfill:whatsapp-webhook-logs": "tsx --conditions=react-server ./scripts/backfill-whatsapp-webhook-logs.ts",
 		"replay:external-events": "tsx --conditions=react-server ./scripts/replay-external-events.ts",
@@ -66,7 +67,9 @@
 		"migrate:congelatte": "tsx ./scripts/congelatte-migrate.ts",
 		"ai:runs-report": "tsx ./scripts/analyze-ai-agent-runs.ts",
 		"ai:agent-instructions": "tsx ./scripts/update-ai-agent-default-instructions.ts",
-		"ai:agent-conversation": "tsx ./scripts/test-ai-agent-conversation.ts"
+		"ai:agent-conversation": "tsx ./scripts/test-ai-agent-conversation.ts",
+		"test:agent-tools": "node --import tsx --test lib/agent-tools/organization-scope.test.ts lib/agent-tools/registry.test.ts lib/agent-tools/serialization.test.ts lib/agent-tools/period.test.ts lib/mcp/json-schema.test.ts lib/mcp/protocol.test.ts lib/mcp/server.test.ts",
+		"test:agent-tools:db": "tsx ./scripts/test-agent-tools.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/react": "^2.0.78",

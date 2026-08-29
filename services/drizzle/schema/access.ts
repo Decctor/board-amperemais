@@ -40,10 +40,10 @@ export const accessPrincipals = newTable(
 		accessClientId: varchar("access_client_id", { length: 255 })
 			.references(() => accessClients.id, { onDelete: "cascade" })
 			.notNull(),
-		// NOT NULL deliberado: cliente autorizado por N organizações = N principals (modelo de instalação).
-		organizacaoId: varchar("organizacao_id", { length: 255 })
-			.references(() => organizations.id, { onDelete: "cascade" })
-			.notNull(),
+		// Nulo SOMENTE para `tipo = "CONTA_PLATAFORMA"` — garantido por CHECK constraint no banco
+		// (`chk_access_principals_organizacao`). Para todo o resto continua valendo o modelo de
+		// instalação: cliente autorizado por N organizações = N principals.
+		organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id, { onDelete: "cascade" }),
 		// Sem FK enquanto lojas não forem entidade do schema; coluna própria porque vínculo com loja
 		// participa de política e relatório (não vai para JSON).
 		lojaId: varchar("loja_id", { length: 255 }),

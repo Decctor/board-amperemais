@@ -2,19 +2,25 @@ import { revokePrincipal } from "@/lib/access/credentials";
 import { getRequestClientInfo } from "@/lib/access/events";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import { AccessPrincipalStatusEnum } from "@/schemas/enums";
+import { AccessPrincipalStatusEnum, AccessPrincipalTypeEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { accessPrincipals } from "@/services/drizzle/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const GetAccessPrincipalsInputSchema = z.object({
-	id: z
-		.string({ invalid_type_error: "Tipo não válido para o ID do dispositivo." })
+	id: z.string({ invalid_type_error: "Tipo não válido para o ID do dispositivo." }).optional().nullable(),
+	// Separa as duas telas que leem esta rota: Dispositivos pede DISPOSITIVO/AGENTE_DESKTOP,
+	// Conexões de IA pede CONTA_SERVICO. Sem o filtro, uma conexão de agente apareceria na lista
+	// de aparelhos do balcão, onde ninguém saberia o que ela é.
+	types: z
+		.string({ invalid_type_error: "Tipo não válido para os tipos de principal." })
 		.optional()
-		.nullable(),
+		.nullable()
+		.transform((value) => (value ? value.split(",").filter(Boolean) : []))
+		.pipe(z.array(AccessPrincipalTypeEnum)),
 });
 export type TGetAccessPrincipalsInput = z.infer<typeof GetAccessPrincipalsInputSchema>;
 
@@ -55,7 +61,10 @@ async function getAccessPrincipals({ input, organizacaoId }: TGetAccessPrincipal
 	}
 
 	const principals = await db.query.accessPrincipals.findMany({
-		where: eq(accessPrincipals.organizacaoId, organizacaoId),
+		where:
+			input.types.length > 0
+				? and(eq(accessPrincipals.organizacaoId, organizacaoId), inArray(accessPrincipals.tipo, input.types))
+				: eq(accessPrincipals.organizacaoId, organizacaoId),
 		columns: principalColumns,
 		with: principalWith,
 		orderBy: (fields, { desc }) => desc(fields.dataInsercao),
@@ -73,6 +82,7 @@ async function getAccessPrincipalsRoute(request: NextRequest) {
 
 	const input = GetAccessPrincipalsInputSchema.parse({
 		id: request.nextUrl.searchParams.get("id"),
+		types: request.nextUrl.searchParams.get("types"),
 	});
 	const result = await getAccessPrincipals({ input, organizacaoId: session.membership.organizacao.id });
 	return NextResponse.json(result);
@@ -88,10 +98,7 @@ const UpdateAccessPrincipalInputSchema = z.object({
 		.min(1, "Nome do dispositivo não pode ser vazio.")
 		.optional()
 		.nullable(),
-	lojaId: z
-		.string({ invalid_type_error: "Tipo não válido para o ID da loja." })
-		.optional()
-		.nullable(),
+	lojaId: z.string({ invalid_type_error: "Tipo não válido para o ID da loja." }).optional().nullable(),
 	status: AccessPrincipalStatusEnum.optional().nullable(),
 });
 export type TUpdateAccessPrincipalInput = z.infer<typeof UpdateAccessPrincipalInputSchema>;

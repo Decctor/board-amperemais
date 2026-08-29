@@ -9,6 +9,7 @@ import {
 	MessageCircle,
 	Plug,
 	Send,
+	Sparkles,
 	TabletSmartphone,
 	ToggleRight,
 	User,
@@ -31,6 +32,7 @@ export const SETTINGS_VIEWS = [
 	"message-templates",
 	"outbound",
 	"ai-agent",
+	"ai-connections",
 	"integration",
 	"finances",
 	"segments",
@@ -161,6 +163,14 @@ export const SETTINGS_GROUPS: TSettingsGroup[] = [
 	{
 		label: "Dados & Integrações",
 		sections: [
+			{
+				view: "ai-connections",
+				label: "Conexões de IA",
+				description: "Assistentes como Claude e ChatGPT consultando seus dados, cada um com chave e permissões próprias.",
+				icon: Sparkles,
+				canAccess: canViewCompany,
+				restrictedReason: COMPANY_RESTRICTED_REASON,
+			},
 			{
 				view: "integration",
 				label: "Integração",

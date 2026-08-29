@@ -8,16 +8,24 @@ import type { NextRequest } from "next/server";
 import { getRequestClientInfo, recordAccessEvent } from "./events";
 import { constantTimeEqual, hashAccessSecret, parseAccessCredentialToken } from "./tokens";
 
-// Contexto de um principal externo autenticado. Handlers e regras de negócio não conhecem
-// formato de token, algoritmo de hash nem mecânica de rotação — apenas este contexto (§9.5).
-export type TExternalActorContext = {
+// Credencial verificada, antes de qualquer decisão sobre organização. `organizationId` é nulo
+// apenas para `CONTA_PLATAFORMA` — o principal que fala com a base inteira (Control, time interno).
+// Quem consome escolhe o que fazer com isso: rotas de dispositivo exigem organização
+// (`authenticateExternalRequest`), o agente de IA deriva daqui o modo ORG ou PLATAFORMA.
+export type TVerifiedAccessCredential = {
 	principalId: string;
 	credentialId: string;
 	clientId: string;
 	clientCode: string;
-	organizationId: string;
+	organizationId: string | null;
 	principalType: TAccessPrincipalTypeEnum;
 	scopes: ReadonlySet<string>;
+};
+
+// Contexto de um principal externo autenticado. Handlers e regras de negócio não conhecem
+// formato de token, algoritmo de hash nem mecânica de rotação — apenas este contexto (§9.5).
+export type TExternalActorContext = TVerifiedAccessCredential & {
+	organizationId: string;
 };
 
 // Sessões humanas e principals externos resolvem para um contexto comum de auditoria/atribuição.
@@ -39,7 +47,7 @@ export type TActorContext =
 // sem perder a utilidade operacional do dado (§9.8).
 const LAST_USE_SAMPLING_MINUTES = 5;
 
-export async function authenticateExternalRequest(request: NextRequest): Promise<TExternalActorContext> {
+export async function verifyAccessCredentialFromRequest(request: NextRequest): Promise<TVerifiedAccessCredential> {
 	const { enderecoIp, userAgent } = getRequestClientInfo(request);
 
 	const authorizationHeader = request.headers.get("authorization");
@@ -111,6 +119,22 @@ export async function authenticateExternalRequest(request: NextRequest): Promise
 		principalType: credential.principal.tipo,
 		scopes,
 	};
+}
+
+/**
+ * Autenticação das rotas que operam **dentro de uma organização** — ponto de interação, agente
+ * desktop, rotação de credencial.
+ *
+ * Uma credencial de plataforma é recusada aqui de propósito: ela não tem loja para imprimir,
+ * lançar venda ou consultar cashback, e cair em qualquer dessas rotas com `organizacaoId` nulo
+ * seria um filtro de tenancy silenciosamente ausente. Quem precisa dela usa o agente de IA.
+ */
+export async function authenticateExternalRequest(request: NextRequest): Promise<TExternalActorContext> {
+	const credential = await verifyAccessCredentialFromRequest(request);
+	if (!credential.organizationId) {
+		throw new createHttpError.Forbidden("Esta credencial não está vinculada a uma organização.");
+	}
+	return { ...credential, organizationId: credential.organizationId };
 }
 
 // Igualdade exata, sem wildcards (§9.4 do plano).
