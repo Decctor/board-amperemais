@@ -55,7 +55,7 @@ function buildInstructions(actor: TAgentActorContext) {
 		"Toda listagem traz `total` e `truncado` — quando `truncado` for verdadeiro, refine os filtros em vez de tratar o que veio como o conjunto completo.",
 		"Ferramentas de mutação exigem `chaveIdempotencia`: reutilize a mesma chave somente ao repetir exatamente a mesma operação após uma falha; use uma nova chave para uma nova intenção.",
 		"Criação e atualização de campanhas e templates produzem rascunhos. Ativação de campanha e envio de template à Meta são operações separadas em duas etapas: primeiro solicite a aprovação e, depois da aprovação humana, repita a ferramenta com o `aprovacaoId` retornado.",
-		"Para cabeçalhos de imagem, crie um upload, envie o arquivo pela URL assinada, conclua o upload e passe o `conteudoMidiaCaminho` retornado ao criar ou atualizar o template. Esse caminho é opaco; não construa nem altere caminhos manualmente.",
+		"Para cabeçalhos de imagem, use `upload_message_template_media`: mande os bytes em base64 e ele devolve o `conteudoMidiaCaminho` já validado. Só recorra a `create_message_template_media_upload` (URL assinada + `complete_message_template_media_upload`) para arquivos acima de 3 MB — ela exige que você mesmo alcance o host de armazenamento, o que nem todo ambiente permite. Esse caminho é opaco; não construa nem altere caminhos manualmente.",
 	];
 	if (actor.mode === "PLATAFORMA") {
 		base.push(

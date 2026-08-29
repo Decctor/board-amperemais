@@ -21,7 +21,11 @@ import {
 	submitMessageTemplateForApprovalTool,
 	syncMessageTemplateStatusTool,
 } from "./tools/message-templates";
-import { completeMessageTemplateMediaUploadTool, createMessageTemplateMediaUploadTool } from "./tools/message-template-media";
+import {
+	completeMessageTemplateMediaUploadTool,
+	createMessageTemplateMediaUploadTool,
+	uploadMessageTemplateMediaTool,
+} from "./tools/message-template-media";
 import { platformAggregateMetricsTool, platformOrganizationHealthTool, platformSearchOrganizationsTool } from "./tools/platform";
 import { productPerformanceTool } from "./tools/product-performance";
 import { searchClientsTool } from "./tools/clients";
@@ -64,6 +68,7 @@ const AGENT_TOOLS = [
 	listWhatsappTemplateDestinationsTool,
 	submitMessageTemplateForApprovalTool,
 	syncMessageTemplateStatusTool,
+	uploadMessageTemplateMediaTool,
 	createMessageTemplateMediaUploadTool,
 	completeMessageTemplateMediaUploadTool,
 	// Plataforma — atravessam organizações e por isso não existem em modo ORG.
