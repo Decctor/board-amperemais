@@ -14,6 +14,23 @@ The seed is idempotent and upserts the definitions from `clients-catalog.ts`. Th
 
 Deployments should treat this seed as a required release step whenever the native catalog changes. Database migrations intentionally establish schema invariants only and do not import application code to populate catalog rows.
 
+## Platform Control principals
+
+`AGENT_CONTROL` supports both ordinary organization principals and privileged platform principals. Its client scope ceiling includes `platform:*`, but those scopes are never part of organization-mode defaults.
+
+- `--org <id|slug>` creates `CONTA_SERVICO` with organization read scopes only.
+- `--plataforma` creates `CONTA_PLATAFORMA` with organization and platform read scopes.
+- Platform mode is rejected for clients other than `AGENT_CONTROL`.
+- Client PII remains opt-in in both modes.
+
+To repair or upgrade an existing platform principal without rotating its credential, use the guarded operator command:
+
+```sh
+npm run access:grant-platform-agent -- --principal <principal-id>
+```
+
+The command refuses principals that are not active, organization-less `CONTA_PLATAFORMA` records belonging to `AGENT_CONTROL`. It updates the native client ceiling, restores the default platform grants idempotently, and records newly granted scopes in the access audit trail.
+
 ## Next improvement: atomic PostgreSQL rate limiting
 
 The MCP endpoint currently limits tool calls by counting recent `CHAMADA_AGENTE` audit events. This controls sustained sequential traffic, but concurrent requests can read the same count before their audit events are inserted.

@@ -29,7 +29,16 @@ export const AGENT_READ_ACCESS_SCOPES: TAccessScopeEnum[] = [
 	"agent:clients:read",
 	"agent:products:read",
 	"agent:campaigns:read",
+	"agent:sales:read",
 ];
+
+// Capacidades que atravessam organizações. Pertencem ao teto do AGENT_CONTROL, mas só são
+// concedidas a um principal criado explicitamente como CONTA_PLATAFORMA.
+export const PLATFORM_AGENT_ACCESS_SCOPES: TAccessScopeEnum[] = ["platform:organizations:read", "platform:metrics:read"];
+
+export function getDefaultAgentAccessScopes({ isPlatform }: { isPlatform: boolean }): TAccessScopeEnum[] {
+	return isPlatform ? [...AGENT_READ_ACCESS_SCOPES, ...PLATFORM_AGENT_ACCESS_SCOPES] : [...AGENT_READ_ACCESS_SCOPES];
+}
 
 type TNativeAccessClientDefinition = {
 	codigo: string;
@@ -76,8 +85,9 @@ export const NATIVE_ACCESS_CLIENTS: TNativeAccessClientDefinition[] = [
 		codigo: "AGENT_CONTROL",
 		nome: "Syncroniza Control (agentes internos)",
 		categoria: "SERVIDOR_EXTERNO",
-		// Único com PII no teto: é sistema nosso, sob nosso contrato de dados.
-		escoposPermitidos: [...AGENT_READ_ACCESS_SCOPES, "agent:clients:pii"],
+		// O teto expressa capacidade, não concessão automática. Principals Control de organização
+		// recebem apenas agent:*; platform:* exige emissão explícita como CONTA_PLATAFORMA.
+		escoposPermitidos: [...AGENT_READ_ACCESS_SCOPES, ...PLATFORM_AGENT_ACCESS_SCOPES, "agent:clients:pii"],
 	},
 ];
 

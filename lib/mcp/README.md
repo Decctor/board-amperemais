@@ -74,7 +74,7 @@ npm run access:issue-agent -- --client AGENT_CLAUDE --org organization-slug --no
 npm run access:issue-agent -- --client AGENT_CONTROL --plataforma --nome "Agentes do Control"
 ```
 
-Platform credentials are privileged and should only be issued by trusted operators.
+Platform credentials are privileged and should only be issued by trusted operators. Normal Control agents use `--org`; only an explicit `AGENT_CONTROL --plataforma` issuance receives the platform scopes.
 
 ### 7. Configure the MCP client
 

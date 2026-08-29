@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { AGENT_READ_ACCESS_SCOPES, ensureNativeAccessClients } from "@/lib/access/clients-catalog";
+import { ensureNativeAccessClients, getDefaultAgentAccessScopes } from "@/lib/access/clients-catalog";
 import { provisionAgentPrincipal } from "@/lib/access/credentials";
 import { connection, db } from "@/services/drizzle";
 import { organizations } from "@/services/drizzle/schema";
@@ -43,6 +43,9 @@ async function main() {
 	if (!nome) throw new Error("Informe --nome para identificar esta conexão na auditoria.");
 	if (isPlatform && orgReference) throw new Error("Use --org OU --plataforma, nunca os dois.");
 	if (!isPlatform && !orgReference) throw new Error("Informe --org <id|slug> ou --plataforma.");
+	if (isPlatform && accessClientCodigo !== "AGENT_CONTROL") {
+		throw new Error("Modo plataforma é restrito ao cliente AGENT_CONTROL.");
+	}
 
 	// Garante que as aplicações do catálogo existam antes de referenciá-las.
 	await ensureNativeAccessClients();
@@ -65,7 +68,7 @@ async function main() {
 				.split(",")
 				.map((scope) => scope.trim())
 				.filter(Boolean)
-		: [...AGENT_READ_ACCESS_SCOPES];
+		: getDefaultAgentAccessScopes({ isPlatform });
 
 	const result = await provisionAgentPrincipal({
 		accessClientCodigo,
