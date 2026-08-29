@@ -29,7 +29,35 @@ To repair or upgrade an existing platform principal without rotating its credent
 npm run access:grant-platform-agent -- --principal <principal-id>
 ```
 
+## MCP mutations and responsible user
+
+Mutation-capable MCP principals must have a human responsible user. Existing credentials can be
+upgraded without token rotation after applying `drizzle/0086_mcp_mutation_responsible_user.sql`:
+
+```sh
+npm run seed:access-clients
+npm run access:configure-agent-mutations -- --principal <principal-id> --responsavel <user-id-or-email>
+```
+
+The command grants the exact mutation scopes and records the responsible user. For a platform
+principal, that user must also be a member of each organization targeted by a mutation; reads remain
+available when that condition is not met.
+
 The command refuses principals that are not active, organization-less `CONTA_PLATAFORMA` records belonging to `AGENT_CONTROL`. It updates the native client ceiling, restores the default platform grants idempotently, and records newly granted scopes in the access audit trail.
+
+## OAuth for MCP connectors
+
+`lib/access/oauth.ts` implements the minimum OAuth 2.1 surface that the Claude.ai and ChatGPT connectors require: dynamic client registration (RFC 7591), authorization code + PKCE S256, and discovery metadata (RFC 9728 + RFC 8414 under `/.well-known/`). Cursor and Claude Code keep using pasted API keys — OAuth is only the self-service path.
+
+Design: OAuth is a front door to `provisionAgentPrincipal`. The access token returned by `/api/oauth/token` is an ordinary `CHAVE_API` over a `CONTA_SERVICO` principal, so the MCP endpoint, revocation, auditing, scopes, and the responsible-user model are unchanged. Key decisions:
+
+- **Public clients only, PKCE mandatory.** No client secrets, no refresh tokens: tokens do not expire, and revoke + reconnect is the recovery path (same philosophy as device credentials).
+- **Org-per-connection.** Consent (`/oauth/authorize`) always binds to the session's active organization and requires `empresa.editar`. `CONTA_PLATAFORMA` remains a deliberately manual issuance.
+- **Redirect host decides the catalog application** (`claude.ai` → `AGENT_CLAUDE`, `chatgpt.com` → `AGENT_CHATGPT`), never the self-declared `client_name`. Unknown hosts fall back to `AGENT_MCP`, whose ceiling is read-only. `agent:clients:pii` and `platform:*` are never offered through OAuth.
+- **Reconnection replaces.** Re-authorizing the same registered client for the same user + organization revokes the previous principal (linked via `referenciaExterna = oauth:<client_id>`).
+- **Scaling escape hatch:** the RFC 9728 document points at the authorization server; moving to an external IdP later is a metadata change, not a token-model change.
+
+Deployment: apply `drizzle/0087_oauth_authorization.sql`, then `npm run seed:access-clients` (adds `AGENT_MCP`).
 
 ## Next improvement: atomic PostgreSQL rate limiting
 

@@ -13,10 +13,11 @@ import { type NextRequest, NextResponse } from "next/server";
  * sem `Mcp-Session-Id` — a especificação trata os dois como opcionais, e a identidade da conexão
  * já vem do Bearer token a cada requisição, que é o que o modelo de acesso deste sistema usa.
  *
- * Autenticação hoje é chave de API (`CHAVE_API` sobre um principal de acesso). OAuth 2.1 como
- * resource server (RFC 9728 + PKCE + RFC 8707) é a fase seguinte; o `WWW-Authenticate` abaixo já
- * aponta para onde os metadados vão morar, então clientes que fazem discovery não quebram quando
- * ele existir.
+ * Autenticação é sempre uma `CHAVE_API` sobre um principal de acesso — colada manualmente
+ * (Cursor, Claude Code) ou emitida pelo fluxo OAuth 2.1 (Claude.ai, ChatGPT; ver
+ * `lib/access/oauth.ts`). Este endpoint não distingue as duas origens de propósito: o OAuth é
+ * só uma porta de entrada self-service para o mesmo modelo de credencial. O `WWW-Authenticate`
+ * abaixo aponta para os metadados RFC 9728 que iniciam o discovery.
  */
 
 // Nunca cachear: a resposta depende do Bearer token e do estado do banco.

@@ -30,6 +30,7 @@
 		"seed:access-clients": "tsx ./scripts/seed-access-clients.ts",
 		"access:issue-agent": "tsx ./scripts/issue-agent-credential.ts",
 		"access:grant-platform-agent": "tsx ./scripts/grant-platform-agent-access.ts",
+		"access:configure-agent-mutations": "tsx ./scripts/configure-agent-mutations.ts",
 		"backfill:interactions-relationship": "tsx ./scripts/backfill-interactions-relationship-fields.ts",
 		"backfill:whatsapp-webhook-logs": "tsx --conditions=react-server ./scripts/backfill-whatsapp-webhook-logs.ts",
 		"replay:external-events": "tsx --conditions=react-server ./scripts/replay-external-events.ts",
@@ -69,7 +70,7 @@
 		"ai:runs-report": "tsx ./scripts/analyze-ai-agent-runs.ts",
 		"ai:agent-instructions": "tsx ./scripts/update-ai-agent-default-instructions.ts",
 		"ai:agent-conversation": "tsx ./scripts/test-ai-agent-conversation.ts",
-		"test:agent-tools": "node --import tsx --test lib/access/clients-catalog.test.ts lib/agent-tools/organization-scope.test.ts lib/agent-tools/registry.test.ts lib/agent-tools/serialization.test.ts lib/agent-tools/period.test.ts lib/mcp/json-schema.test.ts lib/mcp/protocol.test.ts lib/mcp/server.test.ts",
+		"test:agent-tools": "node --import tsx --test lib/access/clients-catalog.test.ts lib/access/oauth.test.ts lib/agent-tools/organization-scope.test.ts lib/agent-tools/registry.test.ts lib/agent-tools/serialization.test.ts lib/agent-tools/period.test.ts lib/message-templates/agent-media.test.ts lib/mcp/json-schema.test.ts lib/mcp/protocol.test.ts lib/mcp/server.test.ts",
 		"test:agent-tools:db": "tsx ./scripts/test-agent-tools.ts"
 	},
 	"dependencies": {

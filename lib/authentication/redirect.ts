@@ -1,6 +1,15 @@
 const DEFAULT_AUTH_REDIRECT = "/dashboard";
 
-const AUTH_REDIRECT_ALLOWLIST = ["/dashboard", "/onboarding", "/partner-dashboard", "/partner-dashboard/onboarding", "/admin-dashboard"];
+// `/oauth/authorize` permite voltar ao consentimento OAuth (conector MCP) depois do login —
+// a query string sobrevive porque o retorno preserva `url.search`.
+const AUTH_REDIRECT_ALLOWLIST = [
+	"/dashboard",
+	"/onboarding",
+	"/partner-dashboard",
+	"/partner-dashboard/onboarding",
+	"/admin-dashboard",
+	"/oauth/authorize",
+];
 
 export function sanitizeAuthRedirectTo(value: FormDataEntryValue | string | null | undefined) {
 	if (typeof value !== "string") return DEFAULT_AUTH_REDIRECT;
