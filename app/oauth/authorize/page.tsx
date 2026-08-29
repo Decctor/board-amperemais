@@ -103,14 +103,32 @@ export default async function OauthAuthorizePage({ searchParams }: { searchParam
 	}
 
 	// Acesso geral só aparece para admin E para aplicação cujo teto comporta platform:* —
-	// o genérico AGENT_MCP falha aqui e a opção simplesmente não é oferecida.
+	// o genérico AGENT_MCP falha aqui e a opção simplesmente não é oferecida. Os dois conjuntos
+	// são resolvidos aqui para a tela poder mostrar o que muda ao ligar a gestão assistida.
 	let platformScopes: string[] | null = null;
+	let platformMutationScopes: string[] | null = null;
 	if (session.user.admin) {
 		try {
 			const platformAuthorization = await resolveOauthAuthorizationContext({ clientId, redirectUri, scope, platform: true });
 			platformScopes = platformAuthorization.scopes;
 		} catch {
 			platformScopes = null;
+		}
+		// Catch próprio: uma aplicação pode comportar leitura de plataforma sem comportar mutação,
+		// e nesse caso o acesso geral continua sendo oferecido — só sem a gestão assistida.
+		if (platformScopes) {
+			try {
+				const platformMutationAuthorization = await resolveOauthAuthorizationContext({
+					clientId,
+					redirectUri,
+					scope,
+					platform: true,
+					platformMutations: true,
+				});
+				platformMutationScopes = platformMutationAuthorization.scopes;
+			} catch {
+				platformMutationScopes = null;
+			}
 		}
 	}
 
@@ -146,6 +164,7 @@ export default async function OauthAuthorizePage({ searchParams }: { searchParam
 			organizations={eligibleOrganizations}
 			defaultOrganizationId={defaultOrganizationId}
 			platformScopeDescriptors={platformScopes ? toScopeDescriptors(platformScopes) : null}
+			platformMutationScopeDescriptors={platformMutationScopes ? toScopeDescriptors(platformMutationScopes) : null}
 			organizationScopeDescriptors={toScopeDescriptors(authorization.scopes)}
 			authorizationParams={{
 				clientId,

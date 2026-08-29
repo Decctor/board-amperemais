@@ -5,6 +5,7 @@ import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { ConnectorMark } from "@/components/Brand/ConnectorMark";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getErrorMessage } from "@/lib/errors";
 import { useMutation } from "@tanstack/react-query";
@@ -28,7 +29,9 @@ type AuthorizeConsentProps = {
 	organizationScopeDescriptors: TScopeDescriptor[];
 	// Nulo quando o usuário não é admin ou a aplicação não comporta platform:* — a opção some.
 	platformScopeDescriptors: TScopeDescriptor[] | null;
-	authorizationParams: Omit<TApproveOauthAuthorizationInput, "organizationId">;
+	// Conjunto do acesso geral COM gestão assistida. Nulo quando a aplicação não comporta mutação.
+	platformMutationScopeDescriptors: TScopeDescriptor[] | null;
+	authorizationParams: Omit<TApproveOauthAuthorizationInput, "organizationId" | "platformMutations">;
 };
 
 export function AuthorizeConsent({
@@ -39,11 +42,18 @@ export function AuthorizeConsent({
 	defaultOrganizationId,
 	organizationScopeDescriptors,
 	platformScopeDescriptors,
+	platformMutationScopeDescriptors,
 	authorizationParams,
 }: AuthorizeConsentProps) {
 	const [selectedTarget, setSelectedTarget] = useState<string>(defaultOrganizationId ?? (platformScopeDescriptors ? PLATFORM_ACCESS_VALUE : ""));
+	// Desligado por padrão: gestão assistida é decisão consciente, nunca herdada do silêncio.
+	const [platformMutations, setPlatformMutations] = useState(false);
 	const isPlatformSelected = selectedTarget === PLATFORM_ACCESS_VALUE;
-	const scopeDescriptors = isPlatformSelected && platformScopeDescriptors ? platformScopeDescriptors : organizationScopeDescriptors;
+	const scopeDescriptors = isPlatformSelected
+		? platformMutations && platformMutationScopeDescriptors
+			? platformMutationScopeDescriptors
+			: (platformScopeDescriptors ?? organizationScopeDescriptors)
+		: organizationScopeDescriptors;
 
 	const { mutate: approve, isPending } = useMutation({
 		mutationKey: ["approve-oauth-authorization"],
@@ -107,12 +117,33 @@ export function AuthorizeConsent({
 						</div>
 
 						{isPlatformSelected ? (
-							<div className="flex items-start gap-2 rounded-md border border-amber-500/60 bg-amber-500/10 p-3">
-								<TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-								<p className="text-xs text-foreground">
-									<span className="font-semibold">Acesso de plataforma:</span> esta conexão enxerga{" "}
-									<span className="font-semibold">todas as organizações da base</span>, em modo somente leitura. Use apenas para operação interna.
-								</p>
+							<div className="flex flex-col gap-3">
+								<div className="flex items-start gap-2 rounded-md border border-amber-500/60 bg-amber-500/10 p-3">
+									<TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+									<p className="text-xs text-foreground">
+										<span className="font-semibold">Acesso de plataforma:</span> esta conexão enxerga{" "}
+										<span className="font-semibold">todas as organizações da base</span>
+										{platformMutations ? " e pode gerenciar campanhas nas contas sob gestão assistida" : ", em modo somente leitura"}. Use apenas para operação
+										interna.
+									</p>
+								</div>
+								{platformMutationScopeDescriptors ? (
+									<label className="flex items-start gap-3 rounded-md border border-border p-3">
+										<Checkbox
+											checked={platformMutations}
+											onCheckedChange={(checked) => setPlatformMutations(checked === true)}
+											disabled={isPending}
+											className="mt-0.5"
+										/>
+										<span className="flex flex-col gap-1">
+											<span className="text-sm font-medium text-foreground">Gerenciar campanhas das contas gerenciadas</span>
+											<span className="text-xs text-muted-foreground">
+												Permite criar e ajustar campanhas e templates. Vale apenas para organizações com consultoria ativa e onde você é membro; ativação de
+												campanha e envio à Meta continuam exigindo aprovação humana.
+											</span>
+										</span>
+									</label>
+								) : null}
 							</div>
 						) : null}
 
@@ -135,7 +166,13 @@ export function AuthorizeConsent({
 							<Button
 								className="bg-[#24549C] hover:bg-[#1e4682] text-white"
 								disabled={isPending || !selectedTarget}
-								onClick={() => approve({ ...authorizationParams, organizationId: isPlatformSelected ? null : selectedTarget })}
+								onClick={() =>
+									approve({
+										...authorizationParams,
+										organizationId: isPlatformSelected ? null : selectedTarget,
+										platformMutations: isPlatformSelected && platformMutations,
+									})
+								}
 							>
 								{isPending ? "Autorizando..." : "Autorizar"}
 							</Button>

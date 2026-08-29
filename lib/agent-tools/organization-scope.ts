@@ -57,6 +57,15 @@ export function canReadClientPii(actor: TAgentActorContext) {
 	return actor.scopes.has("agent:clients:pii");
 }
 
+/**
+ * Toda mutação responde por um humano, e esse humano precisa pertencer à organização alvo.
+ *
+ * Em modo PLATAFORMA há uma segunda condição: a organização precisa estar sob gestão nossa
+ * (`consultoriaAtiva`). Pertencer a uma organização não é o mesmo que operá-la — sem esse
+ * segundo gate, um vínculo incidental viraria permissão de escrita vinda de uma credencial que
+ * atravessa a base inteira. O corolário operacional é o que se quer: encerrada a consultoria, o
+ * agente perde a escrita naquela conta sem ninguém mexer em credencial.
+ */
 export async function resolveResponsibleUser(actor: TAgentActorContext, organizationId: string) {
 	if (!actor.responsibleUserId) {
 		throw new createHttpError.PreconditionFailed("Esta conexão não possui um usuário responsável configurado.");
@@ -68,6 +77,19 @@ export async function resolveResponsibleUser(actor: TAgentActorContext, organiza
 	if (!membership) {
 		throw new createHttpError.PreconditionFailed("O usuário responsável pela conexão não pertence à organização selecionada.");
 	}
+
+	if (actor.mode === "PLATAFORMA") {
+		const organization = await db.query.organizations.findFirst({
+			where: eq(organizations.id, organizationId),
+			columns: { consultoriaAtiva: true },
+		});
+		if (!organization?.consultoriaAtiva) {
+			throw new createHttpError.PreconditionFailed(
+				"Esta organização não está sob gestão assistida: uma conexão de plataforma só executa mutações em contas gerenciadas.",
+			);
+		}
+	}
+
 	return actor.responsibleUserId;
 }
 

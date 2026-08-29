@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canReadClientPii, maskSensitiveValue, resolveOrganizationScope } from "./organization-scope";
+import { canReadClientPii, maskSensitiveValue, resolveOrganizationScope, resolveResponsibleUser } from "./organization-scope";
 import type { TAgentActorContext } from "./types";
 
 function createActor(overrides: Partial<TAgentActorContext> = {}): TAgentActorContext {
@@ -54,4 +54,10 @@ test("mascaramento preserva o sufixo e nunca vaza o começo do valor", () => {
 	assert.equal(maskSensitiveValue(null), null);
 	// Valor curto some por inteiro em vez de virar quase-texto-claro.
 	assert.equal(maskSensitiveValue("123"), "•••");
+});
+
+// As demais ramificações de `resolveResponsibleUser` (vínculo e `consultoriaAtiva`) consultam o
+// banco e são cobertas no teste de integração; aqui fica a guarda que falha antes de qualquer IO.
+test("conexão sem responsável não executa mutação", async () => {
+	await assert.rejects(() => resolveResponsibleUser(createActor({ responsibleUserId: null }), "org-1"), /usuário responsável/i);
 });

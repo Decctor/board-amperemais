@@ -27,6 +27,9 @@ const ApproveOauthAuthorizationInputSchema = z.object({
 	// Nulo = acesso geral (plataforma). Chave obrigatória de propósito: um cliente antigo que
 	// não envia o campo deve falhar alto, não virar plataforma por omissão.
 	organizationId: z.string({ invalid_type_error: "Tipo inválido para a organização." }).nullable(),
+	// Opt-in de gestão assistida, válido só no acesso geral (plataforma). A escrita continua
+	// dependendo, por chamada, de vínculo do responsável + `consultoriaAtiva` na organização alvo.
+	platformMutations: z.boolean({ invalid_type_error: "Tipo inválido para a gestão de campanhas." }).optional().default(false),
 	scope: z.string({ invalid_type_error: "Tipo inválido para scope." }).optional().nullable(),
 	state: z.string({ invalid_type_error: "Tipo inválido para state." }).optional().nullable(),
 	// Limites da RFC 7636 §4.1 aplicados ao challenge, que tem o mesmo alfabeto do verifier.
@@ -57,6 +60,7 @@ async function approveOauthAuthorization({
 		codeChallenge: input.codeChallenge,
 		resource: input.resource,
 		organizacaoId: input.organizationId,
+		platformMutations: input.platformMutations,
 		usuarioId,
 		enderecoIp,
 		userAgent,
@@ -81,6 +85,9 @@ async function approveOauthAuthorizationRoute(request: NextRequest) {
 		// um cliente sem platform:* no teto falha dentro de issueOauthAuthorizationCode.
 		if (!session.user.admin) throw new createHttpError.Forbidden("Acesso de plataforma é restrito a administradores.");
 	} else {
+		// Gestão assistida é conceito de plataforma: pedir mutação de plataforma numa conexão de
+		// organização é erro de cliente, não algo a ignorar em silêncio.
+		if (input.platformMutations) throw new createHttpError.BadRequest("Gestão de campanhas em contas gerenciadas exige o acesso geral (plataforma).");
 		// Mesma permissão da criação manual de conexões de IA, verificada na organização
 		// ESCOLHIDA — a organização ativa da sessão é irrelevante aqui.
 		const membership = await db.query.organizationMembers.findFirst({

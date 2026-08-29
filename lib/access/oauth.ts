@@ -5,7 +5,7 @@ import { encodeBase32LowerCaseNoPadding, encodeBase64urlNoPadding } from "@osloj
 import dayjs from "dayjs";
 import { and, eq, isNull } from "drizzle-orm";
 import createHttpError from "http-errors";
-import { AGENT_READ_ACCESS_SCOPES, getDefaultAgentAccessScopes } from "./clients-catalog";
+import { AGENT_MUTATION_ACCESS_SCOPES, AGENT_READ_ACCESS_SCOPES, getDefaultAgentAccessScopes } from "./clients-catalog";
 import { provisionAgentPrincipal, revokePrincipal } from "./credentials";
 import { recordAccessEvent } from "./events";
 import { constantTimeEqual, hashAccessSecret } from "./tokens";
@@ -134,6 +134,10 @@ type TResolveAuthorizationContextParams = {
 	// Consentimento de plataforma (CONTA_PLATAFORMA): scopes fixos de leitura + platform:*.
 	// Quem chama PRECISA ter verificado `user.admin` — este módulo só valida o teto do cliente.
 	platform?: boolean;
+	// Opt-in explícito do admin: adiciona as mutações ao consentimento de plataforma (gestão
+	// assistida). A escrita ainda depende, POR CHAMADA, de o responsável pertencer à organização
+	// e de ela estar com `consultoriaAtiva` — ver `resolveResponsibleUser`.
+	platformMutations?: boolean;
 };
 export async function resolveOauthAuthorizationContext(params: TResolveAuthorizationContextParams) {
 	const oauthClient = await db.query.accessOauthClients.findFirst({
@@ -149,10 +153,13 @@ export async function resolveOauthAuthorizationContext(params: TResolveAuthoriza
 	// Modo plataforma ignora o `scope` pedido: o conjunto é fixo (leituras + platform:*) e o
 	// gate é o teto do catálogo — o genérico AGENT_MCP não carrega platform:* e cai aqui.
 	if (params.platform) {
-		const platformScopes = getDefaultAgentAccessScopes({ isPlatform: true });
+		const platformScopes: string[] = [
+			...getDefaultAgentAccessScopes({ isPlatform: true }),
+			...(params.platformMutations ? AGENT_MUTATION_ACCESS_SCOPES : []),
+		];
 		const missingScopes = platformScopes.filter((scope) => !oauthClient.cliente.escoposPermitidos.includes(scope));
 		if (missingScopes.length > 0) throw new createHttpError.BadRequest("Esta aplicação não suporta acesso de plataforma.");
-		return { oauthClient, scopes: platformScopes as string[] };
+		return { oauthClient, scopes: platformScopes };
 	}
 
 	// Interseção pedido ∩ suportado ∩ teto da aplicação. Sem pedido explícito, o padrão de
@@ -181,6 +188,8 @@ type TIssueAuthorizationCodeParams = {
 	// `user.admin` para chegar aqui com nulo; o teto do catálogo é a segunda rede.
 	organizacaoId: string | null;
 	usuarioId: string;
+	// Só tem efeito no consentimento de plataforma; a rota de aprovação exige `user.admin`.
+	platformMutations?: boolean;
 	enderecoIp?: string | null;
 	userAgent?: string | null;
 };
