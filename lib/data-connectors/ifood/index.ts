@@ -76,13 +76,19 @@ export async function fetchIfoodImportBatch({
 	const relevantEvents = getRelevantOrderEvents(events);
 	// Sem isto o polling fica cego: os codigos crus sao a unica forma de distinguir um cancelamento
 	// da loja (CAN) de uma solicitacao do cliente (CAR) ou de uma disputa (HSD) durante a homologacao.
+	//
+	// O `event.id` vai junto porque e a UNICA chave que o suporte do iFood aceita para cruzar o
+	// nosso log com o Firefly Audit deles. Na homologacao de 29/08/2026 logamos so o codigo e o
+	// orderId, e quando pediram os IDs nao tinhamos como responder — evento ACKado nao e reentregue.
 	if (events.length)
 		console.log("[IFOOD_EVENTS]", {
 			organizationId,
-			received: events.map((event) => `${event.fullCode ?? event.code}${event.orderId ? `:${event.orderId.slice(0, 8)}` : ""}`),
+			received: events.map(
+				(event) => `${event.fullCode ?? event.code}${event.orderId ? `:${event.orderId.slice(0, 8)}` : ""} id=${event.id}`,
+			),
 			ignored: events
 				.filter((event) => !relevantEvents.includes(event))
-				.map((event) => event.fullCode ?? event.code),
+				.map((event) => `${event.fullCode ?? event.code} id=${event.id}`),
 		});
 	const orderIds = uniqueOrderIds(relevantEvents);
 	const orders = await Promise.all(orderIds.map((orderId) => getIfoodOrder(client, orderId)));
