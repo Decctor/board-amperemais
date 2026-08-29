@@ -21,7 +21,27 @@ import {
 	negotiateProtocolVersion,
 } from "./protocol";
 
-const SERVER_INFO = { name: "recompracrm", title: "RecompraCRM", version: "0.1.0" };
+// `icons` e `websiteUrl` entraram no `serverInfo` na revisão 2025-11-25 da especificação MCP.
+// Clientes mais antigos ignoram os campos; o Claude usa o ícone na lista de conectores quando
+// suportar. Os PNGs saem de `npm run brand:export-icon-badge` (icon-badge — a cápsula sem o
+// wordmark, único lockup aprovado para superfície desconhecida).
+function buildServerInfo() {
+	const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? null;
+	return {
+		name: "recompracrm",
+		title: "RecompraCRM",
+		version: "0.1.0",
+		...(baseUrl
+			? {
+					websiteUrl: baseUrl,
+					icons: [
+						{ src: new URL("/icon-badge-192.png", baseUrl).href, mimeType: "image/png", sizes: ["192x192"] },
+						{ src: new URL("/icon-badge-512.png", baseUrl).href, mimeType: "image/png", sizes: ["512x512"] },
+					],
+				}
+			: {}),
+	};
+}
 
 /**
  * Instruções que o cliente entrega ao modelo junto da lista de ferramentas. É o lugar barato de
@@ -56,7 +76,7 @@ function handleInitialize(message: TJsonRpcMessage, actor: TAgentActorContext): 
 		// Sem `listChanged`: o conjunto de ferramentas de uma conexão é fixo enquanto ela viver —
 		// muda só com um grant novo, que exige reconectar de qualquer forma.
 		capabilities: { tools: {}, resources: {}, prompts: {} },
-		serverInfo: SERVER_INFO,
+		serverInfo: buildServerInfo(),
 		instructions: buildInstructions(actor),
 	});
 }

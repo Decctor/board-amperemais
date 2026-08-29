@@ -5,7 +5,7 @@ import { encodeBase32LowerCaseNoPadding, encodeBase64urlNoPadding } from "@osloj
 import dayjs from "dayjs";
 import { and, eq, isNull } from "drizzle-orm";
 import createHttpError from "http-errors";
-import { AGENT_READ_ACCESS_SCOPES } from "./clients-catalog";
+import { AGENT_READ_ACCESS_SCOPES, getDefaultAgentAccessScopes } from "./clients-catalog";
 import { provisionAgentPrincipal, revokePrincipal } from "./credentials";
 import { recordAccessEvent } from "./events";
 import { constantTimeEqual, hashAccessSecret } from "./tokens";
@@ -131,6 +131,9 @@ type TResolveAuthorizationContextParams = {
 	clientId: string;
 	redirectUri: string;
 	scope?: string | null;
+	// Consentimento de plataforma (CONTA_PLATAFORMA): scopes fixos de leitura + platform:*.
+	// Quem chama PRECISA ter verificado `user.admin` — este módulo só valida o teto do cliente.
+	platform?: boolean;
 };
 export async function resolveOauthAuthorizationContext(params: TResolveAuthorizationContextParams) {
 	const oauthClient = await db.query.accessOauthClients.findFirst({
@@ -141,6 +144,15 @@ export async function resolveOauthAuthorizationContext(params: TResolveAuthoriza
 	if (oauthClient.cliente.status !== "ATIVO") throw new createHttpError.BadRequest("Aplicação cliente desativada.");
 	if (!oauthClient.redirectUris.includes(params.redirectUri)) {
 		throw new createHttpError.BadRequest("redirect_uri não registrada para este cliente.");
+	}
+
+	// Modo plataforma ignora o `scope` pedido: o conjunto é fixo (leituras + platform:*) e o
+	// gate é o teto do catálogo — o genérico AGENT_MCP não carrega platform:* e cai aqui.
+	if (params.platform) {
+		const platformScopes = getDefaultAgentAccessScopes({ isPlatform: true });
+		const missingScopes = platformScopes.filter((scope) => !oauthClient.cliente.escoposPermitidos.includes(scope));
+		if (missingScopes.length > 0) throw new createHttpError.BadRequest("Esta aplicação não suporta acesso de plataforma.");
+		return { oauthClient, scopes: platformScopes as string[] };
 	}
 
 	// Interseção pedido ∩ suportado ∩ teto da aplicação. Sem pedido explícito, o padrão de
@@ -165,13 +177,15 @@ type TIssueAuthorizationCodeParams = {
 	scope?: string | null;
 	codeChallenge: string;
 	resource?: string | null;
-	organizacaoId: string;
+	// Nulo = consentimento de plataforma (CONTA_PLATAFORMA). A rota de aprovação é quem exige
+	// `user.admin` para chegar aqui com nulo; o teto do catálogo é a segunda rede.
+	organizacaoId: string | null;
 	usuarioId: string;
 	enderecoIp?: string | null;
 	userAgent?: string | null;
 };
 export async function issueOauthAuthorizationCode(params: TIssueAuthorizationCodeParams) {
-	const { oauthClient, scopes } = await resolveOauthAuthorizationContext(params);
+	const { oauthClient, scopes } = await resolveOauthAuthorizationContext({ ...params, platform: params.organizacaoId === null });
 
 	const codeBytes = new Uint8Array(32);
 	crypto.getRandomValues(codeBytes);
@@ -263,14 +277,16 @@ export async function exchangeOauthAuthorizationCode(params: TExchangeAuthorizat
 	if (consumed.length === 0) return failExchange("invalid_grant", "CODIGO_JA_USADO", "Código de autorização já utilizado.");
 
 	// Reconexão substitui a conexão anterior: o mesmo cliente OAuth re-autorizado pelo mesmo
-	// usuário na mesma organização revoga o principal antigo em vez de acumular credenciais
-	// órfãs. `referenciaExterna` é o elo entre o principal e o registro OAuth.
+	// usuário no mesmo balde — (cliente, org, usuário), com plataforma como balde próprio —
+	// revoga o principal antigo em vez de acumular credenciais órfãs. A conexão de plataforma
+	// de um admin coexiste com a conexão de organização dele. `referenciaExterna` é o elo
+	// entre o principal e o registro OAuth.
 	const referenciaExterna = `oauth:${codeRow.oauthClientId}`;
 	const previousPrincipals = await db.query.accessPrincipals.findMany({
 		where: (fields, { and: whereAnd, eq: whereEq, isNull: whereIsNull }) =>
 			whereAnd(
 				whereEq(fields.referenciaExterna, referenciaExterna),
-				whereEq(fields.organizacaoId, codeRow.organizacaoId),
+				codeRow.organizacaoId ? whereEq(fields.organizacaoId, codeRow.organizacaoId) : whereIsNull(fields.organizacaoId),
 				whereEq(fields.responsavelUsuarioId, codeRow.usuarioId),
 				whereIsNull(fields.dataRevogacao),
 			),
@@ -288,7 +304,7 @@ export async function exchangeOauthAuthorizationCode(params: TExchangeAuthorizat
 	const provisioned = await provisionAgentPrincipal({
 		accessClientCodigo: codeRow.oauthClient.cliente.codigo,
 		organizacaoId: codeRow.organizacaoId,
-		nome: `${codeRow.oauthClient.nome} — conexão OAuth de ${codeRow.usuario.nome}`,
+		nome: `${codeRow.oauthClient.nome} — conexão OAuth de ${codeRow.usuario.nome}${codeRow.organizacaoId ? "" : " (plataforma)"}`,
 		scopes: codeRow.scopes,
 		criadoPorId: codeRow.usuarioId,
 		responsavelUsuarioId: codeRow.usuarioId,

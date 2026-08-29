@@ -2,23 +2,49 @@
 
 import type { TApproveOauthAuthorizationInput, TApproveOauthAuthorizationOutput } from "@/app/api/oauth/authorize/route";
 import { BrandLogo } from "@/components/Brand/BrandLogo";
+import { ConnectorMark } from "@/components/Brand/ConnectorMark";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getErrorMessage } from "@/lib/errors";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
-import { CircleCheck } from "lucide-react";
+import { CircleCheck, Globe, TriangleAlert } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
+
+type TScopeDescriptor = { scope: string; label: string; description: string };
+
+// Valor sentinela do Select para o consentimento de plataforma — vira organizationId nulo no
+// POST. Ids de organização são UUIDs, então não há colisão possível.
+const PLATFORM_ACCESS_VALUE = "__PLATFORM__";
 
 type AuthorizeConsentProps = {
 	clientName: string;
-	organizationName: string;
+	connectorCode: string;
 	userName: string;
-	scopeDescriptors: Array<{ scope: string; label: string; description: string }>;
-	authorizationParams: TApproveOauthAuthorizationInput;
+	organizations: Array<{ id: string; nome: string }>;
+	defaultOrganizationId: string | null;
+	organizationScopeDescriptors: TScopeDescriptor[];
+	// Nulo quando o usuário não é admin ou a aplicação não comporta platform:* — a opção some.
+	platformScopeDescriptors: TScopeDescriptor[] | null;
+	authorizationParams: Omit<TApproveOauthAuthorizationInput, "organizationId">;
 };
 
-export function AuthorizeConsent({ clientName, organizationName, userName, scopeDescriptors, authorizationParams }: AuthorizeConsentProps) {
+export function AuthorizeConsent({
+	clientName,
+	connectorCode,
+	userName,
+	organizations,
+	defaultOrganizationId,
+	organizationScopeDescriptors,
+	platformScopeDescriptors,
+	authorizationParams,
+}: AuthorizeConsentProps) {
+	const [selectedTarget, setSelectedTarget] = useState<string>(defaultOrganizationId ?? (platformScopeDescriptors ? PLATFORM_ACCESS_VALUE : ""));
+	const isPlatformSelected = selectedTarget === PLATFORM_ACCESS_VALUE;
+	const scopeDescriptors = isPlatformSelected && platformScopeDescriptors ? platformScopeDescriptors : organizationScopeDescriptors;
+
 	const { mutate: approve, isPending } = useMutation({
 		mutationKey: ["approve-oauth-authorization"],
 		mutationFn: async (input: TApproveOauthAuthorizationInput) => {
@@ -48,14 +74,48 @@ export function AuthorizeConsent({ clientName, organizationName, userName, scope
 				</div>
 				<Card>
 					<CardContent className="flex flex-col gap-6 p-8">
-						<div className="flex flex-col gap-2 text-center">
+						<div className="flex flex-col items-center gap-3 text-center">
+							<ConnectorMark connectorCode={connectorCode} className="h-10 w-10 text-foreground" />
 							<h1 className="text-xl font-semibold text-foreground">Autorizar {clientName}?</h1>
 							<p className="text-sm text-muted-foreground">
-								<span className="font-medium text-foreground">{clientName}</span> quer se conectar à organização{" "}
-								<span className="font-medium text-foreground">{organizationName}</span>. As ações ficarão registradas sob a responsabilidade de{" "}
-								<span className="font-medium text-foreground">{userName}</span>.
+								As ações desta conexão ficarão registradas sob a responsabilidade de <span className="font-medium text-foreground">{userName}</span>.
 							</p>
 						</div>
+
+						<div className="flex flex-col gap-2">
+							<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Conectar à organização</p>
+							<Select value={selectedTarget} onValueChange={setSelectedTarget} disabled={isPending}>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder="Escolha a organização" />
+								</SelectTrigger>
+								<SelectContent>
+									{organizations.map((organization) => (
+										<SelectItem key={organization.id} value={organization.id}>
+											{organization.nome}
+										</SelectItem>
+									))}
+									{platformScopeDescriptors ? (
+										<SelectItem value={PLATFORM_ACCESS_VALUE}>
+											<span className="flex items-center gap-2">
+												<Globe className="h-4 w-4" />
+												Acesso geral (plataforma)
+											</span>
+										</SelectItem>
+									) : null}
+								</SelectContent>
+							</Select>
+						</div>
+
+						{isPlatformSelected ? (
+							<div className="flex items-start gap-2 rounded-md border border-amber-500/60 bg-amber-500/10 p-3">
+								<TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+								<p className="text-xs text-foreground">
+									<span className="font-semibold">Acesso de plataforma:</span> esta conexão enxerga{" "}
+									<span className="font-semibold">todas as organizações da base</span>, em modo somente leitura. Use apenas para operação interna.
+								</p>
+							</div>
+						) : null}
+
 						<div className="flex flex-col gap-3">
 							<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">A aplicação poderá</p>
 							<ul className="flex flex-col gap-2">
@@ -70,8 +130,13 @@ export function AuthorizeConsent({ clientName, organizationName, userName, scope
 								))}
 							</ul>
 						</div>
+
 						<div className="flex flex-col gap-2">
-							<Button className="bg-[#24549C] hover:bg-[#1e4682] text-white" disabled={isPending} onClick={() => approve(authorizationParams)}>
+							<Button
+								className="bg-[#24549C] hover:bg-[#1e4682] text-white"
+								disabled={isPending || !selectedTarget}
+								onClick={() => approve({ ...authorizationParams, organizationId: isPlatformSelected ? null : selectedTarget })}
+							>
 								{isPending ? "Autorizando..." : "Autorizar"}
 							</Button>
 							<Button variant="outline" disabled={isPending} onClick={deny}>

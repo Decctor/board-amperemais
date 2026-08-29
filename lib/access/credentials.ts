@@ -79,14 +79,19 @@ export async function rotatePrincipalCredential(params: TRotatePrincipalCredenti
 
 type TRevokePrincipalParams = {
 	principalId: string;
-	organizacaoId: string;
+	// Nulo APENAS para principal CONTA_PLATAFORMA (organização nula) — o chamador precisa ter
+	// verificado que quem revoga tem alçada de plataforma; passar nulo não é um curinga de tenancy.
+	organizacaoId: string | null;
 	enderecoIp?: string | null;
 	userAgent?: string | null;
 };
 // Revogação do principal encerra o vínculo do dispositivo: status REVOGADO + todas as credenciais ativas revogadas.
 export async function revokePrincipal(params: TRevokePrincipalParams) {
 	const principal = await db.query.accessPrincipals.findFirst({
-		where: and(eq(accessPrincipals.id, params.principalId), eq(accessPrincipals.organizacaoId, params.organizacaoId)),
+		where: and(
+			eq(accessPrincipals.id, params.principalId),
+			params.organizacaoId ? eq(accessPrincipals.organizacaoId, params.organizacaoId) : isNull(accessPrincipals.organizacaoId),
+		),
 	});
 	if (!principal) throw new createHttpError.NotFound("Dispositivo não encontrado.");
 	if (principal.dataRevogacao) throw new createHttpError.BadRequest("Dispositivo já revogado.");

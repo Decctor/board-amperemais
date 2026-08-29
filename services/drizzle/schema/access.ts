@@ -187,9 +187,9 @@ export const accessOauthAuthorizationCodes = newTable(
 		oauthClientId: varchar("oauth_client_id", { length: 255 })
 			.references(() => accessOauthClients.id, { onDelete: "cascade" })
 			.notNull(),
-		organizacaoId: varchar("organizacao_id", { length: 255 })
-			.references(() => organizations.id, { onDelete: "cascade" })
-			.notNull(),
+		// Nulo = consentimento de plataforma feito por um admin (`user.admin`): a troca provisiona
+		// um principal CONTA_PLATAFORMA. Mesmo racional do organizacao_id nulo em access_principals.
+		organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id, { onDelete: "cascade" }),
 		usuarioId: varchar("usuario_id", { length: 255 })
 			.references(() => users.id, { onDelete: "cascade" })
 			.notNull(),

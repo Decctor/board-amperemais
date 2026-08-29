@@ -15,9 +15,13 @@ test("platform defaults include organization and platform reads without PII", ()
 	assert.ok(!scopes.includes("agent:clients:pii"));
 });
 
-test("only AGENT_CONTROL has platform scopes in its client ceiling", () => {
+// O teto expressa capacidade, não concessão: platform:* nos conectores identificados existe para
+// o consentimento OAuth de admin (CONTA_PLATAFORMA). O genérico AGENT_MCP e as aplicações de
+// balcão ficam de fora — é o teto que barra o modo plataforma para clientes não identificados.
+test("platform scopes appear only in identified agent client ceilings", () => {
+	const platformCapableCodes = ["AGENT_CONTROL", "AGENT_CLAUDE", "AGENT_CHATGPT"];
 	for (const client of NATIVE_ACCESS_CLIENTS) {
 		const hasPlatformScope = client.escoposPermitidos.some((scope) => scope.startsWith("platform:"));
-		assert.equal(hasPlatformScope, client.codigo === "AGENT_CONTROL", client.codigo);
+		assert.equal(hasPlatformScope, platformCapableCodes.includes(client.codigo), client.codigo);
 	}
 });

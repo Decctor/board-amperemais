@@ -64,6 +64,7 @@
 		"meta:templates:create-service-transfer": "tsx ./scripts/create-service-transfer-template.ts",
 		"meta:templates:create-organization-invite": "tsx ./scripts/create-organization-invite-template.ts",
 		"brand:export": "tsx ./scripts/export-brand-asset.ts",
+		"brand:export-icon-badge": "tsx ./scripts/export-icon-badge-png.ts",
 		"parse:congelatte": "tsx ./scripts/parse-congelatte-recipes.ts",
 		"map:congelatte": "tsx ./scripts/congelatte-map-products.ts",
 		"migrate:congelatte": "tsx ./scripts/congelatte-migrate.ts",

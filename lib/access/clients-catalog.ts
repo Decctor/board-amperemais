@@ -79,17 +79,20 @@ export const NATIVE_ACCESS_CLIENTS: TNativeAccessClientDefinition[] = [
 	},
 	// Um cliente por aplicação de IA, e não um "MCP" genérico: é o que permite revogar o Claude
 	// de uma organização sem derrubar o ChatGPT, e o que faz a auditoria dizer quem consultou.
+	// platform:* no teto expressa capacidade, não concessão automática (mesmo racional do
+	// AGENT_CONTROL): o grant só nasce do consentimento OAuth de um admin da plataforma, que
+	// provisiona CONTA_PLATAFORMA.
 	{
 		codigo: "AGENT_CLAUDE",
 		nome: "Claude (conector MCP)",
 		categoria: "APLICACAO_PARCEIRA",
-		escoposPermitidos: [...AGENT_READ_ACCESS_SCOPES, ...AGENT_MUTATION_ACCESS_SCOPES],
+		escoposPermitidos: [...AGENT_READ_ACCESS_SCOPES, ...AGENT_MUTATION_ACCESS_SCOPES, ...PLATFORM_AGENT_ACCESS_SCOPES],
 	},
 	{
 		codigo: "AGENT_CHATGPT",
 		nome: "ChatGPT (conector MCP)",
 		categoria: "APLICACAO_PARCEIRA",
-		escoposPermitidos: [...AGENT_READ_ACCESS_SCOPES, ...AGENT_MUTATION_ACCESS_SCOPES],
+		escoposPermitidos: [...AGENT_READ_ACCESS_SCOPES, ...AGENT_MUTATION_ACCESS_SCOPES, ...PLATFORM_AGENT_ACCESS_SCOPES],
 	},
 	// Fallback do registro OAuth dinâmico: um cliente MCP que não reconhecemos pelo redirect
 	// (Cursor, inspetores, apps novos) cai aqui, com teto só de leitura — mutação exige uma

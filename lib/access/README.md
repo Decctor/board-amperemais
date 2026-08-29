@@ -52,12 +52,15 @@ The command refuses principals that are not active, organization-less `CONTA_PLA
 Design: OAuth is a front door to `provisionAgentPrincipal`. The access token returned by `/api/oauth/token` is an ordinary `CHAVE_API` over a `CONTA_SERVICO` principal, so the MCP endpoint, revocation, auditing, scopes, and the responsible-user model are unchanged. Key decisions:
 
 - **Public clients only, PKCE mandatory.** No client secrets, no refresh tokens: tokens do not expire, and revoke + reconnect is the recovery path (same philosophy as device credentials).
-- **Org-per-connection.** Consent (`/oauth/authorize`) always binds to the session's active organization and requires `empresa.editar`. `CONTA_PLATAFORMA` remains a deliberately manual issuance.
-- **Redirect host decides the catalog application** (`claude.ai` → `AGENT_CLAUDE`, `chatgpt.com` → `AGENT_CHATGPT`), never the self-declared `client_name`. Unknown hosts fall back to `AGENT_MCP`, whose ceiling is read-only. `agent:clients:pii` and `platform:*` are never offered through OAuth.
-- **Reconnection replaces.** Re-authorizing the same registered client for the same user + organization revokes the previous principal (linked via `referenciaExterna = oauth:<client_id>`).
+- **Org-per-connection with an explicit picker.** Consent (`/oauth/authorize`) lists every organization where the user's membership has `empresa.editar`; the approve route re-validates the chosen membership server-side and never trusts the session's active organization.
+- **Platform consent for admins.** A `users.admin` user also sees "Acesso geral (plataforma)", which provisions a `CONTA_PLATAFORMA` principal with `getDefaultAgentAccessScopes({ isPlatform: true })` — reads plus `platform:*`, no mutations, no PII. Three independent gates: the page only offers it to admins, the approve route rejects `organizationId: null` for non-admins, and the catalog ceiling blocks clients without `platform:*` (only `AGENT_CLAUDE`/`AGENT_CHATGPT`/`AGENT_CONTROL` carry it — capacity, not automatic grant).
+- **Redirect host decides the catalog application** (`claude.ai` → `AGENT_CLAUDE`, `chatgpt.com` → `AGENT_CHATGPT`), never the self-declared `client_name`. Unknown hosts fall back to `AGENT_MCP`, whose ceiling is read-only — which also excludes it from platform consent. `agent:clients:pii` is never offered through OAuth.
+- **Reconnection replaces per bucket.** Re-authorizing the same registered client for the same user + organization (platform is its own bucket) revokes the previous principal (linked via `referenciaExterna = oauth:<client_id>`); an admin's platform connection and their org connection coexist.
 - **Scaling escape hatch:** the RFC 9728 document points at the authorization server; moving to an external IdP later is a metadata change, not a token-model change.
 
-Deployment: apply `drizzle/0087_oauth_authorization.sql`, then `npm run seed:access-clients` (adds `AGENT_MCP`).
+The MCP `serverInfo` advertises `icons` (spec revision 2025-11-25) pointing at `public/icon-badge-{192,512}.png`, generated from the brand `icon-badge` lockup via `npm run brand:export-icon-badge`.
+
+Deployment: apply `drizzle/0087_oauth_authorization.sql` and `drizzle/0088_oauth_platform_codes.sql`, then `npm run seed:access-clients` (adds `AGENT_MCP`, platform ceiling on the connectors).
 
 ## Next improvement: atomic PostgreSQL rate limiting
 

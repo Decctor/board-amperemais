@@ -1,7 +1,10 @@
+import { Card, CardContent } from "@/components/ui/card";
 import { resolveOauthAuthorizationContext } from "@/lib/access/oauth";
 import { describeAccessScope } from "@/lib/access/scope-catalog";
 import { getCurrentSession } from "@/lib/authentication/session";
-import { Card, CardContent } from "@/components/ui/card";
+import { db } from "@/services/drizzle";
+import { organizationMembers } from "@/services/drizzle/schema";
+import { eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { redirect } from "next/navigation";
 import { AuthorizeConsent } from "./authorize-consent";
@@ -12,6 +15,10 @@ import { AuthorizeConsent } from "./authorize-consent";
  * Regra de segurança da RFC 6749 §4.1.2.1: erro de cliente/redirect_uri NUNCA redireciona —
  * renderiza a página de erro. Só depois de validar que a redirect_uri pertence ao cliente é
  * que qualquer erro pode voltar por redirect.
+ *
+ * O usuário escolhe QUAL organização autoriza (org-per-connection); admin de plataforma vê
+ * também "Acesso geral". A página só monta as opções — quem decide é a rota de aprovação,
+ * que revalida membership/permissão/admin do lado do servidor.
  */
 
 function first(value: string | string[] | undefined) {
@@ -29,6 +36,13 @@ function AuthorizationErrorCard({ title, description }: { title: string; descrip
 			</Card>
 		</div>
 	);
+}
+
+function toScopeDescriptors(scopes: string[]) {
+	return scopes.map((scopeKey) => {
+		const descriptor = describeAccessScope(scopeKey);
+		return { scope: scopeKey, label: descriptor.label, description: descriptor.description };
+	});
 }
 
 export default async function OauthAuthorizePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -68,22 +82,16 @@ export default async function OauthAuthorizePage({ searchParams }: { searchParam
 		).toString()}`;
 		redirect(`/auth/signin?redirectTo=${encodeURIComponent(returnTo)}`);
 	}
-	if (!session.membership) {
-		return (
-			<AuthorizationErrorCard
-				title="Nenhuma organização ativa"
-				description="Para autorizar uma conexão de IA você precisa estar vinculado a uma organização. Conclua o onboarding no painel e tente novamente."
-			/>
-		);
-	}
-	if (!session.membership.permissoes.empresa.editar) {
-		return (
-			<AuthorizationErrorCard
-				title="Permissão insuficiente"
-				description="Autorizar uma conexão de IA cria uma credencial de acesso da organização, e o seu perfil não tem permissão de edição da empresa. Peça a um administrador."
-			/>
-		);
-	}
+
+	// Todas as organizações que o usuário PODE autorizar — não só a ativa na sessão. A rota de
+	// aprovação refaz esta verificação; aqui é montagem de opções.
+	const memberships = await db.query.organizationMembers.findMany({
+		where: eq(organizationMembers.usuarioId, session.user.id),
+		with: { organizacao: { columns: { id: true, nome: true } } },
+	});
+	const eligibleOrganizations = memberships
+		.filter((membership) => membership.permissoes.empresa.editar && membership.organizacao)
+		.map((membership) => ({ id: membership.organizacao.id, nome: membership.organizacao.nome }));
 
 	// Cliente/redirect inválidos: página de erro, nunca redirect (não sabemos se a URI é do cliente).
 	let authorization: Awaited<ReturnType<typeof resolveOauthAuthorizationContext>>;
@@ -92,6 +100,27 @@ export default async function OauthAuthorizePage({ searchParams }: { searchParam
 	} catch (error) {
 		const description = createHttpError.isHttpError(error) && error.expose ? error.message : "Não foi possível validar a aplicação solicitante.";
 		return <AuthorizationErrorCard title="Aplicação não reconhecida" description={description} />;
+	}
+
+	// Acesso geral só aparece para admin E para aplicação cujo teto comporta platform:* —
+	// o genérico AGENT_MCP falha aqui e a opção simplesmente não é oferecida.
+	let platformScopes: string[] | null = null;
+	if (session.user.admin) {
+		try {
+			const platformAuthorization = await resolveOauthAuthorizationContext({ clientId, redirectUri, scope, platform: true });
+			platformScopes = platformAuthorization.scopes;
+		} catch {
+			platformScopes = null;
+		}
+	}
+
+	if (eligibleOrganizations.length === 0 && !platformScopes) {
+		return (
+			<AuthorizationErrorCard
+				title="Permissão insuficiente"
+				description="Autorizar uma conexão de IA cria uma credencial de acesso da organização, e nenhum dos seus vínculos tem permissão de edição da empresa. Peça a um administrador."
+			/>
+		);
 	}
 
 	// Daqui em diante a redirect_uri é confiável — erros de protocolo voltam para o cliente.
@@ -103,17 +132,21 @@ export default async function OauthAuthorizePage({ searchParams }: { searchParam
 		redirect(errorRedirect.href);
 	}
 
-	const scopeDescriptors = authorization.scopes.map((scopeKey) => {
-		const descriptor = describeAccessScope(scopeKey);
-		return { scope: scopeKey, label: descriptor.label, description: descriptor.description };
-	});
+	const activeOrganizationId = session.membership?.organizacao.id ?? null;
+	const defaultOrganizationId =
+		activeOrganizationId && eligibleOrganizations.some((organization) => organization.id === activeOrganizationId)
+			? activeOrganizationId
+			: (eligibleOrganizations[0]?.id ?? null);
 
 	return (
 		<AuthorizeConsent
 			clientName={authorization.oauthClient.nome}
-			organizationName={session.membership.organizacao.nome}
+			connectorCode={authorization.oauthClient.cliente.codigo}
 			userName={session.user.nome}
-			scopeDescriptors={scopeDescriptors}
+			organizations={eligibleOrganizations}
+			defaultOrganizationId={defaultOrganizationId}
+			platformScopeDescriptors={platformScopes ? toScopeDescriptors(platformScopes) : null}
+			organizationScopeDescriptors={toScopeDescriptors(authorization.scopes)}
 			authorizationParams={{
 				clientId,
 				redirectUri,
