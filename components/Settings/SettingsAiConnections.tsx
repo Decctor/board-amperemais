@@ -27,7 +27,7 @@ type SettingsAiConnectionsProps = {
  */
 export default function SettingsAiConnections({ membership }: SettingsAiConnectionsProps) {
 	const queryClient = useQueryClient();
-	const { data: connections, queryKey, isLoading, isError, isSuccess, error } = useAccessPrincipals({ tipos: AGENT_PRINCIPAL_TYPES });
+	const { data: connections, queryKey, isLoading, isError, isSuccess, error } = useAccessPrincipals({ types: AGENT_PRINCIPAL_TYPES });
 	const [newConnectionModalIsOpen, setNewConnectionModalIsOpen] = useState(false);
 	const [controlPrincipalId, setControlPrincipalId] = useState<string | null>(null);
 

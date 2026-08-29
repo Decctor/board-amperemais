@@ -12,16 +12,18 @@ export type TAccessPrincipalById = NonNullable<TGetAccessPrincipalsOutput["data"
 export const DEVICE_PRINCIPAL_TYPES = ["DISPOSITIVO", "AGENTE_DESKTOP"] as const;
 export const AGENT_PRINCIPAL_TYPES = ["CONTA_SERVICO"] as const;
 
-async function fetchAccessPrincipals(tipos: readonly string[]) {
-	const search = tipos.length > 0 ? `?tipos=${tipos.join(",")}` : "";
+async function fetchAccessPrincipals(types: readonly string[]) {
+	const searchParams = new URLSearchParams();
+	if (types.length > 0) searchParams.set("types", types.join(","));
+	const search = searchParams.size > 0 ? `?${searchParams.toString()}` : "";
 	const { data } = await axios.get<TGetAccessPrincipalsOutput>(`/api/access/principals${search}`);
 	return data.data.default ?? [];
 }
 
-export function useAccessPrincipals({ tipos = DEVICE_PRINCIPAL_TYPES }: { tipos?: readonly string[] } = {}) {
-	const queryKey = useMemo(() => ["access-principals", tipos.join(",")] as const, [tipos]);
+export function useAccessPrincipals({ types = DEVICE_PRINCIPAL_TYPES }: { types?: readonly string[] } = {}) {
+	const queryKey = useMemo(() => ["access-principals", types.join(",")] as const, [types]);
 	return {
-		...useQuery({ queryKey, queryFn: () => fetchAccessPrincipals(tipos) }),
+		...useQuery({ queryKey, queryFn: () => fetchAccessPrincipals(types) }),
 		queryKey,
 	};
 }

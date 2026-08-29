@@ -2,7 +2,7 @@ import { revokePrincipal } from "@/lib/access/credentials";
 import { getRequestClientInfo } from "@/lib/access/events";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import { AccessPrincipalStatusEnum, type TAccessPrincipalTypeEnum } from "@/schemas/enums";
+import { AccessPrincipalStatusEnum, AccessPrincipalTypeEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { accessPrincipals } from "@/services/drizzle/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -15,11 +15,12 @@ const GetAccessPrincipalsInputSchema = z.object({
 	// Separa as duas telas que leem esta rota: Dispositivos pede DISPOSITIVO/AGENTE_DESKTOP,
 	// Conexões de IA pede CONTA_SERVICO. Sem o filtro, uma conexão de agente apareceria na lista
 	// de aparelhos do balcão, onde ninguém saberia o que ela é.
-	tipos: z
+	types: z
 		.string({ invalid_type_error: "Tipo não válido para os tipos de principal." })
 		.optional()
 		.nullable()
-		.transform((value) => (value ? value.split(",").filter(Boolean) : [])),
+		.transform((value) => (value ? value.split(",").filter(Boolean) : []))
+		.pipe(z.array(AccessPrincipalTypeEnum)),
 });
 export type TGetAccessPrincipalsInput = z.infer<typeof GetAccessPrincipalsInputSchema>;
 
@@ -61,8 +62,8 @@ async function getAccessPrincipals({ input, organizacaoId }: TGetAccessPrincipal
 
 	const principals = await db.query.accessPrincipals.findMany({
 		where:
-			input.tipos.length > 0
-				? and(eq(accessPrincipals.organizacaoId, organizacaoId), inArray(accessPrincipals.tipo, input.tipos as TAccessPrincipalTypeEnum[]))
+			input.types.length > 0
+				? and(eq(accessPrincipals.organizacaoId, organizacaoId), inArray(accessPrincipals.tipo, input.types))
 				: eq(accessPrincipals.organizacaoId, organizacaoId),
 		columns: principalColumns,
 		with: principalWith,
@@ -81,7 +82,7 @@ async function getAccessPrincipalsRoute(request: NextRequest) {
 
 	const input = GetAccessPrincipalsInputSchema.parse({
 		id: request.nextUrl.searchParams.get("id"),
-		tipos: request.nextUrl.searchParams.get("tipos"),
+		types: request.nextUrl.searchParams.get("types"),
 	});
 	const result = await getAccessPrincipals({ input, organizacaoId: session.membership.organizacao.id });
 	return NextResponse.json(result);

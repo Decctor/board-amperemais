@@ -39,6 +39,16 @@ export type TJsonRpcMessage = {
 	error?: unknown;
 };
 
+export type TParsedJsonRpcMessage =
+	| { kind: "request"; message: TJsonRpcMessage & { jsonrpc: typeof JSON_RPC_VERSION; id: TJsonRpcId; method: string } }
+	| { kind: "notification"; message: TJsonRpcMessage & { jsonrpc: typeof JSON_RPC_VERSION; method: string } }
+	| { kind: "response"; message: TJsonRpcMessage & { jsonrpc: typeof JSON_RPC_VERSION; id: TJsonRpcId } }
+	| { kind: "invalid" };
+
+type TParsedRequest = Extract<TParsedJsonRpcMessage, { kind: "request" }>["message"];
+type TParsedNotification = Extract<TParsedJsonRpcMessage, { kind: "notification" }>["message"];
+type TParsedResponse = Extract<TParsedJsonRpcMessage, { kind: "response" }>["message"];
+
 export type TJsonRpcResponse =
 	| { jsonrpc: typeof JSON_RPC_VERSION; id: TJsonRpcId; result: unknown }
 	| { jsonrpc: typeof JSON_RPC_VERSION; id: TJsonRpcId; error: { code: number; message: string; data?: unknown } };
@@ -49,6 +59,36 @@ export function jsonRpcResult(id: TJsonRpcId, result: unknown): TJsonRpcResponse
 
 export function jsonRpcError(id: TJsonRpcId, code: number, message: string, data?: unknown): TJsonRpcResponse {
 	return { jsonrpc: JSON_RPC_VERSION, id, error: data === undefined ? { code, message } : { code, message, data } };
+}
+
+function isJsonRpcId(value: unknown): value is TJsonRpcId {
+	return value === null || typeof value === "string" || (typeof value === "number" && Number.isFinite(value));
+}
+
+/** Validates and classifies a single JSON-RPC 2.0 message before MCP dispatch. */
+export function parseJsonRpcMessage(value: unknown): TParsedJsonRpcMessage {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return { kind: "invalid" };
+
+	const message = value as Record<string, unknown>;
+	if (message.jsonrpc !== JSON_RPC_VERSION) return { kind: "invalid" };
+
+	const hasId = Object.prototype.hasOwnProperty.call(message, "id");
+	if (hasId && !isJsonRpcId(message.id)) return { kind: "invalid" };
+	if ("params" in message && (!message.params || typeof message.params !== "object" || Array.isArray(message.params))) return { kind: "invalid" };
+
+	if (typeof message.method === "string") {
+		if ("result" in message || "error" in message) return { kind: "invalid" };
+		return hasId
+			? { kind: "request", message: message as TParsedRequest }
+			: { kind: "notification", message: message as TParsedNotification };
+	}
+
+	const hasResult = Object.prototype.hasOwnProperty.call(message, "result");
+	const hasError = Object.prototype.hasOwnProperty.call(message, "error");
+	if (!hasId || hasResult === hasError) return { kind: "invalid" };
+	if (hasError && (!message.error || typeof message.error !== "object" || Array.isArray(message.error))) return { kind: "invalid" };
+
+	return { kind: "response", message: message as TParsedResponse };
 }
 
 /**

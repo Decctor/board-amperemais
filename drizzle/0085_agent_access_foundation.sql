@@ -9,16 +9,12 @@
 -- só passa a ter uma exceção nomeada.
 ALTER TABLE ampmais_access_principals ALTER COLUMN organizacao_id DROP NOT NULL;
 
-DO $$
-BEGIN
-	IF NOT EXISTS (
-		SELECT 1 FROM pg_constraint WHERE conname = 'chk_access_principals_organizacao'
-	) THEN
-		ALTER TABLE ampmais_access_principals
-			ADD CONSTRAINT chk_access_principals_organizacao
-			CHECK (organizacao_id IS NOT NULL OR tipo = 'CONTA_PLATAFORMA');
-	END IF;
-END $$;
+ALTER TABLE ampmais_access_principals
+	DROP CONSTRAINT IF EXISTS chk_access_principals_organizacao;
+
+ALTER TABLE ampmais_access_principals
+	ADD CONSTRAINT chk_access_principals_organizacao
+	CHECK ((tipo = 'CONTA_PLATAFORMA') = (organizacao_id IS NULL));
 
 -- Índice para o rate limiting por principal do endpoint MCP (janela recente de chamadas).
 -- O índice existente é (tipo, endereco_ip, data_insercao) e não serve a esta contagem.

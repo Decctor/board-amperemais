@@ -4,6 +4,7 @@ import { findToolForActor, listToolsForActor } from "@/lib/agent-tools/registry"
 import { CURRENT_ORGANIZATION_RESOURCE_URI, listResourcesForActor, readResourceForActor } from "@/lib/agent-tools/resources";
 import { sanitizeForModel } from "@/lib/agent-tools/serialization";
 import type { TAgentActorContext } from "@/lib/agent-tools/types";
+import { resolveOrganizationScope } from "@/lib/agent-tools/organization-scope";
 import { describeErrorForLogging } from "@/lib/errors";
 import createHttpError from "http-errors";
 import type { NextRequest } from "next/server";
@@ -105,6 +106,13 @@ async function handleToolsCall(message: TJsonRpcMessage, actor: TAgentActorConte
 
 	try {
 		const input = tool.inputSchema.parse(rawArguments);
+		const requestedOrganizationId = (input as Record<string, unknown>).organizacaoId;
+		const auditOrganizationId =
+			actor.mode === "ORG"
+				? actor.organizationId
+				: typeof requestedOrganizationId === "string"
+					? await resolveOrganizationScope(actor, requestedOrganizationId)
+					: null;
 		const result = await tool.execute(input as never, actor);
 		const payload = sanitizeForModel(result);
 
@@ -112,7 +120,7 @@ async function handleToolsCall(message: TJsonRpcMessage, actor: TAgentActorConte
 			actor,
 			request,
 			toolName: name,
-			organizacaoId: (rawArguments.organizacaoId as string | undefined) ?? actor.organizationId,
+			organizacaoId: auditOrganizationId,
 		});
 
 		const text = JSON.stringify(payload, null, 0);

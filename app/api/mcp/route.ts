@@ -1,7 +1,7 @@
 import { assertAgentCallAllowed, authenticateAgentRequest } from "@/lib/agent-tools/authentication";
 import { appApiHandler } from "@/lib/app-api";
 import { describeErrorForLogging } from "@/lib/errors";
-import { JSON_RPC_ERROR_CODES, type TJsonRpcMessage, jsonRpcError } from "@/lib/mcp/protocol";
+import { JSON_RPC_ERROR_CODES, jsonRpcError, parseJsonRpcMessage } from "@/lib/mcp/protocol";
 import { handleMcpMessage } from "@/lib/mcp/server";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -88,11 +88,14 @@ async function mcpRoute(request: NextRequest) {
 	if (Array.isArray(body)) {
 		return NextResponse.json(jsonRpcError(null, JSON_RPC_ERROR_CODES.INVALID_REQUEST, "Lotes JSON-RPC não são suportados."), { status: 400 });
 	}
-	if (!body || typeof body !== "object") {
+	const parsedMessage = parseJsonRpcMessage(body);
+	if (parsedMessage.kind === "invalid") {
 		return NextResponse.json(jsonRpcError(null, JSON_RPC_ERROR_CODES.INVALID_REQUEST, "Mensagem JSON-RPC inválida."), { status: 400 });
 	}
 
-	const message = body as TJsonRpcMessage;
+	// Responses and notifications are one-way messages in Streamable HTTP.
+	if (parsedMessage.kind === "response") return new NextResponse(null, { status: 202 });
+	const message = parsedMessage.message;
 
 	// O rate limiting fica depois do parse e antes da execução: `initialize` e notificações são
 	// baratos e frequentes, mas quem estoura a janela é sempre um laço de `tools/call`.
