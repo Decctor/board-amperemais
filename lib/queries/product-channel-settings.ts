@@ -7,12 +7,14 @@ async function fetchProductChannelSettings(produtoId: string) {
 	return data.data;
 }
 
-export function useProductChannelSettings({ produtoId }: { produtoId: string }) {
+export function useProductChannelSettings({ produtoId, enabled = true }: { produtoId: string; enabled?: boolean }) {
 	const queryKey = ["product-channel-settings", produtoId];
 	return {
 		...useQuery({
 			queryKey,
 			queryFn: () => fetchProductChannelSettings(produtoId),
+			// A rota exige sessão ERP: sem o recurso, a requisição seria um 403 garantido.
+			enabled,
 		}),
 		queryKey,
 	};

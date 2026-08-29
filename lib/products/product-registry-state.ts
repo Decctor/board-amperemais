@@ -1,6 +1,7 @@
+import type { TGetProductChannelSettingsOutput, TUpdateProductChannelSettingsInput } from "@/app/api/products/channel-settings/route";
 import type { TGetProductsOutputById, TUpdateProductInput } from "@/app/api/products/route";
 import { uploadFile } from "@/lib/files-storage";
-import type { TProductState } from "@/state-hooks/use-product-state";
+import type { TProductCoreState, TProductState } from "@/state-hooks/use-product-state";
 
 export function mergeProductStateFromHydration(partial: Partial<TProductState>): TProductState {
 	return {
@@ -253,4 +254,144 @@ export function validateAddOnsState(state: Pick<TProductState, "productAddOns">)
 	}
 
 	return null;
+}
+
+export function mapProductToCoreState(product: TGetProductsOutputById): TProductCoreState {
+	return {
+		vendavel: product.vendavel,
+		nome: product.nome,
+		descricao: product.descricao,
+		codigo: product.codigo,
+		unidade: product.unidade,
+		ncm: product.ncm,
+		tipo: product.tipo,
+		grupo: product.grupo,
+		imagemCapaUrl: product.imagemCapaUrl,
+		precoCusto: product.precoCusto,
+		precoVenda: product.precoVenda,
+		quantidade: product.quantidade,
+		rastreamentoEstoqueAtivo: !!product.rastreamentoEstoqueAtivo,
+		imagemCapaHolder: {
+			file: null,
+			previewUrl: null,
+		},
+	};
+}
+
+export function validateCoreGeneralState(state: TProductCoreState): string | null {
+	if (!state.nome.trim()) return "Informe o nome do produto.";
+	if (!state.rastreamentoEstoqueAtivo && state.quantidade != null && state.quantidade < 0) {
+		return "A quantidade em estoque não pode ser negativa.";
+	}
+
+	return null;
+}
+
+export function buildCoreGeneralUpdateInput(
+	product: TGetProductsOutputById,
+	state: TProductCoreState,
+	imagemCapaUrl: string | null,
+): TUpdateProductInput {
+	return {
+		productId: product.id,
+		product: {
+			vendavel: state.vendavel,
+			nome: state.nome,
+			descricao: state.descricao,
+			imagemCapaUrl,
+			codigo: state.codigo,
+			unidade: state.unidade,
+			ncm: state.ncm,
+			tipo: state.tipo,
+			grupo: state.grupo,
+			rastreamentoEstoqueAtivo: state.rastreamentoEstoqueAtivo,
+			// Preços vivem na seção "PREÇOS E CANAIS DE VENDA": reenviamos o valor do servidor para
+			// que esta seção nunca sobrescreva um rascunho de preço aberto na outra.
+			precoVenda: product.precoVenda,
+			precoCusto: product.precoCusto,
+			// Com rastreamento ativo o saldo só se move por movimentação/recontagem — `null` diz à
+			// rota "não alterar", preservando o livro-razão. Sem rastreamento não há livro a
+			// proteger, então o valor digitado vai direto para a coluna.
+			quantidade: state.rastreamentoEstoqueAtivo ? null : state.quantidade,
+		},
+		productVariants: [],
+		productOptions: [],
+		productAddOns: [],
+		productFiscalProfiles: [],
+	};
+}
+
+export function buildBasePricesUpdateInput(
+	product: TGetProductsOutputById,
+	prices: { precoCusto: number | null; precoVenda: number | null },
+): TUpdateProductInput {
+	return {
+		productId: product.id,
+		product: {
+			...buildProductMetadata(product),
+			precoCusto: prices.precoCusto,
+			precoVenda: prices.precoVenda,
+			// Esta seção não mexe em estoque: `null` evita que um saldo lido há minutos vire AJUSTE.
+			quantidade: null,
+		},
+		productVariants: [],
+		productOptions: [],
+		productAddOns: [],
+		productFiscalProfiles: [],
+	};
+}
+
+// null = herdar o padrão do canal; true/false = override explícito.
+export type TProductChannelAvailabilityChoice = boolean | null;
+
+export function productChannelNodeKey(canalVendaId: string, produtoVarianteId: string | null) {
+	return `${canalVendaId}:${produtoVarianteId ?? ""}`;
+}
+
+export function buildChannelMaps(settings: TGetProductChannelSettingsOutput["data"]["settings"]) {
+	const choices = new Map<string, TProductChannelAvailabilityChoice>();
+	const prices = new Map<string, number | null>();
+	for (const setting of settings) {
+		const key = productChannelNodeKey(setting.canalVendaId, setting.produtoVarianteId);
+		choices.set(key, setting.disponivel);
+		prices.set(key, setting.precoVenda);
+	}
+
+	return { choices, prices };
+}
+
+export function buildChannelSettingsInput({
+	product,
+	channels,
+	choices,
+	prices,
+}: {
+	product: TGetProductsOutputById;
+	channels: TGetProductChannelSettingsOutput["data"]["channels"];
+	choices: Map<string, TProductChannelAvailabilityChoice>;
+	prices: Map<string, number | null>;
+}): TUpdateProductChannelSettingsInput {
+	const activeVariants = product.variantes.filter((variant) => variant.ativo);
+	// Envia todos os nós exibidos: o PUT é um patch esparso, então nós com disponibilidade
+	// "herdar" e preço vazio voltam a herdar (a linha esparsa é removida).
+	const settings: TUpdateProductChannelSettingsInput["settings"] = [];
+	for (const channel of channels) {
+		settings.push({
+			canalVendaId: channel.id,
+			produtoVarianteId: null,
+			disponivel: choices.get(productChannelNodeKey(channel.id, null)) ?? null,
+			// Preço nível-produto só é válido para produto sem variantes (regra do PUT).
+			precoVenda: activeVariants.length === 0 ? (prices.get(productChannelNodeKey(channel.id, null)) ?? null) : null,
+		});
+		for (const variant of activeVariants) {
+			settings.push({
+				canalVendaId: channel.id,
+				produtoVarianteId: variant.id,
+				disponivel: choices.get(productChannelNodeKey(channel.id, variant.id)) ?? null,
+				precoVenda: prices.get(productChannelNodeKey(channel.id, variant.id)) ?? null,
+			});
+		}
+	}
+
+	return { produtoId: product.id, settings };
 }

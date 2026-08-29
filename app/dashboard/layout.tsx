@@ -30,18 +30,23 @@ const MainLayout = async ({ children }: { children: ReactNode }) => {
 		<SidebarProvider data-app-shell="" className="font-raleway h-svh overflow-hidden">
 			<AppSidebar user={user.user} organization={user.membership.organizacao} permissions={user.membership.permissoes} />
 			<Suspense fallback={<LoadingComponent />}>
-				<SidebarInset className="overflow-y-auto p-6 flex flex-col gap-3">
-					<OrgColorsProvider
-						corPrimaria={user.membership.organizacao.corPrimaria}
-						corPrimariaForeground={user.membership.organizacao.corPrimariaForeground}
-						corSecundaria={user.membership.organizacao.corSecundaria}
-						corSecundariaForeground={user.membership.organizacao.corSecundariaForeground}
-					>
-						<AppHeader />
-						{children}
-						<OnboardingQualityBubble />
-						<SubscriptionPaywall />
-					</OrgColorsProvider>
+				{/* O respiro do conteúdo fica no wrapper interno, não no scrollport: com o padding no
+				    elemento que rola, a barra de rolagem nasce recuada da borda e o scroll se lê como
+				    "de dentro da página". */}
+				<SidebarInset className="overflow-y-auto scrollbar-subtle">
+					<div className="flex min-h-full w-full flex-col gap-3 p-6">
+						<OrgColorsProvider
+							corPrimaria={user.membership.organizacao.corPrimaria}
+							corPrimariaForeground={user.membership.organizacao.corPrimariaForeground}
+							corSecundaria={user.membership.organizacao.corSecundaria}
+							corSecundariaForeground={user.membership.organizacao.corSecundariaForeground}
+						>
+							<AppHeader />
+							{children}
+							<OnboardingQualityBubble />
+							<SubscriptionPaywall />
+						</OrgColorsProvider>
+					</div>
 				</SidebarInset>
 			</Suspense>
 		</SidebarProvider>
