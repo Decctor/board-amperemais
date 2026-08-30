@@ -19,6 +19,7 @@ import {
 	Goal,
 	Grid3X3,
 	Handshake,
+	CircleHelp,
 	Home,
 	Kanban,
 	Layers,
@@ -433,6 +434,13 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 	{
 		group: "Sistema",
 		items: [
+			{
+				id: "help",
+				title: "Ajuda",
+				url: "/ajuda",
+				icon: <CircleHelp className="size-4" />,
+				items: null,
+			},
 			{
 				id: "integrations",
 				capability: "integrations",

@@ -2,6 +2,7 @@ import { BLOG_POSTS } from "@/app/_content/blog-posts";
 import { FEATURE_PAGES } from "@/app/_content/feature-pages";
 import { INTEGRATION_PAGES } from "@/app/_content/integration-pages";
 import { SEGMENT_PAGES } from "@/app/_content/segment-pages";
+import { HELP_ARTICLES } from "@/app/_content/help-articles";
 import { db } from "@/services/drizzle";
 import type { MetadataRoute } from "next";
 
@@ -59,6 +60,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 		})),
 	];
 
+	const helpRoutes: MetadataRoute.Sitemap = [
+		{ url: `${BASE_URL}/ajuda`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
+		...HELP_ARTICLES.map((article) => ({
+			url: `${BASE_URL}/ajuda/${article.slug}`,
+			lastModified: new Date(article.updatedAt),
+			changeFrequency: "monthly" as const,
+			priority: 0.75,
+		})),
+	];
+
 	const staticRoutes: MetadataRoute.Sitemap = [
 		{ url: BASE_URL, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
 		{ url: `${BASE_URL}/presentation`, lastModified: new Date(), changeFrequency: "monthly", priority: 1 },
@@ -95,6 +106,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 		...blogRoutes,
 		...featureRoutes,
 		...integrationRoutes,
+		...helpRoutes,
 		...staticRoutes,
 		...courseRoutes,
 		...ebookRoutes,

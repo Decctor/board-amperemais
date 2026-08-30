@@ -5,7 +5,9 @@ import { AGENT_PRINCIPAL_TYPES, type TAccessPrincipalListItem, useAccessPrincipa
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Bot, Plus, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
+import { ConnectorMark } from "../Brand/ConnectorMark";
 import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
 import AccessStatusBadge from "../Modals/Internal/Access/AccessStatusBadge";
@@ -50,6 +52,13 @@ export default function SettingsAiConnections({ membership }: SettingsAiConnecti
 					) : null
 				}
 			>
+				<Link
+					href="/ajuda/como-conectar-recompracrm-ao-claude"
+					className="inline-flex w-fit items-center gap-2 rounded-full border border-[#D97757]/25 bg-[#D97757]/10 px-3.5 py-2 text-xs font-bold text-[#9d4e36] transition-colors hover:border-[#D97757]/45 hover:bg-[#D97757]/15 dark:text-[#efaa91]"
+				>
+					<ConnectorMark connectorCode="AGENT_CLAUDE" className="size-4" />
+					Saiba como conectar com o Claude
+				</Link>
 				{isLoading ? <LoadingComponent /> : null}
 				{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 				{isSuccess && connections.length === 0 ? (
