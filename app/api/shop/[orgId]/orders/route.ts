@@ -4,6 +4,7 @@ import { type TCouponCartItem, evaluateCouponAgainstCart } from "@/lib/coupons/e
 import { formatPhoneAsBase } from "@/lib/formatting";
 import { getOrganizationPaymentMethodsConfig } from "@/lib/payments";
 import { processSaleConfirmation } from "@/lib/sales/sale-processing";
+import { admitSaleRewardRedemption, buildRewardSaleItemValues, buildSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-redemption";
 import { getShopCatalogProducts, type TShopCatalogProduct } from "@/lib/shop/catalog";
 import { getShopAvailability } from "@/lib/shop/availability";
 import { normalizeShopSettingsConfiguration } from "@/lib/shop/config";
@@ -351,6 +352,8 @@ async function createShopOrder(request: NextRequest) {
 	const existingRequest = await db.query.shopOrderRequests.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, orgId), eq(fields.idempotencyKey, input.idempotencyKey)),
 	});
+	// Venda criada em uma tentativa anterior cuja confirmação falhou: retomada em vez de recriada.
+	let resumeSaleId: string | null = null;
 	if (existingRequest) {
 		if (existingRequest.payloadHash !== payloadHash) throw new createHttpError.Conflict("A chave de idempotência já foi usada com outro pedido.");
 		if (existingRequest.status === "CONCLUIDO" && existingRequest.vendaId) {
@@ -365,6 +368,28 @@ async function createShopOrder(request: NextRequest) {
 		}
 		if (existingRequest.status === "ERRO" && !existingRequest.vendaId) {
 			await db.delete(shopOrderRequests).where(eq(shopOrderRequests.id, existingRequest.id));
+		} else if (existingRequest.status === "ERRO" && existingRequest.vendaId) {
+			// A venda foi gravada mas a confirmação falhou depois do commit. Repetir do zero criaria
+			// um segundo ORCAMENTO órfão e o token público colidiria — então a retomada confirma a
+			// MESMA venda. Se a confirmação da tentativa anterior chegou a virar a venda (falha só no
+			// pós-commit), o pedido na prática deu certo: conclui e responde sucesso.
+			const existingSale = await db.query.sales.findFirst({
+				where: (fields, { and, eq }) => and(eq(fields.id, existingRequest.vendaId as string), eq(fields.organizacaoId, orgId)),
+				columns: { id: true, statusVenda: true },
+			});
+			if (!existingSale) throw new createHttpError.Conflict("Este pedido já está sendo processado. Aguarde e tente novamente.");
+			if (existingSale.statusVenda !== "ORCAMENTO") {
+				await db.update(shopOrderRequests).set({ status: "CONCLUIDO", erro: null }).where(eq(shopOrderRequests.id, existingRequest.id));
+				return NextResponse.json({
+					data: {
+						saleId: existingSale.id,
+						orderNumber: getPublicOrderNumber(existingSale.id),
+						publicAccessToken: input.publicAccessToken,
+					},
+					message: "Pedido enviado com sucesso.",
+				});
+			}
+			resumeSaleId = existingSale.id;
 		} else {
 			throw new createHttpError.Conflict("Este pedido já está sendo processado. Aguarde e tente novamente.");
 		}
@@ -373,7 +398,8 @@ async function createShopOrder(request: NextRequest) {
 	const existingPublicTokenRequest = await db.query.shopOrderRequests.findFirst({
 		where: (fields, { eq }) => eq(fields.publicAccessTokenHash, publicAccessTokenHash),
 	});
-	if (existingPublicTokenRequest) {
+	// Na retomada o token pertence à própria request retomada — só é conflito quando é de outra.
+	if (existingPublicTokenRequest && existingPublicTokenRequest.id !== existingRequest?.id) {
 		throw new createHttpError.Conflict(SHOP_ORDER_PUBLIC_TOKEN_CONFLICT_MESSAGE);
 	}
 
@@ -421,29 +447,59 @@ async function createShopOrder(request: NextRequest) {
 		saleSubtotal: saleValueBeforeCashback,
 		requestedValue: requestedCashback,
 	});
-	const discountsTotal = couponDiscount + requestedCashback;
-	const totalToPay = Math.max(0, subtotal - discountsTotal);
+	const admittedReward = input.recompensaResgate
+		? await admitSaleRewardRedemption({
+				tx: db,
+				organizacaoId: orgId,
+				clienteId: client.id,
+				recompensaId: input.recompensaResgate.recompensaId,
+				programaId: input.recompensaResgate.programaId,
+				hasCoupon: !!appliedCoupon,
+				cashbackResgate: requestedCashback,
+				// Preço comercial resolvido no canal SHOP — o mesmo que a listagem de recompensas exibe.
+				canal: "SHOP",
+			})
+		: null;
+	const rewardDiscount = admittedReward?.prize.valorVenda ?? 0;
+	const discountsTotal = couponDiscount + requestedCashback + rewardDiscount;
+	const totalToPay = Math.max(0, subtotal - couponDiscount - requestedCashback);
 
-	const [requestRecord] = await db
-		.insert(shopOrderRequests)
-		.values({
-			organizacaoId: orgId,
-			idempotencyKey: input.idempotencyKey,
-			publicAccessTokenHash,
-			payloadHash,
-			status: "PROCESSANDO",
-		})
-		.onConflictDoNothing()
-		.returning({ id: shopOrderRequests.id });
-	if (!requestRecord) throw new createHttpError.Conflict("Este pedido já está sendo processado. Aguarde e tente novamente.");
+	let requestRecord: { id: string };
+	if (resumeSaleId && existingRequest) {
+		// Claim otimista da request em ERRO: dois retries simultâneos não podem retomar a mesma venda.
+		const [claimed] = await db
+			.update(shopOrderRequests)
+			.set({ status: "PROCESSANDO", erro: null })
+			.where(and(eq(shopOrderRequests.id, existingRequest.id), eq(shopOrderRequests.status, "ERRO")))
+			.returning({ id: shopOrderRequests.id });
+		if (!claimed) throw new createHttpError.Conflict("Este pedido já está sendo processado. Aguarde e tente novamente.");
+		requestRecord = claimed;
+	} else {
+		const [inserted] = await db
+			.insert(shopOrderRequests)
+			.values({
+				organizacaoId: orgId,
+				idempotencyKey: input.idempotencyKey,
+				publicAccessTokenHash,
+				payloadHash,
+				status: "PROCESSANDO",
+			})
+			.onConflictDoNothing()
+			.returning({ id: shopOrderRequests.id });
+		if (!inserted) throw new createHttpError.Conflict("Este pedido já está sendo processado. Aguarde e tente novamente.");
+		requestRecord = inserted;
+	}
 
 	const metadata: TShopDraftMetadata = {
 		origem: "SHOP",
 		modo: settings.modo,
-		subtotalItens: subtotal,
+		subtotalItens: subtotal + rewardDiscount,
 		cashbackResgateSolicitado: requestedCashback,
 		cashbackProgramaId: programId,
 		cupom: appliedCoupon,
+		recompensa: admittedReward
+			? { ...buildSaleRewardDraftSnapshot(admittedReward), imagemCapaUrl: admittedReward.prize.imagemCapaUrl ?? admittedReward.prize.produtoImagemUrl }
+			: null,
 		pagamento: {
 			tipo: "NO_LOCAL",
 			metodo: input.pagamento.metodo,
@@ -457,91 +513,100 @@ async function createShopOrder(request: NextRequest) {
 	};
 	const saleObservations = [input.observacoes?.trim() || null, input.pagamento.observacoes?.trim() || null].filter(Boolean).join("\n") || null;
 
-	let saleId: string | null = null;
+	let saleId: string | null = resumeSaleId;
 	try {
-		saleId = await db.transaction(async (tx) => {
-			const [insertedSale] = await tx
-				.insert(sales)
-				.values({
-					organizacaoId: orgId,
-					clienteId: client.id,
-					idExterno: `SHOP-${input.idempotencyKey}`,
-					valorTotal: totalToPay,
-					descontosTotal: discountsTotal > 0 ? discountsTotal : null,
-					acrescimosTotal: null,
-					custoTotal: calculatedItems.reduce((sum, item) => sum + item.valorCustoTotal, 0),
-					vendedorNome: "",
-					vendedorId: null,
-					entregaModalidade: input.entrega.modalidade,
-					entregaLocalizacaoId: deliveryLocation?.id ?? null,
-					observacoes: saleObservations,
-					rascunhoMetadados: { shop: metadata },
-					parceiro: "",
-					chave: "",
-					documento: "",
-					modelo: "",
-					movimento: "RECEITAS",
-					natureza: "SN01",
-					serie: "",
-					situacao: "",
-					tipo: "Venda de produtos",
-					canal: "SHOP",
-					processamentoOrigem: "INTERNO",
-					statusVenda: "ORCAMENTO",
-					// emissaoFiscalAutomatica omitido (null) => herda a preferência da organização, resolvido na entrega.
-				})
-				.returning({ id: sales.id, idExterno: sales.idExterno });
-
-			if (!insertedSale) throw new createHttpError.InternalServerError("Erro ao criar pedido.");
-
-			for (const item of calculatedItems) {
-				const [insertedItem] = await tx
-					.insert(saleItems)
+		// Na retomada a venda e seus itens já existem — só a confirmação (guardada por
+		// statusVenda = ORCAMENTO em processSaleConfirmation) precisa rodar de novo.
+		if (!saleId)
+			saleId = await db.transaction(async (tx) => {
+				const [insertedSale] = await tx
+					.insert(sales)
 					.values({
 						organizacaoId: orgId,
-						vendaId: insertedSale.id,
 						clienteId: client.id,
-						produtoId: item.produtoId,
-						produtoVarianteId: item.produtoVarianteId,
-						quantidade: item.quantidade,
-						valorVendaUnitario: item.valorUnitarioFinal,
-						valorCustoUnitario: item.valorCustoUnitario,
-						valorVendaTotalBruto: item.valorTotalBruto,
-						valorTotalDesconto: item.valorDesconto,
-						valorVendaTotalLiquido: item.valorTotalLiquido,
-						valorCustoTotal: item.valorCustoTotal,
-						metadados: {
-							nome: item.nome,
-							codigo: item.codigo,
-							imagemUrl: item.imagemUrl,
+						idExterno: `SHOP-${input.idempotencyKey}`,
+						valorTotal: totalToPay,
+						descontosTotal: discountsTotal > 0 ? discountsTotal : null,
+						acrescimosTotal: null,
+						custoTotal: calculatedItems.reduce((sum, item) => sum + item.valorCustoTotal, 0) + (admittedReward?.prize.precoCusto ?? 0),
+						vendedorNome: "",
+						vendedorId: null,
+						entregaModalidade: input.entrega.modalidade,
+						entregaLocalizacaoId: deliveryLocation?.id ?? null,
+						observacoes: saleObservations,
+						rascunhoMetadados: { shop: metadata },
+						parceiro: "",
+						chave: "",
+						documento: "",
+						modelo: "",
+						movimento: "RECEITAS",
+						natureza: "SN01",
+						serie: "",
+						situacao: "",
+						tipo: "Venda de produtos",
+						canal: "SHOP",
+						processamentoOrigem: "INTERNO",
+						statusVenda: "ORCAMENTO",
+						// emissaoFiscalAutomatica omitido (null) => herda a preferência da organização, resolvido na entrega.
+					})
+					.returning({ id: sales.id, idExterno: sales.idExterno });
+
+				if (!insertedSale) throw new createHttpError.InternalServerError("Erro ao criar pedido.");
+
+				for (const item of calculatedItems) {
+					const [insertedItem] = await tx
+						.insert(saleItems)
+						.values({
+							organizacaoId: orgId,
+							vendaId: insertedSale.id,
+							clienteId: client.id,
 							produtoId: item.produtoId,
 							produtoVarianteId: item.produtoVarianteId,
-							grupo: item.grupo,
-							valorUnitarioBase: item.valorUnitarioBase,
-							valorModificadores: item.valorModificadores,
-							modificadores: item.modificadores,
-						},
-					})
-					.returning({ id: saleItems.id });
-				if (!insertedItem) throw new createHttpError.InternalServerError("Erro ao criar item do pedido.");
+							quantidade: item.quantidade,
+							valorVendaUnitario: item.valorUnitarioFinal,
+							valorCustoUnitario: item.valorCustoUnitario,
+							valorVendaTotalBruto: item.valorTotalBruto,
+							valorTotalDesconto: item.valorDesconto,
+							valorVendaTotalLiquido: item.valorTotalLiquido,
+							valorCustoTotal: item.valorCustoTotal,
+							metadados: {
+								nome: item.nome,
+								codigo: item.codigo,
+								imagemUrl: item.imagemUrl,
+								produtoId: item.produtoId,
+								produtoVarianteId: item.produtoVarianteId,
+								grupo: item.grupo,
+								valorUnitarioBase: item.valorUnitarioBase,
+								valorModificadores: item.valorModificadores,
+								modificadores: item.modificadores,
+							},
+						})
+						.returning({ id: saleItems.id });
+					if (!insertedItem) throw new createHttpError.InternalServerError("Erro ao criar item do pedido.");
 
-				if (item.modificadores.length > 0) {
-					await tx.insert(saleItemModifiers).values(
-						item.modificadores.map((modifier) => ({
-							itemVendaId: insertedItem.id,
-							opcaoId: modifier.opcaoId,
-							nome: modifier.nome,
-							quantidade: modifier.quantidade,
-							valorUnitario: modifier.valorUnitario,
-							valorTotal: modifier.valorTotal,
-						})),
-					);
+					if (item.modificadores.length > 0) {
+						await tx.insert(saleItemModifiers).values(
+							item.modificadores.map((modifier) => ({
+								itemVendaId: insertedItem.id,
+								opcaoId: modifier.opcaoId,
+								nome: modifier.nome,
+								quantidade: modifier.quantidade,
+								valorUnitario: modifier.valorUnitario,
+								valorTotal: modifier.valorTotal,
+							})),
+						);
+					}
 				}
-			}
 
-			await tx.update(shopOrderRequests).set({ vendaId: insertedSale.id }).where(eq(shopOrderRequests.id, requestRecord.id));
-			return insertedSale.id;
-		});
+				if (admittedReward) {
+					await tx
+						.insert(saleItems)
+						.values(buildRewardSaleItemValues({ organizacaoId: orgId, vendaId: insertedSale.id, clienteId: client.id, prize: admittedReward.prize }));
+				}
+
+				await tx.update(shopOrderRequests).set({ vendaId: insertedSale.id }).where(eq(shopOrderRequests.id, requestRecord.id));
+				return insertedSale.id;
+			});
 
 		const organizationSaleDefaults = organization.configuracao.defaults.contabilidade.lancamentosPadrao.vendas;
 		if (!organizationSaleDefaults.debitoContaId || !organizationSaleDefaults.creditoContaId) {
@@ -568,6 +633,9 @@ async function createShopOrder(request: NextRequest) {
 			saleClientId: client.id,
 			saleCashbackProgramId: programId,
 			saleCashbackRedemptionValue: requestedCashback,
+			saleRewardRedemption: admittedReward
+				? { recompensaId: admittedReward.prize.id, programaId: admittedReward.programaId, valorResgate: admittedReward.prize.valor }
+				: null,
 			saleCouponId: appliedCoupon?.cupomId ?? null,
 			saleCouponDeclaredDiscountValue: appliedCoupon?.valorDesconto ?? null,
 			saleCouponRedemptionSurface: appliedCoupon ? "LOJA_DIGITAL" : undefined,

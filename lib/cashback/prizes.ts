@@ -1,5 +1,23 @@
+import { type TChannelState, channelNodePrice, channelProductFilter } from "@/lib/products/sales-channels-store";
 import type { DB, DBTransaction } from "@/services/drizzle";
 import createHttpError from "http-errors";
+
+/**
+ * Disponibilidade e preço de um nó (produto/variante) para resgate em um canal, com a mesma régua
+ * do catálogo do canal (lib/shop/catalog.ts): filtro de presença por produto e preço RESOLVIDO
+ * > 0. Sem channelState (PDV, canal não materializado) vale o preço base do cadastro.
+ */
+function resolvePrizeChannelPricing(
+	channelState: TChannelState | null | undefined,
+	node: { produtoId: string; produtoVarianteId?: string | null; precoVenda: number | null },
+) {
+	if (!channelState) return { disponivel: true, precoVenda: node.precoVenda ?? 0 };
+	const filter = channelProductFilter(channelState);
+	if (filter.includeIds && !filter.includeIds.includes(node.produtoId)) return { disponivel: false, precoVenda: 0 };
+	if (filter.excludeIds?.includes(node.produtoId)) return { disponivel: false, precoVenda: 0 };
+	const precoVenda = channelNodePrice(channelState, node) ?? 0;
+	return { disponivel: precoVenda > 0, precoVenda };
+}
 
 export type TValidatedPrizeForRedemption = {
 	id: string;
@@ -29,11 +47,13 @@ export async function validatePrizeForRedemption({
 	organizacaoId,
 	programaId,
 	recompensaId,
+	channelState,
 }: {
 	tx: DB | DBTransaction;
 	organizacaoId: string;
 	programaId: string;
 	recompensaId: string;
+	channelState?: TChannelState | null;
 }): Promise<TValidatedPrizeForRedemption> {
 	const prize = await tx.query.cashbackProgramPrizes.findFirst({
 		where: (fields, { and, eq }) =>
@@ -88,17 +108,122 @@ export async function validatePrizeForRedemption({
 		throw new createHttpError.BadRequest("A variante vinculada à recompensa não pertence ao produto informado.");
 	}
 
+	// Preço comercial resolvido no canal da venda: se ficar no preço base, o item da recompensa
+	// diverge do resto do pedido (drift na confirmação) e o desconto sai subavaliado nos relatórios.
+	const channelPricing = resolvePrizeChannelPricing(channelState, {
+		produtoId: produto.id,
+		produtoVarianteId: variante?.id ?? null,
+		precoVenda: variante?.precoVenda ?? produto.precoVenda ?? null,
+	});
+	if (!channelPricing.disponivel) {
+		throw new createHttpError.BadRequest("O produto vinculado à recompensa não está disponível neste canal de venda.");
+	}
+
 	return {
 		id: prize.id,
 		titulo: prize.titulo,
 		imagemCapaUrl: prize.imagemCapaUrl ?? null,
 		valor: prize.valor,
-		valorVenda: variante?.precoVenda ?? produto.precoVenda ?? 0,
+		valorVenda: channelPricing.precoVenda,
 		precoCusto: variante?.precoCusto ?? produto.precoCusto ?? 0,
 		produtoId,
 		produtoVarianteId: variante?.id ?? null,
 		produtoNome: variante ? `${produto.nome} - ${variante.nome}` : produto.nome,
 		produtoCodigo: variante?.codigo ?? produto.codigo,
 		produtoImagemUrl: variante?.imagemCapaUrl ?? produto.imagemCapaUrl ?? null,
+	};
+}
+
+/**
+ * Lista as recompensas resgatáveis de um cliente, com o saldo e o programa resolvidos. Usada pelo
+ * PDV e pela loja digital — a elegibilidade e a resolução de programa precisam ser idênticas nas
+ * duas superfícies, senão elas mostram listas diferentes para o mesmo cliente.
+ */
+export async function listAvailableCashbackRewards({
+	tx,
+	organizacaoId,
+	clienteId,
+	channelState,
+}: {
+	tx: DB | DBTransaction;
+	organizacaoId: string;
+	clienteId: string;
+	channelState?: TChannelState | null;
+}) {
+	// Mesma resolução do resgate (`admitSaleRewardRedemption`): o programa do cliente é o do seu
+	// saldo. Só quando o cliente não tem saldo em nenhum programa é que se cai no programa ativo da
+	// organização — do contrário, uma org com mais de um programa listaria prêmios de um e
+	// debitaria o saldo de outro.
+	const clientBalance = await tx.query.cashbackProgramBalances.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, organizacaoId), eq(fields.clienteId, clienteId)),
+		columns: { saldoValorDisponivel: true, programaId: true },
+	});
+	const program = await tx.query.cashbackPrograms.findFirst({
+		where: (fields, { and, eq }) =>
+			clientBalance?.programaId
+				? and(eq(fields.id, clientBalance.programaId), eq(fields.organizacaoId, organizacaoId))
+				: and(eq(fields.organizacaoId, organizacaoId), eq(fields.ativo, true)),
+		columns: { id: true, ativo: true, terminologia: true, modalidadeRecompensasPermitida: true },
+	});
+	const rewardsAvailable = !!program?.ativo && program.modalidadeRecompensasPermitida;
+	// Saldo só conta quando é do programa resolvido.
+	const balance = clientBalance && clientBalance.programaId === program?.id ? clientBalance : null;
+	const saldoValorDisponivel = balance?.saldoValorDisponivel ?? 0;
+
+	const prizes =
+		rewardsAvailable && program
+			? await tx.query.cashbackProgramPrizes.findMany({
+					where: (fields, { and, eq, gt }) =>
+						and(eq(fields.organizacaoId, organizacaoId), eq(fields.programaId, program.id), eq(fields.ativo, true), gt(fields.valor, 0)),
+					columns: { id: true, titulo: true, descricao: true, imagemCapaUrl: true, valor: true, produtoId: true, produtoVarianteId: true },
+					with: {
+						produto: { columns: { precoVenda: true, grupo: true, imagemCapaUrl: true } },
+						produtoVariante: { columns: { produtoId: true, precoVenda: true, imagemCapaUrl: true } },
+					},
+					orderBy: (fields, { asc }) => asc(fields.valor),
+				})
+			: [];
+
+	const rewards = prizes
+		// Prêmio sem vínculo com produto/variante não é resgatável (não vira item de venda).
+		// `valor > 0` já é filtrado na query: prêmio de valor zero não passa no débito do ledger.
+		.filter((prize) => !!prize.produtoId || !!prize.produtoVarianteId)
+		.flatMap((prize) => {
+			const produtoId = prize.produtoId ?? prize.produtoVariante?.produtoId;
+			if (!produtoId) return [];
+			const channelPricing = resolvePrizeChannelPricing(channelState, {
+				produtoId,
+				produtoVarianteId: prize.produtoVarianteId,
+				precoVenda: prize.produtoVariante?.precoVenda ?? prize.produto?.precoVenda ?? null,
+			});
+			// Fora do canal não aparece: `validatePrizeForRedemption` recusaria o resgate de qualquer forma.
+			if (!channelPricing.disponivel) return [];
+			const elegivel = saldoValorDisponivel >= prize.valor;
+			return [
+				{
+					id: prize.id,
+					titulo: prize.titulo,
+					descricao: prize.descricao,
+					imagemCapaUrl: prize.imagemCapaUrl ?? prize.produtoVariante?.imagemCapaUrl ?? prize.produto?.imagemCapaUrl ?? null,
+					grupo: prize.produto?.grupo ?? null,
+					valor: prize.valor,
+					valorVenda: channelPricing.precoVenda,
+					elegivel,
+					motivo: elegivel ? null : "Saldo insuficiente.",
+				},
+			];
+		});
+
+	return {
+		program: program
+			? {
+					id: program.id,
+					ativo: program.ativo,
+					terminologia: program.terminologia,
+					modalidadeRecompensasPermitida: program.modalidadeRecompensasPermitida,
+				}
+			: null,
+		saldoValorDisponivel,
+		rewards,
 	};
 }

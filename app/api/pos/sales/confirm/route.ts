@@ -11,7 +11,12 @@ import {
 	processSaleConfirmationInTransaction,
 	processSaleConfirmationPostCommit,
 } from "@/lib/sales/sale-processing";
-import { admitSaleRewardRedemption, buildRewardSaleItemValues, parseSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-redemption";
+import {
+	POS_REWARD_SALE_ITEM_ORIGIN,
+	admitSaleRewardRedemption,
+	buildRewardSaleItemValues,
+	parseSaleRewardDraftSnapshot,
+} from "@/lib/sales/sale-reward-redemption";
 import { AppliedCouponSchema, type TAppliedCoupon } from "@/schemas/coupons";
 import { db } from "@/services/drizzle";
 import { saleItems, sales } from "@/services/drizzle/schema";
@@ -64,6 +69,7 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 						valorVendaUnitario: true,
 						valorVendaTotalBruto: true,
 						valorTotalDesconto: true,
+						metadados: true,
 					},
 					with: {
 						adicionais: { columns: { opcaoId: true, quantidade: true } },
@@ -81,6 +87,13 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 	// que garante lock, pedidos resolvidos, delta de estoque e sessao de caixa de quem fecha.
 	if (saleDraft.tabId) throw new createHttpError.BadRequest("Esta venda pertence a uma conta de atendimento. Feche a conta para confirma-la.");
 
+	// Rascunhos da loja digital já nascem com o item da recompensa gravado (o pedido é criado e
+	// confirmado na mesma request); rascunhos do PDV só ganham o item aqui, na confirmação. O item
+	// pré-existente fica fora do drift de preços e do teto de desconto (a recompensa não é desconto
+	// do vendedor) e sinaliza que a inserção/ajuste de totais já aconteceu.
+	const existingRewardItem = saleDraft.itens.find((item) => (item.metadados as { origem?: string } | null)?.origem === POS_REWARD_SALE_ITEM_ORIGIN);
+	const draftItemsWithoutReward = saleDraft.itens.filter((item) => item !== existingRewardItem);
+
 	// Preços congelados no rascunho precisam valer no momento da confirmação: um orçamento antigo
 	// confirmado ao preço de semanas atrás é perda de margem silenciosa. O checkout mostra a
 	// divergência e oferece a atualização antes de chegar aqui; esta guarda fecha o caminho.
@@ -88,7 +101,7 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		orgId,
 		// Drift contra os preços do canal da venda: um orçamento do shop confere contra o SHOP.
 		canal: toSalesChannelType(saleDraft.canal),
-		itens: saleDraft.itens.map((item) => ({
+		itens: draftItemsWithoutReward.map((item) => ({
 			id: item.id,
 			nome: item.produtoVariante?.nome ?? item.produto?.nome ?? "Item",
 			produtoId: item.produtoId,
@@ -162,17 +175,27 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 				programaId: rewardSnapshot.programaId,
 				hasCoupon: !!effectiveAppliedCoupon,
 				cashbackResgate: effectiveCashbackResgate,
+				// Preço do prêmio conferido no canal da venda: um orçamento do shop valida contra o SHOP.
+				canal: toSalesChannelType(saleDraft.canal),
 			})
 		: null;
 
 	// Teto de desconto do vendedor: orcamento com desconto acima do limite nao e confirmavel sem aprovacao.
-	// Desconto geral vem do rascunhoMetadados do PDV; fallback deriva do total carimbado menos cupom/cashback.
+	// Desconto geral vem do rascunhoMetadados do PDV; fallback deriva do total carimbado menos
+	// cupom/cashback — e menos a recompensa quando ela ja esta nos totais (rascunho do shop),
+	// senao o premio inteiro contaria como desconto do vendedor e exigiria aprovacao indevida.
 	const descontosGerais =
 		typeof shopMetadata?.descontoGeral === "number"
 			? Math.max(0, shopMetadata.descontoGeral)
-			: Math.max(0, (saleDraft.descontosTotal ?? 0) - (effectiveAppliedCoupon?.valorDesconto ?? 0) - effectiveCashbackResgate);
+			: Math.max(
+					0,
+					(saleDraft.descontosTotal ?? 0) -
+						(effectiveAppliedCoupon?.valorDesconto ?? 0) -
+						effectiveCashbackResgate -
+						(existingRewardItem?.valorTotalDesconto ?? 0),
+				);
 	const descontoAgregado = computeSaleAggregatedDiscount({
-		itens: saleDraft.itens.map((item) => ({ valorTotalBruto: item.valorVendaTotalBruto, valorDesconto: item.valorTotalDesconto })),
+		itens: draftItemsWithoutReward.map((item) => ({ valorTotalBruto: item.valorVendaTotalBruto, valorDesconto: item.valorTotalDesconto })),
 		descontosGerais,
 		cupomResgate: effectiveAppliedCoupon,
 	});
@@ -215,9 +238,10 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		if (descontoAprovacaoId) {
 			await consumeSaleDiscountApproval({ tx, aprovacaoId: descontoAprovacaoId, vendaId: input.id });
 		}
-		// O item nasce aqui (nao no rascunho) e antes da confirmacao, que le os itens da venda
-		// para baixa de estoque. Liquido 0 nao altera valorTotal; desconto e custo sim.
-		if (admittedReward) {
+		// O item nasce aqui (nao no rascunho do PDV) e antes da confirmacao, que le os itens da
+		// venda para baixa de estoque. Liquido 0 nao altera valorTotal; desconto e custo sim.
+		// Rascunho do shop ja tem o item e os totais ajustados — inserir de novo duplicaria o premio.
+		if (admittedReward && !existingRewardItem) {
 			await tx.insert(saleItems).values(
 				buildRewardSaleItemValues({
 					organizacaoId: orgId,

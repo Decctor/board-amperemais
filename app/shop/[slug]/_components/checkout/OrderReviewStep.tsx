@@ -5,7 +5,7 @@ import { formatCashbackValue, formatToMoney, formatToPhone } from "@/lib/formatt
 import { buildShopCartLines } from "@/lib/shop/cart";
 import type { TShopPaymentMethod } from "@/schemas/shop";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Banknote, Clock3, CreditCard, Info, Package, QrCode, Send, Sparkles, Ticket, Truck, User } from "lucide-react";
+import { Banknote, Clock3, CreditCard, Gift, Info, Package, QrCode, Send, Sparkles, Ticket, Truck, User } from "lucide-react";
 import Image from "next/image";
 import { useMemo, type ComponentType } from "react";
 import { useShop } from "../ShopProvider";
@@ -83,7 +83,7 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 	const reduced = prefersReducedMotion ?? false;
 
 	const { catalog, availability, orderState } = useShop();
-	const { customer, delivery, cashback, cart, payment, coupon } = orderState.state;
+	const { customer, delivery, cashback, cart, payment, coupon, reward } = orderState.state;
 	const config = catalog.shopSettings.configuracoes;
 	const shopIsOpen = availability.status === "ABERTA";
 
@@ -233,6 +233,28 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 					})}
 				</div>
 			</motion.div>
+
+			{reward.resgate ? (
+				<motion.div {...fadeUp(0.36, reduced)} className="flex items-center gap-3 rounded-2xl border border-brand/30 bg-brand/5 p-3.5">
+					{reward.resgate.imagemCapaUrl ? (
+						<div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-muted">
+							<Image src={reward.resgate.imagemCapaUrl} alt={reward.resgate.titulo} fill className="object-cover" sizes="56px" />
+						</div>
+					) : (
+						<div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-brand/10">
+							<Gift className="size-5 text-brand" />
+						</div>
+					)}
+					<div className="min-w-0 flex-1">
+						<p className="text-xs font-black uppercase tracking-wide text-brand">Recompensa resgatada</p>
+						<p className="text-sm font-bold">{reward.resgate.titulo}</p>
+						<p className="text-xs text-muted-foreground">
+							{formatCashbackValue(reward.resgate.valor, catalog.cashbackProgram?.terminologia ?? "DINHEIRO")} · {formatToMoney(reward.resgate.valorVenda)}{" "}
+							grátis
+						</p>
+					</div>
+				</motion.div>
+			) : null}
 
 			<motion.div {...fadeUp(0.38, reduced)} className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
 				<div className="flex flex-col gap-2.5">

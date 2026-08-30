@@ -1,5 +1,5 @@
 import type { TGetSaleForEditOutput } from "@/app/api/pos/sales/edit/route";
-import { POS_REWARD_SALE_ITEM_ORIGIN, type TSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-redemption";
+import { POS_REWARD_SALE_ITEM_ORIGIN, parseSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-snapshot";
 import type { TCartItem, TCartItemModifier, TSaleState } from "@/state-hooks/use-sale-state";
 import type { TCheckoutPaymentSplit } from "@/lib/payments/schemas";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
@@ -151,7 +151,7 @@ export function mapSaleForEditToSaleState(
 	const venda = data.venda;
 	const draftMetadata =
 		venda.rascunhoMetadados && typeof venda.rascunhoMetadados === "object" && !Array.isArray(venda.rascunhoMetadados)
-			? (venda.rascunhoMetadados as { descontoGeral?: number; recompensa?: TSaleRewardDraftSnapshot | null })
+			? (venda.rascunhoMetadados as { descontoGeral?: number })
 			: null;
 
 	// Já exclui o resgate de recompensa (que está em moeda cashback, não em R$).
@@ -161,7 +161,7 @@ export function mapSaleForEditToSaleState(
 	// Recompensa resgatada: o item dá o valor comercial e a identidade visual; o débito de saldo
 	// vem do ledger (`recompensaResgatada`), nunca do snapshot do rascunho, que pode estar velho.
 	const rewardItem = itens.find((item) => !!item.recompensaId);
-	const recompensaSnapshot = draftMetadata?.recompensa ?? null;
+	const recompensaSnapshot = parseSaleRewardDraftSnapshot(venda.rascunhoMetadados);
 	const descontoRecompensa = rewardItem?.valorDesconto ?? 0;
 	const descontoGeral =
 		draftMetadata?.descontoGeral ?? Math.max(0, (venda.descontosTotal ?? 0) - cupomDesconto - cashbackResgate - descontoRecompensa);

@@ -1,5 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import type { TAppliedCoupon } from "@/schemas/coupons";
+import type { TShopRewardSnapshot } from "@/schemas/shop";
 import { db } from "@/services/drizzle";
 import { shopOrderRequests } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
@@ -22,6 +23,7 @@ type TShopDraftMetadata = {
 		subtotalItens?: number;
 		cashbackResgateSolicitado?: number;
 		cupom?: TAppliedCoupon | null;
+		recompensa?: TShopRewardSnapshot | null;
 		pagamento?: {
 			metodo?: string;
 			descricao?: string;
@@ -199,6 +201,14 @@ async function getPublicShopOrder({ input }: { input: TGetPublicShopOrderInput }
 							code: shopMetadata.cupom.codigo ?? null,
 							title: shopMetadata.cupom.titulo ?? null,
 							discount: shopMetadata.cupom.valorDesconto,
+						}
+					: null,
+				reward: shopMetadata?.recompensa
+					? {
+							title: shopMetadata.recompensa.titulo,
+							points: shopMetadata.recompensa.valor,
+							commercialValue: shopMetadata.recompensa.valorVenda,
+							imageUrl: shopMetadata.recompensa.imagemCapaUrl,
 						}
 					: null,
 				additions: sale.acrescimosTotal ?? 0,

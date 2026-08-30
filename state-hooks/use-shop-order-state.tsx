@@ -1,7 +1,7 @@
 "use client";
 
 import type { TAppliedCoupon } from "@/schemas/coupons";
-import type { TCreateShopOrderInput, TShopCartItem, TShopCustomer, TShopDelivery, TShopPaymentMethod } from "@/schemas/shop";
+import type { TCreateShopOrderInput, TShopCartItem, TShopCustomer, TShopDelivery, TShopPaymentMethod, TShopRewardSnapshot } from "@/schemas/shop";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const SHOP_CART_STORAGE_VERSION = 3;
@@ -19,6 +19,9 @@ type TShopOrderState = {
 	};
 	coupon: {
 		resgate: TAppliedCoupon | null;
+	};
+	reward: {
+		resgate: TShopRewardSnapshot | null;
 	};
 	payment: {
 		metodo: TShopPaymentMethod;
@@ -40,6 +43,7 @@ type TStoredShopOrderState = {
 	delivery: Partial<TShopDelivery>;
 	cashback: TShopOrderState["cashback"];
 	coupon?: TShopOrderState["coupon"];
+	reward?: TShopOrderState["reward"];
 	payment: TShopOrderState["payment"];
 	idempotencyKey: string;
 	publicAccessToken: string;
@@ -65,6 +69,7 @@ function getDefaultState(orgId: string, mode: "CARDAPIO" | "CATALOGO"): TShopOrd
 		delivery: { modalidade: "RETIRADA", endereco: null },
 		cashback: { resgateSolicitado: 0 },
 		coupon: { resgate: null },
+		reward: { resgate: null },
 		payment: { metodo: "DINHEIRO", observacoes: "", precisaTroco: false, trocoPara: null },
 		...createOrderIdentity(),
 		checkoutStep: "CARRINHO",
@@ -88,6 +93,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 				delivery: { ...prev.delivery, ...parsed.delivery },
 				cashback: parsed.cashback ?? prev.cashback,
 				coupon: parsed.coupon ?? prev.coupon,
+				reward: parsed.reward ?? prev.reward,
 				payment: parsed.payment ?? prev.payment,
 				idempotencyKey: parsed.idempotencyKey ?? prev.idempotencyKey,
 				publicAccessToken: parsed.publicAccessToken ?? prev.publicAccessToken,
@@ -114,6 +120,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			delivery: state.delivery,
 			cashback: state.cashback,
 			coupon: state.coupon,
+			reward: state.reward,
 			payment: state.payment,
 			idempotencyKey: state.idempotencyKey,
 			publicAccessToken: state.publicAccessToken,
@@ -124,7 +131,18 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			window.localStorage.setItem(getStorageKey(orgId), JSON.stringify(payload));
 		}, 300);
 		return () => window.clearTimeout(timeout);
-	}, [orgId, state.cart, state.customer, state.delivery, state.cashback, state.coupon, state.payment, state.idempotencyKey, state.publicAccessToken]);
+	}, [
+		orgId,
+		state.cart,
+		state.customer,
+		state.delivery,
+		state.cashback,
+		state.coupon,
+		state.reward,
+		state.payment,
+		state.idempotencyKey,
+		state.publicAccessToken,
+	]);
 
 	const addItem = useCallback((item: TShopCartItem) => {
 		setState((prev) => ({
@@ -170,6 +188,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			cart: { items: [] },
 			cashback: { resgateSolicitado: 0 },
 			coupon: { resgate: null },
+			reward: { resgate: null },
 			...createOrderIdentity(),
 		}));
 		if (typeof window !== "undefined") window.localStorage.removeItem(getStorageKey(orgId));
@@ -184,6 +203,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 				customer: nextCustomer,
 				cashback: shouldClearBenefits ? { resgateSolicitado: 0 } : prev.cashback,
 				coupon: shouldClearBenefits ? { resgate: null } : prev.coupon,
+				reward: shouldClearBenefits ? { resgate: null } : prev.reward,
 				...createOrderIdentity(),
 			};
 		});
@@ -194,11 +214,26 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 	}, []);
 
 	const updateCashback = useCallback((cashback: Partial<TShopOrderState["cashback"]>) => {
-		setState((prev) => ({ ...prev, cashback: { ...prev.cashback, ...cashback }, ...createOrderIdentity() }));
+		setState((prev) => ({
+			...prev,
+			cashback: { ...prev.cashback, ...cashback },
+			reward: (cashback.resgateSolicitado ?? 0) > 0 ? { resgate: null } : prev.reward,
+			...createOrderIdentity(),
+		}));
 	}, []);
 
 	const updateCoupon = useCallback((coupon: TShopOrderState["coupon"]["resgate"]) => {
-		setState((prev) => ({ ...prev, coupon: { resgate: coupon }, ...createOrderIdentity() }));
+		setState((prev) => ({ ...prev, coupon: { resgate: coupon }, reward: coupon ? { resgate: null } : prev.reward, ...createOrderIdentity() }));
+	}, []);
+
+	const updateReward = useCallback((reward: TShopOrderState["reward"]["resgate"]) => {
+		setState((prev) => ({
+			...prev,
+			reward: { resgate: reward },
+			coupon: reward ? { resgate: null } : prev.coupon,
+			cashback: reward ? { resgateSolicitado: 0 } : prev.cashback,
+			...createOrderIdentity(),
+		}));
 	}, []);
 
 	const updatePayment = useCallback((payment: Partial<TShopOrderState["payment"]>) => {
@@ -255,6 +290,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			},
 			cashbackResgateSolicitado: state.cashback.resgateSolicitado,
 			cupomResgate: state.coupon.resgate,
+			recompensaResgate: state.reward.resgate ? { recompensaId: state.reward.resgate.recompensaId, programaId: state.reward.resgate.programaId } : null,
 			observacoes: null,
 		}),
 		[
@@ -266,6 +302,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 			state.payment,
 			state.cashback.resgateSolicitado,
 			state.coupon.resgate,
+			state.reward.resgate,
 		],
 	);
 
@@ -281,6 +318,7 @@ export function useShopOrderState({ orgId, mode }: { orgId: string; mode: "CARDA
 		updateDelivery,
 		updateCashback,
 		updateCoupon,
+		updateReward,
 		updatePayment,
 		setCheckoutStep,
 		nextStep,

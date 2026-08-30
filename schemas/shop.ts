@@ -1,3 +1,4 @@
+import type { TSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-snapshot";
 import { z } from "zod";
 import { AppliedCouponSchema, type TAppliedCoupon } from "./coupons";
 import {
@@ -376,9 +377,23 @@ export const CreateShopOrderInputSchema = z.object({
 		.nonnegative("Valor de cashback não pode ser negativo.")
 		.default(0),
 	cupomResgate: AppliedCouponSchema.optional().nullable(),
+	recompensaResgate: z
+		.object({
+			recompensaId: z.string({ required_error: "ID da recompensa não informado.", invalid_type_error: "Tipo não válido para o ID da recompensa." }),
+			programaId: z.string({
+				required_error: "ID do programa de cashback não informado.",
+				invalid_type_error: "Tipo não válido para o ID do programa de cashback.",
+			}),
+		})
+		.optional()
+		.nullable(),
 	observacoes: z.string({ invalid_type_error: "Tipo não válido para observações." }).optional().nullable(),
 });
 export type TCreateShopOrderInput = z.infer<typeof CreateShopOrderInputSchema>;
+
+// Snapshot autoritativo do resgate (lido por parseSaleRewardDraftSnapshot na confirmação),
+// acrescido da imagem que só a vitrine da loja exibe.
+export type TShopRewardSnapshot = TSaleRewardDraftSnapshot & { imagemCapaUrl: string | null };
 
 export type TShopDraftMetadata = {
 	origem: "SHOP";
@@ -387,6 +402,7 @@ export type TShopDraftMetadata = {
 	cashbackResgateSolicitado: number;
 	cashbackProgramaId: string | null;
 	cupom: TAppliedCoupon | null;
+	recompensa: TShopRewardSnapshot | null;
 	pagamento: {
 		tipo: "NO_LOCAL";
 		metodo: TShopPaymentMethod;

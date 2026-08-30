@@ -42,6 +42,7 @@ export async function getShopCatalogData(orgId: string) {
 				id: true,
 				terminologia: true,
 				modalidadeDescontosPermitida: true,
+				modalidadeRecompensasPermitida: true,
 				resgateLimiteTipo: true,
 				resgateLimiteValor: true,
 			},

@@ -1,5 +1,5 @@
 import type { TGetSaleDraftOutput } from "@/app/api/pos/sales/route";
-import type { TSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-redemption";
+import type { TSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-snapshot";
 import type { TSaleState } from "@/state-hooks/use-sale-state";
 import { mapItemToCartItem } from "./map-sale-to-sale-state";
 

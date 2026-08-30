@@ -1,6 +1,7 @@
 import type { TGetShopAvailabilityOutput } from "@/app/api/shop/[orgId]/availability/route";
 import type { TGetShopCatalogOutput } from "@/app/api/shop/[orgId]/catalog/route";
 import type { TGetPublicShopOrderOutput } from "@/app/api/shop/[orgId]/orders/[token]/route";
+import type { TGetAvailableShopRewardsOutput } from "@/app/api/shop/[orgId]/cashback-rewards/available/route";
 import type { TGetAvailableShopCouponsInput, TGetAvailableShopCouponsOutput } from "@/app/api/shop/[orgId]/coupons/available/route";
 import type { TShopClientLookupInput, TShopClientLookupOutput } from "@/app/api/shop/[orgId]/clients/lookup/route";
 import type { TGetShopOrdersInput, TGetShopOrdersOutput } from "@/app/api/shop/orders/route";
@@ -154,10 +155,12 @@ export function useShopAvailableCoupons({
 	orgId,
 	clienteId,
 	itens,
+	enabled = true,
 }: {
 	orgId: string;
 	clienteId: string | null;
 	itens: TGetAvailableShopCouponsInput["itens"];
+	enabled?: boolean;
 }) {
 	const debouncedInput = useDebounceMemo({ orgId, clienteId, itens }, 500);
 	const queryKey = ["shop-available-coupons", debouncedInput] as const;
@@ -169,9 +172,28 @@ export function useShopAvailableCoupons({
 					orgId: debouncedInput.orgId,
 					input: { clienteId: debouncedInput.clienteId as string, itens: debouncedInput.itens },
 				}),
-			enabled: !!debouncedInput.orgId && !!debouncedInput.clienteId && debouncedInput.itens.length > 0,
+			enabled: enabled && !!debouncedInput.orgId && !!debouncedInput.clienteId && debouncedInput.itens.length > 0,
 		}),
 		queryKey,
 	};
 }
 export type TShopAvailableCoupon = Awaited<ReturnType<typeof fetchShopAvailableCoupons>>[number];
+
+async function fetchShopAvailableRewards({ orgId, clienteId }: { orgId: string; clienteId: string }) {
+	const searchParams = new URLSearchParams({ clienteId });
+	const { data } = await axios.get<TGetAvailableShopRewardsOutput>(`/api/shop/${orgId}/cashback-rewards/available?${searchParams.toString()}`);
+	return data.data;
+}
+
+export function useShopAvailableRewards({ orgId, clienteId, enabled = true }: { orgId: string; clienteId: string | null; enabled?: boolean }) {
+	const queryKey = ["shop-available-rewards", orgId, clienteId] as const;
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchShopAvailableRewards({ orgId, clienteId: clienteId as string }),
+			enabled: enabled && !!orgId && !!clienteId,
+		}),
+		queryKey,
+	};
+}
+export type TShopAvailableReward = Awaited<ReturnType<typeof fetchShopAvailableRewards>>["rewards"][number];

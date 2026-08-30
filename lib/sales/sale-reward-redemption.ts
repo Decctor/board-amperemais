@@ -1,29 +1,24 @@
 import { type TValidatedPrizeForRedemption, validatePrizeForRedemption } from "@/lib/cashback/prizes";
+import { loadChannelState } from "@/lib/products/sales-channels-store";
+import { POS_REWARD_SALE_ITEM_ORIGIN, type TSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-snapshot";
 import type { DB, DBTransaction } from "@/services/drizzle";
 import createHttpError from "http-errors";
+
+// Parte client-safe (tipo do snapshot, origem do item, parser) mora em sale-reward-snapshot.ts;
+// reexportada aqui para os consumidores de servidor não precisarem de dois imports.
+export { POS_REWARD_SALE_ITEM_ORIGIN, parseSaleRewardDraftSnapshot, type TSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-snapshot";
 
 export type TAdmittedSaleReward = {
 	programaId: string;
 	prize: TValidatedPrizeForRedemption;
 };
 
-// Snapshot da recompensa carimbado pelo servidor em sales.rascunhoMetadados.recompensa.
-// É a chave autoritativa lida pela confirmação de orçamento — o blob enviado pelo cliente
-// pode carregar o estado da UI em outra chave, mas nunca é lido para efeitos.
-export type TSaleRewardDraftSnapshot = {
-	recompensaId: string;
-	programaId: string;
-	titulo: string;
-	valor: number;
-	valorVenda: number;
-};
-
 /**
- * Admissão do resgate de recompensa em uma venda do PDV: exige cliente vinculado, aplica as
+ * Admissão do resgate de recompensa em uma venda: exige cliente vinculado, aplica as
  * regras de exclusividade (cupom e resgate-desconto não são combináveis — a idempotência do
- * ledger é "1 RESGATE por venda"), resolve o programa, exige a modalidade de recompensas e
- * valida o prêmio contra o catálogo. Tudo que vira item/ledger sai daqui — o cliente informa
- * apenas o id do prêmio.
+ * ledger é "1 RESGATE por venda"), resolve o programa, exige a modalidade de recompensas,
+ * valida o prêmio contra o catálogo (com o preço do canal, quando informado) e pré-checa o
+ * saldo do cliente. Tudo que vira item/ledger sai daqui — o cliente informa apenas o id do prêmio.
  */
 export async function admitSaleRewardRedemption({
 	tx,
@@ -33,6 +28,7 @@ export async function admitSaleRewardRedemption({
 	programaId,
 	hasCoupon,
 	cashbackResgate,
+	canal,
 }: {
 	tx: DB | DBTransaction;
 	organizacaoId: string;
@@ -41,6 +37,7 @@ export async function admitSaleRewardRedemption({
 	programaId?: string | null;
 	hasCoupon: boolean;
 	cashbackResgate: number;
+	canal?: Parameters<typeof loadChannelState>[0]["canal"] | null;
 }): Promise<TAdmittedSaleReward> {
 	if (!clienteId) throw new createHttpError.BadRequest("Vincule um cliente para resgatar uma recompensa.");
 	if (hasCoupon) throw new createHttpError.BadRequest("Cupons não podem ser combinados com resgate de recompensa.");
@@ -65,17 +62,28 @@ export async function admitSaleRewardRedemption({
 		throw new createHttpError.BadRequest("O programa de cashback não permite resgate de recompensas.");
 	}
 
+	const channelState = canal ? await loadChannelState({ orgId: organizacaoId, canal }) : null;
 	const prize = await validatePrizeForRedemption({
 		tx,
 		organizacaoId,
 		programaId: program.id,
 		recompensaId,
+		channelState,
 	});
+
+	// Pré-checagem de saldo. O débito autoritativo continua sendo o FIFO da confirmação, mas sem
+	// esta guarda a venda inteira é gravada antes de o débito estourar — na loja digital isso
+	// deixava um ORCAMENTO órfão com o item grátis e o pedido irrepetível (request ERRO com vendaId).
+	const balance = await tx.query.cashbackProgramBalances.findFirst({
+		where: (fields, { and, eq }) => and(eq(fields.organizacaoId, organizacaoId), eq(fields.clienteId, clienteId), eq(fields.programaId, program.id)),
+		columns: { saldoValorDisponivel: true },
+	});
+	if ((balance?.saldoValorDisponivel ?? 0) < prize.valor) {
+		throw new createHttpError.BadRequest("Saldo insuficiente para resgatar a recompensa.");
+	}
 
 	return { programaId: program.id, prize };
 }
-
-export const POS_REWARD_SALE_ITEM_ORIGIN = "POS-RESGATE-RECOMPENSA";
 
 /**
  * Valores do saleItem da recompensa: item normal com 100% de desconto (líquido 0) e custo real
@@ -125,21 +133,5 @@ export function buildSaleRewardDraftSnapshot({ programaId, prize }: TAdmittedSal
 		titulo: prize.titulo,
 		valor: prize.valor,
 		valorVenda: prize.valorVenda,
-	};
-}
-
-/** Lê o snapshot autoritativo da recompensa de um rascunho (rascunhoMetadados.recompensa). */
-export function parseSaleRewardDraftSnapshot(rascunhoMetadados: unknown): TSaleRewardDraftSnapshot | null {
-	if (!rascunhoMetadados || typeof rascunhoMetadados !== "object") return null;
-	const recompensa = (rascunhoMetadados as { recompensa?: unknown }).recompensa;
-	if (!recompensa || typeof recompensa !== "object") return null;
-	const snapshot = recompensa as Partial<TSaleRewardDraftSnapshot>;
-	if (typeof snapshot.recompensaId !== "string" || typeof snapshot.programaId !== "string") return null;
-	return {
-		recompensaId: snapshot.recompensaId,
-		programaId: snapshot.programaId,
-		titulo: typeof snapshot.titulo === "string" ? snapshot.titulo : "",
-		valor: typeof snapshot.valor === "number" ? snapshot.valor : 0,
-		valorVenda: typeof snapshot.valorVenda === "number" ? snapshot.valorVenda : 0,
 	};
 }

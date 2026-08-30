@@ -5,10 +5,20 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { getErrorMessage } from "@/lib/errors";
 import { createShopOrder } from "@/lib/mutations/shop";
 import { HAPTICS, triggerHaptic } from "@/lib/shop/haptics";
+import { buildShopCartLines } from "@/lib/shop/cart";
+import {
+	SHOP_CHECKOUT_STEPS,
+	SHOP_CHECKOUT_STEP_TITLES,
+	getNextShopCheckoutStep,
+	getPreviousShopCheckoutStep,
+	getShopBenefitsTitle,
+	getShopCheckoutSteps,
+} from "@/lib/shop/checkout";
+import { useShopAvailableCoupons } from "@/lib/queries/shop";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import CashbackStep from "./checkout/CashbackStep";
 import CustomerIdentityStep from "./checkout/CustomerIdentityStep";
@@ -17,20 +27,12 @@ import OrderReviewStep from "./checkout/OrderReviewStep";
 import PaymentStep from "./checkout/PaymentStep";
 import { useShop } from "./ShopProvider";
 
-const STEP_TITLES: Record<string, string> = {
-	CLIENTE: "Seus dados",
-	ENTREGA: "Forma de entrega",
-	CASHBACK: "Descontos",
-	PAGAMENTO: "Forma de pagamento",
-	REVISAO: "Revisar pedido",
-};
-
 const SHOP_ORDER_PUBLIC_TOKEN_CONFLICT_MESSAGE = "Este pedido foi alterado após uma tentativa anterior. Tente enviar novamente.";
 
 export default function CheckoutSheet() {
 	const router = useRouter();
-	const { orgId, slug, availability, orderState, isCheckoutOpen, setIsCheckoutOpen, setIsCartOpen } = useShop();
-	const { checkoutStep } = orderState.state;
+	const { orgId, slug, catalog, availability, orderState, isCheckoutOpen, setIsCheckoutOpen, setIsCartOpen } = useShop();
+	const { checkoutStep, customer, cart } = orderState.state;
 	const isOpen = availability.status === "ABERTA";
 
 	const { mutate: submitOrder, isPending } = useMutation({
@@ -52,11 +54,49 @@ export default function CheckoutSheet() {
 		},
 	});
 
-	const isInCheckout = ["CLIENTE", "ENTREGA", "CASHBACK", "PAGAMENTO", "REVISAO"].includes(checkoutStep);
+	const isInCheckout = (SHOP_CHECKOUT_STEPS as readonly string[]).includes(checkoutStep);
 
-	const visibleSteps = orderState.state.customer.id
-		? ["CLIENTE", "ENTREGA", "CASHBACK", "PAGAMENTO", "REVISAO"]
-		: ["CLIENTE", "ENTREGA", "PAGAMENTO", "REVISAO"];
+	const cartLines = useMemo(() => buildShopCartLines(cart.items, catalog.products), [cart.items, catalog.products]);
+	const couponItems = useMemo(
+		() =>
+			cartLines.map((line) => ({
+				produtoId: line.produtoId,
+				produtoVarianteId: line.produtoVarianteId,
+				quantidade: line.quantidade,
+				valorVendaUnitario: line.unitFinal,
+			})),
+		[cartLines],
+	);
+	// Fora do checkout a consulta fica dormente: cada mutação de carrinho durante a navegação do
+	// catálogo dispararia uma avaliação de cupons no servidor que o cliente talvez nunca veja.
+	const { data: availableCoupons, isLoading: isLoadingCoupons } = useShopAvailableCoupons({
+		orgId,
+		clienteId: customer.id ?? null,
+		itens: couponItems,
+		enabled: isCheckoutOpen,
+	});
+	const program = catalog.cashbackProgram;
+	const hasCouponBenefit = !!customer.id && (isLoadingCoupons || (availableCoupons?.length ?? 0) > 0 || !!orderState.state.coupon.resgate);
+	const benefitCapabilities = {
+		cupons: hasCouponBenefit,
+		descontoCashback: !!customer.id && !!program?.modalidadeDescontosPermitida,
+		recompensas: !!customer.id && !!program?.modalidadeRecompensasPermitida,
+	};
+	const benefitsTitle = getShopBenefitsTitle(benefitCapabilities);
+
+	useEffect(() => {
+		if (!program?.modalidadeDescontosPermitida && orderState.state.cashback.resgateSolicitado > 0) {
+			orderState.updateCashback({ resgateSolicitado: 0 });
+		}
+		// Só descarta a recompensa quando a regra é do programa dela: numa org com mais de um
+		// programa, o do catálogo (findFirst ativo) pode não ser o do saldo do cliente — nesse caso
+		// quem valida é a revalidação da etapa de benefícios e a admissão no servidor.
+		const appliedReward = orderState.state.reward.resgate;
+		if (!program?.modalidadeRecompensasPermitida && appliedReward && (!program || appliedReward.programaId === program.id)) {
+			orderState.updateReward(null);
+		}
+	}, [program, orderState.state.cashback.resgateSolicitado, orderState.state.reward.resgate, orderState.updateCashback, orderState.updateReward]);
+	const visibleSteps = getShopCheckoutSteps(benefitCapabilities);
 	const stepIndex = visibleSteps.indexOf(checkoutStep);
 	const stepProgress = stepIndex >= 0 ? ((stepIndex + 1) / visibleSteps.length) * 100 : 0;
 
@@ -65,8 +105,8 @@ export default function CheckoutSheet() {
 			setIsCheckoutOpen(false);
 			orderState.setCheckoutStep("CARRINHO");
 			setIsCartOpen(true);
-		} else {
-			orderState.previousStep();
+		} else if (checkoutStep !== "CARRINHO") {
+			orderState.setCheckoutStep(getPreviousShopCheckoutStep(checkoutStep, visibleSteps));
 		}
 	};
 
@@ -75,22 +115,12 @@ export default function CheckoutSheet() {
 		orderState.setCheckoutStep("CARRINHO");
 	};
 
-	const canSkipDiscounts = !orderState.state.customer.id;
-
 	// Single chokepoint for the "advanced a step" tap, so every step's CONTINUAR
 	// gets the same confirmation. Back navigation stays silent: it's a correction.
 	const advanceStep = () => {
 		triggerHaptic(HAPTICS.tap);
-		orderState.nextStep();
-	};
-
-	const handleNextFromDelivery = () => {
-		triggerHaptic(HAPTICS.tap);
-		if (canSkipDiscounts) {
-			orderState.setCheckoutStep("PAGAMENTO");
-		} else {
-			orderState.nextStep();
-		}
+		if (checkoutStep === "CARRINHO") return;
+		orderState.setCheckoutStep(getNextShopCheckoutStep(checkoutStep, visibleSteps));
 	};
 
 	const stepScrollRef = useRef<HTMLDivElement>(null);
@@ -112,7 +142,9 @@ export default function CheckoutSheet() {
 							<ArrowLeft className="h-4 w-4" />
 						</Button>
 						<div className="min-w-0 flex-1">
-							<SheetTitle className="text-lg font-black">{STEP_TITLES[checkoutStep]}</SheetTitle>
+							<SheetTitle className="text-lg font-black">
+								{checkoutStep === "CASHBACK" ? benefitsTitle : SHOP_CHECKOUT_STEP_TITLES[checkoutStep as keyof typeof SHOP_CHECKOUT_STEP_TITLES]}
+							</SheetTitle>
 							<SheetDescription>{stepIndex >= 0 ? `Etapa ${stepIndex + 1} de ${visibleSteps.length}` : "Finalizar pedido"}</SheetDescription>
 						</div>
 					</SheetHeader>
@@ -136,7 +168,7 @@ export default function CheckoutSheet() {
 
 						{checkoutStep === "CLIENTE" && <CustomerIdentityStep onNext={advanceStep} />}
 
-						{checkoutStep === "ENTREGA" && <DeliveryStep onNext={handleNextFromDelivery} />}
+						{checkoutStep === "ENTREGA" && <DeliveryStep onNext={advanceStep} />}
 
 						{checkoutStep === "CASHBACK" && <CashbackStep onNext={advanceStep} />}
 
