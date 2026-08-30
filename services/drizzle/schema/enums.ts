@@ -528,3 +528,9 @@ export const customFieldEntityEnum = pgEnum("custom_field_entity", ["CLIENTE"]);
 // O tipo determina o formato do `valor` gravado (jsonb): ESCOLHA_UNICA → string,
 // ESCOLHA_MULTIPLA → string[], TEXTO → string, NUMERO → number, DATA → string ISO.
 export const customFieldTypeEnum = pgEnum("custom_field_type", ["ESCOLHA_UNICA", "ESCOLHA_MULTIPLA", "TEXTO", "NUMERO", "DATA"]);
+
+// -- Arquivos e uploads (primitivo de intake; ver lib/files/README.md) --
+
+export const storageProviderEnum = pgEnum("storage_provider", ["SUPABASE"]);
+export const fileVisibilityEnum = pgEnum("file_visibility", ["PUBLICO", "PRIVADO"]);
+export const uploadStatusEnum = pgEnum("upload_status", ["AGUARDANDO", "RECEBIDO", "CONSUMIDO", "EXPIRADO"]);

@@ -904,3 +904,21 @@ export const POI_REGISTRATION_FLOW_LABELS: Record<TPoiRegistrationFlowEnum, stri
 	RAPIDO: "Rápido",
 	COMPLETO: "Completo",
 };
+
+// -- Arquivos e uploads (primitivo de intake; ver lib/files/README.md) --
+
+export const StorageProviderEnum = z.enum(["SUPABASE"], { invalid_type_error: "Tipo não válido para o provedor de armazenamento." });
+export type TStorageProviderEnum = z.infer<typeof StorageProviderEnum>;
+
+export const FileVisibilityEnum = z.enum(["PUBLICO", "PRIVADO"], { invalid_type_error: "Tipo não válido para a visibilidade do arquivo." });
+export type TFileVisibilityEnum = z.infer<typeof FileVisibilityEnum>;
+
+export const UploadStatusEnum = z.enum(["AGUARDANDO", "RECEBIDO", "CONSUMIDO", "EXPIRADO"], {
+	invalid_type_error: "Tipo não válido para o status do upload.",
+});
+export type TUploadStatusEnum = z.infer<typeof UploadStatusEnum>;
+
+// Espelha as chaves do registro em lib/files/intake.ts — o registro é a fonte da verdade; o enum
+// existe para que registrar um propósito sem declará-lo aqui vire erro de tipo.
+export const UploadPurposeEnum = z.enum(["MIDIA_TEMPLATE_MENSAGEM"], { invalid_type_error: "Tipo não válido para o propósito do upload." });
+export type TUploadPurposeEnum = z.infer<typeof UploadPurposeEnum>;
