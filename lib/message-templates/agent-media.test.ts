@@ -9,7 +9,7 @@ import {
 } from "./agent-media";
 
 test("o prefixo de mídia é isolado por organização", () => {
-	assert.equal(getAgentTemplateMediaPrefix("org-1"), "public/organizations/org-1/agent-message-template-media/");
+	assert.equal(getAgentTemplateMediaPrefix({ organizacaoId: "org-1" }), "public/organizations/org-1/agent-message-template-media/");
 	assert.doesNotThrow(() => assertAgentTemplateMediaPath("org-1", "public/organizations/org-1/agent-message-template-media/upload-1/header.png"));
 });
 

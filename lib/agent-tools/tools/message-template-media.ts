@@ -1,9 +1,5 @@
-import {
-	createAgentTemplateMediaUpload,
-	uploadAgentTemplateMediaContent,
-	uploadAgentTemplateMediaFromUrl,
-	validateAgentTemplateMedia,
-} from "@/lib/message-templates/agent-media";
+import { consumeUpload, createUploadIntake } from "@/lib/files/intake";
+import { buildTemplateMediaEnvelope, uploadAgentTemplateMediaContent, uploadAgentTemplateMediaFromUrl } from "@/lib/message-templates/agent-media";
 import createHttpError from "http-errors";
 import z from "zod";
 import { resolveOrganizationScope, resolveResponsibleUser } from "../organization-scope";
@@ -13,6 +9,12 @@ const OrganizationInputSchema = z.object({
 	organizacaoId: z.string({ invalid_type_error: "Tipo inválido para o id da organização." }).optional().nullable(),
 });
 
+/**
+ * Fluxo de duas etapas sobre o primitivo de uploads (lib/files/README.md): esta ferramenta cria
+ * a intenção e devolve uma URL SAME-ORIGIN (/api/uploads/[id]) + token — nunca uma URL do
+ * provedor de storage, que ambientes de conector não alcançam. O agente faz o PUT dos bytes
+ * crus e conclui com complete_message_template_media_upload.
+ */
 export const createMessageTemplateMediaUploadTool = defineAgentTool({
 	name: "create_message_template_media_upload",
 	title: "Preparar upload de imagem de template",
@@ -20,47 +22,64 @@ export const createMessageTemplateMediaUploadTool = defineAgentTool({
 	modes: ["ORG", "PLATAFORMA"],
 	requiresResponsibleUser: true,
 	mutates: true,
-	externalEffect: true,
+	externalEffect: false,
 	inputSchema: OrganizationInputSchema.merge(AgentMutationControlInputSchema).extend({
-		nomeArquivo: z.string({ required_error: "Nome do arquivo não informado." }).min(1),
-		mimeType: z.enum(["image/jpeg", "image/png"]),
+		nomeArquivo: z.string({ invalid_type_error: "Tipo inválido para o nome do arquivo." }).optional().nullable(),
 		tamanhoBytes: z
-			.number({ required_error: "Tamanho do arquivo não informado." })
+			.number({ required_error: "Tamanho do arquivo não informado.", invalid_type_error: "Tipo inválido para o tamanho do arquivo." })
 			.int()
 			.positive()
-			.max(5 * 1024 * 1024),
+			.describe("Tamanho EXATO do arquivo em bytes (ex.: `wc -c arquivo.png`). O PUT é recusado se os bytes recebidos não baterem."),
+		sha256: z
+			.string({ invalid_type_error: "Tipo inválido para o SHA-256." })
+			.optional()
+			.nullable()
+			.describe("SHA-256 hex do arquivo (ex.: `sha256sum arquivo.png`). Opcional, mas garante que corrupção no caminho seja detectada."),
 	}),
 	describe: (actor) =>
-		`Cria uma URL assinada para upload direto de uma imagem JPEG/PNG de até 5 MB. Último recurso: prefira upload_message_template_media com \`conteudoUrl\` (ou \`conteudoBase64\` para arquivo local pequeno). Exige que VOCÊ consiga fazer requisição ao host de armazenamento, o que ambientes de conector costumam bloquear. Depois do upload, chame complete_message_template_media_upload. ${actor.mode === "PLATAFORMA" ? "Informe `organizacaoId` (id ou slug)." : ""}`,
+		`Prepara o upload de uma imagem JPEG/PNG (até 4 MB) que só existe no seu ambiente: devolve uma \`uploadUrl\` NESTE domínio + \`token\`. Envie os bytes crus com \`curl -X PUT -H "Authorization: Bearer <token>" --data-binary @arquivo <uploadUrl>\` e depois chame complete_message_template_media_upload com o \`uploadId\`. Para imagem já hospedada, prefira upload_message_template_media com \`conteudoUrl\`. ${actor.mode === "PLATAFORMA" ? "Informe `organizacaoId` (id ou slug)." : ""}`,
 	execute: async (input, actor) => {
 		const organizationId = await resolveOrganizationScope(actor, input.organizacaoId);
-		await resolveResponsibleUser(actor, organizationId);
-		return createAgentTemplateMediaUpload({
-			organizationId,
-			fileName: input.nomeArquivo,
-			mimeType: input.mimeType,
-			fileSize: input.tamanhoBytes,
+		const responsibleUserId = await resolveResponsibleUser(actor, organizationId);
+		const intake = await createUploadIntake({
+			organizacaoId: organizationId,
+			proposito: "MIDIA_TEMPLATE_MENSAGEM",
+			nomeArquivo: input.nomeArquivo,
+			tamanhoEsperadoBytes: input.tamanhoBytes,
+			sha256Esperado: input.sha256,
+			criadoPorId: responsibleUserId,
+			contexto: { origem: "AGENTE_MCP", principalId: actor.principalId, clientId: actor.clientId },
 		});
+		return {
+			...intake,
+			instrucoes: `Envie os bytes crus do arquivo: curl -X PUT -H "Authorization: Bearer ${intake.token}" --data-binary @<arquivo> ${intake.uploadUrl} — depois chame complete_message_template_media_upload com o uploadId.`,
+		};
 	},
 });
 
 export const completeMessageTemplateMediaUploadTool = defineAgentTool({
 	name: "complete_message_template_media_upload",
-	title: "Validar upload de imagem de template",
+	title: "Concluir upload de imagem de template",
 	scopes: ["agent:message-template-media:write"],
 	modes: ["ORG", "PLATAFORMA"],
 	requiresResponsibleUser: true,
 	mutates: true,
-	externalEffect: true,
+	externalEffect: false,
 	inputSchema: OrganizationInputSchema.merge(AgentMutationControlInputSchema).extend({
-		conteudoMidiaCaminho: z.string({ required_error: "Caminho da mídia não informado." }).min(1),
+		uploadId: z.string({ required_error: "ID do upload não informado." }).min(1),
 	}),
 	describe: (actor) =>
-		`Confirma e valida os bytes enviados pela URL assinada de create_message_template_media_upload, retornando o caminho usado nas mutações de template. Não é necessário depois de upload_message_template_media, que já devolve o caminho validado. ${actor.mode === "PLATAFORMA" ? "Informe `organizacaoId` (id ou slug)." : ""}`,
+		`Conclui o upload iniciado por create_message_template_media_upload (após o PUT dos bytes na \`uploadUrl\`) e devolve o \`conteudoMidiaCaminho\` validado, pronto para usar no cabeçalho de um template. Não é necessário depois de upload_message_template_media, que já devolve o caminho validado. ${actor.mode === "PLATAFORMA" ? "Informe `organizacaoId` (id ou slug)." : ""}`,
 	execute: async (input, actor) => {
 		const organizationId = await resolveOrganizationScope(actor, input.organizacaoId);
 		await resolveResponsibleUser(actor, organizationId);
-		return validateAgentTemplateMedia({ organizationId, storagePath: input.conteudoMidiaCaminho });
+		const { arquivo } = await consumeUpload({
+			uploadId: input.uploadId,
+			organizacaoId: organizationId,
+			proposito: "MIDIA_TEMPLATE_MENSAGEM",
+			consumo: { finalidade: "MIDIA_TEMPLATE_MENSAGEM" },
+		});
+		return buildTemplateMediaEnvelope(arquivo);
 	},
 });
 
@@ -68,12 +87,11 @@ export const completeMessageTemplateMediaUploadTool = defineAgentTool({
  * Upload em uma etapa, com duas entradas: `conteudoUrl` (o servidor baixa; preferida) ou
  * `conteudoBase64` (os bytes vêm na chamada; só para arquivos pequenos).
  *
- * É o caminho preferido sobre a URL assinada porque o cliente MCP não precisa alcançar o host de
- * armazenamento, só o próprio /api/mcp — ambientes de conector restringem a saída de rede a uma
- * allowlist, e o PUT direto na URL assinada volta 403 do proxy do cliente. E `conteudoUrl` é
- * preferida sobre o base64 porque argumentos de ferramenta são texto que o modelo gera token a
- * token: uma URL custa dezenas de tokens; uma imagem de 1 MB em base64 custa centenas de milhares
- * e estoura o timeout do cliente antes de a chamada chegar ao servidor.
+ * `conteudoUrl` é preferida sobre o base64 porque argumentos de ferramenta são texto que o
+ * modelo gera token a token: uma URL custa dezenas de tokens; uma imagem de 1 MB em base64 custa
+ * centenas de milhares e estoura o timeout do cliente antes de a chamada chegar ao servidor.
+ * Para arquivo local acima de ~200 KB, o caminho certo é o fluxo de duas etapas
+ * (create_message_template_media_upload), que envia bytes crus por PUT same-origin.
  */
 export const uploadMessageTemplateMediaTool = defineAgentTool({
 	name: "upload_message_template_media",
@@ -82,7 +100,7 @@ export const uploadMessageTemplateMediaTool = defineAgentTool({
 	modes: ["ORG", "PLATAFORMA"],
 	requiresResponsibleUser: true,
 	mutates: true,
-	externalEffect: true,
+	externalEffect: false,
 	inputSchema: OrganizationInputSchema.merge(AgentMutationControlInputSchema).extend({
 		conteudoUrl: z
 			.string({ invalid_type_error: "Tipo inválido para a URL da imagem." })
@@ -98,7 +116,7 @@ export const uploadMessageTemplateMediaTool = defineAgentTool({
 		mimeType: z.enum(["image/jpeg", "image/png"]).optional().nullable(),
 	}),
 	describe: (actor) =>
-		`Envia uma imagem JPEG/PNG (até 5 MB) e devolve o \`conteudoMidiaCaminho\` já validado, pronto para usar no cabeçalho de um template. Informe \`conteudoUrl\` de uma imagem pública https (preferido: o servidor baixa os bytes) OU \`conteudoBase64\` para um arquivo pequeno que só existe localmente (gerar base64 é lento; evite acima de ~200 KB, máximo 3 MB). ${actor.mode === "PLATAFORMA" ? "Informe `organizacaoId` (id ou slug)." : ""}`,
+		`Envia uma imagem JPEG/PNG (até 5 MB) e devolve o \`conteudoMidiaCaminho\` já validado, pronto para usar no cabeçalho de um template. Informe \`conteudoUrl\` de uma imagem pública https (preferido: o servidor baixa os bytes) OU \`conteudoBase64\` para um arquivo pequeno que só existe localmente (gerar base64 é lento; evite acima de ~200 KB — para arquivos locais maiores, use create_message_template_media_upload). ${actor.mode === "PLATAFORMA" ? "Informe `organizacaoId` (id ou slug)." : ""}`,
 	execute: async (input, actor) => {
 		const organizationId = await resolveOrganizationScope(actor, input.organizacaoId);
 		await resolveResponsibleUser(actor, organizationId);
