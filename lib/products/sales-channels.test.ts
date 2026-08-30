@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveChannelAvailability, resolveChannelPrice } from "./sales-channels";
+import { channelAddOnReferences, resolveChannelAvailability, resolveChannelPrice } from "./sales-channels";
 
 const product = { ativo: true, vendavel: true, precoVenda: 20, rastreamentoEstoqueAtivo: false, quantidade: 0 };
 
@@ -97,4 +97,43 @@ test("o preço resolve por nó: override do nó, senão o preço base do nó", (
 	assert.equal(resolveChannelPrice(product, { ativo: true, precoVenda: 30 }, { variant: { precoVenda: 27 } }), 27);
 	// Override nível-produto NÃO vaza para a venda de uma variante (node-scoped).
 	assert.equal(resolveChannelPrice(product, { ativo: true, precoVenda: 30 }, { product: { precoVenda: 27 } }), 30);
+});
+
+const REFERENCIAS = [
+	{ produtoAddOnId: "g1", ordem: 0, grupo: { id: "g1", nome: "Sabor", minOpcoes: 1, maxOpcoes: 1, opcoes: [{ id: "o1" }] } },
+	{ produtoAddOnId: "g2", ordem: 1, grupo: { id: "g2", nome: "Cobertura", minOpcoes: 0, maxOpcoes: 3, opcoes: [{ id: "o2" }] } },
+];
+
+test("canal que exige mínimos devolve os grupos como estão", () => {
+	assert.equal(channelAddOnReferences({ exigirAdicionaisMinimos: true }, REFERENCIAS), REFERENCIAS);
+});
+
+test("canal ausente preserva o comportamento legado (exige)", () => {
+	// Org ainda sem a linha do canal não pode virar balcão relaxado por acidente.
+	assert.equal(channelAddOnReferences(null, REFERENCIAS), REFERENCIAS);
+	assert.equal(channelAddOnReferences(undefined, REFERENCIAS), REFERENCIAS);
+});
+
+test("canal que dispensa mínimos zera minOpcoes e preserva o resto do grupo", () => {
+	const projetadas = channelAddOnReferences({ exigirAdicionaisMinimos: false }, REFERENCIAS);
+
+	assert.deepEqual(
+		projetadas.map((referencia) => referencia.grupo.minOpcoes),
+		[0, 0],
+	);
+	// O máximo é o outro lado da regra e não se move: dispensar a escolha não libera escolher demais.
+	assert.deepEqual(
+		projetadas.map((referencia) => referencia.grupo.maxOpcoes),
+		[1, 3],
+	);
+	assert.deepEqual(
+		projetadas.map((referencia) => referencia.grupo.opcoes),
+		[[{ id: "o1" }], [{ id: "o2" }]],
+	);
+	assert.deepEqual(
+		projetadas.map((referencia) => referencia.ordem),
+		[0, 1],
+	);
+	// A projeção é uma cópia: o catálogo em memória do chamador não é mutado.
+	assert.equal(REFERENCIAS[0].grupo.minOpcoes, 1);
 });

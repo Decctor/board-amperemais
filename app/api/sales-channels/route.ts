@@ -25,6 +25,10 @@ const UpdateSalesChannelInputSchema = z.object({
 		.optional()
 		.nullable(),
 	catalogoModo: SalesChannelCatalogModeEnum,
+	exigirAdicionaisMinimos: z.boolean({
+		required_error: "Exigência de adicionais obrigatórios não informada.",
+		invalid_type_error: "Tipo não válido para exigência de adicionais obrigatórios.",
+	}),
 });
 export type TUpdateSalesChannelInput = z.infer<typeof UpdateSalesChannelInputSchema>;
 
@@ -53,7 +57,7 @@ async function updateSalesChannel({ input, orgId }: { input: TUpdateSalesChannel
 		.values({ organizacaoId: orgId, ...input })
 		.onConflictDoUpdate({
 			target: [salesChannels.organizacaoId, salesChannels.canal, salesChannels.integracaoId, salesChannels.refExterno],
-			set: { catalogoModo: input.catalogoModo, dataAtualizacao: new Date() },
+			set: { catalogoModo: input.catalogoModo, exigirAdicionaisMinimos: input.exigirAdicionaisMinimos, dataAtualizacao: new Date() },
 		})
 		.returning();
 

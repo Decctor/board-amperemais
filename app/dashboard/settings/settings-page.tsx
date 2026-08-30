@@ -9,6 +9,7 @@ import SettingsModules from "@/components/Settings/SettingsModules";
 import SettingsOrg from "@/components/Settings/SettingsOrg";
 import SettingsOutbound from "@/components/Settings/SettingsOutbound";
 import SettingsProfile from "@/components/Settings/SettingsProfile";
+import SettingsSalesChannels from "@/components/Settings/SettingsSalesChannels";
 import SettingsSegments from "@/components/Settings/SettingsSegments";
 import SettingsUsers from "@/components/Settings/SettingsUsers";
 import SettingsWhatsAppConnection from "@/components/Settings/SettingsWhatsAppConnection";
@@ -52,6 +53,7 @@ export default function SettingsPage({ user, membership }: SettingsPageProps) {
 						{view === "profile" ? <SettingsProfile sessionUser={user} /> : null}
 						{view === "organization" ? <SettingsOrg membership={membership} /> : null}
 						{view === "modules" ? <SettingsModules membership={membership} /> : null}
+						{view === "sales-channels" ? <SettingsSalesChannels membership={membership} /> : null}
 						{view === "users" ? <SettingsUsers user={user} membership={membership} /> : null}
 						{view === "devices" ? <SettingsDevices user={user} membership={membership} /> : null}
 						{view === "meta-oauth" ? <SettingsWhatsAppConnection user={user} /> : null}

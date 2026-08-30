@@ -1,3 +1,4 @@
+import type { TGetSalesChannelsOutput } from "@/app/api/sales-channels/route";
 import type { TGetSalesChannelsStatusOutput } from "@/app/api/sales-channels/status/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -25,6 +26,23 @@ export function useSalesChannelsStatus() {
 			// Um canal fora do ar já volta como INDETERMINADO; insistir só gera ruído de rede.
 			retry: false,
 		}),
+		queryKey,
+	};
+}
+
+async function fetchSalesChannels() {
+	const { data } = await axios.get<TGetSalesChannelsOutput>("/api/sales-channels");
+	return data.data.channels;
+}
+
+/**
+ * O registro de canais da organização (o GET materializa os internos que ainda faltarem). Nada a
+ * ver com `useSalesChannelsStatus`, que é o trilho de saúde do header: aqui é a CONFIGURAÇÃO.
+ */
+export function useSalesChannels({ enabled = true }: { enabled?: boolean } = {}) {
+	const queryKey = ["sales-channels"];
+	return {
+		...useQuery({ queryKey, queryFn: fetchSalesChannels, enabled }),
 		queryKey,
 	};
 }

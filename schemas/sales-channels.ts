@@ -25,6 +25,11 @@ export const SalesChannelSchema = z.object({
 		})
 		.nullable(),
 	catalogoModo: SalesChannelCatalogModeEnum,
+	// Se os mínimos dos grupos de adicionais valem neste canal — ver o comentário da coluna.
+	exigirAdicionaisMinimos: z.boolean({
+		required_error: "Exigência de adicionais obrigatórios não informada.",
+		invalid_type_error: "Tipo não válido para exigência de adicionais obrigatórios.",
+	}),
 	dataInsercao: z.date({
 		required_error: "Data de inserção não informada.",
 		invalid_type_error: "Tipo não válido para data de inserção.",

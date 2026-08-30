@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { channelAddOnReferences } from "@/lib/products/sales-channels";
 import { channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
 import { db } from "@/services/drizzle";
 import { productAddOnOptions, productAddOnReferences, productAddOns, productVariants, products } from "@/services/drizzle/schema";
@@ -137,14 +138,22 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 		// Preço resolvido do canal — a grade exibe e o carrinho envia o mesmo valor que a
 		// validação (validateSaleItemsPricing com canal) vai recalcular.
 		precoVenda: channelNodePrice(channelState, { produtoId: product.id, precoVenda: product.precoVenda }),
-		addOnsReferencias: product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+		// Grupos já sob as regras do canal: os mínimos do cadastro só continuam obrigatórios
+		// onde o canal os exige (o balcão pode dispensar; ver channelAddOnReferences).
+		addOnsReferencias: channelAddOnReferences(
+			channelState?.channel,
+			product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+		),
 		variantes: product.variantes
 			// Linha de variante só restringe dentro de um produto visível (mesma regra do resolver).
 			.filter((variant) => channelState?.variantOverrides.get(variant.id)?.disponivel !== false)
 			.map((variant) => ({
 				...variant,
 				precoVenda: channelNodePrice(channelState, { produtoId: product.id, produtoVarianteId: variant.id, precoVenda: variant.precoVenda }) ?? 0,
-				addOnsReferencias: variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+				addOnsReferencias: channelAddOnReferences(
+					channelState?.channel,
+					variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+				),
 			})),
 	}));
 
