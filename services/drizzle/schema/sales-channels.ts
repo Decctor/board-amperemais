@@ -26,6 +26,11 @@ export const salesChannels = newTable(
 		integracaoId: varchar("integracao_id", { length: 255 }).references(() => integrations.id, { onDelete: "cascade" }),
 		refExterno: varchar("ref_externo", { length: 255 }),
 		catalogoModo: salesChannelCatalogModeEnum("catalogo_modo").default("TODOS").notNull(),
+		// Se os mínimos dos grupos de adicionais (`product_add_ons.min_opcoes`) valem NESTE canal.
+		// Nasce true — o cadastro do produto continua sendo a regra —, e desligar é uma decisão de
+		// operação do canal: no balcão o atendente monta o item no ritmo da fila, enquanto o
+		// autoatendimento (SHOP/iFood) não tem ninguém para completar o que faltou.
+		exigirAdicionaisMinimos: boolean("exigir_adicionais_minimos").default(true).notNull(),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 		dataAtualizacao: timestamp("data_atualizacao").$onUpdate(() => new Date()),
 	},

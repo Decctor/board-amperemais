@@ -65,3 +65,24 @@ export function resolveChannelAvailability({
 	const price = resolveChannelPrice(product, variant, overrides);
 	return (price ?? 0) > 0 && (!node.rastreamentoEstoqueAtivo || (node.quantidade ?? 0) > 0);
 }
+
+/**
+ * Projeta os grupos de adicionais para as regras DO CANAL: quando o canal não exige os mínimos,
+ * todo grupo vira opcional (`minOpcoes` 0) para quem lê este catálogo. Os máximos não se movem —
+ * relaxar a exigência é sobre poder seguir sem escolher, não sobre poder escolher demais.
+ *
+ * A projeção acontece no catálogo, e não em cada tela, porque o catálogo é a fonte comum: o
+ * builder do PDV, a sacola da loja e a validação do pedido leem os mesmos grupos, então a regra
+ * não pode divergir entre o que a tela bloqueia e o que o servidor aceita.
+ *
+ * Canal ausente (org ainda não materializada) preserva o comportamento legado: exige.
+ */
+export function channelAddOnReferences<TReference extends { grupo: { minOpcoes: number } }>(
+	channel: { exigirAdicionaisMinimos: boolean } | null | undefined,
+	references: TReference[],
+): TReference[] {
+	if (channel?.exigirAdicionaisMinimos !== false) return references;
+	// A cópia só sobrescreve `minOpcoes`; o resto do grupo (opções, máximos, ordem) segue intacto,
+	// então a asserção devolve o mesmo shape que entrou — o genérico é que não consegue provar isso.
+	return references.map((reference) => ({ ...reference, grupo: { ...reference.grupo, minOpcoes: 0 } }) as TReference);
+}

@@ -1,3 +1,4 @@
+import { channelAddOnReferences } from "@/lib/products/sales-channels";
 import { channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
 import { db } from "@/services/drizzle";
 import { products } from "@/services/drizzle/schema";
@@ -65,13 +66,21 @@ export async function hydratePOSProducts({ orgId, productIds, canal = "POS" }: {
 	return hydrated.map((product) => ({
 		...product,
 		precoVenda: channelNodePrice(channelState, { produtoId: product.id, precoVenda: product.precoVenda }),
-		addOnsReferencias: product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+		// Mesma projeção da grade (GET /api/pos/products): uma sugestão não pode exigir o que a
+		// grade dispensa, senão o mesmo produto bloqueia por onde foi adicionado.
+		addOnsReferencias: channelAddOnReferences(
+			channelState?.channel,
+			product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+		),
 		variantes: product.variantes
 			.filter((variant) => channelState?.variantOverrides.get(variant.id)?.disponivel !== false)
 			.map((variant) => ({
 				...variant,
 				precoVenda: channelNodePrice(channelState, { produtoId: product.id, produtoVarianteId: variant.id, precoVenda: variant.precoVenda }) ?? 0,
-				addOnsReferencias: variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+				addOnsReferencias: channelAddOnReferences(
+					channelState?.channel,
+					variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+				),
 			})),
 	}));
 }

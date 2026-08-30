@@ -1,6 +1,7 @@
 import { db } from "@/services/drizzle";
 import { productAddOnReferences, products, saleItems, sales } from "@/services/drizzle/schema";
 import { and, desc, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
+import { channelAddOnReferences } from "@/lib/products/sales-channels";
 import { channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
 import type { TShopSettingsConfiguration } from "@/schemas/shop";
 
@@ -104,7 +105,12 @@ export async function getShopCatalogProducts({ orgId, configuracoes }: { orgId: 
 				// Preço resolvido do canal: exibição e cobrança mudam juntas — o pedido precifica a
 				// partir deste mesmo catálogo (catalogProductMap na rota de orders).
 				precoVenda: channelNodePrice(channelState, { produtoId: product.id, precoVenda: product.precoVenda }),
-				addOnsReferencias: product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+				// Grupos sob as regras do canal SHOP. Como a rota de pedidos valida contra ESTE mesmo
+				// catálogo, a exigência que a sacola mostra é a que o servidor cobra — sem segunda leitura.
+				addOnsReferencias: channelAddOnReferences(
+					channelState?.channel,
+					product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+				),
 				variantes: product.variantes
 					.filter(variantIsAvailableForShop)
 					// Linha de variante só restringe dentro de um produto visível (mesma regra do resolver).
@@ -112,7 +118,10 @@ export async function getShopCatalogProducts({ orgId, configuracoes }: { orgId: 
 					.map((variant) => ({
 						...variant,
 						precoVenda: channelNodePrice(channelState, { produtoId: product.id, produtoVarianteId: variant.id, precoVenda: variant.precoVenda }) ?? 0,
-						addOnsReferencias: variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+						addOnsReferencias: channelAddOnReferences(
+							channelState?.channel,
+							variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+						),
 					}))
 					.filter((variant) => variant.precoVenda > 0),
 			}))
