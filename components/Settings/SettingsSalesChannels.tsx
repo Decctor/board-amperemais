@@ -27,7 +27,7 @@ function channelIdentityKey(channel: { canal: string; integracaoId?: string | nu
  *
  * Sem barra de aplicar: cada linha é uma decisão independente e idempotente (PUT pela identidade
  * do canal), então segurar o toggle atrás de um "salvar" só adiciona um passo entre a intenção e
- * o efeito. O erro reverte pelo refetch da lista.
+ * o efeito. O erro reverte o cache para o valor anterior.
  */
 export default function SettingsSalesChannels({ membership }: SettingsSalesChannelsProps) {
 	// A capability do plano, não a permissão do usuário: sem ERP o registro de canais não existe
@@ -40,8 +40,25 @@ export default function SettingsSalesChannels({ membership }: SettingsSalesChann
 	const { mutate, isPending, variables } = useMutation({
 		mutationKey: ["update-sales-channel"],
 		mutationFn: updateSalesChannel,
+		// O valor novo entra no cache já no clique e SÓ sai de lá se o servidor recusar. Derivar do
+		// `isPending` fazia o switch voltar ao valor antigo durante o refetch que o invalidate dispara.
+		onMutate: async (input) => {
+			await queryClient.cancelQueries({ queryKey });
+			const previous = queryClient.getQueryData<TSalesChannelEntity[]>(queryKey);
+			queryClient.setQueryData<TSalesChannelEntity[]>(queryKey, (current) =>
+				current?.map((channel) =>
+					channelIdentityKey(channel) === channelIdentityKey(input) && input.exigirAdicionaisMinimos !== undefined
+						? { ...channel, exigirAdicionaisMinimos: input.exigirAdicionaisMinimos }
+						: channel,
+				),
+			);
+			return { previous };
+		},
 		onSuccess: (data) => toast.success(data.message),
-		onError: (err) => toast.error(getErrorMessage(err)),
+		onError: (err, _input, context) => {
+			if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+			toast.error(getErrorMessage(err));
+		},
 		// Sucesso ou erro, a lista volta do servidor: o toggle nunca fica mostrando um estado que
 		// o banco não confirmou.
 		onSettled: () => queryClient.invalidateQueries({ queryKey }),
@@ -57,13 +74,12 @@ export default function SettingsSalesChannels({ membership }: SettingsSalesChann
 	if (!channels) return null;
 
 	function toggleAddOnMinimums(channel: TSalesChannelEntity, exigir: boolean) {
-		// O PUT identifica o canal pela tupla, não pelo id, e reescreve o que ele já tem: mandar o
-		// `catalogoModo` atual de volta é o que impede o toggle de zerar a curadoria do catálogo.
+		// Só o campo que está mudando: o PUT é uma atualização parcial, então o `catalogoModo` que
+		// a loja escreve por fora (syncShopSalesChannel) não corre risco de voltar atrás por eco.
 		mutate({
 			canal: channel.canal,
 			integracaoId: channel.integracaoId,
 			refExterno: channel.refExterno,
-			catalogoModo: channel.catalogoModo,
 			exigirAdicionaisMinimos: exigir,
 		});
 	}
@@ -71,31 +87,42 @@ export default function SettingsSalesChannels({ membership }: SettingsSalesChann
 	return (
 		<div className="flex w-full flex-col gap-3">
 			{channels.map((channel) => {
-				// Enquanto o PUT deste canal não volta, o switch mostra o valor pedido: o clique
-				// precisa responder na hora, mesmo que a confirmação venha do refetch.
+				// A projeção dos mínimos (channelAddOnReferences) alcança os catálogos internos; o iFood
+				// publica o cadastro e cobra as regras da própria plataforma, então aqui não há o que ligar.
+				const enforcesAddOnMinimums = channel.canal !== "IFOOD";
 				const isChannelPending = isPending && !!variables && channelIdentityKey(variables) === channelIdentityKey(channel);
-				const exigirAdicionaisMinimos = isChannelPending ? variables.exigirAdicionaisMinimos : channel.exigirAdicionaisMinimos;
 
 				return (
 					<div key={channel.id} className="border-border bg-card rounded-xl border shadow-xs">
 						<div className="border-border flex items-center gap-2 border-b px-4 py-3">
 							<SalesChannelMark canal={channel.canal} />
 							<span className="text-sm font-medium tracking-tight">{SALES_CHANNEL_LABELS[channel.canal] ?? channel.canal}</span>
+							{/* Uma org pode ter mais de uma loja no mesmo canal (um canal por merchant): sem a
+							    referência externa, duas linhas de iFood ficariam indistinguíveis. */}
+							{channel.refExterno ? (
+								<span className="text-muted-foreground truncate font-mono text-xs" title={channel.refExterno}>
+									{channel.refExterno}
+								</span>
+							) : null}
 						</div>
 						<div className="flex items-center justify-between gap-4 px-4 py-3">
 							<div className="flex flex-col gap-0.5">
 								<span className="text-sm font-medium tracking-tight">EXIGIR ADICIONAIS OBRIGATÓRIOS</span>
 								<span className="text-muted-foreground text-xs">
-									{exigirAdicionaisMinimos
-										? "Os grupos de adicionais marcados como obrigatórios precisam ser preenchidos para o item entrar no pedido."
-										: "Os grupos de adicionais obrigatórios ficam opcionais neste canal — o item entra no pedido mesmo sem escolha, e o que não for escolhido não é lançado nem baixado do estoque."}
+									{!enforcesAddOnMinimums
+										? "O iFood publica os grupos como estão no cadastro do produto e cobra as regras da própria plataforma — a exigência não é configurável por aqui."
+										: channel.exigirAdicionaisMinimos
+											? "Os grupos de adicionais marcados como obrigatórios precisam ser preenchidos para o item entrar no pedido."
+											: "Os grupos de adicionais obrigatórios ficam opcionais neste canal — o item entra no pedido mesmo sem escolha, e o que não for escolhido não é lançado nem baixado do estoque."}
 								</span>
 							</div>
-							<Switch
-								checked={exigirAdicionaisMinimos}
-								disabled={!canEdit || isChannelPending}
-								onCheckedChange={(value) => canEdit && toggleAddOnMinimums(channel, value)}
-							/>
+							{enforcesAddOnMinimums ? (
+								<Switch
+									checked={channel.exigirAdicionaisMinimos}
+									disabled={!canEdit || isChannelPending}
+									onCheckedChange={(value) => canEdit && toggleAddOnMinimums(channel, value)}
+								/>
+							) : null}
 						</div>
 					</div>
 				);

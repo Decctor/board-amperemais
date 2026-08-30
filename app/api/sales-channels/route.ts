@@ -24,11 +24,11 @@ const UpdateSalesChannelInputSchema = z.object({
 		})
 		.optional()
 		.nullable(),
-	catalogoModo: SalesChannelCatalogModeEnum,
-	exigirAdicionaisMinimos: z.boolean({
-		required_error: "Exigência de adicionais obrigatórios não informada.",
-		invalid_type_error: "Tipo não válido para exigência de adicionais obrigatórios.",
-	}),
+	// Atualização parcial: o cliente manda só o que está mudando. Reenviar o estado inteiro fazia o
+	// toggle de adicionais carimbar de volta um `catalogoModo` possivelmente velho — o save da loja
+	// reescreve esse campo por fora (syncShopSalesChannel), então o eco revertia a curadoria.
+	catalogoModo: SalesChannelCatalogModeEnum.optional(),
+	exigirAdicionaisMinimos: z.boolean({ invalid_type_error: "Tipo não válido para exigência de adicionais obrigatórios." }).optional(),
 });
 export type TUpdateSalesChannelInput = z.infer<typeof UpdateSalesChannelInputSchema>;
 
@@ -52,12 +52,18 @@ async function updateSalesChannel({ input, orgId }: { input: TUpdateSalesChannel
 
 	// Upsert pela identidade do canal: o toggle é idempotente, então dois cliques simultâneos
 	// não podem virar violação de unicidade (unq_sales_channels_identity, NULLS NOT DISTINCT).
+	// Só o que veio no input entra no UPDATE: campo ausente continua com o valor que já está no banco.
+	const updates = {
+		...(input.catalogoModo !== undefined ? { catalogoModo: input.catalogoModo } : {}),
+		...(input.exigirAdicionaisMinimos !== undefined ? { exigirAdicionaisMinimos: input.exigirAdicionaisMinimos } : {}),
+	};
+
 	const [channel] = await db
 		.insert(salesChannels)
-		.values({ organizacaoId: orgId, ...input })
+		.values({ organizacaoId: orgId, canal: input.canal, integracaoId: input.integracaoId, refExterno: input.refExterno, ...updates })
 		.onConflictDoUpdate({
 			target: [salesChannels.organizacaoId, salesChannels.canal, salesChannels.integracaoId, salesChannels.refExterno],
-			set: { catalogoModo: input.catalogoModo, exigirAdicionaisMinimos: input.exigirAdicionaisMinimos, dataAtualizacao: new Date() },
+			set: { ...updates, dataAtualizacao: new Date() },
 		})
 		.returning();
 
@@ -67,6 +73,9 @@ export type TUpdateSalesChannelOutput = Awaited<ReturnType<typeof updateSalesCha
 
 async function getSalesChannelsRoute() {
 	const session = requireERPSession(await getCurrentSessionUncached());
+	if (!session.membership!.permissoes.empresa.visualizar) {
+		throw new createHttpError.Forbidden("Você não tem permissão para visualizar os canais de venda.");
+	}
 	const orgId = session.membership!.organizacao.id;
 
 	const result = await getSalesChannels({ orgId });
@@ -75,6 +84,10 @@ async function getSalesChannelsRoute() {
 
 async function updateSalesChannelRoute(request: NextRequest) {
 	const session = requireERPSession(await getCurrentSessionUncached());
+	// A tela desabilita o toggle sem esta permissão; sem a checagem aqui a regra valia só no cliente.
+	if (!session.membership!.permissoes.empresa.editar) {
+		throw new createHttpError.Forbidden("Você não tem permissão para editar os canais de venda.");
+	}
 	const orgId = session.membership!.organizacao.id;
 
 	const input = UpdateSalesChannelInputSchema.parse(await request.json());
