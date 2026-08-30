@@ -1,121 +1,62 @@
-import createHttpError from "http-errors";
-import sharp, { type Metadata } from "sharp";
+import { getStorageDriver } from "@/lib/files/drivers";
+import { inspectImageFile } from "@/lib/files/inspect";
+import { resolveFileUrl, sanitizeFileName, storeFile } from "@/lib/files/service";
 import { fetchPublicUrl } from "@/lib/http/fetch-public-url";
+import type { TFileEntity } from "@/services/drizzle/schema";
+import createHttpError from "http-errors";
 
 const BUCKET = "files";
 const PREFIX = "public/organizations";
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 // Teto menor no caminho inline: o base64 infla ~33% e o corpo ainda precisa caber no limite de
-// requisição da função serverless. Imagem maior que isso usa a URL assinada.
+// requisição da função serverless. Imagem maior que isso usa o fluxo de upload em duas etapas.
 export const MAX_INLINE_IMAGE_SIZE = 3 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png"]);
 const FETCH_TIMEOUT_MS = 15_000;
 
-async function getStorage() {
-	const { getSupabaseAdminClient } = await import("@/services/supabase/admin");
-	return getSupabaseAdminClient().storage.from(BUCKET);
-}
-
-function sanitizeFileName(fileName: string) {
-	const extension = fileName.toLowerCase().endsWith(".png") ? ".png" : fileName.toLowerCase().match(/\.jpe?g$/) ? ".jpg" : "";
-	const base =
-		fileName
-			.normalize("NFD")
-			.replace(/[\u0300-\u036f]/g, "")
-			.toLowerCase()
-			.replace(/\.[^.]+$/, "")
-			.replace(/[^a-z0-9_-]+/g, "-")
-			.replace(/^-+|-+$/g, "")
-			.slice(0, 80) || "imagem";
-	return `${base}${extension}`;
-}
-
-export function getAgentTemplateMediaPrefix(organizationId: string) {
-	return `${PREFIX}/${organizationId}/agent-message-template-media/`;
+export function getAgentTemplateMediaPrefix({ organizacaoId }: { organizacaoId: string }) {
+	return `${PREFIX}/${organizacaoId}/agent-message-template-media/`;
 }
 
 export function assertAgentTemplateMediaPath(organizationId: string, storagePath: string) {
-	const expectedPrefix = getAgentTemplateMediaPrefix(organizationId);
+	const expectedPrefix = getAgentTemplateMediaPrefix({ organizacaoId: organizationId });
 	if (!storagePath.startsWith(expectedPrefix) || storagePath.includes("..") || storagePath.includes("\\")) {
 		throw new createHttpError.Forbidden("O caminho da mídia não pertence à organização selecionada.");
 	}
 }
 
-/**
- * Confere formato e dimensões pelos bytes, nunca pelo mime declarado ou pelo Content-Type de uma
- * resposta externa. É a mesma régua para os três caminhos de entrada (base64, URL e URL assinada).
- */
-async function inspectImageBuffer(buffer: Buffer) {
-	if (buffer.length === 0) throw new createHttpError.BadRequest("Conteúdo da imagem vazio.");
+/** Envelope padrão de mídia de template a partir de uma linha do catálogo de arquivos. */
+export async function buildTemplateMediaEnvelope(arquivo: TFileEntity) {
+	const url = await resolveFileUrl(arquivo);
+	const dimensions = arquivo.metadados?.tipo === "IMAGEM" ? { largura: arquivo.metadados.largura, altura: arquivo.metadados.altura } : null;
+	return {
+		arquivoId: arquivo.id,
+		conteudoMidiaCaminho: arquivo.caminho,
+		conteudoMidiaUrl: url,
+		mimeType: arquivo.mimeType,
+		tamanhoBytes: arquivo.tamanhoBytes,
+		largura: dimensions?.largura ?? null,
+		altura: dimensions?.altura ?? null,
+	};
+}
+
+/** Inspeciona (decodificação completa) e grava pelo catálogo de arquivos (lib/files). */
+async function storeAgentTemplateMedia({ organizationId, fileName, buffer }: { organizationId: string; fileName: string; buffer: Buffer }) {
 	if (buffer.length > MAX_IMAGE_SIZE) throw new createHttpError.BadRequest("A imagem deve ter no máximo 5 MB.");
-	let metadata: Metadata;
-	try {
-		metadata = await sharp(buffer, { failOn: "error" }).metadata();
-	} catch {
-		throw new createHttpError.BadRequest("O arquivo enviado não é uma imagem válida.");
-	}
-	const mimeType = metadata.format === "png" ? "image/png" : metadata.format === "jpeg" ? "image/jpeg" : null;
-	if (!mimeType || !ALLOWED_IMAGE_TYPES.has(mimeType)) throw new createHttpError.BadRequest("Envie uma imagem JPEG ou PNG.");
-	if (!metadata.width || !metadata.height) throw new createHttpError.BadRequest("Não foi possível determinar as dimensões da imagem.");
-	return { mimeType, largura: metadata.width, altura: metadata.height };
-}
-
-/** Grava bytes já inspecionados e devolve o envelope padrão das ferramentas de mídia. */
-async function storeInspectedAgentTemplateMedia({
-	organizationId,
-	fileName,
-	buffer,
-	mimeType,
-	largura,
-	altura,
-}: {
-	organizationId: string;
-	fileName: string;
-	buffer: Buffer;
-	mimeType: string;
-	largura: number;
-	altura: number;
-}) {
-	const sanitized = sanitizeFileName(fileName);
-	const named = /\.(png|jpg)$/.test(sanitized) ? sanitized : `${sanitized}${mimeType === "image/png" ? ".png" : ".jpg"}`;
-	const storagePath = `${getAgentTemplateMediaPrefix(organizationId)}${crypto.randomUUID()}/${named}`;
-	const storage = await getStorage();
-	const { error } = await storage.upload(storagePath, buffer, { contentType: mimeType, upsert: false });
-	if (error) throw new createHttpError.InternalServerError("Não foi possível enviar a mídia.");
-	const { data: publicData } = storage.getPublicUrl(storagePath);
-	return {
-		conteudoMidiaCaminho: storagePath,
-		conteudoMidiaUrl: publicData.publicUrl,
-		mimeType,
-		tamanhoBytes: buffer.length,
-		largura,
-		altura,
-	};
-}
-
-export async function createAgentTemplateMediaUpload({
-	organizationId,
-	fileName,
-	mimeType,
-	fileSize,
-}: {
-	organizationId: string;
-	fileName: string;
-	mimeType: string;
-	fileSize: number;
-}) {
-	if (!ALLOWED_IMAGE_TYPES.has(mimeType)) throw new createHttpError.BadRequest("Envie uma imagem JPEG ou PNG.");
-	if (fileSize <= 0 || fileSize > MAX_IMAGE_SIZE) throw new createHttpError.BadRequest("A imagem deve ter no máximo 5 MB.");
-	const storagePath = `${getAgentTemplateMediaPrefix(organizationId)}${crypto.randomUUID()}/${sanitizeFileName(fileName)}`;
-	const { data, error } = await (await getStorage()).createSignedUploadUrl(storagePath, { upsert: false });
-	if (error) throw new createHttpError.InternalServerError("Não foi possível preparar o upload da mídia.");
-	return {
-		conteudoMidiaCaminho: data.path,
-		uploadUrl: data.signedUrl,
-		expiraEm: new Date(Date.now() + 2 * 60 * 60 * 1000),
-		mimeTypeEsperado: mimeType,
-		tamanhoMaximoBytes: MAX_IMAGE_SIZE,
-	};
+	const inspected = await inspectImageFile(buffer, { allowedMimeTypes: ALLOWED_IMAGE_TYPES });
+	const named = sanitizeFileName(fileName, inspected.mimeType);
+	const caminho = `${getAgentTemplateMediaPrefix({ organizacaoId: organizationId })}${crypto.randomUUID()}/${named}`;
+	const arquivo = await storeFile({
+		organizacaoId: organizationId,
+		bucket: BUCKET,
+		caminho,
+		visibilidade: "PUBLICO",
+		buffer,
+		mimeType: inspected.mimeType,
+		nomeOriginal: fileName,
+		metadados: inspected.metadados,
+	});
+	return buildTemplateMediaEnvelope(arquivo);
 }
 
 /**
@@ -123,9 +64,10 @@ export async function createAgentTemplateMediaUpload({
  * Storage é o servidor.
  *
  * Serve para arquivos pequenos que só existem no cliente. Para imagem já hospedada, o caminho é
- * `uploadAgentTemplateMediaFromUrl`: base64 dentro dos argumentos de uma ferramenta é texto que o
- * modelo precisa GERAR token a token — alguns KB são instantâneos, mas centenas de KB viram
- * minutos de geração e estouram o timeout do cliente antes de a requisição sequer chegar aqui.
+ * `uploadAgentTemplateMediaFromUrl`; para arquivo local maior, o fluxo de duas etapas
+ * (create/complete): base64 dentro dos argumentos de uma ferramenta é texto que o modelo precisa
+ * GERAR token a token — alguns KB são instantâneos, mas centenas de KB viram minutos de geração
+ * e estouram o timeout do cliente antes de a requisição sequer chegar aqui.
  */
 export async function uploadAgentTemplateMediaContent({
 	organizationId,
@@ -155,15 +97,14 @@ export async function uploadAgentTemplateMediaContent({
 		);
 	}
 
-	const inspected = await inspectImageBuffer(buffer);
-	return storeInspectedAgentTemplateMedia({ organizationId, fileName, buffer, ...inspected });
+	return storeAgentTemplateMedia({ organizationId, fileName, buffer });
 }
 
 /**
  * Upload por URL: o agente informa onde a imagem está e o download acontece AQUI, servidor a
- * servidor. É o caminho preferido para agente de IA — a chamada MCP carrega só a URL (dezenas de
- * tokens, contra centenas de milhares do base64) e o cliente não precisa alcançar host nenhum
- * além do próprio /api/mcp.
+ * servidor. É o caminho preferido quando a imagem já está hospedada — a chamada MCP carrega só a
+ * URL (dezenas de tokens, contra centenas de milhares do base64) e o cliente não precisa
+ * alcançar host nenhum além do próprio /api/mcp.
  *
  * A URL vem de fora, então o download passa pelas barreiras anti-SSRF de `fetchPublicUrl`; os
  * bytes baixados passam pela mesma inspeção dos outros caminhos.
@@ -178,27 +119,30 @@ export async function uploadAgentTemplateMediaFromUrl({
 	url: string;
 }) {
 	const { buffer, finalUrl } = await fetchPublicUrl(url, { maxBytes: MAX_IMAGE_SIZE, timeoutMs: FETCH_TIMEOUT_MS });
-	const inspected = await inspectImageBuffer(buffer);
 	const nameFromUrl = decodeURIComponent(new URL(finalUrl).pathname.split("/").pop() ?? "");
 	const resolvedName = fileName?.trim() || nameFromUrl || "imagem";
-	return storeInspectedAgentTemplateMedia({ organizationId, fileName: resolvedName, buffer, ...inspected });
+	return storeAgentTemplateMedia({ organizationId, fileName: resolvedName, buffer });
 }
 
-/** Valida bytes que o cliente escreveu por URL assinada (fluxo de duas etapas). */
+/**
+ * Valida um caminho de mídia referenciado por um rascunho de template. Os rascunhos ainda
+ * guardam `conteudoMidiaCaminho` (string), não `arquivoId` — ver a seção de migração no
+ * lib/files/README.md — então a validação confere o prefixo da organização e re-inspeciona os
+ * bytes no storage.
+ */
 export async function validateAgentTemplateMedia({ organizationId, storagePath }: { organizationId: string; storagePath: string }) {
 	assertAgentTemplateMediaPath(organizationId, storagePath);
-	const storage = await getStorage();
-	const { data, error } = await storage.download(storagePath);
-	if (error || !data) throw new createHttpError.NotFound("Mídia enviada não encontrada.");
-	const buffer = Buffer.from(await data.arrayBuffer());
-	const { mimeType, largura, altura } = await inspectImageBuffer(buffer);
-	const { data: publicData } = storage.getPublicUrl(storagePath);
+	const driver = getStorageDriver("SUPABASE");
+	const buffer = await driver.get({ bucket: BUCKET, caminho: storagePath });
+	if (buffer.length > MAX_IMAGE_SIZE) throw new createHttpError.BadRequest("A imagem deve ter no máximo 5 MB.");
+	const inspected = await inspectImageFile(buffer, { allowedMimeTypes: ALLOWED_IMAGE_TYPES });
+	const url = await driver.publicUrl({ bucket: BUCKET, caminho: storagePath });
 	return {
 		conteudoMidiaCaminho: storagePath,
-		conteudoMidiaUrl: publicData.publicUrl,
-		mimeType,
+		conteudoMidiaUrl: url,
+		mimeType: inspected.mimeType,
 		tamanhoBytes: buffer.length,
-		largura,
-		altura,
+		largura: inspected.metadados.tipo === "IMAGEM" ? inspected.metadados.largura : null,
+		altura: inspected.metadados.tipo === "IMAGEM" ? inspected.metadados.altura : null,
 	};
 }
