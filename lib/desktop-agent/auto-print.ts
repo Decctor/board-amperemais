@@ -23,8 +23,9 @@ export function resolvePrintPolicyChannel({
 	canal: string | null;
 	processamentoOrigem: string | null;
 }): string | null {
-	if (!canal) return null;
-	return processamentoOrigem === "EXTERNO" ? `INTEGRACAO-${canal}` : canal;
+	const normalizedChannel = canal?.trim().toUpperCase();
+	if (!normalizedChannel) return null;
+	return processamentoOrigem === "EXTERNO" ? `INTEGRACAO-${normalizedChannel}` : normalizedChannel;
 }
 
 // Leitura defensiva: `configuracao` não é re-parseada em cada leitura e linhas antigas não têm a
@@ -48,7 +49,15 @@ async function resolveConfiguracao({
 	return organization?.configuracao ?? null;
 }
 
-function isChannelAllowed({ rule, canal, processamentoOrigem }: { rule: TOrganizationAutoPrintRule; canal: string | null; processamentoOrigem: string | null }) {
+function isChannelAllowed({
+	rule,
+	canal,
+	processamentoOrigem,
+}: {
+	rule: TOrganizationAutoPrintRule;
+	canal: string | null;
+	processamentoOrigem: string | null;
+}) {
 	const policyChannel = resolvePrintPolicyChannel({ canal, processamentoOrigem });
 	return !!policyChannel && rule.canais.includes(policyChannel);
 }
@@ -60,7 +69,12 @@ type TProcessSaleCupomAutoPrintParams = {
 	configuracao?: TOrganizationEntity["configuracao"] | null;
 	solicitadoPorId?: string | null;
 };
-export async function processSaleCupomAutoPrintIfEligible({ organizacaoId, saleId, configuracao, solicitadoPorId }: TProcessSaleCupomAutoPrintParams) {
+export async function processSaleCupomAutoPrintIfEligible({
+	organizacaoId,
+	saleId,
+	configuracao,
+	solicitadoPorId,
+}: TProcessSaleCupomAutoPrintParams) {
 	try {
 		const resolvedConfiguracao = await resolveConfiguracao({ organizacaoId, configuracao });
 		const rule = parsePrintPreferences(resolvedConfiguracao).automatica.CUPOM_VENDA;
