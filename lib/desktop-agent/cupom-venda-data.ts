@@ -63,6 +63,7 @@ export async function buildCupomVendaDados({ organizacaoId, vendaId }: { organiz
 			clienteId: true,
 			vendedorNome: true,
 			observacoes: true,
+			integracaoMetadados: true,
 			entregaModalidade: true,
 			comandaNumero: true,
 		},
@@ -169,7 +170,9 @@ export async function buildCupomVendaDados({ organizacaoId, vendaId }: { organiz
 
 	// ---- Pagamentos: agrupados por método + situação, como o cliente lê ----
 	const pagamentosClassificados = classifySalePaymentTransactions(
-		sale.lancamentosContabeis.flatMap((entry) => entry.transacoesFinanceiras.map((transaction) => ({ ...transaction, lancamentoContabilId: entry.id }))),
+		sale.lancamentosContabeis.flatMap((entry) =>
+			entry.transacoesFinanceiras.map((transaction) => ({ ...transaction, lancamentoContabilId: entry.id })),
+		),
 	);
 	const pagamentosAgrupados = new Map<string, { metodo: string; valor: number; parcelas: number | null; pago: boolean }>();
 	for (const pagamento of pagamentosClassificados.todas) {
@@ -183,6 +186,18 @@ export async function buildCupomVendaDados({ organizacaoId, vendaId }: { organiz
 		}
 		pagamentosAgrupados.set(chave, { metodo: pagamento.metodo, valor: pagamento.valor, parcelas: pagamento.totalParcelas ?? null, pago });
 	}
+	const pagamentosCanal = sale.integracaoMetadados?.pagamentos?.metodos ?? [];
+	const pagamentosCupom: TCupomVendaDados["venda"]["pagamentos"] =
+		pagamentosCanal.length > 0
+			? pagamentosCanal.map((pagamento) => ({
+					metodo: pagamento.metodo,
+					valor: pagamento.valor,
+					parcelas: null,
+					pago: pagamento.pagoOnline,
+					descricao: pagamento.descricao,
+					situacao: pagamento.pagoOnline ? ("PAGO_CANAL" as const) : ("COBRAR" as const),
+				}))
+			: [...pagamentosAgrupados.values()].map((pagamento) => ({ ...pagamento, situacao: pagamento.pago ? ("PAGO" as const) : ("EM_ABERTO" as const) }));
 
 	// ---- Cashback: realizado quando o ledger já tem o ACÚMULO, projetado quando ainda não ----
 	const acumulo = sale.transacoesCashback.find((transaction) => transaction.tipo === "ACÚMULO") ?? null;
@@ -242,10 +257,12 @@ export async function buildCupomVendaDados({ organizacaoId, vendaId }: { organiz
 			descontoGeral,
 			acrescimos: acrescimosTotal,
 			valorFinal: sale.valorTotal,
-			pagamentos: [...pagamentosAgrupados.values()],
+			pagamentos: pagamentosCupom,
 		},
 		cliente: sale.cliente ? { nome: sale.cliente.nome, telefone: sale.cliente.telefone, totalCompras } : null,
-		cupom: cupomResgatado ? { codigo: cupomResgatado.cupomCodigo, titulo: cupomResgatado.cupomTitulo, valorDesconto: cupomResgatado.valorDesconto } : null,
+		cupom: cupomResgatado
+			? { codigo: cupomResgatado.cupomCodigo, titulo: cupomResgatado.cupomTitulo, valorDesconto: cupomResgatado.valorDesconto }
+			: null,
 		recompensa:
 			recompensaResgatada && descontoRecompensa > 0
 				? {

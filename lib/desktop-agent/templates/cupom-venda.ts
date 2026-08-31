@@ -90,6 +90,8 @@ export const CupomVendaDadosSchema = z.object({
 					}),
 					parcelas: z.number({ invalid_type_error: "Tipo não válido para o número de parcelas." }).optional().nullable(),
 					pago: z.boolean({ invalid_type_error: "Tipo não válido para o status de pagamento." }),
+					descricao: z.string({ invalid_type_error: "Tipo não válido para a descrição do pagamento." }).optional().nullable(),
+					situacao: z.enum(["PAGO", "PAGO_CANAL", "COBRAR", "EM_ABERTO"], { invalid_type_error: "Situação do pagamento não válida." }).optional(),
 				}),
 			)
 			.optional()
@@ -179,7 +181,10 @@ export function renderCupomVendaHtml(dados: TCupomVendaDados) {
 			// CNPJ e telefone na MESMA linha: numa bobina, cada linha do cabeçalho é papel gasto antes
 			// do que o cliente veio conferir. Endereço da loja saiu — quem tem o cupom já esteve nela.
 			organizacao.cnpj || organizacao.telefone
-				? `<p class="mini">${[organizacao.cnpj ? `CNPJ ${formatToCNPJ(organizacao.cnpj)}` : null, organizacao.telefone ? formatToPhone(organizacao.telefone) : null]
+				? `<p class="mini">${[
+						organizacao.cnpj ? `CNPJ ${formatToCNPJ(organizacao.cnpj)}` : null,
+						organizacao.telefone ? formatToPhone(organizacao.telefone) : null,
+					]
 						.filter(Boolean)
 						.map((parte) => escapeHtml(parte as string))
 						.join(" &middot; ")}</p>`
@@ -266,7 +271,11 @@ export function renderCupomVendaHtml(dados: TCupomVendaDados) {
 				.map((pagamento) => {
 					const label = METODO_PAGAMENTO_LABELS[pagamento.metodo] ?? pagamento.metodo;
 					const parcelas = pagamento.parcelas && pagamento.parcelas > 1 ? ` ${pagamento.parcelas}x` : "";
-					return renderLinha(`${label}${parcelas} ${pagamento.pago ? "(PAGO)" : "(EM ABERTO)"}`, formatToMoney(pagamento.valor));
+					const situacao = pagamento.situacao ?? (pagamento.pago ? "PAGO" : "EM_ABERTO");
+					const situacaoLabel =
+						situacao === "COBRAR" ? "COBRAR NA ENTREGA" : situacao === "PAGO_CANAL" ? "PAGO PELO IFOOD" : situacao === "PAGO" ? "PAGO" : "EM ABERTO";
+					const descricao = pagamento.descricao ? ` · ${pagamento.descricao}` : "";
+					return renderLinha(`${label}${parcelas}${descricao} (${situacaoLabel})`, formatToMoney(pagamento.valor));
 				})
 				.join("")}
 		</div>`

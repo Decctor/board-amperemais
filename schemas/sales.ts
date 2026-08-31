@@ -103,6 +103,20 @@ export const SaleIntegrationMetadataSchema = z.object({
 			}),
 		),
 	}),
+	pagamentos: z
+		.object({
+			prePago: z.number({ invalid_type_error: "Tipo não válido para o valor pré-pago." }),
+			pendente: z.number({ invalid_type_error: "Tipo não válido para o valor pendente." }),
+			metodos: z.array(
+				z.object({
+					metodo: z.string({ required_error: "Método de pagamento do canal não informado." }),
+					valor: z.number({ invalid_type_error: "Tipo não válido para o valor do pagamento do canal." }),
+					pagoOnline: z.boolean({ invalid_type_error: "Tipo não válido para o indicador de pagamento online." }),
+					descricao: z.string({ invalid_type_error: "Tipo não válido para a descrição do pagamento do canal." }).nullable(),
+				}),
+			),
+		})
+		.optional(),
 	/**
 	 * Solicitação de cancelamento registrada no canal e ainda sem desfecho — informativa, não exige
 	 * resposta da loja. Só o canal escreve aqui (ingestão); o desfecho (cancelado ou rejeitado)

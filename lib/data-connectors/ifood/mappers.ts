@@ -502,7 +502,11 @@ function allocateMerchantDiscountsToItems(order: TIfoodOrder, items: TCanonicalS
  * `sales.integracaoMetadados`. Frete: benefits MERCHANT de taxa de entrega reduzem o frete
  * cobrado (a loja abriu mão); benefits patrocinados mantêm o frete cheio (o canal paga).
  */
-function buildIfoodIntegrationMetadata(order: TIfoodOrder, eventState: TIfoodOrderEventState): TSaleIntegrationMetadata {
+function buildIfoodIntegrationMetadata(
+	order: TIfoodOrder,
+	eventState: TIfoodOrderEventState,
+	payments: TCanonicalSalePayment[] | null,
+): TSaleIntegrationMetadata {
 	const deliveredBy = order.delivery?.deliveredBy?.toUpperCase() ?? null;
 
 	let merchantItemAndCartDiscount = 0;
@@ -535,6 +539,11 @@ function buildIfoodIntegrationMetadata(order: TIfoodOrder, eventState: TIfoodOrd
 		descontos: {
 			loja: round2(merchantItemAndCartDiscount + merchantDeliveryFeeDiscount),
 			patrocinados: [...sponsoredTotals.entries()].map(([patrocinador, valor]) => ({ patrocinador, valor: round2(valor) })),
+		},
+		pagamentos: {
+			prePago: round2(order.payments?.prepaid ?? 0),
+			pendente: round2(order.payments?.pending ?? 0),
+			metodos: (payments ?? []).map(({ metodo, valor, pagoOnline, descricao }) => ({ metodo, valor, pagoOnline, descricao: descricao ?? null })),
 		},
 		cancelamentoSolicitado: eventState.cancellationRequestedAt
 			? { solicitadoEm: eventState.cancellationRequestedAt, motivo: eventState.cancellationRequestReason }
@@ -569,12 +578,13 @@ function mapIfoodSalePayments(order: TIfoodOrder): TCanonicalSalePayment[] | nul
 	if (methods.length > 0) {
 		return methods.map((method) => {
 			const methodKey = method.method?.toUpperCase() ?? "";
-			const description = [method.method, method.card?.brand].filter(Boolean).join(" ");
+			const mappedMethod = IFOOD_PAYMENT_METHOD_MAP[methodKey] ?? "OUTRO";
+			const description = method.card?.brand ?? (mappedMethod === "OUTRO" ? method.method : null);
 			return {
-				metodo: IFOOD_PAYMENT_METHOD_MAP[methodKey] ?? "OUTRO",
+				metodo: mappedMethod,
 				valor: method.value,
 				pagoOnline: method.type?.toUpperCase() === "ONLINE" || method.prepaid === true,
-				descricao: description || null,
+				descricao: description,
 			};
 		});
 	}
@@ -595,6 +605,7 @@ export function mapIfoodSale(order: TIfoodOrder, events: TIfoodEvent[] = []): TC
 	// eventos deste lote. Resiliente a evento perdido/ja ACKado e a evento atrasado fora de ordem.
 	const statusText = pickMostAdvancedStatus(order.status, getOrderTimestampStatus(order), eventState.statusText) ?? "N/A";
 	const items = order.items.map(mapIfoodSaleItem);
+	const payments = mapIfoodSalePayments(order);
 	// C1 (fase 5): descontos reais da loja (sponsorship MERCHANT) reduzem os itens — e a NF.
 	allocateMerchantDiscountsToItems(order, items);
 
@@ -625,8 +636,8 @@ export function mapIfoodSale(order: TIfoodOrder, events: TIfoodEvent[] = []): TC
 		isValidSale: validSale,
 		isCanceled: canceled,
 		attendanceStatus: mapIfoodAttendanceStatus(statusText),
-		payments: mapIfoodSalePayments(order),
-		integrationMetadata: buildIfoodIntegrationMetadata(order, eventState),
+		payments,
+		integrationMetadata: buildIfoodIntegrationMetadata(order, eventState, payments),
 		raw: order,
 	};
 }
