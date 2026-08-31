@@ -594,8 +594,8 @@ function AppearanceSection({
 					}}
 				/>
 				{previewUrl ? (
-					<div className="overflow-hidden rounded-2xl border bg-muted/20">
-						<div className="relative aspect-[16/6] min-h-44 overflow-hidden bg-muted">
+					<div className="mx-auto w-full max-w-sm overflow-hidden rounded-2xl border bg-muted/20">
+						<div className="relative aspect-[8/5] overflow-hidden bg-muted">
 							{appearance.headerCoverTipo === "VIDEO" ? (
 								<video src={previewUrl} className="size-full object-cover" controls>
 									<track kind="captions" srcLang="pt-BR" label="Sem legendas disponíveis" />
@@ -605,7 +605,7 @@ function AppearanceSection({
 							)}
 							<div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/35 via-transparent to-transparent" />
 							<span className="absolute bottom-3 left-3 rounded-full bg-black/60 px-2.5 py-1 text-[0.65rem] font-black tracking-wider text-white uppercase">
-								{appearance.headerCoverTipo === "VIDEO" ? "Vídeo" : "Imagem"}
+								Prévia mobile · {appearance.headerCoverTipo === "VIDEO" ? "Vídeo" : "Imagem"}
 							</span>
 						</div>
 						<div className="flex flex-wrap items-center justify-between gap-2 p-3">

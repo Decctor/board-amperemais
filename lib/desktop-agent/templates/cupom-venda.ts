@@ -312,10 +312,11 @@ p { margin: 0; }
 .cabecalho { margin-bottom: 1mm; }
 /* Térmica é 1 bit: sem dessaturar + reforçar contraste, logo colorida vira borrão cinza. */
 .logo { display: block; margin: 0 auto 1.5mm; max-width: 44mm; max-height: 16mm; object-fit: contain; filter: grayscale(1) contrast(1.4); }
-.mini { font-size: 7.5pt; }
-.fraco { color: #444; }
+.mini { font-size: 7.5pt; font-weight: 700; }
+.fraco { color: #000; }
 .forte { font-weight: 700; }
 .meta { margin-top: 1mm; }
+.bloco { font-weight: 700; }
 .rotulo { font-weight: 700; }
 .titulo-secao { font-weight: 700; font-size: 8.5pt; letter-spacing: 0.3mm; }
 .faixa { font-weight: 700; font-size: 10pt; text-align: center; border: 0.4mm solid #000; padding: 1mm 0; margin-bottom: 1mm; }
@@ -323,7 +324,7 @@ p { margin: 0; }
 .sep.fina { margin: 1mm 0; }
 .linha { display: flex; justify-content: space-between; gap: 2mm; }
 .linha.destaque { font-weight: 700; font-size: 12pt; }
-.itens { width: 100%; border-collapse: collapse; }
+.itens { width: 100%; border-collapse: collapse; font-weight: 700; }
 .itens td { padding: 0.6mm 0; vertical-align: top; }
 .itens .qtd { width: 8mm; }
 .itens .desc { padding-right: 1.5mm; word-break: break-word; }
@@ -331,7 +332,7 @@ p { margin: 0; }
 .adicional { display: block; font-size: 7.5pt; padding-left: 2mm; }
 /* Observação em negrito: é a linha que a cozinha erra quando passa despercebida. */
 .observacao { display: block; font-size: 8pt; font-weight: 700; padding-left: 2mm; }
-.rodape { margin-top: 3mm; font-size: 7.5pt; }
+.rodape { margin-top: 3mm; font-size: 7.5pt; font-weight: 700; }
 </style></head><body>
 ${cabecalhoHtml}
 ${metaHtml}

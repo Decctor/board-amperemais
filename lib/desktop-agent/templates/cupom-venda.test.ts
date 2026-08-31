@@ -29,3 +29,12 @@ test("destaca pagamento que deve ser cobrado na entrega", () => {
 	);
 	assert.match(html, /Dinheiro · CASH \(COBRAR NA ENTREGA\)/);
 });
+
+test("reforça a legibilidade dos textos operacionais na impressão térmica", () => {
+	const html = renderCupomVendaHtml(buildData([]));
+	assert.match(html, /\.fraco \{ color: #000; \}/);
+	assert.match(html, /\.mini \{ font-size: 7\.5pt; font-weight: 700; \}/);
+	assert.match(html, /\.bloco \{ font-weight: 700; \}/);
+	assert.match(html, /\.itens \{[^}]*font-weight: 700; \}/);
+	assert.match(html, /\.rodape \{[^}]*font-weight: 700; \}/);
+});
