@@ -35,3 +35,16 @@ export function readShopDeliveryFee(rascunhoMetadados: unknown): number {
 	const taxa = shop?.entrega?.taxa;
 	return typeof taxa === "number" && Number.isFinite(taxa) && taxa > 0 ? round2(taxa) : 0;
 }
+
+export function resolveFiscalShopDeliveryFee({
+	rascunhoMetadados,
+	modalidade,
+	acrescimosTotal,
+}: {
+	rascunhoMetadados: unknown;
+	modalidade: string | null;
+	acrescimosTotal: number | null;
+}): number {
+	if (modalidade !== "ENTREGA") return 0;
+	return Math.min(readShopDeliveryFee(rascunhoMetadados), round2(Math.max(acrescimosTotal ?? 0, 0)));
+}

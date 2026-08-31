@@ -1,5 +1,6 @@
 import type { TGetSaleDraftOutput } from "@/app/api/pos/sales/route";
 import type { TSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-snapshot";
+import { readShopDeliveryFee } from "@/lib/shop/config";
 import type { TSaleState } from "@/state-hooks/use-sale-state";
 import { mapItemToCartItem } from "./map-sale-to-sale-state";
 
@@ -16,6 +17,7 @@ type TSaleDraft = TGetSaleDraftOutput["data"]["sale"];
 
 type TSaleDraftMetadataSnapshot = {
 	descontoGeral?: number;
+	taxaEntrega?: number;
 	cashbackResgate?: number;
 	cupom?: { cupomId: string; valorDesconto: number; codigo?: string; titulo?: string } | null;
 	recompensa?: TSaleRewardDraftSnapshot | null;
@@ -34,6 +36,7 @@ export function mapSaleDraftToSaleState(sale: TSaleDraft): Partial<TSaleState> {
 	// `descontosTotal` agrega desconto comercial e resgate de cashback; o metadado, quando existe,
 	// é a fonte precisa do que foi desconto de fato.
 	const descontoGeral = metadata?.descontoGeral ?? Math.max(0, (sale.descontosTotal ?? 0) - cashbackResgate);
+	const taxaEntrega = Math.min(metadata?.taxaEntrega ?? readShopDeliveryFee(sale.rascunhoMetadados), sale.acrescimosTotal ?? 0);
 
 	return {
 		modoCliente: sale.cliente ? "VINCULADO" : "CONSUMIDOR",
@@ -42,7 +45,8 @@ export function mapSaleDraftToSaleState(sale: TSaleDraft): Partial<TSaleState> {
 		vendedorNome: sale.vendedorNome ?? null,
 		itens,
 		descontoGeral,
-		acrescimoGeral: sale.acrescimosTotal ?? 0,
+		acrescimoGeral: Math.max(0, (sale.acrescimosTotal ?? 0) - taxaEntrega),
+		taxaEntrega,
 		observacoes: sale.observacoes ?? "",
 		entregaModalidade: (sale.entregaModalidade as TSaleState["entregaModalidade"] | null) ?? "PRESENCIAL",
 		entregaLocalizacaoId: sale.entregaLocalizacaoId ?? null,

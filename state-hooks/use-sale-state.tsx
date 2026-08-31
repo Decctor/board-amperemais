@@ -105,6 +105,7 @@ export type TSaleAppliedCoupon = z.infer<typeof SaleAppliedCouponSchema>;
 export const SaleDraftMetadataSchema = z.object({
 	pagamentos: z.array(CheckoutPaymentSplitSchema),
 	descontoGeral: z.number({ invalid_type_error: "Tipo não válido para desconto geral." }),
+	taxaEntrega: z.number({ invalid_type_error: "Tipo não válido para taxa de entrega." }).default(0),
 	cashbackResgate: z.number({ invalid_type_error: "Tipo não válido para resgate de cashback." }),
 	cashbackProgramaId: z.string({ invalid_type_error: "Tipo não válido para ID do programa de cashback." }).optional().nullable(),
 	recompensaResgate: SaleRewardRedemptionSchema.optional().nullable(),
@@ -156,6 +157,7 @@ export const SaleStateSchema = z.object({
 	itens: z.array(CartItemSchema),
 	descontoGeral: z.number({ invalid_type_error: "Tipo não válido para desconto geral." }).default(0),
 	acrescimoGeral: z.number({ invalid_type_error: "Tipo não válido para acréscimo geral." }).default(0),
+	taxaEntrega: z.number({ invalid_type_error: "Tipo não válido para taxa de entrega." }).default(0),
 	observacoes: z.string({ invalid_type_error: "Tipo não válido para observações." }).default(""),
 	entregaModalidade: z
 		.enum(["PRESENCIAL", "RETIRADA", "ENTREGA", "COMANDA"], {
@@ -200,6 +202,7 @@ export function getDefaultSaleState(initialState?: Partial<TSaleState>): TSaleSt
 		itens: initialState?.itens ?? [],
 		descontoGeral: initialState?.descontoGeral ?? 0,
 		acrescimoGeral: initialState?.acrescimoGeral ?? 0,
+		taxaEntrega: initialState?.taxaEntrega ?? 0,
 		observacoes: initialState?.observacoes ?? "",
 		entregaModalidade: initialState?.entregaModalidade ?? "PRESENCIAL",
 		entregaLocalizacaoId: initialState?.entregaLocalizacaoId ?? null,
@@ -329,6 +332,11 @@ export const useSaleState = ({ initialState, organizationConfig, contasFinanceir
 
 	const setAcrescimoGeral = useCallback((acrescimoGeral: number) => {
 		setState((prev) => ({ ...prev, acrescimoGeral: Math.max(0, acrescimoGeral || 0) }));
+	}, []);
+
+	const setTaxaEntrega = useCallback((taxaEntrega: number) => {
+		const normalizedFee = Math.max(0, taxaEntrega || 0);
+		setState((prev) => (prev.taxaEntrega === normalizedFee ? prev : { ...prev, taxaEntrega: normalizedFee }));
 	}, []);
 
 	const setObservacoes = useCallback((observacoes: string) => {
@@ -491,9 +499,10 @@ export const useSaleState = ({ initialState, organizationConfig, contasFinanceir
 	// por cupom nem cashback. Mesma ordem da loja digital e do backend.
 	const valorAntesCupom = useMemo(() => Math.max(0, totalItens - state.descontoGeral), [totalItens, state.descontoGeral]);
 	const valorAntesCashback = useMemo(() => Math.max(0, valorAntesCupom - cupomDesconto), [valorAntesCupom, cupomDesconto]);
+	const acrescimosTotal = state.acrescimoGeral + state.taxaEntrega;
 	const valorFinal = useMemo(
-		() => Math.max(0, valorAntesCashback - state.cashbackResgate) + state.acrescimoGeral,
-		[valorAntesCashback, state.cashbackResgate, state.acrescimoGeral],
+		() => Math.max(0, valorAntesCashback - state.cashbackResgate) + acrescimosTotal,
+		[valorAntesCashback, state.cashbackResgate, acrescimosTotal],
 	);
 	const totalPagamentos = useMemo(() => state.pagamentos.reduce((sum, p) => sum + p.valor, 0), [state.pagamentos]);
 	// Modo edição: os splits editáveis só precisam cobrir o que ainda não foi recebido.
@@ -545,13 +554,14 @@ export const useSaleState = ({ initialState, organizationConfig, contasFinanceir
 		return {
 			pagamentos: state.pagamentos,
 			descontoGeral: state.descontoGeral,
+			taxaEntrega: state.taxaEntrega,
 			cashbackResgate: state.cashbackResgate,
 			recompensaResgate: state.recompensaResgate,
 			valorFinal,
 			valorRestante,
 			troco,
 		};
-	}, [state.pagamentos, state.descontoGeral, state.cashbackResgate, state.recompensaResgate, valorFinal, valorRestante, troco]);
+	}, [state.pagamentos, state.descontoGeral, state.taxaEntrega, state.cashbackResgate, state.recompensaResgate, valorFinal, valorRestante, troco]);
 
 	const resetState = useCallback((newState?: Partial<TSaleState>) => {
 		setState(getDefaultSaleState(newState));
@@ -571,6 +581,7 @@ export const useSaleState = ({ initialState, organizationConfig, contasFinanceir
 		clearCart,
 		setDescontoGeral,
 		setAcrescimoGeral,
+		setTaxaEntrega,
 		setObservacoes,
 		setEntregaModalidade,
 		setEntregaLocalizacaoId,
@@ -594,6 +605,7 @@ export const useSaleState = ({ initialState, organizationConfig, contasFinanceir
 		cupomDesconto,
 		valorAntesCupom,
 		valorAntesCashback,
+		acrescimosTotal,
 		valorFinal,
 		totalPagamentos,
 		valorAposEfetivados,

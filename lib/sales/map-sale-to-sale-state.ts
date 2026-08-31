@@ -1,5 +1,6 @@
 import type { TGetSaleForEditOutput } from "@/app/api/pos/sales/edit/route";
 import { POS_REWARD_SALE_ITEM_ORIGIN, parseSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-snapshot";
+import { readShopDeliveryFee } from "@/lib/shop/config";
 import type { TCartItem, TCartItemModifier, TSaleState } from "@/state-hooks/use-sale-state";
 import type { TCheckoutPaymentSplit } from "@/lib/payments/schemas";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
@@ -151,7 +152,7 @@ export function mapSaleForEditToSaleState(
 	const venda = data.venda;
 	const draftMetadata =
 		venda.rascunhoMetadados && typeof venda.rascunhoMetadados === "object" && !Array.isArray(venda.rascunhoMetadados)
-			? (venda.rascunhoMetadados as { descontoGeral?: number })
+			? (venda.rascunhoMetadados as { descontoGeral?: number; taxaEntrega?: number })
 			: null;
 
 	// Já exclui o resgate de recompensa (que está em moeda cashback, não em R$).
@@ -165,6 +166,7 @@ export function mapSaleForEditToSaleState(
 	const descontoRecompensa = rewardItem?.valorDesconto ?? 0;
 	const descontoGeral =
 		draftMetadata?.descontoGeral ?? Math.max(0, (venda.descontosTotal ?? 0) - cupomDesconto - cashbackResgate - descontoRecompensa);
+	const taxaEntrega = Math.min(draftMetadata?.taxaEntrega ?? readShopDeliveryFee(venda.rascunhoMetadados), venda.acrescimosTotal ?? 0);
 
 	return {
 		modoCliente: venda.cliente ? "VINCULADO" : "CONSUMIDOR",
@@ -173,7 +175,8 @@ export function mapSaleForEditToSaleState(
 		vendedorNome: venda.vendedorNome ?? null,
 		itens,
 		descontoGeral,
-		acrescimoGeral: venda.acrescimosTotal ?? 0,
+		acrescimoGeral: Math.max(0, (venda.acrescimosTotal ?? 0) - taxaEntrega),
+		taxaEntrega,
 		observacoes: venda.observacoes ?? "",
 		entregaModalidade: (venda.entregaModalidade as TSaleState["entregaModalidade"] | null) ?? "PRESENCIAL",
 		entregaLocalizacaoId: venda.entregaLocalizacaoId ?? null,

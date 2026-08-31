@@ -158,7 +158,7 @@ export default function NewSalePage({
 					comandaNumero: saleState.state.comandaNumero,
 					observacoes: saleState.state.observacoes || null,
 					descontosTotal: saleState.state.descontoGeral,
-					acrescimosTotal: saleState.state.acrescimoGeral,
+					acrescimosTotal: saleState.acrescimosTotal,
 					cashbackResgate: saleState.state.cashbackResgate,
 					cupomResgate: saleState.state.cupomResgate,
 					recompensaResgate: saleState.state.recompensaResgate
@@ -281,7 +281,7 @@ export default function NewSalePage({
 			comandaNumero: saleState.state.comandaNumero,
 			observacoes: saleState.state.observacoes || null,
 			descontosTotal: saleState.state.descontoGeral,
-			acrescimosTotal: saleState.state.acrescimoGeral,
+			acrescimosTotal: saleState.acrescimosTotal,
 			cashbackResgate: saleState.state.cashbackResgate,
 			cupomResgate: saleState.state.cupomResgate,
 			recompensaResgate: saleState.state.recompensaResgate
@@ -304,7 +304,7 @@ export default function NewSalePage({
 			comandaNumero: saleState.state.comandaNumero,
 			observacoes: saleState.state.observacoes || null,
 			descontosTotal: saleState.state.descontoGeral,
-			acrescimosTotal: saleState.state.acrescimoGeral,
+			acrescimosTotal: saleState.acrescimosTotal,
 			rascunhoMetadados: saleState.getDraftMetadata(),
 			sessaoVendaId: activeSession?.id ?? null,
 			pagamentos: saleState.state.pagamentos.map((payment) => ({

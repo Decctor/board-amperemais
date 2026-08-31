@@ -210,6 +210,12 @@ export default function SummarySection({ saleState, organizationCashbackProgram,
 					<span>GRÁTIS ({formatToMoney(saleState.state.recompensaResgate.valorVenda)})</span>
 				</div>
 			) : null}
+			{saleState.state.taxaEntrega > 0 ? (
+				<div className="flex items-center justify-between text-sm text-muted-foreground">
+					<span>Taxa de entrega</span>
+					<span>+{formatToMoney(saleState.state.taxaEntrega)}</span>
+				</div>
+			) : null}
 			<div className="flex items-center justify-between text-sm font-semibold">
 				<span>TOTAL FINAL</span>
 				<span>{formatToMoney(saleState.valorFinal)}</span>

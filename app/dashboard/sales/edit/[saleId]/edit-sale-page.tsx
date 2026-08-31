@@ -217,7 +217,8 @@ export default function EditSalePage({
 			comandaNumero: saleState.state.comandaNumero,
 			observacoes: saleState.state.observacoes || null,
 			descontosTotal: saleState.state.descontoGeral,
-			acrescimosTotal: saleState.state.acrescimoGeral,
+			acrescimosTotal: saleState.acrescimosTotal,
+			taxaEntrega: saleState.state.taxaEntrega,
 			sessaoVendaId: activeSession?.id ?? null,
 			pagamentos: saleState.state.pagamentos.map((payment) => ({
 				metodo: payment.metodo,

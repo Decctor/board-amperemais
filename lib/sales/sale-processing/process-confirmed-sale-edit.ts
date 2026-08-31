@@ -8,6 +8,7 @@ import { consumeSaleDiscountApproval } from "@/lib/sales/sale-discount-authoriza
 import { toSalesChannelType } from "@/lib/products/sales-channels";
 import { SALE_PRICING_CENT_TOLERANCE, saleValuesDiverge, validateSaleItemsPricing } from "@/lib/sales/sale-pricing-validation";
 import { POS_REWARD_SALE_ITEM_ORIGIN } from "@/lib/sales/sale-reward-redemption";
+import { readShopDeliveryFee } from "@/lib/shop/config";
 import type { TDeliveryModeEnum } from "@/schemas/enums";
 import type { DBTransaction } from "@/services/drizzle";
 import { accountingEntries, couponRedemptions, financialTransactions, saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
@@ -66,6 +67,7 @@ export type TProcessConfirmedSaleEditInput = {
 	itens: TEditSaleItemInput[];
 	descontosTotal?: number | null;
 	acrescimosTotal?: number | null;
+	taxaEntrega?: number;
 	observacoes?: string | null;
 	vendedorId?: string | null;
 	vendedorNome?: string | null;
@@ -554,6 +556,21 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 			? (sale.rascunhoMetadados as Record<string, unknown>)
 			: {};
 	const previousEditions = Array.isArray(previousDraftMetadata.edicoes) ? previousDraftMetadata.edicoes : [];
+	const previousShopMetadata =
+		previousDraftMetadata.shop && typeof previousDraftMetadata.shop === "object" && !Array.isArray(previousDraftMetadata.shop)
+			? (previousDraftMetadata.shop as Record<string, unknown>)
+			: null;
+	const previousShopDelivery =
+		previousShopMetadata?.entrega && typeof previousShopMetadata.entrega === "object" && !Array.isArray(previousShopMetadata.entrega)
+			? (previousShopMetadata.entrega as Record<string, unknown>)
+			: null;
+	const resolvedDeliveryMode = input.entregaModalidade ?? sale.entregaModalidade;
+	const previousDeliveryFee =
+		typeof previousDraftMetadata.taxaEntrega === "number"
+			? previousDraftMetadata.taxaEntrega
+			: readShopDeliveryFee(sale.rascunhoMetadados);
+	const deliveryFee =
+		resolvedDeliveryMode === "ENTREGA" ? Math.min(input.taxaEntrega ?? previousDeliveryFee, input.acrescimosTotal ?? 0) : 0;
 	const editionLogEntry = {
 		data: new Date().toISOString(),
 		autorId: input.saleAuthorId,
@@ -585,6 +602,19 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 			rascunhoMetadados: {
 				...previousDraftMetadata,
 				descontoGeral: descontosGerais,
+				taxaEntrega: deliveryFee,
+				...(previousShopMetadata
+					? {
+							shop: {
+								...previousShopMetadata,
+								entrega: {
+									...previousShopDelivery,
+									modalidade: resolvedDeliveryMode,
+									taxa: deliveryFee,
+								},
+							},
+						}
+					: {}),
 				cupom: cupomRemovido ? null : (previousDraftMetadata.cupom ?? null),
 				edicoes: [...previousEditions, editionLogEntry],
 			},

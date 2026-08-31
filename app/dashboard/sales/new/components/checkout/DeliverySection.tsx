@@ -2,11 +2,11 @@ import SelectInput from "@/components/Inputs/SelectInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TUseSaleState } from "@/state-hooks/use-sale-state";
-import type { TDeliveryModeEnum } from "@/schemas/enums";
 import { resolveShopDeliveryFee } from "@/lib/shop/config";
 import { useShopSettings } from "@/lib/queries/shop";
 import { SaleFullfilmentModesOptions } from "@/utils/select-options";
 import { TruckIcon } from "lucide-react";
+import { useEffect } from "react";
 
 type DeliverySectionProps = {
 	saleState: TUseSaleState;
@@ -20,19 +20,11 @@ export default function DeliverySection({ saleState, locationOptions, onOpenNewL
 	// Mesma regra da loja digital, aplicada ao subtotal de itens do PDV.
 	const deliveryFee = configuracoes ? resolveShopDeliveryFee({ configuracoes, modalidade: "ENTREGA", subtotalItens: saleState.totalItens }) : 0;
 
-	// Prefill editável: preenche ao entrar em ENTREGA se o operador ainda não mexeu no acréscimo,
-	// e só limpa ao sair se o valor continuar sendo exatamente a taxa configurada.
-	const handleModeSelect = (mode: TDeliveryModeEnum) => {
-		const previous = saleState.state.entregaModalidade;
-		saleState.setEntregaModalidade(mode);
-		if (mode === previous) return;
-
-		if (mode === "ENTREGA") {
-			if (deliveryFee > 0 && saleState.state.acrescimoGeral === 0) saleState.setAcrescimoGeral(deliveryFee);
-			return;
-		}
-		if (previous === "ENTREGA" && deliveryFee > 0 && saleState.state.acrescimoGeral === deliveryFee) saleState.setAcrescimoGeral(0);
-	};
+	const deliveryMode = saleState.state.entregaModalidade;
+	const setDeliveryFee = saleState.setTaxaEntrega;
+	useEffect(() => {
+		setDeliveryFee(deliveryMode === "ENTREGA" ? deliveryFee : 0);
+	}, [deliveryFee, deliveryMode, setDeliveryFee]);
 
 	return (
 		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-3 shadow-2xs">
@@ -51,7 +43,7 @@ export default function DeliverySection({ saleState, locationOptions, onOpenNewL
 							className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs"
 							variant={saleState.state.entregaModalidade === mode.value ? "brand" : "ghost"}
 							disabled={isEntregaBlocked}
-							onClick={() => handleModeSelect(mode.value)}
+							onClick={() => saleState.setEntregaModalidade(mode.value)}
 						>
 							{mode.icon}
 							{mode.label}

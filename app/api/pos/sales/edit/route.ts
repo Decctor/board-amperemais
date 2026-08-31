@@ -63,6 +63,7 @@ const EditConfirmedSaleInputSchema = z.object({
 	observacoes: z.string({ invalid_type_error: "Tipo não válido para observações." }).optional().nullable(),
 	descontosTotal: z.number({ invalid_type_error: "Tipo não válido para desconto." }).optional().nullable(),
 	acrescimosTotal: z.number({ invalid_type_error: "Tipo não válido para acréscimo." }).optional().nullable(),
+	taxaEntrega: z.number({ invalid_type_error: "Tipo não válido para taxa de entrega." }).nonnegative().optional(),
 	// Splits novos APENAS para o restante não efetivado (vazio quando nada resta a pagar).
 	pagamentos: z.array(CheckoutPaymentSplitSchema.omit({ id: true })),
 	emissaoFiscalAutomatica: z.boolean({ invalid_type_error: "Tipo não válido para emissão fiscal automática." }).optional().nullable(),
@@ -270,6 +271,7 @@ async function editConfirmedSale({ input, session }: { input: TEditConfirmedSale
 				itens: input.itens,
 				descontosTotal: input.descontosTotal,
 				acrescimosTotal: input.acrescimosTotal,
+				taxaEntrega: input.taxaEntrega,
 				observacoes: input.observacoes,
 				vendedorId: input.vendedorId,
 				vendedorNome: input.vendedorNome,

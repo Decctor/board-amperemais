@@ -11,7 +11,7 @@ import {
 	type TFiscalValidationError,
 	type TItemTaxResult,
 } from "./engine";
-import { readShopDeliveryFee } from "@/lib/shop/config";
+import { resolveFiscalShopDeliveryFee } from "@/lib/shop/config";
 import type { TFiscalSaleContext } from "./types";
 
 function readDestinatarioUf(context: TFiscalSaleContext): string | null {
@@ -145,7 +145,11 @@ export function computeSaleTaxation(context: TFiscalSaleContext): TSaleTaxation 
 	const vFreteCanal = integracaoMetadados?.entrega.realizadaPor === "LOJA" ? Math.max(integracaoMetadados.entrega.valorFrete, 0) : 0;
 	// Taxa de entrega da loja digital: entrega sempre própria, logo é receita da loja e entra na NF.
 	// Precisa compor vNF, senão os pagamentos (que já incluem a taxa) não fecham e a NFC-e ganha vTroco fantasma.
-	const vFreteLoja = readShopDeliveryFee(context.venda.rascunhoMetadados);
+	const vFreteLoja = resolveFiscalShopDeliveryFee({
+		rascunhoMetadados: context.venda.rascunhoMetadados,
+		modalidade: context.venda.entregaModalidade,
+		acrescimosTotal: context.venda.acrescimosTotal,
+	});
 	const vFrete = vFreteCanal + vFreteLoja;
 
 	const totais = computeDocumentTotals(

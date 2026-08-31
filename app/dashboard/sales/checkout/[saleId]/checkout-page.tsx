@@ -213,11 +213,14 @@ export default function CheckoutPage({
 				comandaNumero: saleState.state.comandaNumero,
 				observacoes: saleState.state.observacoes || null,
 				descontosTotal: saleState.state.descontoGeral > 0 ? saleState.state.descontoGeral : null,
-				acrescimosTotal: saleState.state.acrescimoGeral > 0 ? saleState.state.acrescimoGeral : null,
+				acrescimosTotal: saleState.acrescimosTotal > 0 ? saleState.acrescimosTotal : null,
 				cashbackResgate: saleState.state.cashbackResgate,
 				cupomResgate: saleState.state.cupomResgate,
 				emissaoFiscalAutomatica: saleState.state.emissaoFiscalAutomatica,
-				rascunhoMetadados: (draft?.rascunhoMetadados as Record<string, unknown> | null) ?? {},
+				rascunhoMetadados: {
+					...(draft?.rascunhoMetadados as Record<string, unknown> | null),
+					...saleState.getDraftMetadata(),
+				},
 				itens: mapItemsToApi(saleState),
 			});
 
