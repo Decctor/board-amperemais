@@ -34,3 +34,27 @@ test("service transfer notification uses the global template contract and dynami
 		parameters: [{ type: "text", text: "5534999999999" }],
 	});
 });
+
+test("service transfer notification v2 uses a dynamic image and leaves the phone in the body", () => {
+	const payload = WHATSAPP_REPORT_TEMPLATES.SERVICE_TRANSFER_NOTIFICATIONS_V2.getPayload({
+		templateKey: "SERVICE_TRANSFER_NOTIFICATIONS_V2",
+		headerMediaId: "media-123",
+		toPhoneNumber: "+55 34 98888-7777",
+		organizationName: "Loja Exemplo",
+		clientName: "João da Silva",
+		clientePhoneNumber: "+55 34 99999-9999",
+		serviceDescription: "Motivo: política de pagamento não documentada.",
+	}).data;
+
+	assert.equal(payload.template.name, "service_transfer_notification_v2");
+	assert.deepEqual(payload.template.components[0], {
+		type: "header",
+		parameters: [{ type: "image", image: { id: "media-123" } }],
+	});
+	assert.deepEqual(payload.template.components[1]?.parameters?.[2], {
+		type: "text",
+		parameter_name: "cliente_telefone",
+		text: "+55 34 99999-9999",
+	});
+	assert.equal(payload.template.components.length, 2);
+});

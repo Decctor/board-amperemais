@@ -79,7 +79,10 @@ export function buildAgentSystemPrompt({
   pedir ao cliente que refine a busca.
 - No máximo 1 emoji por mensagem, e só quando somar algo.
 - Uma única mensagem por vez. Não quebre a resposta em várias.
-- Não repita saudação se a conversa já começou.
+- Saudação é somente para abrir uma conversa. Antes de responder, leia "Conversa até aqui": se já
+  existir qualquer mensagem de "Você (assistente)", a conversa já começou e você não deve usar
+  "bom dia", "boa tarde", "boa noite", "olá", "oi" nem outra saudação novamente. Continue
+  diretamente do assunto, mesmo que o cliente volte a cumprimentar.
 - Nunca afirme algo que você não confirmou por ferramenta ou pela base de conhecimento. Na
   dúvida, use a ferramenta nesta execução ou pergunte objetivamente o dado que falta.
 - Nunca encerre dizendo que vai consultar, verificar, criar, gerar ou preparar algo depois, e

@@ -8,9 +8,7 @@ export type TemplateParameter =
 	  }
 	| {
 			type: "image";
-			image: {
-				link: string;
-			};
+			image: { link: string } | { id: string };
 	  }
 	| {
 			type: "video";
@@ -170,6 +168,16 @@ const ServiceTransferNotificationsParametersInputSchema = DefaultTemplatePayload
 	serviceDescription: z.string(),
 });
 type ServiceTransferNotificationsParametersInput = z.infer<typeof ServiceTransferNotificationsParametersInputSchema>;
+
+const ServiceTransferNotificationsV2ParametersInputSchema = DefaultTemplatePayloadSchema.extend({
+	templateKey: z.enum(["SERVICE_TRANSFER_NOTIFICATIONS_V2"]),
+	headerMediaId: z.string().min(1),
+	organizationName: z.string(),
+	clientName: z.string(),
+	clientePhoneNumber: z.string(),
+	serviceDescription: z.string(),
+});
+type ServiceTransferNotificationsV2ParametersInput = z.infer<typeof ServiceTransferNotificationsV2ParametersInputSchema>;
 
 export const WHATSAPP_REPORT_TEMPLATES = {
 	DAILY_REPORT: {
@@ -541,6 +549,45 @@ Detalhes: ${serviceDescription}`,
 										type: "text",
 										text: clientWhatsappId,
 									},
+								],
+							},
+						],
+					},
+				},
+			};
+		},
+	},
+	SERVICE_TRANSFER_NOTIFICATIONS_V2: {
+		id: "service_transfer_notifications_v2",
+		title: "Notificação de Transferência de Serviço com Imagem",
+		language: "pt_BR",
+		type: "utility",
+		getPayload: (input: ServiceTransferNotificationsV2ParametersInput) => {
+			const { toPhoneNumber, headerMediaId, organizationName, clientName, clientePhoneNumber, serviceDescription } =
+				ServiceTransferNotificationsV2ParametersInputSchema.parse(input);
+
+			return {
+				content: `Novo atendimento transferido pela IA.
+Organização: ${organizationName}
+Cliente: ${clientName}
+Telefone: ${clientePhoneNumber}
+Detalhes: ${serviceDescription}`,
+				data: {
+					messaging_product: "whatsapp",
+					to: formatPhoneForInternalGateway(toPhoneNumber),
+					type: "template" as const,
+					template: {
+						name: "service_transfer_notification_v2",
+						language: { code: "pt_BR" },
+						components: [
+							{ type: "header", parameters: [{ type: "image", image: { id: headerMediaId } }] },
+							{
+								type: "body",
+								parameters: [
+									{ type: "text", parameter_name: "organizacao_nome", text: sanitizeTemplateParameter(organizationName) },
+									{ type: "text", parameter_name: "cliente_nome", text: sanitizeTemplateParameter(clientName) },
+									{ type: "text", parameter_name: "cliente_telefone", text: sanitizeTemplateParameter(clientePhoneNumber) },
+									{ type: "text", parameter_name: "atendimento_detalhes", text: sanitizeTemplateParameter(serviceDescription) },
 								],
 							},
 						],

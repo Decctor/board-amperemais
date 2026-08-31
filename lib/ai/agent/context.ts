@@ -38,6 +38,26 @@ function describeAuthor(autorTipo: string): string {
 	return "Sistema";
 }
 
+function formatSaoPauloMoment(instant: string): string {
+	const date = new Date(instant);
+	const hour = Number(
+		new Intl.DateTimeFormat("en-US", {
+			timeZone: "America/Sao_Paulo",
+			hour: "2-digit",
+			hourCycle: "h23",
+		}).format(date),
+	);
+	const period = hour < 6 ? "madrugada" : hour < 12 ? "manhã" : hour < 18 ? "tarde" : "noite";
+	const localDateTime = new Intl.DateTimeFormat("pt-BR", {
+		timeZone: "America/Sao_Paulo",
+		dateStyle: "short",
+		timeStyle: "short",
+		hour12: false,
+	}).format(date);
+
+	return `${localDateTime} (${period})`;
+}
+
 /**
  * Snapshot que acompanha **sempre** o prompt do turno.
  *
@@ -167,7 +187,8 @@ export function formatChatRunContext(context: TChatRunContext): string {
 ${clientLines}
 
 ## Momento atual
-- Agora: ${context.tempo.agora} (${context.tempo.fusoHorario})
+- Agora em São Paulo: ${formatSaoPauloMoment(context.tempo.agora)}
+- Fuso horário: ${context.tempo.fusoHorario}
 - Janela de 24h do WhatsApp: ${context.tempo.janelaWhatsapp.aberta ? "aberta" : "fechada"}
 ${attendanceBlock}
 ## Conversa até aqui
