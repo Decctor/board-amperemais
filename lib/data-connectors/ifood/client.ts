@@ -210,9 +210,13 @@ export async function getIfoodOrder(client: AxiosInstance, orderId: string): Pro
 
 export async function acknowledgeIfoodEvents(client: AxiosInstance, eventIds: string[]) {
 	const uniqueEventIds = Array.from(new Set(eventIds));
+	const statusCodes: number[] = [];
 
 	for (let index = 0; index < uniqueEventIds.length; index += IFOOD_ACKNOWLEDGMENT_CHUNK_SIZE) {
 		const eventAcknowledgments = uniqueEventIds.slice(index, index + IFOOD_ACKNOWLEDGMENT_CHUNK_SIZE).map((id) => ({ id }));
-		await client.post(`${IFOOD_EVENTS_BASE_URL}/events/acknowledgment`, eventAcknowledgments);
+		const response = await client.post(`${IFOOD_EVENTS_BASE_URL}/events/acknowledgment`, eventAcknowledgments);
+		statusCodes.push(response.status);
 	}
+
+	return statusCodes;
 }

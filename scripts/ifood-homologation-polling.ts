@@ -2,9 +2,11 @@ import "@/utils/scripts/load-next-env";
 
 import { runDataCollectingV2 } from "@/lib/data-collecting-v2";
 import { acknowledgeIfoodEvents, createIfoodClient, getValidIfoodConfig, pollIfoodEvents } from "@/lib/data-connectors/ifood";
+import { appendIfoodHomologationAudit } from "@/lib/data-connectors/ifood/homologation-audit";
 import { getActiveDataSourceIntegrations } from "@/lib/integrations/data-sources";
 import { connection, db } from "@/services/drizzle";
 import dayjs from "dayjs";
+import path from "node:path";
 
 const DEFAULT_ORGANIZATION_ID = "59c2b238-bc21-4710-b47b-db6e2a380079";
 const DEFAULT_INTERVAL_SECONDS = 30;
@@ -24,16 +26,18 @@ function printHelp() {
 Mantém o aplicativo ONLINE no iFood fazendo polling de eventos a cada ${DEFAULT_INTERVAL_SECONDS}s (requisito de presença/homologação).
 
 Uso:
-  npm run ifood:homologation-polling -- [--org=<organizationId>] [--interval=<segundos>] [--no-ack] [--collect]
+  npm run ifood:homologation-polling -- [--org=<organizationId>] [--interval=<segundos>] [--no-ack] [--collect] [--audit-file=<caminho>]
 
 Opções:
   --org             ID da organização conectada ao iFood. Padrão: ${DEFAULT_ORGANIZATION_ID}
   --integration-id  ID da linha de integrations (obrigatório quando a organização tem mais de uma conexão iFood ativa).
   --interval        Intervalo entre pollings em segundos. Padrão: ${DEFAULT_INTERVAL_SECONDS} (recomendado pelo iFood).
-  --no-ack      Não envia acknowledgment dos eventos recebidos (deixa os eventos para o pipeline normal).
+  --no-ack      Não envia acknowledgment no modo simples. Não pode ser combinado com --collect.
   --collect     Em vez de só polling+ACK, roda o pipeline completo de ingestão (runDataCollectingV2)
                 a cada iteração — os pedidos entram no banco e aparecem no painel de pedidos em ~30s.
                 Use este modo durante a homologação das etapas de pedido.
+  --audit-file  Arquivo JSONL local com eventos, ACKs e resultados. Por padrão cria um arquivo
+                datado em .local-analysis/ifood-homologation/.
 
 Encerre com Ctrl+C.
 `);
@@ -84,7 +88,18 @@ async function runPollingLoop({
 			if (collect) {
 				// Pipeline completo: o polling acontece dentro do fetch do data-connector (mantém a
 				// presença no iFood) e os pedidos são gravados/ACKados pelo fluxo canônico.
-				const result = await runDataCollectingV2({ organizationIds: [organizationId] });
+				const result = await runDataCollectingV2({
+					organizationIds: [organizationId],
+					integrationIds: integrationId ? [integrationId] : undefined,
+				});
+				await appendIfoodHomologationAudit({
+					type: "collect_completed",
+					iteration,
+					organizationId,
+					summaries: result.summaries,
+					errors: result.errors,
+					durationMs: dayjs().diff(startedAt, "milliseconds"),
+				});
 				console.log(`[IFOOD_HOMOLOGATION_POLLING] #${iteration} ${startedAt.format("HH:mm:ss")} (collect)`, {
 					summaries: result.summaries.length,
 					errors: result.errors.length,
@@ -97,11 +112,31 @@ async function runPollingLoop({
 				const client = createIfoodClient(validConfig);
 				const events = await pollIfoodEvents(client, { merchantIds: validConfig.merchantIds });
 
-				if (events.length && sendAck)
-					await acknowledgeIfoodEvents(
+				const acknowledgmentStatusCodes =
+					events.length && sendAck
+						? await acknowledgeIfoodEvents(
 						client,
 						events.map((event) => event.id),
-					);
+						)
+						: [];
+
+				await appendIfoodHomologationAudit({
+					type: sendAck ? "poll_and_ack_completed" : "poll_completed_without_ack",
+					iteration,
+					organizationId,
+					integrationId: integration.id,
+					merchantIds: validConfig.merchantIds,
+					acknowledgmentStatusCodes,
+					events: events.map((event) => ({
+						id: event.id,
+						code: event.code,
+						fullCode: event.fullCode ?? null,
+						orderId: event.orderId ?? null,
+						merchantId: event.merchantId ?? null,
+						createdAt: event.createdAt ?? null,
+					})),
+					durationMs: dayjs().diff(startedAt, "milliseconds"),
+				});
 
 				console.log(`[IFOOD_HOMOLOGATION_POLLING] #${iteration} ${startedAt.format("HH:mm:ss")}`, {
 					merchantIds: validConfig.merchantIds,
@@ -119,6 +154,13 @@ async function runPollingLoop({
 						}
 					: null;
 			console.error(`[IFOOD_HOMOLOGATION_POLLING] #${iteration} falhou`, axiosDetails ?? error);
+			await appendIfoodHomologationAudit({
+				type: "iteration_failed",
+				iteration,
+				organizationId,
+				durationMs: dayjs().diff(startedAt, "milliseconds"),
+				error: axiosDetails ?? (error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : String(error)),
+			});
 		}
 
 		const elapsedMilliseconds = dayjs().diff(startedAt, "milliseconds");
@@ -139,8 +181,33 @@ async function main() {
 	if (!Number.isFinite(intervalSeconds) || intervalSeconds < 5) throw new Error(`Intervalo inválido: ${getArgValue("interval")}`);
 	const sendAck = !hasFlag("no-ack");
 	const collect = hasFlag("collect");
+	if (collect && !sendAck) throw new Error("--no-ack não pode ser combinado com --collect: o pipeline de ingestão sempre confirma os eventos.");
+	const defaultAuditFile = path.resolve(
+		process.cwd(),
+		".local-analysis",
+		"ifood-homologation",
+		`ifood-homologation-${new Date().toISOString().replaceAll(":", "-")}.jsonl`,
+	);
+	const auditFile = path.resolve(getArgValue("audit-file") ?? defaultAuditFile);
+	process.env.IFOOD_HOMOLOGATION_AUDIT_FILE = auditFile;
 
-	console.log("[IFOOD_HOMOLOGATION_POLLING] Iniciando polling contínuo", { organizationId, integrationId, intervalSeconds, sendAck, collect });
+	await appendIfoodHomologationAudit({
+		type: "session_started",
+		organizationId,
+		integrationId,
+		intervalSeconds,
+		sendAck,
+		collect,
+		auditFile,
+	});
+	console.log("[IFOOD_HOMOLOGATION_POLLING] Iniciando polling contínuo", {
+		organizationId,
+		integrationId,
+		intervalSeconds,
+		sendAck,
+		collect,
+		auditFile,
+	});
 	console.log("[IFOOD_HOMOLOGATION_POLLING] O aplicativo fica ONLINE no iFood enquanto este script estiver rodando. Encerre com Ctrl+C.");
 
 	process.on("SIGINT", () => {
@@ -149,6 +216,7 @@ async function main() {
 	});
 
 	await runPollingLoop({ organizationId, integrationId, intervalSeconds, sendAck, collect });
+	await appendIfoodHomologationAudit({ type: "session_stopped", organizationId, integrationId });
 }
 
 main()

@@ -646,13 +646,11 @@ export function toCanonicalIfoodImportBatch({
 	window,
 	orders,
 	events,
-	postProcess,
 }: {
 	organizationId: string;
 	window: TCanonicalImportWindow;
 	orders: TIfoodOrder[];
 	events: TIfoodEvent[];
-	postProcess?: () => Promise<void>;
 }): TCanonicalConnectorBatch {
 	const eventsByOrderId = new Map<string, TIfoodEvent[]>();
 	for (const event of events) {
@@ -683,6 +681,5 @@ export function toCanonicalIfoodImportBatch({
 		productAddOns: [],
 		productAddOnOptions: [],
 		raw: { events, orders },
-		postProcess,
 	};
 }

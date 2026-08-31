@@ -1,5 +1,6 @@
 import type { TCanonicalImportWindow } from "../types";
 import { createIfoodClient, getIfoodOrder, getValidIfoodConfig, acknowledgeIfoodEvents, pollIfoodEvents } from "./client";
+import { appendIfoodHomologationAudit } from "./homologation-audit";
 import { toCanonicalIfoodImportBatch } from "./mappers";
 import { IfoodConfigSchema, type TIfoodEvent } from "./types";
 
@@ -90,19 +91,55 @@ export async function fetchIfoodImportBatch({
 				.filter((event) => !relevantEvents.includes(event))
 				.map((event) => `${event.fullCode ?? event.code} id=${event.id}`),
 		});
+
+	await appendIfoodHomologationAudit({
+		type: "poll_received",
+		organizationId,
+		integrationId,
+		merchantIds: validConfig.merchantIds,
+		events: events.map((event) => ({
+			id: event.id,
+			code: event.code,
+			fullCode: event.fullCode ?? null,
+			orderId: event.orderId ?? null,
+			merchantId: event.merchantId ?? null,
+			createdAt: event.createdAt ?? null,
+			relevant: relevantEvents.includes(event),
+		})),
+	});
+
+	// A homologacao exige ACK imediato de TODOS os eventos retornados, inclusive desconhecidos,
+	// opcionais, duplicados e eventos de codigo de entrega. Por isso o ACK usa `events`, nao
+	// `relevantEvents`, e acontece antes de buscar pedidos ou abrir a transacao de ingestao.
+	const eventIds = events.map((event) => event.id);
+	if (eventIds.length) {
+		try {
+			const statusCodes = await acknowledgeIfoodEvents(client, eventIds);
+			console.log("[IFOOD_EVENTS_ACK]", { organizationId, eventIds, statusCodes });
+			await appendIfoodHomologationAudit({ type: "ack_succeeded", organizationId, integrationId, eventIds, statusCodes });
+		} catch (error) {
+			await appendIfoodHomologationAudit({
+				type: "ack_failed",
+				organizationId,
+				integrationId,
+				eventIds,
+				error: error instanceof Error ? { name: error.name, message: error.message } : String(error),
+			});
+			throw error;
+		}
+	}
 	const orderIds = uniqueOrderIds(relevantEvents);
 	const orders = await Promise.all(orderIds.map((orderId) => getIfoodOrder(client, orderId)));
-	const eventIds = events.map((event) => event.id);
 
 	return toCanonicalIfoodImportBatch({
 		organizationId,
 		window,
 		orders,
 		events,
-		postProcess: eventIds.length ? () => acknowledgeIfoodEvents(client, eventIds) : undefined,
 	});
 }
 
 export * from "./client";
 export * from "./mappers";
+export * from "./homologation-audit";
 export * from "./types";
