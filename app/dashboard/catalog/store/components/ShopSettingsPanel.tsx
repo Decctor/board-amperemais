@@ -314,9 +314,20 @@ function ServiceSection({
 							value={service.entrega.prazoMinutos}
 							onChange={(prazoMinutos) => updateService({ ...service, entrega: { ...service.entrega, prazoMinutos } })}
 						/>
+						<NumberField
+							label="Taxa de entrega (R$)"
+							value={service.entrega.taxa}
+							onChange={(taxa) => updateService({ ...service, entrega: { ...service.entrega, taxa } })}
+						/>
+						<OptionalNumberField
+							label="Entrega grátis acima de (R$)"
+							hint="Deixe vazio para sempre cobrar a taxa."
+							value={service.entrega.gratisAcima}
+							onChange={(gratisAcima) => updateService({ ...service, entrega: { ...service.entrega, gratisAcima } })}
+						/>
 					</div>
 				) : (
-					<p className="text-sm text-muted-foreground">Ative para configurar pedido mínimo e prazo estimado.</p>
+					<p className="text-sm text-muted-foreground">Ative para configurar taxa, pedido mínimo e prazo estimado.</p>
 				)}
 			</SettingBlock>
 		</SectionIntro>
@@ -741,6 +752,27 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
 		<div className="space-y-2">
 			<Label>{label}</Label>
 			<Input type="number" min={0} value={value} onChange={(event) => onChange(Number(event.target.value))} />
+		</div>
+	);
+}
+
+// Campo numérico opcional: vazio significa regra desligada, não zero.
+function OptionalNumberField({
+	label,
+	hint,
+	value,
+	onChange,
+}: {
+	label: string;
+	hint?: string;
+	value: number | null;
+	onChange: (value: number | null) => void;
+}) {
+	return (
+		<div className="space-y-2">
+			<Label>{label}</Label>
+			<Input type="number" min={0} value={value ?? ""} onChange={(event) => onChange(event.target.value === "" ? null : Number(event.target.value))} />
+			{hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
 		</div>
 	);
 }

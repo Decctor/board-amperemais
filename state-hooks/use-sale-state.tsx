@@ -487,13 +487,14 @@ export const useSaleState = ({ initialState, organizationConfig, contasFinanceir
 	const totalItens = useMemo(() => state.itens.reduce((sum, item) => sum + item.valorTotalLiquido, 0), [state.itens]);
 	const itemCount = useMemo(() => state.itens.reduce((sum, item) => sum + item.quantidade, 0), [state.itens]);
 	const cupomDesconto = useMemo(() => state.cupomResgate?.valorDesconto ?? 0, [state.cupomResgate]);
-	const valorAntesCupom = useMemo(
-		() => Math.max(0, totalItens - state.descontoGeral + state.acrescimoGeral),
-		[totalItens, state.descontoGeral, state.acrescimoGeral],
-	);
-	// Mesma ordem do backend: base - descontos gerais + acréscimos → cupom → cashback.
+	// Descontos incidem só sobre os itens; o acréscimo entra por último e não é consumido
+	// por cupom nem cashback. Mesma ordem da loja digital e do backend.
+	const valorAntesCupom = useMemo(() => Math.max(0, totalItens - state.descontoGeral), [totalItens, state.descontoGeral]);
 	const valorAntesCashback = useMemo(() => Math.max(0, valorAntesCupom - cupomDesconto), [valorAntesCupom, cupomDesconto]);
-	const valorFinal = useMemo(() => Math.max(0, valorAntesCashback - state.cashbackResgate), [valorAntesCashback, state.cashbackResgate]);
+	const valorFinal = useMemo(
+		() => Math.max(0, valorAntesCashback - state.cashbackResgate) + state.acrescimoGeral,
+		[valorAntesCashback, state.cashbackResgate, state.acrescimoGeral],
+	);
 	const totalPagamentos = useMemo(() => state.pagamentos.reduce((sum, p) => sum + p.valor, 0), [state.pagamentos]);
 	// Modo edição: os splits editáveis só precisam cobrir o que ainda não foi recebido.
 	const valorAposEfetivados = useMemo(() => Math.max(0, valorFinal - state.pagamentosEfetivadosTotal), [valorFinal, state.pagamentosEfetivadosTotal]);

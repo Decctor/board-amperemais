@@ -13,6 +13,7 @@ import { BrazilianCitiesOptionsFromUF, BrazilianStatesOptions } from "@/utils/st
 import { toast } from "sonner";
 import { getCEPInfo } from "@/lib/utils";
 import { getShopCartSubtotal } from "@/lib/shop/cart";
+import { resolveShopDeliveryFee } from "@/lib/shop/config";
 import { HAPTICS, triggerHaptic } from "@/lib/shop/haptics";
 
 type DeliveryStepProps = {
@@ -59,6 +60,12 @@ export default function DeliveryStep({ onNext }: DeliveryStepProps) {
 
 	const isDelivery = delivery.modalidade === "ENTREGA";
 	const deliveryMinimumReached = !isDelivery || subtotal >= service.entrega.pedidoMinimo;
+	// Calculada sempre como ENTREGA: o cartão precisa mostrar a taxa antes de o cliente escolher a modalidade.
+	const deliveryFee = resolveShopDeliveryFee({ configuracoes: config, modalidade: "ENTREGA", subtotalItens: subtotal });
+	const missingForFreeDelivery =
+		service.entrega.taxa > 0 && service.entrega.gratisAcima !== null && subtotal < service.entrega.gratisAcima
+			? service.entrega.gratisAcima - subtotal
+			: 0;
 
 	const canProceed =
 		delivery.modalidade === "RETIRADA" ||
@@ -105,6 +112,11 @@ export default function DeliveryStep({ onNext }: DeliveryStepProps) {
 						<Truck className={cn("w-6 h-6", delivery.modalidade === "ENTREGA" ? "text-foreground" : "text-muted-foreground")} />
 						<span className="font-semibold">Entrega</span>
 						<span className="text-xs text-muted-foreground">Até {service.entrega.prazoMinutos} min</span>
+						{service.entrega.taxa > 0 ? (
+							<span className={cn("text-xs", deliveryFee === 0 ? "font-semibold text-brand" : "text-muted-foreground")}>
+								{deliveryFee === 0 ? "Entrega grátis" : `Taxa ${formatToMoney(deliveryFee)}`}
+							</span>
+						) : null}
 					</button>
 				</div>
 			)}
@@ -122,6 +134,11 @@ export default function DeliveryStep({ onNext }: DeliveryStepProps) {
 			{isDelivery && <DeliveryAddressForm deliveryAddress={delivery.endereco} updateDelivery={orderState.updateDelivery} />}
 			{isDelivery && !deliveryMinimumReached ? (
 				<p className="text-sm font-medium text-destructive">O pedido mínimo para entrega é {formatToMoney(service.entrega.pedidoMinimo)}.</p>
+			) : null}
+			{isDelivery && missingForFreeDelivery > 0 ? (
+				<p className="text-sm text-muted-foreground">
+					Faltam <span className="font-semibold text-brand">{formatToMoney(missingForFreeDelivery)}</span> para ganhar entrega grátis.
+				</p>
 			) : null}
 
 			<div className="sticky bottom-0 z-10 -mx-4 mt-auto border-t bg-background px-4 py-3 lg:-mx-6 lg:px-6">

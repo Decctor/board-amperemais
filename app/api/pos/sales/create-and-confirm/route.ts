@@ -167,7 +167,7 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 	const cupomDesconto = input.cupomResgate?.valorDesconto ?? 0;
 	const acrescimosGerais = input.acrescimosTotal ?? 0;
 	const descontosVenda = descontosGerais + cupomDesconto + cashbackResgate;
-	const valorAntesCupom = Math.max(0, valorBaseItens - descontosGerais + acrescimosGerais);
+	const valorAntesCupom = Math.max(0, valorBaseItens - descontosGerais);
 	if (cupomDesconto > valorAntesCupom) {
 		throw new createHttpError.BadRequest("O desconto do cupom não pode superar o valor da venda.");
 	}
@@ -191,7 +191,7 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 		aprovacaoId: input.descontoAprovacaoId,
 	});
 
-	const valorTotal = Math.max(0, valorBaseItens - descontosVenda + acrescimosGerais);
+	const valorTotal = Math.max(0, valorBaseItens - descontosVenda) + acrescimosGerais;
 	const descontosTotalItens = input.itens.reduce((sum, item) => sum + item.valorDesconto, 0);
 	// O item da recompensa entra com líquido 0 (bruto = desconto = precoVenda), então não afeta
 	// valorTotal — mas o desconto comercial compõe descontosTotal e o custo compõe custoTotal.

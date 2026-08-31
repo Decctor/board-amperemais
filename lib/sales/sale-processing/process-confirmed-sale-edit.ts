@@ -353,7 +353,7 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 	const descontosGerais = input.descontosTotal ?? 0;
 	const acrescimosGerais = input.acrescimosTotal ?? 0;
 	const descontosVenda = descontosGerais + cupomDesconto + cashbackResgate;
-	const valorAntesCupom = Math.max(0, valorBaseItens - descontosGerais + acrescimosGerais);
+	const valorAntesCupom = Math.max(0, valorBaseItens - descontosGerais);
 	if (cupomDesconto > valorAntesCupom) {
 		throw new createHttpError.BadRequest("O desconto do cupom não pode superar o valor da venda.");
 	}
@@ -363,7 +363,7 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 			"O novo total não comporta o resgate de cashback aplicado na venda. Para desfazer o resgate, cancele a venda.",
 		);
 	}
-	const valorTotal = Math.max(0, valorBaseItens - descontosVenda + acrescimosGerais);
+	const valorTotal = Math.max(0, valorBaseItens - descontosVenda) + acrescimosGerais;
 	if (valorTotal < editability.valorMinimoEdicao - ACCOUNTING_ENTRY_BALANCE_TOLERANCE) {
 		throw new createHttpError.BadRequest(
 			`O novo total (R$ ${valorTotal.toFixed(2)}) é menor que o valor já recebido (R$ ${editability.valorMinimoEdicao.toFixed(2)}). Para estornar recebimentos, cancele a venda.`,

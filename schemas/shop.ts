@@ -113,8 +113,15 @@ export const ShopServiceConfigurationSchema = z
 					.int("Prazo estimado deve ser inteiro.")
 					.nonnegative("Prazo estimado não pode ser negativo.")
 					.default(60),
+				taxa: z.number({ invalid_type_error: "Tipo não válido para taxa de entrega." }).nonnegative("Taxa de entrega não pode ser negativa.").default(0),
+				gratisAcima: z
+					.number({ invalid_type_error: "Tipo não válido para valor de entrega grátis." })
+					.nonnegative("Valor para entrega grátis não pode ser negativo.")
+					.optional()
+					.nullable()
+					.default(null),
 			})
-			.default({ ativo: false, pedidoMinimo: 0, prazoMinutos: 60 }),
+			.default({ ativo: false, pedidoMinimo: 0, prazoMinutos: 60, taxa: 0, gratisAcima: null }),
 	})
 	.refine((data) => data.retirada.ativo || data.entrega.ativo, {
 		message: "Selecione retirada ou entrega para a loja digital.",
@@ -179,7 +186,7 @@ export const ShopSettingsConfigurationSchema = z
 	.object({
 		atendimento: ShopServiceConfigurationSchema.default({
 			retirada: { ativo: true },
-			entrega: { ativo: false, pedidoMinimo: 0, prazoMinutos: 60 },
+			entrega: { ativo: false, pedidoMinimo: 0, prazoMinutos: 60, taxa: 0, gratisAcima: null },
 		}),
 		pagamento: ShopPaymentConfigurationSchema.default({
 			metodosAceitos: ["DINHEIRO", "PIX"],
@@ -223,7 +230,7 @@ export type TShopSettingsConfiguration = z.infer<typeof ShopSettingsConfiguratio
 export const DEFAULT_SHOP_SETTINGS_CONFIGURATION: TShopSettingsConfiguration = {
 	atendimento: {
 		retirada: { ativo: true },
-		entrega: { ativo: false, pedidoMinimo: 0, prazoMinutos: 60 },
+		entrega: { ativo: false, pedidoMinimo: 0, prazoMinutos: 60, taxa: 0, gratisAcima: null },
 	},
 	pagamento: {
 		metodosAceitos: ["DINHEIRO", "PIX"],
@@ -411,6 +418,7 @@ export type TShopDraftMetadata = {
 	};
 	entrega: {
 		modalidade: "RETIRADA" | "ENTREGA";
+		taxa: number;
 	};
 	criadoEm: string;
 };

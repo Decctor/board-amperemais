@@ -1,6 +1,7 @@
 import { calculateAccumulatedCashbackValue } from "@/lib/cashback/accumulation";
 import { POS_REWARD_SALE_ITEM_ORIGIN } from "@/lib/sales/sale-reward-redemption";
 import { classifySalePaymentTransactions } from "@/lib/sales/utils";
+import { readShopDeliveryFee } from "@/lib/shop/config";
 import { db } from "@/services/drizzle";
 import { cashbackPrograms, couponRedemptions, organizations, sales } from "@/services/drizzle/schema";
 import { and, count, eq } from "drizzle-orm";
@@ -64,6 +65,7 @@ export async function buildCupomVendaDados({ organizacaoId, vendaId }: { organiz
 			vendedorNome: true,
 			observacoes: true,
 			integracaoMetadados: true,
+			rascunhoMetadados: true,
 			entregaModalidade: true,
 			comandaNumero: true,
 		},
@@ -146,6 +148,10 @@ export async function buildCupomVendaDados({ organizacaoId, vendaId }: { organiz
 	// ---- Decomposição dos descontos (mesma regra de lib/sales/map-sale-to-sale-state.ts) ----
 	const descontosTotal = sale.descontosTotal ?? 0;
 	const acrescimosTotal = sale.acrescimosTotal ?? 0;
+	// A loja digital grava a taxa no snapshot do checkout; o restante segue como acréscimo genérico
+	// (no PDV a taxa entra via acréscimo geral e não tem como ser distinguida).
+	const taxaEntrega = Math.min(readShopDeliveryFee(sale.rascunhoMetadados), acrescimosTotal);
+	const acrescimosGenericos = Math.max(0, acrescimosTotal - taxaEntrega);
 
 	const resgatesAtivos = sale.transacoesCashback.filter((transaction) => transaction.tipo === "RESGATE" && transaction.status === "ATIVO");
 	// Só resgates-desconto compõem o desconto em R$. O resgate de recompensa está em moeda cashback
@@ -255,7 +261,8 @@ export async function buildCupomVendaDados({ organizacaoId, vendaId }: { organiz
 			}),
 			subtotal,
 			descontoGeral,
-			acrescimos: acrescimosTotal,
+			acrescimos: acrescimosGenericos,
+			taxaEntrega,
 			valorFinal: sale.valorTotal,
 			pagamentos: pagamentosCupom,
 		},

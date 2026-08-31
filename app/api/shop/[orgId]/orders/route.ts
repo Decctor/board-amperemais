@@ -7,7 +7,7 @@ import { processSaleConfirmation } from "@/lib/sales/sale-processing";
 import { admitSaleRewardRedemption, buildRewardSaleItemValues, buildSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-redemption";
 import { getShopCatalogProducts, type TShopCatalogProduct } from "@/lib/shop/catalog";
 import { getShopAvailability } from "@/lib/shop/availability";
-import { normalizeShopSettingsConfiguration } from "@/lib/shop/config";
+import { normalizeShopSettingsConfiguration, resolveShopDeliveryFee } from "@/lib/shop/config";
 import type { TAppliedCoupon } from "@/schemas/coupons";
 import { CreateShopOrderInputSchema, type TShopDraftMetadata } from "@/schemas/shop";
 import { db } from "@/services/drizzle";
@@ -462,7 +462,9 @@ async function createShopOrder(request: NextRequest) {
 		: null;
 	const rewardDiscount = admittedReward?.prize.valorVenda ?? 0;
 	const discountsTotal = couponDiscount + requestedCashback + rewardDiscount;
-	const totalToPay = Math.max(0, subtotal - couponDiscount - requestedCashback);
+	// Taxa somada após os descontos: cupom e cashback incidem apenas sobre os itens, nunca sobre a entrega.
+	const deliveryFee = resolveShopDeliveryFee({ configuracoes, modalidade: input.entrega.modalidade, subtotalItens: subtotal });
+	const totalToPay = Math.max(0, subtotal - couponDiscount - requestedCashback) + deliveryFee;
 
 	let requestRecord: { id: string };
 	if (resumeSaleId && existingRequest) {
@@ -508,6 +510,7 @@ async function createShopOrder(request: NextRequest) {
 		},
 		entrega: {
 			modalidade: input.entrega.modalidade,
+			taxa: deliveryFee,
 		},
 		criadoEm: new Date().toISOString(),
 	};
@@ -527,7 +530,7 @@ async function createShopOrder(request: NextRequest) {
 						idExterno: `SHOP-${input.idempotencyKey}`,
 						valorTotal: totalToPay,
 						descontosTotal: discountsTotal > 0 ? discountsTotal : null,
-						acrescimosTotal: null,
+						acrescimosTotal: deliveryFee > 0 ? deliveryFee : null,
 						custoTotal: calculatedItems.reduce((sum, item) => sum + item.valorCustoTotal, 0) + (admittedReward?.prize.precoCusto ?? 0),
 						vendedorNome: "",
 						vendedorId: null,

@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { formatCashbackValue, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { buildShopCartLines } from "@/lib/shop/cart";
+import { resolveShopDeliveryFee } from "@/lib/shop/config";
 import type { TShopPaymentMethod } from "@/schemas/shop";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Banknote, Clock3, CreditCard, Gift, Info, Package, QrCode, Send, Sparkles, Ticket, Truck, User } from "lucide-react";
@@ -93,7 +94,8 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 	const couponDiscount = coupon.resgate?.valorDesconto ?? 0;
 	const cashbackDiscount = cashback.resgateSolicitado;
 	const discount = couponDiscount + cashbackDiscount;
-	const total = Math.max(0, subtotal - discount);
+	const deliveryFee = resolveShopDeliveryFee({ configuracoes: config, modalidade: delivery.modalidade, subtotalItens: subtotal });
+	const total = Math.max(0, subtotal - discount) + deliveryFee;
 	const itemCount = cartLines.reduce((sum, line) => sum + line.quantidade, 0);
 
 	const addressParts = delivery.endereco
@@ -280,6 +282,15 @@ export default function OrderReviewStep({ onSubmit, isSubmitting }: OrderReviewS
 									<span className="text-sm font-semibold tabular-nums">-{formatCashbackValue(cashbackDiscount)}</span>
 								</div>
 							) : null}
+						</div>
+					) : null}
+
+					{delivery.modalidade === "ENTREGA" ? (
+						<div className="flex items-center justify-between gap-3">
+							<span className="text-sm text-muted-foreground">Taxa de entrega</span>
+							<span className={`text-sm font-semibold tabular-nums ${deliveryFee === 0 ? "text-primary" : ""}`}>
+								{deliveryFee === 0 ? "Grátis" : formatToMoney(deliveryFee)}
+							</span>
 						</div>
 					) : null}
 

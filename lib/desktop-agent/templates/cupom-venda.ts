@@ -73,6 +73,7 @@ export const CupomVendaDadosSchema = z.object({
 		}),
 		descontoGeral: z.number({ invalid_type_error: "Tipo não válido para o desconto geral." }).optional().nullable(),
 		acrescimos: z.number({ invalid_type_error: "Tipo não válido para os acréscimos." }).optional().nullable(),
+		taxaEntrega: z.number({ invalid_type_error: "Tipo não válido para a taxa de entrega." }).optional().nullable(),
 		valorFinal: z.number({
 			required_error: "Valor final da venda não informado.",
 			invalid_type_error: "Tipo não válido para o valor final da venda.",
@@ -251,6 +252,7 @@ export function renderCupomVendaHtml(dados: TCupomVendaDados) {
 
 	const descontoGeral = venda.descontoGeral ?? 0;
 	const acrescimos = venda.acrescimos ?? 0;
+	const taxaEntrega = venda.taxaEntrega ?? 0;
 	const totaisHtml = `<div class="sep"></div>
 	<div class="bloco">
 		${renderLinha("Subtotal", formatToMoney(venda.subtotal))}
@@ -258,6 +260,7 @@ export function renderCupomVendaHtml(dados: TCupomVendaDados) {
 		${cashback?.valorResgatado ? renderLinha("Resgate de cashback", formatToMoney(cashback.valorResgatado), { negativo: true }) : ""}
 		${recompensa && recompensa.valorDesconto > 0 ? renderLinha(`Recompensa${recompensa.nome ? `: ${recompensa.nome}` : ""}`, formatToMoney(recompensa.valorDesconto), { negativo: true }) : ""}
 		${descontoGeral > 0 ? renderLinha("Desconto", formatToMoney(descontoGeral), { negativo: true }) : ""}
+		${taxaEntrega > 0 ? renderLinha("Taxa de entrega", formatToMoney(taxaEntrega)) : ""}
 		${acrescimos > 0 ? renderLinha("Acréscimo", formatToMoney(acrescimos)) : ""}
 	</div>
 	<div class="sep fina"></div>

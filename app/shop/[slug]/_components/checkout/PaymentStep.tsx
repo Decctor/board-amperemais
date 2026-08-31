@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { formatToMoney } from "@/lib/formatting";
 import { getShopCartSubtotal } from "@/lib/shop/cart";
+import { resolveShopDeliveryFee } from "@/lib/shop/config";
 import type { TShopPaymentMethod } from "@/schemas/shop";
 import { Banknote, CreditCard, QrCode } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -34,8 +35,13 @@ export default function PaymentStep({ onNext }: { onNext: () => void }) {
 
 	const orderTotal = useMemo(() => {
 		const subtotal = getShopCartSubtotal(cart.items, catalog.products);
-		return Math.max(0, subtotal - (coupon.resgate?.valorDesconto ?? 0) - cashback.resgateSolicitado);
-	}, [cart.items, catalog.products, coupon.resgate, cashback.resgateSolicitado]);
+		const taxaEntrega = resolveShopDeliveryFee({
+			configuracoes: catalog.shopSettings.configuracoes,
+			modalidade: delivery.modalidade,
+			subtotalItens: subtotal,
+		});
+		return Math.max(0, subtotal - (coupon.resgate?.valorDesconto ?? 0) - cashback.resgateSolicitado) + taxaEntrega;
+	}, [cart.items, catalog.products, coupon.resgate, cashback.resgateSolicitado, catalog.shopSettings.configuracoes, delivery.modalidade]);
 
 	const trocoTooLow = payment.precisaTroco && payment.trocoPara !== null && payment.trocoPara < orderTotal;
 
@@ -69,9 +75,7 @@ export default function PaymentStep({ onNext }: { onNext: () => void }) {
 								selected ? "border-brand bg-brand/5" : "border-border hover:border-brand/40"
 							}`}
 						>
-							<span
-								className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${selected ? "bg-brand text-brand-foreground" : "bg-muted"}`}
-							>
+							<span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${selected ? "bg-brand text-brand-foreground" : "bg-muted"}`}>
 								<Icon className="size-5" />
 							</span>
 							<span className="min-w-0">

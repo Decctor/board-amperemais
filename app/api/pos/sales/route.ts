@@ -181,7 +181,7 @@ async function createSaleDraft({ input, session }: { input: TCreateSaleDraftInpu
 	const cupomDesconto = input.cupomResgate?.valorDesconto ?? 0;
 	const descontosVenda = descontosGerais + cupomDesconto + input.cashbackResgate;
 	const acrescimosGerais = input.acrescimosTotal ?? 0;
-	const valorAntesCupom = Math.max(0, valorBaseItens - descontosGerais + acrescimosGerais);
+	const valorAntesCupom = Math.max(0, valorBaseItens - descontosGerais);
 	if (cupomDesconto > valorAntesCupom) {
 		throw new createHttpError.BadRequest("O desconto do cupom não pode superar o valor da venda.");
 	}
@@ -189,7 +189,7 @@ async function createSaleDraft({ input, session }: { input: TCreateSaleDraftInpu
 	if (input.cashbackResgate > valorAntesCashback) {
 		throw new createHttpError.BadRequest("O resgate de cashback não pode superar o valor da venda.");
 	}
-	const valorTotal = Math.max(0, valorBaseItens - descontosVenda + acrescimosGerais);
+	const valorTotal = Math.max(0, valorBaseItens - descontosVenda) + acrescimosGerais;
 	const custoTotal = input.itens.reduce((sum, item) => {
 		const custo = item.produtoVarianteId ? (variantCostMap.get(item.produtoVarianteId) ?? 0) : (productCostMap.get(item.produtoId) ?? 0);
 		return sum + custo * item.quantidade;
@@ -412,7 +412,7 @@ async function updateSaleDraft({ input, session }: { input: TUpdateSaleDraftInpu
 	const cupomDesconto = input.cupomResgate?.valorDesconto ?? 0;
 	const descontosVenda = descontosGerais + cupomDesconto + input.cashbackResgate;
 	const acrescimosVenda = input.acrescimosTotal ?? 0;
-	const valorAntesCupom = Math.max(0, valorBaseItens - descontosGerais + acrescimosVenda);
+	const valorAntesCupom = Math.max(0, valorBaseItens - descontosGerais);
 	if (cupomDesconto > valorAntesCupom) {
 		throw new createHttpError.BadRequest("O desconto do cupom não pode superar o valor da venda.");
 	}
@@ -471,7 +471,7 @@ async function updateSaleDraft({ input, session }: { input: TUpdateSaleDraftInpu
 				entregaLocalizacaoId: input.entregaLocalizacaoId,
 				comandaNumero: input.comandaNumero,
 				observacoes: input.observacoes,
-				valorTotal: Math.max(0, valorBaseItens - descontosVenda + acrescimosVenda),
+				valorTotal: Math.max(0, valorBaseItens - descontosVenda) + acrescimosVenda,
 				descontosTotal: descontosVenda > 0 ? descontosVenda : null,
 				acrescimosTotal: input.acrescimosTotal,
 				...(itemTotals ? { custoTotal: itemTotals.custoTotal } : {}),

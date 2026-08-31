@@ -11,6 +11,7 @@ import {
 	type TFiscalValidationError,
 	type TItemTaxResult,
 } from "./engine";
+import { readShopDeliveryFee } from "@/lib/shop/config";
 import type { TFiscalSaleContext } from "./types";
 
 function readDestinatarioUf(context: TFiscalSaleContext): string | null {
@@ -139,9 +140,13 @@ export function computeSaleTaxation(context: TFiscalSaleContext): TSaleTaxation 
 	});
 
 	// Frete de canal gerenciado (fase 5/C3): entrega própria (LOJA) é receita da loja e compõe a
-	// NF como vFrete; entrega feita pelo canal fica fora. Vendas internas não têm o bloco (0).
+	// NF como vFrete; entrega feita pelo canal fica fora.
 	const integracaoMetadados = context.venda.integracaoMetadados;
-	const vFrete = integracaoMetadados?.entrega.realizadaPor === "LOJA" ? Math.max(integracaoMetadados.entrega.valorFrete, 0) : 0;
+	const vFreteCanal = integracaoMetadados?.entrega.realizadaPor === "LOJA" ? Math.max(integracaoMetadados.entrega.valorFrete, 0) : 0;
+	// Taxa de entrega da loja digital: entrega sempre própria, logo é receita da loja e entra na NF.
+	// Precisa compor vNF, senão os pagamentos (que já incluem a taxa) não fecham e a NFC-e ganha vTroco fantasma.
+	const vFreteLoja = readShopDeliveryFee(context.venda.rascunhoMetadados);
+	const vFrete = vFreteCanal + vFreteLoja;
 
 	const totais = computeDocumentTotals(
 		itens.map(({ result, item }) => ({ result, valorBruto: item.valorVendaTotalBruto, valorDesconto: item.valorTotalDesconto })),
