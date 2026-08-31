@@ -4,7 +4,13 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
 import { getCatalogCommercialReadiness } from "@/lib/products/commercial-readiness";
-import { AiAgentCapacidadesSchema, AiAgentModeloConfigSchema, UpdateAiAgentKnowledgeSchema, UpdateAiAgentSchema } from "@/schemas/ai-agents";
+import {
+	AiAgentCapabilitiesSchema,
+	AiAgentModelConfigSchema,
+	AiAgentScopeSchema,
+	UpdateAiAgentKnowledgeSchema,
+	UpdateAiAgentSchema,
+} from "@/schemas/ai-agents";
 import { db } from "@/services/drizzle";
 import { aiAgentKnowledge, aiAgents } from "@/services/drizzle/schema";
 import { and, asc, eq } from "drizzle-orm";
@@ -37,8 +43,9 @@ async function getAiAgent({ organizacaoId }: { organizacaoId: string }) {
 
 	const parsedAgent = {
 		...agent,
-		modeloConfig: parseJsonbWithFallback(AiAgentModeloConfigSchema, agent.modeloConfig),
-		capacidades: parseJsonbWithFallback(AiAgentCapacidadesSchema, agent.capacidades),
+		modeloConfig: parseJsonbWithFallback(AiAgentModelConfigSchema, agent.modeloConfig),
+		capacidades: parseJsonbWithFallback(AiAgentCapabilitiesSchema, agent.capacidades),
+		escopo: parseJsonbWithFallback(AiAgentScopeSchema, agent.escopo),
 	};
 	const diagnosticoComercial = await getCatalogCommercialReadiness({ db, organizacaoId });
 
@@ -61,6 +68,7 @@ async function updateAiAgent({ input, organizacaoId }: { input: TUpdateAiAgentIn
 				instrucoes: input.agente.instrucoes,
 				modeloConfig: input.agente.modeloConfig,
 				capacidades: input.agente.capacidades,
+				escopo: input.agente.escopo,
 			})
 			.where(and(eq(aiAgents.id, agent.id), eq(aiAgents.organizacaoId, organizacaoId)));
 

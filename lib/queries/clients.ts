@@ -7,7 +7,7 @@ import type { TGetClientsOverallStatsInput, TGetClientsOverallStatsOutput } from
 import type { TGetClientsRankingInput, TGetClientsRankingOutput } from "@/app/api/clients/stats/ranking/route";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
 import { TGetClientTagsOutput } from "@/app/api/clients/tags/route";
 
@@ -107,6 +107,39 @@ export async function fetchClientsBySearch({ search }: { search: string }) {
 		console.log("Error running fetchClientsBySearch", error);
 		throw error;
 	}
+}
+
+async function fetchClientsByIds({ clientIds }: { clientIds: string[] }) {
+	try {
+		const searchParams = new URLSearchParams();
+		searchParams.set("clientIds", clientIds.join(","));
+		const { data } = await axios.get<TSearchClientsOutput>(`/api/clients/search?${searchParams.toString()}`);
+
+		return data.data.clients;
+	} catch (error) {
+		console.log("Error running fetchClientsByIds", error);
+		throw error;
+	}
+}
+
+/**
+ * Hidrata clientes já selecionados a partir dos IDs — o que a busca por texto não faz.
+ * Usado por seletores que persistem só IDs (ex.: escopo de atendimento do agente de IA), para
+ * renderizar nome e telefone sem denormalizar esses campos no registro salvo.
+ */
+export function useClientsByIds({ clientIds }: { clientIds: string[] }) {
+	// Ordenado e deduplicado: a queryKey não pode variar com a ordem de clique do usuário.
+	const stableIds = useMemo(() => [...new Set(clientIds)].sort(), [clientIds]);
+	const queryKey = ["clients-by-ids", stableIds];
+
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchClientsByIds({ clientIds: stableIds }),
+			enabled: stableIds.length > 0,
+		}),
+		queryKey,
+	};
 }
 
 type UseClientsBySearchParams = {

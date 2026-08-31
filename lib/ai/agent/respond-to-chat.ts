@@ -1,6 +1,6 @@
 import { confirmAiDeliveryStillValid } from "@/lib/chats/ai-trigger";
 import { updateChatAttendanceSummary } from "@/lib/chats/attendance-state";
-import type { TAiAgentRunGatilhoEnum } from "@/schemas/enums";
+import type { TAiAgentRunTriggerEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import type { DB, DBTransaction } from "@/services/drizzle";
 import { linkAgentRunMessage, markAgentRunCancelled } from "./runs";
@@ -41,7 +41,7 @@ export async function respondToChatWithAgent({
 }: {
 	organizacaoId: string;
 	chatId: string;
-	gatilho: TAiAgentRunGatilhoEnum;
+	gatilho: TAiAgentRunTriggerEnum;
 	mensagemGatilhoId?: string | null;
 	deliver: TAgentMessageDeliverer;
 	database?: TDb;

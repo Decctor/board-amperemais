@@ -1,7 +1,9 @@
-import { claimChatAttendanceForAgent, getCurrentChatAttendance } from "@/lib/chats/attendance-state";
-import type { TAiAgentRunGatilhoEnum } from "@/schemas/enums";
+import { claimChatAttendanceForAgent, getCurrentChatAttendance, releaseChatAttendance } from "@/lib/chats/attendance-state";
+import { parseJsonbWithFallback } from "@/lib/ai/shared/json";
+import { AiAgentScopeSchema, isClientInAgentScope } from "@/schemas/ai-agents";
+import type { TAiAgentRunTriggerEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
-import { chatMessages } from "@/services/drizzle/schema";
+import { chatMessages, chats } from "@/services/drizzle/schema";
 import { and, desc, eq, gt, inArray } from "drizzle-orm";
 
 /**
@@ -25,6 +27,55 @@ import { and, desc, eq, gt, inArray } from "drizzle-orm";
 const AI_RESPONSE_DELAY_MS = 5000;
 
 export type TAiTriggerDecision = { shouldRespond: true } | { shouldRespond: false; reason: string };
+
+const OUT_OF_SCOPE_RELEASE_REASON = "CLIENTE_FORA_DO_ESCOPO";
+
+/**
+ * Decide se o cliente da conversa está no escopo de atendimento do agente.
+ *
+ * **Roda antes de `claimChatForAi`, nunca dentro dele.** O claim faz curto-circuito quando o
+ * atendimento já é do agente (`responsavelTipo === "AGENTE"`), então uma checagem lá dentro não
+ * valeria para uma conversa que o agente já conduz — e adicionar alguém à lista de exclusão no
+ * meio do atendimento não teria efeito nenhum. Aqui a regra vale por turno, retroativamente.
+ *
+ * Quando o cliente sai do escopo e o atendimento é do próprio agente, o atendimento é
+ * **liberado**: sem isso o ticket continuaria marcado como `AGENTE` e a conversa pareceria
+ * atendida enquanto ninguém a atende. Liberar devolve a conversa para a fila do hub.
+ *
+ * Deliberadamente fora de `respondToChatWithAgent`: aquele é o caminho de execução compartilhado
+ * com o playground, que precisa continuar funcionando justamente enquanto o agente roda numa
+ * lista de permissão.
+ */
+export async function confirmClientInAgentScope({
+	organizationId,
+	chatId,
+	agentId,
+	escopo,
+}: {
+	organizationId: string;
+	chatId: string;
+	agentId: string;
+	// Cru do jsonb: normalizado aqui, para o caller não precisar saber disso.
+	escopo: unknown;
+}): Promise<TAiTriggerDecision> {
+	const scope = parseJsonbWithFallback(AiAgentScopeSchema, escopo);
+	// O default é TODOS, então o caso comum não custa nem a leitura do chat.
+	if (scope.tipo === "TODOS") return { shouldRespond: true };
+
+	const chat = await db.query.chats.findFirst({
+		where: and(eq(chats.id, chatId), eq(chats.organizacaoId, organizationId)),
+		columns: { clienteId: true },
+	});
+	if (!chat) return { shouldRespond: false, reason: "Chat não encontrado." };
+	if (isClientInAgentScope(scope, chat.clienteId)) return { shouldRespond: true };
+
+	const atual = await getCurrentChatAttendance(db, { organizacaoId: organizationId, chatId });
+	if (atual?.responsavelTipo === "AGENTE" && atual.responsavelAgenteId === agentId) {
+		await releaseChatAttendance(db, { organizacaoId: organizationId, chatId, motivo: OUT_OF_SCOPE_RELEASE_REASON });
+	}
+
+	return { shouldRespond: false, reason: "Cliente fora do escopo de atendimento do agente." };
+}
 
 /**
  * Reivindica o atendimento para a IA.
@@ -120,7 +171,7 @@ export async function confirmAiDeliveryStillValid({
 }: {
 	organizationId: string;
 	chatId: string;
-	trigger: TAiAgentRunGatilhoEnum;
+	trigger: TAiAgentRunTriggerEnum;
 	triggerMessageId: string | null;
 	runStartedAt: Date;
 }): Promise<TAiTriggerDecision> {
@@ -157,4 +208,4 @@ export async function confirmAiDeliveryStillValid({
 	return { shouldRespond: true };
 }
 
-export { AI_RESPONSE_DELAY_MS };
+export { AI_RESPONSE_DELAY_MS, OUT_OF_SCOPE_RELEASE_REASON };

@@ -2,7 +2,7 @@ import type { TGetAiAgentModelsOutput } from "@/app/api/ai-agents/models/route";
 import type { TGetAiAgentOutput } from "@/app/api/ai-agents/route";
 import type { TGetPlaygroundOutput } from "@/app/api/ai-agents/playground/route";
 import type { TGetAiAgentRunsOutput } from "@/app/api/ai-agents/runs/route";
-import type { TAiAgentRunGatilhoEnum, TAiAgentRunStatusEnum } from "@/schemas/enums";
+import type { TAiAgentRunTriggerEnum, TAiAgentRunStatusEnum } from "@/schemas/enums";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
@@ -50,7 +50,7 @@ export function useAiAgentModels({ enabled = true }: { enabled?: boolean } = {})
 
 export type TAiAgentRunsFilters = {
 	page: number;
-	gatilho: TAiAgentRunGatilhoEnum | null;
+	gatilho: TAiAgentRunTriggerEnum | null;
 	status: TAiAgentRunStatusEnum | null;
 };
 

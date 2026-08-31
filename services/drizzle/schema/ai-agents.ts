@@ -1,6 +1,6 @@
-import type { TAiAgentCapacidades, TAiAgentConfigSnapshot, TAiAgentModeloConfig, TAiAgentUso } from "@/schemas/ai-agents";
+import type { TAiAgentCapabilities, TAiAgentConfigSnapshot, TAiAgentModelConfig, TAiAgentScope, TAiAgentUsage } from "@/schemas/ai-agents";
 import type {
-	TAiAgentRunGatilhoEnum,
+	TAiAgentRunTriggerEnum,
 	TAiAgentRunStatusEnum,
 	TAiAgentStatusEnum,
 	TAiAgentOperationResourceTypeEnum,
@@ -49,8 +49,12 @@ export const aiAgents = newTable(
 		status: varchar("status", { length: 32 }).$type<TAiAgentStatusEnum>().notNull().default("ATIVO"),
 		// Persona, tom e regras da organização. Vira a primeira camada do system prompt.
 		instrucoes: text("instrucoes").notNull(),
-		modeloConfig: jsonb("modelo_config").$type<TAiAgentModeloConfig>().notNull(),
-		capacidades: jsonb("capacidades").$type<TAiAgentCapacidades>().notNull(),
+		modeloConfig: jsonb("modelo_config").$type<TAiAgentModelConfig>().notNull(),
+		capacidades: jsonb("capacidades").$type<TAiAgentCapabilities>().notNull(),
+		// Quem o agente atende. Config viva de implantação: fica FORA de `configSnapshot` de
+		// propósito — uma lista de clientes copiada em toda run inflaria `ai_agent_runs` sem
+		// nenhum ganho de auditoria. Vale imediatamente, sem republicar nada.
+		escopo: jsonb("escopo").$type<TAiAgentScope>().notNull().default({ tipo: "TODOS", clienteIds: [] }),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 		dataAtualizacao: timestamp("data_atualizacao").$onUpdate(() => new Date()),
 	},
@@ -134,7 +138,7 @@ export const aiAgentRuns = newTable(
 			.references(() => aiAgents.id, { onDelete: "cascade" })
 			.notNull(),
 		status: varchar("status", { length: 32 }).$type<TAiAgentRunStatusEnum>().notNull().default("PENDENTE"),
-		gatilho: varchar("gatilho", { length: 32 }).$type<TAiAgentRunGatilhoEnum>().notNull(),
+		gatilho: varchar("gatilho", { length: 32 }).$type<TAiAgentRunTriggerEnum>().notNull(),
 		chatId: varchar("chat_id", { length: 255 })
 			.references(() => chats.id, { onDelete: "cascade" })
 			.notNull(),
@@ -147,7 +151,7 @@ export const aiAgentRuns = newTable(
 		configSnapshot: jsonb("config_snapshot").$type<TAiAgentConfigSnapshot>().notNull(),
 		contextoEntradaSnapshot: jsonb("contexto_entrada_snapshot"),
 		outputResumo: text("output_resumo"),
-		uso: jsonb("uso").$type<TAiAgentUso>(),
+		uso: jsonb("uso").$type<TAiAgentUsage>(),
 		erro: text("erro"),
 		dataInicio: timestamp("data_inicio"),
 		dataFim: timestamp("data_fim"),
@@ -282,14 +286,14 @@ export const aiAgentToolCallsRelations = relations(aiAgentToolCalls, ({ one }) =
 		fields: [aiAgentToolCalls.runId],
 		references: [aiAgentRuns.id],
 	}),
-		agente: one(aiAgents, {
-			fields: [aiAgentToolCalls.agenteId],
-			references: [aiAgents.id],
-		}),
-		operacao: one(aiAgentOperations, {
-			fields: [aiAgentToolCalls.operacaoId],
-			references: [aiAgentOperations.id],
-		}),
-	}));
+	agente: one(aiAgents, {
+		fields: [aiAgentToolCalls.agenteId],
+		references: [aiAgents.id],
+	}),
+	operacao: one(aiAgentOperations, {
+		fields: [aiAgentToolCalls.operacaoId],
+		references: [aiAgentOperations.id],
+	}),
+}));
 export type TAiAgentToolCallEntity = typeof aiAgentToolCalls.$inferSelect;
 export type TNewAiAgentToolCallEntity = typeof aiAgentToolCalls.$inferInsert;

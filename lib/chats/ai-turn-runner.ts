@@ -1,7 +1,7 @@
 import { resolveChatDeliverer } from "@/lib/ai/agent/delivery";
 import { ensureOrganizationAgent } from "@/lib/ai/agent/provisioning";
 import { respondToChatWithAgent } from "@/lib/ai/agent/respond-to-chat";
-import { claimChatForAi, confirmAiResponseStillValid } from "@/lib/chats/ai-trigger";
+import { claimChatForAi, confirmAiResponseStillValid, confirmClientInAgentScope } from "@/lib/chats/ai-trigger";
 import { db } from "@/services/drizzle";
 
 /**
@@ -26,6 +26,20 @@ export async function runAiTurnForMessage(payload: TAiTurnPayload): Promise<void
 	const agent = await ensureOrganizationAgent(db, payload.organizationId);
 	if (agent.status !== "ATIVO") {
 		console.log("[AI_TURN] Agente de IA pausado para a organização:", payload.organizationId);
+		return;
+	}
+
+	// Antes do claim, de propósito: o claim aceita de imediato a conversa que já é do agente,
+	// então uma checagem depois dele não valeria para quem entrou na lista de exclusão no meio
+	// do atendimento. Aqui a regra vale por turno.
+	const scope = await confirmClientInAgentScope({
+		organizationId: payload.organizationId,
+		chatId: payload.chatId,
+		agentId: agent.id,
+		escopo: agent.escopo,
+	});
+	if (!scope.shouldRespond) {
+		console.log("[AI_TURN] Fora do escopo do agente:", scope.reason);
 		return;
 	}
 

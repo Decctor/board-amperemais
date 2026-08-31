@@ -1,5 +1,5 @@
 import type { TProductAvailability, TProductAvailabilityStatus } from "@/lib/products/availability";
-import type { TAiAgentEstoqueConfig } from "@/schemas/ai-agents";
+import type { TAiAgentStockConfig } from "@/schemas/ai-agents";
 
 /**
  * Camada de política: recorta a disponibilidade resolvida (`lib/products/availability.ts`) para o
@@ -11,7 +11,7 @@ import type { TAiAgentEstoqueConfig } from "@/schemas/ai-agents";
  */
 export function formatAvailabilityForClient(
 	availability: TProductAvailability,
-	visibilidade: TAiAgentEstoqueConfig["visibilidade"],
+	visibilidade: TAiAgentStockConfig["visibilidade"],
 ): { disponibilidade?: TProductAvailabilityStatus; quantidade?: number } {
 	if (visibilidade === "OCULTO") return {};
 	if (visibilidade === "DISPONIBILIDADE") return { disponibilidade: availability.disponibilidade };

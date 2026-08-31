@@ -1,8 +1,10 @@
 import {
-	AiAgentCapacidadesSchema,
-	AiAgentModeloConfigSchema,
-	type TAiAgentCapacidades,
-	type TAiAgentModeloConfig,
+	AiAgentCapabilitiesSchema,
+	AiAgentModelConfigSchema,
+	AiAgentScopeSchema,
+	type TAiAgentCapabilities,
+	type TAiAgentModelConfig,
+	type TAiAgentScope,
 	type TUpdateAiAgent,
 	type TUpdateAiAgentKnowledge,
 } from "@/schemas/ai-agents";
@@ -20,8 +22,9 @@ function buildInitialState(): TInternalAiAgentState {
 			nome: "Agente de Atendimento",
 			status: "ATIVO",
 			instrucoes: "",
-			modeloConfig: AiAgentModeloConfigSchema.parse({}),
-			capacidades: AiAgentCapacidadesSchema.parse({}),
+			modeloConfig: AiAgentModelConfigSchema.parse({}),
+			capacidades: AiAgentCapabilitiesSchema.parse({}),
+			escopo: AiAgentScopeSchema.parse({}),
 		},
 		conhecimento: [],
 	};
@@ -40,14 +43,14 @@ export function useInternalAiAgentState() {
 		setState((prev) => ({ ...prev, agente: { ...prev.agente, ...agente } }));
 	}, []);
 
-	const updateModelConfig = useCallback((modeloConfig: Partial<TAiAgentModeloConfig>) => {
+	const updateModelConfig = useCallback((modeloConfig: Partial<TAiAgentModelConfig>) => {
 		setState((prev) => ({
 			...prev,
 			agente: { ...prev.agente, modeloConfig: { ...prev.agente.modeloConfig, ...modeloConfig } },
 		}));
 	}, []);
 
-	const updateLimits = useCallback((limites: Partial<TAiAgentCapacidades["limites"]>) => {
+	const updateLimits = useCallback((limites: Partial<TAiAgentCapabilities["limites"]>) => {
 		setState((prev) => ({
 			...prev,
 			agente: {
@@ -57,7 +60,7 @@ export function useInternalAiAgentState() {
 		}));
 	}, []);
 
-	const updateAttendanceSettings = useCallback((atendimento: Partial<TAiAgentCapacidades["atendimento"]>) => {
+	const updateAttendanceSettings = useCallback((atendimento: Partial<TAiAgentCapabilities["atendimento"]>) => {
 		setState((prev) => ({
 			...prev,
 			agente: {
@@ -67,7 +70,7 @@ export function useInternalAiAgentState() {
 		}));
 	}, []);
 
-	const updatePrices = useCallback((precos: Partial<TAiAgentCapacidades["comercial"]["precos"]>) => {
+	const updatePrices = useCallback((precos: Partial<TAiAgentCapabilities["comercial"]["precos"]>) => {
 		setState((prev) => {
 			const nextVisible = precos.visiveis ?? prev.agente.capacidades.comercial.precos.visiveis;
 			return {
@@ -92,7 +95,7 @@ export function useInternalAiAgentState() {
 		});
 	}, []);
 
-	const updateQuotes = useCallback((orcamentos: Partial<TAiAgentCapacidades["comercial"]["orcamentos"]>) => {
+	const updateQuotes = useCallback((orcamentos: Partial<TAiAgentCapabilities["comercial"]["orcamentos"]>) => {
 		setState((prev) => ({
 			...prev,
 			agente: {
@@ -116,12 +119,12 @@ export function useInternalAiAgentState() {
 	}, []);
 
 	/**
-	 * Mantém a coerência que o `superRefine` de `AiAgentCapacidadesSchema` exige, em vez de deixar o
+	 * Mantém a coerência que o `superRefine` de `AiAgentCapabilitiesSchema` exige, em vez de deixar o
 	 * usuário montar uma configuração que só falha no salvamento: esconder a disponibilidade
 	 * rebaixa `AVISAR` para `PERMITIR`, porque avisar sobre um saldo que o agente não pode mencionar
 	 * produz resposta vaga.
 	 */
-	const updateStock = useCallback((estoque: Partial<TAiAgentCapacidades["comercial"]["estoque"]>) => {
+	const updateStock = useCallback((estoque: Partial<TAiAgentCapabilities["comercial"]["estoque"]>) => {
 		setState((prev) => {
 			const previous = prev.agente.capacidades.comercial.estoque;
 			const next = { ...previous, ...estoque };
@@ -190,6 +193,24 @@ export function useInternalAiAgentState() {
 		}));
 	}, []);
 
+	const updateScope = useCallback((escopo: Partial<TAiAgentScope>) => {
+		setState((prev) => ({ ...prev, agente: { ...prev.agente, escopo: { ...prev.agente.escopo, ...escopo } } }));
+	}, []);
+
+	/**
+	 * A lista é preservada ao trocar de modo, de propósito: quem monta uma lista de exclusão e
+	 * espia como ficaria em modo de permissão não perde a seleção no caminho. Em `TODOS` a lista
+	 * é ignorada pelo runtime, não apagada.
+	 */
+	const toggleScopeClient = useCallback((clienteId: string) => {
+		setState((prev) => {
+			const clienteIds = prev.agente.escopo.clienteIds.includes(clienteId)
+				? prev.agente.escopo.clienteIds.filter((id) => id !== clienteId)
+				: [...prev.agente.escopo.clienteIds, clienteId];
+			return { ...prev, agente: { ...prev.agente, escopo: { ...prev.agente.escopo, clienteIds } } };
+		});
+	}, []);
+
 	const redefineState = useCallback((newState: TInternalAiAgentState) => setState(newState), []);
 	const resetState = useCallback(() => setState(buildInitialState()), []);
 
@@ -199,6 +220,8 @@ export function useInternalAiAgentState() {
 		updateModelConfig,
 		updateLimits,
 		updateAttendanceSettings,
+		updateScope,
+		toggleScopeClient,
 		updatePrices,
 		updateQuotes,
 		updateStock,

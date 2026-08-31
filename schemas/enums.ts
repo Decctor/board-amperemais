@@ -568,6 +568,12 @@ export type TActionApprovalTypeEnum = z.infer<typeof ActionApprovalTypeEnum>;
 export const AiAgentStatusEnum = z.enum(["ATIVO", "PAUSADO"]);
 export type TAiAgentStatusEnum = z.infer<typeof AiAgentStatusEnum>;
 
+// Quem o agente atende. A assimetria da lista vazia é deliberada: INCLUIR sem ninguém marcado
+// não atende ninguém (lista de permissão vazia), enquanto EXCLUIR sem ninguém marcado atende
+// todo mundo. Em ambos os casos a lista quer dizer exatamente o que está escrito nela.
+export const AiAgentScopeTypeEnum = z.enum(["TODOS", "INCLUIR", "EXCLUIR"]);
+export type TAiAgentScopeTypeEnum = z.infer<typeof AiAgentScopeTypeEnum>;
+
 // Ciclo de vida de uma execução (run) do agente.
 // CANCELADO = o turno concluiu, mas a entrega foi abortada pela revalidação (run supersedida).
 export const AiAgentRunStatusEnum = z.enum(["PENDENTE", "RODANDO", "CONCLUIDO", "FALHA", "CANCELADO"]);
@@ -576,16 +582,16 @@ export type TAiAgentRunStatusEnum = z.infer<typeof AiAgentRunStatusEnum>;
 // O que originou a execução. PLAYGROUND roda o mesmo pipeline, sem envio externo.
 // ATRIBUICAO_HUB é a execução disparada por um humano que entregou a conversa ao agente pelo
 // hub — separa, na análise de runs, o que a IA pegou da fila do que lhe foi passado de mão.
-export const AiAgentRunGatilhoEnum = z.enum(["CHAT_MENSAGEM", "PLAYGROUND", "ATRIBUICAO_HUB"]);
-export type TAiAgentRunGatilhoEnum = z.infer<typeof AiAgentRunGatilhoEnum>;
+export const AiAgentRunTriggerEnum = z.enum(["CHAT_MENSAGEM", "PLAYGROUND", "ATRIBUICAO_HUB"]);
+export type TAiAgentRunTriggerEnum = z.infer<typeof AiAgentRunTriggerEnum>;
 
 // Ciclo de vida de uma chamada de ferramenta dentro de uma execução.
 export const AiAgentToolCallStatusEnum = z.enum(["EXECUTANDO", "CONCLUIDO", "FALHA"]);
 export type TAiAgentToolCallStatusEnum = z.infer<typeof AiAgentToolCallStatusEnum>;
 
 // Patamar de custo/capacidade de um modelo no catálogo do agente (`lib/ai/providers/model-catalog.ts`).
-export const AiAgentModelPerfilEnum = z.enum(["ECONOMICO", "EQUILIBRADO", "AVANCADO"]);
-export type TAiAgentModelPerfilEnum = z.infer<typeof AiAgentModelPerfilEnum>;
+export const AiAgentModelProfileEnum = z.enum(["ECONOMICO", "EQUILIBRADO", "AVANCADO"]);
+export type TAiAgentModelProfileEnum = z.infer<typeof AiAgentModelProfileEnum>;
 
 // Ferramentas disponíveis ao agente. O nome é `dominio.acao`; a tradução para o formato do
 // AI SDK (que não aceita ponto) acontece em `lib/ai/tools/registry.ts`.

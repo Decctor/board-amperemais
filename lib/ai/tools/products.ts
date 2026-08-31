@@ -6,7 +6,7 @@ import {
 	extractSearchTokens,
 } from "@/lib/search";
 import { resolveProductAvailability, resolveVariantAvailability } from "@/lib/products/availability";
-import type { TAiAgentEstoqueConfig } from "@/schemas/ai-agents";
+import type { TAiAgentStockConfig } from "@/schemas/ai-agents";
 import type { TProductStockDeductionModeEnum } from "@/schemas/enums";
 import { products, productVariants } from "@/services/drizzle/schema";
 import { and, asc, count, desc, eq, exists, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
@@ -70,7 +70,7 @@ type TFoundProduct = {
  */
 function formatProducts(
 	found: TFoundProduct[],
-	{ pricesVisible, stockVisibility }: { pricesVisible: boolean; stockVisibility: TAiAgentEstoqueConfig["visibilidade"] },
+	{ pricesVisible, stockVisibility }: { pricesVisible: boolean; stockVisibility: TAiAgentStockConfig["visibilidade"] },
 ) {
 	return found.map((product) => ({
 		produtoId: product.id,

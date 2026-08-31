@@ -1,4 +1,4 @@
-import { AiAgentCapacidadesSchema, AiAgentModeloConfigSchema, type TAiAgentCapacidades } from "@/schemas/ai-agents";
+import { AiAgentCapabilitiesSchema, AiAgentModelConfigSchema, AiAgentScopeSchema, type TAiAgentCapabilities } from "@/schemas/ai-agents";
 import type { DB, DBTransaction } from "@/services/drizzle";
 import { aiAgents, organizations } from "@/services/drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -54,8 +54,8 @@ responder perguntas. Você conhece o catálogo, compara opções e recomenda com
  * consciente. Ferramentas adicionadas depois nascem `habilitada: false` por serem opcionais no
  * schema — a organização decide ativar.
  */
-export function buildDefaultAgentCapabilities(): TAiAgentCapacidades {
-	return AiAgentCapacidadesSchema.parse({
+export function buildDefaultAgentCapabilities(): TAiAgentCapabilities {
+	return AiAgentCapabilitiesSchema.parse({
 		ferramentas: {
 			"clientes.consultar_compras": { habilitada: true },
 			"produtos.consultar": { habilitada: true },
@@ -91,8 +91,10 @@ export async function ensureOrganizationAgent(db: TDb, organizacaoId: string) {
 			nome: "Agente de Atendimento",
 			status: "ATIVO",
 			instrucoes: buildDefaultAgentInstructions(organization.nome),
-			modeloConfig: AiAgentModeloConfigSchema.parse({}),
+			modeloConfig: AiAgentModelConfigSchema.parse({}),
 			capacidades: buildDefaultAgentCapabilities(),
+			// O agente nasce atendendo todo mundo; restringir é a exceção consciente.
+			escopo: AiAgentScopeSchema.parse({}),
 		})
 		.onConflictDoNothing();
 

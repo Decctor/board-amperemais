@@ -1,8 +1,8 @@
-import type { TAiAgentCapacidades } from "@/schemas/ai-agents";
+import type { TAiAgentCapabilities } from "@/schemas/ai-agents";
 import type { TAiAgentToolNameEnum } from "@/schemas/enums";
 import { AgentToolNotEnabledError } from "../shared/errors";
 
-export function isToolEnabled(capacidades: TAiAgentCapacidades, name: TAiAgentToolNameEnum): boolean {
+export function isToolEnabled(capacidades: TAiAgentCapabilities, name: TAiAgentToolNameEnum): boolean {
 	return capacidades.ferramentas[name]?.habilitada === true;
 }
 
@@ -11,7 +11,7 @@ export function isToolEnabled(capacidades: TAiAgentCapacidades, name: TAiAgentTo
  * na montagem do agente. A checagem dupla é deliberada: a configuração pode mudar no meio de
  * uma execução, e uma ferramenta desabilitada nunca deve rodar por caminho indireto.
  */
-export function assertToolEnabled(capacidades: TAiAgentCapacidades, name: TAiAgentToolNameEnum): void {
+export function assertToolEnabled(capacidades: TAiAgentCapabilities, name: TAiAgentToolNameEnum): void {
 	if (!isToolEnabled(capacidades, name)) {
 		throw new AgentToolNotEnabledError(`A ferramenta "${name}" não está habilitada para este agente.`);
 	}

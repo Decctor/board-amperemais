@@ -1,8 +1,9 @@
-import { confirmAiResponseStillValid } from "@/lib/chats/ai-trigger";
+import { confirmAiResponseStillValid, confirmClientInAgentScope } from "@/lib/chats/ai-trigger";
 import { db } from "@/services/drizzle";
 import { chatMessages, chats } from "@/services/drizzle/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { resolveChatDeliverer } from "./delivery";
+import { ensureOrganizationAgent } from "./provisioning";
 import { respondToChatWithAgent } from "./respond-to-chat";
 
 /**
@@ -33,6 +34,15 @@ export async function triggerAgentTurnFromHub({
 	agenteId: string;
 }): Promise<void> {
 	try {
+		// Mesmo gate do webhook: entregar a conversa ao agente pelo hub não pode furar o escopo.
+		// A UI desabilita a ação, mas a regra tem de valer aqui — a UI é conveniência, não guarda.
+		const agent = await ensureOrganizationAgent(db, organizacaoId);
+		const scope = await confirmClientInAgentScope({ organizationId: organizacaoId, chatId, agentId: agent.id, escopo: agent.escopo });
+		if (!scope.shouldRespond) {
+			console.log("[AI_AGENT] [HUB_TURN] Fora do escopo do agente:", scope.reason);
+			return;
+		}
+
 		const chat = await db.query.chats.findFirst({
 			where: and(eq(chats.id, chatId), eq(chats.organizacaoId, organizacaoId)),
 			columns: { ultimaMensagemEntradaData: true, ultimaMensagemSaidaData: true },

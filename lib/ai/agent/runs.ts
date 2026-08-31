@@ -1,5 +1,5 @@
-import type { TAiAgentConfigSnapshot, TAiAgentUso } from "@/schemas/ai-agents";
-import type { TAiAgentRunGatilhoEnum } from "@/schemas/enums";
+import type { TAiAgentConfigSnapshot, TAiAgentUsage } from "@/schemas/ai-agents";
+import type { TAiAgentRunTriggerEnum } from "@/schemas/enums";
 import type { DB, DBTransaction } from "@/services/drizzle";
 import { aiAgentRuns } from "@/services/drizzle/schema";
 import { and, count, eq, gte } from "drizzle-orm";
@@ -13,7 +13,7 @@ export async function createAgentRun(
 	input: {
 		organizacaoId: string;
 		agenteId: string;
-		gatilho: TAiAgentRunGatilhoEnum;
+		gatilho: TAiAgentRunTriggerEnum;
 		chatId: string;
 		clienteId: string;
 		mensagemGatilhoId?: string | null;
@@ -44,7 +44,7 @@ export async function markAgentRunRunning(db: TDb, runId: string) {
 	await db.update(aiAgentRuns).set({ status: "RODANDO", dataInicio: new Date() }).where(eq(aiAgentRuns.id, runId));
 }
 
-export async function completeAgentRun(db: TDb, input: { runId: string; outputResumo?: string | null; uso?: TAiAgentUso | null }) {
+export async function completeAgentRun(db: TDb, input: { runId: string; outputResumo?: string | null; uso?: TAiAgentUsage | null }) {
 	await db
 		.update(aiAgentRuns)
 		.set({ status: "CONCLUIDO", outputResumo: input.outputResumo ?? null, uso: input.uso ?? null, dataFim: new Date() })

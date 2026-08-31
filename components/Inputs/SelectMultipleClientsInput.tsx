@@ -1,4 +1,4 @@
-import { useClientsBySearch } from "@/lib/queries/clients";
+import { useClientsByIds, useClientsBySearch } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown, UserRound } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -31,16 +31,20 @@ function SelectMultipleClientsInput({
 	onReset,
 }: SelectMultipleClientsInputProps) {
 	const { data: searchClients, isLoading, isError, isSuccess, search, updateSearch } = useClientsBySearch({ initialSearch: "" });
+	// Seleção que veio pronta (persistida) não passou por nenhuma busca, então seus nomes não
+	// estariam em `knownClientsById` — o gatilho mostraria só a contagem. Hidrata por ID.
+	const { data: preselectedClients } = useClientsByIds({ clientIds: selected });
 	const [knownClientsById, setKnownClientsById] = useState(new Map<string, NonNullable<typeof searchClients>[number]>());
 
 	useEffect(() => {
-		if (!searchClients) return;
+		const incoming = [...(searchClients ?? []), ...(preselectedClients ?? [])];
+		if (incoming.length === 0) return;
 		setKnownClientsById((prev) => {
 			const next = new Map(prev);
-			for (const client of searchClients) next.set(client.id, client);
+			for (const client of incoming) next.set(client.id, client);
 			return next;
 		});
-	}, [searchClients]);
+	}, [searchClients, preselectedClients]);
 
 	const selectedClientsById = useMemo(() => {
 		return new Map([...(searchClients ?? []).map((client) => [client.id, client] as const), ...knownClientsById]);
@@ -67,12 +71,16 @@ function SelectMultipleClientsInput({
 		setIsOpen(false);
 	}
 
+	const namedSelection = selected.map((id) => selectedClientsById.get(id)?.nome).filter((nome): nome is string => Boolean(nome));
 	const triggerLabel =
 		selected.length === 0
 			? "NENHUM SELECIONADO"
 			: selected.length === 1
 				? (selectedClientsById.get(selected[0])?.nome ?? "1 CLIENTE SELECIONADO")
-				: `${selected.length} CLIENTES SELECIONADOS`;
+				: // Dois nomes cabem no gatilho; a partir daí a contagem informa mais que a truncagem.
+					namedSelection.length === selected.length && selected.length === 2
+					? namedSelection.join(", ")
+					: `${selected.length} CLIENTES SELECIONADOS`;
 
 	const renderTrigger = () => (
 		<Button
