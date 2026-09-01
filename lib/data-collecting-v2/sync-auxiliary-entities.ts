@@ -354,10 +354,15 @@ export async function syncAuxiliaryEntities({
 
 	const existingAddOnOptions = await tx.query.productAddOnOptions.findMany({
 		where: eq(productAddOnOptions.organizacaoId, batch.organizationId),
-		columns: { id: true, idExterno: true },
+		columns: { id: true, idExterno: true, produtoAddOnId: true, ativo: true },
 	});
-	for (const option of existingAddOnOptions) {
+	const addOnExternalIdsById = new Map(existingAddOns.filter((addOn) => addOn.idExterno).map((addOn) => [addOn.id, addOn.idExterno!]));
+	for (const option of existingAddOnOptions.filter((option) => option.ativo)) {
 		if (option.idExterno) context.productAddOnOptionsByExternalId.set(option.idExterno, option.id);
+	}
+	for (const option of existingAddOnOptions.filter((option) => option.ativo && option.idExterno && !option.idExterno.includes(":"))) {
+		const addOnExternalId = addOnExternalIdsById.get(option.produtoAddOnId);
+		if (addOnExternalId) context.productAddOnOptionsByExternalId.set(`${addOnExternalId}:${option.idExterno}`, option.id);
 	}
 
 	for (const option of uniqueBy(batch.productAddOnOptions, (value) => value.externalId)) {
