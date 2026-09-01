@@ -12,7 +12,7 @@ import { updateOrganization } from "@/lib/mutations/organizations";
 import { useMutation } from "@tanstack/react-query";
 import { useCashbackProgram } from "@/lib/queries/cashback-programs";
 import { useCustomFields } from "@/lib/queries/custom-fields";
-import { AlertTriangle, Calendar, Check, CheckCircle2, ChevronDown, ChevronUp, Copy, LinkIcon, Plus, RefreshCcw, Settings2, Unlink, X } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle2, ChevronDown, ChevronUp, LinkIcon, Plus, RefreshCcw, Settings2, Unlink, X } from "lucide-react";
 import Image, { type StaticImageData } from "next/image";
 import Link from "next/link";
 import { useState } from "react";
@@ -22,7 +22,7 @@ import type { TDataSourceIntegrationTipoEnum, TPoiRegistrationFlowEnum } from "@
 import { CUSTOM_FIELD_TYPE_LABELS, DataSourceIntegrationTipoEnum, POI_REGISTRATION_FLOW_LABELS, PoiRegistrationFlowEnum } from "@/schemas/enums";
 import type { TStoredPoiRegistrationConfig } from "@/schemas/organizations";
 import { formatDateAsLocale } from "@/lib/formatting";
-import { cn, copyToClipboard } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import CardapioWebLogo from "@/utils/images/integrations/cardapio-web.png";
 import NuvemshopLogo from "@/utils/images/integrations/nuvemshop-logo.png";
 import OnlineSoftwareLogo from "@/utils/images/integrations/online-software-logo.png";
@@ -784,16 +784,6 @@ type TIfoodAuthorizationResponse = {
 function IfoodIntegrationMenu({ reconnectIntegrationId, closeMenu }: { reconnectIntegrationId?: string | null; closeMenu: () => void }) {
 	const [authorization, setAuthorization] = useState<TIfoodAuthorizationResponse | null>(null);
 	const [authorizationCode, setAuthorizationCode] = useState("");
-	const [linkCopied, setLinkCopied] = useState(false);
-
-	const verificationLink = authorization?.verificationUrlComplete ?? authorization?.verificationUrl ?? null;
-
-	async function handleCopyVerificationLink() {
-		if (!verificationLink) return;
-		await copyToClipboard(verificationLink);
-		setLinkCopied(true);
-		setTimeout(() => setLinkCopied(false), 2000);
-	}
 
 	const createAuthorizationMutation = useMutation({
 		mutationFn: async () => {
@@ -854,20 +844,16 @@ function IfoodIntegrationMenu({ reconnectIntegrationId, closeMenu }: { reconnect
 					<div className="rounded-lg border bg-muted/30 p-4">
 						<p className="text-xs font-semibold text-muted-foreground">CÓDIGO IFOOD</p>
 						<p className="mt-1 text-2xl font-bold tracking-wide">{authorization.userCode}</p>
-						{verificationLink ? (
-							<div className="mt-3 flex flex-col gap-2">
-								<p className="break-all text-xs text-muted-foreground">{verificationLink}</p>
-								<div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-									<Button type="button" size="sm" onClick={() => window.open(verificationLink, "_blank")}>
-										<LinkIcon className="h-4 w-4" />
-										ABRIR PORTAL IFOOD
-									</Button>
-									<Button type="button" size="sm" variant="secondary" onClick={handleCopyVerificationLink}>
-										{linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-										{linkCopied ? "LINK COPIADO" : "COPIAR LINK"}
-									</Button>
-								</div>
-							</div>
+						{authorization.verificationUrlComplete || authorization.verificationUrl ? (
+							<Button
+								type="button"
+								size="sm"
+								className="mt-3"
+								onClick={() => window.open(authorization.verificationUrlComplete ?? authorization.verificationUrl ?? "", "_blank")}
+							>
+								<LinkIcon className="h-4 w-4" />
+								ABRIR PORTAL IFOOD
+							</Button>
 						) : null}
 					</div>
 				) : (
