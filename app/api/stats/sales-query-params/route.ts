@@ -101,7 +101,7 @@ const getSaleQueryFiltersRoute: PagesRouteHandler<{ data: TSaleQueryFilterOption
 			sellers: groupedSellers.map((s) => ({
 				id: s.id,
 				label: s.nome,
-				value: s.identificador,
+				value: s.id,
 			})),
 			partners: groupedPartners.map((p) => ({
 				id: p.id,

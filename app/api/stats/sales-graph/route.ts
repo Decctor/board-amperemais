@@ -11,6 +11,7 @@ import {
 } from "@/lib/dates";
 import { resolveGoalShareForWindow } from "@/lib/goals/pacing";
 import { buildOrganizationPacingCurve } from "@/lib/goals/resolve-active-goal-pacing";
+import { assertSellersIdsWithinResultsScope } from "@/lib/permissions/results-scope";
 import { SalesGraphFilterSchema, type TSalesGraphFilters } from "@/schemas/query-params-utils";
 
 import { db } from "@/services/drizzle";
@@ -161,18 +162,11 @@ const handleGetStatsComparisonRoute: PagesRouteHandler<{
 
 	const filters = SalesGraphFilterSchema.parse(req.body);
 
-	const sessionUserResultsScope = userOrgMembership.permissoes.resultados.escopo;
-	if (sessionUserResultsScope) {
-		const scopeUsers = await db.query.organizationMembers.findMany({
-			where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, userOrgId), inArray(fields.usuarioId, sessionUserResultsScope)),
-			columns: { usuarioVendedorId: true },
-		});
-		const scopeUserSellerIds = scopeUsers.map((user) => user.usuarioVendedorId);
-
-		// Checking if user is filtering for sellers outside his scope
-		const isAttempingUnauthorizedScope = filters.sellers.some((sellerId) => !scopeUserSellerIds.includes(sellerId)) || filters.sellers.length === 0;
-		if (isAttempingUnauthorizedScope) throw new createHttpError.Unauthorized("Você não tem permissão para acessar esse recurso.");
-	}
+	await assertSellersIdsWithinResultsScope({
+		organizacaoId: userOrgId,
+		resultsScope: userOrgMembership.permissoes.resultados.escopo,
+		sellersIds: filters.sellersIds,
+	});
 
 	const salesGraph = await fetchSalesGraph(filters, userOrgId);
 
@@ -210,7 +204,7 @@ async function getSalesGrouped({ filters, organizacaoId }: GetSalesGroupedParams
 		const integrationCondition = getSalesIntegrationCondition(filters.integrationsIds);
 		if (integrationCondition) conditions.push(integrationCondition);
 
-		if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
+		if (filters.sellersIds.length > 0) conditions.push(inArray(sales.vendedorId, filters.sellersIds));
 
 		if (filters.clientRFMTitles.length > 0)
 			conditions.push(
@@ -223,25 +217,6 @@ async function getSalesGrouped({ filters, organizacaoId }: GetSalesGroupedParams
 						),
 				),
 			);
-		// How to apply filter for product groups present in sale ???
-
-		// if (filters.productGroups.length > 0) {
-		// 	conditions.push(
-		// 		exists(
-		// 			db
-		// 				.select({ id: saleItems.id })
-		// 				.from(saleItems)
-		// 				.innerJoin(products, eq(saleItems.produtoId, products.id))
-		// 				.where(
-		// 					and(
-		// 						// Aqui está a correção - correlacionando com a tabela externa
-		// 						sql`${saleItems.vendaId} = ${sales.id}`,
-		// 						inArray(products.grupo, filters.productGroups),
-		// 					),
-		// 				),
-		// 		),
-		// 	);
-		// }
 		if (filters.excludedSalesIds) conditions.push(notInArray(sales.id, filters.excludedSalesIds));
 
 		const salesResult = await db
