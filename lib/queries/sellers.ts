@@ -72,7 +72,7 @@ export function useSellers({ initialFilters }: UseSellersParams) {
 		statsPeriodBefore: initialFilters?.statsPeriodBefore || null,
 		orderByField: initialFilters?.orderByField || "nome",
 		orderByDirection: initialFilters?.orderByDirection || "asc",
-		activeOnly: initialFilters?.activeOnly || true,
+		activeOnly: initialFilters?.activeOnly ?? true,
 		simplified: false,
 	});
 	function updateFilters(newParams: Partial<TGetSellersDefaultInput>) {

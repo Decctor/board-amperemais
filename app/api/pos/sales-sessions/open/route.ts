@@ -1,9 +1,10 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { validateActiveSeller } from "@/lib/sellers/validate-active-seller";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { OpenSalesSessionInputSchema, type TOpenSalesSessionInput } from "@/schemas/sales-sessions";
 import { db } from "@/services/drizzle";
-import { salesSessions, sellers } from "@/services/drizzle/schema";
+import { salesSessions } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
@@ -22,11 +23,7 @@ async function openSalesSession({ input, session }: { input: TOpenSalesSessionIn
 	}
 
 	// Escopo OPERADOR: a chave de escopo é o vendedor responsável.
-	const seller = await db.query.sellers.findFirst({
-		where: and(eq(sellers.id, input.responsavelVendedorId), eq(sellers.organizacaoId, orgId)),
-		columns: { id: true },
-	});
-	if (!seller) throw new createHttpError.NotFound("Vendedor responsavel nao encontrado.");
+	await validateActiveSeller({ orgId, sellerId: input.responsavelVendedorId });
 	const escopoChave = input.responsavelVendedorId;
 
 	// Garante no máximo uma sessão aberta por escopo (o índice parcial reforça; aqui damos erro amigável).

@@ -1,5 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { validateActiveSeller } from "@/lib/sellers/validate-active-seller";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, resolvePaymentFinancialAccounts } from "@/lib/payments";
 import { resolveActiveSalesSession } from "@/lib/sales-sessions";
@@ -217,6 +218,7 @@ export type TGetSaleForEditOutput = Awaited<ReturnType<typeof getSaleForEdit>>;
 
 async function editConfirmedSale({ input, session }: { input: TEditConfirmedSaleInput; session: TAuthUserSession }) {
 	const orgId = session.membership!.organizacao.id;
+	await validateActiveSeller({ orgId, sellerId: input.vendedorId });
 
 	const organization = await db.query.organizations.findFirst({ where: (fields, { eq }) => eq(fields.id, orgId) });
 	if (!organization) throw new createHttpError.NotFound("Organização não encontrada.");

@@ -27,7 +27,7 @@ export function GeneralBlock({ seller, updateSeller, avatarHolder, updateAvatar 
 					</div>
 				</div>
 				<div className="w-full flex items-center justify-center">
-					<CheckboxInput labelTrue="ATIVO" labelFalse="ATIVO" checked={seller.ativo} handleChange={(value) => updateSeller({ ativo: value })} />
+					<CheckboxInput labelTrue="ATIVO" labelFalse="INATIVO" checked={seller.ativo} handleChange={(value) => updateSeller({ ativo: value })} />
 				</div>
 				<ImageContent imageUrl={seller.avatarUrl} imageHolder={avatarHolder} updateImageHolder={updateAvatar} />
 				<TextInput

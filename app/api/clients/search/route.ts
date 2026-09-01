@@ -1,10 +1,18 @@
 import { appApiHandler } from "@/lib/app-api";
-import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
+import { runPagesRouteHandler, type PagesRouteHandler } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import { createSimplifiedPhoneSearchCondition, createSimplifiedSearchCondition } from "@/lib/search";
+import { formatStringAsOnlyDigits } from "@/lib/formatting";
+import {
+	createSimilarityExpression,
+	createSimplifiedPhoneSearchCondition,
+	createSimplifiedSearchCondition,
+	createWordSimilarityExpression,
+	extractSearchTokens,
+} from "@/lib/search";
+import { isValidCPF } from "@/lib/validation";
 import { db } from "@/services/drizzle";
 import { clients } from "@/services/drizzle/schema";
-import { and, asc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import z from "zod";
 
@@ -36,6 +44,7 @@ const SEARCH_COLUMNS = {
 
 /** Teto do modo lookup: a seleção de escopo do agente é de dezenas, não de milhares. */
 const MAX_CLIENT_IDS_LOOKUP = 200;
+const MIN_NAME_TOKEN_SIMILARITY = 0.45;
 
 async function searchClients({ input, userOrgId }: { input: TSearchClientsInput; userOrgId: string }) {
 	if (input.clientIds.length > 0) {
@@ -57,16 +66,37 @@ async function searchClients({ input, userOrgId }: { input: TSearchClientsInput;
 		};
 	}
 
+	const nameTokens = extractSearchTokens(normalizedSearch);
+	const tokenizedNameCondition =
+		nameTokens.length > 0
+			? and(
+					...nameTokens.map((token) =>
+						or(
+							createSimplifiedSearchCondition(clients.nome, token),
+							sql`${createWordSimilarityExpression(clients.nome, token)} >= ${MIN_NAME_TOKEN_SIMILARITY}`,
+						),
+					),
+				)
+			: undefined;
+	const searchDigits = formatStringAsOnlyDigits(normalizedSearch);
+	const isPhoneSearch = searchDigits.length >= 4 && searchDigits.length <= 11 && !(searchDigits.length === 11 && isValidCPF(searchDigits));
+	const phoneFinalFour = isPhoneSearch ? searchDigits.slice(-4) : null;
+	const phoneFinalFourRank = phoneFinalFour
+		? sql<number>`CASE WHEN right(${clients.telefoneBase}, 4) = ${phoneFinalFour} THEN 1 ELSE 0 END`
+		: sql<number>`0`;
+	const nameSimilarityRank = createSimilarityExpression(clients.nome, normalizedSearch);
+
 	const result = await db.query.clients.findMany({
 		where: and(
 			eq(clients.organizacaoId, userOrgId),
 			or(
 				createSimplifiedSearchCondition(clients.nome, normalizedSearch),
+				tokenizedNameCondition,
 				createSimplifiedPhoneSearchCondition(clients.telefoneBase, normalizedSearch),
 				createSimplifiedSearchCondition(clients.cpfCnpj, normalizedSearch),
 			),
 		),
-		orderBy: asc(clients.nome),
+		orderBy: [desc(phoneFinalFourRank), desc(nameSimilarityRank), asc(clients.nome)],
 		limit: 10,
 		columns: SEARCH_COLUMNS,
 	});

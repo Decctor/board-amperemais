@@ -32,6 +32,7 @@ export default async function Sales() {
 		<SalesHistoryPage
 			organization={membership.organizacao}
 			canEditSales={membership.permissoes.vendas.editar}
+			canEmitFiscal={membership.permissoes.fiscal.emitir}
 		/>
 	);
 }

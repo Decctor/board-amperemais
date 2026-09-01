@@ -1,11 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
-import {
-	emitFiscalDocument,
-	getFiscalDocumentDetailsById,
-	listFiscalDocumentEvents,
-	listFiscalDocuments,
-} from "@/lib/fiscal/documents";
+import { emitFiscalDocument, getFiscalDocumentDetailsById, listFiscalDocumentEvents, listFiscalDocuments } from "@/lib/fiscal/documents";
+import { resolveEmissionDocumentType } from "@/lib/fiscal/document-type";
 import { FiscalDocumentTypeEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import createHttpError from "http-errors";
@@ -83,7 +79,7 @@ const EmitFiscalDocumentInputSchema = z.object({
 		required_error: "ID da venda não informado.",
 		invalid_type_error: "Tipo não válido para o ID da venda.",
 	}),
-	tipo: FiscalDocumentTypeEnum.extract(["NFCE", "NFE"]),
+	tipo: FiscalDocumentTypeEnum.extract(["NFCE", "NFE"]).optional(),
 });
 export type TEmitFiscalDocumentInput = z.infer<typeof EmitFiscalDocumentInputSchema>;
 
@@ -94,12 +90,38 @@ async function createFiscalDocument({ input }: { input: TEmitFiscalDocumentInput
 
 	const saleBelongsToOrg = await db.query.sales.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, input.vendaId), eq(fields.organizacaoId, orgId)),
+		with: {
+			cliente: { columns: { cpfCnpj: true } },
+			documentosFiscais: { columns: { statusInterno: true } },
+		},
 	});
 	if (!saleBelongsToOrg) throw new createHttpError.NotFound("Venda não encontrada para emissão fiscal.");
+	if (!input.tipo) {
+		if (saleBelongsToOrg.statusVenda !== "CONFIRMADA") {
+			throw new createHttpError.BadRequest("Apenas vendas confirmadas podem emitir nota fiscal.");
+		}
+		const hasActiveFiscalDocument = saleBelongsToOrg.documentosFiscais.some(
+			(document) => !["CANCELADO", "INUTILIZADO"].includes(document.statusInterno ?? ""),
+		);
+		if (hasActiveFiscalDocument) {
+			throw new createHttpError.Conflict("Esta venda já possui um documento fiscal ativo.");
+		}
+	}
+	const tipo =
+		input.tipo ??
+		(await resolveEmissionDocumentType({
+			organizacaoId: orgId,
+			operacaoPadraoNfeId: session.membership?.organizacao.fiscalConfiguracao?.operacaoPadraoPorTipo?.NFE ?? null,
+			signals: {
+				canal: saleBelongsToOrg.canal,
+				entregaModalidade: saleBelongsToOrg.entregaModalidade,
+				destinatarioCpfCnpj: saleBelongsToOrg.cliente?.cpfCnpj,
+			},
+		}));
 
 	const result = await emitFiscalDocument({
 		vendaId: input.vendaId,
-		tipo: input.tipo,
+		tipo,
 		organizacaoId: orgId,
 		autorId: session.user.id,
 		origem: "MANUAL",

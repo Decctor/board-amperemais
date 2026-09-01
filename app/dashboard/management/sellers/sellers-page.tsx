@@ -101,6 +101,7 @@ function SellersDatabaseView({ user, membership }: { user: TAuthUserSession["use
 		updateFilters,
 	} = useSellers({
 		initialFilters: {
+			activeOnly: false,
 			statsPeriodAfter: dayjs().startOf("month").toDate(),
 			statsPeriodBefore: dayjs().endOf("month").toDate(),
 		},
@@ -581,6 +582,14 @@ function SellersPageSellerCard({ seller, handleEditClick, userHasViewPermission,
 						<AvatarFallback>{formatNameAsInitials(seller.nome)}</AvatarFallback>
 					</Avatar>
 					<h1 className="text-xs font-bold tracking-tight uppercase">{seller.nome}</h1>
+					<span
+						className={cn(
+							"rounded-md px-1.5 py-0.5 text-[0.65rem] font-bold tracking-tight",
+							seller.ativo ? "bg-emerald-500/15 text-emerald-600" : "bg-muted text-muted-foreground",
+						)}
+					>
+						{seller.ativo ? "ATIVO" : "INATIVO"}
+					</span>
 					{seller.telefone ? (
 						<div className="flex items-center gap-1.5">
 							<Phone className="w-3 min-w-3 h-3 min-h-3" />

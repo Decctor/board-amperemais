@@ -1,5 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { validateActiveSeller } from "@/lib/sellers/validate-active-seller";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, resolvePaymentFinancialAccounts } from "@/lib/payments";
 import {
@@ -88,6 +89,7 @@ function getSessionWithOrg(session: TAuthUserSession | null) {
 
 async function createAndConfirmSale({ input, session }: { input: TCreateAndConfirmSaleInput; session: TAuthUserSession }) {
 	const orgId = session.membership!.organizacao.id;
+	await validateActiveSeller({ orgId, sellerId: input.vendedorId });
 
 	if (input.itens.length === 0 && !input.recompensaResgate) {
 		throw new createHttpError.BadRequest("Pelo menos um item é obrigatório.");

@@ -23,9 +23,10 @@ import { formatDateAsLocale, formatNameAsInitials, formatToMoney } from "@/lib/f
 import { formatInteractiveDateRangeSummary, formatInteractiveOptionSummary } from "@/components/ui/interactive-filter-formatting";
 import { organizationHasPrinterForFinalidade, useAgentPrinters } from "@/lib/queries/desktop-agent";
 import { createManualPrintJob } from "@/lib/mutations/desktop-agent";
+import { emitFiscalDocumentMutation } from "@/lib/mutations/fiscal";
 import { useSales } from "@/lib/queries/sales";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { appRoutes } from "@/lib/navigation/routes";
@@ -40,6 +41,7 @@ import {
 	FileSpreadsheet,
 	Info,
 	ListFilter,
+	LoaderCircle,
 	Megaphone,
 	MoreHorizontal,
 	Package,
@@ -59,15 +61,16 @@ import { SalesIntegrationPill } from "@/components/Sales/SalesIntegrationPill";
 type SalesPageProps = {
 	organization: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 	canEditSales: boolean;
+	canEmitFiscal: boolean;
 };
 
-export default function SalesPage({ organization, canEditSales }: SalesPageProps) {
+export default function SalesPage({ organization, canEditSales, canEmitFiscal }: SalesPageProps) {
 	return (
 		<div className="flex h-full w-full flex-col gap-3">
 			<div className="flex items-center justify-end">
 				<SalesModuleActions orgHasERPAccess={organization.configuracao.recursos.erp.acesso} />
 			</div>
-			<SalesHistoryView canEditSales={canEditSales} />
+			<SalesHistoryView canEditSales={canEditSales} canEmitFiscal={canEmitFiscal} />
 		</div>
 	);
 }
@@ -144,7 +147,7 @@ export function SalesModuleActions({ orgHasERPAccess }: { orgHasERPAccess: boole
 	);
 }
 
-export function SalesHistoryView({ canEditSales }: { canEditSales: boolean }) {
+export function SalesHistoryView({ canEditSales, canEmitFiscal }: { canEditSales: boolean; canEmitFiscal: boolean }) {
 	const {
 		data: salesResult,
 		isLoading,
@@ -193,7 +196,7 @@ export function SalesHistoryView({ canEditSales }: { canEditSales: boolean }) {
 			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
 			{isSuccess && sales ? (
 				sales.length > 0 ? (
-					sales.map((sale) => <SaleCard key={sale.id} sale={sale} canEditSales={canEditSales} />)
+					sales.map((sale) => <SaleCard key={sale.id} sale={sale} canEditSales={canEditSales} canEmitFiscal={canEmitFiscal} />)
 				) : (
 					<p className="w-full tracking-tight text-center">Nenhuma venda encontrada.</p>
 				)
@@ -293,7 +296,15 @@ function SaleErpSummaryChips({ sale }: { sale: TGetSalesOutputDefault["sales"][n
 	);
 }
 
-function SaleCard({ sale, canEditSales }: { sale: TGetSalesOutputDefault["sales"][number]; canEditSales: boolean }) {
+function SaleCard({
+	sale,
+	canEditSales,
+	canEmitFiscal,
+}: {
+	sale: TGetSalesOutputDefault["sales"][number];
+	canEditSales: boolean;
+	canEmitFiscal: boolean;
+}) {
 	return (
 		<div className="bg-card border-border flex w-full flex-col gap-2.5 rounded-xl border px-4 py-3 shadow-2xs hover:border-border hover:shadow-sm transition-all cursor-pointer">
 			<div className="flex flex-col md:flex-row md:items-start justify-between gap-2.5">
@@ -471,6 +482,7 @@ function SaleCard({ sale, canEditSales }: { sale: TGetSalesOutputDefault["sales"
 					{sale.parceiro && <SaleParticipant role="Parceiro" name={sale.parceiro.nome} avatarUrl={sale.parceiro.avatarUrl} />}
 				</div>
 				<div className="flex items-center gap-1 shrink-0">
+					<ManualFiscalEmissionButton sale={sale} canEmitFiscal={canEmitFiscal} />
 					<Button variant="link" className="flex items-center gap-1.5 h-auto shrink-0 p-0" size="sm" asChild>
 						<Link href={appRoutes.sales.details(sale.id)}>
 							<Info className="w-3 min-w-3 h-3 min-h-3" />
@@ -481,6 +493,44 @@ function SaleCard({ sale, canEditSales }: { sale: TGetSalesOutputDefault["sales"
 				</div>
 			</div>
 		</div>
+	);
+}
+
+const MANUALLY_EMITTABLE_FISCAL_STATUSES = new Set(["NAO_EMITIDO", "CANCELADO", "INUTILIZADO"]);
+
+function ManualFiscalEmissionButton({ sale, canEmitFiscal }: { sale: TGetSalesOutputDefault["sales"][number]; canEmitFiscal: boolean }) {
+	const queryClient = useQueryClient();
+	const fiscalStatus = sale.erp?.fiscal.status;
+	const canEmit = canEmitFiscal && sale.statusVenda === "CONFIRMADA" && !!fiscalStatus && MANUALLY_EMITTABLE_FISCAL_STATUSES.has(fiscalStatus);
+
+	const { mutate: emitDocument, isPending } = useMutation({
+		mutationKey: ["emit-sale-fiscal-document", sale.id],
+		mutationFn: emitFiscalDocumentMutation,
+		onSuccess: async (data) => {
+			toast.success(data.message);
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: ["sales"] }),
+				queryClient.invalidateQueries({ queryKey: ["sales-by-id", sale.id] }),
+				queryClient.invalidateQueries({ queryKey: ["fiscal-documents"] }),
+			]);
+		},
+		onError: (error) => toast.error(getErrorMessage(error)),
+	});
+
+	if (!canEmit) return null;
+
+	return (
+		<Button
+			type="button"
+			variant="outline"
+			size="sm"
+			className="h-7 gap-1.5 px-2 text-[0.65rem] font-bold"
+			disabled={isPending}
+			onClick={() => emitDocument({ vendaId: sale.id })}
+		>
+			{isPending ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <ReceiptText className="h-3.5 w-3.5" />}
+			{isPending ? "EMITINDO..." : "EMITIR NOTA FISCAL"}
+		</Button>
 	);
 }
 
