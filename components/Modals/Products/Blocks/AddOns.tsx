@@ -10,7 +10,7 @@ import { formatToMoney } from "@/lib/formatting";
 import { SPREADSHEET_TABLE_ATTR, type SpreadsheetGridBounds } from "@/lib/spreadsheet-navigation";
 import { cn } from "@/lib/utils";
 import type { TProductAddOnOptionState, TProductAddOnState, TUseProductState } from "@/state-hooks/use-product-state";
-import { Check, Layers, LinkIcon, Plus, Unplug } from "lucide-react";
+import { Check, Layers, LinkIcon, Plus, Share2, Unplug } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import ProductVinculation from "../ProductVinculation";
@@ -58,6 +58,7 @@ function AddOnGroupMetaChip({ label, children }: { label: string; children: Reac
 
 type ProductStateAddOnsBlockProps = {
 	addOns: TUseProductState["state"]["productAddOns"];
+	usageByAddOnId?: Record<string, number>;
 	addProductAddOn: TUseProductState["addProductAddOn"];
 	updateProductAddOn: TUseProductState["updateProductAddOn"];
 	removeProductAddOn: TUseProductState["removeProductAddOn"];
@@ -71,6 +72,7 @@ type ValidAddOnRow = TProductAddOnState & { originalIndex: number };
 
 export default function ProductStateAddOnsBlock({
 	addOns,
+	usageByAddOnId,
 	addProductAddOn,
 	updateProductAddOn,
 	removeProductAddOn,
@@ -87,6 +89,7 @@ export default function ProductStateAddOnsBlock({
 	const content = (
 		<AddOnGroupsList
 			validAddOns={validAddOns}
+			usageByAddOnId={usageByAddOnId}
 			addProductAddOn={addProductAddOn}
 			updateProductAddOn={updateProductAddOn}
 			removeProductAddOn={removeProductAddOn}
@@ -107,6 +110,7 @@ export default function ProductStateAddOnsBlock({
 
 type AddOnGroupsListProps = {
 	validAddOns: ValidAddOnRow[];
+	usageByAddOnId?: Record<string, number>;
 	addProductAddOn: TUseProductState["addProductAddOn"];
 	updateProductAddOn: TUseProductState["updateProductAddOn"];
 	removeProductAddOn: TUseProductState["removeProductAddOn"];
@@ -117,6 +121,7 @@ type AddOnGroupsListProps = {
 
 function AddOnGroupsList({
 	validAddOns,
+	usageByAddOnId,
 	addProductAddOn,
 	updateProductAddOn,
 	removeProductAddOn,
@@ -137,6 +142,7 @@ function AddOnGroupsList({
 					key={addOn.id || `temp-addon-${addOn.originalIndex}`}
 					groupIndex={groupIndex + 1}
 					addOn={addOn}
+					usageCount={addOn.id ? usageByAddOnId?.[addOn.id] : undefined}
 					onUpdate={(partial) => updateProductAddOn(addOn.originalIndex, partial)}
 					onRemove={() => removeProductAddOn(addOn.originalIndex)}
 					addOption={(option) => addProductAddOnOption(addOn.originalIndex, option)}
@@ -153,6 +159,7 @@ function AddOnGroupsList({
 type AddOnGroupPanelProps = {
 	groupIndex: number;
 	addOn: ValidAddOnRow;
+	usageCount?: number;
 	onUpdate: (partial: Partial<Omit<TProductAddOnState, "opcoes">>) => void;
 	onRemove: () => void;
 	addOption: (option: TProductAddOnOptionState) => void;
@@ -160,7 +167,7 @@ type AddOnGroupPanelProps = {
 	removeOption: (optionIndex: number) => void;
 };
 
-function AddOnGroupPanel({ groupIndex, addOn, onUpdate, onRemove, addOption, updateOption, removeOption }: AddOnGroupPanelProps) {
+function AddOnGroupPanel({ groupIndex, addOn, usageCount, onUpdate, onRemove, addOption, updateOption, removeOption }: AddOnGroupPanelProps) {
 	const validOptions = useMemo(
 		() => addOn.opcoes.map((option, index) => ({ ...option, originalIndex: index })).filter((option) => !option.deletar),
 		[addOn.opcoes],
@@ -182,7 +189,7 @@ function AddOnGroupPanel({ groupIndex, addOn, onUpdate, onRemove, addOption, upd
 
 	return (
 		<div className="flex w-full flex-col overflow-hidden rounded-lg border border-border bg-background shadow-xs">
-			<AddOnGroupHeader groupIndex={groupIndex} addOn={addOn} onUpdate={handleGroupUpdate} onRemove={onRemove} />
+			<AddOnGroupHeader groupIndex={groupIndex} addOn={addOn} usageCount={usageCount} onUpdate={handleGroupUpdate} onRemove={onRemove} />
 
 			<AddOnOptionTable
 				validOptions={validOptions}
@@ -198,11 +205,26 @@ function AddOnGroupPanel({ groupIndex, addOn, onUpdate, onRemove, addOption, upd
 type AddOnGroupHeaderProps = {
 	groupIndex: number;
 	addOn: ValidAddOnRow;
+	usageCount?: number;
 	onUpdate: (partial: Partial<Omit<TProductAddOnState, "opcoes">>) => void;
 	onRemove: () => void;
 };
 
-function AddOnGroupHeader({ groupIndex, addOn, onUpdate, onRemove }: AddOnGroupHeaderProps) {
+function AddOnGroupSharedBadge({ usageCount }: { usageCount?: number }) {
+	if (!usageCount || usageCount <= 1) return null;
+
+	return (
+		<span
+			title={`Esse grupo é usado em ${usageCount} produtos. Alterações aqui afetam todos eles; remover apenas desvincula desse produto.`}
+			className="inline-flex h-8 items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 text-[0.62rem] font-medium uppercase tracking-wide text-amber-600 dark:text-amber-500"
+		>
+			<Share2 className="h-3 w-3 shrink-0" />
+			{`Usado em ${usageCount} produtos`}
+		</span>
+	);
+}
+
+function AddOnGroupHeader({ groupIndex, addOn, usageCount, onUpdate, onRemove }: AddOnGroupHeaderProps) {
 	return (
 		<div className="border-b border-border bg-muted">
 			<div className="hidden flex-col gap-2 px-3 py-2.5 lg:flex">
@@ -235,6 +257,7 @@ function AddOnGroupHeader({ groupIndex, addOn, onUpdate, onRemove }: AddOnGroupH
 					</div>
 
 					<div className="flex shrink-0 items-center gap-1.5">
+						<AddOnGroupSharedBadge usageCount={usageCount} />
 						<AddOnGroupMetaChip label="Mín">
 							<div className="w-8 [&_button]:h-6 [&_button]:px-1 [&_button]:text-xs [&_input]:h-6 [&_input]:px-1 [&_input]:text-xs">
 								<EditableNumberCell
@@ -286,6 +309,7 @@ function AddOnGroupHeader({ groupIndex, addOn, onUpdate, onRemove }: AddOnGroupH
 						<DeleteRowButton onRemove={onRemove} ariaLabel="Remover grupo de adicionais" />
 					</div>
 				</div>
+				<AddOnGroupSharedBadge usageCount={usageCount} />
 				<div className="grid grid-cols-3 gap-2">
 					<MobileEditableField label="Mín">
 						<EditableNumberCell
@@ -331,7 +355,7 @@ function AddOnActiveToggle({ active, onToggle }: { active: boolean; onToggle: ()
 	);
 }
 
-type ValidOptionRow = TProductAddOnOptionState & { originalIndex: number };
+export type ValidOptionRow = TProductAddOnOptionState & { originalIndex: number };
 
 type AddOnOptionTableProps = {
 	validOptions: ValidOptionRow[];
@@ -341,7 +365,7 @@ type AddOnOptionTableProps = {
 	removeOption: (optionIndex: number) => void;
 };
 
-function AddOnOptionTable({ validOptions, gridBounds, addOption, updateOption, removeOption }: AddOnOptionTableProps) {
+export function AddOnOptionTable({ validOptions, gridBounds, addOption, updateOption, removeOption }: AddOnOptionTableProps) {
 	return (
 		<div {...{ [SPREADSHEET_TABLE_ATTR]: "true" }} className="flex w-full flex-col">
 			<div
@@ -739,7 +763,7 @@ function isDraftAddOnReady(addOn: TProductAddOnState) {
 	return Boolean(addOn.nome.trim() && addOn.internoNome?.trim() && addOn.maxOpcoes >= 1 && addOn.minOpcoes >= 0 && addOn.maxOpcoes >= addOn.minOpcoes);
 }
 
-function validateAddOnGroupFields(addOn: Pick<TProductAddOnState, "nome" | "internoNome" | "minOpcoes" | "maxOpcoes">) {
+export function validateAddOnGroupFields(addOn: Pick<TProductAddOnState, "nome" | "internoNome" | "minOpcoes" | "maxOpcoes">) {
 	if (!addOn.nome.trim()) {
 		toast.error("Nome do grupo não informado.");
 		return false;

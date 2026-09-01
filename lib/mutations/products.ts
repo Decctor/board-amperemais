@@ -12,6 +12,12 @@ import type {
 	TUpdateProductAddOnOutput,
 } from "@/app/api/products/add-ons/route";
 import type {
+	TCreateProductAddOnReferenceInput,
+	TCreateProductAddOnReferenceOutput,
+	TDeleteProductAddOnReferenceInput,
+	TDeleteProductAddOnReferenceOutput,
+} from "@/app/api/products/add-ons/references/route";
+import type {
 	TCreateProductFiscalProfileInput,
 	TCreateProductFiscalProfileOutput,
 	TDeleteProductFiscalProfileInput,
@@ -48,6 +54,20 @@ export async function createProductAddOn(input: TCreateProductAddOnInput) {
 
 export async function updateProductAddOn(input: TUpdateProductAddOnInput) {
 	const { data } = await axios.put<TUpdateProductAddOnOutput>("/api/products/add-ons", input);
+	return data;
+}
+
+export async function createProductAddOnReference(input: TCreateProductAddOnReferenceInput) {
+	const { data } = await axios.post<TCreateProductAddOnReferenceOutput>("/api/products/add-ons/references", input);
+	return data;
+}
+
+export async function deleteProductAddOnReference(input: TDeleteProductAddOnReferenceInput) {
+	const searchParams = new URLSearchParams();
+	searchParams.set("productId", input.productId);
+	searchParams.set("productAddOnId", input.productAddOnId);
+	if (input.productVariantId) searchParams.set("productVariantId", input.productVariantId);
+	const { data } = await axios.delete<TDeleteProductAddOnReferenceOutput>(`/api/products/add-ons/references?${searchParams.toString()}`);
 	return data;
 }
 

@@ -81,10 +81,14 @@ async function searchClients({ input, userOrgId }: { input: TSearchClientsInput;
 	const searchDigits = formatStringAsOnlyDigits(normalizedSearch);
 	const isPhoneSearch = searchDigits.length >= 4 && searchDigits.length <= 11 && !(searchDigits.length === 11 && isValidCPF(searchDigits));
 	const phoneFinalFour = isPhoneSearch ? searchDigits.slice(-4) : null;
-	const phoneFinalFourRank = phoneFinalFour
-		? sql<number>`CASE WHEN right(${clients.telefoneBase}, 4) = ${phoneFinalFour} THEN 1 ELSE 0 END`
-		: sql<number>`0`;
 	const nameSimilarityRank = createSimilarityExpression(clients.nome, normalizedSearch);
+	const orderBy = phoneFinalFour
+		? [
+				desc(sql<number>`CASE WHEN right(${clients.telefoneBase}, 4) = ${phoneFinalFour} THEN 1 ELSE 0 END`),
+				desc(nameSimilarityRank),
+				asc(clients.nome),
+			]
+		: [desc(nameSimilarityRank), asc(clients.nome)];
 
 	const result = await db.query.clients.findMany({
 		where: and(
@@ -96,7 +100,7 @@ async function searchClients({ input, userOrgId }: { input: TSearchClientsInput;
 				createSimplifiedSearchCondition(clients.cpfCnpj, normalizedSearch),
 			),
 		),
-		orderBy: [desc(phoneFinalFourRank), desc(nameSimilarityRank), asc(clients.nome)],
+		orderBy,
 		limit: 10,
 		columns: SEARCH_COLUMNS,
 	});

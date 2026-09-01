@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { appApiHandler } from "@/lib/app-api";
 import { productAddOnOptions, productAddOnReferences, productAddOns, productVariants, products } from "@/services/drizzle/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, ilike, isNull, or } from "drizzle-orm";
 
 const GetProductAddOnsInputSchema = z.object({
 	productId: z
@@ -22,6 +22,19 @@ const GetProductAddOnsInputSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+	search: z
+		.string({
+			invalid_type_error: "Tipo não válido para busca.",
+		})
+		.optional()
+		.nullable(),
+	activeOnly: z
+		.string({
+			invalid_type_error: "Tipo não válido para filtro de ativos.",
+		})
+		.optional()
+		.nullable()
+		.transform((v) => v === "true"),
 });
 export type TGetProductAddOnsInput = z.infer<typeof GetProductAddOnsInputSchema>;
 
@@ -59,6 +72,7 @@ async function getProductAddOns({ input, session }: { input: TGetProductAddOnsIn
 			data: {
 				byProductId: productAddOnsResult.filter((reference) => reference.grupo?.organizacaoId === userOrgId && reference.grupo.ativo),
 				byId: undefined,
+				default: undefined,
 			},
 			message: "Adicionais do produto recuperados com sucesso.",
 		};
@@ -76,6 +90,12 @@ async function getProductAddOns({ input, session }: { input: TGetProductAddOnsIn
 						produtoVariante: true,
 					},
 				},
+				produtos: {
+					with: {
+						produto: { columns: { id: true, nome: true } },
+						produtoVariante: { columns: { id: true, nome: true } },
+					},
+				},
 			},
 		});
 		if (!productAddOnResult) throw new createHttpError.NotFound("Adicional não encontrado.");
@@ -84,16 +104,51 @@ async function getProductAddOns({ input, session }: { input: TGetProductAddOnsIn
 			data: {
 				byProductId: undefined,
 				byId: productAddOnResult,
+				default: undefined,
 			},
 			message: "Adicional recuperado com sucesso.",
 		};
 	}
 
-	throw new createHttpError.BadRequest("Informe o ID do produto ou o ID do adicional.");
+	const searchTerm = input.search?.trim();
+	const addOnsResult = await db.query.productAddOns.findMany({
+		where: and(
+			eq(productAddOns.organizacaoId, userOrgId),
+			input.activeOnly ? eq(productAddOns.ativo, true) : undefined,
+			searchTerm ? or(ilike(productAddOns.nome, `%${searchTerm}%`), ilike(productAddOns.internoNome, `%${searchTerm}%`)) : undefined,
+		),
+		with: {
+			opcoes: {
+				where: (fields, { eq }) => eq(fields.ativo, true),
+				orderBy: (fields, { asc }) => asc(fields.nome),
+				with: {
+					produto: true,
+					produtoVariante: true,
+				},
+			},
+			produtos: {
+				with: {
+					produto: { columns: { id: true, nome: true } },
+					produtoVariante: { columns: { id: true, nome: true } },
+				},
+			},
+		},
+		orderBy: (fields, { asc }) => asc(fields.nome),
+	});
+
+	return {
+		data: {
+			byProductId: undefined,
+			byId: undefined,
+			default: addOnsResult,
+		},
+		message: "Grupos de adicionais recuperados com sucesso.",
+	};
 }
 export type TGetProductAddOnsOutput = Awaited<ReturnType<typeof getProductAddOns>>;
 export type TGetProductAddOnsOutputByProductId = Exclude<TGetProductAddOnsOutput["data"]["byProductId"], undefined>;
 export type TGetProductAddOnsOutputById = Exclude<TGetProductAddOnsOutput["data"]["byId"], undefined>;
+export type TGetProductAddOnsOutputDefault = Exclude<TGetProductAddOnsOutput["data"]["default"], undefined>;
 
 async function getProductAddOnsRoute(request: NextRequest) {
 	const session = await getCurrentSessionUncached();
@@ -101,6 +156,8 @@ async function getProductAddOnsRoute(request: NextRequest) {
 	const input = GetProductAddOnsInputSchema.parse({
 		productId: request.nextUrl.searchParams.get("productId"),
 		productAddOnId: request.nextUrl.searchParams.get("productAddOnId"),
+		search: request.nextUrl.searchParams.get("search"),
+		activeOnly: request.nextUrl.searchParams.get("activeOnly"),
 	});
 	const result = await getProductAddOns({ input, session });
 	return NextResponse.json(result);
@@ -139,19 +196,23 @@ const ProductAddOnInputSchema = ProductAddOnSchema.omit({ organizacaoId: true })
 });
 
 export const CreateProductAddOnInputSchema = z.object({
-	productId: z.string({
-		required_error: "ID do produto não informado.",
-		invalid_type_error: "Tipo não válido para ID do produto.",
-	}),
+	productId: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID do produto.",
+		})
+		.optional()
+		.nullable(),
 	addOn: ProductAddOnInputSchema,
 });
 export type TCreateProductAddOnInput = z.infer<typeof CreateProductAddOnInputSchema>;
 
 export const UpdateProductAddOnInputSchema = z.object({
-	productId: z.string({
-		required_error: "ID do produto não informado.",
-		invalid_type_error: "Tipo não válido para ID do produto.",
-	}),
+	productId: z
+		.string({
+			invalid_type_error: "Tipo não válido para ID do produto.",
+		})
+		.optional()
+		.nullable(),
 	productAddOnId: z.string({
 		required_error: "ID do adicional não informado.",
 		invalid_type_error: "Tipo não válido para ID do adicional.",
@@ -327,11 +388,13 @@ async function createProductAddOn({ input, session }: { input: TCreateProductAdd
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const product = await db.query.products.findFirst({
-		where: and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)),
-		columns: { id: true },
-	});
-	if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
+	if (input.productId) {
+		const product = await db.query.products.findFirst({
+			where: and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)),
+			columns: { id: true },
+		});
+		if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
+	}
 
 	const transactionReturn = await db.transaction(async (tx) => {
 		const [createdAddOn] = await tx
@@ -357,19 +420,21 @@ async function createProductAddOn({ input, session }: { input: TCreateProductAdd
 			options: input.addOn.opcoes,
 		});
 
-		await tx.insert(productAddOnReferences).values({
-			produtoId: input.productId,
-			produtoVarianteId: null,
-			produtoAddOnId: createdAddOn.id,
-			ordem: await getNextProductAddOnOrder({ tx, productId: input.productId }),
-		});
+		if (input.productId) {
+			await tx.insert(productAddOnReferences).values({
+				produtoId: input.productId,
+				produtoVarianteId: null,
+				produtoAddOnId: createdAddOn.id,
+				ordem: await getNextProductAddOnOrder({ tx, productId: input.productId }),
+			});
+		}
 
 		return createdAddOn.id;
 	});
 
 	return {
 		data: {
-			productId: input.productId,
+			productId: input.productId ?? null,
 			productAddOnId: transactionReturn,
 		},
 		message: "Adicional criado com sucesso.",
@@ -393,24 +458,32 @@ async function updateProductAddOn({ input, session }: { input: TUpdateProductAdd
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const product = await db.query.products.findFirst({
-		where: and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)),
-		columns: { id: true },
-	});
-	if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
+	if (input.productId) {
+		const product = await db.query.products.findFirst({
+			where: and(eq(products.id, input.productId), eq(products.organizacaoId, userOrgId)),
+			columns: { id: true },
+		});
+		if (!product) throw new createHttpError.NotFound("Produto não encontrado.");
 
-	const existingReference = await db.query.productAddOnReferences.findFirst({
-		where: and(
-			eq(productAddOnReferences.produtoId, input.productId),
-			eq(productAddOnReferences.produtoAddOnId, input.productAddOnId),
-			isNull(productAddOnReferences.produtoVarianteId),
-		),
-		with: {
-			grupo: true,
-		},
-	});
-	if (!existingReference?.grupo || existingReference.grupo.organizacaoId !== userOrgId) {
-		throw new createHttpError.NotFound("Adicional não encontrado.");
+		const existingReference = await db.query.productAddOnReferences.findFirst({
+			where: and(
+				eq(productAddOnReferences.produtoId, input.productId),
+				eq(productAddOnReferences.produtoAddOnId, input.productAddOnId),
+				isNull(productAddOnReferences.produtoVarianteId),
+			),
+			with: {
+				grupo: true,
+			},
+		});
+		if (!existingReference?.grupo || existingReference.grupo.organizacaoId !== userOrgId) {
+			throw new createHttpError.NotFound("Adicional não encontrado.");
+		}
+	} else {
+		const existingAddOn = await db.query.productAddOns.findFirst({
+			where: and(eq(productAddOns.id, input.productAddOnId), eq(productAddOns.organizacaoId, userOrgId)),
+			columns: { id: true },
+		});
+		if (!existingAddOn) throw new createHttpError.NotFound("Adicional não encontrado.");
 	}
 
 	const transactionReturn = await db.transaction(async (tx) => {

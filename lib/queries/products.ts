@@ -542,6 +542,50 @@ export function useProductAddOnById({ productAddOnId }: { productAddOnId: string
 	};
 }
 
+type TProductAddOnsFilters = {
+	search: string;
+	activeOnly: boolean;
+};
+
+async function fetchProductAddOns(filters: TProductAddOnsFilters) {
+	try {
+		const searchParams = new URLSearchParams();
+		if (filters.search) searchParams.set("search", filters.search);
+		if (filters.activeOnly) searchParams.set("activeOnly", "true");
+		const { data } = await axios.get<TGetProductAddOnsOutput>(`/api/products/add-ons?${searchParams.toString()}`);
+		const result = data.data.default;
+		if (!result) throw new Error("Grupos de adicionais não encontrados.");
+		return result;
+	} catch (error) {
+		console.log("Error running fetchProductAddOns", error);
+		throw error;
+	}
+}
+
+type UseProductAddOnsParams = {
+	initialFilters?: Partial<TProductAddOnsFilters>;
+};
+export function useProductAddOns({ initialFilters }: UseProductAddOnsParams = {}) {
+	const [filters, setFilters] = useState<TProductAddOnsFilters>({
+		search: initialFilters?.search || "",
+		activeOnly: initialFilters?.activeOnly ?? false,
+	});
+	function updateFilters(newFilters: Partial<TProductAddOnsFilters>) {
+		setFilters((prevFilters) => ({ ...prevFilters, ...newFilters }));
+	}
+
+	const debouncedFilters = useDebounceMemo(filters, 500);
+	return {
+		...useQuery({
+			queryKey: ["product-add-ons", debouncedFilters],
+			queryFn: () => fetchProductAddOns(debouncedFilters),
+		}),
+		queryKey: ["product-add-ons", debouncedFilters],
+		filters,
+		updateFilters,
+	};
+}
+
 async function fetchProductFiscalProfilesByProductId(productId: string) {
 	try {
 		const searchParams = new URLSearchParams();

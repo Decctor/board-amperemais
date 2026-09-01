@@ -5,6 +5,7 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import PlanRestrictionComponent from "@/components/Layouts/PlanRestrictionComponent";
 import NewProduct from "@/components/Modals/Products/NewProduct";
 import RecountProduct from "@/components/Modals/Internal/StockRecount/RecountProduct";
+import ProductsAddOnsView from "@/app/dashboard/catalog/products/_components/ProductsAddOnsView";
 import ProductsGraphs from "@/app/dashboard/catalog/products/_components/ProductsGraphs";
 import ProductsInlineFilters from "@/app/dashboard/catalog/products/_components/ProductsInlineFilters";
 import ProductsRanking from "@/app/dashboard/catalog/products/_components/ProductsRanking";
@@ -38,6 +39,7 @@ import {
 	Diamond,
 	DollarSign,
 	Info,
+	Layers,
 	Package,
 	PencilIcon,
 	Plus,
@@ -58,7 +60,7 @@ type ProductsPageProps = {
 };
 
 export default function ProductsPage({ user, userOrg, userMembership }: ProductsPageProps) {
-	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum(["stats", "database"]));
+	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum(["stats", "database", "add-ons"]));
 
 	if (userOrg?.assinaturaPlano === "ESSENCIAL") {
 		return (
@@ -71,7 +73,7 @@ export default function ProductsPage({ user, userOrg, userMembership }: Products
 
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
-			<Tabs value={viewMode ?? "stats"} onValueChange={(v: string) => setViewMode(v as "stats" | "database")}>
+			<Tabs value={viewMode ?? "stats"} onValueChange={(v: string) => setViewMode(v as "stats" | "database" | "add-ons")}>
 				<TabsList variant="page">
 					<TabsTrigger value="stats">
 						<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />
@@ -81,12 +83,19 @@ export default function ProductsPage({ user, userOrg, userMembership }: Products
 						<Users className="w-4 h-4 min-w-4 min-h-4" />
 						Banco de Dados
 					</TabsTrigger>
+					<TabsTrigger value="add-ons">
+						<Layers className="w-4 h-4 min-w-4 min-h-4" />
+						Adicionais
+					</TabsTrigger>
 				</TabsList>
 				<TabsContent value="stats">
 					<ProductsStatsView />
 				</TabsContent>
 				<TabsContent value="database">
 					<ProductsDatabaseView user={user} userMembership={userMembership} organization={userOrg} />
+				</TabsContent>
+				<TabsContent value="add-ons">
+					<ProductsAddOnsView />
 				</TabsContent>
 			</Tabs>
 		</div>

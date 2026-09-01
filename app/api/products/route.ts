@@ -1153,14 +1153,17 @@ async function upsertScopedProductAddOn({
 	addOn: TUpdateProductAddOnInput;
 }) {
 	if (addOn.id && addOn.deletar) {
+		// Groups can be shared across products: removing one from a product only
+		// detaches the reference; the group stays available in the registry.
 		await tx
-			.update(productAddOns)
-			.set({ ativo: false })
-			.where(and(eq(productAddOns.id, addOn.id), eq(productAddOns.organizacaoId, userOrgId)));
-		await tx
-			.update(productAddOnOptions)
-			.set({ ativo: false })
-			.where(and(eq(productAddOnOptions.produtoAddOnId, addOn.id), eq(productAddOnOptions.organizacaoId, userOrgId)));
+			.delete(productAddOnReferences)
+			.where(
+				and(
+					eq(productAddOnReferences.produtoId, productId),
+					eq(productAddOnReferences.produtoAddOnId, addOn.id),
+					variantId ? eq(productAddOnReferences.produtoVarianteId, variantId) : isNull(productAddOnReferences.produtoVarianteId),
+				),
+			);
 		return addOn.id;
 	}
 
