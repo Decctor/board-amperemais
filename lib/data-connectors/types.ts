@@ -26,6 +26,8 @@ export type TCanonicalClient = {
 	name: string;
 	phone: string;
 	basePhone: string;
+	/** A fonte enviou uma rota temporária/mascarada; um telefone cadastral anterior deve ser limpo. */
+	phoneIsTemporary?: boolean;
 	cpfCnpj?: string | null;
 	stateRegistration?: string | null;
 	email?: string | null;

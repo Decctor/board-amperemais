@@ -92,6 +92,9 @@ async function fetchAccountingEntries(filters: TGetAccountingEntriesInput) {
 	if (filters.periodAfter) searchParams.set("periodAfter", filters.periodAfter.toISOString());
 	if (filters.periodBefore) searchParams.set("periodBefore", filters.periodBefore.toISOString());
 	if (filters.originTypes && filters.originTypes.length > 0) searchParams.set("originTypes", filters.originTypes.join(","));
+	if (filters.transactionStatuses && filters.transactionStatuses.length > 0)
+		searchParams.set("transactionStatuses", filters.transactionStatuses.join(","));
+	searchParams.set("sortOrder", filters.sortOrder);
 	const { data } = await axios.get<TGetAccountingEntriesOutput>(`/api/finances/accounting-entries?${searchParams.toString()}`);
 	const result = data.data.default;
 	if (!result) throw new Error("Oops, houve um erro ao buscar os lançamentos.");
@@ -128,6 +131,8 @@ export function useFinancesAccountingEntries({ initialFilters }: UseFinancesAcco
 		periodAfter: initialFilters?.periodAfter || null,
 		periodBefore: initialFilters?.periodBefore || null,
 		originTypes: initialFilters?.originTypes || [],
+		transactionStatuses: initialFilters?.transactionStatuses || [],
+		sortOrder: initialFilters?.sortOrder || "desc",
 	});
 	function updateFilters(newFilters: Partial<TGetAccountingEntriesInput>) {
 		setFilters((prev) => ({ ...prev, ...newFilters }));

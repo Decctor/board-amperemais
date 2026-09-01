@@ -177,7 +177,18 @@ export async function syncAuxiliaryEntities({
 		(client) => `${client.externalId ?? ""}|${normalizeName(client.name)}|${client.basePhone}`,
 	)) {
 		if (!getCanonicalClientResolutionKey(batch, client)) continue;
-		if (resolveClientForCanonicalSale(batch, context, client)) continue;
+		const existingClient = resolveClientForCanonicalSale(batch, context, client);
+		if (existingClient) {
+			// Telefones 0800/localizer do iFood são rotas temporárias, não identidade do cliente. Se
+			// uma versão anterior do conector os persistiu, o próximo sync corrige o cadastro.
+			if (client.phoneIsTemporary && existingClient.basePhone) {
+				const previousBasePhone = existingClient.basePhone;
+				await tx.update(clients).set({ telefone: "", telefoneBase: "" }).where(eq(clients.id, existingClient.id));
+				existingClient.basePhone = "";
+				if (context.clientsByBasePhone.get(previousBasePhone)?.id === existingClient.id) context.clientsByBasePhone.delete(previousBasePhone);
+			}
+			continue;
+		}
 
 		const firstSale = getFirstValidSaleForClient(batch, client);
 		const firstPurchaseDate = firstSale?.occurredAt ?? null;

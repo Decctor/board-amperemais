@@ -33,6 +33,14 @@ export const CupomVendaDadosSchema = z.object({
 			.array(z.string({ invalid_type_error: "Tipo não válido para a linha do endereço de entrega." }))
 			.optional()
 			.nullable(),
+		contatoTemporario: z
+			.object({
+				telefone: z.string({ invalid_type_error: "Tipo não válido para o telefone temporário." }).optional().nullable(),
+				localizador: z.string({ required_error: "Localizador temporário não informado." }),
+				expiraEm: z.coerce.date({ invalid_type_error: "Tipo não válido para a expiração do localizador." }).optional().nullable(),
+			})
+			.optional()
+			.nullable(),
 		itens: z
 			.array(
 				z.object({
@@ -212,11 +220,21 @@ export function renderCupomVendaHtml(dados: TCupomVendaDados) {
 		: "";
 
 	const modalidadeLabel = venda.modalidade ? (MODALIDADE_LABELS[venda.modalidade] ?? venda.modalidade) : null;
+	const contatoTemporarioHtml =
+		venda.modalidade === "ENTREGA" && venda.contatoTemporario
+			? `<div class="contato-ifood">
+			<p class="titulo-secao">CONTATO IFOOD</p>
+			${venda.contatoTemporario.telefone ? `<p class="telefone-ifood">${escapeHtml(venda.contatoTemporario.telefone)}</p>` : ""}
+			<p class="localizador-ifood">LOCALIZADOR ${escapeHtml(venda.contatoTemporario.localizador)}</p>
+			${venda.contatoTemporario.expiraEm ? `<p class="mini">Válido até ${formatDateAsLocale(venda.contatoTemporario.expiraEm, true)}</p>` : ""}
+		</div>`
+			: "";
 	const modalidadeHtml = modalidadeLabel
 		? `<div class="sep"></div>
 		<div class="bloco">
 			<p class="faixa">${escapeHtml(modalidadeLabel)}${venda.comandaNumero ? ` Nº ${escapeHtml(venda.comandaNumero)}` : ""}</p>
 			${venda.enderecoEntrega?.length ? venda.enderecoEntrega.map((linha) => `<p>${escapeHtml(linha)}</p>`).join("") : ""}
+			${contatoTemporarioHtml}
 		</div>`
 		: "";
 
@@ -323,6 +341,9 @@ p { margin: 0; }
 .rotulo { font-weight: 700; }
 .titulo-secao { font-weight: 700; font-size: 8.5pt; letter-spacing: 0.3mm; }
 .faixa { font-weight: 700; font-size: 10pt; text-align: center; border: 0.4mm solid #000; padding: 1mm 0; margin-bottom: 1mm; }
+.contato-ifood { border: 0.4mm solid #000; margin-top: 1.5mm; padding: 1.2mm; text-align: center; }
+.telefone-ifood { font-size: 10pt; font-weight: 700; }
+.localizador-ifood { margin: 0.8mm 0; font-size: 11pt; font-weight: 700; letter-spacing: 0.2mm; }
 .sep { border-top: 1px dashed #000; margin: 2mm 0; }
 .sep.fina { margin: 1mm 0; }
 .linha { display: flex; justify-content: space-between; gap: 2mm; }

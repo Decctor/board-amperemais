@@ -117,6 +117,15 @@ export const SaleIntegrationMetadataSchema = z.object({
 			),
 		})
 		.optional(),
+	/** Rota temporária de contato do iFood. Nunca deve virar telefone cadastral do cliente. */
+	contatoTemporario: z
+		.object({
+			telefone: z.string({ invalid_type_error: "Tipo não válido para o telefone temporário." }).nullable(),
+			localizador: z.string({ required_error: "Localizador temporário não informado." }),
+			expiraEm: z.string({ invalid_type_error: "Tipo não válido para a expiração do localizador." }).nullable(),
+		})
+		.nullable()
+		.optional(),
 	/**
 	 * Solicitação de cancelamento registrada no canal e ainda sem desfecho — informativa, não exige
 	 * resposta da loja. Só o canal escreve aqui (ingestão); o desfecho (cancelado ou rejeitado)

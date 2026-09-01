@@ -31,14 +31,21 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { appRoutes } from "@/lib/navigation/routes";
 import type { TGetSalesInput, TGetSalesOutputDefault } from "@/app/api/sales/route";
+import type { TSaleFinancialDerivedStatusEnum, TSaleFiscalDerivedStatusEnum } from "@/schemas/enums";
 import {
 	ArrowRight,
 	BadgeDollarSign,
 	BadgePercent,
+	Ban,
 	Calendar,
+	CheckCircle2,
+	CircleAlert,
+	CircleDashed,
+	CircleOff,
 	CircleUser,
 	Clock,
 	FileSpreadsheet,
+	FileX2,
 	Info,
 	ListFilter,
 	LoaderCircle,
@@ -70,7 +77,7 @@ export default function SalesPage({ organization, canEditSales, canEmitFiscal }:
 			<div className="flex items-center justify-end">
 				<SalesModuleActions orgHasERPAccess={organization.configuracao.recursos.erp.acesso} />
 			</div>
-			<SalesHistoryView canEditSales={canEditSales} canEmitFiscal={canEmitFiscal} />
+			<SalesHistoryView canEditSales={canEditSales} canEmitFiscal={canEmitFiscal} orgHasERPAccess={organization.configuracao.recursos.erp.acesso} />
 		</div>
 	);
 }
@@ -147,7 +154,15 @@ export function SalesModuleActions({ orgHasERPAccess }: { orgHasERPAccess: boole
 	);
 }
 
-export function SalesHistoryView({ canEditSales, canEmitFiscal }: { canEditSales: boolean; canEmitFiscal: boolean }) {
+export function SalesHistoryView({
+	canEditSales,
+	canEmitFiscal,
+	orgHasERPAccess,
+}: {
+	canEditSales: boolean;
+	canEmitFiscal: boolean;
+	orgHasERPAccess: boolean;
+}) {
 	const {
 		data: salesResult,
 		isLoading,
@@ -165,6 +180,8 @@ export function SalesHistoryView({ canEditSales, canEmitFiscal }: { canEditSales
 			sellersIds: [],
 			partnersIds: [],
 			integrationsIds: [],
+			financialStatuses: [],
+			fiscalStatuses: [],
 		},
 	});
 
@@ -181,7 +198,7 @@ export function SalesHistoryView({ canEditSales, canEmitFiscal }: { canEditSales
 				onChange={(e) => updateParams({ search: e.target.value })}
 				className="w-full rounded-xl"
 			/>
-			<SalesInlineFilters filters={params} updateFilters={updateParams} />
+			<SalesInlineFilters filters={params} updateFilters={updateParams} orgHasERPAccess={orgHasERPAccess} />
 
 			<GeneralPaginationComponent
 				activePage={params.page}
@@ -236,6 +253,35 @@ const FISCAL_CHIP_META: Record<string, { label: string; className: string }> = {
 	INUTILIZADO: { label: "NOTA INUTILIZADA", className: "border-border/60 bg-muted/30 text-muted-foreground" },
 	ERRO: { label: "ERRO FISCAL", className: "border-destructive/30 bg-destructive/10 text-destructive" },
 };
+
+const FINANCIAL_STATUS_FILTER_OPTIONS: InteractiveFilterOption<TSaleFinancialDerivedStatusEnum>[] = [
+	{ id: "NAO_GERADO", value: "NAO_GERADO", label: "NÃO GERADO", startContent: <CircleOff className="h-4 w-4 text-muted-foreground" /> },
+	{ id: "PENDENTE", value: "PENDENTE", label: "A RECEBER", startContent: <Clock className="h-4 w-4 text-blue-600" /> },
+	{
+		id: "PARCIALMENTE_RECEBIDA",
+		value: "PARCIALMENTE_RECEBIDA",
+		label: "PARCIALMENTE RECEBIDA",
+		startContent: <CircleDashed className="h-4 w-4 text-amber-600" />,
+	},
+	{ id: "RECEBIDA", value: "RECEBIDA", label: "RECEBIDA", startContent: <CheckCircle2 className="h-4 w-4 text-green-600" /> },
+	{ id: "EM_ATRASO", value: "EM_ATRASO", label: "EM ATRASO", startContent: <CircleAlert className="h-4 w-4 text-destructive" /> },
+];
+
+const FISCAL_STATUS_FILTER_OPTIONS: InteractiveFilterOption<TSaleFiscalDerivedStatusEnum>[] = [
+	{ id: "NAO_EMITIDO", value: "NAO_EMITIDO", label: "SEM NOTA", startContent: <CircleOff className="h-4 w-4 text-muted-foreground" /> },
+	{ id: "PENDENTE", value: "PENDENTE", label: "PENDENTE", startContent: <Clock className="h-4 w-4 text-blue-600" /> },
+	{
+		id: "EM_PROCESSAMENTO",
+		value: "EM_PROCESSAMENTO",
+		label: "EM PROCESSAMENTO",
+		startContent: <LoaderCircle className="h-4 w-4 text-blue-600" />,
+	},
+	{ id: "AUTORIZADO", value: "AUTORIZADO", label: "AUTORIZADA", startContent: <CheckCircle2 className="h-4 w-4 text-green-600" /> },
+	{ id: "REJEITADO", value: "REJEITADO", label: "REJEITADA", startContent: <CircleAlert className="h-4 w-4 text-destructive" /> },
+	{ id: "ERRO", value: "ERRO", label: "ERRO FISCAL", startContent: <CircleAlert className="h-4 w-4 text-destructive" /> },
+	{ id: "CANCELADO", value: "CANCELADO", label: "CANCELADA", startContent: <Ban className="h-4 w-4 text-muted-foreground" /> },
+	{ id: "INUTILIZADO", value: "INUTILIZADO", label: "INUTILIZADA", startContent: <FileX2 className="h-4 w-4 text-muted-foreground" /> },
+];
 
 const SALE_STATUS_CHIP_META: Record<string, { label: string; className: string }> = {
 	ORCAMENTO: { label: "ORÇAMENTO", className: "border-border/60 bg-muted/30 text-foreground/80" },
@@ -622,9 +668,10 @@ function SaleCardActionsMenu({ sale, canEditSales }: { sale: TGetSalesOutputDefa
 type SalesInlineFiltersProps = {
 	filters: TGetSalesInput;
 	updateFilters: (filters: Partial<TGetSalesInput>) => void;
+	orgHasERPAccess: boolean;
 };
 
-function SalesInlineFilters({ filters, updateFilters }: SalesInlineFiltersProps) {
+function SalesInlineFilters({ filters, updateFilters, orgHasERPAccess }: SalesInlineFiltersProps) {
 	const { data: filterOptions } = useSaleQueryFilterOptions();
 	const integrationOptions = buildSalesIntegrationFilterOptions(filterOptions?.integrations);
 	const sellerOptions = (filterOptions?.sellers ?? []) as InteractiveFilterOption<string>[];
@@ -632,6 +679,8 @@ function SalesInlineFilters({ filters, updateFilters }: SalesInlineFiltersProps)
 	const hasIntegrations = (filters.integrationsIds ?? []).length > 0;
 	const hasSellers = (filters.sellersIds ?? []).length > 0;
 	const hasPartners = (filters.partnersIds ?? []).length > 0;
+	const hasFinancialStatuses = filters.financialStatuses.length > 0;
+	const hasFiscalStatuses = filters.fiscalStatuses.length > 0;
 
 	return (
 		<div className="flex w-full flex-wrap items-center gap-2">
@@ -686,6 +735,26 @@ function SalesInlineFilters({ filters, updateFilters }: SalesInlineFiltersProps)
 					onClear={() => updateFilters({ partnersIds: [], page: 1 })}
 				/>
 			) : null}
+			{orgHasERPAccess && hasFinancialStatuses ? (
+				<SalesMultiFilter
+					icon={<Wallet className="h-4 w-4" />}
+					label="RECEBIMENTO"
+					options={FINANCIAL_STATUS_FILTER_OPTIONS}
+					value={filters.financialStatuses}
+					onChange={(financialStatuses) => updateFilters({ financialStatuses, page: 1 })}
+					onClear={() => updateFilters({ financialStatuses: [], page: 1 })}
+				/>
+			) : null}
+			{orgHasERPAccess && hasFiscalStatuses ? (
+				<SalesMultiFilter
+					icon={<ReceiptText className="h-4 w-4" />}
+					label="FISCAL"
+					options={FISCAL_STATUS_FILTER_OPTIONS}
+					value={filters.fiscalStatuses}
+					onChange={(fiscalStatuses) => updateFilters({ fiscalStatuses, page: 1 })}
+					onClear={() => updateFilters({ fiscalStatuses: [], page: 1 })}
+				/>
+			) : null}
 
 			<InteractiveFilter.AddFilterRoot className="w-fit">
 				<InteractiveFilter.AddFilterTrigger>
@@ -727,6 +796,28 @@ function SalesInlineFilters({ filters, updateFilters }: SalesInlineFiltersProps)
 								/>
 							</InteractiveFilter.AddFilterItem>
 						) : null}
+						{orgHasERPAccess && !hasFinancialStatuses ? (
+							<InteractiveFilter.AddFilterItem id="financial-statuses" label="RECEBIMENTO" icon={<Wallet className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={FINANCIAL_STATUS_FILTER_OPTIONS}
+									value={filters.financialStatuses}
+									onChange={(financialStatuses) => updateFilters({ financialStatuses, page: 1 })}
+									onClear={() => updateFilters({ financialStatuses: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{orgHasERPAccess && !hasFiscalStatuses ? (
+							<InteractiveFilter.AddFilterItem id="fiscal-statuses" label="FISCAL" icon={<ReceiptText className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={FISCAL_STATUS_FILTER_OPTIONS}
+									value={filters.fiscalStatuses}
+									onChange={(fiscalStatuses) => updateFilters({ fiscalStatuses, page: 1 })}
+									onClear={() => updateFilters({ fiscalStatuses: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
 					</InteractiveFilter.AddFilterSection>
 				</InteractiveFilter.AddFilterContent>
 			</InteractiveFilter.AddFilterRoot>
@@ -734,7 +825,7 @@ function SalesInlineFilters({ filters, updateFilters }: SalesInlineFiltersProps)
 	);
 }
 
-function SalesMultiFilter({
+function SalesMultiFilter<T extends string>({
 	icon,
 	label,
 	options,
@@ -745,9 +836,9 @@ function SalesMultiFilter({
 }: {
 	icon: ReactNode;
 	label: string;
-	options: InteractiveFilterOption<string>[];
-	value: string[];
-	onChange: (value: string[]) => void;
+	options: InteractiveFilterOption<T>[];
+	value: T[];
+	onChange: (value: T[]) => void;
 	onClear: () => void;
 	clearLabel?: string;
 }) {

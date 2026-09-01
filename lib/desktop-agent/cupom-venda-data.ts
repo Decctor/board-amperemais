@@ -244,6 +244,14 @@ export async function buildCupomVendaDados({ organizacaoId, vendaId }: { organiz
 			vendedorNome: sale.vendedorNome,
 			observacoes: sale.observacoes,
 			enderecoEntrega: sale.entregaModalidade === "ENTREGA" && sale.entregaLocalizacao ? buildAddressLines(sale.entregaLocalizacao) : null,
+			contatoTemporario:
+				sale.entregaModalidade === "ENTREGA" && sale.integracaoMetadados?.contatoTemporario
+					? {
+							telefone: sale.integracaoMetadados.contatoTemporario.telefone,
+							localizador: sale.integracaoMetadados.contatoTemporario.localizador,
+							expiraEm: sale.integracaoMetadados.contatoTemporario.expiraEm ? new Date(sale.integracaoMetadados.contatoTemporario.expiraEm) : null,
+						}
+					: null,
 			itens: sale.itens.map((item) => {
 				const snapshot = readItemSnapshot(item.metadados);
 				return {

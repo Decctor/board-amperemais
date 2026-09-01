@@ -15,7 +15,7 @@ export default function SalesHistoryPage({ organization, canEditSales, canEmitFi
 			<div className="flex items-center justify-end">
 				<SalesModuleActions orgHasERPAccess={organization.configuracao.recursos.erp.acesso} />
 			</div>
-			<SalesHistoryView canEditSales={canEditSales} canEmitFiscal={canEmitFiscal} />
+			<SalesHistoryView canEditSales={canEditSales} canEmitFiscal={canEmitFiscal} orgHasERPAccess={organization.configuracao.recursos.erp.acesso} />
 		</div>
 	);
 }

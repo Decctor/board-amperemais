@@ -134,7 +134,7 @@ export function mapIfoodOrderDetails(order: TIfoodOrder): TIfoodOrderDetailsDTO 
 		},
 		cliente: {
 			nome: order.customer?.name ?? null,
-			telefone: order.customer?.phone ?? null,
+			telefone: order.customer?.phone?.number ?? null,
 			documento: order.customer?.documentNumber ?? null,
 		},
 		entrega: {

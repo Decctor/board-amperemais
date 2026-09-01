@@ -17,11 +17,14 @@ import { AccountingEntryLineSchema, AccountingEntrySchema, FinancialTransactionS
 import { FinancialRecurringRuleConfigSchema } from "@/schemas/financial-recurring";
 import { AccountingEntryOriginTypeEnum, TAccountingEntryOriginTypeEnum } from "@/schemas/enums";
 import type { TFinancialAccountConfiguration } from "@/schemas/financial";
-import { and, count, eq, gte, ilike, inArray, lte } from "drizzle-orm";
+import { and, count, eq, gte, ilike, inArray, isNotNull, isNull, lte, notInArray, or } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
 import dayjs from "dayjs";
+
+const AccountingEntryTransactionStatusSchema = z.enum(["PAGO", "PARCIALMENTE_PAGO", "PENDENTE", "SEM_TRANSACOES"]);
+export type TAccountingEntryTransactionStatus = z.infer<typeof AccountingEntryTransactionStatusSchema>;
 
 const GetAccountingEntriesInputSchema = z.object({
 	id: z
@@ -55,14 +58,36 @@ const GetAccountingEntriesInputSchema = z.object({
 		.transform((val) =>
 			val ? (val.split(",").filter((v) => AccountingEntryOriginTypeEnum.safeParse(v).success) as TAccountingEntryOriginTypeEnum[]) : [],
 		),
+	transactionStatuses: z
+		.string({ invalid_type_error: "Tipo inválido para os status das transações." })
+		.optional()
+		.nullable()
+		.transform((val) =>
+			val
+				? val.split(",").filter((status): status is TAccountingEntryTransactionStatus => AccountingEntryTransactionStatusSchema.safeParse(status).success)
+				: [],
+		),
+	sortOrder: z
+		.enum(["asc", "desc"], { invalid_type_error: "Tipo inválido para a ordenação." })
+		.optional()
+		.nullable()
+		.transform((val) => val ?? "desc"),
 });
 export type TGetAccountingEntriesInput = z.infer<typeof GetAccountingEntriesInputSchema>;
+
+function getAccountingEntryTransactionStatus(transactions: { dataEfetivacao: Date | null }[]): TAccountingEntryTransactionStatus {
+	if (transactions.length === 0) return "SEM_TRANSACOES";
+	const paidCount = transactions.filter((transaction) => transaction.dataEfetivacao !== null).length;
+	if (paidCount === 0) return "PENDENTE";
+	if (paidCount === transactions.length) return "PAGO";
+	return "PARCIALMENTE_PAGO";
+}
 
 async function getAccountingEntries({ input, session }: { input: TGetAccountingEntriesInput; session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const { id, page, search, periodAfter, periodBefore, originTypes } = input;
+	const { id, page, search, periodAfter, periodBefore, originTypes, transactionStatuses, sortOrder } = input;
 
 	if (id) {
 		const entry = await db.query.accountingEntries.findFirst({
@@ -105,6 +130,33 @@ async function getAccountingEntries({ input, session }: { input: TGetAccountingE
 	if (periodAfter) conditions.push(gte(accountingEntries.dataCompetencia, periodAfter));
 	if (periodBefore) conditions.push(lte(accountingEntries.dataCompetencia, periodBefore));
 	if (originTypes.length > 0) conditions.push(inArray(accountingEntries.origemTipo, originTypes));
+	if (transactionStatuses.length > 0) {
+		const entryIdsWithTransactions = db
+			.select({ id: financialTransactions.lancamentoContabilId })
+			.from(financialTransactions)
+			.where(eq(financialTransactions.organizacaoId, userOrgId));
+		const entryIdsWithPaidTransactions = db
+			.select({ id: financialTransactions.lancamentoContabilId })
+			.from(financialTransactions)
+			.where(and(eq(financialTransactions.organizacaoId, userOrgId), isNotNull(financialTransactions.dataEfetivacao)));
+		const entryIdsWithPendingTransactions = db
+			.select({ id: financialTransactions.lancamentoContabilId })
+			.from(financialTransactions)
+			.where(and(eq(financialTransactions.organizacaoId, userOrgId), isNull(financialTransactions.dataEfetivacao)));
+		const statusConditions = transactionStatuses.map((status) => {
+			switch (status) {
+				case "SEM_TRANSACOES":
+					return notInArray(accountingEntries.id, entryIdsWithTransactions);
+				case "PENDENTE":
+					return and(inArray(accountingEntries.id, entryIdsWithPendingTransactions), notInArray(accountingEntries.id, entryIdsWithPaidTransactions));
+				case "PARCIALMENTE_PAGO":
+					return and(inArray(accountingEntries.id, entryIdsWithPaidTransactions), inArray(accountingEntries.id, entryIdsWithPendingTransactions));
+				case "PAGO":
+					return and(inArray(accountingEntries.id, entryIdsWithPaidTransactions), notInArray(accountingEntries.id, entryIdsWithPendingTransactions));
+			}
+		});
+		conditions.push(or(...statusConditions)!);
+	}
 
 	const PAGE_SIZE = 25;
 	const skip = PAGE_SIZE * (page - 1);
@@ -120,8 +172,10 @@ async function getAccountingEntries({ input, session }: { input: TGetAccountingE
 				contaDebito: { columns: { id: true, nome: true } },
 				contaCredito: { columns: { id: true, nome: true } },
 				autor: { columns: { id: true, nome: true, avatarUrl: true } },
+				transacoesFinanceiras: { columns: { dataEfetivacao: true } },
 			},
-			orderBy: (fields, { desc }) => desc(fields.dataInsercao),
+			orderBy: (fields, { asc, desc }) =>
+				sortOrder === "asc" ? [asc(fields.dataCompetencia), asc(fields.dataInsercao)] : [desc(fields.dataCompetencia), desc(fields.dataInsercao)],
 			limit: PAGE_SIZE,
 			offset: skip,
 		}),
@@ -134,7 +188,10 @@ async function getAccountingEntries({ input, session }: { input: TGetAccountingE
 		data: {
 			byId: null,
 			default: {
-				entries: entriesResult,
+				entries: entriesResult.map(({ transacoesFinanceiras, ...entry }) => ({
+					...entry,
+					statusTransacoes: getAccountingEntryTransactionStatus(transacoesFinanceiras),
+				})),
 				entriesMatched,
 				totalPages,
 			},
@@ -159,6 +216,8 @@ async function getAccountingEntriesRoute(request: NextRequest) {
 		periodAfter: searchParams.get("periodAfter") ?? undefined,
 		periodBefore: searchParams.get("periodBefore") ?? undefined,
 		originTypes: searchParams.get("originTypes") ?? undefined,
+		transactionStatuses: searchParams.get("transactionStatuses") ?? undefined,
+		sortOrder: searchParams.get("sortOrder") ?? undefined,
 	});
 	const result = await getAccountingEntries({ input, session });
 	return NextResponse.json(result);

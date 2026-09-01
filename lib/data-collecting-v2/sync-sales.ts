@@ -12,6 +12,7 @@ import { FIRST_PARTY_ACCOUNT_KEYS } from "@/lib/finances/first-party-accounts";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import { clients, saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
 import { and, eq, inArray } from "drizzle-orm";
+import { resolveDeliveryLocationId } from "./delivery-locations";
 import { computeSaleImportSignature } from "./sale-signature";
 import { getCanonicalClientResolutionKey, resolveClientForCanonicalSale } from "./sync-auxiliary-entities";
 import type { TDataCollectingV2Executor, TPersistedSaleForEffects, TResolvedAuxiliaryEntities, TResolvedClientForImport } from "./types";
@@ -110,12 +111,14 @@ function buildSaleValues({
 	batch,
 	sale,
 	clientId,
+	deliveryLocationId,
 	sellerId,
 	partnerId,
 }: {
 	batch: TCanonicalImportBatch;
 	sale: TCanonicalSale;
 	clientId: string | null;
+	deliveryLocationId: string | null;
 	sellerId: string | null;
 	partnerId: string | null;
 }) {
@@ -142,6 +145,7 @@ function buildSaleValues({
 		tipo: sale.type,
 		canal: sale.channel,
 		entregaModalidade: sale.deliveryMode,
+		entregaLocalizacaoId: deliveryLocationId,
 		observacoes: sale.notes,
 		dataVenda: sale.occurredAt,
 		processamentoOrigem: "EXTERNO" as const,
@@ -359,7 +363,13 @@ export async function syncSales({
 			continue;
 		}
 
-		const saleValues = buildSaleValues({ batch, sale, clientId, sellerId, partnerId: partner?.id ?? null });
+		const deliveryLocationId = await resolveDeliveryLocationId({
+			tx,
+			organizationId: batch.organizationId,
+			clientId,
+			location: sale.deliveryMode === "ENTREGA" ? sale.client?.location : null,
+		});
+		const saleValues = buildSaleValues({ batch, sale, clientId, deliveryLocationId, sellerId, partnerId: partner?.id ?? null });
 
 		let saleId: string;
 		let isNewSale = false;

@@ -310,7 +310,9 @@ export function mapIfoodClient(order: TIfoodOrder): TCanonicalClient | null {
 	const customer = order.customer;
 	if (!customer) return null;
 
-	const phone = customer.phone ?? "";
+	const rawPhone = customer.phone?.number ?? "";
+	const phoneIsTemporary = !!customer.phone?.localizer || rawPhone.replace(/\D/g, "").startsWith("0800");
+	const phone = phoneIsTemporary ? "" : rawPhone;
 	const basePhone = formatPhoneAsBase(phone);
 	const name = customer.name || (basePhone ? `CLIENTE IFOOD ${basePhone}` : "CLIENTE IFOOD");
 	const address = order.delivery?.deliveryAddress;
@@ -320,6 +322,7 @@ export function mapIfoodClient(order: TIfoodOrder): TCanonicalClient | null {
 		name,
 		phone: formatToPhone(phone),
 		basePhone,
+		phoneIsTemporary,
 		cpfCnpj: formatToCPForCNPJ(customer.documentNumber ?? ""),
 		email: customer.email,
 		location: address
@@ -545,6 +548,13 @@ function buildIfoodIntegrationMetadata(
 			pendente: round2(order.payments?.pending ?? 0),
 			metodos: (payments ?? []).map(({ metodo, valor, pagoOnline, descricao }) => ({ metodo, valor, pagoOnline, descricao: descricao ?? null })),
 		},
+		contatoTemporario: order.customer?.phone?.localizer
+			? {
+					telefone: order.customer.phone.number,
+					localizador: order.customer.phone.localizer,
+					expiraEm: order.customer.phone.localizerExpiration,
+				}
+			: null,
 		cancelamentoSolicitado: eventState.cancellationRequestedAt
 			? { solicitadoEm: eventState.cancellationRequestedAt, motivo: eventState.cancellationRequestReason }
 			: null,

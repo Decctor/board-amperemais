@@ -26,6 +26,7 @@
 		"backfill:cashback-prize-organizacao": "tsx ./scripts/backfill-cashback-prize-organizacao.ts",
 		"backfill:stripe-control-metadata": "tsx ./scripts/backfill-stripe-control-metadata.ts",
 		"backfill:organization-slugs": "tsx ./scripts/backfill-organization-slugs.ts",
+		"dedupe:product-add-ons": "tsx ./scripts/dedupe-product-add-ons.ts",
 		"verify:organization-slugs": "tsx ./scripts/verify-organization-slugs.ts",
 		"seed:access-clients": "tsx ./scripts/seed-access-clients.ts",
 		"access:issue-agent": "tsx ./scripts/issue-agent-credential.ts",

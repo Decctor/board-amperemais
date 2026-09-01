@@ -20,6 +20,8 @@ async function fetchSales(input: TGetSalesInput) {
 	if (input.productIds) searchParams.set("productIds", input.productIds.join(","));
 	if (input.totalMin !== null && input.totalMin !== undefined) searchParams.set("totalMin", input.totalMin.toString());
 	if (input.totalMax !== null && input.totalMax !== undefined) searchParams.set("totalMax", input.totalMax.toString());
+	if (input.financialStatuses.length > 0) searchParams.set("financialStatuses", input.financialStatuses.join(","));
+	if (input.fiscalStatuses.length > 0) searchParams.set("fiscalStatuses", input.fiscalStatuses.join(","));
 	const { data } = await axios.get<TGetSalesOutput>(`/api/sales?${searchParams.toString()}`);
 	const result = input.clientId ? data.data.byClientId : data.data.default;
 	if (!result) throw new Error("Vendas não encontradas.");
@@ -43,6 +45,8 @@ export function useSales({ initialParams }: UseSalesParams) {
 		productIds: initialParams.productIds ?? [],
 		totalMin: initialParams.totalMin ?? null,
 		totalMax: initialParams.totalMax ?? null,
+		financialStatuses: initialParams.financialStatuses ?? [],
+		fiscalStatuses: initialParams.fiscalStatuses ?? [],
 	});
 	function updateParams(newParams: Partial<TGetSalesInput>) {
 		setParams((prev) => ({ ...prev, ...newParams }));

@@ -123,6 +123,7 @@ const IfoodPhoneSchema = z
 			.object({
 				number: z.union([z.string(), z.number(), z.boolean()]).optional().nullable(),
 				localizer: z.union([z.string(), z.number(), z.boolean()]).optional().nullable(),
+				localizerExpiration: NullableStringSchema,
 			})
 			.passthrough(),
 	])
@@ -130,9 +131,12 @@ const IfoodPhoneSchema = z
 	.nullable()
 	.transform((value) => {
 		if (value === null || value === undefined) return null;
-		if (typeof value !== "object") return String(value);
-		const phoneNumber = value.number ?? value.localizer;
-		return phoneNumber === null || phoneNumber === undefined ? null : String(phoneNumber);
+		if (typeof value !== "object") return { number: String(value), localizer: null, localizerExpiration: null };
+		return {
+			number: value.number === null || value.number === undefined ? null : String(value.number),
+			localizer: value.localizer === null || value.localizer === undefined ? null : String(value.localizer),
+			localizerExpiration: value.localizerExpiration,
+		};
 	});
 
 const MoneySchema = z

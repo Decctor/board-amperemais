@@ -38,3 +38,29 @@ test("reforça a legibilidade dos textos operacionais na impressão térmica", (
 	assert.match(html, /\.itens \{[^}]*font-weight: 700; \}/);
 	assert.match(html, /\.rodape \{[^}]*font-weight: 700; \}/);
 });
+
+test("destaca contato temporário do iFood no bloco de entrega", () => {
+	const dados = buildData([]);
+	dados.venda.modalidade = "ENTREGA";
+	dados.venda.enderecoEntrega = ["R. Jorge André Andraus, 109", "Baduy - ITUIUTABA/MG"];
+	dados.venda.contatoTemporario = {
+		telefone: "0800 705 1020",
+		localizador: "78772546",
+		expiraEm: new Date("2026-09-01T21:57:01.255Z"),
+	};
+
+	const html = renderCupomVendaHtml(dados);
+	assert.match(html, /CONTATO IFOOD/);
+	assert.match(html, /0800 705 1020/);
+	assert.match(html, /LOCALIZADOR 78772546/);
+	assert.match(html, /Válido até/);
+	assert.match(html, /class="contato-ifood"/);
+});
+
+test("não imprime contato temporário fora de uma entrega", () => {
+	const dados = buildData([]);
+	dados.venda.modalidade = "RETIRADA";
+	dados.venda.contatoTemporario = { telefone: "0800 705 1020", localizador: "78772546", expiraEm: null };
+
+	assert.doesNotMatch(renderCupomVendaHtml(dados), /CONTATO IFOOD/);
+});

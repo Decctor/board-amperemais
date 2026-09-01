@@ -11,7 +11,14 @@ import { type ImmediateProcessingData, processOrganizationInteractionsBatch, pro
 import { getValidClientSaleWhere } from "@/lib/sales/valid-sale";
 import { resolveSaleEditability } from "@/lib/sales/sale-editability";
 import { computeSaleFinancialStatus, computeSaleFiscalStatus } from "@/lib/sales/utils";
-import type { TPaymentMethodEnum, TSaleFinancialDerivedStatusEnum, TSaleFiscalDerivedStatusEnum } from "@/schemas/enums";
+import {
+	SaleFinancialDerivedStatusEnum,
+	SaleFiscalDerivedStatusEnum,
+	type TPaymentMethodEnum,
+	type TSaleFinancialDerivedStatusEnum,
+	type TSaleFiscalDerivedStatusEnum,
+	type TFiscalDocumentLifecycleStatusEnum,
+} from "@/schemas/enums";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
 import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
@@ -25,9 +32,12 @@ import {
 	products,
 	saleItems,
 	sales,
+	accountingEntries,
+	financialTransactions,
+	fiscalOutboundDocuments,
 } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, asc, count, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, notInArray, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import z from "zod";
 
@@ -175,6 +185,20 @@ const GetSalesInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? Number(val) : null)),
+	financialStatuses: z
+		.string({ invalid_type_error: "Tipo inválido para os status financeiros." })
+		.optional()
+		.nullable()
+		.transform((val) =>
+			val ? val.split(",").filter((status): status is TSaleFinancialDerivedStatusEnum => SaleFinancialDerivedStatusEnum.safeParse(status).success) : [],
+		),
+	fiscalStatuses: z
+		.string({ invalid_type_error: "Tipo inválido para os status fiscais." })
+		.optional()
+		.nullable()
+		.transform((val) =>
+			val ? val.split(",").filter((status): status is TSaleFiscalDerivedStatusEnum => SaleFiscalDerivedStatusEnum.safeParse(status).success) : [],
+		),
 });
 
 export type TGetSalesInput = z.infer<typeof GetSalesInputSchema>;
@@ -278,12 +302,177 @@ async function getSalesErpSummaries({
 	return summaries;
 }
 
+const CANCELLED_FINANCIAL_PROVIDER_STATUSES = ["CANCELADO", "ESTORNADO"];
+const MAPPED_FISCAL_INTERNAL_STATUSES: TFiscalDocumentLifecycleStatusEnum[] = [
+	"AUTORIZADO",
+	"EM_PROCESSAMENTO",
+	"CANCELAMENTO_PENDENTE",
+	"RASCUNHO",
+	"PRONTO_PARA_ENVIO",
+	"REJEITADO",
+	"ERRO",
+	"CANCELADO",
+	"INUTILIZADO",
+];
+
+function relevantReceiptCondition(orgId: string) {
+	return and(
+		eq(accountingEntries.organizacaoId, orgId),
+		eq(financialTransactions.organizacaoId, orgId),
+		eq(financialTransactions.tipo, "ENTRADA"),
+		or(isNull(financialTransactions.provedorStatus), notInArray(financialTransactions.provedorStatus, CANCELLED_FINANCIAL_PROVIDER_STATUSES)),
+	);
+}
+
+function getSaleIdsWithReceipts(orgId: string, extraCondition?: ReturnType<typeof isNull>) {
+	return db
+		.select({ id: sales.id })
+		.from(sales)
+		.innerJoin(accountingEntries, eq(accountingEntries.vendaId, sales.id))
+		.innerJoin(financialTransactions, eq(financialTransactions.lancamentoContabilId, accountingEntries.id))
+		.where(and(eq(sales.organizacaoId, orgId), relevantReceiptCondition(orgId), extraCondition));
+}
+
+function getSaleIdsBySettledTotal(orgId: string, comparison: "positive" | "received" | "partial") {
+	const settledTotal = sql<number>`coalesce(sum(${financialTransactions.valor}), 0)`;
+	return db
+		.select({ id: sales.id })
+		.from(sales)
+		.innerJoin(accountingEntries, eq(accountingEntries.vendaId, sales.id))
+		.innerJoin(financialTransactions, eq(financialTransactions.lancamentoContabilId, accountingEntries.id))
+		.where(and(eq(sales.organizacaoId, orgId), relevantReceiptCondition(orgId), isNotNull(financialTransactions.dataEfetivacao)))
+		.groupBy(sales.id, sales.valorTotal)
+		.having(
+			comparison === "received"
+				? gte(settledTotal, sales.valorTotal)
+				: comparison === "partial"
+					? and(gt(settledTotal, 0), lt(settledTotal, sales.valorTotal))
+					: gt(settledTotal, 0),
+		);
+}
+
+function getSaleIdsWithFiscalStatus(orgId: string, statuses?: TFiscalDocumentLifecycleStatusEnum[]) {
+	return db
+		.select({ id: sales.id })
+		.from(sales)
+		.innerJoin(fiscalOutboundDocuments, eq(fiscalOutboundDocuments.vendaId, sales.id))
+		.where(
+			and(
+				eq(sales.organizacaoId, orgId),
+				eq(fiscalOutboundDocuments.organizacaoId, orgId),
+				statuses ? inArray(fiscalOutboundDocuments.statusInterno, statuses) : undefined,
+			),
+		);
+}
+
+function getFinancialStatusCondition({ orgId, statuses, now }: { orgId: string; statuses: TSaleFinancialDerivedStatusEnum[]; now: Date }) {
+	const withReceipts = getSaleIdsWithReceipts(orgId);
+	const withSettledReceipts = getSaleIdsBySettledTotal(orgId, "positive");
+	const withOverdueReceipts = getSaleIdsWithReceipts(
+		orgId,
+		and(isNull(financialTransactions.dataEfetivacao), lt(financialTransactions.dataPrevisao, now)),
+	);
+	const received = getSaleIdsBySettledTotal(orgId, "received");
+	const partiallyReceived = getSaleIdsBySettledTotal(orgId, "partial");
+
+	return or(
+		...statuses.map((status) => {
+			switch (status) {
+				case "NAO_GERADO":
+					return and(gt(sales.valorTotal, 0), notInArray(sales.id, withReceipts));
+				case "RECEBIDA":
+					return or(lte(sales.valorTotal, 0), inArray(sales.id, received));
+				case "PARCIALMENTE_RECEBIDA":
+					return inArray(sales.id, partiallyReceived);
+				case "EM_ATRASO":
+					return and(inArray(sales.id, withReceipts), notInArray(sales.id, withSettledReceipts), inArray(sales.id, withOverdueReceipts));
+				case "PENDENTE":
+					return and(inArray(sales.id, withReceipts), notInArray(sales.id, withSettledReceipts), notInArray(sales.id, withOverdueReceipts));
+			}
+		}),
+	);
+}
+
+function getFiscalStatusCondition({ orgId, statuses }: { orgId: string; statuses: TSaleFiscalDerivedStatusEnum[] }) {
+	const withDocuments = getSaleIdsWithFiscalStatus(orgId);
+	const authorized = getSaleIdsWithFiscalStatus(orgId, ["AUTORIZADO"]);
+	const processing = getSaleIdsWithFiscalStatus(orgId, ["EM_PROCESSAMENTO", "CANCELAMENTO_PENDENTE"]);
+	const pending = getSaleIdsWithFiscalStatus(orgId, ["RASCUNHO", "PRONTO_PARA_ENVIO"]);
+	const rejected = getSaleIdsWithFiscalStatus(orgId, ["REJEITADO"]);
+	const errored = getSaleIdsWithFiscalStatus(orgId, ["ERRO"]);
+	const cancelled = getSaleIdsWithFiscalStatus(orgId, ["CANCELADO"]);
+	const voided = getSaleIdsWithFiscalStatus(orgId, ["INUTILIZADO"]);
+	const mapped = getSaleIdsWithFiscalStatus(orgId, MAPPED_FISCAL_INTERNAL_STATUSES);
+
+	return or(
+		...statuses.map((status) => {
+			switch (status) {
+				case "NAO_EMITIDO":
+					return notInArray(sales.id, withDocuments);
+				case "AUTORIZADO":
+					return inArray(sales.id, authorized);
+				case "EM_PROCESSAMENTO":
+					return and(notInArray(sales.id, authorized), inArray(sales.id, processing));
+				case "PENDENTE":
+					return and(
+						notInArray(sales.id, authorized),
+						notInArray(sales.id, processing),
+						or(inArray(sales.id, pending), and(inArray(sales.id, withDocuments), notInArray(sales.id, mapped))),
+					);
+				case "REJEITADO":
+					return and(notInArray(sales.id, authorized), notInArray(sales.id, processing), notInArray(sales.id, pending), inArray(sales.id, rejected));
+				case "ERRO":
+					return and(
+						notInArray(sales.id, authorized),
+						notInArray(sales.id, processing),
+						notInArray(sales.id, pending),
+						notInArray(sales.id, rejected),
+						inArray(sales.id, errored),
+					);
+				case "CANCELADO":
+					return and(
+						notInArray(sales.id, authorized),
+						notInArray(sales.id, processing),
+						notInArray(sales.id, pending),
+						notInArray(sales.id, rejected),
+						notInArray(sales.id, errored),
+						inArray(sales.id, cancelled),
+					);
+				case "INUTILIZADO":
+					return and(
+						notInArray(sales.id, authorized),
+						notInArray(sales.id, processing),
+						notInArray(sales.id, pending),
+						notInArray(sales.id, rejected),
+						notInArray(sales.id, errored),
+						notInArray(sales.id, cancelled),
+						inArray(sales.id, voided),
+					);
+			}
+		}),
+	);
+}
+
 async function getSales({ input, sessionUser }: { input: TGetSalesInput; sessionUser: TAuthUserSession }) {
 	const PAGE_SIZE = 25;
 	const userOrgId = sessionUser.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
-	const { id, search, periodAfter, periodBefore, sellersIds, partnersIds, integrationsIds, clientId, productGroups, productIds, totalMin, totalMax } =
-		input;
+	const {
+		id,
+		search,
+		periodAfter,
+		periodBefore,
+		sellersIds,
+		partnersIds,
+		integrationsIds,
+		clientId,
+		productGroups,
+		productIds,
+		totalMin,
+		totalMax,
+		financialStatuses,
+		fiscalStatuses,
+	} = input;
 
 	if (id) {
 		const sale = await db.query.sales.findFirst({
@@ -454,6 +643,10 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 		};
 	}
 	const conditions = [eq(sales.organizacaoId, userOrgId)];
+	const orgHasERPAccess = !!sessionUser.membership?.organizacao.configuracao?.recursos?.erp?.acesso;
+	if (!orgHasERPAccess && (financialStatuses.length > 0 || fiscalStatuses.length > 0)) {
+		throw new createHttpError.Forbidden("Sua organização não possui acesso aos filtros financeiros e fiscais do ERP.");
+	}
 
 	if (search)
 		conditions.push(
@@ -476,6 +669,8 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	if (clientId) conditions.push(eq(sales.clienteId, clientId));
 	if (totalMin !== null && totalMin !== undefined) conditions.push(gte(sales.valorTotal, totalMin));
 	if (totalMax !== null && totalMax !== undefined) conditions.push(lte(sales.valorTotal, totalMax));
+	if (financialStatuses.length > 0) conditions.push(getFinancialStatusCondition({ orgId: userOrgId, statuses: financialStatuses, now: new Date() })!);
+	if (fiscalStatuses.length > 0) conditions.push(getFiscalStatusCondition({ orgId: userOrgId, statuses: fiscalStatuses })!);
 	if (productIds && productIds.length > 0) {
 		conditions.push(
 			inArray(
@@ -619,7 +814,6 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	});
 
 	// Resumo ERP (pagamento/fiscal) apenas para organizações com o módulo: as demais não pagam as consultas extra.
-	const orgHasERPAccess = !!sessionUser.membership?.organizacao.configuracao?.recursos?.erp?.acesso;
 	const erpSummaries = orgHasERPAccess ? await getSalesErpSummaries({ orgId: userOrgId, salesPage: salesResult }) : null;
 	const salesWithErp = salesResult.map((sale) => ({
 		...sale,
