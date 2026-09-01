@@ -83,7 +83,12 @@ export function mapSaleContextToSpedyInvoicePayload(context: TFiscalSaleContext,
 	const ambienteSpedy = mapFiscalEnvironmentToSpedy(context.organizacao.fiscalConfiguracao?.ambiente);
 
 	return {
-		integrationId: buildSpedyIntegrationId(documento.referencia),
+		// Escopo de idempotencia na Spedy: (referencia, numero, tentativa). Criar com um integrationId
+		// ja usado devolve a nota existente em vez de criar uma nova — e uma nota ja rejeitada nunca
+		// mais e transmitida, entao cada tentativa deliberada precisa de um id proprio. A tentativa so
+		// avanca em prepareFiscalDocumentForSend, logo reenvios da MESMA tentativa (falha de rede)
+		// continuam deduplicados e nao arriscam transmitir a mesma numeracao duas vezes.
+		integrationId: buildSpedyIntegrationId(`${documento.referencia}:n:${documento.numero ?? "0"}:a:${documento.tentativasEnvio ?? 0}`),
 		issuedOn: emissaoAgora,
 		effectiveDate: emissaoAgora,
 		number: documento.numero ? Number(documento.numero) : context.serie.proximoNumero,

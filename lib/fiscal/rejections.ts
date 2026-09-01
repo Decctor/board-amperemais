@@ -85,6 +85,14 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		categoria: "DUPLICIDADE",
 		reenviavel: false,
 	},
+	"562": {
+		descricao: "Codigo numerico da chave de acesso difere do codigo numerico da NF-e",
+		causaProvavel:
+			"Alem do mismatch de cNF no XML, a SEFAZ tambem retorna 562 quando ja existe nota autorizada com o mesmo numero/serie e chave diferente (numeracao usada por outro emissor).",
+		acaoSugerida: "Avance a numeracao da serie (ou troque de serie) e reemita.",
+		categoria: "DUPLICIDADE",
+		reenviavel: false,
+	},
 	"610": {
 		descricao: "Total do ICMS difere do somatorio dos itens",
 		causaProvavel: "Inconsistencia entre os valores de ICMS dos itens e o total.",
