@@ -235,10 +235,34 @@ export default function PaymentsSection({ saleState, pagamentosEfetivados }: Pay
 			) : null}
 
 			{saleState.state.pagamentos.length === 0 && !hasSettledPayments ? (
-				<div className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground flex items-center gap-2">
-					<CalendarClock className="w-4 h-4 min-w-4 min-h-4" />
-					Nenhum pagamento adicionado. Você pode registrar recebimento imediato ou previsto.
-				</div>
+				supportedMethodOptions.length > 0 ? (
+					<div className="rounded-lg border border-dashed p-3 flex flex-col gap-2.5">
+						<div className="text-xs text-muted-foreground flex items-center gap-2">
+							<CalendarClock className="w-4 h-4 min-w-4 min-h-4" />
+							Nenhum pagamento adicionado. Toque em um método para adicionar o valor restante.
+						</div>
+						<div className="flex flex-wrap gap-1.5">
+							{supportedMethodOptions.map((method) => (
+								<Button
+									key={method.value}
+									type="button"
+									variant="outline"
+									size="fit"
+									className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs"
+									onClick={() => saleState.addPagamento({ metodo: method.value, valor: missingTotal })}
+								>
+									{method.renderIcon("w-3.5 h-3.5")}
+									{method.label}
+								</Button>
+							))}
+						</div>
+					</div>
+				) : (
+					<div className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground flex items-center gap-2">
+						<CalendarClock className="w-4 h-4 min-w-4 min-h-4" />
+						Nenhum pagamento adicionado. Você pode registrar recebimento imediato ou previsto.
+					</div>
+				)
 			) : null}
 
 			{saleState.state.pagamentos.map((payment) => (

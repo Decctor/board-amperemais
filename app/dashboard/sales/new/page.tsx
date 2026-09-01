@@ -49,6 +49,14 @@ export default async function NewSale() {
 			organizationAutoFiscalCapable={isOrganizationAutoFiscalCapable(fiscalSettings)}
 			autoEmissionExceptions={fiscalSettings.fiscalConfiguracao?.emissaoAutomatica?.excecoes ?? EMPTY_AUTO_EMISSION_EXCEPTIONS}
 			canEmitFiscal={sessionUser.membership.permissoes.fiscal.emitir}
+			canViewSales={sessionUser.membership.permissoes.vendas.visualizar ?? false}
+			quotePermissions={{
+				criar: sessionUser.membership.permissoes.vendas.criar ?? false,
+				// Mesmo gate da listagem de vendas para abrir o checkout de um orçamento.
+				editar: sessionUser.membership.permissoes.vendas.editar ?? false,
+				// Rascunho não tem trilha contábil: quem opera vendas pode descartar.
+				cancelar: (sessionUser.membership.permissoes.vendas.criar || sessionUser.membership.permissoes.vendas.excluir) ?? false,
+			}}
 		/>
 	);
 }

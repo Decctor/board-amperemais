@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { appRoutes } from "@/lib/navigation/routes";
 import type { TGetSalesInput, TGetSalesOutputDefault } from "@/app/api/sales/route";
-import type { TSaleFinancialDerivedStatusEnum, TSaleFiscalDerivedStatusEnum } from "@/schemas/enums";
+import type { TSaleFinancialDerivedStatusEnum, TSaleFiscalDerivedStatusEnum, TSaleStatusEnum } from "@/schemas/enums";
 import {
 	ArrowRight,
 	BadgeDollarSign,
@@ -45,6 +45,7 @@ import {
 	CircleUser,
 	Clock,
 	FileSpreadsheet,
+	FileText,
 	FileX2,
 	Info,
 	ListFilter,
@@ -56,6 +57,7 @@ import {
 	Plus,
 	Printer,
 	ReceiptText,
+	ShoppingBag,
 	Tag,
 	TrendingDown,
 	TrendingUp,
@@ -182,6 +184,7 @@ export function SalesHistoryView({
 			integrationsIds: [],
 			financialStatuses: [],
 			fiscalStatuses: [],
+			saleStatuses: [],
 		},
 	});
 
@@ -283,11 +286,46 @@ const FISCAL_STATUS_FILTER_OPTIONS: InteractiveFilterOption<TSaleFiscalDerivedSt
 	{ id: "INUTILIZADO", value: "INUTILIZADO", label: "INUTILIZADA", startContent: <FileX2 className="h-4 w-4 text-muted-foreground" /> },
 ];
 
-const SALE_STATUS_CHIP_META: Record<string, { label: string; className: string }> = {
-	ORCAMENTO: { label: "ORÇAMENTO", className: "border-border/60 bg-muted/30 text-foreground/80" },
-	CONDICIONAL: { label: "CONDICIONAL", className: "border-border/60 bg-muted/30 text-foreground/80" },
-	CANCELADA: { label: "CANCELADA", className: "border-destructive/30 bg-destructive/10 text-destructive" },
+/**
+ * Status comercial da venda. `CONFIRMADA` não tem entrada de propósito: é a norma do histórico, e um
+ * selo em toda linha não diferencia nada.
+ *
+ * `ORCAMENTO` sai do cinza dos demais metadados porque não é um atributo da venda — é o aviso de que
+ * ela não aconteceu ainda. O azul é o mesmo que a pill de orçamentos usa no PDV e no atendimento:
+ * uma cor só para "em aberto" nas três superfícies.
+ */
+const SALE_STATUS_CHIP_META: Record<string, { label: string; className: string; icon: ReactNode }> = {
+	ORCAMENTO: {
+		label: "ORÇAMENTO",
+		className: "border-primary/25 bg-primary/10 text-primary",
+		icon: <FileText className="w-3 h-3" />,
+	},
+	CONDICIONAL: { label: "CONDICIONAL", className: "border-border/60 bg-muted/30 text-foreground/80", icon: <Info className="w-3 h-3" /> },
+	CANCELADA: { label: "CANCELADA", className: "border-destructive/30 bg-destructive/10 text-destructive", icon: <Ban className="w-3 h-3" /> },
 };
+
+const SALE_STATUS_FILTER_OPTIONS: InteractiveFilterOption<TSaleStatusEnum>[] = [
+	{ id: "ORCAMENTO", value: "ORCAMENTO", label: "ORÇAMENTO", startContent: <FileText className="h-4 w-4 text-primary" /> },
+	{ id: "CONDICIONAL", value: "CONDICIONAL", label: "CONDICIONAL", startContent: <Info className="h-4 w-4 text-blue-600" /> },
+	{ id: "CONFIRMADA", value: "CONFIRMADA", label: "CONFIRMADA", startContent: <CheckCircle2 className="h-4 w-4 text-green-600" /> },
+	{ id: "CANCELADA", value: "CANCELADA", label: "CANCELADA", startContent: <Ban className="h-4 w-4 text-destructive" /> },
+];
+
+/**
+ * Vive fora de `SaleErpSummaryChips` porque não é informação de ERP: `sale.erp` vem null nas
+ * organizações sem o módulo, e a linha de um orçamento não pode deixar de dizer que é um orçamento
+ * por causa do plano contratado.
+ */
+function SaleStatusChip({ statusVenda }: { statusVenda: string | null }) {
+	const meta = statusVenda ? SALE_STATUS_CHIP_META[statusVenda] : undefined;
+	if (!meta) return null;
+
+	return (
+		<SaleChip icon={meta.icon} className={meta.className}>
+			{meta.label}
+		</SaleChip>
+	);
+}
 
 // Pill padrão de metadados do card de venda (data, itens, chips de ERP).
 // Uma única geometria para toda a linha de metadados; a cor é o que diferencia o estado.
@@ -314,18 +352,12 @@ function SaleErpSummaryChips({ sale }: { sale: TGetSalesOutputDefault["sales"][n
 
 	const financialMeta = FINANCIAL_CHIP_META[erp.financeiro.status];
 	const fiscalMeta = FISCAL_CHIP_META[erp.fiscal.status];
-	const statusMeta = sale.statusVenda ? SALE_STATUS_CHIP_META[sale.statusVenda] : undefined;
 	const paymentLabel = erp.financeiro.metodos.map((metodo) => PAYMENT_METHOD_LABELS[metodo] ?? metodo).join(" + ");
 	const installmentsLabel = erp.financeiro.maxParcelas && erp.financeiro.maxParcelas > 1 ? ` ${erp.financeiro.maxParcelas}x` : "";
 	const fiscalNumberLabel = erp.fiscal.documento?.numero ? `${erp.fiscal.documento.tipo} Nº ${erp.fiscal.documento.numero} · ` : "";
 
 	return (
 		<>
-			{statusMeta ? (
-				<SaleChip icon={<Info className="w-3 h-3" />} className={statusMeta.className}>
-					{statusMeta.label}
-				</SaleChip>
-			) : null}
 			{financialMeta && paymentLabel ? (
 				<SaleChip icon={<Wallet className="w-3 h-3" />} className={financialMeta.className}>
 					{paymentLabel}
@@ -351,8 +383,17 @@ function SaleCard({
 	canEditSales: boolean;
 	canEmitFiscal: boolean;
 }) {
+	// O orçamento é a única linha do histórico que ainda não é dinheiro. A borda lateral marca isso
+	// na varredura vertical, antes de qualquer selo ser lido.
+	const isQuote = sale.statusVenda === "ORCAMENTO";
+
 	return (
-		<div className="bg-card border-border flex w-full flex-col gap-2.5 rounded-xl border px-4 py-3 shadow-2xs hover:border-border hover:shadow-sm transition-all cursor-pointer">
+		<div
+			className={cn(
+				"bg-card border-border flex w-full flex-col gap-2.5 rounded-xl border px-4 py-3 shadow-2xs hover:border-border hover:shadow-sm transition-all cursor-pointer",
+				isQuote && "border-l-2 border-l-primary/60 bg-primary/[0.03]",
+			)}
+		>
 			<div className="flex flex-col md:flex-row md:items-start justify-between gap-2.5">
 				{/* Client Info & Sale Basics */}
 				<div className="flex flex-col gap-1.5 grow min-w-0">
@@ -366,6 +407,7 @@ function SaleCard({
 						<SaleChip icon={<Package className="w-3 h-3" />}>
 							{sale.itens.length} {sale.itens.length === 1 ? "item" : "itens"}
 						</SaleChip>
+						<SaleStatusChip statusVenda={sale.statusVenda} />
 						<SalesIntegrationPill integracao={sale.integracao} />
 						<SaleErpSummaryChips sale={sale} />
 					</div>
@@ -529,6 +571,7 @@ function SaleCard({
 				</div>
 				<div className="flex items-center gap-1 shrink-0">
 					<ManualFiscalEmissionButton sale={sale} canEmitFiscal={canEmitFiscal} />
+					<QuoteCheckoutButton sale={sale} canEditSales={canEditSales} />
 					<Button variant="link" className="flex items-center gap-1.5 h-auto shrink-0 p-0" size="sm" asChild>
 						<Link href={appRoutes.sales.details(sale.id)}>
 							<Info className="w-3 min-w-3 h-3 min-h-3" />
@@ -539,6 +582,27 @@ function SaleCard({
 				</div>
 			</div>
 		</div>
+	);
+}
+
+/**
+ * Converter é a ação principal de um orçamento — a venda existe justamente para ser cobrada. Ficava
+ * só no menu de três pontos, ao lado de "imprimir cupom", como se fosse mais um atalho.
+ *
+ * Ocupa o mesmo lugar que "EMITIR NOTA FISCAL" ocupa numa venda confirmada: os dois estados são
+ * excludentes, então a linha do rodapé nunca cresce.
+ */
+function QuoteCheckoutButton({ sale, canEditSales }: { sale: TGetSalesOutputDefault["sales"][number]; canEditSales: boolean }) {
+	// Mesma habilitação otimista do menu de ações: o checkout é o GET autoritativo.
+	if (!canEditSales || sale.statusVenda !== "ORCAMENTO" || sale.processamentoOrigem !== "INTERNO") return null;
+
+	return (
+		<Button asChild type="button" variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-[0.65rem] font-bold">
+			<Link href={appRoutes.sales.checkout(sale.id)}>
+				<ShoppingBag className="h-3.5 w-3.5" />
+				ABRIR CHECKOUT
+			</Link>
+		</Button>
 	);
 }
 
@@ -681,6 +745,7 @@ function SalesInlineFilters({ filters, updateFilters, orgHasERPAccess }: SalesIn
 	const hasPartners = (filters.partnersIds ?? []).length > 0;
 	const hasFinancialStatuses = filters.financialStatuses.length > 0;
 	const hasFiscalStatuses = filters.fiscalStatuses.length > 0;
+	const hasSaleStatuses = filters.saleStatuses.length > 0;
 
 	return (
 		<div className="flex w-full flex-wrap items-center gap-2">
@@ -733,6 +798,16 @@ function SalesInlineFilters({ filters, updateFilters, orgHasERPAccess }: SalesIn
 					value={filters.partnersIds ?? []}
 					onChange={(partnersIds) => updateFilters({ partnersIds, page: 1 })}
 					onClear={() => updateFilters({ partnersIds: [], page: 1 })}
+				/>
+			) : null}
+			{hasSaleStatuses ? (
+				<SalesMultiFilter
+					icon={<FileText className="h-4 w-4" />}
+					label="STATUS"
+					options={SALE_STATUS_FILTER_OPTIONS}
+					value={filters.saleStatuses}
+					onChange={(saleStatuses) => updateFilters({ saleStatuses, page: 1 })}
+					onClear={() => updateFilters({ saleStatuses: [], page: 1 })}
 				/>
 			) : null}
 			{orgHasERPAccess && hasFinancialStatuses ? (
@@ -792,6 +867,17 @@ function SalesInlineFilters({ filters, updateFilters, orgHasERPAccess }: SalesIn
 									value={filters.partnersIds ?? []}
 									onChange={(partnersIds) => updateFilters({ partnersIds, page: 1 })}
 									onClear={() => updateFilters({ partnersIds: [], page: 1 })}
+									clearLabel="TODOS"
+								/>
+							</InteractiveFilter.AddFilterItem>
+						) : null}
+						{!hasSaleStatuses ? (
+							<InteractiveFilter.AddFilterItem id="sale-statuses" label="STATUS" icon={<FileText className="h-4 w-4" />}>
+								<InteractiveFilter.MultiContent
+									options={SALE_STATUS_FILTER_OPTIONS}
+									value={filters.saleStatuses}
+									onChange={(saleStatuses) => updateFilters({ saleStatuses, page: 1 })}
+									onClear={() => updateFilters({ saleStatuses: [], page: 1 })}
 									clearLabel="TODOS"
 								/>
 							</InteractiveFilter.AddFilterItem>

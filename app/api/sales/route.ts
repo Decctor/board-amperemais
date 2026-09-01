@@ -14,9 +14,11 @@ import { computeSaleFinancialStatus, computeSaleFiscalStatus } from "@/lib/sales
 import {
 	SaleFinancialDerivedStatusEnum,
 	SaleFiscalDerivedStatusEnum,
+	SaleStatusEnum,
 	type TPaymentMethodEnum,
 	type TSaleFinancialDerivedStatusEnum,
 	type TSaleFiscalDerivedStatusEnum,
+	type TSaleStatusEnum,
 	type TFiscalDocumentLifecycleStatusEnum,
 } from "@/schemas/enums";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
@@ -37,7 +39,7 @@ import {
 	fiscalOutboundDocuments,
 } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, notInArray, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import z from "zod";
 
@@ -199,6 +201,13 @@ const GetSalesInputSchema = z.object({
 		.transform((val) =>
 			val ? val.split(",").filter((status): status is TSaleFiscalDerivedStatusEnum => SaleFiscalDerivedStatusEnum.safeParse(status).success) : [],
 		),
+	// Status comercial da venda. O histórico mistura orçamento, condicional e venda confirmada de
+	// propósito — quem acabou de criar um orçamento espera achá-lo aqui. O filtro é para triagem.
+	saleStatuses: z
+		.string({ invalid_type_error: "Tipo inválido para os status de venda." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? val.split(",").filter((status): status is TSaleStatusEnum => SaleStatusEnum.safeParse(status).success) : [])),
 });
 
 export type TGetSalesInput = z.infer<typeof GetSalesInputSchema>;
@@ -302,155 +311,70 @@ async function getSalesErpSummaries({
 	return summaries;
 }
 
-const CANCELLED_FINANCIAL_PROVIDER_STATUSES = ["CANCELADO", "ESTORNADO"];
-const MAPPED_FISCAL_INTERNAL_STATUSES: TFiscalDocumentLifecycleStatusEnum[] = [
-	"AUTORIZADO",
-	"EM_PROCESSAMENTO",
-	"CANCELAMENTO_PENDENTE",
-	"RASCUNHO",
-	"PRONTO_PARA_ENVIO",
-	"REJEITADO",
-	"ERRO",
-	"CANCELADO",
-	"INUTILIZADO",
-];
-
-function relevantReceiptCondition(orgId: string) {
-	return and(
-		eq(accountingEntries.organizacaoId, orgId),
-		eq(financialTransactions.organizacaoId, orgId),
-		eq(financialTransactions.tipo, "ENTRADA"),
-		or(isNull(financialTransactions.provedorStatus), notInArray(financialTransactions.provedorStatus, CANCELLED_FINANCIAL_PROVIDER_STATUSES)),
-	);
-}
-
-function getSaleIdsWithReceipts(orgId: string, extraCondition?: ReturnType<typeof isNull>) {
-	return db
-		.select({ id: sales.id })
-		.from(sales)
-		.innerJoin(accountingEntries, eq(accountingEntries.vendaId, sales.id))
-		.innerJoin(financialTransactions, eq(financialTransactions.lancamentoContabilId, accountingEntries.id))
-		.where(and(eq(sales.organizacaoId, orgId), relevantReceiptCondition(orgId), extraCondition));
-}
-
-function getSaleIdsBySettledTotal(orgId: string, comparison: "positive" | "received" | "partial") {
-	const settledTotal = sql<number>`coalesce(sum(${financialTransactions.valor}), 0)`;
-	return db
-		.select({ id: sales.id })
-		.from(sales)
-		.innerJoin(accountingEntries, eq(accountingEntries.vendaId, sales.id))
-		.innerJoin(financialTransactions, eq(financialTransactions.lancamentoContabilId, accountingEntries.id))
-		.where(and(eq(sales.organizacaoId, orgId), relevantReceiptCondition(orgId), isNotNull(financialTransactions.dataEfetivacao)))
-		.groupBy(sales.id, sales.valorTotal)
-		.having(
-			comparison === "received"
-				? gte(settledTotal, sales.valorTotal)
-				: comparison === "partial"
-					? and(gt(settledTotal, 0), lt(settledTotal, sales.valorTotal))
-					: gt(settledTotal, 0),
-		);
-}
-
-function getSaleIdsWithFiscalStatus(orgId: string, statuses?: TFiscalDocumentLifecycleStatusEnum[]) {
-	return db
-		.select({ id: sales.id })
-		.from(sales)
-		.innerJoin(fiscalOutboundDocuments, eq(fiscalOutboundDocuments.vendaId, sales.id))
-		.where(
-			and(
-				eq(sales.organizacaoId, orgId),
-				eq(fiscalOutboundDocuments.organizacaoId, orgId),
-				statuses ? inArray(fiscalOutboundDocuments.statusInterno, statuses) : undefined,
-			),
-		);
-}
-
 function getFinancialStatusCondition({ orgId, statuses, now }: { orgId: string; statuses: TSaleFinancialDerivedStatusEnum[]; now: Date }) {
-	const withReceipts = getSaleIdsWithReceipts(orgId);
-	const withSettledReceipts = getSaleIdsBySettledTotal(orgId, "positive");
-	const withOverdueReceipts = getSaleIdsWithReceipts(
-		orgId,
-		and(isNull(financialTransactions.dataEfetivacao), lt(financialTransactions.dataPrevisao, now)),
+	const receiptCount = sql<number>`count(${financialTransactions.id})`;
+	const settledTotal = sql<number>`coalesce(sum(case when ${financialTransactions.dataEfetivacao} is not null then ${financialTransactions.valor} else 0 end), 0)`;
+	const overdueCondition = and(
+		isNotNull(financialTransactions.id),
+		isNull(financialTransactions.dataEfetivacao),
+		lt(financialTransactions.dataPrevisao, now),
 	);
-	const received = getSaleIdsBySettledTotal(orgId, "received");
-	const partiallyReceived = getSaleIdsBySettledTotal(orgId, "partial");
+	const overdueCount = sql<number>`coalesce(sum(case when ${overdueCondition} then 1 else 0 end), 0)`;
+	const derivedStatus = sql<TSaleFinancialDerivedStatusEnum>`case
+		when ${sales.valorTotal} <= 0 then 'RECEBIDA'
+		when ${receiptCount} = 0 then 'NAO_GERADO'
+		when ${settledTotal} >= ${sales.valorTotal} then 'RECEBIDA'
+		when ${settledTotal} > 0 then 'PARCIALMENTE_RECEBIDA'
+		when ${overdueCount} > 0 then 'EM_ATRASO'
+		else 'PENDENTE'
+	end`;
+	const matchingSaleIds = db
+		.select({ id: sales.id })
+		.from(sales)
+		.leftJoin(accountingEntries, and(eq(accountingEntries.vendaId, sales.id), eq(accountingEntries.organizacaoId, orgId)))
+		.leftJoin(
+			financialTransactions,
+			and(
+				eq(financialTransactions.lancamentoContabilId, accountingEntries.id),
+				eq(financialTransactions.organizacaoId, orgId),
+				eq(financialTransactions.tipo, "ENTRADA"),
+				or(isNull(financialTransactions.provedorStatus), notInArray(financialTransactions.provedorStatus, ["CANCELADO", "ESTORNADO"])),
+			),
+		)
+		.where(eq(sales.organizacaoId, orgId))
+		.groupBy(sales.id, sales.valorTotal)
+		.having(inArray(derivedStatus, statuses));
 
-	return or(
-		...statuses.map((status) => {
-			switch (status) {
-				case "NAO_GERADO":
-					return and(gt(sales.valorTotal, 0), notInArray(sales.id, withReceipts));
-				case "RECEBIDA":
-					return or(lte(sales.valorTotal, 0), inArray(sales.id, received));
-				case "PARCIALMENTE_RECEBIDA":
-					return inArray(sales.id, partiallyReceived);
-				case "EM_ATRASO":
-					return and(inArray(sales.id, withReceipts), notInArray(sales.id, withSettledReceipts), inArray(sales.id, withOverdueReceipts));
-				case "PENDENTE":
-					return and(inArray(sales.id, withReceipts), notInArray(sales.id, withSettledReceipts), notInArray(sales.id, withOverdueReceipts));
-			}
-		}),
-	);
+	return inArray(sales.id, matchingSaleIds);
 }
 
 function getFiscalStatusCondition({ orgId, statuses }: { orgId: string; statuses: TSaleFiscalDerivedStatusEnum[] }) {
-	const withDocuments = getSaleIdsWithFiscalStatus(orgId);
-	const authorized = getSaleIdsWithFiscalStatus(orgId, ["AUTORIZADO"]);
-	const processing = getSaleIdsWithFiscalStatus(orgId, ["EM_PROCESSAMENTO", "CANCELAMENTO_PENDENTE"]);
-	const pending = getSaleIdsWithFiscalStatus(orgId, ["RASCUNHO", "PRONTO_PARA_ENVIO"]);
-	const rejected = getSaleIdsWithFiscalStatus(orgId, ["REJEITADO"]);
-	const errored = getSaleIdsWithFiscalStatus(orgId, ["ERRO"]);
-	const cancelled = getSaleIdsWithFiscalStatus(orgId, ["CANCELADO"]);
-	const voided = getSaleIdsWithFiscalStatus(orgId, ["INUTILIZADO"]);
-	const mapped = getSaleIdsWithFiscalStatus(orgId, MAPPED_FISCAL_INTERNAL_STATUSES);
+	const documentCount = sql<number>`count(${fiscalOutboundDocuments.id})`;
+	const hasStatus = (...internalStatuses: TFiscalDocumentLifecycleStatusEnum[]) =>
+		sql<boolean>`coalesce(bool_or(${fiscalOutboundDocuments.statusInterno} in (${sql.join(
+			internalStatuses.map((status) => sql`${status}`),
+			sql`, `,
+		)})), false)`;
+	const derivedStatus = sql<TSaleFiscalDerivedStatusEnum>`case
+		when ${documentCount} = 0 then 'NAO_EMITIDO'
+		when ${hasStatus("AUTORIZADO")} then 'AUTORIZADO'
+		when ${hasStatus("EM_PROCESSAMENTO", "CANCELAMENTO_PENDENTE")} then 'EM_PROCESSAMENTO'
+		when ${hasStatus("RASCUNHO", "PRONTO_PARA_ENVIO")} then 'PENDENTE'
+		when ${hasStatus("REJEITADO")} then 'REJEITADO'
+		when ${hasStatus("ERRO")} then 'ERRO'
+		when ${hasStatus("CANCELADO")} then 'CANCELADO'
+		when ${hasStatus("INUTILIZADO")} then 'INUTILIZADO'
+		else 'PENDENTE'
+	end`;
+	const matchingSaleIds = db
+		.select({ id: sales.id })
+		.from(sales)
+		.leftJoin(fiscalOutboundDocuments, and(eq(fiscalOutboundDocuments.vendaId, sales.id), eq(fiscalOutboundDocuments.organizacaoId, orgId)))
+		.where(eq(sales.organizacaoId, orgId))
+		.groupBy(sales.id)
+		.having(inArray(derivedStatus, statuses));
 
-	return or(
-		...statuses.map((status) => {
-			switch (status) {
-				case "NAO_EMITIDO":
-					return notInArray(sales.id, withDocuments);
-				case "AUTORIZADO":
-					return inArray(sales.id, authorized);
-				case "EM_PROCESSAMENTO":
-					return and(notInArray(sales.id, authorized), inArray(sales.id, processing));
-				case "PENDENTE":
-					return and(
-						notInArray(sales.id, authorized),
-						notInArray(sales.id, processing),
-						or(inArray(sales.id, pending), and(inArray(sales.id, withDocuments), notInArray(sales.id, mapped))),
-					);
-				case "REJEITADO":
-					return and(notInArray(sales.id, authorized), notInArray(sales.id, processing), notInArray(sales.id, pending), inArray(sales.id, rejected));
-				case "ERRO":
-					return and(
-						notInArray(sales.id, authorized),
-						notInArray(sales.id, processing),
-						notInArray(sales.id, pending),
-						notInArray(sales.id, rejected),
-						inArray(sales.id, errored),
-					);
-				case "CANCELADO":
-					return and(
-						notInArray(sales.id, authorized),
-						notInArray(sales.id, processing),
-						notInArray(sales.id, pending),
-						notInArray(sales.id, rejected),
-						notInArray(sales.id, errored),
-						inArray(sales.id, cancelled),
-					);
-				case "INUTILIZADO":
-					return and(
-						notInArray(sales.id, authorized),
-						notInArray(sales.id, processing),
-						notInArray(sales.id, pending),
-						notInArray(sales.id, rejected),
-						notInArray(sales.id, errored),
-						notInArray(sales.id, cancelled),
-						inArray(sales.id, voided),
-					);
-			}
-		}),
-	);
+	return inArray(sales.id, matchingSaleIds);
 }
 
 async function getSales({ input, sessionUser }: { input: TGetSalesInput; sessionUser: TAuthUserSession }) {
@@ -472,6 +396,7 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 		totalMax,
 		financialStatuses,
 		fiscalStatuses,
+		saleStatuses,
 	} = input;
 
 	if (id) {
@@ -671,6 +596,7 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	if (totalMax !== null && totalMax !== undefined) conditions.push(lte(sales.valorTotal, totalMax));
 	if (financialStatuses.length > 0) conditions.push(getFinancialStatusCondition({ orgId: userOrgId, statuses: financialStatuses, now: new Date() })!);
 	if (fiscalStatuses.length > 0) conditions.push(getFiscalStatusCondition({ orgId: userOrgId, statuses: fiscalStatuses })!);
+	if (saleStatuses.length > 0) conditions.push(inArray(sales.statusVenda, saleStatuses));
 	if (productIds && productIds.length > 0) {
 		conditions.push(
 			inArray(
@@ -695,18 +621,15 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 		);
 	}
 
-	const salesMatched = await db
+	const salesMatchedPromise = db
 		.select({ count: count() })
 		.from(sales)
 		.where(and(...conditions));
-	const salesMatchedCount = salesMatched[0]?.count ?? 0;
-
-	const totalPages = Math.ceil(salesMatchedCount / PAGE_SIZE);
 
 	const skip = PAGE_SIZE * (input.page - 1);
 	const limit = PAGE_SIZE;
 
-	const salesResult = await db.query.sales.findMany({
+	const salesResultPromise = db.query.sales.findMany({
 		where: and(...conditions),
 		with: {
 			integracao: {
@@ -812,6 +735,9 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 		offset: skip,
 		limit: limit,
 	});
+	const [salesMatched, salesResult] = await Promise.all([salesMatchedPromise, salesResultPromise]);
+	const salesMatchedCount = salesMatched[0]?.count ?? 0;
+	const totalPages = Math.ceil(salesMatchedCount / PAGE_SIZE);
 
 	// Resumo ERP (pagamento/fiscal) apenas para organizações com o módulo: as demais não pagam as consultas extra.
 	const erpSummaries = orgHasERPAccess ? await getSalesErpSummaries({ orgId: userOrgId, salesPage: salesResult }) : null;

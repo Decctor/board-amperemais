@@ -22,6 +22,7 @@ async function fetchSales(input: TGetSalesInput) {
 	if (input.totalMax !== null && input.totalMax !== undefined) searchParams.set("totalMax", input.totalMax.toString());
 	if (input.financialStatuses.length > 0) searchParams.set("financialStatuses", input.financialStatuses.join(","));
 	if (input.fiscalStatuses.length > 0) searchParams.set("fiscalStatuses", input.fiscalStatuses.join(","));
+	if (input.saleStatuses.length > 0) searchParams.set("saleStatuses", input.saleStatuses.join(","));
 	const { data } = await axios.get<TGetSalesOutput>(`/api/sales?${searchParams.toString()}`);
 	const result = input.clientId ? data.data.byClientId : data.data.default;
 	if (!result) throw new Error("Vendas não encontradas.");
@@ -47,6 +48,7 @@ export function useSales({ initialParams }: UseSalesParams) {
 		totalMax: initialParams.totalMax ?? null,
 		financialStatuses: initialParams.financialStatuses ?? [],
 		fiscalStatuses: initialParams.fiscalStatuses ?? [],
+		saleStatuses: initialParams.saleStatuses ?? [],
 	});
 	function updateParams(newParams: Partial<TGetSalesInput>) {
 		setParams((prev) => ({ ...prev, ...newParams }));
@@ -90,8 +92,12 @@ async function fetchSalesSimplifiedSearch(params: TSalesSimplifiedSearchQueryPar
 	}
 }
 
-async function fetchClientOpenQuotes(clientId: string) {
-	const { data } = await axios.get<TGetQuotesOutput>(`/api/sales/quotes?clientId=${clientId}`);
+async function fetchOpenQuotes(clientId: string | null) {
+	const searchParams = new URLSearchParams();
+	// Sem `clientId` a rota devolve a fila da organização inteira.
+	if (clientId) searchParams.set("clientId", clientId);
+	const query = searchParams.toString();
+	const { data } = await axios.get<TGetQuotesOutput>(`/api/sales/quotes${query ? `?${query}` : ""}`);
 	return {
 		...data.data,
 		// A rota devolve `Date`, o transporte entrega string: reidratar aqui evita que cada consumidor
@@ -103,7 +109,7 @@ async function fetchClientOpenQuotes(clientId: string) {
 	};
 }
 
-export type TClientOpenQuotes = Awaited<ReturnType<typeof fetchClientOpenQuotes>>;
+export type TClientOpenQuotes = Awaited<ReturnType<typeof fetchOpenQuotes>>;
 export type TClientOpenQuote = TClientOpenQuotes["orcamentos"][number];
 
 export function getClientOpenQuotesQueryKey(clientId: string | null) {
@@ -119,8 +125,30 @@ export function useClientOpenQuotes({ clientId, enabled = true }: { clientId: st
 	return {
 		...useQuery({
 			queryKey,
-			queryFn: () => fetchClientOpenQuotes(clientId ?? ""),
+			queryFn: () => fetchOpenQuotes(clientId),
 			enabled: enabled && !!clientId,
+			staleTime: 30 * 1000,
+		}),
+		queryKey,
+	};
+}
+
+export function getOrganizationOpenQuotesQueryKey() {
+	return ["organization-open-quotes"] as const;
+}
+
+/**
+ * Fila de orçamentos em aberto da organização. Alimenta a pill do PDV, onde o orçamento pendente
+ * concorre com a venda em curso: `staleTime` curto porque um orçamento criado no atendimento ou
+ * pelo agente precisa aparecer para quem está no balcão.
+ */
+export function useOrganizationOpenQuotes({ enabled = true }: { enabled?: boolean } = {}) {
+	const queryKey = getOrganizationOpenQuotesQueryKey();
+	return {
+		...useQuery({
+			queryKey,
+			queryFn: () => fetchOpenQuotes(null),
+			enabled,
 			staleTime: 30 * 1000,
 		}),
 		queryKey,

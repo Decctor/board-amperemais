@@ -42,8 +42,11 @@ export function ChatQuotesHeaderActions({ chatId, clientId, clientName, permissi
 	if (!clientId) return null;
 
 	const quotes = data?.orcamentos ?? [];
-	const hasQuotes = quotes.length > 0;
-	const summary = `${quotes.length} ${quotes.length === 1 ? "orçamento" : "orçamentos"} · ${formatToMoney(data?.valorTotalEmAberto ?? 0)}`;
+	// `total` conta todos os orçamentos em aberto; `orcamentos` traz só os mais recentes. Contar a
+	// lista faria a pill discordar do valor somado logo ao lado.
+	const total = data?.total ?? 0;
+	const hasQuotes = total > 0;
+	const summary = `${total} ${total === 1 ? "orçamento" : "orçamentos"} · ${formatToMoney(data?.valorTotalEmAberto ?? 0)}`;
 
 	return (
 		<>
@@ -62,9 +65,9 @@ export function ChatQuotesHeaderActions({ chatId, clientId, clientName, permissi
 											className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95"
 										>
 											<FileText className="size-3 shrink-0" />
-											<span className="tabular-nums">{quotes.length}</span>
+											<span className="tabular-nums">{total}</span>
 											<span className="hidden sm:inline">
-												{quotes.length === 1 ? "orçamento" : "orçamentos"} · {formatToMoney(data?.valorTotalEmAberto ?? 0)}
+												{total === 1 ? "orçamento" : "orçamentos"} · {formatToMoney(data?.valorTotalEmAberto ?? 0)}
 											</span>
 										</button>
 									</PopoverTrigger>

@@ -5,6 +5,8 @@ import { createSaleDraft } from "@/lib/sales/drafts/create-sale-draft";
 import { resolveQuoteCreationDate } from "@/lib/sales/quote-freshness";
 import { SaleItemResolutionError, resolveSaleItems } from "@/lib/sales/resolve-sale-items";
 import { db } from "@/services/drizzle";
+import { sales } from "@/services/drizzle/schema";
+import { and, count, eq, isNull, ne, or, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -13,8 +15,17 @@ import z from "zod";
 // INPUT SCHEMAS
 // ============================================================================
 
+/**
+ * Dois modos na mesma rota: com `clientId` a lista é o painel de atendimento de um cliente; sem
+ * `clientId` é a fila de orçamentos em aberto da organização inteira (pill do POS). Os filtros do
+ * que conta como "orçamento em aberto" são os mesmos nos dois — só muda o recorte e o limite.
+ */
 const GetQuotesInputSchema = z.object({
-	clientId: z.string({ required_error: "ID do cliente não informado.", invalid_type_error: "Tipo inválido para ID do cliente." }),
+	clientId: z
+		.string({ invalid_type_error: "Tipo inválido para ID do cliente." })
+		.optional()
+		.nullable()
+		.transform((v) => v || null),
 });
 export type TGetQuotesInput = z.infer<typeof GetQuotesInputSchema>;
 
@@ -49,13 +60,16 @@ export type TCreateQuoteInput = z.infer<typeof CreateQuoteInputSchema>;
 // SERVICE
 // ============================================================================
 
-/**
- * Um orçamento em aberto é a interseção estreita de um status sobrecarregado: `ORCAMENTO` também
- * marca pedido da loja digital aguardando confirmação e rascunho de conta de atendimento. Sem os
- * três filtros abaixo a lista mentiria para quem atende.
- */
 const QUOTES_FETCH_LIMIT = 50;
 const QUOTES_RETURN_LIMIT = 20;
+/**
+ * A fila da organização é lida de relance, não paginada: mostra os mais recentes e conta o resto.
+ * O limite de busca é maior que o de retorno porque `sales` não tem coluna de criação — a ordenação
+ * por data acontece em memória (ver `resolveQuoteCreationDate`), então o corte do banco é arbitrário
+ * e só um lote generoso garante que os realmente recentes estejam entre os candidatos.
+ */
+const ORG_QUOTES_FETCH_LIMIT = 200;
+const ORG_QUOTES_RETURN_LIMIT = 30;
 
 export type TOpenQuoteOrigin = "AGENTE_IA" | "HUB" | "POS" | "OUTRO";
 
@@ -72,50 +86,82 @@ function resolveQuoteOrigin({ rascunhoMetadados, canal }: { rascunhoMetadados: u
 	return "OUTRO";
 }
 
+/**
+ * Um orçamento em aberto é a interseção estreita de um status sobrecarregado: `ORCAMENTO` também
+ * marca pedido da loja digital aguardando confirmação e rascunho de conta de atendimento. Sem os
+ * três filtros abaixo a lista mentiria para quem atende.
+ *
+ * A definição vive em um lugar só porque a lista e o agregado precisam concordar: senão a pill
+ * mostraria um total que a lista não explica.
+ */
+function buildOpenQuotesFilter({ organizacaoId, clientId }: { organizacaoId: string; clientId: string | null }) {
+	return and(
+		eq(sales.organizacaoId, organizacaoId),
+		clientId ? eq(sales.clienteId, clientId) : undefined,
+		eq(sales.statusVenda, "ORCAMENTO"),
+		eq(sales.processamentoOrigem, "INTERNO"),
+		// Conta de atendimento se gerencia pelo board de Mesas & Comandas (invariante 11).
+		isNull(sales.tabId),
+		// `canal` é nullable: `ne` sozinho descartaria as linhas NULL em silêncio.
+		or(isNull(sales.canal), ne(sales.canal, "SHOP")),
+	);
+}
+
 async function getQuotes({ input, session }: { input: TGetQuotesInput; session: TAuthUserSession }) {
 	const organizacaoId = session.membership?.organizacao.id;
 	if (!organizacaoId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	const rows = await db.query.sales.findMany({
-		where: (fields, { and, eq, isNull, ne, or }) =>
-			and(
-				eq(fields.organizacaoId, organizacaoId),
-				eq(fields.clienteId, input.clientId),
-				eq(fields.statusVenda, "ORCAMENTO"),
-				eq(fields.processamentoOrigem, "INTERNO"),
-				// Conta de atendimento se gerencia pelo board de Mesas & Comandas (invariante 11).
-				isNull(fields.tabId),
-				// `canal` é nullable: `ne` sozinho descartaria as linhas NULL em silêncio.
-				or(isNull(fields.canal), ne(fields.canal, "SHOP")),
-			),
-		columns: {
-			id: true,
-			idExterno: true,
-			valorTotal: true,
-			canal: true,
-			vendedorNome: true,
-			observacoes: true,
-			rascunhoMetadados: true,
-		},
-		with: {
-			itens: {
-				// Preço de venda e total do item; custo e margem nunca saem daqui — orçamento é
-				// artefato de cliente, e a lista alimenta a mensagem enviada na conversa.
-				columns: { id: true, quantidade: true, valorVendaUnitario: true, valorVendaTotalLiquido: true },
-				with: {
-					produto: { columns: { nome: true } },
-					produtoVariante: { columns: { nome: true } },
+	// A fila da organização expõe orçamentos de todos os clientes, então exige a permissão de
+	// visualizar vendas. O modo por cliente não a exige: quem atende a conversa já vê o cliente.
+	const isOrgWide = !input.clientId;
+	if (isOrgWide && !session.membership?.permissoes.vendas.visualizar)
+		throw new createHttpError.Forbidden("Você não possui permissão para visualizar vendas.");
+
+	const filter = buildOpenQuotesFilter({ organizacaoId, clientId: input.clientId });
+	const fetchLimit = isOrgWide ? ORG_QUOTES_FETCH_LIMIT : QUOTES_FETCH_LIMIT;
+	const returnLimit = isOrgWide ? ORG_QUOTES_RETURN_LIMIT : QUOTES_RETURN_LIMIT;
+
+	const [rows, [aggregate]] = await Promise.all([
+		db.query.sales.findMany({
+			where: () => filter,
+			columns: {
+				id: true,
+				idExterno: true,
+				valorTotal: true,
+				canal: true,
+				vendedorNome: true,
+				observacoes: true,
+				rascunhoMetadados: true,
+			},
+			with: {
+				// Na fila da organização o cliente é a âncora da linha; no modo por cliente vem junto e é ignorado.
+				cliente: { columns: { nome: true } },
+				itens: {
+					// Preço de venda e total do item; custo e margem nunca saem daqui — orçamento é
+					// artefato de cliente, e a lista alimenta a mensagem enviada na conversa.
+					columns: { id: true, quantidade: true, valorVendaUnitario: true, valorVendaTotalLiquido: true },
+					with: {
+						produto: { columns: { nome: true } },
+						produtoVariante: { columns: { nome: true } },
+					},
 				},
 			},
-		},
-		limit: QUOTES_FETCH_LIMIT,
-	});
+			limit: fetchLimit,
+		}),
+		// Contagem e soma vêm do banco, não da página: a pill precisa dizer quantos existem, não
+		// quantos couberam no lote.
+		db
+			.select({ total: count(), valorTotal: sum(sales.valorTotal) })
+			.from(sales)
+			.where(filter),
+	]);
 
 	const quotes = rows
 		.map((row) => ({
 			id: row.id,
 			idExterno: row.idExterno,
 			valorTotal: row.valorTotal,
+			clienteNome: row.cliente?.nome ?? null,
 			qtdeItens: row.itens.length,
 			itens: row.itens.map((item) => ({
 				nome: item.produto?.nome ?? "Item",
@@ -132,12 +178,14 @@ async function getQuotes({ input, session }: { input: TGetQuotesInput; session: 
 		// Sem coluna de criação não há como ordenar no banco: a ordenação acontece sobre a data
 		// reconstruída, e o que não tem data vai para o fim em vez de fingir ser recente.
 		.sort((a, b) => (b.criadoEm?.getTime() ?? 0) - (a.criadoEm?.getTime() ?? 0))
-		.slice(0, QUOTES_RETURN_LIMIT);
+		.slice(0, returnLimit);
 
 	return {
 		data: {
 			orcamentos: quotes,
-			valorTotalEmAberto: quotes.reduce((total, quote) => total + quote.valorTotal, 0),
+			// `total` conta todos os orçamentos em aberto; `orcamentos` traz só os mais recentes.
+			total: aggregate?.total ?? quotes.length,
+			valorTotalEmAberto: Number(aggregate?.valorTotal ?? 0),
 		},
 		message: "Orçamentos em aberto carregados com sucesso.",
 	};

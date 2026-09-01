@@ -6,21 +6,24 @@ import CashSessionBar from "@/components/CashSessions/CashSessionBar";
 import CashSessionGate from "@/components/CashSessions/CashSessionGate";
 import { DiscountApproval } from "@/components/Modals/Sales/DiscountApproval";
 import { getErrorMessage } from "@/lib/errors";
+import type { TQuotePermissions } from "@/components/Chats/Quotes/config";
 import type { TAutoEmissionExceptions } from "@/lib/fiscal/auto-emission-policy";
 import { createAndConfirmSale, createSaleDraft, updateSaleDraft } from "@/lib/mutations/pos";
 import { evaluateDiscount } from "@/lib/permissions/discounts";
 import { useSaleDiscountContext } from "@/lib/queries/action-approvals";
 import { usePOSGroups, usePOSProducts } from "@/lib/queries/pos";
+import { getOrganizationOpenQuotesQueryKey } from "@/lib/queries/sales";
 import { useActiveSalesSession } from "@/lib/queries/sales-sessions";
 import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import { type TSaleFinancialAccountOption, type TUseSaleState, getDefaultSaleState, useSaleState } from "@/state-hooks/use-sale-state";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ShoppingCart } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import CheckoutPanel from "./components/CheckoutPanel";
+import OpenQuotesPill from "./components/OpenQuotesPill";
 import ProductBuilderModal from "./components/ProductBuilderModal";
 import SaleSuccessPanel from "./components/SaleSuccessPanel";
 import CategoriesBar from "./components/composition/CategoriesBar";
@@ -71,6 +74,9 @@ type NewSalePageProps = {
 	organizationAutoFiscalCapable: boolean;
 	autoEmissionExceptions: TAutoEmissionExceptions;
 	canEmitFiscal: boolean;
+	/** `vendas.visualizar` — gate da fila de orçamentos em aberto da organização. */
+	canViewSales: boolean;
+	quotePermissions: TQuotePermissions;
 };
 export default function NewSalePage({
 	organizationCashbackProgram,
@@ -80,6 +86,8 @@ export default function NewSalePage({
 	organizationAutoFiscalCapable,
 	autoEmissionExceptions,
 	canEmitFiscal,
+	canViewSales,
+	quotePermissions,
 }: NewSalePageProps) {
 	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 	const [searchValue, setSearchValue] = useState("");
@@ -144,6 +152,8 @@ export default function NewSalePage({
 		previousClientIdRef.current = linkedClientId;
 	}, [linkedClientId]);
 
+	const queryClient = useQueryClient();
+
 	const { mutate: createDraft, isPending: isCreatingDraft } = useMutation({
 		mutationKey: ["create-sale-draft"],
 		mutationFn: createSaleDraft,
@@ -176,6 +186,8 @@ export default function NewSalePage({
 					cashbackAcumulado: null,
 					fiscal: null,
 				});
+				// A fila da pill acabou de crescer: o próximo "NOVA VENDA" precisa já contar este.
+				void queryClient.invalidateQueries({ queryKey: getOrganizationOpenQuotesQueryKey() });
 			} catch (error) {
 				toast.error(getErrorMessage(error));
 			}
@@ -385,6 +397,9 @@ export default function NewSalePage({
 								<SearchBlock searchValue={searchValue} onSearchChange={handleSearchChange} isLoading={productsLoading} />
 							</div>
 							<ViewModeToggle value={viewMode} onChange={setViewMode} />
+							{/* Pendência comercial ao lado da busca: aparece sozinha quando existe e some quando
+							    a fila zera, sem ocupar espaço fixo da grade de produtos. */}
+							<OpenQuotesPill canViewQuotes={canViewSales} permissions={quotePermissions} cartItemCount={saleState.itemCount} />
 						</div>
 						{/* Faixa de mais pedidos recolhe quando o operador está buscando ou filtrou uma categoria — o espaço volta para o resultado. */}
 						{!searchValue && !selectedGroup ? <TopProductsStrip onProductClick={handleProductClick} /> : null}

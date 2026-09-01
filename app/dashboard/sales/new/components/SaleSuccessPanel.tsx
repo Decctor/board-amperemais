@@ -5,7 +5,7 @@ import { formatToMoney } from "@/lib/formatting";
 import { appRoutes } from "@/lib/navigation/routes";
 import type { TSaleSuccess } from "@/state-hooks/use-sale-state";
 import { SalePaymentMethodsOptions } from "@/utils/select-options";
-import { ArrowRight, Check, CircleAlert, PackageCheck, ReceiptText, RotateCcw, Sparkles, UserRound, WalletCards } from "lucide-react";
+import { ArrowRight, Check, CircleAlert, PackageCheck, ReceiptText, RotateCcw, ShoppingBag, Sparkles, UserRound, WalletCards } from "lucide-react";
 import Link from "next/link";
 
 const DELIVERY_LABELS: Record<TSaleSuccess["entregaModalidade"], string> = {
@@ -29,6 +29,9 @@ export default function SaleSuccessPanel({ success, onStartNewSale }: SaleSucces
 	const saleReference = success.saleId.slice(-8).toUpperCase();
 	const historyHref = appRoutes.sales.root();
 	const attendanceHref = `${appRoutes.sales.orders()}?saleId=${encodeURIComponent(success.saleId)}`;
+	// O orçamento existe para ser cobrado depois — mas "depois" costuma ser agora mesmo, quando o
+	// cliente decide fechar no balcão. Sem este atalho o caminho de volta era o histórico.
+	const checkoutHref = success.mode === "ORCAMENTO" ? appRoutes.sales.checkout(success.saleId) : null;
 
 	return (
 		<div className="flex min-h-[calc(100vh-8rem)] w-full items-center justify-center p-4">
@@ -51,7 +54,7 @@ export default function SaleSuccessPanel({ success, onStartNewSale }: SaleSucces
 						<p className="text-sm text-muted-foreground">{success.description}</p>
 					</div>
 					<Link
-				href={appRoutes.sales.details(success.saleId)}
+						href={appRoutes.sales.details(success.saleId)}
 						className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-xs font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 					>
 						VENDA #{saleReference}
@@ -142,6 +145,14 @@ export default function SaleSuccessPanel({ success, onStartNewSale }: SaleSucces
 						<RotateCcw className="h-4 w-4" aria-hidden="true" />
 						NOVA VENDA
 					</Button>
+					{checkoutHref ? (
+						<Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
+							<Link href={checkoutHref}>
+								<ShoppingBag className="h-4 w-4" aria-hidden="true" />
+								ABRIR CHECKOUT
+							</Link>
+						</Button>
+					) : null}
 					{showAttendance ? (
 						<Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
 							<Link href={attendanceHref}>VER NO ATENDIMENTO</Link>
