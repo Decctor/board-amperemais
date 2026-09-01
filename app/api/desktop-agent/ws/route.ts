@@ -19,7 +19,7 @@ import { WebSocket } from "ws";
 // o agent reconecta com backoff. Instâncias não compartilham memória: este registro de
 // conexões e o sweep são por instância, e o estado durável mora em print_jobs.
 
-const NUDGE_SWEEP_INTERVAL_MS = 2_000;
+const NUDGE_SWEEP_INTERVAL_MS = 1_000;
 // Cooldown por conexão: um job que ninguém consegue claimar (ex.: sem impressora configurada
 // para a finalidade) não pode virar um loop de nudge+claim a cada sweep.
 const NUDGE_MIN_INTERVAL_MS = 10_000;

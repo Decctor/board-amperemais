@@ -7,14 +7,12 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const CreateEnrollmentChallengeInputSchema = z.object({
+	principalId: z.string({ invalid_type_error: "Tipo não válido para o ID do dispositivo." }).optional().nullable(),
 	accessClientCodigo: z.string({
 		required_error: "Código da aplicação cliente não informado.",
 		invalid_type_error: "Tipo não válido para o código da aplicação cliente.",
 	}),
-	nomeSugerido: z
-		.string({ invalid_type_error: "Tipo não válido para o nome sugerido do dispositivo." })
-		.optional()
-		.nullable(),
+	nomeSugerido: z.string({ invalid_type_error: "Tipo não válido para o nome sugerido do dispositivo." }).optional().nullable(),
 	escoposSolicitados: AccessScopesListSchema.optional().nullable(),
 	expiraEmMinutos: z
 		.number({ invalid_type_error: "Tipo não válido para o tempo de expiração." })
@@ -40,6 +38,7 @@ type TCreateEnrollmentChallengeParams = {
 };
 async function createEnrollmentChallengeService({ input, organizacaoId, criadoPorId }: TCreateEnrollmentChallengeParams) {
 	const challenge = await createEnrollmentChallenge({
+		principalId: input.principalId,
 		accessClientCodigo: input.accessClientCodigo,
 		organizacaoId,
 		criadoPorId,

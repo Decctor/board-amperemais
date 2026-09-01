@@ -131,6 +131,9 @@ export const accessEnrollmentChallenges = newTable(
 		organizacaoId: varchar("organizacao_id", { length: 255 })
 			.references(() => organizations.id, { onDelete: "cascade" })
 			.notNull(),
+		// Preenchido ao reconectar um dispositivo já cadastrado. Sem ele, o consumo cria
+		// um principal novo, como no fluxo normal de ativação.
+		principalId: varchar("principal_id", { length: 255 }).references(() => accessPrincipals.id, { onDelete: "cascade" }),
 		// SHA-256 do código normalizado; lookup por igualdade exata.
 		hashCodigo: varchar("hash_codigo", { length: 255 }).notNull(),
 		nomeSugerido: text("nome_sugerido"),
@@ -145,6 +148,7 @@ export const accessEnrollmentChallenges = newTable(
 	(table) => ({
 		hashCodigoIdx: uniqueIndex("idx_access_enrollment_challenges_hash_codigo").on(table.hashCodigo),
 		organizacaoIdIdx: index("idx_access_enrollment_challenges_organizacao_id").on(table.organizacaoId),
+		principalIdIdx: index("idx_access_enrollment_challenges_principal_id").on(table.principalId),
 	}),
 );
 
@@ -288,6 +292,10 @@ export const accessEnrollmentChallengesRelations = relations(accessEnrollmentCha
 	organizacao: one(organizations, {
 		fields: [accessEnrollmentChallenges.organizacaoId],
 		references: [organizations.id],
+	}),
+	principal: one(accessPrincipals, {
+		fields: [accessEnrollmentChallenges.principalId],
+		references: [accessPrincipals.id],
 	}),
 	criadoPor: one(users, {
 		fields: [accessEnrollmentChallenges.criadoPorId],

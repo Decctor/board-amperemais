@@ -46,6 +46,7 @@ const CLIENT_CATEGORY_PRINCIPAL_TYPES: Record<TAccessClientEntity["categoria"], 
 };
 
 type TCreateEnrollmentChallengeParams = {
+	principalId?: string | null;
 	accessClientCodigo: string;
 	organizacaoId: string;
 	criadoPorId: string;
@@ -59,6 +60,15 @@ export async function createEnrollmentChallenge(params: TCreateEnrollmentChallen
 		where: and(eq(accessClients.codigo, params.accessClientCodigo), eq(accessClients.status, "ATIVO")),
 	});
 	if (!client) throw new createHttpError.NotFound("Aplicação cliente não encontrada ou inativa.");
+
+	if (params.principalId) {
+		const principal = await db.query.accessPrincipals.findFirst({
+			where: and(eq(accessPrincipals.id, params.principalId), eq(accessPrincipals.organizacaoId, params.organizacaoId)),
+		});
+		if (!principal || principal.accessClientId !== client.id) throw new createHttpError.NotFound("Dispositivo não encontrado.");
+		if (principal.tipo !== "AGENTE_DESKTOP") throw new createHttpError.BadRequest("A reconexão está disponível apenas para agentes desktop.");
+		if (principal.status !== "ATIVO" || principal.dataRevogacao) throw new createHttpError.BadRequest("Dispositivo revogado ou inativo.");
+	}
 
 	// Interseção com o teto do cliente já na criação — o desafio nunca carrega scopes acima do permitido.
 	const escoposSolicitados = params.escoposSolicitados?.length
@@ -74,6 +84,7 @@ export async function createEnrollmentChallenge(params: TCreateEnrollmentChallen
 	const [challenge] = await db
 		.insert(accessEnrollmentChallenges)
 		.values({
+			principalId: params.principalId ?? null,
 			accessClientId: client.id,
 			organizacaoId: params.organizacaoId,
 			hashCodigo: hashAccessSecret(normalizeEnrollmentCode(code)),
@@ -131,20 +142,32 @@ export async function consumeEnrollmentChallenge(params: TConsumeEnrollmentChall
 			.returning({ id: accessEnrollmentChallenges.id });
 		if (!consumedChallenge) return null;
 
-		const [principal] = await tx
-			.insert(accessPrincipals)
-			.values({
-				accessClientId: challenge.accessClientId,
-				organizacaoId: challenge.organizacaoId,
-				tipo: CLIENT_CATEGORY_PRINCIPAL_TYPES[challenge.cliente.categoria],
-				nome: params.nome ?? challenge.nomeSugerido ?? `${challenge.cliente.nome} (novo dispositivo)`,
-				metadados: params.metadados ?? null,
-			})
-			.returning({ id: accessPrincipals.id, tipo: accessPrincipals.tipo, nome: accessPrincipals.nome });
+		let principal: { id: string; tipo: TAccessPrincipalTypeEnum; nome: string };
+		if (challenge.principalId) {
+			const [existingPrincipal] = await tx
+				.update(accessPrincipals)
+				.set({ ...(params.metadados ? { metadados: params.metadados } : {}), ultimoAcesso: new Date(), dataAtualizacao: new Date() })
+				.where(and(eq(accessPrincipals.id, challenge.principalId), eq(accessPrincipals.status, "ATIVO")))
+				.returning({ id: accessPrincipals.id, tipo: accessPrincipals.tipo, nome: accessPrincipals.nome });
+			if (!existingPrincipal) return null;
+			principal = existingPrincipal;
+		} else {
+			const [newPrincipal] = await tx
+				.insert(accessPrincipals)
+				.values({
+					accessClientId: challenge.accessClientId,
+					organizacaoId: challenge.organizacaoId,
+					tipo: CLIENT_CATEGORY_PRINCIPAL_TYPES[challenge.cliente.categoria],
+					nome: params.nome ?? challenge.nomeSugerido ?? `${challenge.cliente.nome} (novo dispositivo)`,
+					metadados: params.metadados ?? null,
+				})
+				.returning({ id: accessPrincipals.id, tipo: accessPrincipals.tipo, nome: accessPrincipals.nome });
+			principal = newPrincipal;
+		}
 
 		// Reforço do teto no consumo: mesmo que o teto do cliente tenha diminuído após a criação do desafio.
 		const grantedScopes = challenge.escoposSolicitados.filter((scope) => challenge.cliente.escoposPermitidos.includes(scope));
-		if (grantedScopes.length > 0) {
+		if (!challenge.principalId && grantedScopes.length > 0) {
 			await tx.insert(accessGrants).values(
 				grantedScopes.map((scope) => ({
 					principalId: principal.id,
@@ -164,7 +187,7 @@ export async function consumeEnrollmentChallenge(params: TConsumeEnrollmentChall
 				idPublico: generated.idPublico,
 				prefixoExibicao: generated.prefixoExibicao,
 				hashSegredo: generated.hashSegredo,
-				descricao: "Credencial criada no enrollment.",
+				descricao: challenge.principalId ? "Credencial criada para reconexão do agente desktop." : "Credencial criada no enrollment.",
 			})
 			.returning({ id: accessCredentials.id });
 
