@@ -12,7 +12,7 @@ import type {
 	TCanonicalSaleItem,
 	TCanonicalSalePayment,
 } from "../types";
-import type { TIfoodEvent, TIfoodOrder, TIfoodOrderBenefit, TIfoodOrderItem } from "./types";
+import type { TIfoodEvent, TIfoodOrder, TIfoodOrderAdditionalFee, TIfoodOrderBenefit, TIfoodOrderItem } from "./types";
 
 type TIfoodOrderEventState = {
 	statusText: string | null;
@@ -501,17 +501,11 @@ function allocateMerchantDiscountsToItems(order: TIfoodOrder, items: TCanonicalS
 }
 
 /**
- * Detalhamento do canal para fiscal/conciliação (C4 da fase 5), persistido em
- * `sales.integracaoMetadados`. Frete: benefits MERCHANT de taxa de entrega reduzem o frete
- * cobrado (a loja abriu mão); benefits patrocinados mantêm o frete cheio (o canal paga).
+ * Reparte os benefits do pedido entre o que a loja bancou (reduz a NF) e o que o canal patrocinou
+ * (o canal reembolsa a loja, entao NAO e desconto: entra como pagamento). Fonte unica dos totais
+ * da venda, do frete liquido e das linhas de patrocinio.
  */
-function buildIfoodIntegrationMetadata(
-	order: TIfoodOrder,
-	eventState: TIfoodOrderEventState,
-	payments: TCanonicalSalePayment[] | null,
-): TSaleIntegrationMetadata {
-	const deliveredBy = order.delivery?.deliveredBy?.toUpperCase() ?? null;
-
+function splitIfoodBenefits(order: TIfoodOrder) {
 	let merchantItemAndCartDiscount = 0;
 	let merchantDeliveryFeeDiscount = 0;
 	const sponsoredTotals = new Map<string, number>();
@@ -524,20 +518,85 @@ function buildIfoodIntegrationMetadata(
 			sponsoredTotals.set(name, (sponsoredTotals.get(name) ?? 0) + value);
 		}
 	}
+	return { merchantItemAndCartDiscount, merchantDeliveryFeeDiscount, sponsoredTotals };
+}
 
-	const taxasCanal =
+/**
+ * Frete do pedido depois dos benefits. Quem entrega decide de quem é a receita: entrega própria
+ * (`deliveredBy: MERCHANT`) é receita da loja — compõe o total da venda e a NF como `vFrete`;
+ * entrega do canal é receita do iFood — o cliente paga, o canal retém e a loja nunca vê o dinheiro.
+ * Mesma leitura de `realizadaPor` que `computeSaleTaxation` usa para montar o `vFrete`, para que
+ * `valorTotal` e `vNF` não possam divergir.
+ */
+function resolveIfoodDelivery(order: TIfoodOrder, merchantDeliveryFeeDiscount: number) {
+	const deliveredBy = order.delivery?.deliveredBy?.toUpperCase() ?? null;
+	const realizadaPor = deliveredBy === "MERCHANT" ? ("LOJA" as const) : deliveredBy ? ("CANAL" as const) : null;
+	const netDeliveryFee = round2(Math.max(order.total.deliveryFee - merchantDeliveryFeeDiscount, 0));
+
+	return {
+		realizadaPor,
+		netDeliveryFee,
+		/** Receita da loja: entra em `valorTotal` e no `vFrete` da NF. */
+		ownDeliveryFee: realizadaPor === "LOJA" ? netDeliveryFee : 0,
+		/** Retido pelo canal: sai da conta de repasse como SAÍDA, junto das demais taxas. */
+		channelDeliveryFee: realizadaPor === "LOJA" ? 0 : netDeliveryFee,
+	};
+}
+
+/** Nome da liability quando é o próprio lojista que banca a taxa (o canal não a retém). */
+const MERCHANT_FEE_LIABILITY = "MERCHANT";
+
+function isMerchantLiableFee(fee: TIfoodOrderAdditionalFee) {
+	const liabilities = fee.liabilities ?? [];
+	return liabilities.length > 0 && liabilities.every((liability) => liability.name?.toUpperCase() === MERCHANT_FEE_LIABILITY);
+}
+
+/**
+ * Taxas retidas pelo canal: `additionalFees` (receita do iFood, fora da NF) mais o frete que o
+ * canal reteve. O frete precisa entrar aqui porque o cliente o pagou junto do pedido — sem a SAÍDA
+ * correspondente o saldo da conta de repasse cobraria do iFood um dinheiro que ele nunca deve.
+ *
+ * Limite conhecido: uma taxa integralmente sob liability MERCHANT é receita da loja, mas o motor de
+ * totais ainda não tem onde declará-la (não é frete nem item). Ela segue como taxa do canal e o
+ * caso é logado, em vez de silenciosamente mal classificado.
+ */
+function resolveIfoodChannelFees(order: TIfoodOrder, channelDeliveryFee: number) {
+	const additionalFees =
 		order.additionalFees.length > 0
 			? order.additionalFees.map((fee) => ({ tipo: fee.type ?? "ADDITIONAL_FEE", valor: round2(fee.value) }))
 			: order.total.additionalFees > 0
 				? [{ tipo: "ADDITIONAL_FEES", valor: round2(order.total.additionalFees) }]
 				: [];
 
+	for (const fee of order.additionalFees.filter(isMerchantLiableFee)) {
+		console.warn(
+			`[IFOOD_MAPPER] Pedido ${order.id}: taxa "${fee.type ?? "ADDITIONAL_FEE"}" de ${fee.value} é de responsabilidade MERCHANT (receita da loja), mas foi lançada como taxa do canal — a NF ainda não tem campo para declará-la.`,
+		);
+	}
+
+	return channelDeliveryFee > 0 ? [...additionalFees, { tipo: "DELIVERY_FEE_CANAL", valor: channelDeliveryFee }] : additionalFees;
+}
+
+/**
+ * Detalhamento do canal para fiscal/conciliação (C4 da fase 5), persistido em
+ * `sales.integracaoMetadados`. Frete: benefits MERCHANT de taxa de entrega reduzem o frete
+ * cobrado (a loja abriu mão); benefits patrocinados mantêm o frete cheio (o canal paga).
+ */
+function buildIfoodIntegrationMetadata(
+	order: TIfoodOrder,
+	eventState: TIfoodOrderEventState,
+	payments: TCanonicalSalePayment[] | null,
+): TSaleIntegrationMetadata {
+	const { merchantItemAndCartDiscount, merchantDeliveryFeeDiscount, sponsoredTotals } = splitIfoodBenefits(order);
+	const entrega = resolveIfoodDelivery(order, merchantDeliveryFeeDiscount);
+	const taxasCanal = resolveIfoodChannelFees(order, entrega.channelDeliveryFee);
+
 	return {
 		versao: 1,
 		canal: "IFOOD",
 		entrega: {
-			realizadaPor: deliveredBy === "MERCHANT" ? "LOJA" : deliveredBy ? "CANAL" : null,
-			valorFrete: round2(Math.max(order.total.deliveryFee - merchantDeliveryFeeDiscount, 0)),
+			realizadaPor: entrega.realizadaPor,
+			valorFrete: entrega.netDeliveryFee,
 		},
 		descontos: {
 			loja: round2(merchantItemAndCartDiscount + merchantDeliveryFeeDiscount),
@@ -609,23 +668,45 @@ export function mapIfoodSale(order: TIfoodOrder, events: TIfoodEvent[] = []): TC
 	const eventState = getOrderEventState(events);
 	const validSale = isValidSale(order, eventState);
 	const canceled = isCanceled(order, eventState);
-	const totalDiscount = order.total.benefits || order.benefits.reduce((acc, benefit) => acc + benefit.value, 0);
 	const merchantName = order.merchant?.name || "IFOOD";
 	// Estagio efetivo = o mais avancado entre o status do payload, os timestamps do pedido e os
 	// eventos deste lote. Resiliente a evento perdido/ja ACKado e a evento atrasado fora de ordem.
 	const statusText = pickMostAdvancedStatus(order.status, getOrderTimestampStatus(order), eventState.statusText) ?? "N/A";
 	const items = order.items.map(mapIfoodSaleItem);
-	const payments = mapIfoodSalePayments(order);
 	// C1 (fase 5): descontos reais da loja (sponsorship MERCHANT) reduzem os itens — e a NF.
 	allocateMerchantDiscountsToItems(order, items);
+
+	// Totais espelham a composicao da NF, para venda e nota nunca divergirem:
+	//   valorTotal = itens brutos - desconto da loja + frete proprio  (= vNF)
+	// O desconto patrocinado NAO entra como desconto (o canal reembolsa a loja: vira pagamento); a
+	// taxa do canal e o frete que o canal retem ficam fora (sao receita do canal, nao da loja) e
+	// aparecem como SAIDA em `taxasCanal`. Antes o total vinha do `orderAmount`, que e o valor
+	// cobrado do cliente — outra definicao, e por isso a NF nao batia.
+	const { merchantItemAndCartDiscount, merchantDeliveryFeeDiscount, sponsoredTotals } = splitIfoodBenefits(order);
+	const merchantDiscount = round2(merchantItemAndCartDiscount);
+	const { ownDeliveryFee } = resolveIfoodDelivery(order, merchantDeliveryFeeDiscount);
+	const operationValue = round2(order.total.subTotal - merchantDiscount + ownDeliveryFee);
+
+	// Patrocinio do canal como pagamento: sem essa linha os pagamentos nao alcancam o total da
+	// operacao e a emissao para na validacao de prontidao fiscal.
+	const customerPayments = mapIfoodSalePayments(order) ?? [];
+	const sponsoredPayments: TCanonicalSalePayment[] = [...sponsoredTotals.entries()]
+		.filter(([, valor]) => valor > 0)
+		.map(([patrocinador, valor]) => ({
+			metodo: "VALE" as const,
+			valor: round2(valor),
+			pagoOnline: true,
+			descricao: `Patrocínio ${patrocinador}`,
+		}));
+	const payments = [...customerPayments, ...sponsoredPayments];
 
 	return {
 		sourceSaleId: order.id,
 		displayId: order.displayId,
-		totalValue: order.total.orderAmount || order.total.subTotal + order.total.deliveryFee + order.total.additionalFees - totalDiscount,
+		totalValue: operationValue,
 		totalCost: 0,
-		totalDiscount,
-		totalSurcharge: order.total.deliveryFee + order.total.additionalFees,
+		totalDiscount: merchantDiscount,
+		totalSurcharge: ownDeliveryFee,
 		sellerName: merchantName,
 		channel: "iFood",
 		deliveryMode: mapDeliveryMode(order),

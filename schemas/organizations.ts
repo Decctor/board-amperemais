@@ -173,6 +173,22 @@ export const OrganizationDefaultsSchema = z.object({
 					creditoContaId: null,
 					creditoContaKey: null,
 				}),
+			// Taxas retidas por canais gerenciados (ex.: comissao do iFood): despesa comercial que
+			// reduz o recebivel do canal — o repasse ja chega liquido, entao o credito e o proprio
+			// contas a receber, nao um contas a pagar (que dobraria a obrigacao).
+			taxasCanal: z
+				.object({
+					debitoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de débito padrão de taxas de canal." }).nullable(),
+					debitoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de débito padrão de taxas de canal." }).nullable(),
+					creditoContaId: z.string({ invalid_type_error: "Tipo não válido para a conta de crédito padrão de taxas de canal." }).nullable(),
+					creditoContaKey: z.string({ invalid_type_error: "Tipo não válido para a chave da conta de crédito padrão de taxas de canal." }).nullable(),
+				})
+				.default({
+					debitoContaId: null,
+					debitoContaKey: null,
+					creditoContaId: null,
+					creditoContaKey: null,
+				}),
 		}),
 	}),
 	pagamentos: z.object({

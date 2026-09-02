@@ -21,6 +21,13 @@ import { SettingsFormCard, SettingsFormSection } from "./SettingsFormCard";
 import SettingsSectionActions from "./SettingsSectionActions";
 
 type TFinancesDraft = Pick<TOrganizationDefaults, "contabilidade" | "pagamentos">;
+
+const ACCOUNTING_ENTRY_KIND_LABELS = {
+	vendas: "Vendas",
+	compras: "Compras",
+	perdasEstoque: "Perdas de Estoque",
+	taxasCanal: "Taxas de Canal",
+} as const;
 type TAccountOption = { id: string; value: string; label: string };
 
 // ---------------------------------------------------------------------------
@@ -196,6 +203,12 @@ export default function SettingsFinances({ membership }: SettingsFinancesProps) 
 							creditoContaId: null,
 							creditoContaKey: null,
 						},
+						taxasCanal: contabilidade.lancamentosPadrao.taxasCanal ?? {
+							debitoContaId: null,
+							debitoContaKey: null,
+							creditoContaId: null,
+							creditoContaKey: null,
+						},
 					},
 				},
 				pagamentos: organization.configuracao.defaults.pagamentos,
@@ -233,7 +246,7 @@ export default function SettingsFinances({ membership }: SettingsFinancesProps) 
 	const canEdit = membership.permissoes.empresa.editar;
 
 	function updateAccounting(
-		tipo: "vendas" | "compras" | "perdasEstoque",
+		tipo: "vendas" | "compras" | "perdasEstoque" | "taxasCanal",
 		partial: Partial<TOrganizationDefaults["contabilidade"]["lancamentosPadrao"]["compras"]>,
 	) {
 		setDraft((current) =>
@@ -274,13 +287,11 @@ export default function SettingsFinances({ membership }: SettingsFinancesProps) 
 		>
 			<SettingsFormSection title="LANÇAMENTOS CONTÁBEIS PADRÃO" icon={<Calculator className="h-4 w-4" />}>
 				<p className="text-muted-foreground text-xs">Contas de débito e crédito usadas na geração automática de lançamentos.</p>
-				{(["vendas", "compras", "perdasEstoque"] as const).map((tipo) => {
+				{(["vendas", "compras", "perdasEstoque", "taxasCanal"] as const).map((tipo) => {
 					const entry = draft.contabilidade.lancamentosPadrao[tipo];
 					return (
 						<div key={tipo} className="border-border bg-muted/20 flex flex-col gap-3 rounded-lg border p-4">
-							<span className="text-foreground text-xs font-semibold tracking-wider uppercase">
-								{tipo === "vendas" ? "Vendas" : tipo === "compras" ? "Compras" : "Perdas de Estoque"}
-							</span>
+							<span className="text-foreground text-xs font-semibold tracking-wider uppercase">{ACCOUNTING_ENTRY_KIND_LABELS[tipo]}</span>
 							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 								<SelectInput
 									label="CONTA DE DÉBITO PADRÃO"

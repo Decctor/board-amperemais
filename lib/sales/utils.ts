@@ -198,7 +198,11 @@ function resolveInstallmentGroupId(transaction: SalePaymentTransactionInput): st
 }
 
 export function classifySalePaymentTransactions(transactions: SalePaymentTransactionInput[]): PaymentClassification {
-	const todas: ClassifiedPayment[] = transactions.map((transaction) => {
+	// So recebimentos entram na classificacao. Uma venda pode ter transacoes de SAIDA vinculadas
+	// (ex.: taxas de canal gerenciado lancadas contra a mesma venda) e elas nao sao pagamentos do
+	// cliente — listar uma delas no cupom ou no resumo contaria despesa como recebimento.
+	const recebimentos = transactions.filter((transaction) => (transaction.tipo ? transaction.tipo === "ENTRADA" : true));
+	const todas: ClassifiedPayment[] = recebimentos.map((transaction) => {
 		const motivoNaoEditavel = getPaymentNonEditableReason(transaction);
 		return {
 			id: transaction.id,

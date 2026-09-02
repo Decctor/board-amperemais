@@ -104,6 +104,7 @@ export async function buildCupomVendaDados({ organizacaoId, vendaId }: { organiz
 						columns: {
 							id: true,
 							valor: true,
+							tipo: true,
 							metodo: true,
 							parcela: true,
 							totalParcelas: true,

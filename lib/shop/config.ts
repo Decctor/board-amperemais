@@ -21,19 +21,31 @@ export function resolveShopDeliveryFee({
 }): number {
 	if (modalidade !== "ENTREGA") return 0;
 
-	const { taxa, gratisAcima } = configuracoes.atendimento.entrega;
+	const { ativo, taxa, gratisAcima } = configuracoes.atendimento.entrega;
+	// Entrega desligada: o painel nem exibe o campo da taxa, então o valor guardado é resíduo de uma
+	// configuração antiga. Cobrá-lo no PDV (que usa esta mesma regra) seria cobrar uma taxa que a
+	// organização não configurou.
+	if (!ativo) return 0;
 	if (gratisAcima !== null && gratisAcima !== undefined && subtotalItens >= gratisAcima) return 0;
 
 	return round2(Math.max(taxa, 0));
 }
 
-// A taxa da loja digital vive no snapshot do checkout (rascunhoMetadados.shop.entrega.taxa).
-// Pedidos anteriores à taxa, vendas de PDV e de canais não têm o campo: nesses casos não há taxa destacada.
+function readPositiveNumber(value: unknown): number | null {
+	return typeof value === "number" && Number.isFinite(value) && value > 0 ? round2(value) : null;
+}
+
+// Taxa de entrega já persistida numa venda. Dois marcadores, um por origem: a loja digital grava no
+// snapshot do checkout (`shop.entrega.taxa`) e o PDV grava na raiz do metadado do rascunho
+// (`taxaEntrega`, escrito por `getDraftMetadata`/edição de venda confirmada). Vendas anteriores à
+// taxa e vendas de canal não têm nenhum dos dois: nesses casos não há taxa destacada.
 export function readShopDeliveryFee(rascunhoMetadados: unknown): number {
 	if (!rascunhoMetadados || typeof rascunhoMetadados !== "object" || Array.isArray(rascunhoMetadados)) return 0;
-	const shop = (rascunhoMetadados as { shop?: { entrega?: { taxa?: unknown } } }).shop;
-	const taxa = shop?.entrega?.taxa;
-	return typeof taxa === "number" && Number.isFinite(taxa) && taxa > 0 ? round2(taxa) : 0;
+	const metadata = rascunhoMetadados as { taxaEntrega?: unknown; shop?: { entrega?: { taxa?: unknown } } };
+	// A raiz vem primeiro por ser reescrita a cada edição: num pedido da loja editado no PDV ela é a
+	// versão corrente, enquanto o snapshot do checkout guarda o valor do momento do pedido.
+	if (typeof metadata.taxaEntrega === "number") return readPositiveNumber(metadata.taxaEntrega) ?? 0;
+	return readPositiveNumber(metadata.shop?.entrega?.taxa) ?? 0;
 }
 
 export function resolveFiscalShopDeliveryFee({

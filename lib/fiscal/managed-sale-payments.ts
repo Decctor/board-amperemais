@@ -33,14 +33,31 @@ export function buildFiscalPaymentsForManagedSale({
 	const result: TFiscalSalePayment[] = [];
 
 	if (customerPortion > 0) {
-		const rawCustomerTotal = payments.reduce((sum, payment) => sum + payment.valor, 0);
+		// O patrocinio ja entra como VALE logo abaixo, a partir do metadata. Como ele tambem existe
+		// como transacao financeira da venda, precisa sair do rateio do cliente — senao a parcela do
+		// consumidor seria diluida na linha do patrocinador e os metodos sairiam errados.
+		//
+		// Sai o VALOR patrocinado, nao o metodo: vale-refeicao, vale-alimentacao e gift card do
+		// cliente tambem chegam como VALE (ver IFOOD_PAYMENT_METHOD_MAP) e `loadSalePayments` agrega
+		// tudo num unico balde por metodo. Descartar o balde inteiro apagaria um pagamento real.
+		let sponsoredToDeduct = sponsoredTotal;
+		const customerPayments = payments
+			.map((payment) => {
+				if (payment.metodo !== "VALE" || sponsoredToDeduct <= 0) return payment;
+				const deduction = Math.min(payment.valor, sponsoredToDeduct);
+				sponsoredToDeduct = round2(sponsoredToDeduct - deduction);
+				return { ...payment, valor: round2(payment.valor - deduction) };
+			})
+			.filter((payment) => payment.valor > 0);
+		const rawCustomerTotal = customerPayments.reduce((sum, payment) => sum + payment.valor, 0);
 		if (rawCustomerTotal <= 0) {
 			result.push({ metodo: "OUTRO", valor: customerPortion });
 		} else {
 			// Rateio proporcional com resto no último método (a soma precisa fechar exata no vNF).
 			let allocated = 0;
-			payments.forEach((payment, index) => {
-				const valor = index === payments.length - 1 ? round2(customerPortion - allocated) : round2((customerPortion * payment.valor) / rawCustomerTotal);
+			customerPayments.forEach((payment, index) => {
+				const valor =
+					index === customerPayments.length - 1 ? round2(customerPortion - allocated) : round2((customerPortion * payment.valor) / rawCustomerTotal);
 				allocated = round2(allocated + valor);
 				if (valor > 0) result.push({ metodo: payment.metodo, valor });
 			});

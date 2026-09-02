@@ -144,6 +144,7 @@ export const RecompraCRMDefaultAccountingDefaults: {
 		compras: { debitoKey: string; creditoKey: string; debitoCreditoTributarioKey: string; debitoDespesaPeriodoKey: string };
 		transferencias: { debitoKey: string; creditoKey: string };
 		perdasEstoque: { debitoKey: string; creditoKey: string };
+		taxasCanal: { debitoKey: string; creditoKey: string };
 	};
 } = {
 	lancamentosPadrao: {
@@ -159,6 +160,7 @@ export const RecompraCRMDefaultAccountingDefaults: {
 			creditoKey: "caixa_bancos",
 		},
 		perdasEstoque: { debitoKey: "perdas_estoque", creditoKey: "estoques" },
+		taxasCanal: { debitoKey: "despesas_comerciais", creditoKey: "contas_receber" },
 	},
 };
 
@@ -313,8 +315,7 @@ export function buildOrganizationAccountingDefaults(accountIdsByKey: Map<string,
 				debitoCreditoTributarioContaId:
 					accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoCreditoTributarioKey) ?? null,
 				debitoCreditoTributarioContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoCreditoTributarioKey,
-				debitoDespesaPeriodoContaId:
-					accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoDespesaPeriodoKey) ?? null,
+				debitoDespesaPeriodoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoDespesaPeriodoKey) ?? null,
 				debitoDespesaPeriodoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.compras.debitoDespesaPeriodoKey,
 			},
 			transferencias: {
@@ -322,6 +323,12 @@ export function buildOrganizationAccountingDefaults(accountIdsByKey: Map<string,
 				debitoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.transferencias.debitoKey,
 				creditoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.transferencias.creditoKey) ?? null,
 				creditoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.transferencias.creditoKey,
+			},
+			taxasCanal: {
+				debitoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.taxasCanal.debitoKey) ?? null,
+				debitoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.taxasCanal.debitoKey,
+				creditoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.taxasCanal.creditoKey) ?? null,
+				creditoContaKey: RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.taxasCanal.creditoKey,
 			},
 			perdasEstoque: {
 				debitoContaId: accountIdsByKey.get(RecompraCRMDefaultAccountingDefaults.lancamentosPadrao.perdasEstoque.debitoKey) ?? null,

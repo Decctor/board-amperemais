@@ -6,7 +6,7 @@ import { resolveShopDeliveryFee } from "@/lib/shop/config";
 import { useShopSettings } from "@/lib/queries/shop";
 import { SaleFullfilmentModesOptions } from "@/utils/select-options";
 import { TruckIcon } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 type DeliverySectionProps = {
 	saleState: TUseSaleState;
@@ -22,8 +22,26 @@ export default function DeliverySection({ saleState, locationOptions, onOpenNewL
 
 	const deliveryMode = saleState.state.entregaModalidade;
 	const setDeliveryFee = saleState.setTaxaEntrega;
+	// Modalidade da renderização anterior. `null` = primeira passada, ou seja, o estado ainda é o que
+	// veio da venda persistida (edição/checkout de rascunho) e não pode ser sobrescrito.
+	const previousModeRef = useRef<typeof deliveryMode | null>(null);
+	// A taxa atual foi aplicada por este prefill? Só nesse caso ela acompanha mudanças da regra.
+	// Uma taxa que já estava na venda pertence ao operador — reaplicar a configurada por cima dela
+	// somaria a taxa duas vezes em toda venda antiga com acréscimo manual.
+	const prefillOwnsFeeRef = useRef(false);
 	useEffect(() => {
-		setDeliveryFee(deliveryMode === "ENTREGA" ? deliveryFee : 0);
+		const previousMode = previousModeRef.current;
+		previousModeRef.current = deliveryMode;
+
+		if (previousMode === null) return;
+		if (previousMode !== deliveryMode) {
+			prefillOwnsFeeRef.current = deliveryMode === "ENTREGA";
+			setDeliveryFee(deliveryMode === "ENTREGA" ? deliveryFee : 0);
+			return;
+		}
+		// Mesma modalidade: acompanha a regra (carrinho cruzou o limite de entrega grátis, ou as
+		// configurações da loja acabaram de carregar) apenas sobre a taxa que este prefill aplicou.
+		if (prefillOwnsFeeRef.current) setDeliveryFee(deliveryFee);
 	}, [deliveryFee, deliveryMode, setDeliveryFee]);
 
 	return (

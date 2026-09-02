@@ -18,6 +18,7 @@ const KIND_LABELS: Record<TAccountingEntryDefaultsKind, string> = {
 	compras: "compras",
 	transferencias: "transferências",
 	perdasEstoque: "perdas de estoque",
+	taxasCanal: "taxas de canal",
 };
 
 /**

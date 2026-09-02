@@ -1,13 +1,14 @@
 import type { TCanonicalSale, TCanonicalSalePayment } from "@/lib/data-connectors/types";
 import { writeDefaultAccountingEntryLines } from "@/lib/finances/accounting-entry-lines";
 import { ensureFirstPartyFinancialAccount, type TFirstPartyAccountKey } from "@/lib/finances/first-party-accounts";
+import { resolveAccountingDefaultAccountIds } from "@/lib/finances/resolve-accounting-default-accounts";
 import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 import { getOrganizationPaymentMethodsConfig } from "@/lib/payments/defaults";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { DBTransaction } from "@/services/drizzle";
 import { accountingEntries, financialTransactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, ne, or } from "drizzle-orm";
 
 /**
  * Financeiro de vendas de canais gerenciados (fase 4 do plano iFood/fulfillment).
@@ -20,6 +21,10 @@ import { and, eq } from "drizzle-orm";
  */
 
 const SETTLEMENT_FORECAST_DAYS = 7;
+
+function round2(value: number): number {
+	return Math.round((value + Number.EPSILON) * 100) / 100;
+}
 
 /** Status de provedor das transações de canal gerenciado (texto livre na coluna provedor_status). */
 const PROVIDER_STATUS = {
@@ -57,10 +62,22 @@ export async function processManagedSaleFinancials(
 		organizationConfiguration: TOrganizationConfiguration | null;
 	},
 ): Promise<{ processed: boolean; reason?: string }> {
+	const saleLabel = `VENDA ${sale.model} #${sale.displayId ?? sale.sourceSaleId}`;
 	const existingEntry = await tx.query.accountingEntries.findFirst({
-		where: and(eq(accountingEntries.organizacaoId, organizationId), eq(accountingEntries.vendaId, saleId)),
+		where: and(
+			eq(accountingEntries.organizacaoId, organizationId),
+			eq(accountingEntries.vendaId, saleId),
+			// O lançamento das taxas do canal tem chave própria e não prova que a VENDA já foi lançada.
+			or(isNull(accountingEntries.chaveIdempotencia), ne(accountingEntries.chaveIdempotencia, buildChannelFeesIdempotencyKey(saleId))),
+		),
 		columns: { id: true },
 	});
+
+	// As taxas rodam ANTES da trava de idempotência da venda: elas têm lançamento e chave próprios,
+	// então uma organização que ligou o financeiro antes desta rotina existir recupera a despesa numa
+	// reexecução, em vez de ficar para sempre com a venda lançada e a taxa nunca.
+	await processManagedSaleChannelFees(tx, { organizationId, saleId, sale, channelAccountKey, saleLabel });
+
 	if (existingEntry) return { processed: false, reason: "ja-processada" };
 
 	const saleDefaults = organizationConfiguration?.defaults?.contabilidade?.lancamentosPadrao?.vendas;
@@ -75,24 +92,26 @@ export async function processManagedSaleFinancials(
 
 	// Fallback: canal sem detalhamento de pagamento → trata o total como pago online (padrão do
 	// iFood). Vendas sem valor não geram financeiro.
+	const channelPaymentDetail = sale.payments && sale.payments.length > 0 ? sale.payments : null;
 	const payments: TCanonicalSalePayment[] =
-		sale.payments && sale.payments.length > 0
-			? sale.payments
-			: sale.totalValue > 0
-				? [{ metodo: "OUTRO", valor: sale.totalValue, pagoOnline: true, descricao: "Canal (sem detalhamento)" }]
-				: [];
+		channelPaymentDetail ??
+		(sale.totalValue > 0 ? [{ metodo: "OUTRO", valor: sale.totalValue, pagoOnline: true, descricao: "Canal (sem detalhamento)" }] : []);
 	if (payments.length === 0) return { processed: false, reason: "sem-pagamentos" };
 
 	const paymentsTotal = payments.reduce((sum, payment) => sum + payment.valor, 0);
-	if (Math.abs(paymentsTotal - sale.totalValue) > 0.01) {
+	// O cliente paga o pedido inteiro, mas o canal retém as taxas e o frete que ele mesmo executa —
+	// só a operação da loja vira `totalValue`. Essa retenção é a diferença ESPERADA entre os dois;
+	// comparar sem ela faria a venda normal com taxa disparar o alerta.
+	const channelRetainedTotal = round2((sale.integrationMetadata?.taxasCanal ?? []).reduce((sum, fee) => sum + fee.valor, 0));
+	const expectedPaymentsTotal = round2(sale.totalValue + channelRetainedTotal);
+	if (channelPaymentDetail && Math.abs(paymentsTotal - expectedPaymentsTotal) > 0.01) {
 		console.warn(
-			`[MANAGED_SALE_FINANCIALS] Divergência entre pagamentos (${paymentsTotal.toFixed(2)}) e total da venda (${sale.totalValue.toFixed(2)}) — venda ${saleId}. Registrando pelos pagamentos.`,
+			`[MANAGED_SALE_FINANCIALS] Divergência entre pagamentos (${paymentsTotal.toFixed(2)}) e total da venda + retenções do canal (${expectedPaymentsTotal.toFixed(2)}) — venda ${saleId}. Registrando pelos pagamentos.`,
 		);
 	}
 
 	const channelAccount = await ensureFirstPartyFinancialAccount(tx, { organizationId, key: channelAccountKey });
 	const methodDefaults = getOrganizationPaymentMethodsConfig(organizationConfiguration);
-	const saleLabel = `VENDA ${sale.model} #${sale.displayId ?? sale.sourceSaleId}`;
 
 	const [entry] = await tx
 		.insert(accountingEntries)
@@ -134,6 +153,100 @@ export async function processManagedSaleFinancials(
 			dataEfetivacao: null,
 			provedorReferencia: sale.sourceSaleId,
 			provedorStatus: isOnline ? PROVIDER_STATUS.AWAITING_SETTLEMENT : PROVIDER_STATUS.PENDING,
+			autorId: null,
+		});
+	}
+
+	return { processed: true };
+}
+
+/** Chave de idempotência do lançamento de taxas — separada da venda, que tem chave nula. */
+function buildChannelFeesIdempotencyKey(saleId: string) {
+	return `taxas-canal:${saleId}`;
+}
+
+/**
+ * Taxas retidas pelo canal (ex.: comissao e taxa de servico do iFood, alem do frete quando quem
+ * entrega e o canal): lancamento proprio de despesa por venda, com uma SAIDA na conta de repasse.
+ *
+ * O canal ja repassa liquido, entao a taxa credita o contas a receber (reduz o recebivel) em vez
+ * de criar um contas a pagar — e o saldo da conta de repasse passa a valer "liquido esperado".
+ * Lancamento separado do de venda porque o par debito/credito e outro; ambos apontam para a mesma
+ * venda. Idempotente pela chave `taxas-canal:<vendaId>`.
+ */
+async function processManagedSaleChannelFees(
+	tx: DBTransaction,
+	{
+		organizationId,
+		saleId,
+		sale,
+		channelAccountKey,
+		saleLabel,
+	}: { organizationId: string; saleId: string; sale: TCanonicalSale; channelAccountKey: TFirstPartyAccountKey; saleLabel: string },
+): Promise<{ processed: boolean; reason?: string }> {
+	const fees = (sale.integrationMetadata?.taxasCanal ?? []).filter((fee) => fee.valor > 0);
+	if (fees.length === 0) return { processed: false, reason: "sem-taxas" };
+
+	const feesTotal = round2(fees.reduce((sum, fee) => sum + fee.valor, 0));
+	if (feesTotal <= 0) return { processed: false, reason: "sem-taxas" };
+
+	const idempotencyKey = buildChannelFeesIdempotencyKey(saleId);
+	const existing = await tx.query.accountingEntries.findFirst({
+		where: and(eq(accountingEntries.organizacaoId, organizationId), eq(accountingEntries.chaveIdempotencia, idempotencyKey)),
+		columns: { id: true },
+	});
+	if (existing) return { processed: false, reason: "ja-processada" };
+
+	const channelAccountId = (await ensureFirstPartyFinancialAccount(tx, { organizationId, key: channelAccountKey })).id;
+
+	// autoProvisionFromSeed: organizacoes onboardadas antes de "despesas_comerciais" existir no
+	// plano nao podem perder a taxa por falta de conta.
+	const { debitAccountId, creditAccountId } = await resolveAccountingDefaultAccountIds({
+		trx: tx,
+		orgId: organizationId,
+		kind: "taxasCanal",
+		autoProvisionFromSeed: true,
+	});
+
+	const [entry] = await tx
+		.insert(accountingEntries)
+		.values({
+			organizacaoId: organizationId,
+			vendaId: saleId,
+			origemTipo: "VENDA",
+			titulo: `Taxas do canal - ${saleLabel}`,
+			anotacoes: fees.map((fee) => `${fee.tipo}: ${fee.valor.toFixed(2)}`).join(", "),
+			idContaDebito: debitAccountId,
+			idContaCredito: creditAccountId,
+			valor: feesTotal,
+			dataCompetencia: sale.occurredAt,
+			chaveIdempotencia: idempotencyKey,
+			autorId: null,
+		})
+		.returning({ id: accountingEntries.id });
+
+	await writeDefaultAccountingEntryLines({
+		trx: tx,
+		organizationId,
+		accountingEntryId: entry.id,
+		entryValue: feesTotal,
+		debitAccountId,
+		creditAccountId,
+	});
+
+	for (const fee of fees) {
+		await tx.insert(financialTransactions).values({
+			organizacaoId: organizationId,
+			lancamentoContabilId: entry.id,
+			contaFinanceiraId: channelAccountId,
+			titulo: `Taxa ${fee.tipo} - ${saleLabel}`,
+			tipo: "SAIDA",
+			...normalizeFinancialTransactionValue({ valor: fee.valor }),
+			metodo: "OUTRO",
+			dataPrevisao: dayjs(sale.occurredAt).add(SETTLEMENT_FORECAST_DAYS, "days").toDate(),
+			dataEfetivacao: null,
+			provedorReferencia: sale.sourceSaleId,
+			provedorStatus: PROVIDER_STATUS.AWAITING_SETTLEMENT,
 			autorId: null,
 		});
 	}
