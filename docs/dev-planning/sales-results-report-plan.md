@@ -75,10 +75,10 @@ case "salesResults":
 - `erp` because the payment and fiscal sections only exist for internally processed sales.
 - `resultados.visualizar` (not `vendas.visualizar`): this is an analytics surface. A cashier who
   can see the sales list should not automatically see the organization's totals per seller.
-- `resultados.escopo` narrows sellers exactly as the stats routes do
-  (`app/api/stats/sales-overall/route.ts:26-37`): a scoped user is forced to their own seller
-  and the org-wide totals are computed over that scope. Reuse the same resolution; extract it to
-  `lib/permissions/results-scope.ts` so the new route and the stats routes share it.
+- `resultados.escopo` narrows sellers exactly as the stats routes do: a scoped user is forced to
+  their own seller and the org-wide totals are computed over that scope. Reuse
+  `assertSellersIdsWithinResultsScope` / `resolveResultsScopeSellerIds` from
+  `lib/permissions/results-scope.ts`, which the stats routes already share.
 - `resultados.visualizarSensiveis` gates cost and margin fields (same as `OverallStatsBlock.tsx:25`).
 - Server page: `requireDashboardCapability("salesResults")`, then `PlanRestrictionComponent`
   when `recursos.erp.acesso` is false (mirrors `sales/new/page.tsx:35`).
@@ -98,9 +98,8 @@ case "salesResults":
   day bucketing (daily series in phase 2) uses `inOperationTimezone` (`lib/operation-timezone.ts:41`)
   like `sales-grouped` does.
 - Filters (progressively disclosed, chips like `SalesInlineFilters`):
-  - `sellersIds` — **by `sales.vendedorId`**, never by `vendedorNome`. The stats routes filter by
-    name while authorizing by id (`overall-stats.ts:134` vs `sales-overall/route.ts:35`); this
-    page must not inherit that inconsistency. Options from `useSaleQueryFilterOptions` (`id`).
+  - `sellersIds` — by `sales.vendedorId`, the same contract the stats routes and the sales list
+    use. Options from `useSaleQueryFilterOptions` (`value` is the seller id).
   - `channels` — values of `sales.canal` (free text: `POS`, `SHOP`, `COMANDA`, `IFOOD`,
     `WHATSAPP`, null). Options from a `SELECT DISTINCT canal` inside the route's `filterOptions`
     output (there is no channel option list anywhere today).
@@ -284,7 +283,7 @@ app/dashboard/sales/results/
 
 ### Phase 1 — MVP
 
-- [ ] `lib/permissions/results-scope.ts` extracted; stats routes switched to it (behaviour unchanged).
+- [x] `lib/permissions/results-scope.ts` extracted; stats routes switched to it.
 - [ ] `lib/sales/results/{universe,summary,by-payment-method,by-seller,fiscal-health,index}.ts` with tests.
 - [ ] `app/api/sales/results/route.ts`.
 - [ ] `useSalesResults` query hook.
@@ -322,16 +321,20 @@ app/dashboard/sales/results/
   direct navigation; a period with an installment sale shows the full value under
   `CARTAO_CREDITO` with the pending split; a rejected NFC-e appears in `rejeicoes` with its code.
 
-## Known debts this plan touches but does not fix
+## Known debts
 
-- Stats routes filter sellers by `vendedorNome` and authorize by id
-  (`lib/sales/overall-stats.ts:134`, `app/api/stats/sales-grouped/route.ts:273`). Phase 1 extracts
-  the scope helper; switching the filter column is a separate fix.
-- `productGroups` is accepted and ignored by every stats route. Not used here.
+Resolved ahead of this plan (2026-09-02):
+
+- Stats routes now filter sellers by `sales.vendedorId` (`sellersIds`), the seller filter options
+  carry the seller id, and the results-scope check lives in `lib/permissions/results-scope.ts`.
+- The dead `productGroups` stats filter was removed.
+- `CONFERIDA` now has a mutation path: `POST /api/pos/sales-sessions/review` (gated by
+  `canReviewSalesSession`, i.e. `vendas.editar`), exposed as "CONFERIR CAIXA" in the session detail.
+
+Still open:
+
 - `sales.canal` is free text with no FK to `salesChannels`; the channel filter and block use the
   raw values. A normalization migration is a follow-up.
-- `salesSessions.status = 'CONFERIDA'` has no mutation path; the sessions block will only ever
-  see `ABERTA`/`FECHADA`.
 
 ## Open decisions (defaults assumed above)
 

@@ -21,6 +21,7 @@ type StatusFilter = "TODAS" | "ABERTA" | "FECHADA" | "CONFERIDA" | "CANCELADA";
 
 type CashSessionsPageProps = {
 	sessoesConfig: { exigirFundoTroco: boolean; conferenciaCega: boolean };
+	canReviewSessions: boolean;
 };
 
 const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
@@ -43,7 +44,7 @@ function StatusBadge({ status }: { status: SalesSessionRow["status"] }) {
 
 type ActiveModal = { type: "open" } | { type: "movement" | "close" | "detail"; sessionId: string } | null;
 
-export default function CashSessionsPage({ sessoesConfig }: CashSessionsPageProps) {
+export default function CashSessionsPage({ sessoesConfig, canReviewSessions }: CashSessionsPageProps) {
 	const [modal, setModal] = useState<ActiveModal>(null);
 
 	const openSessions = useSalesSessions({ initialParams: { status: "ABERTA" } });
@@ -198,7 +199,7 @@ export default function CashSessionsPage({ sessoesConfig }: CashSessionsPageProp
 			{modal?.type === "close" ? (
 				<CloseSalesSession sessionId={modal.sessionId} closeModal={() => setModal(null)} conferenciaCega={sessoesConfig.conferenciaCega} />
 			) : null}
-			{modal?.type === "detail" ? <SalesSessionDetail sessionId={modal.sessionId} closeModal={() => setModal(null)} /> : null}
+			{modal?.type === "detail" ? <SalesSessionDetail sessionId={modal.sessionId} closeModal={() => setModal(null)} canReview={canReviewSessions} /> : null}
 		</div>
 	);
 }

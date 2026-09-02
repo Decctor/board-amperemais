@@ -32,6 +32,7 @@ async function getSalesSessions({ input, session }: { input: TGetSalesSessionsIn
 			where: and(eq(salesSessions.id, input.id), eq(salesSessions.organizacaoId, orgId)),
 			with: {
 				responsavelVendedor: { columns: { id: true, nome: true } },
+				conferidaPorUsuario: { columns: { id: true, nome: true } },
 				conferencias: true,
 				vendas: { columns: { id: true, valorTotal: true, dataVenda: true }, with: { cliente: { columns: { id: true, nome: true } } } },
 			},

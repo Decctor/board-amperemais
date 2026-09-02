@@ -1,6 +1,7 @@
 import PlanRestrictionComponent from "@/components/Layouts/PlanRestrictionComponent";
 import { getCurrentSession } from "@/lib/authentication/session";
 import { requireDashboardCapability } from "@/lib/access/guards";
+import { canReviewSalesSession } from "@/lib/permissions/sales-sessions";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import CashSessionsPage from "./cash-sessions-page";
@@ -28,5 +29,10 @@ export default async function CashSessions() {
 	const { unauthorized } = await requireDashboardCapability("cashSessions");
 	if (unauthorized) return unauthorized;
 
-	return <CashSessionsPage sessoesConfig={{ exigirFundoTroco: !!sessoesVenda.exigirFundoTroco, conferenciaCega: !!sessoesVenda.conferenciaCega }} />;
+	return (
+		<CashSessionsPage
+			sessoesConfig={{ exigirFundoTroco: !!sessoesVenda.exigirFundoTroco, conferenciaCega: !!sessoesVenda.conferenciaCega }}
+			canReviewSessions={canReviewSalesSession(sessionUser.membership.permissoes)}
+		/>
+	);
 }
