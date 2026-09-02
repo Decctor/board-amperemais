@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { inOperationTimezone } from "@/lib/operation-timezone";
+import { assertSellersIdsWithinResultsScope } from "@/lib/permissions/results-scope";
 import { getSalesIntegrationCondition } from "@/lib/sales/integration-filter";
 import { SalesGeneralStatsFiltersSchema, type TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 
@@ -10,27 +11,6 @@ import { clients, partners, products, saleItems, sales, sellers } from "@/servic
 import dayjs from "dayjs";
 import { and, count, eq, exists, gte, inArray, isNotNull, lte, max, min, notInArray, sql, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
-
-type TGroupedSalesStatsReduced = {
-	porItem: {
-		[key: string]: { qtde: number; total: number };
-	};
-	porGrupo: {
-		[key: string]: { qtde: number; total: number };
-	};
-	porCanal: {
-		[key: string]: { qtde: number; total: number };
-	};
-	porEntregaModalidade: {
-		[key: string]: { qtde: number; total: number };
-	};
-	porVendedor: {
-		[key: string]: { qtde: number; total: number };
-	};
-	porParceiro: {
-		[key: string]: { qtde: number; total: number };
-	};
-};
 
 export type TGroupedSalesStats = {
 	porItem: {
@@ -114,18 +94,11 @@ const getSalesGroupedStatsRoute: PagesRouteHandler<GetResponse> = async (req, re
 
 	const filters = SalesGeneralStatsFiltersSchema.parse(req.body);
 
-	const sessionUserResultsScope = userOrgMembership.permissoes.resultados.escopo;
-	if (sessionUserResultsScope) {
-		const scopeUsers = await db.query.organizationMembers.findMany({
-			where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, userOrgId), inArray(fields.usuarioId, sessionUserResultsScope)),
-			columns: { usuarioVendedorId: true },
-		});
-		const scopeUserSellerIds = scopeUsers.map((user) => user.usuarioVendedorId);
-
-		// Checking if user is filtering for sellers outside his scope
-		const isAttempingUnauthorizedScope = filters.sellers.some((sellerId) => !scopeUserSellerIds.includes(sellerId)) || filters.sellers.length === 0;
-		if (isAttempingUnauthorizedScope) throw new createHttpError.Unauthorized("Você não tem permissão para acessar esse recurso.");
-	}
+	await assertSellersIdsWithinResultsScope({
+		organizacaoId: userOrgId,
+		resultsScope: userOrgMembership.permissoes.resultados.escopo,
+		sellersIds: filters.sellersIds,
+	});
 
 	const stats = await getSalesGroupedStats({ filters, organizacaoId: userOrgId });
 
@@ -179,64 +152,6 @@ const getSalesGroupedStatsRoute: PagesRouteHandler<GetResponse> = async (req, re
 		},
 	});
 
-	// const sales = await getSales({ filters });
-
-	// const stats = sales.reduce(
-	// 	(acc: TGroupedSalesStatsReduced, current) => {
-	// 		let totalFiltered = 0;
-
-	// 		const applicableItems = current.itens.filter((item) =>
-	// 			filters.productGroups.length > 0 ? filters.productGroups.includes(item.produto.grupo) : true,
-	// 		);
-	// 		for (const item of applicableItems) {
-	// 			if (!acc.porGrupo[item.produto.grupo]) acc.porGrupo[item.produto.grupo] = { qtde: 0, total: 0 };
-	// 			if (!acc.porItem[item.produto.descricao]) acc.porItem[item.produto.descricao] = { qtde: 0, total: 0 };
-
-	// 			acc.porGrupo[item.produto.grupo].qtde += 1;
-	// 			acc.porGrupo[item.produto.grupo].total += item.valorVendaTotalLiquido;
-
-	// 			acc.porItem[item.produto.descricao].qtde += 1;
-	// 			acc.porItem[item.produto.descricao].total += item.valorVendaTotalLiquido;
-
-	// 			totalFiltered += item.valorVendaTotalLiquido;
-	// 		}
-
-	// 		//  Updating stats by seller
-	// 		if (!acc.porVendedor[current.vendedor]) acc.porVendedor[current.vendedor] = { qtde: 0, total: 0 };
-	// 		acc.porVendedor[current.vendedor].qtde += 1;
-	// 		acc.porVendedor[current.vendedor].total += totalFiltered;
-
-	// 		// Updating stats by partner
-	// 		if (!acc.porParceiro[current.parceiro]) acc.porParceiro[current.parceiro] = { qtde: 0, total: 0 };
-	// 		acc.porParceiro[current.parceiro].qtde += 1;
-	// 		acc.porParceiro[current.parceiro].total += totalFiltered;
-	// 		return acc;
-	// 	},
-	// 	{
-	// 		porGrupo: {},
-	// 		porVendedor: {},
-	// 		porItem: {},
-	// 		porParceiro: {},
-	// 	} as TGroupedSalesStatsReduced,
-	// );
-
-	// console.log(stats);
-	// const groupedStats: TGroupedSalesStats = {
-	// 	porItem: Object.entries(stats.porItem)
-	// 		.map(([key, value]) => ({ titulo: key, qtde: value.qtde, total: value.total }))
-	// 		.sort((a, b) => b.total - a.total),
-	// 	porGrupo: Object.entries(stats.porGrupo)
-	// 		.map(([key, value]) => ({ titulo: key, qtde: value.qtde, total: value.total }))
-	// 		.sort((a, b) => b.total - a.total),
-	// 	porVendedor: Object.entries(stats.porVendedor)
-	// 		.map(([key, value]) => ({ titulo: key, qtde: value.qtde, total: value.total }))
-	// 		.sort((a, b) => b.total - a.total),
-	// 	porParceiro: Object.entries(stats.porParceiro)
-	// 		.map(([key, value]) => ({ titulo: key, qtde: value.qtde, total: value.total }))
-	// 		.sort((a, b) => b.total - a.total),
-	// };
-
-	// return res.status(200).json({ data: groupedStats });
 };
 
 const routeHandlers = {
@@ -270,7 +185,7 @@ async function getSalesGroupedStats({ filters, organizacaoId }: GetSalesParams) 
 	const integrationCondition = getSalesIntegrationCondition(filters.integrationsIds);
 	if (integrationCondition) conditions.push(integrationCondition);
 
-	if (filters.sellers.length > 0) conditions.push(inArray(sales.vendedorNome, filters.sellers));
+	if (filters.sellersIds.length > 0) conditions.push(inArray(sales.vendedorId, filters.sellersIds));
 
 	if (filters.clientRFMTitles.length > 0)
 		conditions.push(

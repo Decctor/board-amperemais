@@ -1,9 +1,9 @@
 import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { assertSellersIdsWithinResultsScope } from "@/lib/permissions/results-scope";
 import { getOverallSaleGoal, getOverallStats, type TOverallSalesStats } from "@/lib/sales/overall-stats";
 import { SalesGeneralStatsFiltersSchema } from "@/schemas/query-params-utils";
-import { db } from "@/services/drizzle";
 import createHttpError from "http-errors";
 
 // As agregações vivem em `lib/sales/overall-stats` (compartilhadas com o agente de IA); o tipo
@@ -23,49 +23,18 @@ const getSalesOverallStatsRoute: PagesRouteHandler<GetResponse> = async (req, re
 
 	const filters = SalesGeneralStatsFiltersSchema.parse(req.body);
 
-	const sessionUserResultsScope = userOrgMembership.permissoes.resultados.escopo;
-	if (sessionUserResultsScope) {
-		const scopeUsers = await db.query.organizationMembers.findMany({
-			where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, userOrgId), inArray(fields.usuarioId, sessionUserResultsScope)),
-			columns: { usuarioVendedorId: true },
-		});
-		const scopeUserSellerIds = scopeUsers.map((user) => user.usuarioVendedorId);
-
-		// Checking if user is filtering for sellers outside his scope
-		const isAttempingUnauthorizedScope = filters.sellers.some((sellerId) => !scopeUserSellerIds.includes(sellerId)) || filters.sellers.length === 0;
-		if (isAttempingUnauthorizedScope) throw new createHttpError.Unauthorized("Você não tem permissão para acessar esse recurso.");
-	}
+	await assertSellersIdsWithinResultsScope({
+		organizacaoId: userOrgId,
+		resultsScope: userOrgMembership.permissoes.resultados.escopo,
+		sellersIds: filters.sellersIds,
+	});
 	console.log("[INFO] [GET_SALES_OVERALL_STATS] Filters payload: ", filters);
 
-	// const sales = await getSales({ filters });
 	const overallSaleGoal = await getOverallSaleGoal({
 		after: filters.period.after,
 		before: filters.period.before,
 		organizacaoId: userOrgId,
 	});
-
-	// const stats = sales.reduce(
-	// 	(acc: TOverallSalesStatsReduced, current) => {
-	// 		// updating sales quantity stats
-	// 		acc.qtdeVendas += 1;
-
-	// 		const applicableItems = current.itens.filter((item) =>
-	// 			filters.productGroups.length > 0 ? filters.productGroups.includes(item.produto.grupo) : true,
-	// 		);
-	// 		for (const item of applicableItems) {
-	// 			acc.qtdeItensVendidos += item.quantidade;
-	// 			acc.gastoBruto += item.valorCustoTotal;
-	// 			acc.faturamentoBruto += item.valorVendaTotalLiquido;
-	// 		}
-	// 		return acc;
-	// 	},
-	// 	{
-	// 		faturamentoBruto: 0,
-	// 		gastoBruto: 0,
-	// 		qtdeVendas: 0,
-	// 		qtdeItensVendidos: 0,
-	// 	} as TOverallSalesStatsReduced,
-	// );
 
 	const stats = await getOverallStats(filters, userOrgId);
 	const overallStats: TOverallSalesStats = {

@@ -49,9 +49,8 @@ export const commercialResultsTool = defineAgentTool({
 			period: { after: periodo.inicio, before: periodo.fim },
 			total: { min: null, max: null },
 			integrationsIds: [],
-			sellers: [],
+			sellersIds: [],
 			clientRFMTitles: [],
-			productGroups: [],
 			excludedSalesIds: [],
 		};
 

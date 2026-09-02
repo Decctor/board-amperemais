@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
+import { resolveResultsScopeSellerIds } from "@/lib/permissions/results-scope";
 import { db } from "@/services/drizzle";
 import { clients, products, saleItems, sales } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
@@ -238,20 +239,12 @@ const getSalesDetailedAnalysisHandler: PagesRouteHandler<TGetSalesDetailedAnalys
 
 	const input = SalesDetailedAnalysisInputSchema.parse(req.body);
 
-	const sessionUserResultsScope = userOrgMembership.permissoes.resultados.escopo;
-	let scopeSellerIds: string[] | null = null;
-
-	if (sessionUserResultsScope) {
-		const scopeUsers = await db.query.organizationMembers.findMany({
-			where: (fields, { and, eq, inArray }) => and(eq(fields.organizacaoId, userOrgId), inArray(fields.usuarioId, sessionUserResultsScope)),
-			columns: { usuarioVendedorId: true },
-		});
-
-		scopeSellerIds = scopeUsers.map((user) => user.usuarioVendedorId).filter((sellerId): sellerId is string => Boolean(sellerId));
-
-		if (scopeSellerIds.length === 0) {
-			throw new createHttpError.Unauthorized("Você não tem permissão para acessar esse recurso.");
-		}
+	const scopeSellerIds = await resolveResultsScopeSellerIds({
+		organizacaoId: userOrgId,
+		resultsScope: userOrgMembership.permissoes.resultados.escopo,
+	});
+	if (scopeSellerIds && scopeSellerIds.length === 0) {
+		throw new createHttpError.Unauthorized("Você não tem permissão para acessar esse recurso.");
 	}
 
 	const data = await getSalesDetailedAnalysis({ input, organizacaoId: userOrgId, scopeSellerIds });
