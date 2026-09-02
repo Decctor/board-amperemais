@@ -2,9 +2,9 @@
 
 ## Status
 
-- [ ] Plan approved
-- [ ] Backend (`/api/sales/results` + `lib/sales/results/*`) implemented
-- [ ] Page, sidebar entry and capability implemented
+- [x] Plan approved
+- [x] Backend (`/api/sales/results` + `lib/sales/results/*`) implemented
+- [x] Page, sidebar entry and capability implemented
 - [ ] Phase 2 blocks (cash sessions, channels, daily series, export)
 - [ ] Verification completed
 
@@ -284,13 +284,13 @@ app/dashboard/sales/results/
 ### Phase 1 — MVP
 
 - [x] `lib/permissions/results-scope.ts` extracted; stats routes switched to it.
-- [ ] `lib/sales/results/{universe,summary,by-payment-method,by-seller,fiscal-health,index}.ts` with tests.
-- [ ] `app/api/sales/results/route.ts`.
-- [ ] `useSalesResults` query hook.
-- [ ] Capability `salesResults`, route registry entry, sidebar entry.
-- [ ] Page with period (default today, URL-backed), seller and channel filters, four blocks:
+- [x] `lib/sales/results/{universe,classify,summary,by-payment-method,by-seller,fiscal-health,index}.ts` with tests.
+- [x] `app/api/sales/results/route.ts`.
+- [x] `useSalesResults` query hook.
+- [x] Capability `salesResults`, route registry entry, sidebar entry.
+- [x] Page with period (default today, URL-backed), seller and channel filters, four blocks:
       Resumo, Recebimentos por método, Por vendedor, Saúde fiscal.
-- [ ] Empty state when the org has no confirmed sales in the period (`StatEmptyState`).
+- [x] Empty state when the org has no confirmed sales in the period (`StatEmptyState`).
 
 ### Phase 2 — Operational completeness
 

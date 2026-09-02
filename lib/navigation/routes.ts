@@ -9,6 +9,7 @@ export const appRoutes = {
 	dashboard: () => "/dashboard",
 	sales: {
 		root: () => "/dashboard/sales",
+		results: () => "/dashboard/sales/results",
 		orders: () => "/dashboard/sales/orders",
 		new: () => "/dashboard/sales/new",
 		import: () => "/dashboard/sales/import",
