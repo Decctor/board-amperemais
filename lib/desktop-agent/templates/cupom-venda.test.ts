@@ -64,3 +64,11 @@ test("não imprime contato temporário fora de uma entrega", () => {
 
 	assert.doesNotMatch(renderCupomVendaHtml(dados), /CONTATO IFOOD/);
 });
+
+test("imprime a data da venda no fuso da operação", () => {
+	// 13:30 UTC é 10:30 em São Paulo. O cupom é renderizado no servidor (UTC no Vercel), então
+	// formatar no fuso do processo adiantava o papel em três horas.
+	const html = renderCupomVendaHtml(buildData([]));
+	assert.match(html, /31\/08\/2026 10:30/);
+	assert.doesNotMatch(html, /31\/08\/2026 13:30/);
+});

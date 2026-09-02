@@ -1,4 +1,5 @@
-import { formatCashbackValue, formatDateAsLocale, formatToCNPJ, formatToMoney, formatToPhone, getCashbackUnitLabel } from "@/lib/formatting";
+import { formatCashbackValue, formatToCNPJ, formatToMoney, formatToPhone, getCashbackUnitLabel } from "@/lib/formatting";
+import { formatDateTimeInOperationTimezone } from "@/lib/operation-timezone";
 import { z } from "zod";
 
 // Cupom não fiscal de venda (finalidade CUPOM_VENDA) — layout v2 para térmica de 80mm via
@@ -202,7 +203,7 @@ export function renderCupomVendaHtml(dados: TCupomVendaDados) {
 	</div>`;
 
 	const metaHtml = `<div class="centro meta">
-		<p class="forte">${formatDateAsLocale(venda.data, true)}</p>
+		<p class="forte">${formatDateTimeInOperationTimezone(venda.data)}</p>
 		${venda.codigoInterno ? `<p class="mini fraco">Cód. interno: #${escapeHtml(venda.codigoInterno)}</p>` : ""}
 	</div>`;
 
@@ -226,7 +227,7 @@ export function renderCupomVendaHtml(dados: TCupomVendaDados) {
 			<p class="titulo-secao">CONTATO IFOOD</p>
 			${venda.contatoTemporario.telefone ? `<p class="telefone-ifood">${escapeHtml(venda.contatoTemporario.telefone)}</p>` : ""}
 			<p class="localizador-ifood">LOCALIZADOR ${escapeHtml(venda.contatoTemporario.localizador)}</p>
-			${venda.contatoTemporario.expiraEm ? `<p class="mini">Válido até ${formatDateAsLocale(venda.contatoTemporario.expiraEm, true)}</p>` : ""}
+			${venda.contatoTemporario.expiraEm ? `<p class="mini">Válido até ${formatDateTimeInOperationTimezone(venda.contatoTemporario.expiraEm)}</p>` : ""}
 		</div>`
 			: "";
 	const modalidadeHtml = modalidadeLabel

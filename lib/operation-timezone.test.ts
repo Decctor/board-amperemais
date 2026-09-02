@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { inOperationTimezone, localDayKey, OPERATION_TIMEZONE } from "./operation-timezone";
+import { formatDateTimeInOperationTimezone, inOperationTimezone, localDayKey, OPERATION_TIMEZONE } from "./operation-timezone";
 
 /**
  * O contrato destas expressões é textual, não semântico.
@@ -62,4 +62,23 @@ test("a chave de dia local usa to_char sobre a data convertida", () => {
 	assert.ok(text.startsWith("to_char("), text);
 	assert.ok(text.includes("'YYYY-MM-DD'"), text);
 	assert.deepEqual(params, []);
+});
+
+/**
+ * O cupom de venda é impresso pelo servidor, que no Vercel roda em UTC. Formatar a hora no fuso do
+ * processo entregava ao cliente um papel com três horas a mais do que o relógio da loja.
+ */
+test("a hora do dia é formatada no fuso da operação, não no do processo", () => {
+	assert.equal(formatDateTimeInOperationTimezone(new Date("2026-09-03T00:28:00Z")), "02/09/2026 21:28");
+	assert.equal(formatDateTimeInOperationTimezone("2026-09-02T21:28:00Z"), "02/09/2026 18:28");
+});
+
+test("a virada do dia não vira 24h nem escorrega de data", () => {
+	assert.equal(formatDateTimeInOperationTimezone(new Date("2026-09-03T03:00:00Z")), "03/09/2026 00:00");
+});
+
+test("entrada ausente ou inválida não imprime lixo", () => {
+	assert.equal(formatDateTimeInOperationTimezone(null), null);
+	assert.equal(formatDateTimeInOperationTimezone(undefined), null);
+	assert.equal(formatDateTimeInOperationTimezone("data qualquer"), null);
 });
