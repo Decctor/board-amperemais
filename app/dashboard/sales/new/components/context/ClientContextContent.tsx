@@ -1,5 +1,6 @@
 import type { TGetCrossSellOutput } from "@/app/api/pos/cross-sell/route";
 import type { TGetClientContextOutput } from "@/app/api/clients/context/route";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatToMoney, formatToPhone } from "@/lib/formatting";
@@ -9,7 +10,7 @@ import { usePOSCrossSellProducts } from "@/lib/queries/pos";
 import { cn } from "@/lib/utils";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { Coins, MapPin, Package, Plus, ReceiptText, Sparkles, TriangleAlert } from "lucide-react";
+import { Coins, MapPin, Package, PencilLine, Plus, ReceiptText, Sparkles, TriangleAlert } from "lucide-react";
 import Image from "next/image";
 
 export type TCrossSellProduct = TGetCrossSellOutput["data"]["products"][number];
@@ -21,6 +22,8 @@ type ClientContextContentProps = {
 	basketProductIds: string[];
 	organizationCashbackProgram: TCashbackProgramEntity | null;
 	onSelectProduct: (product: TCrossSellProduct) => void;
+	/** Abre a edição do cliente vinculado. Omitido quando o consumidor do painel não oferece edição. */
+	onEditClient?: () => void;
 };
 
 function formatRelativeDay(date: Date | string | null): string {
@@ -54,6 +57,7 @@ export default function ClientContextContent({
 	basketProductIds,
 	organizationCashbackProgram,
 	onSelectProduct,
+	onEditClient,
 }: ClientContextContentProps) {
 	const { data: context, isLoading: isContextLoading, isError: isContextError } = useClientContext({ clientId });
 	const { data: cashbackBalance } = useClientCashbackBalance({ clienteId: clientId });
@@ -88,6 +92,11 @@ export default function ClientContextContent({
 							</p>
 						) : null}
 					</div>
+					{onEditClient ? (
+						<Button type="button" variant="ghost" size="sm" onClick={onEditClient} className="-mt-1 shrink-0 text-[11px] font-bold text-muted-foreground">
+							<PencilLine className="h-3.5 w-3.5" /> Editar
+						</Button>
+					) : null}
 				</div>
 
 				{/* Cashback — the single amber moment in the panel */}

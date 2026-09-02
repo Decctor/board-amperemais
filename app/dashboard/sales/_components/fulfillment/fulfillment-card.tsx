@@ -10,15 +10,14 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatToMoney, formatToPhone } from "@/lib/formatting";
+import { formatDateAsLocale, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { appRoutes } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
 import { SalesIntegrationPill } from "@/components/Sales/SalesIntegrationPill";
 import type { DraggableAttributes, DraggableSyntheticListeners } from "@dnd-kit/core";
-import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import dayjs from "dayjs";
 import { CircleUser, Clock, Eye, GripVertical, Loader2, MoveRight, PencilLine } from "lucide-react";
 import Link from "next/link";
 import { forwardRef, type CSSProperties } from "react";
@@ -44,6 +43,35 @@ function StatusPill({ label, tone, icon }: { label: string; tone: "success" | "m
 			{label}
 		</span>
 	);
+}
+
+/**
+ * Data e hora absolutas da confirmação. O relativo sozinho ("há 2 horas") obriga o operador a
+ * fazer a conta de cabeça, então o horário do relógio vem primeiro e o dia só aparece por extenso
+ * quando não é hoje nem ontem.
+ */
+function formatConfirmationMoment(value: Date | string) {
+	const moment = dayjs(value);
+	const hora = moment.format("HH:mm");
+	const dayDiff = dayjs().startOf("day").diff(moment.startOf("day"), "day");
+	if (dayDiff === 0) return `hoje ${hora}`;
+	if (dayDiff === 1) return `ontem ${hora}`;
+	if (moment.isSame(dayjs(), "year")) return `${moment.format("DD/MM")} ${hora}`;
+	return `${moment.format("DD/MM/YY")} ${hora}`;
+}
+
+/** Idade compacta do pedido. O `formatDistanceToNow` do date-fns em pt-BR não cabe no card. */
+function formatConfirmationAge(value: Date | string) {
+	const moment = dayjs(value);
+	const minutes = dayjs().diff(moment, "minute");
+	if (minutes < 1) return "agora";
+	if (minutes < 60) return `há ${minutes} min`;
+	const hours = dayjs().diff(moment, "hour");
+	if (hours < 24) return `há ${hours} h`;
+	const days = dayjs().diff(moment, "day");
+	if (days < 30) return days === 1 ? "há 1 dia" : `há ${days} dias`;
+	const months = dayjs().diff(moment, "month");
+	return months <= 1 ? "há 1 mês" : `há ${months} meses`;
 }
 
 type FulfillmentCardProps = {
@@ -214,9 +242,13 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 			) : null}
 
 			{card.dataVenda ? (
-				<div className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
-					<Clock className="h-2.5 w-2.5" />
-					<span>confirmada {formatDistanceToNow(new Date(card.dataVenda), { addSuffix: true, locale: ptBR })}</span>
+				<div
+					className="flex flex-wrap items-center gap-x-1.5 text-[11px] leading-tight text-muted-foreground"
+					title={`Confirmada em ${formatDateAsLocale(card.dataVenda, true)}`}
+				>
+					<Clock className="h-3 w-3 shrink-0" />
+					<span className="font-semibold tabular-nums text-foreground/75">Confirmada {formatConfirmationMoment(card.dataVenda)}</span>
+					<span className="text-muted-foreground/70">({formatConfirmationAge(card.dataVenda)})</span>
 				</div>
 			) : null}
 		</div>
