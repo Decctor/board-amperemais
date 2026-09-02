@@ -149,8 +149,15 @@ export default function ShopSettingsPanel({ settings }: { settings: TSettings })
 
 	return (
 		<Card className="relative min-h-[42rem] gap-0 py-0">
-			<CardContent className="grid min-h-[42rem] p-0 lg:grid-cols-[13rem_minmax(0,1fr)]">
-				<nav className="border-b bg-muted/30 p-3 lg:border-r lg:border-b-0">
+			{/* A coluna do mobile precisa ser declarada tanto quanto a do desktop. Sem ela o grid cai
+			    numa trilha implícita `auto`, cujo mínimo é o min-content dos itens — e a tira de abas é
+			    uma fila de botões `shrink-0`, ou seja, 750px de min-content. A trilha inteira crescia
+			    até lá, o `overflow-hidden` do Card recortava o excesso e os controles à direita de cada
+			    linha (os switches de pagamento, por exemplo) ficavam fora da tela, inalcançáveis. */}
+			<CardContent className="grid min-h-[42rem] grid-cols-[minmax(0,1fr)] p-0 lg:grid-cols-[13rem_minmax(0,1fr)]">
+				{/* `min-w-0` pelo mesmo motivo que o painel ao lado já traz: quem rola por conta própria
+				    não pode exigir a largura do próprio conteúdo do grid que o contém. */}
+				<nav className="min-w-0 border-b bg-muted/30 p-3 lg:border-r lg:border-b-0">
 					<div className="scrollbar-thin flex gap-1 overflow-x-auto lg:flex-col">
 						{SECTIONS.map((item) => {
 							const Icon = item.icon;
@@ -482,7 +489,7 @@ function SchedulesSection({
 function WeekdayRow({ label, ranges, onChange }: { label: string; ranges: TShopTimeRange[]; onChange: (ranges: TShopTimeRange[]) => void }) {
 	const enabled = ranges.length > 0;
 	return (
-		<div className="grid gap-3 px-3 py-3 sm:grid-cols-[9rem_auto_1fr] sm:items-center">
+		<div className="grid grid-cols-[minmax(0,1fr)] gap-3 px-3 py-3 sm:grid-cols-[9rem_auto_1fr] sm:items-center">
 			<p className="text-sm font-bold">{label}</p>
 			<Switch checked={enabled} onCheckedChange={(checked) => onChange(checked ? [{ inicio: "08:00", fim: "18:00" }] : [])} />
 			{enabled ? <RangesEditor ranges={ranges} onChange={onChange} /> : <p className="text-sm text-muted-foreground">Fechado</p>}
@@ -494,14 +501,19 @@ function RangesEditor({ ranges, onChange }: { ranges: TShopTimeRange[]; onChange
 	return (
 		<div className="space-y-2">
 			{ranges.map((range, index) => (
-				<div key={`${range.inicio}-${range.fim}-${index}`} className="flex items-center gap-2">
+				// `flex-wrap` porque num telefone os dois campos de hora não cabem lado a lado: o
+				// input `time` do Chromium não desenha "08:00" mais estreito que ~8rem, e espremê-lo
+				// até caber corta o próprio horário. Preferimos quebrar a linha a ilegibilidade.
+				<div key={`${range.inicio}-${range.fim}-${index}`} className="flex flex-wrap items-center gap-2">
 					<Input
+						className="min-w-[8rem] flex-1"
 						type="time"
 						value={range.inicio}
 						onChange={(event) => onChange(ranges.map((item, itemIndex) => (itemIndex === index ? { ...item, inicio: event.target.value } : item)))}
 					/>
 					<span className="text-xs text-muted-foreground">até</span>
 					<Input
+						className="min-w-[8rem] flex-1"
 						type="time"
 						value={range.fim}
 						onChange={(event) => onChange(ranges.map((item, itemIndex) => (itemIndex === index ? { ...item, fim: event.target.value } : item)))}
