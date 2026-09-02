@@ -9,9 +9,11 @@ type DashboardPageProps = {
 	user: TAuthUserSession["user"];
 	userOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
+	/** Ids de vendedor do escopo de resultados do membro; `null` = sem escopo (organização inteira). */
+	scopeSellersIds: string[] | null;
 };
 
-export function DashboardPage({ user, userOrg, membership }: DashboardPageProps) {
+export function DashboardPage({ user, userOrg, membership, scopeSellersIds }: DashboardPageProps) {
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<Tabs defaultValue="campanhas" className="flex w-full flex-col">
@@ -32,7 +34,7 @@ export function DashboardPage({ user, userOrg, membership }: DashboardPageProps)
 				</div>
 
 				<TabsContent value="comercial" className="flex flex-col gap-3 mt-3">
-					<CommercialStatsSection user={user} userOrg={userOrg} membership={membership} />
+					<CommercialStatsSection user={user} userOrg={userOrg} membership={membership} scopeSellersIds={scopeSellersIds} />
 				</TabsContent>
 
 				<TabsContent value="campanhas" className="flex flex-col gap-3 mt-3">

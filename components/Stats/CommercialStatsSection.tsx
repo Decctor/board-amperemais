@@ -34,10 +34,12 @@ type CommercialStatsSectionProps = {
 	user: TAuthUserSession["user"];
 	userOrg: NonNullable<TAuthUserSession["membership"]>["organizacao"];
 	membership: NonNullable<TAuthUserSession["membership"]>;
+	/** Ids de vendedor já resolvidos a partir de `resultados.escopo` (que guarda ids de usuário). */
+	scopeSellersIds: string[] | null;
 };
 
-export function CommercialStatsSection({ user, userOrg, membership }: CommercialStatsSectionProps) {
-	const initialSellersIds = membership.permissoes.resultados.escopo ?? [];
+export function CommercialStatsSection({ user, userOrg, membership, scopeSellersIds }: CommercialStatsSectionProps) {
+	const initialSellersIds = scopeSellersIds ?? [];
 	const [comparisonMenuIsOpen, setComparisonMenuIsOpen] = useState(false);
 	const [generalQueryParams, setGeneralQueryParams] = useState<TSaleStatsGeneralQueryParams>(createDefaultParams(initialSellersIds));
 
@@ -53,7 +55,7 @@ export function CommercialStatsSection({ user, userOrg, membership }: Commercial
 					COMPARAR PERÍODOS
 				</Button>
 			</div>
-			<CommercialInlineFilters membership={membership} queryParams={generalQueryParams} updateQueryParams={updateGeneralQueryParams} />
+			<CommercialInlineFilters scopeSellersIds={scopeSellersIds} queryParams={generalQueryParams} updateQueryParams={updateGeneralQueryParams} />
 			<OverallStatsBlock generalQueryParams={generalQueryParams} user={user} userMembership={membership} userOrg={userOrg} />
 			<SalesGraphBlock generalQueryParams={generalQueryParams} user={user} />
 			<GroupedStatsBlock generalQueryParams={generalQueryParams} user={user} userOrg={userOrg} />
@@ -63,15 +65,14 @@ export function CommercialStatsSection({ user, userOrg, membership }: Commercial
 }
 
 type CommercialInlineFiltersProps = {
-	membership: NonNullable<TAuthUserSession["membership"]>;
+	scopeSellersIds: string[] | null;
 	queryParams: TSaleStatsGeneralQueryParams;
 	updateQueryParams: (params: Partial<TSaleStatsGeneralQueryParams>) => void;
 };
 
-function CommercialInlineFilters({ membership, queryParams, updateQueryParams }: CommercialInlineFiltersProps) {
+function CommercialInlineFilters({ scopeSellersIds, queryParams, updateQueryParams }: CommercialInlineFiltersProps) {
 	const { data: filterOptions } = useSaleQueryFilterOptions();
-	const selectableSellersIds = membership.permissoes.resultados.escopo ?? null;
-	const sellerOptions = ((selectableSellersIds ? filterOptions?.sellers.filter((s) => selectableSellersIds.includes(s.id)) : filterOptions?.sellers) ?? []) as InteractiveFilterOption<string>[];
+	const sellerOptions = ((scopeSellersIds ? filterOptions?.sellers.filter((s) => scopeSellersIds.includes(s.id)) : filterOptions?.sellers) ?? []) as InteractiveFilterOption<string>[];
 	const integrationOptions = buildSalesIntegrationFilterOptions(filterOptions?.integrations);
 	const rfmOptions = RFMLabels.map((item, index) => ({ id: index + 1, label: item.text, value: item.text })) satisfies InteractiveFilterOption<string>[];
 
