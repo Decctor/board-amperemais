@@ -24,12 +24,9 @@ export const SalesStatsGeneralQueryParamsSchema = z.object({
 	integrationsIds: z.array(
 		z.string({ required_error: "ID da integração não informado.", invalid_type_error: "Tipo não válido para o ID da integração." }),
 	),
-	sellers: z.array(z.string({ required_error: "Nome do vendedor não informado.", invalid_type_error: "Tipo não válido para o nome do vendedor." })),
+	sellersIds: z.array(z.string({ required_error: "ID do vendedor não informado.", invalid_type_error: "Tipo não válido para o ID do vendedor." })),
 	clientRFMTitles: z.array(
 		z.string({ required_error: "Título RFM do cliente não informado.", invalid_type_error: "Tipo não válido para o título RFM do cliente." }),
-	),
-	productGroups: z.array(
-		z.string({ required_error: "Grupo de produto não informado.", invalid_type_error: "Tipo não válido para o grupo de produto." }),
 	),
 	excludedSalesIds: z.array(z.string({ required_error: "ID da venda não informado.", invalid_type_error: "Tipo não válido para o ID da venda." })),
 });

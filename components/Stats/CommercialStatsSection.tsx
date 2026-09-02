@@ -19,14 +19,13 @@ import { useState } from "react";
 const initialPeriodStart = dayjs().startOf("month").toISOString();
 const initialPeriodEnd = dayjs().endOf("day").toISOString();
 
-function createDefaultParams(initialSellers: string[]): TSaleStatsGeneralQueryParams {
+function createDefaultParams(initialSellersIds: string[]): TSaleStatsGeneralQueryParams {
 	return {
 		period: { after: initialPeriodStart, before: initialPeriodEnd },
 		total: {},
 		integrationsIds: [],
-		sellers: initialSellers,
+		sellersIds: initialSellersIds,
 		clientRFMTitles: [],
-		productGroups: [],
 		excludedSalesIds: [],
 	};
 }
@@ -38,9 +37,9 @@ type CommercialStatsSectionProps = {
 };
 
 export function CommercialStatsSection({ user, userOrg, membership }: CommercialStatsSectionProps) {
-	const initialSellers = membership.permissoes.resultados.escopo ?? [];
+	const initialSellersIds = membership.permissoes.resultados.escopo ?? [];
 	const [comparisonMenuIsOpen, setComparisonMenuIsOpen] = useState(false);
-	const [generalQueryParams, setGeneralQueryParams] = useState<TSaleStatsGeneralQueryParams>(createDefaultParams(initialSellers));
+	const [generalQueryParams, setGeneralQueryParams] = useState<TSaleStatsGeneralQueryParams>(createDefaultParams(initialSellersIds));
 
 	function updateGeneralQueryParams(newParams: Partial<TSaleStatsGeneralQueryParams>) {
 		setGeneralQueryParams((prev) => ({ ...prev, ...newParams }));
@@ -73,13 +72,11 @@ function CommercialInlineFilters({ membership, queryParams, updateQueryParams }:
 	const { data: filterOptions } = useSaleQueryFilterOptions();
 	const selectableSellersIds = membership.permissoes.resultados.escopo ?? null;
 	const sellerOptions = ((selectableSellersIds ? filterOptions?.sellers.filter((s) => selectableSellersIds.includes(s.id)) : filterOptions?.sellers) ?? []) as InteractiveFilterOption<string>[];
-	const productGroupOptions = (filterOptions?.productsGroups ?? []) as InteractiveFilterOption<string>[];
 	const integrationOptions = buildSalesIntegrationFilterOptions(filterOptions?.integrations);
 	const rfmOptions = RFMLabels.map((item, index) => ({ id: index + 1, label: item.text, value: item.text })) satisfies InteractiveFilterOption<string>[];
 
-	const hasSellers = queryParams.sellers.length > 0;
+	const hasSellers = queryParams.sellersIds.length > 0;
 	const hasIntegrations = queryParams.integrationsIds.length > 0;
-	const hasProductGroups = queryParams.productGroups.length > 0;
 	const hasRFM = queryParams.clientRFMTitles.length > 0;
 	const hasTotal = queryParams.total.min != null || queryParams.total.max != null;
 	const hasExcludedSales = queryParams.excludedSalesIds.length > 0;
@@ -112,7 +109,7 @@ function CommercialInlineFilters({ membership, queryParams, updateQueryParams }:
 				</InteractiveFilter.Content>
 			</InteractiveFilter.Root>
 
-			{hasSellers ? <CommercialMultiFilter label="VENDEDORES" options={sellerOptions} value={queryParams.sellers} onChange={(sellers) => updateQueryParams({ sellers })} onClear={() => updateQueryParams({ sellers: [] })} /> : null}
+			{hasSellers ? <CommercialMultiFilter label="VENDEDORES" options={sellerOptions} value={queryParams.sellersIds} onChange={(sellersIds) => updateQueryParams({ sellersIds })} onClear={() => updateQueryParams({ sellersIds: [] })} /> : null}
 			{hasIntegrations ? (
 				<CommercialMultiFilter
 					label="INTEGRAÇÕES"
@@ -122,7 +119,6 @@ function CommercialInlineFilters({ membership, queryParams, updateQueryParams }:
 					onClear={() => updateQueryParams({ integrationsIds: [] })}
 				/>
 			) : null}
-			{hasProductGroups ? <CommercialMultiFilter label="GRUPOS" options={productGroupOptions} value={queryParams.productGroups} onChange={(productGroups) => updateQueryParams({ productGroups })} onClear={() => updateQueryParams({ productGroups: [] })} /> : null}
 			{hasRFM ? <CommercialMultiFilter label="RFM" options={rfmOptions} value={queryParams.clientRFMTitles} onChange={(clientRFMTitles) => updateQueryParams({ clientRFMTitles })} onClear={() => updateQueryParams({ clientRFMTitles: [] })} /> : null}
 			{hasTotal ? <CommercialTotalFilter queryParams={queryParams} updateQueryParams={updateQueryParams} /> : null}
 			{hasExcludedSales ? <CommercialExcludedSalesFilter queryParams={queryParams} updateQueryParams={updateQueryParams} /> : null}
@@ -136,17 +132,12 @@ function CommercialInlineFilters({ membership, queryParams, updateQueryParams }:
 					<InteractiveFilter.AddFilterSection heading="Filtros">
 						{!hasSellers ? (
 							<InteractiveFilter.AddFilterItem id="sellers" label="VENDEDORES" icon={<ListFilter className="h-4 w-4" />}>
-								<InteractiveFilter.MultiContent options={sellerOptions} value={queryParams.sellers} onChange={(sellers) => updateQueryParams({ sellers })} onClear={() => updateQueryParams({ sellers: [] })} clearLabel="TODOS" />
+								<InteractiveFilter.MultiContent options={sellerOptions} value={queryParams.sellersIds} onChange={(sellersIds) => updateQueryParams({ sellersIds })} onClear={() => updateQueryParams({ sellersIds: [] })} clearLabel="TODOS" />
 							</InteractiveFilter.AddFilterItem>
 						) : null}
 						{!hasIntegrations ? (
 							<InteractiveFilter.AddFilterItem id="integrations" label="INTEGRAÇÕES" icon={<ListFilter className="h-4 w-4" />}>
 								<InteractiveFilter.MultiContent options={integrationOptions} value={queryParams.integrationsIds} onChange={(integrationsIds) => updateQueryParams({ integrationsIds })} onClear={() => updateQueryParams({ integrationsIds: [] })} clearLabel="TODAS" />
-							</InteractiveFilter.AddFilterItem>
-						) : null}
-						{!hasProductGroups ? (
-							<InteractiveFilter.AddFilterItem id="productGroups" label="GRUPOS" icon={<ListFilter className="h-4 w-4" />}>
-								<InteractiveFilter.MultiContent options={productGroupOptions} value={queryParams.productGroups} onChange={(productGroups) => updateQueryParams({ productGroups })} onClear={() => updateQueryParams({ productGroups: [] })} clearLabel="TODOS" />
 							</InteractiveFilter.AddFilterItem>
 						) : null}
 						{!hasRFM ? (

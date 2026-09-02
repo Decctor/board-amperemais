@@ -110,6 +110,15 @@ export const CloseSalesSessionInputSchema = z.object({
 });
 export type TCloseSalesSessionInput = z.infer<typeof CloseSalesSessionInputSchema>;
 
+// Conferência (revisão do gestor) de sessão fechada.
+export const ReviewSalesSessionInputSchema = z.object({
+	sessaoVendaId: z.string({
+		required_error: "ID da sessao de venda nao informado.",
+		invalid_type_error: "Tipo nao valido para o ID da sessao de venda.",
+	}),
+});
+export type TReviewSalesSessionInput = z.infer<typeof ReviewSalesSessionInputSchema>;
+
 // Movimento manual de caixa (sangria/suprimento).
 export const RegisterSalesSessionMovementInputSchema = z.object({
 	sessaoVendaId: z.string({
