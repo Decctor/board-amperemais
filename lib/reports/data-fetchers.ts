@@ -294,7 +294,7 @@ export async function getSellerRankings({ after, before, organizacaoId }: Period
 	});
 }
 
-async function getSellerSaleGoal({
+export async function getSellerSaleGoal({
 	sellerId,
 	after,
 	before,

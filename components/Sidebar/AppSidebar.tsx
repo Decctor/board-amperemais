@@ -114,6 +114,14 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 						items: null,
 					},
 					{
+						id: "sales-results",
+						capability: "salesResults",
+						title: "Resultados",
+						url: appRoutes.sales.results(),
+						icon: <ChartNoAxesColumnIncreasing className="size-4" />,
+						items: null,
+					},
+					{
 						id: "sales-orders",
 						capability: "orders",
 						title: "Pedidos",
