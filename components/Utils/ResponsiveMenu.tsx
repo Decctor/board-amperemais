@@ -47,6 +47,7 @@ type ResponsiveMenuBaseProps = PropsWithChildren & {
 	contentClassName?: string;
 	titleClassName?: string;
 	descriptionClassName?: string;
+	footerClassName?: string;
 	menuTitle: string;
 	menuDescription: string;
 	stateIsLoading: boolean;
@@ -105,6 +106,7 @@ function ResponsiveMenu(props: ResponsiveMenuProps) {
 		contentClassName,
 		titleClassName,
 		descriptionClassName,
+		footerClassName,
 		dialogVariant = "sm",
 		drawerVariant = "sm",
 		lockClose = false,
@@ -150,7 +152,7 @@ function ResponsiveMenu(props: ResponsiveMenuProps) {
 				)}
 
 				{props.mode !== "read-only" ? (
-					<DialogFooter className="flex-wrap gap-y-2">
+					<DialogFooter className={cn("flex-wrap gap-y-2", footerClassName)}>
 						<DialogClose asChild>
 							<Button variant="outline" disabled={lockClose}>
 								{props.menuCancelButtonText}
@@ -178,7 +180,7 @@ function ResponsiveMenu(props: ResponsiveMenuProps) {
 						</LoadingButton>
 					</DialogFooter>
 				) : (
-					<DialogFooter className="flex-wrap gap-y-2">
+					<DialogFooter className={cn("flex-wrap gap-y-2", footerClassName)}>
 						<DialogClose asChild>
 							<Button variant="outline" disabled={lockClose}>
 								{props.menuCancelButtonText ?? "FECHAR"}
@@ -218,7 +220,7 @@ function ResponsiveMenu(props: ResponsiveMenuProps) {
 				)}
 
 				{props.mode !== "read-only" ? (
-					<DrawerFooter>
+					<DrawerFooter className={footerClassName}>
 						<DrawerClose asChild>
 							<Button variant="outline" disabled={lockClose}>
 								{props.menuCancelButtonText}
@@ -246,7 +248,7 @@ function ResponsiveMenu(props: ResponsiveMenuProps) {
 						</LoadingButton>
 					</DrawerFooter>
 				) : (
-					<DrawerFooter>
+					<DrawerFooter className={footerClassName}>
 						<DrawerClose asChild>
 							<Button variant="outline" className="h-11" disabled={lockClose}>
 								{props.menuCancelButtonText ?? "FECHAR"}

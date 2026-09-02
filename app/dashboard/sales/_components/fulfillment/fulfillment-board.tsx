@@ -32,11 +32,18 @@ import { FulfillmentCard } from "./fulfillment-card";
 import { FulfillmentColumn } from "./fulfillment-column";
 import { PendingConfirmationPill } from "./pending-confirmation";
 import { PendingDisputesPill } from "./pending-disputes";
+import { StageTransitionConfirmationMenu } from "./stage-transition-confirmation-menu";
 
 const KANBAN_SCROLL_CLASS = "scrollbar-subtle";
 const BOARD_DESKTOP_MAX_HEIGHT = "md:max-h-[calc(100dvh-10.5rem)] md:overflow-hidden";
 
 type FulfillmentData = TGetSalesFulfillmentOutputDefault;
+
+type PendingStageTransition = {
+	cardId: string;
+	previousStatus: TSaleAttendanceStatusEnum;
+	targetStatus: TSaleAttendanceStatusEnum;
+};
 
 type FulfillmentBoardProps = {
 	organizationConfig: TOrganizationConfiguration;
@@ -51,9 +58,9 @@ const screenReaderInstructions: ScreenReaderInstructions = {
 export default function FulfillmentBoard({ organizationConfig, canEditSales, onViewDetails }: FulfillmentBoardProps) {
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const [pendingCardIds, setPendingCardIds] = useState<Set<string>>(new Set());
-	const [confirm, setConfirm] = useState<{ cardId: string; previousStatus: TSaleAttendanceStatusEnum } | null>(null);
+	const [pendingTransition, setPendingTransition] = useState<PendingStageTransition | null>(null);
 
-	const paused = pendingCardIds.size > 0 || confirm !== null;
+	const paused = pendingCardIds.size > 0 || pendingTransition !== null;
 	const { data, isLoading, isError, error, refetch, isRefetching } = useSalesFulfillment({ paused });
 	const queryClient = useQueryClient();
 
@@ -74,6 +81,7 @@ export default function FulfillmentBoard({ organizationConfig, canEditSales, onV
 	}, [cards]);
 
 	const activeCard = activeId ? (cards.find((card) => card.id === activeId) ?? null) : null;
+	const pendingTransitionCard = pendingTransition ? (cards.find((card) => card.id === pendingTransition.cardId) ?? null) : null;
 
 	function setCardStatus(cardId: string, target: TSaleAttendanceStatusEnum) {
 		queryClient.setQueryData<FulfillmentData>(SALES_FULFILLMENT_QUERY_KEY, (old) =>
@@ -135,7 +143,9 @@ export default function FulfillmentBoard({ organizationConfig, canEditSales, onV
 
 			try {
 				const result = await patchSalesFulfillment(input);
-				replaceCard(result.data.card);
+				const updatedCard =
+					pendingTransition?.cardId === input.id ? { ...result.data.card, statusAtendimento: pendingTransition.targetStatus } : result.data.card;
+				replaceCard(updatedCard);
 				toast.success(result.message);
 			} catch (err) {
 				if (currentCard) replaceCard(currentCard);
@@ -148,7 +158,7 @@ export default function FulfillmentBoard({ organizationConfig, canEditSales, onV
 				});
 			}
 		},
-		[cards, queryClient],
+		[cards, pendingTransition, queryClient],
 	);
 
 	async function commitMove(
@@ -180,7 +190,7 @@ export default function FulfillmentBoard({ organizationConfig, canEditSales, onV
 	}
 
 	function initiateMove(card: TSalesFulfillmentCard, target: TSaleAttendanceStatusEnum) {
-		if (pendingCardIds.has(card.id) || confirm?.cardId === card.id) return;
+		if (pendingCardIds.has(card.id) || pendingTransition?.cardId === card.id) return;
 		if (target === card.statusAtendimento) return;
 		if (!isValidAttendanceTransition(card.statusAtendimento, target)) {
 			toast.info(`Não é possível mover de ${ATTENDANCE_STATUS_LABEL[card.statusAtendimento]} para ${ATTENDANCE_STATUS_LABEL[target]}.`);
@@ -189,7 +199,7 @@ export default function FulfillmentBoard({ organizationConfig, canEditSales, onV
 		const previousStatus = card.statusAtendimento;
 		setCardStatus(card.id, target);
 		if (transitionNeedsConfirmation(target)) {
-			setConfirm({ cardId: card.id, previousStatus });
+			setPendingTransition({ cardId: card.id, previousStatus, targetStatus: target });
 		} else {
 			void commitMove(card, target, previousStatus);
 		}
@@ -226,21 +236,23 @@ export default function FulfillmentBoard({ organizationConfig, canEditSales, onV
 		initiateMove(card, String(over.id) as TSaleAttendanceStatusEnum);
 	}
 
-	function handleConfirmDelivery(card: TSalesFulfillmentCard) {
-		const previousStatus = confirm?.previousStatus ?? "PRONTO";
-		setConfirm(null);
-		void commitMove(card, "ENTREGUE", previousStatus, { settlePendingPayment: card.financeiro !== "RECEBIDA" });
+	async function handleConfirmDelivery(card: TSalesFulfillmentCard) {
+		if (!pendingTransition) return;
+		await commitMove(card, pendingTransition.targetStatus, pendingTransition.previousStatus, {
+			settlePendingPayment: card.financeiro !== "RECEBIDA",
+		});
+		setPendingTransition(null);
 	}
 
-	function handleDeliverWithoutPayment(card: TSalesFulfillmentCard) {
-		const previousStatus = confirm?.previousStatus ?? "PRONTO";
-		setConfirm(null);
-		void commitMove(card, "ENTREGUE", previousStatus, { allowUnpaidDelivery: true });
+	async function handleDeliverWithoutPayment(card: TSalesFulfillmentCard) {
+		if (!pendingTransition) return;
+		await commitMove(card, pendingTransition.targetStatus, pendingTransition.previousStatus, { allowUnpaidDelivery: true });
+		setPendingTransition(null);
 	}
 
-	function handleCancelConfirm() {
-		if (confirm) setCardStatus(confirm.cardId, confirm.previousStatus);
-		setConfirm(null);
+	function cancelPendingTransition() {
+		if (pendingTransition) setCardStatus(pendingTransition.cardId, pendingTransition.previousStatus);
+		setPendingTransition(null);
 	}
 
 	if (isLoading) {
@@ -308,12 +320,9 @@ export default function FulfillmentBoard({ organizationConfig, canEditSales, onV
 								cards={grouped[status]}
 								organizationConfig={organizationConfig}
 								pendingCardIds={pendingCardIds}
-								confirmCardId={confirm?.cardId ?? null}
+								pendingTransitionCardId={pendingTransition?.cardId ?? null}
 								onMove={initiateMove}
 								onPatch={handlePatchCard}
-								onConfirmDelivery={handleConfirmDelivery}
-								onDeliverWithoutPayment={handleDeliverWithoutPayment}
-								onCancelConfirm={handleCancelConfirm}
 								onViewDetails={onViewDetails}
 								canEditSales={canEditSales}
 							/>
@@ -325,6 +334,18 @@ export default function FulfillmentBoard({ organizationConfig, canEditSales, onV
 					</DragOverlay>
 				</DndContext>
 			)}
+
+			{pendingTransitionCard ? (
+				<StageTransitionConfirmationMenu
+					card={pendingTransitionCard}
+					organizationConfig={organizationConfig}
+					isPending={pendingCardIds.has(pendingTransitionCard.id)}
+					onPatch={handlePatchCard}
+					onConfirm={() => void handleConfirmDelivery(pendingTransitionCard)}
+					onConfirmWithoutPayment={() => void handleDeliverWithoutPayment(pendingTransitionCard)}
+					onCancel={cancelPendingTransition}
+				/>
+			) : null}
 		</div>
 	);
 }

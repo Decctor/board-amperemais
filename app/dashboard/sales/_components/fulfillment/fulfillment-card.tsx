@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatToMoney, formatToPhone } from "@/lib/formatting";
 import { appRoutes } from "@/lib/navigation/routes";
-import { QuickActionRow } from "./quick-actions/QuickActionRow";
 import { cn } from "@/lib/utils";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
@@ -24,12 +23,7 @@ import { CircleUser, Clock, Eye, GripVertical, Loader2, MoveRight, PencilLine } 
 import Link from "next/link";
 import { forwardRef, type CSSProperties } from "react";
 import { ATTENDANCE_STATUS_LABEL, FINANCIAL_BADGE_META, getValidBoardTargets } from "./config";
-import {
-	CardQuickActions,
-	fulfillmentCardShowsFinancialBadge,
-	getPaymentControlTone,
-	QuickPaymentMethodControl,
-} from "./quick-actions/CardQuickActions";
+import { CardQuickActions, fulfillmentCardShowsFinancialBadge } from "./quick-actions/CardQuickActions";
 
 const TONE_CLASSES: Record<"success" | "muted" | "neutral" | "danger", string> = {
 	success: "border-green-200 bg-green-100 text-green-600",
@@ -62,9 +56,6 @@ type FulfillmentCardProps = {
 	awaitingConfirm?: boolean;
 	onMove?: (target: TSaleAttendanceStatusEnum) => void;
 	onPatch?: (input: TPatchSalesFulfillmentInput) => void;
-	onConfirmDelivery?: () => void;
-	onDeliverWithoutPayment?: () => void;
-	onCancelConfirm?: () => void;
 	onViewDetails?: () => void;
 	dragAttributes?: DraggableAttributes;
 	dragListeners?: DraggableSyntheticListeners;
@@ -83,9 +74,6 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 		awaitingConfirm,
 		onMove,
 		onPatch,
-		onConfirmDelivery,
-		onDeliverWithoutPayment,
-		onCancelConfirm,
 		onViewDetails,
 		dragAttributes,
 		dragListeners,
@@ -96,8 +84,6 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 ) {
 	const financeiro = FINANCIAL_BADGE_META[card.financeiro];
 	const moveTargets = onMove ? getValidBoardTargets(card.statusAtendimento) : [];
-	const editablePayments = card.pagamentos.filter((payment) => payment.editavel);
-	const primaryPendingPayment = editablePayments[0] ?? null;
 	const clientPhone = card.cliente?.telefone ? formatToPhone(card.cliente.telefone) : null;
 	const hasPaymentSection =
 		Boolean(onPatch) &&
@@ -118,7 +104,16 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 				className,
 			)}
 		>
-			{isPending ? (
+			{awaitingConfirm ? (
+				<div
+					role="status"
+					className="flex items-center justify-between gap-2 rounded-lg border border-brand/35 bg-brand/10 px-2.5 py-1.5 text-[10px] font-extrabold uppercase tracking-wide"
+				>
+					<span>Aguardando confirmação</span>
+					<span aria-hidden="true" className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-brand motion-reduce:animate-none" />
+				</div>
+			) : null}
+			{isPending && !awaitingConfirm ? (
 				<div className="absolute right-2 top-2 z-10">
 					<Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
 				</div>
@@ -222,56 +217,6 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 				<div className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
 					<Clock className="h-2.5 w-2.5" />
 					<span>confirmada {formatDistanceToNow(new Date(card.dataVenda), { addSuffix: true, locale: ptBR })}</span>
-				</div>
-			) : null}
-
-			{awaitingConfirm ? (
-				<div className="mt-1 flex flex-col gap-2 border-t border-border pt-2">
-					<p className="text-[11px] leading-snug text-muted-foreground">
-						{card.financeiro === "RECEBIDA"
-							? "Confirmar entrega? Isso registra a baixa física de estoque do pedido."
-							: `Pagamento pendente${editablePayments.length > 0 ? ` (${editablePayments.length} recebimento${editablePayments.length > 1 ? "s" : ""})` : ""}. Confirme o recebimento antes de entregar.`}
-					</p>
-					{card.financeiro !== "RECEBIDA" && primaryPendingPayment && onPatch ? (
-						<div className="flex flex-col gap-1.5">
-							{editablePayments.map((payment, index) => (
-								<QuickActionRow key={payment.id} label={editablePayments.length > 1 ? `Receber ${index + 1}` : "Receber como"}>
-									<QuickPaymentMethodControl
-										payment={payment}
-										saleId={card.id}
-										organizationConfig={organizationConfig}
-										tone={getPaymentControlTone(payment)}
-										onPatch={onPatch}
-									/>
-								</QuickActionRow>
-							))}
-						</div>
-					) : null}
-					<div className="flex items-center gap-1.5">
-						<button
-							type="button"
-							onClick={onConfirmDelivery}
-							className="inline-flex h-7 grow items-center justify-center rounded-lg bg-primary px-2 text-[0.55rem] font-bold text-primary-foreground hover:bg-primary/90"
-						>
-							{card.financeiro === "RECEBIDA" ? "CONFIRMAR ENTREGA" : "RECEBER E ENTREGAR"}
-						</button>
-						{card.financeiro !== "RECEBIDA" && onDeliverWithoutPayment ? (
-							<button
-								type="button"
-								onClick={onDeliverWithoutPayment}
-								className="inline-flex h-7 items-center justify-center rounded-lg border border-border px-2 text-[0.55rem] font-bold text-muted-foreground hover:bg-accent hover:text-foreground"
-							>
-								ENTREGAR SEM RECEBER
-							</button>
-						) : null}
-					</div>
-					<button
-						type="button"
-						onClick={onCancelConfirm}
-						className="inline-flex h-7 items-center justify-center rounded-lg border border-border px-2 text-[0.55rem] font-bold hover:bg-accent"
-					>
-						CANCELAR
-					</button>
 				</div>
 			) : null}
 		</div>

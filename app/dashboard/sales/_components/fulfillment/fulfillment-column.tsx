@@ -15,9 +15,6 @@ function DraggableCard({
 	awaitingConfirm,
 	onMove,
 	onPatch,
-	onConfirmDelivery,
-	onDeliverWithoutPayment,
-	onCancelConfirm,
 	onViewDetails,
 	canEditSales,
 }: {
@@ -27,9 +24,6 @@ function DraggableCard({
 	awaitingConfirm: boolean;
 	onMove: (card: TSalesFulfillmentCard, target: TSaleAttendanceStatusEnum) => void;
 	onPatch: (input: TPatchSalesFulfillmentInput) => void;
-	onConfirmDelivery: (card: TSalesFulfillmentCard) => void;
-	onDeliverWithoutPayment: (card: TSalesFulfillmentCard) => void;
-	onCancelConfirm: () => void;
 	onViewDetails: (saleId: string) => void;
 	canEditSales?: boolean;
 }) {
@@ -50,9 +44,6 @@ function DraggableCard({
 			awaitingConfirm={awaitingConfirm}
 			onMove={(target) => onMove(card, target)}
 			onPatch={onPatch}
-			onConfirmDelivery={() => onConfirmDelivery(card)}
-			onDeliverWithoutPayment={() => onDeliverWithoutPayment(card)}
-			onCancelConfirm={onCancelConfirm}
 			onViewDetails={() => onViewDetails(card.id)}
 			dragAttributes={attributes}
 			dragListeners={listeners}
@@ -66,12 +57,9 @@ export function FulfillmentColumn({
 	cards,
 	organizationConfig,
 	pendingCardIds,
-	confirmCardId,
+	pendingTransitionCardId,
 	onMove,
 	onPatch,
-	onConfirmDelivery,
-	onDeliverWithoutPayment,
-	onCancelConfirm,
 	onViewDetails,
 	canEditSales,
 }: {
@@ -79,12 +67,9 @@ export function FulfillmentColumn({
 	cards: TSalesFulfillmentCard[];
 	organizationConfig: TOrganizationConfiguration;
 	pendingCardIds: Set<string>;
-	confirmCardId: string | null;
+	pendingTransitionCardId: string | null;
 	onMove: (card: TSalesFulfillmentCard, target: TSaleAttendanceStatusEnum) => void;
 	onPatch: (input: TPatchSalesFulfillmentInput) => void;
-	onConfirmDelivery: (card: TSalesFulfillmentCard) => void;
-	onDeliverWithoutPayment: (card: TSalesFulfillmentCard) => void;
-	onCancelConfirm: () => void;
 	onViewDetails: (saleId: string) => void;
 	canEditSales?: boolean;
 }) {
@@ -120,12 +105,9 @@ export function FulfillmentColumn({
 							card={card}
 							organizationConfig={organizationConfig}
 							isPending={pendingCardIds.has(card.id)}
-							awaitingConfirm={confirmCardId === card.id}
+							awaitingConfirm={pendingTransitionCardId === card.id}
 							onMove={onMove}
 							onPatch={onPatch}
-							onConfirmDelivery={onConfirmDelivery}
-							onDeliverWithoutPayment={onDeliverWithoutPayment}
-							onCancelConfirm={onCancelConfirm}
 							onViewDetails={onViewDetails}
 							canEditSales={canEditSales}
 						/>
