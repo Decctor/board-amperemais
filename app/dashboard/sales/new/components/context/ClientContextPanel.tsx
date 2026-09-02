@@ -13,6 +13,7 @@ type ClientContextPanelProps = {
 	basketProductIds: string[];
 	organizationCashbackProgram: TCashbackProgramEntity | null;
 	onSelectProduct: (product: TCrossSellProduct) => void;
+	onEditClient?: () => void;
 };
 
 export default function ClientContextPanel({ isOpen, onClose, ...contentProps }: ClientContextPanelProps) {

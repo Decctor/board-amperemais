@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import CashSessionBar from "@/components/CashSessions/CashSessionBar";
 import CashSessionGate from "@/components/CashSessions/CashSessionGate";
+import ControlClient from "@/components/Modals/Clients/ControlClient";
 import { DiscountApproval } from "@/components/Modals/Sales/DiscountApproval";
 import { getErrorMessage } from "@/lib/errors";
 import type { TQuotePermissions } from "@/components/Chats/Quotes/config";
@@ -12,6 +13,7 @@ import { createAndConfirmSale, createSaleDraft, updateSaleDraft } from "@/lib/mu
 import { evaluateDiscount } from "@/lib/permissions/discounts";
 import { useSaleDiscountContext } from "@/lib/queries/action-approvals";
 import { usePOSGroups, usePOSProducts } from "@/lib/queries/pos";
+import { fetchClientContext } from "@/lib/queries/clients/context";
 import { getOrganizationOpenQuotesQueryKey } from "@/lib/queries/sales";
 import { useActiveSalesSession } from "@/lib/queries/sales-sessions";
 import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
@@ -96,6 +98,9 @@ export default function NewSalePage({
 	const [isCheckoutSheetOpen, setIsCheckoutSheetOpen] = useState(false);
 	const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
 	const [isContextSheetOpen, setIsContextSheetOpen] = useState(false);
+	const [isEditingClient, setIsEditingClient] = useState(false);
+	// No mobile o contexto vive num Sheet: fecha antes de abrir o menu de edição e reabre ao sair.
+	const [restoreContextSheet, setRestoreContextSheet] = useState(false);
 	const saleState = useSaleState({ organizationConfig: organizationConfiguration, contasFinanceiras: organizationFinancialAccounts });
 
 	// Sessões de venda (caixa): resolve a sessão aberta do vendedor selecionado (escopo OPERADOR).
@@ -153,6 +158,37 @@ export default function NewSalePage({
 	}, [linkedClientId]);
 
 	const queryClient = useQueryClient();
+
+	// Edição do cliente vinculado sem sair do POS: reusa o mesmo menu do módulo de clientes.
+	// No mobile o contexto é um Sheet, que precisa sair da frente antes do menu abrir.
+	const handleOpenClientEdit = useCallback(() => {
+		setRestoreContextSheet(isContextSheetOpen);
+		setIsContextSheetOpen(false);
+		setIsEditingClient(true);
+	}, [isContextSheetOpen]);
+
+	const handleCloseClientEdit = useCallback(() => {
+		setIsEditingClient(false);
+		setRestoreContextSheet(false);
+		if (restoreContextSheet) setIsContextSheetOpen(true);
+	}, [restoreContextSheet]);
+
+	const setSaleClient = saleState.setCliente;
+	const handleClientEdited = useCallback(async () => {
+		if (!linkedClientId) return;
+		void queryClient.invalidateQueries({ queryKey: ["client-by-id", linkedClientId] });
+		try {
+			// O carrinho carrega uma cópia de nome/telefone: recarrega o contexto e propaga.
+			const context = await queryClient.fetchQuery({
+				queryKey: ["client-context", linkedClientId],
+				queryFn: () => fetchClientContext(linkedClientId),
+				staleTime: 0,
+			});
+			if (context?.cliente) setSaleClient({ id: linkedClientId, nome: context.cliente.nome, telefone: context.cliente.telefone });
+		} catch {
+			// O cliente já foi atualizado no servidor; falhar o recarregamento não invalida a venda.
+		}
+	}, [linkedClientId, queryClient, setSaleClient]);
 
 	const { mutate: createDraft, isPending: isCreatingDraft } = useMutation({
 		mutationKey: ["create-sale-draft"],
@@ -440,6 +476,7 @@ export default function NewSalePage({
 						basketProductIds={basketProductIds}
 						organizationCashbackProgram={organizationCashbackProgram}
 						onSelectProduct={handleProductClick}
+						onEditClient={handleOpenClientEdit}
 					/>
 				) : null}
 
@@ -510,7 +547,12 @@ export default function NewSalePage({
 						basketProductIds={basketProductIds}
 						organizationCashbackProgram={organizationCashbackProgram}
 						onSelectProduct={handleProductClick}
+						onEditClient={handleOpenClientEdit}
 					/>
+				) : null}
+
+				{linkedClientId && isEditingClient ? (
+					<ControlClient clientId={linkedClientId} closeModal={handleCloseClientEdit} callbacks={{ onSuccess: () => void handleClientEdited() }} />
 				) : null}
 
 				{builderProduct ? <ProductBuilderModal product={builderProduct} onAddToCart={saleState.addItem} onClose={() => setBuilderProduct(null)} /> : null}
