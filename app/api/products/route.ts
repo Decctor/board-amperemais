@@ -876,6 +876,19 @@ const UpdateProductAddOnInputSchema = ProductAddOnSchema.omit({ organizacaoId: t
 			})
 			.optional()
 			.nullable(),
+		// Regra deste produto (override no vínculo): null = herda min/max do grupo.
+		vinculoMinOpcoes: z
+			.number({
+				invalid_type_error: "Tipo não válido para mínimo de opções do vínculo.",
+			})
+			.optional()
+			.nullable(),
+		vinculoMaxOpcoes: z
+			.number({
+				invalid_type_error: "Tipo não válido para máximo de opções do vínculo.",
+			})
+			.optional()
+			.nullable(),
 	});
 
 const UpdateProductFiscalProfileInputSchema = ProductFiscalProfileSchema.omit({
@@ -1168,20 +1181,21 @@ async function upsertScopedProductAddOn({
 	}
 
 	if (addOn.id) {
+		// Regras (min/max) editadas no contexto de um produto valem só para o vínculo — o default
+		// do grupo é editado no registry (aba Adicionais), onde o escopo global fica explícito.
+		// O fluxo de variantes ainda não carrega os campos de vínculo, então segue editando o grupo.
 		await tx
 			.update(productAddOns)
-			.set({
-				nome: addOn.nome,
-				internoNome: addOn.internoNome,
-				minOpcoes: addOn.minOpcoes,
-				maxOpcoes: addOn.maxOpcoes,
-				ativo: addOn.ativo,
-			})
+			.set(
+				variantId
+					? { nome: addOn.nome, internoNome: addOn.internoNome, minOpcoes: addOn.minOpcoes, maxOpcoes: addOn.maxOpcoes, ativo: addOn.ativo }
+					: { nome: addOn.nome, internoNome: addOn.internoNome, ativo: addOn.ativo },
+			)
 			.where(and(eq(productAddOns.id, addOn.id), eq(productAddOns.organizacaoId, userOrgId)));
 
 		await tx
 			.update(productAddOnReferences)
-			.set({ ordem: order })
+			.set(variantId ? { ordem: order } : { ordem: order, minOpcoes: addOn.vinculoMinOpcoes ?? null, maxOpcoes: addOn.vinculoMaxOpcoes ?? null })
 			.where(
 				and(
 					eq(productAddOnReferences.produtoId, productId),

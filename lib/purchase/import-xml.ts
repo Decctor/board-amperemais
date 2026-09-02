@@ -106,6 +106,7 @@ function parseItem(det: TXmlNode) {
 		descricao: text(product.xProd) ?? "Item sem descrição",
 		codigoFornecedor: text(product.cProd),
 		ean: text(product.cEAN) && text(product.cEAN) !== "SEM GTIN" ? text(product.cEAN) : null,
+		ncm: text(product.NCM),
 		unidade: text(product.uCom),
 		quantidade: decimal(product.qCom) ?? 0,
 		valorUnitario: decimal(product.vUnCom) ?? 0,

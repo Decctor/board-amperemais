@@ -1,3 +1,4 @@
+import { resolveAddOnReferencesRules } from "@/lib/products/add-on-rules";
 import { channelAddOnReferences } from "@/lib/products/sales-channels";
 import { channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
 import { db } from "@/services/drizzle";
@@ -70,7 +71,7 @@ export async function hydratePOSProducts({ orgId, productIds, canal = "POS" }: {
 		// grade dispensa, senão o mesmo produto bloqueia por onde foi adicionado.
 		addOnsReferencias: channelAddOnReferences(
 			channelState?.channel,
-			product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+			resolveAddOnReferencesRules(product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0)),
 		),
 		variantes: product.variantes
 			.filter((variant) => channelState?.variantOverrides.get(variant.id)?.disponivel !== false)
@@ -79,7 +80,7 @@ export async function hydratePOSProducts({ orgId, productIds, canal = "POS" }: {
 				precoVenda: channelNodePrice(channelState, { produtoId: product.id, produtoVarianteId: variant.id, precoVenda: variant.precoVenda }) ?? 0,
 				addOnsReferencias: channelAddOnReferences(
 					channelState?.channel,
-					variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+					resolveAddOnReferencesRules(variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0)),
 				),
 			})),
 	}));

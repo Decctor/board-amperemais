@@ -70,6 +70,19 @@ const CreateProductAddOnReferenceInputSchema = z.object({
 		})
 		.optional()
 		.nullable(),
+	// Regra deste produto (override no vínculo): null/ausente = herda min/max do grupo.
+	minOpcoes: z
+		.number({
+			invalid_type_error: "Tipo não válido para mínimo de opções do vínculo.",
+		})
+		.optional()
+		.nullable(),
+	maxOpcoes: z
+		.number({
+			invalid_type_error: "Tipo não válido para máximo de opções do vínculo.",
+		})
+		.optional()
+		.nullable(),
 });
 export type TCreateProductAddOnReferenceInput = z.infer<typeof CreateProductAddOnReferenceInputSchema>;
 
@@ -102,6 +115,8 @@ async function createProductAddOnReference({ input, session }: { input: TCreateP
 				produtoVarianteId: input.productVariantId ?? null,
 				produtoAddOnId: input.productAddOnId,
 				ordem: await getNextProductAddOnOrder({ tx, productId: input.productId, productVariantId: input.productVariantId }),
+				minOpcoes: input.minOpcoes ?? null,
+				maxOpcoes: input.maxOpcoes ?? null,
 			})
 			.returning({ id: productAddOnReferences.id });
 

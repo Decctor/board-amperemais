@@ -336,6 +336,12 @@ export const productAddOnReferences = newTable("product_add_on_references", {
 		.references(() => productAddOns.id, { onDelete: "cascade" }),
 
 	ordem: integer("ordem").default(0), // Does "Size" come before "Sauce"?
+
+	// Per-product rule overrides: the flavor list lives on the group, but how many picks a
+	// product allows varies (e.g. gelato sizes). null = inherit the group's rule. Resolved by
+	// resolveAddOnReferenceRules in lib/products/add-on-rules.ts before reaching any client.
+	minOpcoes: integer("min_opcoes"),
+	maxOpcoes: integer("max_opcoes"),
 });
 export const productAddOnReferencesRelations = relations(productAddOnReferences, ({ one }) => ({
 	produto: one(products, {

@@ -26,6 +26,7 @@ export const ExtractedCompositionItemSchema = z.object({
 	descricao: z.string({ invalid_type_error: "Tipo não válido para a descrição do item extraído." }),
 	codigoFornecedor: z.string({ invalid_type_error: "Tipo não válido para o código do item no fornecedor." }).nullable(),
 	ean: z.string({ invalid_type_error: "Tipo não válido para o EAN do item extraído." }).nullable(),
+	ncm: z.string({ invalid_type_error: "Tipo não válido para o NCM do item extraído." }).optional().nullable(),
 	unidade: z.string({ invalid_type_error: "Tipo não válido para a unidade do item extraído." }).nullable(),
 	quantidade: z.number({ invalid_type_error: "Tipo não válido para a quantidade do item extraído." }),
 	valorUnitario: z.number({ invalid_type_error: "Tipo não válido para o valor unitário do item extraído." }),
@@ -77,6 +78,7 @@ Regras:
 - "descricao" é a descrição do produto exatamente como impressa no documento.
 - "codigoFornecedor" é o código do produto usado pelo emitente (coluna CÓDIGO/COD/REF do DANFE). Se não houver, null.
 - "ean" é o código de barras GTIN/EAN quando visível (13 ou 8 dígitos, às vezes na coluna própria). Se não houver, null.
+- "ncm" é o código NCM do item quando impresso (8 dígitos, coluna NCM/SH do DANFE). Se não houver, null.
 - "unidade" é a unidade comercial (UN, KG, CX, PC, LT...). Se não houver, null.
 - "quantidade" e "valorUnitario" são os valores comerciais da linha. "valorTotal" é o total da linha.
 - Valores monetários em número decimal (ponto como separador). Ex: "1.234,56" vira 1234.56.

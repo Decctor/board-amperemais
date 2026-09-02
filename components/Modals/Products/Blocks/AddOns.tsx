@@ -10,7 +10,7 @@ import { formatToMoney } from "@/lib/formatting";
 import { SPREADSHEET_TABLE_ATTR, type SpreadsheetGridBounds } from "@/lib/spreadsheet-navigation";
 import { cn } from "@/lib/utils";
 import type { TProductAddOnOptionState, TProductAddOnState, TUseProductState } from "@/state-hooks/use-product-state";
-import { Check, Layers, LinkIcon, Plus, Share2, Unplug } from "lucide-react";
+import { Check, Layers, LinkIcon, Plus, RotateCcw, Share2, Unplug } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import ProductVinculation from "../ProductVinculation";
@@ -47,11 +47,41 @@ function AddOnGroupIndexBadge({ index, draft }: { index?: number; draft?: boolea
 	);
 }
 
-function AddOnGroupMetaChip({ label, children }: { label: string; children: ReactNode }) {
+function AddOnGroupMetaChip({
+	label,
+	title,
+	overridden = false,
+	onReset,
+	children,
+}: {
+	label: string;
+	title?: string;
+	overridden?: boolean;
+	onReset?: () => void;
+	children: ReactNode;
+}) {
 	return (
-		<div className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background/80 px-2">
-			<span className="text-[0.62rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+		<div
+			title={title}
+			className={cn(
+				"inline-flex h-8 items-center gap-1.5 rounded-md border px-2",
+				overridden ? "border-blue-500/40 bg-blue-500/10" : "border-border bg-background/80",
+			)}
+		>
+			<span className={cn("text-[0.62rem] font-medium uppercase tracking-wide", overridden ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")}>
+				{label}
+			</span>
 			{children}
+			{overridden && onReset ? (
+				<button
+					type="button"
+					onClick={onReset}
+					aria-label={`Voltar a herdar ${label.toLowerCase()} do grupo`}
+					className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+				>
+					<RotateCcw className="h-3 w-3" />
+				</button>
+			) : null}
 		</div>
 	);
 }
@@ -258,25 +288,49 @@ function AddOnGroupHeader({ groupIndex, addOn, usageCount, onUpdate, onRemove }:
 
 					<div className="flex shrink-0 items-center gap-1.5">
 						<AddOnGroupSharedBadge usageCount={usageCount} />
-						<AddOnGroupMetaChip label="Mín">
+						<AddOnGroupMetaChip
+							label="Mín"
+							overridden={addOn.vinculoMinOpcoes != null}
+							onReset={() => onUpdate({ vinculoMinOpcoes: null })}
+							title={
+								addOn.vinculoMinOpcoes != null
+									? `Personalizado neste produto — padrão do grupo: ${addOn.minOpcoes}`
+									: "Herdado do grupo. Editar aqui personaliza a regra só para este produto."
+							}
+						>
 							<div className="w-8 [&_button]:h-6 [&_button]:px-1 [&_button]:text-xs [&_input]:h-6 [&_input]:px-1 [&_input]:text-xs">
 								<EditableNumberCell
-									value={addOn.minOpcoes}
-									ariaLabel="Mínimo de opções"
+									value={addOn.vinculoMinOpcoes ?? addOn.minOpcoes}
+									ariaLabel="Mínimo de opções neste produto"
 									min={0}
 									format={(value) => String(Math.round(value))}
-									onCommit={(minOpcoes) => onUpdate({ minOpcoes: Math.round(minOpcoes) })}
+									onCommit={(value) => {
+										const rounded = Math.round(value);
+										onUpdate({ vinculoMinOpcoes: rounded === addOn.minOpcoes ? null : rounded });
+									}}
 								/>
 							</div>
 						</AddOnGroupMetaChip>
-						<AddOnGroupMetaChip label="Máx">
+						<AddOnGroupMetaChip
+							label="Máx"
+							overridden={addOn.vinculoMaxOpcoes != null}
+							onReset={() => onUpdate({ vinculoMaxOpcoes: null })}
+							title={
+								addOn.vinculoMaxOpcoes != null
+									? `Personalizado neste produto — padrão do grupo: ${addOn.maxOpcoes}`
+									: "Herdado do grupo. Editar aqui personaliza a regra só para este produto."
+							}
+						>
 							<div className="w-8 [&_button]:h-6 [&_button]:px-1 [&_button]:text-xs [&_input]:h-6 [&_input]:px-1 [&_input]:text-xs">
 								<EditableNumberCell
-									value={addOn.maxOpcoes}
-									ariaLabel="Máximo de opções"
+									value={addOn.vinculoMaxOpcoes ?? addOn.maxOpcoes}
+									ariaLabel="Máximo de opções neste produto"
 									min={1}
 									format={(value) => String(Math.round(value))}
-									onCommit={(maxOpcoes) => onUpdate({ maxOpcoes: Math.round(maxOpcoes) })}
+									onCommit={(value) => {
+										const rounded = Math.round(value);
+										onUpdate({ vinculoMaxOpcoes: rounded === addOn.maxOpcoes ? null : rounded });
+									}}
 								/>
 							</div>
 						</AddOnGroupMetaChip>
@@ -311,22 +365,28 @@ function AddOnGroupHeader({ groupIndex, addOn, usageCount, onUpdate, onRemove }:
 				</div>
 				<AddOnGroupSharedBadge usageCount={usageCount} />
 				<div className="grid grid-cols-3 gap-2">
-					<MobileEditableField label="Mín">
+					<MobileEditableField label={addOn.vinculoMinOpcoes != null ? "Mín (deste produto)" : "Mín"}>
 						<EditableNumberCell
-							value={addOn.minOpcoes}
-							ariaLabel="Mínimo de opções"
+							value={addOn.vinculoMinOpcoes ?? addOn.minOpcoes}
+							ariaLabel="Mínimo de opções neste produto"
 							min={0}
 							format={(value) => String(Math.round(value))}
-							onCommit={(minOpcoes) => onUpdate({ minOpcoes: Math.round(minOpcoes) })}
+							onCommit={(value) => {
+								const rounded = Math.round(value);
+								onUpdate({ vinculoMinOpcoes: rounded === addOn.minOpcoes ? null : rounded });
+							}}
 						/>
 					</MobileEditableField>
-					<MobileEditableField label="Máx">
+					<MobileEditableField label={addOn.vinculoMaxOpcoes != null ? "Máx (deste produto)" : "Máx"}>
 						<EditableNumberCell
-							value={addOn.maxOpcoes}
-							ariaLabel="Máximo de opções"
+							value={addOn.vinculoMaxOpcoes ?? addOn.maxOpcoes}
+							ariaLabel="Máximo de opções neste produto"
 							min={1}
 							format={(value) => String(Math.round(value))}
-							onCommit={(maxOpcoes) => onUpdate({ maxOpcoes: Math.round(maxOpcoes) })}
+							onCommit={(value) => {
+								const rounded = Math.round(value);
+								onUpdate({ vinculoMaxOpcoes: rounded === addOn.maxOpcoes ? null : rounded });
+							}}
 						/>
 					</MobileEditableField>
 					<MobileEditableField label="Ativo">
@@ -763,7 +823,15 @@ function isDraftAddOnReady(addOn: TProductAddOnState) {
 	return Boolean(addOn.nome.trim() && addOn.internoNome?.trim() && addOn.maxOpcoes >= 1 && addOn.minOpcoes >= 0 && addOn.maxOpcoes >= addOn.minOpcoes);
 }
 
-export function validateAddOnGroupFields(addOn: Pick<TProductAddOnState, "nome" | "internoNome" | "minOpcoes" | "maxOpcoes">) {
+export function validateAddOnGroupFields(
+	addOn: Pick<TProductAddOnState, "nome" | "internoNome" | "minOpcoes" | "maxOpcoes"> & {
+		vinculoMinOpcoes?: number | null;
+		vinculoMaxOpcoes?: number | null;
+	},
+) {
+	// Valida a regra EFETIVA (override do vínculo, quando presente, sobre o padrão do grupo).
+	const effectiveMin = addOn.vinculoMinOpcoes ?? addOn.minOpcoes;
+	const effectiveMax = addOn.vinculoMaxOpcoes ?? addOn.maxOpcoes;
 	if (!addOn.nome.trim()) {
 		toast.error("Nome do grupo não informado.");
 		return false;
@@ -772,15 +840,15 @@ export function validateAddOnGroupFields(addOn: Pick<TProductAddOnState, "nome" 
 		toast.error("Nome interno do grupo não informado.");
 		return false;
 	}
-	if (addOn.minOpcoes < 0) {
+	if (effectiveMin < 0) {
 		toast.error("Mínimo de opções inválido.");
 		return false;
 	}
-	if (addOn.maxOpcoes < 1) {
+	if (effectiveMax < 1) {
 		toast.error("Máximo de opções deve ser pelo menos 1.");
 		return false;
 	}
-	if (addOn.maxOpcoes < addOn.minOpcoes) {
+	if (effectiveMax < effectiveMin) {
 		toast.error("Máximo de opções não pode ser menor que o mínimo.");
 		return false;
 	}

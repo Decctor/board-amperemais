@@ -10,14 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToCNPJ, formatToMoney } from "@/lib/formatting";
+import { createProduct } from "@/lib/mutations/products";
 import { importPurchaseComposition } from "@/lib/mutations/purchases";
 import { createSupplier, createSupplierProductMappings } from "@/lib/mutations/suppliers";
 import { cn } from "@/lib/utils";
 import type { TUsePurchaseState } from "@/state-hooks/use-purchase-state";
-import { ArrowRight, Building2, CircleAlert, CircleCheck, FileText, ImageIcon, Info, Loader2, Sparkles, Upload, X } from "lucide-react";
+import { ArrowRight, Building2, CircleAlert, CircleCheck, FileText, ImageIcon, Info, Loader2, PackagePlus, Sparkles, Upload, X } from "lucide-react";
 import { useMemo, useRef, useState, type DragEvent } from "react";
 import { toast } from "sonner";
-import { convertLineToProductUnit } from "@/lib/purchase/units";
+import { convertLineToProductUnit, unitsAreEquivalent } from "@/lib/purchase/units";
 import { createEmptyPurchaseItem, normalizeItemValues } from "../Items";
 
 const ACCEPTED_MIME_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp", "application/xml", "text/xml"];
@@ -28,8 +29,22 @@ type TImportFornecedor = TImportPurchaseCompositionOutput["data"]["fornecedor"];
 type TImportDocumento = TImportPurchaseCompositionOutput["data"]["documento"];
 type TImportedLine = TImportPurchaseCompositionOutput["data"]["itens"][number];
 
+/**
+ * Rascunho de produto a criar para uma linha sem correspondente no catálogo. Espelha o fluxo do
+ * fornecedor: nada é criado antes do confirmar, então cancelar a revisão não deixa produto órfão.
+ */
+type TNewProductDraft = {
+	nome: string;
+	codigo: string;
+	unidade: string;
+	ncm: string;
+	vendavel: boolean;
+	rastreamentoEstoqueAtivo: boolean;
+};
+
 type TReviewLine = TImportedLine & {
 	incluir: boolean;
+	produtoNovo: TNewProductDraft | null;
 	/** Raw extracted values, frozen before user edits, persisted as externo* on the item. */
 	extraidoQuantidade: number;
 	extraidoValorUnitario: number;
@@ -75,6 +90,9 @@ const MATCH_BADGE: Record<TImportedLine["matchTipo"], { label: string; className
 	SUGERIDO: { label: "Sugerido", className: "border-amber-500/35 bg-amber-500/15 text-amber-700 dark:text-amber-300" },
 	NAO_MAPEADO: { label: "Não mapeado", className: "border-destructive/30 bg-destructive/10 text-destructive" },
 };
+
+// Mesmo visual do badge "SERÁ CRIADO" do fornecedor: amarelo de "vai nascer no confirmar".
+const CREATE_BADGE = { label: "Será criado", className: "border-amber-500/35 bg-amber-500/15 text-amber-700 dark:text-amber-300" };
 
 const COST_MODIFIER_LABELS: Record<string, string> = {
 	DESCONTO: "Desconto",
@@ -139,6 +157,23 @@ function getLineTotal(line: TReviewLine) {
 			line.modificadoresCusto.reduce((total, modifier) => total + (modifier.efeito === "REDUCAO" ? -1 : 1) * (modifier.valorCentavos / 100), 0)
 		);
 	return line.quantidade * line.valorUnitario - (line.desconto ?? 0);
+}
+
+/** Unidade interna efetiva da linha: a do produto vinculado ou a do rascunho a criar. */
+function getLineInternalUnit(line: TReviewLine) {
+	if (line.produto) return line.produto.unidade ?? "UN";
+	if (line.produtoNovo) return line.produtoNovo.unidade.trim() || "UN";
+	return null;
+}
+
+/**
+ * O servidor só calcula a divergência para produtos existentes; para o rascunho ela nasce aqui,
+ * quando o operador escolhe estocar numa unidade diferente da faturada na nota.
+ */
+function lineHasUnitDivergence(line: TReviewLine) {
+	if (line.produto) return line.divergenciaUnidade;
+	if (line.produtoNovo) return !unitsAreEquivalent(line.unidade, line.produtoNovo.unidade);
+	return false;
 }
 
 function isBlank(value: unknown) {
@@ -250,10 +285,10 @@ export default function ImportCompositionWithAI({
 	const [isConfirming, setIsConfirming] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	const includedLines = useMemo(() => lines.filter((line) => line.incluir && line.produto), [lines]);
-	const unresolvedCount = useMemo(() => lines.filter((line) => !line.produto).length, [lines]);
+	const includedLines = useMemo(() => lines.filter((line) => line.incluir && (line.produto || line.produtoNovo)), [lines]);
+	const unresolvedCount = useMemo(() => lines.filter((line) => !line.produto && !line.produtoNovo).length, [lines]);
 	const pendingUnitCount = useMemo(
-		() => lines.filter((line) => line.incluir && line.produto && line.divergenciaUnidade && !line.fatorConversao).length,
+		() => lines.filter((line) => line.incluir && (line.produto || line.produtoNovo) && lineHasUnitDivergence(line) && !line.fatorConversao).length,
 		[lines],
 	);
 	const pendingTaxTreatmentCount = useMemo(
@@ -309,6 +344,31 @@ export default function ImportCompositionWithAI({
 		setLines((prev) => prev.map((line, lineIndex) => (lineIndex === index ? { ...line, ...updates } : line)));
 	}
 
+	function startProductDraft(index: number) {
+		const line = lines[index];
+		if (!line) return;
+		updateLine(index, {
+			produtoNovo: {
+				nome: line.descricao,
+				codigo: line.ean?.trim() || line.codigoFornecedor?.trim() || "",
+				unidade: line.unidade?.trim() || "UN",
+				ncm: line.ncm?.trim() ?? "",
+				// Compras trazem sobretudo insumos: nasce fora das superfícies de venda, mas com
+				// rastreamento de estoque ativo — é a própria compra que dará a primeira entrada.
+				vendavel: false,
+				rastreamentoEstoqueAtivo: true,
+			},
+			incluir: true,
+			manualOverride: true,
+		});
+	}
+
+	function updateProductDraft(index: number, updates: Partial<TNewProductDraft>) {
+		setLines((prev) =>
+			prev.map((line, lineIndex) => (lineIndex === index && line.produtoNovo ? { ...line, produtoNovo: { ...line.produtoNovo, ...updates } } : line)),
+		);
+	}
+
 	function updateModifierTreatment(lineIndex: number, modifierIndex: number, tratamento: "CUSTO_ESTOQUE" | "CREDITO_TRIBUTARIO" | "DESPESA_PERIODO") {
 		setLines((previous) =>
 			previous.map((line, currentLineIndex) =>
@@ -343,6 +403,7 @@ export default function ImportCompositionWithAI({
 					...result.data.itens.map((item) => ({
 						...item,
 						incluir: !!item.produto,
+						produtoNovo: null,
 						extraidoQuantidade: item.quantidade,
 						extraidoValorUnitario: item.valorUnitario,
 						produtoVariante: null,
@@ -433,9 +494,64 @@ export default function ImportCompositionWithAI({
 				}
 			}
 
+			// 1.5 Produtos rascunhados: como o fornecedor, só nascem aqui no confirmar — cancelar a
+			//     revisão nunca deixa produto órfão. Linhas com o mesmo EAN/código no lote viram UM
+			//     produto só (a mesma mercadoria pode aparecer em mais de uma linha ou arquivo).
+			const resolvedLines: TReviewLine[] = [];
+			const createdProductByKey = new Map<string, NonNullable<TReviewLine["produto"]>>();
+			for (const line of includedLines) {
+				if (line.produto || !line.produtoNovo) {
+					resolvedLines.push(line);
+					continue;
+				}
+				const draft = line.produtoNovo;
+				if (!draft.nome.trim()) throw new Error(`Informe o nome do novo produto para "${line.descricao}".`);
+				const draftKey = (line.ean?.trim() || line.codigoFornecedor?.trim() || draft.nome.trim()).toUpperCase();
+				let produto = createdProductByKey.get(draftKey) ?? null;
+				if (!produto) {
+					const convertido = convertLineToProductUnit({
+						quantidade: line.quantidade,
+						valorUnitario: line.valorUnitario,
+						fatorConversao: line.fatorConversao,
+					});
+					const created = await createProduct({
+						product: {
+							nome: draft.nome.trim(),
+							codigo: draft.codigo.trim(),
+							unidade: draft.unidade.trim() || "UN",
+							ncm: draft.ncm.trim(),
+							tipo: "",
+							grupo: "",
+							descricao: null,
+							imagemCapaUrl: null,
+							vendavel: draft.vendavel,
+							rastreamentoEstoqueAtivo: draft.rastreamentoEstoqueAtivo,
+							// Estoque inicial em 0: é a própria compra que dará a entrada.
+							quantidade: 0,
+							precoVenda: null,
+							precoCusto: convertido.valorUnitario,
+							fichaTecnicaReceitaId: null,
+						},
+						productVariants: [],
+						productOptions: [],
+						productAddOns: [],
+						productFiscalProfiles: [],
+					});
+					produto = {
+						id: created.data.productId,
+						nome: draft.nome.trim(),
+						codigo: draft.codigo.trim(),
+						unidade: draft.unidade.trim() || "UN",
+						imagemCapaUrl: null,
+					};
+					createdProductByKey.set(draftKey, produto);
+				}
+				resolvedLines.push({ ...line, produto, produtoVarianteId: null, produtoVariante: null, produtoNovo: null });
+			}
+
 			// 2. Inject reviewed lines into the purchase draft, already converted to the product unit.
 			//    Os valores lidos da nota seguem gravados em externo*, independentemente do ajuste.
-			for (const line of includedLines) {
+			for (const line of resolvedLines) {
 				if (!line.produto) continue;
 				const convertido = convertLineToProductUnit({
 					quantidade: line.quantidade,
@@ -491,8 +607,9 @@ export default function ImportCompositionWithAI({
 				.reduce<Partial<TUsePurchaseState["state"]["lancamentoContabil"]>>((patch, proposal) => ({ ...patch, ...proposal.patch }), {});
 			if (Object.keys(acceptedPatch).length > 0) updateAccountingEntry(acceptedPatch);
 
-			// 4. Learning: persist confirmed de-paras so the next invoice of this supplier matches deterministically.
-			const learnableLines = includedLines.filter(
+			// 4. Learning: persist confirmed de-paras so the next invoice of this supplier matches
+			//    deterministically — including the products recém-criados, que entram com o id real.
+			const learnableLines = resolvedLines.filter(
 				(line) => line.produto && line.matchTipo !== "MAPEADO" && (line.codigoFornecedor?.trim() || line.ean?.trim()),
 			);
 			if (supplierId && learnableLines.length > 0) {
@@ -509,7 +626,12 @@ export default function ImportCompositionWithAI({
 				}).catch((error) => toast.error(`Itens adicionados, mas houve um erro ao registrar os mapeamentos do fornecedor: ${getErrorMessage(error)}`));
 			}
 
-			toast.success(`${includedLines.length} ${includedLines.length === 1 ? "item adicionado" : "itens adicionados"} à composição da compra.`);
+			const createdCount = createdProductByKey.size;
+			const ignoredCount = lines.length - includedLines.length;
+			let successMessage = `${resolvedLines.length} ${resolvedLines.length === 1 ? "item adicionado" : "itens adicionados"} à composição da compra.`;
+			if (createdCount > 0) successMessage += ` ${createdCount} ${createdCount === 1 ? "produto criado" : "produtos criados"} no catálogo.`;
+			if (ignoredCount > 0) successMessage += ` ${ignoredCount} ${ignoredCount === 1 ? "item ignorado" : "itens ignorados"}.`;
+			toast.success(successMessage);
 			resetAndClose(false);
 		} catch (error) {
 			toast.error(getErrorMessage(error));
@@ -710,20 +832,22 @@ export default function ImportCompositionWithAI({
 								<CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
 								<p className="leading-relaxed">
 									{unresolvedCount} {unresolvedCount === 1 ? "item não foi mapeado" : "itens não foram mapeados"} a produtos. Selecione o produto
-									correspondente para incluí-los — ou deixe desmarcado para ignorar.
+									correspondente ou crie um novo produto para incluí-los — ou deixe desmarcado para ignorar.
 								</p>
 							</div>
 						) : null}
 
 						<div className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-md border border-border">
 							{lines.map((line, index) => {
-								const badge = MATCH_BADGE[line.produto ? line.matchTipo : "NAO_MAPEADO"];
+								const badge = line.produto ? MATCH_BADGE[line.matchTipo] : line.produtoNovo ? CREATE_BADGE : MATCH_BADGE.NAO_MAPEADO;
+								const internalUnit = getLineInternalUnit(line);
+								const unitDivergence = lineHasUnitDivergence(line);
 								return (
 									<div key={index} className={cn("flex w-full flex-col gap-2 border-t border-border p-3 first:border-t-0", !line.incluir && "opacity-60")}>
 										<div className="flex w-full items-start gap-2.5">
 											<Checkbox
 												checked={line.incluir}
-												disabled={!line.produto}
+												disabled={!line.produto && !line.produtoNovo}
 												onCheckedChange={(checked) => updateLine(index, { incluir: checked === true })}
 												aria-label={`Incluir "${line.descricao}"`}
 												className="mt-0.5"
@@ -772,14 +896,21 @@ export default function ImportCompositionWithAI({
 																		imagemCapaUrl: value.productVariant.imagemCapaUrl ?? null,
 																	}
 																: null,
+															produtoNovo: null,
 															manualOverride: true,
 															incluir: true,
 														});
 													}}
-													onReset={() => updateLine(index, { produto: null, produtoVarianteId: null, produtoVariante: null, incluir: false })}
+													onReset={() => updateLine(index, { produto: null, produtoVarianteId: null, produtoVariante: null, produtoNovo: null, incluir: false })}
 													triggerProps={{ size: "sm", className: "h-8 w-full text-xs" }}
 												/>
 											</div>
+											{!line.produto && !line.produtoNovo ? (
+												<Button type="button" variant="outline" size="sm" className="h-8 shrink-0 text-xs" onClick={() => startProductDraft(index)}>
+													<PackagePlus className="h-3.5 w-3.5" />
+													CRIAR PRODUTO
+												</Button>
+											) : null}
 											<div className="flex shrink-0 items-end gap-1.5">
 												<div className="flex flex-col gap-0.5">
 													<label className="text-[0.65rem] font-medium uppercase text-muted-foreground">Qtde</label>
@@ -808,6 +939,74 @@ export default function ImportCompositionWithAI({
 												</div>
 											</div>
 										</div>
+
+										{line.produtoNovo ? (
+											<div className="ml-6 overflow-hidden rounded-md border border-amber-500/35 bg-amber-500/5">
+												<div className="flex items-center justify-between gap-2 border-b border-amber-500/25 px-2.5 py-1.5">
+													<span className="text-[0.65rem] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300">
+														Novo produto — criado ao adicionar os itens
+													</span>
+													<button
+														type="button"
+														aria-label={`Descartar novo produto de "${line.descricao}"`}
+														onClick={() => updateLine(index, { produtoNovo: null, incluir: false })}
+														className="cursor-pointer rounded-sm p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+													>
+														<X className="h-3.5 w-3.5" />
+													</button>
+												</div>
+												<div className="flex flex-col gap-1.5 px-2.5 py-2 sm:flex-row sm:items-end">
+													<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+														<label className="text-[0.65rem] font-medium uppercase text-muted-foreground">Nome</label>
+														<Input
+															value={line.produtoNovo.nome}
+															onChange={(event) => updateProductDraft(index, { nome: event.target.value })}
+															className="h-8 text-xs"
+														/>
+													</div>
+													<div className="flex shrink-0 items-end gap-1.5">
+														<div className="flex flex-col gap-0.5">
+															<label className="text-[0.65rem] font-medium uppercase text-muted-foreground">Código</label>
+															<Input
+																value={line.produtoNovo.codigo}
+																onChange={(event) => updateProductDraft(index, { codigo: event.target.value })}
+																className="h-8 w-28 text-xs"
+															/>
+														</div>
+														<div className="flex flex-col gap-0.5">
+															<label className="text-[0.65rem] font-medium uppercase text-muted-foreground">Unidade</label>
+															<Input
+																value={line.produtoNovo.unidade}
+																onChange={(event) => updateProductDraft(index, { unidade: event.target.value.toUpperCase() })}
+																className="h-8 w-20 text-xs"
+															/>
+														</div>
+														<div className="flex flex-col gap-0.5">
+															<label className="text-[0.65rem] font-medium uppercase text-muted-foreground">NCM</label>
+															<Input
+																value={line.produtoNovo.ncm}
+																onChange={(event) => updateProductDraft(index, { ncm: event.target.value })}
+																placeholder="—"
+																className="h-8 w-24 text-xs tabular-nums"
+															/>
+														</div>
+													</div>
+												</div>
+												<div className="flex flex-wrap items-center gap-4 border-t border-amber-500/25 px-2.5 py-1.5">
+													<label className="flex cursor-pointer items-center gap-1.5 text-[0.68rem] font-medium text-foreground/80">
+														<Switch checked={line.produtoNovo.vendavel} onCheckedChange={(checked) => updateProductDraft(index, { vendavel: checked })} />
+														Disponível para venda
+													</label>
+													<label className="flex cursor-pointer items-center gap-1.5 text-[0.68rem] font-medium text-foreground/80">
+														<Switch
+															checked={line.produtoNovo.rastreamentoEstoqueAtivo}
+															onCheckedChange={(checked) => updateProductDraft(index, { rastreamentoEstoqueAtivo: checked })}
+														/>
+														Rastrear estoque
+													</label>
+												</div>
+											</div>
+										) : null}
 
 										{line.modificadoresCusto && line.modificadoresCusto.length > 0 ? (
 											<div className="ml-6 overflow-hidden rounded-md border border-border bg-muted/20">
@@ -843,11 +1042,11 @@ export default function ImportCompositionWithAI({
 											</div>
 										) : null}
 
-										{line.produto && line.divergenciaUnidade ? (
+										{(line.produto || line.produtoNovo) && unitDivergence ? (
 											<div className="ml-6 flex flex-col gap-1.5 rounded-md border border-destructive/25 bg-destructive/5 px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between">
 												<p className="text-[0.68rem] leading-relaxed text-destructive">
-													A nota fatura em <strong>{line.unidade}</strong> e o produto é estocado em <strong>{line.produto.unidade ?? "UN"}</strong>. Informe
-													quantas {line.produto.unidade ?? "UN"} cabem em 1 {line.unidade}.
+													A nota fatura em <strong>{line.unidade}</strong> e o produto é estocado em <strong>{internalUnit}</strong>. Informe quantas{" "}
+													{internalUnit} cabem em 1 {line.unidade}.
 												</p>
 												<div className="flex shrink-0 items-end gap-1.5">
 													<div className="flex flex-col gap-0.5">
@@ -866,7 +1065,7 @@ export default function ImportCompositionWithAI({
 														<span className="text-[0.65rem] font-medium uppercase text-muted-foreground">Entra como</span>
 														<span className="flex h-8 items-center font-mono text-xs font-medium tabular-nums">
 															{line.fatorConversao && line.fatorConversao > 0
-																? `${line.quantidade * line.fatorConversao} ${line.produto.unidade ?? "UN"} × ${formatToMoney(line.valorUnitario / line.fatorConversao)}`
+																? `${line.quantidade * line.fatorConversao} ${internalUnit} × ${formatToMoney(line.valorUnitario / line.fatorConversao)}`
 																: "—"}
 														</span>
 													</div>

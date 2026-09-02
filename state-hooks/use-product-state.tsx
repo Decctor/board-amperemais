@@ -178,6 +178,19 @@ export const ProductStateSchema = z.object({
 					invalid_type_error: "Tipo não válido para deletar adicional.",
 				})
 				.optional(),
+			// Regra deste produto (override no vínculo produto↔grupo): null = herda min/max do grupo.
+			vinculoMinOpcoes: z
+				.number({
+					invalid_type_error: "Tipo não válido para mínimo de opções do vínculo.",
+				})
+				.optional()
+				.nullable(),
+			vinculoMaxOpcoes: z
+				.number({
+					invalid_type_error: "Tipo não válido para máximo de opções do vínculo.",
+				})
+				.optional()
+				.nullable(),
 		}),
 	),
 	productFiscalProfiles: z.array(

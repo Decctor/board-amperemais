@@ -1,6 +1,7 @@
 import { db } from "@/services/drizzle";
 import { productAddOnReferences, products, saleItems, sales } from "@/services/drizzle/schema";
 import { and, desc, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
+import { resolveAddOnReferencesRules } from "@/lib/products/add-on-rules";
 import { channelAddOnReferences } from "@/lib/products/sales-channels";
 import { channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
 import type { TShopSettingsConfiguration } from "@/schemas/shop";
@@ -109,7 +110,7 @@ export async function getShopCatalogProducts({ orgId, configuracoes }: { orgId: 
 				// catálogo, a exigência que a sacola mostra é a que o servidor cobra — sem segunda leitura.
 				addOnsReferencias: channelAddOnReferences(
 					channelState?.channel,
-					product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+					resolveAddOnReferencesRules(product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0)),
 				),
 				variantes: product.variantes
 					.filter(variantIsAvailableForShop)
@@ -120,7 +121,7 @@ export async function getShopCatalogProducts({ orgId, configuracoes }: { orgId: 
 						precoVenda: channelNodePrice(channelState, { produtoId: product.id, produtoVarianteId: variant.id, precoVenda: variant.precoVenda }) ?? 0,
 						addOnsReferencias: channelAddOnReferences(
 							channelState?.channel,
-							variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+							resolveAddOnReferencesRules(variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0)),
 						),
 					}))
 					.filter((variant) => variant.precoVenda > 0),

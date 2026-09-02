@@ -10,7 +10,7 @@ const NFE_XML = `<?xml version="1.0" encoding="UTF-8"?>
       <emit><CNPJ>12345678000190</CNPJ><xNome>Fornecedor Exemplo</xNome></emit>
       <det nItem="1">
         <prod>
-          <cProd>ABC-1</cProd><cEAN>7891234567890</cEAN><xProd>Produto A</xProd><uCom>UN</uCom>
+          <cProd>ABC-1</cProd><cEAN>7891234567890</cEAN><xProd>Produto A</xProd><NCM>21069090</NCM><uCom>UN</uCom>
           <qCom>2.0000</qCom><vUnCom>10.000000</vUnCom><vProd>20.00</vProd>
           <vFrete>2.00</vFrete><vSeg>0.50</vSeg><vDesc>1.00</vDesc><vOutro>0.25</vOutro>
         </prod>
@@ -36,7 +36,9 @@ test("parses namespaced NF-e metadata, items and exact cost modifiers", () => {
 	assert.equal(result.serieDocumento, "3");
 	assert.equal(result.fornecedor?.cnpj, "12345678000190");
 	assert.equal(result.itens.length, 2);
+	assert.equal(result.itens[0].ncm, "21069090");
 	assert.equal(result.itens[1].ean, null);
+	assert.equal(result.itens[1].ncm, null);
 	assert.deepEqual(
 		result.itens[0].modificadoresCusto?.map(({ chave, valorCentavos, tratamento }) => ({ chave, valorCentavos, tratamento })),
 		[

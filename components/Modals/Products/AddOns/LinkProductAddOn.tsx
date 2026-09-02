@@ -12,7 +12,24 @@ import { useProductAddOns } from "@/lib/queries/products";
 import type { TGetProductAddOnsOutputDefault } from "@/app/api/products/add-ons/route";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layers, LinkIcon, ListChecks, Package } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
+
+function RuleField({ label, value, min, onChange }: { label: string; value: number; min: number; onChange: (value: number) => void }) {
+	return (
+		<label className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-background px-1.5">
+			<span className="text-[0.62rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+			<input
+				type="number"
+				min={min}
+				value={value}
+				onChange={(event) => onChange(Math.max(min, Math.round(Number(event.target.value) || min)))}
+				aria-label={`${label} de opções neste produto`}
+				className="w-9 bg-transparent text-center text-xs tabular-nums outline-hidden"
+			/>
+		</label>
+	);
+}
 
 type LinkProductAddOnProps = {
 	productId: string;
@@ -80,7 +97,7 @@ export default function LinkProductAddOn({ productId, linkedAddOnIds, closeModal
 									key={addOn.id}
 									addOn={addOn}
 									attachIsPending={attachIsPending}
-									onAttach={() => attach({ productId, productAddOnId: addOn.id })}
+									onAttach={(rules) => attach({ productId, productAddOnId: addOn.id, ...rules })}
 								/>
 							))}
 						</div>
@@ -95,13 +112,33 @@ export default function LinkProductAddOn({ productId, linkedAddOnIds, closeModal
 	);
 }
 
+type TAttachRules = { minOpcoes: number | null; maxOpcoes: number | null };
+
 type LinkableAddOnRowProps = {
 	addOn: TGetProductAddOnsOutputDefault[number];
 	attachIsPending: boolean;
-	onAttach: () => void;
+	onAttach: (rules: TAttachRules) => void;
 };
 
+/**
+ * A regra do vínculo começa herdando o grupo: os campos vêm preenchidos com o padrão e só viram
+ * override quando o valor difere. Assim vincular sem pensar na regra continua sendo um clique.
+ */
 function LinkableAddOnRow({ addOn, attachIsPending, onAttach }: LinkableAddOnRowProps) {
+	const [minOpcoes, setMinOpcoes] = useState<number>(addOn.minOpcoes);
+	const [maxOpcoes, setMaxOpcoes] = useState<number>(addOn.maxOpcoes);
+
+	function handleAttach() {
+		if (maxOpcoes < minOpcoes) {
+			toast.error("Máximo de opções não pode ser menor que o mínimo.");
+			return;
+		}
+		onAttach({
+			minOpcoes: minOpcoes === addOn.minOpcoes ? null : minOpcoes,
+			maxOpcoes: maxOpcoes === addOn.maxOpcoes ? null : maxOpcoes,
+		});
+	}
+
 	return (
 		<div className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-2.5 py-2">
 			<div className="flex min-w-0 flex-1 items-start gap-2">
@@ -135,17 +172,14 @@ function LinkableAddOnRow({ addOn, attachIsPending, onAttach }: LinkableAddOnRow
 					</div>
 				</div>
 			</div>
-			<Button
-				type="button"
-				variant="outline"
-				size="sm"
-				disabled={attachIsPending}
-				onClick={onAttach}
-				className="flex shrink-0 items-center gap-1.5"
-			>
-				<LinkIcon className="h-3.5 w-3.5" />
-				VINCULAR
-			</Button>
+			<div className="flex shrink-0 items-center gap-1.5">
+				<RuleField label="Mín" value={minOpcoes} min={0} onChange={setMinOpcoes} />
+				<RuleField label="Máx" value={maxOpcoes} min={1} onChange={setMaxOpcoes} />
+				<Button type="button" variant="outline" size="sm" disabled={attachIsPending} onClick={handleAttach} className="flex items-center gap-1.5">
+					<LinkIcon className="h-3.5 w-3.5" />
+					VINCULAR
+				</Button>
+			</div>
 		</div>
 	);
 }

@@ -80,6 +80,8 @@ export function hydrateAddOnsState(product: TGetProductsOutputById): Partial<TPr
 			internoNome: ref.grupo.internoNome ?? "",
 			minOpcoes: ref.grupo.minOpcoes ?? 0,
 			maxOpcoes: ref.grupo.maxOpcoes ?? 1,
+			vinculoMinOpcoes: ref.minOpcoes ?? null,
+			vinculoMaxOpcoes: ref.maxOpcoes ?? null,
 			ativo: ref.grupo.ativo ?? true,
 			opcoes: ref.grupo.opcoes.map((opcao) => ({
 				id: opcao.id,
@@ -202,6 +204,8 @@ export function buildAddOnsUpdateInput(product: TGetProductsOutputById, state: P
 			internoNome: addOn.internoNome,
 			minOpcoes: addOn.minOpcoes,
 			maxOpcoes: addOn.maxOpcoes,
+			vinculoMinOpcoes: addOn.vinculoMinOpcoes ?? null,
+			vinculoMaxOpcoes: addOn.vinculoMaxOpcoes ?? null,
 			ativo: addOn.ativo,
 			deletar: addOn.deletar,
 			opcoes: addOn.opcoes.map((option) => ({
@@ -244,7 +248,9 @@ export function validateAddOnsState(state: Pick<TProductState, "productAddOns">)
 	for (const addOn of state.productAddOns) {
 		if (addOn.deletar) continue;
 		if (!addOn.nome.trim()) return "Informe o nome de todos os grupos de adicionais.";
-		if ((addOn.maxOpcoes ?? 1) < (addOn.minOpcoes ?? 0)) {
+		const effectiveMin = addOn.vinculoMinOpcoes ?? addOn.minOpcoes ?? 0;
+		const effectiveMax = addOn.vinculoMaxOpcoes ?? addOn.maxOpcoes ?? 1;
+		if (effectiveMax < effectiveMin) {
 			return `Grupo "${addOn.nome}": o máximo de opções deve ser maior ou igual ao mínimo.`;
 		}
 		for (const option of addOn.opcoes) {

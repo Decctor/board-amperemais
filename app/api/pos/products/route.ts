@@ -2,6 +2,7 @@ import { appApiHandler } from "@/lib/app-api";
 import { runPagesRouteHandler, type PagesRouteHandler, type PagesRouteRequest, type PagesRouteResponse } from "@/lib/pages-route-compat";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { resolveAddOnReferencesRules } from "@/lib/products/add-on-rules";
 import { channelAddOnReferences } from "@/lib/products/sales-channels";
 import { channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
 import { db } from "@/services/drizzle";
@@ -142,7 +143,7 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 		// onde o canal os exige (o balcão pode dispensar; ver channelAddOnReferences).
 		addOnsReferencias: channelAddOnReferences(
 			channelState?.channel,
-			product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+			resolveAddOnReferencesRules(product.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0)),
 		),
 		variantes: product.variantes
 			// Linha de variante só restringe dentro de um produto visível (mesma regra do resolver).
@@ -152,7 +153,7 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 				precoVenda: channelNodePrice(channelState, { produtoId: product.id, produtoVarianteId: variant.id, precoVenda: variant.precoVenda }) ?? 0,
 				addOnsReferencias: channelAddOnReferences(
 					channelState?.channel,
-					variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0),
+					resolveAddOnReferencesRules(variant.addOnsReferencias.filter((reference) => reference.grupo.ativo && reference.grupo.opcoes.length > 0)),
 				),
 			})),
 	}));
