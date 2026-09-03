@@ -25,6 +25,7 @@ export default function SalesOrdersPage({ organization, canEditSales, canDeleteS
 	return (
 		<div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
 			<FulfillmentBoard
+				organizationId={organization.id}
 				organizationConfig={organization.configuracao}
 				canEditSales={canEditSales}
 				onViewDetails={(saleId) => void setSelectedSaleId(saleId, { history: "push" })}
