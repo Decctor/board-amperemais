@@ -13,3 +13,14 @@ export function requireERPSession(session: TAuthUserSession | null): TAuthUserSe
 	}
 	return session;
 }
+
+/**
+ * Guard das rotas que exigem apenas vinculo com organizacao, sem o modulo de ERP. E o caso das
+ * telas da loja digital: a pagina /dashboard/catalog/store nao checa ERP, entao uma rota dela
+ * exigir o modulo seria um 403 dentro de uma tela aberta.
+ */
+export function requireOrgSession(session: TAuthUserSession | null): TAuthUserSession {
+	if (!session) throw new createHttpError.Unauthorized("Voce nao esta autenticado.");
+	if (!session.membership) throw new createHttpError.Unauthorized("Voce precisa estar vinculado a uma organizacao.");
+	return session;
+}

@@ -24,10 +24,13 @@ export function mapShopProductsConfigToChannelState(produtos: TShopSettingsConfi
 }
 
 /**
- * Sincroniza o canal SHOP (linha + overrides de disponibilidade nível-produto) a partir do bloco
- * de produtos do jsonb da loja. Enquanto o jsonb existir (dual-write), ele é a fonte da verdade
- * da disponibilidade no SHOP; este sync reescreve `disponivel` das linhas nível-produto mas
- * PRESERVA `preco_venda` — um override de preço não pode ser destruído por um save do painel.
+ * Traduz o bloco legado de produtos do jsonb da loja para o canal SHOP. É uma migração de uma vez
+ * só: hoje o único chamador é `ensureSalesChannels`, quando materializa o canal de uma organização
+ * que ainda não o tinha. O painel NÃO chama mais isto — a vitrine edita o canal direto
+ * (PUT /api/sales-channels/showcase), e um sync a cada save apagaria a curadoria.
+ *
+ * Reescreve `disponivel` das linhas nível-produto mas PRESERVA `preco_venda`: um override de preço
+ * não é disponibilidade. Não toca em `ordem_grupos`.
  */
 export async function syncShopSalesChannel({ orgId, produtos }: { orgId: string; produtos: TShopSettingsConfiguration["produtos"] }) {
 	const desired = mapShopProductsConfigToChannelState(produtos);

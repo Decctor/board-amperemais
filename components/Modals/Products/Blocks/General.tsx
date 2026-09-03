@@ -1,6 +1,7 @@
 import CheckboxInput from "@/components/Inputs/CheckboxInput";
 import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
+import SelectProductGroup from "@/components/Inputs/SelectProductGroup";
 import TextInput from "@/components/Inputs/TextInput";
 import TextareaInput from "@/components/Inputs/TextareaInput";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
@@ -67,12 +68,7 @@ export default function ProductStateGeneralBlock({
 						/>
 					</div>
 				</div>
-				<TextInput
-					label="GRUPO"
-					value={product.grupo}
-					placeholder="Preencha aqui o grupo do produto."
-					handleChange={(value) => updateProduct({ grupo: value })}
-				/>
+				<SelectProductGroup value={product.grupo} handleChange={(grupo) => updateProduct({ grupo })} />
 				<div className="w-full flex flex-col items-center gap-1">
 					<CheckboxInput
 						checked={product.vendavel}

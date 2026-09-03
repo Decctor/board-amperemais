@@ -25,8 +25,9 @@ const UpdateSalesChannelInputSchema = z.object({
 		.optional()
 		.nullable(),
 	// Atualização parcial: o cliente manda só o que está mudando. Reenviar o estado inteiro fazia o
-	// toggle de adicionais carimbar de volta um `catalogoModo` possivelmente velho — o save da loja
-	// reescreve esse campo por fora (syncShopSalesChannel), então o eco revertia a curadoria.
+	// toggle de adicionais carimbar de volta um `catalogoModo` possivelmente velho — a vitrine da
+	// loja reescreve esse campo por fora (PUT /api/sales-channels/showcase), então o eco revertia a
+	// curadoria.
 	catalogoModo: SalesChannelCatalogModeEnum.optional(),
 	exigirAdicionaisMinimos: z.boolean({ invalid_type_error: "Tipo não válido para exigência de adicionais obrigatórios." }).optional(),
 });

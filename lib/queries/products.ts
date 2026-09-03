@@ -1,6 +1,7 @@
 import type { TGetProductsByIdInput, TGetProductsDefaultInput, TGetProductsOutput, TGetProductsOutputStock } from "@/app/api/products/route";
 import type { TGetProductVariantsOutput } from "@/app/api/products/variants/route";
 import type { TGetProductAddOnsOutput } from "@/app/api/products/add-ons/route";
+import type { TGetProductGroupsOutput } from "@/app/api/products/groups/route";
 import type { TGetProductFiscalProfilesOutput } from "@/app/api/products/fiscal-profiles/route";
 import type { TGetProductsByCodesInput, TGetProductsByCodesOutput } from "@/app/api/products/by-codes/route";
 import type { TGetProductGraphInput, TGetProductGraphOutput } from "@/app/api/products/graph/route";
@@ -631,5 +632,23 @@ export function useProductFiscalProfileById({ productFiscalProfileId }: { produc
 			queryFn: () => fetchProductFiscalProfileById(productFiscalProfileId),
 		}),
 		queryKey: ["product-fiscal-profile-by-id", productFiscalProfileId],
+	};
+}
+
+async function fetchProductGroups() {
+	const { data } = await axios.get<TGetProductGroupsOutput>("/api/products/groups");
+	return data.data.groups;
+}
+
+/**
+ * Os grupos que a organização já usa (DISTINCT de `products.grupo`). Muda apenas quando alguém
+ * cadastra ou renomeia um grupo, então a lista aguenta um tempo maior de frescor — quem renomeia
+ * invalida a chave na hora.
+ */
+export function useProductGroups() {
+	const queryKey = ["product-groups"];
+	return {
+		...useQuery({ queryKey, queryFn: fetchProductGroups, staleTime: 5 * 60 * 1000 }),
+		queryKey,
 	};
 }

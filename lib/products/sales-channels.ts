@@ -26,6 +26,77 @@ export const DEFAULT_SALES_CHANNELS = [
 
 export const SALES_CHANNEL_TYPES = ["POS", "SHOP", "COMANDA", "IFOOD"] as const;
 
+// Rótulo do grupo dos produtos sem `grupo` preenchido. É o mesmo texto que a vitrine pública usa
+// no balde final (app/shop/[slug]/_components/MenuModeView.tsx): a curadoria e a loja precisam
+// chamar a mesma coisa pelo mesmo nome.
+export const UNGROUPED_PRODUCTS_LABEL = "Outros";
+
+/**
+ * Ordena os grupos pela ordem curada do canal. Grupos fora da lista vão depois, em ordem
+ * alfabética: um grupo novo (produto acabou de ganhar um grupo inédito) aparece na loja sem
+ * depender de alguém abrir o painel, e uma entrada órfã (grupo renomeado) simplesmente não
+ * encontra par — não some com o grupo nem trava a ordenação do resto.
+ */
+export function sortGroupsByChannelOrder(groups: string[], ordemGrupos: string[]) {
+	const position = new Map(ordemGrupos.map((group, index) => [group, index]));
+	return [...groups].sort((a, b) => {
+		const positionA = position.get(a);
+		const positionB = position.get(b);
+		if (positionA !== undefined && positionB !== undefined) return positionA - positionB;
+		if (positionA !== undefined) return -1;
+		if (positionB !== undefined) return 1;
+		return a.localeCompare(b, "pt-BR");
+	});
+}
+
+export type TShowcaseExistingRow = { id: string; disponivel: boolean | null; precoVenda: number | null };
+export type TShowcaseResolvedNode = { produtoId: string; disponivel: boolean | null; precoVenda: number | null };
+
+/**
+ * Traduz a vitrine declarada (modo + lista de produtos) para as linhas esparsas do canal.
+ *
+ * SELECIONADOS: a presença é opt-in, então o produto listado vira linha `disponivel=true` e o que
+ * saiu volta a herdar (= fora do catálogo). TODOS: a presença é o padrão, então quem saiu da
+ * vitrine vira linha `disponivel=false` e o listado volta a herdar. Trocar de modo, por isso,
+ * preserva o que está visível hoje — muda só o destino dos produtos FUTUROS.
+ *
+ * Um override de preço não é disponibilidade: quem sai da vitrine mantém o `precoVenda` guardado,
+ * e a linha só é apagada quando não sobra nem preço nem disponibilidade para gravar.
+ */
+export function resolveShowcaseChannelRows({
+	catalogoModo,
+	listed,
+	touchedIds,
+	existing,
+}: {
+	catalogoModo: TSalesChannelCatalogModeEnum;
+	/** Produtos na vitrine, com o preço do canal (nulo = herda o preço base). */
+	listed: Map<string, number | null>;
+	/** Produtos elegíveis ao canal somados aos listados — só eles entram no diff. */
+	touchedIds: Iterable<string>;
+	existing: Map<string, TShowcaseExistingRow>;
+}) {
+	const rowIdsToDelete: string[] = [];
+	const nodesToUpsert: TShowcaseResolvedNode[] = [];
+
+	for (const produtoId of touchedIds) {
+		const isListed = listed.has(produtoId);
+		const row = existing.get(produtoId);
+		const disponivel = catalogoModo === "SELECIONADOS" ? (isListed ? true : null) : isListed ? null : false;
+		const precoVenda = isListed ? (listed.get(produtoId) ?? null) : (row?.precoVenda ?? null);
+
+		if (disponivel === null && precoVenda === null) {
+			if (row) rowIdsToDelete.push(row.id);
+			continue;
+		}
+		if (!row || row.disponivel !== disponivel || row.precoVenda !== precoVenda) {
+			nodesToUpsert.push({ produtoId, disponivel, precoVenda });
+		}
+	}
+
+	return { rowIdsToDelete, nodesToUpsert };
+}
+
 /** Converte o `sales.canal` (texto livre) para o tipo do registro de canais, quando reconhecido. */
 export function toSalesChannelType(canal: string | null | undefined): TSalesChannelTypeEnum | undefined {
 	return (SALES_CHANNEL_TYPES as readonly string[]).includes(canal ?? "") ? (canal as TSalesChannelTypeEnum) : undefined;

@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { boolean, doublePrecision, index, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, index, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
 import { salesChannelCatalogModeEnum, salesChannelTypeEnum } from "./enums";
 import { integrations } from "./integrations";
@@ -31,6 +31,11 @@ export const salesChannels = newTable(
 		// operação do canal: no balcão o atendente monta o item no ritmo da fila, enquanto o
 		// autoatendimento (SHOP/iFood) não tem ninguém para completar o que faltou.
 		exigirAdicionaisMinimos: boolean("exigir_adicionais_minimos").default(true).notNull(),
+		// Ordem dos grupos (`products.grupo`) na vitrine deste canal; grupos ausentes da lista vão
+		// depois, em ordem alfabética. Os nomes são texto livre do cadastro do produto, então uma
+		// entrada pode ficar órfã quando o grupo é renomeado — a leitura poda contra os grupos que
+		// realmente existem, em vez de tentar manter a lista sincronizada a cada edição de produto.
+		ordemGrupos: text("ordem_grupos").array().notNull().default([]),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 		dataAtualizacao: timestamp("data_atualizacao").$onUpdate(() => new Date()),
 	},

@@ -100,6 +100,10 @@ export const ShopCompositionBlockSchema = z.object({
 export type TShopCompositionBlock = z.infer<typeof ShopCompositionBlockSchema>;
 
 export const ShopProductsConfigurationSchema = z.object({
+  // LEGADO: `modo` e `produtoIds` não são mais editados nem lidos pela loja — a curadoria vive no
+  // canal SHOP (sales_channels + product_channel_settings). Continuam aqui porque `ensureSalesChannels`
+  // os usa uma única vez, ao materializar o canal de uma organização antiga. `destaqueIds` NÃO é
+  // legado: é o merchandising do bloco "Em destaque".
   modo: ShopProductsModeEnum.default("ATIVOS"),
   produtoIds: z
     .array(
@@ -301,14 +305,6 @@ export const ShopSettingsConfigurationSchema = z
     }),
   })
   .strict()
-  .refine(
-    (data) =>
-      data.produtos.modo !== "INCLUIR" || data.produtos.produtoIds.length > 0,
-    {
-      message: "Selecione pelo menos um produto para o modo incluir.",
-      path: ["produtos", "produtoIds"],
-    },
-  )
   .refine(
     (data) =>
       !data.aparencia.headerCoverUrl || !!data.aparencia.headerCoverTipo,

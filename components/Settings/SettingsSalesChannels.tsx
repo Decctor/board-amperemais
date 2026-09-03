@@ -75,7 +75,8 @@ export default function SettingsSalesChannels({ membership }: SettingsSalesChann
 
 	function toggleAddOnMinimums(channel: TSalesChannelEntity, exigir: boolean) {
 		// Só o campo que está mudando: o PUT é uma atualização parcial, então o `catalogoModo` que
-		// a loja escreve por fora (syncShopSalesChannel) não corre risco de voltar atrás por eco.
+		// a vitrine da loja escreve por fora (PUT /api/sales-channels/showcase) não corre risco de
+		// voltar atrás por eco.
 		mutate({
 			canal: channel.canal,
 			integracaoId: channel.integracaoId,

@@ -145,7 +145,11 @@ function ProductsDatabaseView({ user, userMembership, organization }: ProductsDa
 	const totalPages = productsResult?.totalPages;
 
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
-	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
+	const handleOnSettled = async () => {
+		await queryClient.invalidateQueries({ queryKey: queryKey });
+		// Um produto novo pode ter estreado um grupo: o seletor de grupos precisa passar a oferecê-lo.
+		await queryClient.invalidateQueries({ queryKey: ["product-groups"] });
+	};
 
 	return (
 		<div className="w-full flex flex-col gap-3">

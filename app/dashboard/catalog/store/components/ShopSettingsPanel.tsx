@@ -36,6 +36,7 @@ import {
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import z from "zod";
+import ShopShowcaseSection from "./ShopShowcaseSection";
 
 type TSettings = NonNullable<TGetShopSettingsOutput["data"]>;
 type TSection = "visao-geral" | "atendimento" | "pagamento" | "horarios" | "operacao" | "aparencia" | "produtos";
@@ -147,8 +148,13 @@ export default function ShopSettingsPanel({ settings }: { settings: TSettings })
 		setHeaderCoverFile({ previewUrl: settings.configuracoes.aparencia.headerCoverUrl ?? undefined });
 	};
 
+	// `overflow-visible` é o que faz a barra de aplicar da vitrine funcionar: o `overflow-hidden`
+	// padrão do Card vira o scrollport mais próximo de qualquer `sticky` interno e, como ele nunca
+	// rola, a barra parava no fim do conteúdo em vez de acompanhar a leitura. Sem o recorte, o
+	// `sticky` resolve contra o container que de fato rola (o SidebarInset). Quem encostava na borda
+	// arredondada — só a coluna de navegação, que tem fundo — passa a carregar o próprio raio.
 	return (
-		<Card className="relative min-h-[42rem] gap-0 py-0">
+		<Card className="relative min-h-[42rem] gap-0 overflow-visible py-0">
 			{/* A coluna do mobile precisa ser declarada tanto quanto a do desktop. Sem ela o grid cai
 			    numa trilha implícita `auto`, cujo mínimo é o min-content dos itens — e a tira de abas é
 			    uma fila de botões `shrink-0`, ou seja, 750px de min-content. A trilha inteira crescia
@@ -157,7 +163,7 @@ export default function ShopSettingsPanel({ settings }: { settings: TSettings })
 			<CardContent className="grid min-h-[42rem] grid-cols-[minmax(0,1fr)] p-0 lg:grid-cols-[13rem_minmax(0,1fr)]">
 				{/* `min-w-0` pelo mesmo motivo que o painel ao lado já traz: quem rola por conta própria
 				    não pode exigir a largura do próprio conteúdo do grid que o contém. */}
-				<nav className="min-w-0 border-b bg-muted/30 p-3 lg:border-r lg:border-b-0">
+				<nav className="min-w-0 rounded-t-2xl border-b bg-muted/30 p-3 lg:rounded-t-none lg:rounded-l-2xl lg:border-r lg:border-b-0">
 					<div className="scrollbar-thin flex gap-1 overflow-x-auto lg:flex-col">
 						{SECTIONS.map((item) => {
 							const Icon = item.icon;
@@ -194,14 +200,7 @@ export default function ShopSettingsPanel({ settings }: { settings: TSettings })
 							updateHeaderCoverFile={setHeaderCoverFile}
 						/>
 					) : null}
-					{section === "produtos" ? (
-						<ProductsSection
-							config={draft.configuracoes}
-							updateConfig={updateConfig}
-							modo={draft.modo}
-							setModo={(modo) => setDraft((prev) => ({ ...prev, modo }))}
-						/>
-					) : null}
+					{section === "produtos" ? <ProductsSection modo={draft.modo} setModo={(modo) => setDraft((prev) => ({ ...prev, modo }))} /> : null}
 				</div>
 			</CardContent>
 
@@ -683,19 +682,9 @@ function AppearanceSection({
 	);
 }
 
-function ProductsSection({
-	config,
-	updateConfig,
-	modo,
-	setModo,
-}: {
-	config: TShopSettingsConfiguration;
-	updateConfig: (config: TShopSettingsConfiguration) => void;
-	modo: "CARDAPIO" | "CATALOGO";
-	setModo: (mode: "CARDAPIO" | "CATALOGO") => void;
-}) {
+function ProductsSection({ modo, setModo }: { modo: "CARDAPIO" | "CATALOGO"; setModo: (mode: "CARDAPIO" | "CATALOGO") => void }) {
 	return (
-		<SectionIntro title="PRODUTOS" description="Escolha a apresentação da loja e quais produtos ficam disponíveis.">
+		<SectionIntro title="PRODUTOS" description="Escolha a apresentação da loja e monte a vitrine: grupos, produtos e preço na loja.">
 			<div className="grid gap-2 sm:grid-cols-2">
 				{(["CARDAPIO", "CATALOGO"] as const).map((mode) => (
 					<Button key={mode} type="button" variant={modo === mode ? "default" : "outline"} onClick={() => setModo(mode)}>
@@ -703,21 +692,12 @@ function ProductsSection({
 					</Button>
 				))}
 			</div>
-			<div className="grid gap-2">
-				{(["ATIVOS", "INCLUIR", "EXCLUIR"] as const).map((mode) => (
-					<button
-						key={mode}
-						type="button"
-						className={`rounded-xl border p-3 text-left ${config.produtos.modo === mode ? "border-primary bg-primary/5" : "border-border"}`}
-						onClick={() => updateConfig({ ...config, produtos: { ...config.produtos, modo: mode } })}
-					>
-						<p className="text-sm font-bold">
-							{mode === "ATIVOS" ? "Todos os produtos ativos" : mode === "INCLUIR" ? "Incluir selecionados" : "Excluir selecionados"}
-						</p>
-					</button>
-				))}
+
+			{/* A vitrine tem rascunho e barra de aplicar próprios: ela edita o canal de venda, não o
+			    jsonb das configurações, e misturar os dois salvamentos esconderia essa fronteira. */}
+			<div className="border-t pt-6">
+				<ShopShowcaseSection />
 			</div>
-			<p className="text-sm text-muted-foreground">A seleção individual de produtos continua disponível na página de produtos.</p>
 		</SectionIntro>
 	);
 }

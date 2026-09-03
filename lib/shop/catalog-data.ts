@@ -1,3 +1,5 @@
+import { sortGroupsByChannelOrder } from "@/lib/products/sales-channels";
+import { loadChannelState } from "@/lib/products/sales-channels-store";
 import { getShopAvailability } from "@/lib/shop/availability";
 import { getMostOrderedShopProductIds, getShopCatalogProducts, orderProductsByIds } from "@/lib/shop/catalog";
 import { normalizeShopSettingsConfiguration } from "@/lib/shop/config";
@@ -35,6 +37,9 @@ export async function getShopCatalogData(orgId: string) {
 
 	const configuracoes = normalizeShopSettingsConfiguration(settings.configuracoes);
 	const availability = getShopAvailability({ ativo: settings.ativo, configuracoes });
+	// O estado do canal é lido aqui (e não só dentro do catálogo) porque a ordem dos grupos mora
+	// nele: a mesma leitura serve para filtrar produtos e para ordenar a vitrine.
+	const channelState = await loadChannelState({ orgId, canal: "SHOP" });
 	const [cashbackProgram, catalogProducts, mostOrderedIds] = await Promise.all([
 		db.query.cashbackPrograms.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.organizacaoId, orgId), eq(fields.ativo, true)),
@@ -47,12 +52,13 @@ export async function getShopCatalogData(orgId: string) {
 				resgateLimiteValor: true,
 			},
 		}),
-		getShopCatalogProducts({ orgId, configuracoes }),
+		getShopCatalogProducts({ orgId, configuracoes, channelState }),
 		getMostOrderedShopProductIds({ orgId }),
 	]);
 
-	const groups = [...new Set(catalogProducts.map((product) => product.grupo).filter((group) => group && group.trim().length > 0))].sort((a, b) =>
-		a.localeCompare(b, "pt-BR"),
+	const groups = sortGroupsByChannelOrder(
+		[...new Set(catalogProducts.map((product) => product.grupo).filter((group) => group && group.trim().length > 0))],
+		channelState?.channel.ordemGrupos ?? [],
 	);
 
 	const featuredProducts = orderProductsByIds(catalogProducts, configuracoes.produtos.destaqueIds);

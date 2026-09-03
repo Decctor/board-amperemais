@@ -1,7 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { TAuthUserSession } from "@/lib/authentication/types";
-import { syncShopSalesChannel } from "@/lib/products/sales-channels-store";
 import { normalizeShopSettingsConfiguration } from "@/lib/shop/config";
 import { ShopModeEnum } from "@/schemas/enums";
 import { DEFAULT_SHOP_SETTINGS_CONFIGURATION, ShopSettingsConfigurationSchema } from "@/schemas/shop";
@@ -103,10 +102,10 @@ async function updateShopSettingsRoute(request: NextRequest) {
 		...input.configuracoes,
 	});
 
-	await validateShopProductIds({
-		orgId,
-		productIds: [...configuracoes.produtos.produtoIds, ...configuracoes.produtos.destaqueIds],
-	});
+	// Só os destaques são validados: `produtoIds` é resíduo legado que pode apontar para produtos
+	// já excluídos, e travar o salvamento do painel por causa dele seria bloquear a edição de
+	// horário por um campo que nada mais lê.
+	await validateShopProductIds({ orgId, productIds: configuracoes.produtos.destaqueIds });
 
 	const [settings] = await db
 		.insert(shopSettings)
@@ -128,10 +127,10 @@ async function updateShopSettingsRoute(request: NextRequest) {
 		})
 		.returning();
 
-	// Dual-write: enquanto o painel edita o bloco produtos do jsonb, o canal SHOP é mantido em
-	// sincronia — é dele que o catálogo lê. O jsonb sai numa release futura.
-	await syncShopSalesChannel({ orgId, produtos: configuracoes.produtos });
-
+	// Sem dual-write: a curadoria da loja é editada direto no canal SHOP (PUT /api/sales-channels/
+	// showcase). Sincronizar aqui a partir do jsonb apagaria as linhas do canal a cada salvamento
+	// do painel — o bloco `produtos.modo/produtoIds` é legado e só sobrevive como origem da
+	// migração feita uma única vez por `ensureSalesChannels`.
 	return NextResponse.json({
 		data: {
 			settings,

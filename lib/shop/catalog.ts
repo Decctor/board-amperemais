@@ -3,7 +3,7 @@ import { productAddOnReferences, products, saleItems, sales } from "@/services/d
 import { and, desc, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
 import { resolveAddOnReferencesRules } from "@/lib/products/add-on-rules";
 import { channelAddOnReferences } from "@/lib/products/sales-channels";
-import { channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
+import { type TChannelState, channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
 import type { TShopSettingsConfiguration } from "@/schemas/shop";
 
 export const SHOP_MOST_ORDERED_DAYS = 90;
@@ -22,9 +22,19 @@ export function variantIsAvailableForShop(variant: { rastreamentoEstoqueAtivo: b
 	return !variant.rastreamentoEstoqueAtivo || (variant.quantidade ?? 0) > 0;
 }
 
-export async function getShopCatalogProducts({ orgId, configuracoes }: { orgId: string; configuracoes: TShopSettingsConfiguration }) {
+export async function getShopCatalogProducts({
+	orgId,
+	configuracoes,
+	channelState: providedChannelState,
+}: {
+	orgId: string;
+	configuracoes: TShopSettingsConfiguration;
+	// Quem já leu o estado do canal (a página da loja precisa dele para ordenar os grupos) passa
+	// adiante em vez de pagar a mesma consulta duas vezes. Ausente = carrega aqui.
+	channelState?: TChannelState | null;
+}) {
 	const conditions = getProductEligibilityConditions(orgId);
-	const channelState = await loadChannelState({ orgId, canal: "SHOP" });
+	const channelState = providedChannelState !== undefined ? providedChannelState : await loadChannelState({ orgId, canal: "SHOP" });
 
 	if (channelState) {
 		// Fonte nova: modo do canal + linhas esparsas de disponibilidade.

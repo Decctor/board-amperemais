@@ -30,6 +30,12 @@ export const SalesChannelSchema = z.object({
 		required_error: "Exigência de adicionais obrigatórios não informada.",
 		invalid_type_error: "Tipo não válido para exigência de adicionais obrigatórios.",
 	}),
+	// Ordem dos grupos da vitrine — ver o comentário da coluna.
+	ordemGrupos: z.array(
+		z.string({
+			invalid_type_error: "Tipo não válido para grupo da vitrine.",
+		}),
+	),
 	dataInsercao: z.date({
 		required_error: "Data de inserção não informada.",
 		invalid_type_error: "Tipo não válido para data de inserção.",

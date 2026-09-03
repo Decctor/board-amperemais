@@ -26,7 +26,11 @@ export default function ProductPage({ user, userMembership, id }: ProductPagePro
 	const { data: product, queryKey, isLoading, isError, error } = useProductById({ id });
 
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey });
-	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
+	const handleOnSettled = async () => {
+		await queryClient.invalidateQueries({ queryKey });
+		// O cadastro pode ter estreado um grupo: o seletor de grupos precisa passar a oferecê-lo.
+		await queryClient.invalidateQueries({ queryKey: ["product-groups"] });
+	};
 
 	if (isLoading) return <LoadingComponent />;
 	if (isError) return <ErrorComponent msg={getErrorMessage(error)} />;

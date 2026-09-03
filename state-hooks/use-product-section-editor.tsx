@@ -35,7 +35,7 @@ type ProductSectionEditorCallbacks = {
 	onSettled?: () => void;
 };
 
-function wrapWithDirty<T extends (...args: never[]) => void>(fn: T, markDirty: () => void): T {
+export function wrapWithDirty<T extends (...args: never[]) => void>(fn: T, markDirty: () => void): T {
 	return ((...args: Parameters<T>) => {
 		markDirty();
 		fn(...args);
@@ -55,7 +55,7 @@ function hydrateAddOnsFullState(product: TGetProductsOutputById): TProductState 
  * re-hidratação roda com o valor capturado no render: sem ele, um refetch em voo apagaria as
  * edições que o usuário acabou de fazer.
  */
-function useDirtyFlag() {
+export function useDirtyFlag() {
 	const [isDirty, setIsDirty] = useState(false);
 	const isDirtyRef = useRef(false);
 

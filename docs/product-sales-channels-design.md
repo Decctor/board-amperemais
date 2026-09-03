@@ -172,13 +172,17 @@ Edição de venda existente: filtros valem para **adicionar** itens; itens já l
 - `modo: "INCLUIR"` → `catalogoModo = "SELECIONADOS"` + uma linha `disponivel=true` por `produtoId`.
 - `modo: "EXCLUIR"` → `catalogoModo = "TODOS"` + uma linha `disponivel=false` por `produtoId`.
 - **`destaqueIds` fica em `shop_settings`** (decidido): é merchandising/apresentação, não disponibilidade, e não generaliza para outros canais.
-- **IMPLEMENTADO (dual-read + dual-write)**: `getShopCatalogProducts` lê o canal SHOP quando a linha existe e cai no
-  jsonb quando não (proteção para deploy antes da migração/backfill). O PUT de `/api/shop/settings` continua gravando o
-  jsonb E sincroniza o canal (`syncShopSalesChannel` — preserva `preco_venda` das linhas ao reescrever `disponivel`).
-  O provisionamento (`ensureSalesChannels`) é shop-aware: o canal SHOP nasce traduzindo o modo do jsonb, nunca com
-  default cego. Backfill + verificação: `npm run backfill:shop-sales-channels` (compara o catálogo resolvido pelas duas
-  fontes por org e falha se divergirem). Passo restante: remover o bloco `modo/produtoIds` do schema Zod da loja e o
-  caminho legado do catálogo, numa release seguinte, com o painel passando a editar o canal diretamente.
+- **IMPLEMENTADO (dual-read; dual-write APOSENTADO)**: `getShopCatalogProducts` lê o canal SHOP quando a linha existe e
+  cai no jsonb quando não (proteção para organizações ainda não materializadas). O PUT de `/api/shop/settings` **não**
+  sincroniza mais o canal: a vitrine do painel edita o canal diretamente (`PUT /api/sales-channels/showcase`), e um sync
+  a cada save apagaria essa curadoria. `syncShopSalesChannel` sobrevive apenas como tradução única, chamada por
+  `ensureSalesChannels` ao materializar o canal de uma organização antiga — o provisionamento continua shop-aware, nunca
+  com default cego. O bloco `modo/produtoIds` do jsonb virou legado tolerado (ninguém escreve, só essa migração lê);
+  `destaqueIds` continua ativo. Backfill/verificação `npm run backfill:shop-sales-channels` compara jsonb × canal e, por
+  isso, só faz sentido em organizações que ainda não usaram a vitrine — as duas fontes divergem por desenho agora.
+- **Ordem dos grupos**: `sales_channels.ordem_grupos` (text[]) guarda os nomes de `products.grupo` na ordem em que a
+  vitrine os exibe. `getShopCatalogData` ordena com `sortGroupsByChannelOrder`; grupos fora da lista vão depois, em
+  ordem alfabética, e entradas órfãs (grupo renomeado) são podadas na leitura.
 
 ---
 
