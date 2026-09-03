@@ -10,7 +10,12 @@ type SectionWrapperProps = PropsWithChildren<{
 
 export function SectionWrapper({ children, title, icon, actions, wrapperClassName }: SectionWrapperProps) {
 	return (
-		<div className={cn("bg-card border-border flex w-full min-h-0 flex-col gap-6 rounded-xl border px-3 py-4 shadow-xs", wrapperClassName)}>
+		// Sem `min-h-0` na raiz: dentro de um pai flex de altura fixa, `min-h-0` deixa a seção
+		// encolher abaixo do próprio conteúdo — e o conteúdo vaza para fora da borda em vez de
+		// esticar o cartão. Encolher assim é comportamento de painel com rolagem interna, que se
+		// pede via `wrapperClassName="min-h-0"`, não o padrão. O `min-h-0` da div interna abaixo é
+		// outro: aquele é o que habilita a rolagem interna quando a altura vem de fora.
+		<div className={cn("bg-card border-border flex w-full flex-col gap-6 rounded-xl border px-3 py-4 shadow-xs", wrapperClassName)}>
 			<div className="flex items-center justify-between min-h-8">
 				<div className="flex items-center gap-1">
 					{icon}

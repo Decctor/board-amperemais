@@ -1344,6 +1344,25 @@ export async function createReturnFiscalDocument({
   });
 }
 
+/**
+ * Nome do arquivo servido ao usuario. A chave de acesso e o nome canonico de um documento fiscal
+ * no Brasil — e o que os sistemas de contabilidade esperam receber. Sem chave (nota ainda nao
+ * autorizada), cai para tipo/serie/numero e, em ultimo caso, para o id.
+ */
+function buildFiscalAssetFileName(
+  document: { id: string; tipo: string; serie: string | null; numero: string | null; chaveAcesso: string | null },
+  asset: TFiscalAssetType,
+) {
+  const identifier =
+    document.chaveAcesso ??
+    [document.tipo, document.serie, document.numero].filter(Boolean).join("-") ??
+    document.id;
+  // Content-Disposition nao aceita qualquer byte no filename; a chave e so digito, mas o fallback
+  // passa por campos livres.
+  const safeIdentifier = identifier.replace(/[^A-Za-z0-9._-]/g, "-") || document.id;
+  return `${safeIdentifier}.${asset}`;
+}
+
 type GetFiscalDocumentAssetParams = {
   documentId: string;
   organizationId: string;
@@ -1358,12 +1377,15 @@ export async function getFiscalDocumentAsset({
   if (!document)
     throw new createHttpError.NotFound("Documento fiscal nao encontrado.");
 
+  const fileName = buildFiscalAssetFileName(document, asset);
+
   const path =
     asset === "xml" ? document.xmlStoragePath : document.pdfStoragePath;
   if (path) {
     return {
       buffer: await downloadStoredFiscalAsset(path),
       contentType: getFiscalAssetContentType(asset),
+      fileName,
     };
   }
 
@@ -1395,6 +1417,7 @@ export async function getFiscalDocumentAsset({
   return {
     buffer,
     contentType: getFiscalAssetContentType(asset),
+    fileName,
   };
 }
 

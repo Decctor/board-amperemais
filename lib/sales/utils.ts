@@ -73,7 +73,12 @@ const FISCAL_STATUS_PRIORITY: TSaleFiscalDerivedStatusEnum[] = [
 	"INUTILIZADO",
 ];
 
-function mapInternalFiscalStatus(statusInterno: string | null): TSaleFiscalDerivedStatusEnum | null {
+/**
+ * Traduz o status de ciclo de vida de UM documento (`fiscal_outbound_documents.status_interno`)
+ * para o status derivado da venda. Exportado para que a apresentacao de um documento isolado use
+ * exatamente a mesma tabela que `computeSaleFiscalStatus` — os dois nunca podem discordar.
+ */
+export function mapInternalFiscalStatus(statusInterno: string | null): TSaleFiscalDerivedStatusEnum | null {
 	switch (statusInterno) {
 		case "AUTORIZADO":
 			return "AUTORIZADO";
@@ -243,6 +248,68 @@ export function classifySalePaymentTransactions(transactions: SalePaymentTransac
 			totalEfetivadas: efetivadas.length,
 		},
 	};
+}
+
+export type TSalePaymentGroup = {
+	id: string;
+	metodo: TPaymentMethodEnum;
+	/** Soma das parcelas do grupo. */
+	valor: number;
+	/** 1 para pagamento a vista; N para uma compra parcelada. */
+	parcelasTotal: number;
+	parcelasRecebidas: number;
+	valorRecebido: number;
+	/** Vencimento da parcela em aberto mais proxima. Null quando tudo ja foi recebido. */
+	proximoVencimento: Date | null;
+	/** Data da ultima parcela efetivada. Null quando nada foi recebido. */
+	ultimoRecebimento: Date | null;
+	cancelado: boolean;
+	emAtraso: boolean;
+};
+
+/**
+ * Colapsa as parcelas de um mesmo pagamento numa linha so. Uma venda em 12x tem 12 linhas em
+ * `financial_transactions`; a leitura util e "Crédito 12x · 2 de 12 recebidas", nao doze linhas.
+ *
+ * Agrupa por `grupoParcelasId` quando ele existe e por `id` quando nao — `resolveInstallmentGroupId`
+ * devolve null para pagamento a vista, que assim vira um grupo de uma parcela so.
+ */
+export function groupSalePaymentsByMethod(payments: ClassifiedPayment[], now = new Date()): TSalePaymentGroup[] {
+	const groups = new Map<string, ClassifiedPayment[]>();
+	for (const payment of payments) {
+		const key = payment.grupoParcelasId ?? payment.id;
+		const existing = groups.get(key);
+		if (existing) existing.push(payment);
+		else groups.set(key, [payment]);
+	}
+
+	return [...groups.entries()].map(([id, parcelas]) => {
+		const efetivadas = parcelas.filter((parcela) => toDateOrNull(parcela.dataEfetivacao) != null);
+		const vencimentosEmAberto = parcelas
+			.filter((parcela) => toDateOrNull(parcela.dataEfetivacao) == null)
+			.map((parcela) => toDateOrNull(parcela.dataPrevisao))
+			.filter((data): data is Date => data != null)
+			.sort((a, b) => a.getTime() - b.getTime());
+		const recebimentos = efetivadas
+			.map((parcela) => toDateOrNull(parcela.dataEfetivacao))
+			.filter((data): data is Date => data != null)
+			.sort((a, b) => b.getTime() - a.getTime());
+
+		return {
+			id,
+			metodo: parcelas[0].metodo,
+			valor: parcelas.reduce((acc, parcela) => acc + parcela.valor, 0),
+			// `totalParcelas` e a fonte de verdade: uma venda em 6x cujas parcelas futuras ainda nao
+			// foram lancadas deve continuar lendo "6x", e nao o numero de linhas ja existentes.
+			parcelasTotal: parcelas[0].totalParcelas ?? parcelas.length,
+			parcelasRecebidas: efetivadas.length,
+			valorRecebido: efetivadas.reduce((acc, parcela) => acc + parcela.valor, 0),
+			proximoVencimento: vencimentosEmAberto[0] ?? null,
+			ultimoRecebimento: recebimentos[0] ?? null,
+			cancelado: parcelas.every((parcela) => NON_EDITABLE_PAYMENT_STATUSES.has(parcela.provedorStatus ?? "")),
+			emAtraso: parcelas.some((parcela) => isPaymentOverdue(parcela, now)),
+		};
+	});
 }
 
 export function buildPaymentTransactionTitle(method: TPaymentMethodEnum, observacoes?: string | null) {

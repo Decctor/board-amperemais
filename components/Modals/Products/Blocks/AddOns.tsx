@@ -661,16 +661,12 @@ function createEmptyAddOnOption(): TProductAddOnOptionState {
 }
 
 function isDraftAddOnOptionReady(option: TProductAddOnOptionState) {
-	return Boolean(option.nome.trim() && option.codigo?.trim());
+	return Boolean(option.nome.trim());
 }
 
 function validateDraftAddOnOption(option: TProductAddOnOptionState) {
 	if (!option.nome.trim()) {
 		toast.error("Nome da opção não informado.");
-		return false;
-	}
-	if (!option.codigo?.trim()) {
-		toast.error("Código da opção não informado.");
 		return false;
 	}
 	return true;

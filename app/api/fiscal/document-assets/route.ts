@@ -32,9 +32,19 @@ async function getFiscalDocumentAssetRoute(request: NextRequest) {
 	});
 
 	const asset = await getFiscalDocumentAsset({ organizationId: sessionMembership.organizacao.id, documentId: input.documentId, asset: input.asset });
+
+	// Os dois arquivos têm destinos opostos. O XML existe para ser entregue ao contador ou
+	// importado em outro sistema: o destino dele é o disco, e o navegador renderizando árvore XML
+	// só atrapalha. A DANFE existe para ser olhada — o visualizador do navegador já traz download e
+	// impressão, então `inline` é um superconjunto de `attachment` do ponto de vista do usuário.
+	// O `filename` vale nos dois casos: em `inline` é o nome que o visualizador sugere ao baixar.
+	const disposition = input.asset === "xml" ? "attachment" : "inline";
 	return new NextResponse(asset.buffer, {
 		headers: {
 			"Content-Type": asset.contentType,
+			"Content-Disposition": `${disposition}; filename="${asset.fileName}"`,
+			// Documento fiscal de tenant não deve repousar em cache de navegador ou intermediário.
+			"Cache-Control": "private, no-store",
 		},
 	});
 }

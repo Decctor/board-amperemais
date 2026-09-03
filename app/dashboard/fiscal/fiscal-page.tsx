@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -68,6 +69,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
+import { appRoutes } from "@/lib/navigation/routes";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import { Button } from "@/components/ui/button";
@@ -690,6 +692,14 @@ function FiscalDocumentQuickActions({
             <FileText className="h-4 w-4" />
             Ver detalhes
           </DropdownMenuItem>
+          {document.vendaId ? (
+            <DropdownMenuItem asChild>
+              <Link href={appRoutes.sales.details(document.vendaId)}>
+                <Receipt className="h-4 w-4" />
+                Acessar venda
+              </Link>
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             disabled={!canSync || actionIsPending}
