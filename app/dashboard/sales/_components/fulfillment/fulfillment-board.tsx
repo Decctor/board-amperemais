@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/lib/errors";
 import { patchSalesFulfillment, updateSaleAttendanceStatus } from "@/lib/mutations/sales";
 import { SALES_FULFILLMENT_QUERY_KEY, useSalesFulfillment } from "@/lib/queries/sales-fulfillment";
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { isValidAttendanceTransition } from "@/lib/sales/sale-processing/attendance";
 import { cn } from "@/lib/utils";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
@@ -27,12 +28,21 @@ import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ATTENDANCE_COLUMN_META, ATTENDANCE_STATUS_LABEL, BOARD_STATUSES, type TBoardStatus, transitionNeedsConfirmation } from "./config";
+import {
+	ATTENDANCE_COLUMN_META,
+	ATTENDANCE_STATUS_LABEL,
+	BOARD_COLUMN_WIDTH_PX,
+	BOARD_RAIL_WIDTH_PX,
+	BOARD_STATUSES,
+	type TBoardStatus,
+	transitionNeedsConfirmation,
+} from "./config";
 import { FulfillmentCard } from "./fulfillment-card";
 import { FulfillmentColumn } from "./fulfillment-column";
 import { PendingConfirmationPill } from "./pending-confirmation";
 import { PendingDisputesPill } from "./pending-disputes";
 import { StageTransitionConfirmationMenu } from "./stage-transition-confirmation-menu";
+import { useFulfillmentBoardCompaction } from "./use-fulfillment-board-compaction";
 
 const KANBAN_SCROLL_CLASS = "scrollbar-subtle";
 const BOARD_DESKTOP_MAX_HEIGHT = "md:max-h-[calc(100dvh-10.5rem)] md:overflow-hidden";
@@ -46,6 +56,7 @@ type PendingStageTransition = {
 };
 
 type FulfillmentBoardProps = {
+	organizationId: string;
 	organizationConfig: TOrganizationConfiguration;
 	canEditSales?: boolean;
 	onViewDetails: (saleId: string) => void;
@@ -55,7 +66,7 @@ const screenReaderInstructions: ScreenReaderInstructions = {
 	draggable: "Para mover um pedido pelo teclado, use o botão 'Mover pedido' em cada card e escolha a etapa de destino.",
 };
 
-export default function FulfillmentBoard({ organizationConfig, canEditSales, onViewDetails }: FulfillmentBoardProps) {
+export default function FulfillmentBoard({ organizationId, organizationConfig, canEditSales, onViewDetails }: FulfillmentBoardProps) {
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const [pendingCardIds, setPendingCardIds] = useState<Set<string>>(new Set());
 	const [pendingTransition, setPendingTransition] = useState<PendingStageTransition | null>(null);
@@ -79,6 +90,32 @@ export default function FulfillmentBoard({ organizationConfig, canEditSales, onV
 		}
 		return map;
 	}, [cards]);
+
+	const stageCounts = useMemo(
+		() => Object.fromEntries(BOARD_STATUSES.map((status) => [status, grouped[status].length])) as Record<TBoardStatus, number>,
+		[grouped],
+	);
+
+	// Unico sinal que sobrevive ao recolhimento. E ele que decide se da para confiar numa trilha
+	// fechada: sem isso, recolher uma etapa seria uma forma silenciosa de perder um pedido em atraso.
+	const stagesWithOverduePayment = useMemo(() => {
+		const stages = new Set<TBoardStatus>();
+		for (const status of BOARD_STATUSES) {
+			if (grouped[status].some((card) => card.financeiro === "EM_ATRASO")) stages.add(status);
+		}
+		return stages;
+	}, [grouped]);
+
+	// No mobile o quadro ja mostra uma etapa por vez via snap-scroll, entao recolher nao libera
+	// espaco nenhum e as trilhas so atrapalhariam os alvos de swipe entre os pontos de encaixe.
+	const canCompact = useMediaQuery("(min-width: 768px)");
+
+	const { collapsedByStage, setStageCollapsed, focusStage, allCollapsed } = useFulfillmentBoardCompaction({
+		organizationId,
+		stageCounts,
+		seedReady: !isLoading && data != null,
+		enabled: canCompact,
+	});
 
 	const activeCard = activeId ? (cards.find((card) => card.id === activeId) ?? null) : null;
 	const pendingTransitionCard = pendingTransition ? (cards.find((card) => card.id === pendingTransition.cardId) ?? null) : null;
@@ -261,8 +298,12 @@ export default function FulfillmentBoard({ organizationConfig, canEditSales, onV
 				<Skeleton className="h-9 w-full max-w-md shrink-0" />
 				<div className={cn(KANBAN_SCROLL_CLASS, "flex min-h-[50vh] flex-1 gap-3 overflow-x-auto pb-2 md:min-h-0 md:overflow-y-hidden")}>
 					{BOARD_STATUSES.map((status) => (
-						<div key={status} className="flex h-full w-[280px] min-w-[280px] flex-col gap-2">
-							<Skeleton className="h-5 w-32 shrink-0" />
+						<div
+							key={status}
+							style={{ width: collapsedByStage[status] ? BOARD_RAIL_WIDTH_PX : BOARD_COLUMN_WIDTH_PX }}
+							className="flex h-full shrink-0 flex-col gap-2"
+						>
+							<Skeleton className="h-5 w-full max-w-32 shrink-0" />
 							<Skeleton className="h-full min-h-24 w-full rounded-xl" />
 						</div>
 					))}
@@ -313,7 +354,7 @@ export default function FulfillmentBoard({ organizationConfig, canEditSales, onV
 					onDragCancel={() => setActiveId(null)}
 				>
 					<div className={cn(KANBAN_SCROLL_CLASS, "flex min-h-[50vh] flex-1 snap-x gap-3 overflow-x-auto pb-2 md:min-h-0 md:overflow-y-hidden")}>
-						{BOARD_STATUSES.map((status) => (
+						{BOARD_STATUSES.map((status, index) => (
 							<FulfillmentColumn
 								key={status}
 								status={status}
@@ -321,12 +362,23 @@ export default function FulfillmentBoard({ organizationConfig, canEditSales, onV
 								organizationConfig={organizationConfig}
 								pendingCardIds={pendingCardIds}
 								pendingTransitionCardId={pendingTransition?.cardId ?? null}
+								isCollapsed={collapsedByStage[status]}
+								hasOverduePayment={stagesWithOverduePayment.has(status)}
+								isLastColumn={index === BOARD_STATUSES.length - 1}
+								canCompact={canCompact}
+								onSetCollapsed={setStageCollapsed}
+								onFocus={focusStage}
 								onMove={initiateMove}
 								onPatch={handlePatchCard}
 								onViewDetails={onViewDetails}
 								canEditSales={canEditSales}
 							/>
 						))}
+						{allCollapsed ? (
+							<div className="flex min-w-[220px] flex-1 items-center justify-center rounded-xl border border-dashed border-border/60 px-4 text-center text-[11px] text-muted-foreground">
+								Todas as etapas recolhidas. Clique em uma etapa para abrir.
+							</div>
+						) : null}
 					</div>
 
 					<DragOverlay dropAnimation={null}>

@@ -161,6 +161,7 @@ export default function SalesPage({
 				</TabsContent>
 				<TabsContent value="atendimento" className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden">
 					<FulfillmentBoard
+						organizationId={organization.id}
 						organizationConfig={organization.configuracao}
 						canEditSales={canEditSales}
 						onViewDetails={(saleId) => void setSelectedSaleId(saleId, { history: "push" })}
