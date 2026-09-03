@@ -59,6 +59,7 @@ type FiscalDocumentDetailsContentProps = {
 const FISCAL_EVENT_TYPE_LABELS: Record<TFiscalDocumentEventTypeEnum, string> = {
   CRIADO: "Documento criado",
   ENVIO_SOLICITADO: "Envio solicitado",
+  PROCESSAMENTO_INICIADO: "Processamento iniciado",
   AUTORIZADO: "Autorizado",
   REJEITADO: "Rejeitado",
   SINCRONIZADO: "Sincronizado",

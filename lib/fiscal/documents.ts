@@ -12,6 +12,7 @@ import {
 import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { getErrorMessage } from "../errors";
+import { classifyFiscalDocumentEvent, describeFiscalEmissionResult } from "./document-event-classification";
 import { buildFiscalReference } from "./constants";
 import {
   EXCEPTIONAL_PRESENCE_JUSTIFICATION_MAX_LENGTH,
@@ -993,23 +994,13 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
     const providerMessages = (providerDetails.mensagens ?? []).map((message) =>
       typeof message === "string" ? message : JSON.stringify(message),
     );
-    const rejectionDetail =
-      providerDetails.statusInterno === "REJEITADO" ||
-      providerDetails.statusInterno === "ERRO"
-        ? providerMessages.join("; ") || "sem motivo informado pelo provedor"
-        : null;
-
     await addFiscalDocumentEvent({
       documentoFiscalId: documento.id,
-      tipo:
-        providerDetails.statusInterno === "AUTORIZADO"
-          ? "AUTORIZADO"
-          : providerDetails.statusInterno === "REJEITADO"
-            ? "REJEITADO"
-            : "ERRO",
-      descricao: rejectionDetail
-        ? `Documento ${providerDetails.statusInterno.toLowerCase()}: ${rejectionDetail}`
-        : `Documento retornou do provedor com status ${providerDetails.statusInterno}.`,
+      tipo: classifyFiscalDocumentEvent(providerDetails.statusInterno),
+      descricao: describeFiscalEmissionResult({
+        status: providerDetails.statusInterno,
+        messages: providerMessages,
+      }),
       payload: providerDetails.provedorRetorno,
       autorId: input.autorId ?? null,
     });

@@ -30,7 +30,7 @@ async function syncFiscalDocumentRoute(request: NextRequest) {
 	});
 	return NextResponse.json({
 		data: result,
-		message: "Documento fiscal sincronizado com sucesso.",
+		message: "Status do documento fiscal atualizado com sucesso.",
 	});
 }
 export type TSyncFiscalDocumentOutput = {

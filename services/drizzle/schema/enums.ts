@@ -446,6 +446,7 @@ export const fiscalDocumentEventTypeEnum = pgEnum(
   [
     "CRIADO",
     "ENVIO_SOLICITADO",
+    "PROCESSAMENTO_INICIADO",
     "AUTORIZADO",
     "REJEITADO",
     "SINCRONIZADO",

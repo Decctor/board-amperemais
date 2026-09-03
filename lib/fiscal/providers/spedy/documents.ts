@@ -10,7 +10,7 @@ import type {
 	TFiscalSaleContext,
 } from "@/lib/fiscal/types";
 import type { TFiscalDocument } from "@/services/drizzle/schema";
-import axios from "axios";
+import axios, { type AxiosInstance } from "axios";
 import createHttpError from "http-errors";
 import { getSpedyCompanyClient } from "./client";
 import { mapSaleContextToSpedyInvoicePayload } from "./mappers/invoice";
@@ -21,14 +21,19 @@ function getInvoiceBasePath(documento: Pick<TFiscalDocument, "tipo">) {
 	return documento.tipo === "NFCE" ? "/v1/consumer-invoices" : "/v1/product-invoices";
 }
 
-async function getSpedyInvoice(documento: TFiscalDocument, organizacao: TFiscalOrganization, action: "consultar" | "sincronizar" = "consultar") {
+export async function fetchSpedyInvoice(
+	client: Pick<AxiosInstance, "get">,
+	documento: Pick<TFiscalDocument, "tipo" | "provedorDocumentoId">,
+): Promise<TSpedyInvoiceResponse> {
 	if (!documento.provedorDocumentoId) throw new createHttpError.BadRequest("Documento fiscal sem ID na Spedy.");
-	const client = getSpedyCompanyClient(organizacao);
 	const basePath = getInvoiceBasePath(documento);
-	const { data } =
-		action === "sincronizar"
-			? await client.post<TSpedyInvoiceResponse>(`${basePath}/${documento.provedorDocumentoId}/check-status`)
-			: await client.get<TSpedyInvoiceResponse>(`${basePath}/${documento.provedorDocumentoId}`);
+	const { data } = await client.get<TSpedyInvoiceResponse>(`${basePath}/${documento.provedorDocumentoId}`);
+	return data;
+}
+
+async function getSpedyInvoice(documento: TFiscalDocument, organizacao: TFiscalOrganization) {
+	const client = getSpedyCompanyClient(organizacao);
+	const data = await fetchSpedyInvoice(client, documento);
 	return mapSpedyInvoiceResponse(data);
 }
 
@@ -42,8 +47,7 @@ export async function emitSpedyDocument(context: TFiscalSaleContext, documento: 
 		let response = data;
 		if (data.status === "created") {
 			await client.post(`${basePath}/${data.id}/issue`, { effectiveDate: new Date().toISOString() });
-			const checked = await client.post<TSpedyInvoiceResponse>(`${basePath}/${data.id}/check-status`);
-			response = checked.data;
+			response = await fetchSpedyInvoice(client, { tipo: documento.tipo, provedorDocumentoId: data.id });
 		}
 		return {
 			...mapSpedyInvoiceResponse(response),
@@ -60,11 +64,11 @@ export async function emitSpedyDocument(context: TFiscalSaleContext, documento: 
 }
 
 export async function consultSpedyDocument(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails> {
-	return getSpedyInvoice(documento, organizacao, "consultar");
+	return getSpedyInvoice(documento, organizacao);
 }
 
 export async function syncSpedyDocument(documento: TFiscalDocument, organizacao: TFiscalOrganization): Promise<TProviderDocumentDetails> {
-	return getSpedyInvoice(documento, organizacao, "sincronizar");
+	return getSpedyInvoice(documento, organizacao);
 }
 
 export async function cancelSpedyDocument(

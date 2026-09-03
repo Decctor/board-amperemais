@@ -706,7 +706,7 @@ function FiscalDocumentQuickActions({
             onClick={() => syncDocument({ documentId: document.id })}
           >
             <RefreshCcw className="h-4 w-4" />
-            Sincronizar
+            Atualizar status
           </DropdownMenuItem>
           <DropdownMenuItem
             disabled={!canEmitAgain || actionIsPending}
