@@ -8,6 +8,7 @@ import { useSalesResults } from "@/lib/queries/sales-results";
 import dayjs from "dayjs";
 import { ChartNoAxesColumnIncreasing } from "lucide-react";
 import { parseAsArrayOf, parseAsIsoDateTime, parseAsString, useQueryStates } from "nuqs";
+import { DeliveryModesBlock } from "./_components/delivery-modes-block";
 import { FiscalHealthBlock } from "./_components/fiscal-health-block";
 import { PaymentMethodsBlock } from "./_components/payment-methods-block";
 import { ResultsFilters } from "./_components/results-filters";
@@ -44,7 +45,7 @@ export default function SalesResultsPage({ hasResultsScope, canViewSensitive }: 
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div className="flex flex-col">
 					<h1 className="font-black text-2xl tracking-tight">Resultados</h1>
-					<p className="text-sm text-muted-foreground">Vendas, recebimentos por método, resultado por vendedor e emissão fiscal do período.</p>
+					<p className="text-sm text-muted-foreground">Vendas, recebimentos por método, resultado por modalidade e por vendedor e emissão fiscal do período.</p>
 				</div>
 			</div>
 
@@ -68,6 +69,7 @@ export default function SalesResultsPage({ hasResultsScope, canViewSensitive }: 
 						<PaymentMethodsBlock porMetodo={data.porMetodo} faturamento={data.resumo.faturamento.atual ?? 0} />
 						<FiscalHealthBlock fiscal={data.fiscal} qtdeVendas={data.resumo.qtdeVendas.atual ?? 0} />
 					</div>
+					<DeliveryModesBlock porModalidade={data.porModalidade} canViewSensitive={canViewSensitive} />
 					<SellersBlock porVendedor={data.porVendedor} canViewSensitive={canViewSensitive} />
 				</>
 			)}
