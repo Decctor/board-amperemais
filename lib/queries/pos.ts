@@ -5,6 +5,7 @@ import type { TGetPOSProductsInput, TGetPOSProductsOutput } from "@/app/api/pos/
 import type { TGetPOSTopProductsOutput } from "@/app/api/pos/top-products/route";
 import type { TGetCrossSellOutput } from "@/app/api/pos/cross-sell/route";
 import type { TGetPOSFinancialAccountsOutput } from "@/app/api/pos/financial-accounts/route";
+import { POS_PRODUCT_ORDERING_DEFAULT } from "@/schemas/enums";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import axios from "axios";
@@ -19,6 +20,7 @@ async function fetchPOSProducts(input: TGetPOSProductsInput) {
 		if (input.search) searchParams.set("search", input.search);
 		if (input.group) searchParams.set("group", input.group);
 		if (input.channel) searchParams.set("channel", input.channel);
+		if (input.ordering) searchParams.set("ordering", input.ordering);
 
 		const { data } = await axios.get<TGetPOSProductsOutput>(`/api/pos/products?${searchParams.toString()}`);
 		return data.data;
@@ -38,6 +40,8 @@ export function usePOSProducts({ initialFilters }: UsePOSProductsParams = {}) {
 		search: initialFilters?.search || "",
 		group: initialFilters?.group || null,
 		channel: initialFilters?.channel || "POS",
+		// Padrão do PDV: o que mais fatura na frente, para o operador achar o corriqueiro sem buscar.
+		ordering: initialFilters?.ordering || POS_PRODUCT_ORDERING_DEFAULT,
 	});
 
 	const updateFilters = useCallback((newParams: Partial<TGetPOSProductsInput>) => {

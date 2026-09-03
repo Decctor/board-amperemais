@@ -5,12 +5,19 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { resolveAddOnReferencesRules } from "@/lib/products/add-on-rules";
 import { channelAddOnReferences } from "@/lib/products/sales-channels";
 import { channelNodePrice, channelProductFilter, loadChannelState } from "@/lib/products/sales-channels-store";
+import { getValidSaleConditions } from "@/lib/sales/valid-sale";
+import { POS_PRODUCT_ORDERING_DEFAULT, POSProductOrderingEnum, type TPOSProductOrderingEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
-import { productAddOnOptions, productAddOnReferences, productAddOns, productVariants, products } from "@/services/drizzle/schema";
-import { and, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
+import { productAddOnOptions, productAddOnReferences, productAddOns, productVariants, products, saleItems, sales } from "@/services/drizzle/schema";
+import dayjs from "dayjs";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, notInArray, sql, sum, type SQL } from "drizzle-orm";
 import { count } from "drizzle-orm";
 import createHttpError from "http-errors";
 import z from "zod";
+
+// Janela das ordenações por desempenho: fiel ao hábito recente da loja sem carregar sazonalidade
+// antiga (ex.: Panetone puxando a primeira página em julho).
+const POS_ORDERING_WINDOW_DAYS = 90;
 
 const GetPOSProductsInputSchema = z.object({
 	search: z
@@ -41,8 +48,82 @@ const GetPOSProductsInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((value) => (value === "COMANDA" ? ("COMANDA" as const) : ("POS" as const))),
+	// Ordenação da grade. Valor inválido cai no padrão em vez de derrubar a tela de venda.
+	ordering: z
+		.string({
+			invalid_type_error: "Tipo inválido para ordenação.",
+		})
+		.optional()
+		.nullable()
+		.transform((value) => {
+			const parsed = POSProductOrderingEnum.safeParse(value);
+			return parsed.success ? parsed.data : POS_PRODUCT_ORDERING_DEFAULT;
+		}),
 });
 export type TGetPOSProductsInput = z.infer<typeof GetPOSProductsInputSchema>;
+
+/**
+ * Vendido por produto na janela recente (vendas confirmadas), base das ordenações por desempenho.
+ * Fica como subquery para o ranking ser resolvido no mesmo SELECT que pagina a grade — ordenar em
+ * memória só ordenaria a página, não o catálogo.
+ */
+function buildSalesMetricsSubquery({ orgId }: { orgId: string }) {
+	const windowStart = dayjs().subtract(POS_ORDERING_WINDOW_DAYS, "days").toDate();
+
+	return db
+		.select({
+			produtoId: saleItems.produtoId,
+			quantidadeVendida: sum(saleItems.quantidade).mapWith(Number).as("quantidade_vendida"),
+			valorVendido: sum(saleItems.valorVendaTotalLiquido).mapWith(Number).as("valor_vendido"),
+		})
+		.from(saleItems)
+		.innerJoin(sales, eq(saleItems.vendaId, sales.id))
+		.where(and(eq(saleItems.organizacaoId, orgId), ...getValidSaleConditions({ orgId }), isNotNull(sales.dataVenda), gte(sales.dataVenda, windowStart)))
+		.groupBy(saleItems.produtoId)
+		.as("pos_sales_metrics");
+}
+
+/**
+ * IDs da página já na ordem pedida. Produto sem venda na janela entra com zero (LEFT JOIN +
+ * coalesce) e cai para o fim; o nome desempata para a paginação não embaralhar entre páginas.
+ */
+async function selectPOSProductPageIds({
+	orgId,
+	conditions,
+	ordering,
+	skip,
+	limit,
+}: {
+	orgId: string;
+	conditions: SQL[];
+	ordering: TPOSProductOrderingEnum;
+	skip: number;
+	limit: number;
+}) {
+	if (ordering === "NOME") {
+		const rows = await db
+			.select({ id: products.id })
+			.from(products)
+			.where(and(...conditions))
+			.orderBy(asc(products.nome))
+			.offset(skip)
+			.limit(limit);
+		return rows.map((row) => row.id);
+	}
+
+	const salesMetrics = buildSalesMetricsSubquery({ orgId });
+	const metricColumn = ordering === "QUANTIDADE_VENDIDA" ? salesMetrics.quantidadeVendida : salesMetrics.valorVendido;
+
+	const rows = await db
+		.select({ id: products.id })
+		.from(products)
+		.leftJoin(salesMetrics, eq(salesMetrics.produtoId, products.id))
+		.where(and(...conditions))
+		.orderBy(desc(sql`coalesce(${metricColumn}, 0)`), asc(products.nome))
+		.offset(skip)
+		.limit(limit);
+	return rows.map((row) => row.id);
+}
 
 async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput; session: TAuthUserSession }) {
 	const userOrgId = session.membership?.organizacao.id;
@@ -53,7 +134,7 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 	const skip = PAGE_SIZE * (input.page - 1);
 	const limit = PAGE_SIZE;
 
-	const conditions = [eq(products.organizacaoId, userOrgId), eq(products.ativo, true), eq(products.vendavel, true)];
+	const conditions: SQL[] = [eq(products.organizacaoId, userOrgId), eq(products.ativo, true), eq(products.vendavel, true)];
 
 	// Disponibilidade e preço no canal pedido (linhas esparsas da matriz de canais). Canal
 	// ausente = org não materializada ainda — comporta-se como TODOS sem overrides.
@@ -91,9 +172,15 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 	const productsMatchedCount = productsMatched[0]?.count || 0;
 	const totalPages = Math.ceil(productsMatchedCount / PAGE_SIZE);
 
+	// A ordenação decide a página; a hidratação só carrega os produtos dela.
+	const pageProductIds = await selectPOSProductPageIds({ orgId: userOrgId, conditions, ordering: input.ordering, skip, limit });
+	if (pageProductIds.length === 0) {
+		return { data: { products: [], productsMatched: productsMatchedCount, totalPages, currentPage: input.page } };
+	}
+
 	// Fetch products with their variants and add-ons
 	const productsResult = await db.query.products.findMany({
-		where: and(...conditions),
+		where: and(...conditions, inArray(products.id, pageProductIds)),
 		with: {
 			variantes: {
 				where: (fields, { eq }) => eq(fields.ativo, true),
@@ -129,12 +216,13 @@ async function getPOSProducts({ input, session }: { input: TGetPOSProductsInput;
 				orderBy: (fields, { asc }) => asc(fields.ordem),
 			},
 		},
-		offset: skip,
-		limit: limit,
-		orderBy: (fields, { asc }) => asc(fields.nome),
 	});
 
-	const normalizedProducts = productsResult.map((product) => ({
+	// findMany não preserva a ordem do inArray — reordena pelos IDs já ranqueados.
+	const pageRankIndex = new Map(pageProductIds.map((id, index) => [id, index]));
+	const orderedProducts = productsResult.sort((a, b) => (pageRankIndex.get(a.id) ?? 0) - (pageRankIndex.get(b.id) ?? 0));
+
+	const normalizedProducts = orderedProducts.map((product) => ({
 		...product,
 		// Preço resolvido do canal — a grade exibe e o carrinho envia o mesmo valor que a
 		// validação (validateSaleItemsPricing com canal) vai recalcular.
