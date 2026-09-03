@@ -6,7 +6,7 @@ import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
-import { ATTENDANCE_COLUMN_META, BOARD_COLUMN_WIDTH_PX, BOARD_RAIL_WIDTH_PX, type TBoardStatus } from "./config";
+import { ATTENDANCE_COLUMN_META, BOARD_COLUMN_WIDTH_PX, BOARD_RAIL_ACTIVE_WIDTH_PX, BOARD_RAIL_WIDTH_PX, type TBoardStatus } from "./config";
 import { FulfillmentCard } from "./fulfillment-card";
 
 // Curva ease-out-quart: sai rapido e assenta devagar, sem overshoot.
@@ -72,12 +72,14 @@ function CollapsedStageRail({
 	status,
 	count,
 	hasOverduePayment,
+	isDropTarget,
 	onExpand,
 	controlsId,
 }: {
 	status: TBoardStatus;
 	count: number;
 	hasOverduePayment: boolean;
+	isDropTarget: boolean;
 	onExpand: () => void;
 	controlsId: string;
 }) {
@@ -92,14 +94,16 @@ function CollapsedStageRail({
 			aria-controls={controlsId}
 			aria-label={`Expandir etapa ${meta.label}, ${count} pedido(s)`}
 			className={cn(
-				"group/rail absolute inset-0 z-10 flex flex-col items-center gap-2 rounded-xl border border-dashed border-border/60 bg-secondary/50 py-2",
-				"transition-colors hover:border-border hover:bg-accent",
-				"focus-visible:border-primary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15",
+				"group/rail absolute inset-0 z-10 flex flex-col items-center gap-2 overflow-hidden rounded-xl border py-2",
+				"transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15",
 				"animate-in fade-in-0 duration-200 motion-reduce:animate-none",
+				isDropTarget
+					? "border-solid border-primary bg-primary/10"
+					: "border-dashed border-border/60 bg-secondary/50 hover:border-border hover:bg-accent focus-visible:border-primary",
 			)}
 		>
-			<span className={cn(COUNT_BADGE_CLASS, "bg-background")}>{count}</span>
-			<Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+			<span className={cn(COUNT_BADGE_CLASS, isDropTarget ? "bg-primary text-primary-foreground" : "bg-background")}>{count}</span>
+			<Icon className={cn("h-4 w-4 shrink-0 transition-colors", isDropTarget ? "text-primary" : "text-muted-foreground")} />
 			{hasOverduePayment ? (
 				<span
 					className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive"
@@ -110,44 +114,22 @@ function CollapsedStageRail({
 			) : null}
 
 			<span className="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
-				<span className="truncate text-xs font-extrabold uppercase tracking-wide [writing-mode:vertical-rl] rotate-180">{meta.label}</span>
+				<span
+					className={cn(
+						"truncate text-xs font-extrabold uppercase tracking-wide transition-colors [writing-mode:vertical-rl] rotate-180",
+						isDropTarget && "text-primary",
+					)}
+				>
+					{meta.label}
+				</span>
 			</span>
 
-			<ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/rail:opacity-100 group-focus-visible/rail:opacity-100" />
-		</button>
-	);
-}
-
-/**
- * Previa de destino quando um card e arrastado sobre uma etapa recolhida. Ela e posicionada por cima
- * das colunas vizinhas em vez de expandir no fluxo: se a trilha empurrasse os vizinhos, o alvo de
- * soltura escorregaria debaixo do cursor no meio do arraste.
- */
-function CollapsedStageDropPreview({ status, count, alignEnd }: { status: TBoardStatus; count: number; alignEnd: boolean }) {
-	const meta = ATTENDANCE_COLUMN_META[status];
-	const Icon = meta.icon;
-
-	return (
-		<div
-			aria-hidden
-			style={{ width: BOARD_COLUMN_WIDTH_PX }}
-			className={cn(
-				"pointer-events-none absolute inset-y-0 z-20 flex flex-col gap-2 rounded-xl border border-primary/40 bg-card p-1.5",
-				"shadow-[0_12px_24px_rgba(0,0,0,0.08),0_4px_8px_rgba(0,0,0,0.04)] animate-in fade-in-0 zoom-in-95 duration-150 motion-reduce:animate-none",
-				// A previa abre para o lado que tem espaco: na ultima coluna, abrir para a direita a
-				// jogaria para fora do scroller horizontal e ela apareceria cortada.
-				alignEnd ? "right-0" : "left-0",
+			{isDropTarget ? (
+				<span className="shrink-0 text-[10px] font-extrabold uppercase tracking-wide text-primary">Soltar</span>
+			) : (
+				<ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/rail:opacity-100 group-focus-visible/rail:opacity-100" />
 			)}
-		>
-			<div className="flex shrink-0 items-center gap-1.5 px-1.5 pt-1">
-				<Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-				<span className="truncate text-xs font-extrabold uppercase tracking-wide">{meta.label}</span>
-				<span className={cn(COUNT_BADGE_CLASS, "ml-auto")}>{count}</span>
-			</div>
-			<div className="flex min-h-0 flex-1 items-center justify-center rounded-xl border border-dashed border-primary/40 bg-accent/50 px-4 text-center text-xs font-bold text-primary">
-				Soltar em {meta.label}
-			</div>
-		</div>
+		</button>
 	);
 }
 
@@ -159,7 +141,6 @@ export function FulfillmentColumn({
 	pendingTransitionCardId,
 	isCollapsed,
 	hasOverduePayment,
-	isLastColumn,
 	canCompact,
 	onSetCollapsed,
 	onFocus,
@@ -175,7 +156,6 @@ export function FulfillmentColumn({
 	pendingTransitionCardId: string | null;
 	isCollapsed: boolean;
 	hasOverduePayment: boolean;
-	isLastColumn: boolean;
 	canCompact: boolean;
 	onSetCollapsed: (status: TBoardStatus, collapsed: boolean) => void;
 	onFocus: (status: TBoardStatus) => void;
@@ -188,16 +168,16 @@ export function FulfillmentColumn({
 	const meta = ATTENDANCE_COLUMN_META[status];
 	const Icon = meta.icon;
 	const bodyId = `fulfillment-column-body-${status}`;
-	const showDropPreview = isCollapsed && isOver;
+	const isCollapsedDropTarget = isCollapsed && isOver;
 
 	return (
 		<div
 			ref={setNodeRef}
-			style={{ width: isCollapsed ? BOARD_RAIL_WIDTH_PX : BOARD_COLUMN_WIDTH_PX, transitionTimingFunction: COMPACTION_EASING }}
-			className={cn(
-				"relative h-full min-h-0 shrink-0 snap-start transition-[width] duration-200 motion-reduce:transition-none",
-				showDropPreview && "z-30",
-			)}
+			style={{
+				width: isCollapsed ? (isOver ? BOARD_RAIL_ACTIVE_WIDTH_PX : BOARD_RAIL_WIDTH_PX) : BOARD_COLUMN_WIDTH_PX,
+				transitionTimingFunction: COMPACTION_EASING,
+			}}
+			className="relative h-full min-h-0 shrink-0 snap-start transition-[width] duration-200 motion-reduce:transition-none"
 		>
 			{/* Recorte: o conteudo expandido existe sempre em 300px e apenas some por baixo da borda. */}
 			<div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
@@ -276,12 +256,11 @@ export function FulfillmentColumn({
 					status={status}
 					count={cards.length}
 					hasOverduePayment={hasOverduePayment}
+					isDropTarget={isCollapsedDropTarget}
 					onExpand={() => onSetCollapsed(status, false)}
 					controlsId={bodyId}
 				/>
 			) : null}
-
-			{showDropPreview ? <CollapsedStageDropPreview status={status} count={cards.length} alignEnd={isLastColumn} /> : null}
 		</div>
 	);
 }

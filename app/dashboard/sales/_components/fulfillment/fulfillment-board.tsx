@@ -17,8 +17,10 @@ import {
 	DragOverlay,
 	PointerSensor,
 	closestCorners,
+	pointerWithin,
 	useSensor,
 	useSensors,
+	type CollisionDetection,
 	type Announcements,
 	type DragEndEvent,
 	type DragStartEvent,
@@ -60,6 +62,21 @@ type FulfillmentBoardProps = {
 	organizationConfig: TOrganizationConfiguration;
 	canEditSales?: boolean;
 	onViewDetails: (saleId: string) => void;
+};
+
+/**
+ * O ponteiro decide o destino; a geometria so entra como rede de seguranca.
+ *
+ * `closestCorners` sozinho mede os cantos do CARD arrastado (300px de largura) contra os cantos de
+ * cada coluna. Com etapas recolhidas em trilhas de 44px, vizinhas a 56px uma da outra, a propria
+ * largura do card domina a conta e a mira do operador quase nao pesa: duas trilhas lado a lado ficam
+ * praticamente indistinguiveis e o quadro escolhe sempre a mesma. `pointerWithin` resolve pelo pixel
+ * sob o cursor, entao a trilha mirada e a trilha escolhida. O fallback cobre o unico caso que o
+ * ponteiro nao cobre: o cursor sobre um vao entre colunas.
+ */
+const boardCollisionDetection: CollisionDetection = (args) => {
+	const pointerCollisions = pointerWithin(args);
+	return pointerCollisions.length > 0 ? pointerCollisions : closestCorners(args);
 };
 
 const screenReaderInstructions: ScreenReaderInstructions = {
@@ -347,14 +364,14 @@ export default function FulfillmentBoard({ organizationId, organizationConfig, c
 			) : (
 				<DndContext
 					sensors={sensors}
-					collisionDetection={closestCorners}
+					collisionDetection={boardCollisionDetection}
 					accessibility={{ announcements, screenReaderInstructions }}
 					onDragStart={handleDragStart}
 					onDragEnd={handleDragEnd}
 					onDragCancel={() => setActiveId(null)}
 				>
 					<div className={cn(KANBAN_SCROLL_CLASS, "flex min-h-[50vh] flex-1 snap-x gap-3 overflow-x-auto pb-2 md:min-h-0 md:overflow-y-hidden")}>
-						{BOARD_STATUSES.map((status, index) => (
+						{BOARD_STATUSES.map((status) => (
 							<FulfillmentColumn
 								key={status}
 								status={status}
@@ -364,7 +381,6 @@ export default function FulfillmentBoard({ organizationId, organizationConfig, c
 								pendingTransitionCardId={pendingTransition?.cardId ?? null}
 								isCollapsed={collapsedByStage[status]}
 								hasOverduePayment={stagesWithOverduePayment.has(status)}
-								isLastColumn={index === BOARD_STATUSES.length - 1}
 								canCompact={canCompact}
 								onSetCollapsed={setStageCollapsed}
 								onFocus={focusStage}

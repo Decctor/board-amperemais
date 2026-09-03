@@ -12,6 +12,10 @@ export type TBoardStatus = (typeof BOARD_STATUSES)[number];
 // fixa e apenas recortado, entao os cards nunca sao reflowados durante a animacao de recolher.
 export const BOARD_COLUMN_WIDTH_PX = 300;
 export const BOARD_RAIL_WIDTH_PX = 44;
+// Largura da trilha sob o cursor durante um arraste. O teto e 2 x trilha + vao (100px): acima disso,
+// sair da trilha alargada a encolhe e joga a vizinha para debaixo do cursor, e as duas passam a
+// disputar o foco. 96px alarga o alvo o suficiente sem entrar nessa oscilacao.
+export const BOARD_RAIL_ACTIVE_WIDTH_PX = 96;
 
 export const ATTENDANCE_COLUMN_META: Record<TBoardStatus, { label: string; icon: LucideIcon; hint: string }> = {
 	NAO_INICIADO: { label: "Não iniciado", icon: Inbox, hint: "Pedidos confirmados aguardando início" },
