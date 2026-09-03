@@ -1,4 +1,4 @@
-import { formatDateAsLocale } from "@/lib/formatting";
+import { formatDateTimeInOperationTimezone } from "@/lib/operation-timezone";
 import { z } from "zod";
 
 import { escapeHtml } from "./cupom-venda";
@@ -43,7 +43,7 @@ p { margin: 0; line-height: 1.4; }
 <div class="sep"></div>
 <p>Impressora: ${escapeHtml(dados.impressora.nome)}</p>
 ${dados.solicitadoPor ? `<p>Solicitado por: ${escapeHtml(dados.solicitadoPor)}</p>` : ""}
-<p>Data: ${formatDateAsLocale(dados.dataSolicitacao, true)}</p>
+<p>Data: ${formatDateTimeInOperationTimezone(dados.dataSolicitacao)}</p>
 <div class="sep"></div>
 <p class="centro">Se você está lendo isto, o fluxo dashboard → agente → impressora está operacional.</p>
 </body></html>`;
@@ -57,7 +57,7 @@ export function renderTesteImpressaoZpl(dados: TTesteImpressaoDados) {
 		`^FO30,30^A0N,36,36^FD${sanitize(dados.organizacao.nome)}^FS`,
 		"^FO30,80^A0N,30,30^FDTESTE DE IMPRESSAO^FS",
 		`^FO30,125^A0N,26,26^FDImpressora: ${sanitize(dados.impressora.nome)}^FS`,
-		`^FO30,160^A0N,26,26^FDData: ${formatDateAsLocale(dados.dataSolicitacao, true)}^FS`,
+		`^FO30,160^A0N,26,26^FDData: ${formatDateTimeInOperationTimezone(dados.dataSolicitacao)}^FS`,
 		"^FO30,200^A0N,26,26^FDPipeline operacional.^FS",
 		"^XZ",
 	].join("\n");

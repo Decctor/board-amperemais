@@ -46,3 +46,38 @@ export function inOperationTimezone(column: SQL | unknown): SQL {
 export function localDayKey(column: SQL | unknown): SQL<string> {
 	return sql<string>`to_char(${inOperationTimezone(column)}, 'YYYY-MM-DD')`;
 }
+
+/**
+ * Formatador de data/hora no fuso da operação, para texto que vai impresso ou enviado.
+ *
+ * `formatDateAsLocale` formata no fuso do processo. No navegador isso acerta, porque o processo é a
+ * máquina do lojista. No servidor não: o Vercel roda em UTC, e um cupom emitido às 18h28 em São
+ * Paulo saía do papel marcado como 21h28 — três horas no futuro, no documento que o cliente usa para
+ * conferir o pedido. Todo texto renderizado no servidor com hora do dia precisa passar por aqui.
+ *
+ * Cuidado ao aplicar em data sem hora (validade, fabricação): esses valores são gravados à
+ * meia-noite UTC, e convertê-los para São Paulo os joga para o dia anterior.
+ */
+const OPERATION_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("pt-BR", {
+	timeZone: OPERATION_TIMEZONE,
+	day: "2-digit",
+	month: "2-digit",
+	year: "numeric",
+	hour: "2-digit",
+	minute: "2-digit",
+	// h23 e não `hour12: false`: em parte das versões do ICU o segundo devolve "24" à meia-noite.
+	hourCycle: "h23",
+});
+
+/** `DD/MM/YYYY HH:mm` no fuso da operação. `null` para entrada ausente ou inválida. */
+export function formatDateTimeInOperationTimezone(date?: string | Date | null) {
+	if (!date) return null;
+
+	const parsed = date instanceof Date ? date : new Date(date);
+	if (Number.isNaN(parsed.getTime())) return null;
+
+	const parts: Record<string, string> = {};
+	for (const part of OPERATION_DATE_TIME_FORMATTER.formatToParts(parsed)) parts[part.type] = part.value;
+
+	return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}`;
+}
