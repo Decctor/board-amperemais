@@ -17,6 +17,7 @@ import { fetchClientContext } from "@/lib/queries/clients/context";
 import { getOrganizationOpenQuotesQueryKey } from "@/lib/queries/sales";
 import { useActiveSalesSession } from "@/lib/queries/sales-sessions";
 import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
+import type { TPOSProductOrderingEnum } from "@/schemas/enums";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import { type TSaleFinancialAccountOption, type TUseSaleState, getDefaultSaleState, useSaleState } from "@/state-hooks/use-sale-state";
@@ -30,9 +31,9 @@ import ProductBuilderModal from "./components/ProductBuilderModal";
 import SaleSuccessPanel from "./components/SaleSuccessPanel";
 import CategoriesBar from "./components/composition/CategoriesBar";
 import PaginationBlock from "./components/composition/PaginationBlock";
+import ProductOrderingSelect from "./components/composition/ProductOrderingSelect";
 import ProductsGridBlock from "./components/composition/ProductsGridBlock";
 import SearchBlock from "./components/composition/SearchBlock";
-import TopProductsStrip from "./components/composition/TopProductsStrip";
 import ViewModeToggle, { type ProductViewMode } from "./components/composition/ViewModeToggle";
 import ClientContextPanel from "./components/context/ClientContextPanel";
 import ClientContextSheet from "./components/context/ClientContextSheet";
@@ -281,6 +282,10 @@ export default function NewSalePage({
 		updateFilters({ search: value, page: 1 });
 	};
 
+	const handleOrderingChange = (ordering: TPOSProductOrderingEnum) => {
+		updateFilters({ ordering, page: 1 });
+	};
+
 	// Estável (só depende de addItem, que é estável) para não invalidar o memo da grade de produtos a cada edição do carrinho.
 	const addItem = saleState.addItem;
 	const handleProductClick = useCallback(
@@ -432,13 +437,12 @@ export default function NewSalePage({
 							<div className="flex-1">
 								<SearchBlock searchValue={searchValue} onSearchChange={handleSearchChange} isLoading={productsLoading} />
 							</div>
+							<ProductOrderingSelect value={filters.ordering} onChange={handleOrderingChange} disabled={productsLoading} />
 							<ViewModeToggle value={viewMode} onChange={setViewMode} />
 							{/* Pendência comercial ao lado da busca: aparece sozinha quando existe e some quando
 							    a fila zera, sem ocupar espaço fixo da grade de produtos. */}
 							<OpenQuotesPill canViewQuotes={canViewSales} permissions={quotePermissions} cartItemCount={saleState.itemCount} />
 						</div>
-						{/* Faixa de mais pedidos recolhe quando o operador está buscando ou filtrou uma categoria — o espaço volta para o resultado. */}
-						{!searchValue && !selectedGroup ? <TopProductsStrip onProductClick={handleProductClick} /> : null}
 						{groupsLoading ? null : (
 							<CategoriesBar groups={groupsData?.groups ?? []} selectedGroup={selectedGroup} onGroupSelect={handleGroupSelect} isLoading={productsLoading} />
 						)}

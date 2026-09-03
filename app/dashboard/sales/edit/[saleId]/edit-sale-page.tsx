@@ -18,6 +18,7 @@ import { usePOSGroups, usePOSProducts, useSaleForEdit } from "@/lib/queries/pos"
 import { useActiveSalesSession } from "@/lib/queries/sales-sessions";
 import { SALES_FULFILLMENT_QUERY_KEY } from "@/lib/queries/sales-fulfillment";
 import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
+import type { TPOSProductOrderingEnum } from "@/schemas/enums";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import { type TSaleFinancialAccountOption, type TUseSaleState, useSaleState } from "@/state-hooks/use-sale-state";
@@ -32,6 +33,7 @@ import CheckoutPanel from "../../new/components/CheckoutPanel";
 import ProductBuilderModal from "../../new/components/ProductBuilderModal";
 import CategoriesBar from "../../new/components/composition/CategoriesBar";
 import PaginationBlock from "../../new/components/composition/PaginationBlock";
+import ProductOrderingSelect from "../../new/components/composition/ProductOrderingSelect";
 import ProductsGridBlock from "../../new/components/composition/ProductsGridBlock";
 import SearchBlock from "../../new/components/composition/SearchBlock";
 import ViewModeToggle, { type ProductViewMode } from "../../new/components/composition/ViewModeToggle";
@@ -267,6 +269,10 @@ export default function EditSalePage({
 		updateFilters({ search: value, page: 1 });
 	};
 
+	const handleOrderingChange = (ordering: TPOSProductOrderingEnum) => {
+		updateFilters({ ordering, page: 1 });
+	};
+
 	const addItem = saleState.addItem;
 	const handleProductClick = useCallback(
 		(product: TGetPOSProductsOutput["data"]["products"][number]) => {
@@ -362,6 +368,7 @@ export default function EditSalePage({
 							<div className="flex-1">
 								<SearchBlock searchValue={searchValue} onSearchChange={handleSearchChange} isLoading={productsLoading} />
 							</div>
+							<ProductOrderingSelect value={filters.ordering} onChange={handleOrderingChange} disabled={productsLoading} />
 							<ViewModeToggle value={viewMode} onChange={setViewMode} />
 						</div>
 						{groupsLoading ? null : (
