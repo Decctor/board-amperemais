@@ -1,4 +1,5 @@
 import { calculateAccumulatedCashbackValue } from "@/lib/cashback/accumulation";
+import { getSaleChangeTotal } from "@/lib/sales/sale-change";
 import { POS_REWARD_SALE_ITEM_ORIGIN } from "@/lib/sales/sale-reward-redemption";
 import { classifySalePaymentTransactions } from "@/lib/sales/utils";
 import { readShopDeliveryFee } from "@/lib/shop/config";
@@ -112,6 +113,7 @@ export async function buildCupomVendaDados({ organizacaoId, vendaId }: { organiz
 							dataPrevisao: true,
 							provedorStatus: true,
 							contaFinanceiraId: true,
+							modificadoresMetadata: true,
 						},
 					},
 				},
@@ -176,11 +178,12 @@ export async function buildCupomVendaDados({ organizacaoId, vendaId }: { organiz
 	const subtotal = Math.abs(subtotalItens - subtotalReconciliado) < 0.01 ? subtotalItens : subtotalReconciliado;
 
 	// ---- Pagamentos: agrupados por método + situação, como o cliente lê ----
-	const pagamentosClassificados = classifySalePaymentTransactions(
-		sale.lancamentosContabeis.flatMap((entry) =>
-			entry.transacoesFinanceiras.map((transaction) => ({ ...transaction, lancamentoContabilId: entry.id })),
-		),
+	const transacoesVenda = sale.lancamentosContabeis.flatMap((entry) =>
+		entry.transacoesFinanceiras.map((transaction) => ({ ...transaction, lancamentoContabilId: entry.id })),
 	);
+	const pagamentosClassificados = classifySalePaymentTransactions(transacoesVenda);
+	// Pagamentos saem pelo valor entregue (R$ 50 em dinheiro) e o troco vem da SAÍDA de troco da venda.
+	const trocoTotal = getSaleChangeTotal(transacoesVenda);
 	const pagamentosAgrupados = new Map<string, { metodo: string; valor: number; parcelas: number | null; pago: boolean }>();
 	for (const pagamento of pagamentosClassificados.todas) {
 		const pago = pagamento.dataEfetivacao != null;
@@ -274,6 +277,7 @@ export async function buildCupomVendaDados({ organizacaoId, vendaId }: { organiz
 			taxaEntrega,
 			valorFinal: sale.valorTotal,
 			pagamentos: pagamentosCupom,
+			troco: pagamentosCanal.length === 0 && trocoTotal > 0 ? trocoTotal : null,
 		},
 		cliente: sale.cliente ? { nome: sale.cliente.nome, telefone: sale.cliente.telefone, totalCompras } : null,
 		cupom: cupomResgatado

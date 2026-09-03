@@ -3,6 +3,7 @@ import { type TCouponCartItem, evaluateCouponAgainstCart } from "@/lib/coupons/e
 import { cancelCouponRedemption } from "@/lib/coupons/redemption";
 import { ACCOUNTING_ENTRY_BALANCE_TOLERANCE, getAccountingEntryBalanceError } from "@/lib/finances/accounting-entry-balance";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
+import { getSaleChangeTotal } from "@/lib/sales/sale-change";
 import { resolveSaleEditability } from "@/lib/sales/sale-editability";
 import { consumeSaleDiscountApproval } from "@/lib/sales/sale-discount-authorization";
 import { toSalesChannelType } from "@/lib/products/sales-channels";
@@ -17,6 +18,7 @@ import { and, eq, isNull, ne, notInArray, or } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { processSaleAutomaticFiscalEmissionIfEligible } from "./process-sale-automatic-fiscal-emission";
 import { processStockDeduction } from "./process-stock-deduction";
+import { registerSaleChangeTransaction } from "./register-sale-change";
 import { reverseSaleItemStock } from "./reverse-sale-item-stock";
 
 /**
@@ -664,19 +666,39 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 				)
 			: [];
 
-	// Pedra angular da atomicidade: efetivadas mantidas + splits novos precisam fechar com o novo
-	// valor do lançamento. Divergência = rollback de tudo (itens, estoque, contábil, pagamentos).
+	// Efetivadas mantidas entram pelo valor bruto recebido; o troco já entregue (SAÍDA de troco do
+	// lançamento) abate esse bruto. Os splits novos só precisam cobrir o que falta desse líquido, e
+	// o excesso sobre isso vira um novo troco — mesma regra da confirmação.
 	const keptTransactions = vendaEntry.transacoesFinanceiras.filter(
 		(transaction) =>
 			transaction.tipo === "ENTRADA" &&
 			!REVERSED_TRANSACTION_STATUSES.includes(transaction.provedorStatus ?? "") &&
 			(transaction.dataEfetivacao != null || transaction.metodo === "CASHBACK"),
 	);
+	const existingChangeTotal = getSaleChangeTotal(vendaEntry.transacoesFinanceiras);
+	const keptNetTotal = keptTransactions.reduce((sum, transaction) => sum + transaction.valor, 0) - existingChangeTotal;
+	const change =
+		input.pagamentos.length > 0
+			? await registerSaleChangeTransaction({
+					tx,
+					organization: input.organization,
+					lancamentoContabilId: vendaEntry.id,
+					salePayments: input.pagamentos,
+					saleTotal: Math.max(0, valorTotal - keptNetTotal),
+					sessaoVendaId: input.sessaoVendaId ?? null,
+					autorId: input.saleAuthorId,
+				})
+			: null;
+
+	// Pedra angular da atomicidade: efetivadas mantidas − troco + splits novos − troco novo precisam
+	// fechar com o novo valor do lançamento. Divergência = rollback de tudo (itens, estoque, contábil, pagamentos).
 	const balanceError = getAccountingEntryBalanceError({
 		entryValue: valorTotal,
 		transactions: [
 			...keptTransactions.map((transaction) => ({ valor: transaction.valor })),
+			...(existingChangeTotal > 0 ? [{ valor: -existingChangeTotal }] : []),
 			...input.pagamentos.map((payment) => ({ valor: payment.valor })),
+			...(change ? [{ valor: -change.valor }] : []),
 		],
 	});
 	if (balanceError) {

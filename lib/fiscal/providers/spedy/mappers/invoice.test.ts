@@ -90,7 +90,7 @@ test("envia o frete da loja nos itens e mantem pagamentos iguais ao total da NFC
 			},
 		],
 		ibptRates: [],
-		destinatarioSnapshot: null,
+		destinatarioSnapshot: { nome: "Leonardo 🧸", cpfCnpj: "12345678909" },
 		pagamentos: [{ metodo: "CARTAO_CREDITO", valor: 35 }],
 	} as unknown as TFiscalSaleContext;
 	const document = {
@@ -102,11 +102,13 @@ test("envia o frete da loja nos itens e mantem pagamentos iguais ao total da NFC
 	} as unknown as TFiscalDocument;
 
 	const payload = mapSaleContextToSpedyInvoicePayload(context, document) as {
+		receiver: { name?: string };
 		items: { freightAmount?: number }[];
 		total: { invoiceAmount: number; freightAmount: number };
 		payments: { amount: number }[];
 	};
 
+	assert.equal(payload.receiver.name, "Leonardo");
 	assert.deepEqual(
 		payload.items.map((item) => item.freightAmount ?? 0),
 		[7, 0],

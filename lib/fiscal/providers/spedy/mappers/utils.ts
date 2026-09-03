@@ -9,6 +9,40 @@ export function nonEmptyString(value: string | null | undefined) {
 	return trimmed || undefined;
 }
 
+const NFE_TEXT_REPLACEMENTS: Record<string, string> = {
+	"‘": "'",
+	"’": "'",
+	"“": '"',
+	"”": '"',
+	"–": "-",
+	"—": "-",
+};
+
+/**
+ * Normaliza texto livre para o conjunto de caracteres aceito pelos campos String do XML da
+ * NF-e/NFC-e. Mantem caracteres latinos usados em nomes brasileiros, converte pontuacao Unicode
+ * comum e remove emoji, caracteres de controle e outros simbolos fora do Latin-1.
+ */
+export function sanitizeNfeText(value: string | null | undefined, maxLength?: number) {
+	if (!value) return undefined;
+
+	let sanitized = "";
+	for (const character of value.normalize("NFC")) {
+		const replacement = NFE_TEXT_REPLACEMENTS[character] ?? character;
+		if (/\s/u.test(replacement)) {
+			sanitized += " ";
+			continue;
+		}
+		for (const candidate of replacement) {
+			if (/[\x21-\x7E\u00A1-\u00FF]/u.test(candidate)) sanitized += candidate;
+		}
+	}
+
+	const compact = sanitized.replace(/\s+/gu, " ").trim();
+	if (!compact) return undefined;
+	return maxLength ? Array.from(compact).slice(0, maxLength).join("").trim() || undefined : compact;
+}
+
 export function formatNcm(value: string | null | undefined) {
 	const digits = onlyDigits(value) ?? "";
 	if (digits.length === 2 || digits.length === 8) return digits;

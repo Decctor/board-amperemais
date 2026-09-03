@@ -246,6 +246,21 @@ do responsável (não na sessão original, que pode estar fechada/imutável), co
   serviço dedicado `registerRefundMovement`) na etapa de implementação. Preferência: serviço
   dedicado que reusa a mesma maquinaria do §3.4, mantendo `refundPayment` focado no provider.
 
+### 3.5.1 Troco → `SAIDA` de dinheiro no lançamento da venda (implementado)
+
+Pagamentos do PDV entram pelo valor **entregue** pelo cliente (R$ 50 em dinheiro numa venda de
+R$ 37) e o excesso vira uma `financialTransaction` `tipo='SAIDA'`, `metodo='DINHEIRO'`,
+`modificadoresMetadata.origem='TROCO'`, no mesmo `lancamentoContabilId` da venda e carimbada com a
+sessão. A fórmula do §3.4 desconta o troco sozinha — a gaveta esperada fica em R$ 37, não em R$ 50.
+
+- Regras em `lib/sales/sale-change.ts` (client-safe; PDV e servidor usam a mesma): troco só sobre
+  pagamentos imediatos não parcelados; troco sem dinheiro recebido (excesso no cartão/PIX) exige
+  confirmação explícita no PDV.
+- Lançamento em `lib/sales/sale-processing/register-sale-change.ts`, chamado na confirmação e na
+  edição da venda. Cancelamento estorna o dinheiro **líquido** do troco.
+- Visão fiscal (`loadSalePayments`) sai líquida do troco: a Spedy não expõe `vTroco` e pagamentos
+  acima do vNF são a rejeição 866.
+
 ### 3.6 Pendências fiscais — sem schema novo
 
 No fechamento, query: `fiscalOutboundDocuments ⋈ sales` onde `sales.sessaoVendaId = X` e

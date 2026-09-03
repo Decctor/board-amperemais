@@ -106,6 +106,7 @@ export const CupomVendaDadosSchema = z.object({
 			)
 			.optional()
 			.nullable(),
+		troco: z.number({ invalid_type_error: "Tipo não válido para o troco." }).optional().nullable(),
 	}),
 	cliente: z
 		.object({
@@ -300,6 +301,7 @@ export function renderCupomVendaHtml(dados: TCupomVendaDados) {
 					return renderLinha(`${label}${parcelas}${descricao} (${situacaoLabel})`, formatToMoney(pagamento.valor));
 				})
 				.join("")}
+			${venda.troco && venda.troco > 0 ? renderLinha("TROCO", formatToMoney(venda.troco), { destaque: true }) : ""}
 		</div>`
 		: "";
 

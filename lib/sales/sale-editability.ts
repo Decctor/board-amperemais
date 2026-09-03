@@ -1,4 +1,5 @@
 import { ACCOUNTING_ENTRY_BALANCE_TOLERANCE } from "@/lib/finances/accounting-entry-balance";
+import { getSaleChangeTotal } from "@/lib/sales/sale-change";
 import type { TSaleAttendanceStatusEnum } from "@/schemas/enums";
 
 /**
@@ -26,6 +27,7 @@ export type TSaleEditabilityRow = {
 		tipo?: string | null;
 		dataEfetivacao?: Date | string | null;
 		provedorStatus?: string | null;
+		modificadoresMetadata?: { origem?: string | null } | null;
 	}[];
 };
 
@@ -41,12 +43,13 @@ export type TSaleEditability = {
 };
 
 /**
- * Soma dos recebimentos já efetivados (ENTRADA, não cancelados/estornados). É o piso do novo
- * valorTotal em uma edição: reduzir abaixo do já recebido exigiria perna de reembolso, que é
- * exatamente o que o cancelamento com estorno resolve.
+ * Soma dos recebimentos já efetivados (ENTRADA, não cancelados/estornados), líquida do troco já
+ * entregue ao cliente (SAÍDA de troco do mesmo lançamento). É o piso do novo valorTotal em uma
+ * edição: reduzir abaixo do já recebido exigiria perna de reembolso, que é exatamente o que o
+ * cancelamento com estorno resolve.
  */
 export function getSaleSettledTotal(transacoes: TSaleEditabilityRow["transacoes"]) {
-	return transacoes
+	const recebido = transacoes
 		.filter(
 			(transaction) =>
 				(transaction.tipo ? transaction.tipo === "ENTRADA" : true) &&
@@ -54,6 +57,7 @@ export function getSaleSettledTotal(transacoes: TSaleEditabilityRow["transacoes"
 				transaction.dataEfetivacao != null,
 		)
 		.reduce((acc, transaction) => acc + (transaction.valor ?? 0), 0);
+	return Math.max(0, recebido - getSaleChangeTotal(transacoes));
 }
 
 export function saleHasLiveFiscalDocument(documentosFiscais: TSaleEditabilityRow["documentosFiscais"]) {

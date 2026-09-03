@@ -230,10 +230,18 @@ export default function SummarySection({ saleState, organizationCashbackProgram,
 				<span>PAGAMENTOS</span>
 				<span>{formatToMoney(saleState.totalPagamentos)}</span>
 			</div>
-			<div className="flex items-center justify-between text-xs text-muted-foreground">
-				<span>RESTANTE</span>
-				<span>{formatToMoney(saleState.valorRestante)}</span>
-			</div>
+			{saleState.troco > 0 ? (
+				<div className="flex items-center justify-between text-xs font-semibold text-amber-600 dark:text-amber-400">
+					<span>TROCO</span>
+					<span>{formatToMoney(saleState.troco)}</span>
+				</div>
+			) : (
+				<div className="flex items-center justify-between text-xs text-muted-foreground">
+					<span>RESTANTE</span>
+					<span>{formatToMoney(saleState.valorRestante)}</span>
+				</div>
+			)}
+			{saleState.trocoBloqueio ? <p className="text-[11px] text-red-600 dark:text-red-400">{saleState.trocoBloqueio}</p> : null}
 		</div>
 	);
 }

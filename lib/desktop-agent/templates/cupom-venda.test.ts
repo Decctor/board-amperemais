@@ -72,3 +72,15 @@ test("imprime a data da venda no fuso da operação", () => {
 	assert.match(html, /31\/08\/2026 10:30/);
 	assert.doesNotMatch(html, /31\/08\/2026 13:30/);
 });
+
+test("imprime o troco depois das formas de pagamento", () => {
+	const base = buildData([{ metodo: "DINHEIRO", valor: 50, parcelas: null, pago: true, descricao: null, situacao: "PAGO" }]);
+	const html = renderCupomVendaHtml({ ...base, venda: { ...base.venda, troco: 13 } });
+	assert.match(html, /Dinheiro \(PAGO\)/);
+	assert.match(html, /TROCO/);
+});
+
+test("nao imprime linha de troco quando nao houve troco", () => {
+	const html = renderCupomVendaHtml(buildData([{ metodo: "DINHEIRO", valor: 27, parcelas: null, pago: true, descricao: null, situacao: "PAGO" }]));
+	assert.doesNotMatch(html, /TROCO/);
+});

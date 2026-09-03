@@ -1,4 +1,8 @@
 import { processFiscalDocumentDanfeAutoPrintIfEligible } from "@/lib/desktop-agent/auto-print";
+import {
+  getSaleChangeTotal,
+  netSaleChangeFromPayments,
+} from "@/lib/sales/sale-change";
 import { isValidCpfCnpj } from "@/lib/validation";
 import { db } from "@/services/drizzle";
 import {
@@ -446,15 +450,15 @@ async function loadSalePayments({
           tipo: true,
           metodo: true,
           provedorStatus: true,
+          modificadoresMetadata: true,
         },
       },
     },
   });
 
+  const transactions = entries.flatMap((entry) => entry.transacoesFinanceiras);
   const totalsByMethod = new Map<TFiscalSalePayment["metodo"], number>();
-  for (const transaction of entries.flatMap(
-    (entry) => entry.transacoesFinanceiras,
-  )) {
+  for (const transaction of transactions) {
     if (transaction.tipo !== "ENTRADA") continue;
     if (["CANCELADO", "ESTORNADO"].includes(transaction.provedorStatus ?? ""))
       continue;
@@ -464,10 +468,14 @@ async function loadSalePayments({
     );
   }
 
-  return [...totalsByMethod.entries()].map(([metodo, valor]) => ({
+  const payments = [...totalsByMethod.entries()].map(([metodo, valor]) => ({
     metodo,
     valor: Math.round((valor + Number.EPSILON) * 100) / 100,
   }));
+  // Os recebimentos ficam pelo valor entregue pelo cliente (R$ 50 numa venda de R$ 37) e o troco
+  // e uma SAIDA do mesmo lancamento. A Spedy nao expoe vTroco e pagamentos acima do total sao a
+  // rejeicao 866: a visao fiscal sai liquida do troco, fechando exatamente no valor da venda.
+  return netSaleChangeFromPayments(payments, getSaleChangeTotal(transactions));
 }
 async function loadTaxGroupsForProfiles(
   perfisProdutos: { grupoTributarioId: string | null }[],
@@ -591,7 +599,7 @@ function assertFiscalReadiness(context: TFiscalSaleContext) {
       (total, payment) => total + payment.valor,
       0,
     );
-    // Pago a maior vira troco (vTroco) no payload; bloqueia apenas pagamento insuficiente.
+    // A visao fiscal ja sai liquida do troco (loadSalePayments); bloqueia apenas pagamento insuficiente.
     if (paymentTotal + 0.01 < context.venda.valorTotal) {
       throw new FiscalReadinessError(
         "A soma dos pagamentos e menor que o valor total da venda.",
