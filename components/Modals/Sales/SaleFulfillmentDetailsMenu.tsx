@@ -8,6 +8,13 @@ import { getErrorMessage } from "@/lib/errors";
 import { appRoutes } from "@/lib/navigation/routes";
 import { formatDateAsLocale, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { useSalesFulfillmentById } from "@/lib/queries/sales-fulfillment";
+import { PAYMENT_METHOD_LABELS } from "@/lib/payments/labels";
+import {
+	SALE_FINANCIAL_STATUS_PRESENTATION,
+	SALE_FISCAL_STATUS_PRESENTATION,
+	type TSaleStatusTone,
+} from "@/lib/sales/status-presentation";
+import type { TSaleFinancialDerivedStatusEnum, TSaleFiscalDerivedStatusEnum } from "@/schemas/enums";
 import { cn } from "@/lib/utils";
 import {
 	BadgeCheck,
@@ -63,38 +70,31 @@ const ATTENDANCE_META: Record<string, { label: string; icon: ReactNode }> = {
 	CANCELADO: { label: "Atendimento cancelado", icon: <CircleX className="size-3.5" /> },
 };
 
-const FINANCIAL_META: Record<string, { label: string; icon: ReactNode }> = {
-	NAO_GERADO: { label: "Pagamento não gerado", icon: <CircleMinus className="size-3.5" /> },
-	PENDENTE: { label: "Pagamento pendente", icon: <Clock3 className="size-3.5" /> },
-	PARCIALMENTE_RECEBIDA: { label: "Pagamento parcial", icon: <CircleDollarSign className="size-3.5" /> },
-	RECEBIDA: { label: "Pagamento recebido", icon: <BadgeCheck className="size-3.5" /> },
-	EM_ATRASO: { label: "Pagamento em atraso", icon: <TriangleAlert className="size-3.5" /> },
+const FINANCIAL_STATUS_ICONS: Record<TSaleFinancialDerivedStatusEnum, ReactNode> = {
+	NAO_GERADO: <CircleMinus className="size-3.5" />,
+	PENDENTE: <Clock3 className="size-3.5" />,
+	PARCIALMENTE_RECEBIDA: <CircleDollarSign className="size-3.5" />,
+	RECEBIDA: <BadgeCheck className="size-3.5" />,
+	EM_ATRASO: <TriangleAlert className="size-3.5" />,
 };
 
-const FISCAL_META: Record<string, { label: string; icon: ReactNode }> = {
-	NAO_EMITIDO: { label: "Nota fiscal não emitida", icon: <FileMinus className="size-3.5" /> },
-	PENDENTE: { label: "Emissão fiscal pendente", icon: <FileClock className="size-3.5" /> },
-	EM_PROCESSAMENTO: { label: "Nota em processamento", icon: <RefreshCw className="size-3.5" /> },
-	AUTORIZADO: { label: "Nota fiscal autorizada", icon: <FileCheck2 className="size-3.5" /> },
-	REJEITADO: { label: "Nota fiscal rejeitada", icon: <FileX2 className="size-3.5" /> },
-	CANCELADO: { label: "Nota fiscal cancelada", icon: <FileX2 className="size-3.5" /> },
-	INUTILIZADO: { label: "Numeração fiscal inutilizada", icon: <FileMinus className="size-3.5" /> },
-	ERRO: { label: "Erro na emissão fiscal", icon: <TriangleAlert className="size-3.5" /> },
+const FISCAL_STATUS_ICONS: Record<TSaleFiscalDerivedStatusEnum, ReactNode> = {
+	NAO_EMITIDO: <FileMinus className="size-3.5" />,
+	PENDENTE: <FileClock className="size-3.5" />,
+	EM_PROCESSAMENTO: <RefreshCw className="size-3.5" />,
+	AUTORIZADO: <FileCheck2 className="size-3.5" />,
+	REJEITADO: <FileX2 className="size-3.5" />,
+	CANCELADO: <FileX2 className="size-3.5" />,
+	INUTILIZADO: <FileMinus className="size-3.5" />,
+	ERRO: <TriangleAlert className="size-3.5" />,
 };
 
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-	DINHEIRO: "Dinheiro",
-	PIX: "Pix",
-	CARTAO_CREDITO: "Cartão de crédito",
-	CARTAO_DEBITO: "Cartão de débito",
-	BOLETO: "Boleto",
-	TRANSFERENCIA: "Transferência",
-	CASHBACK: "Cashback",
-	VALE: "Vale",
-	A_DEFINIR: "A definir",
-	FIADO_NOTA: "Fiado / nota",
-	OUTRO: "Outro",
-};
+// O painel so distingue "neutro" de sucesso/erro; `neutral` e `muted` colapsam no mesmo tom.
+function toSummaryTone(tone: TSaleStatusTone) {
+	if (tone === "success") return "success" as const;
+	if (tone === "danger") return "danger" as const;
+	return "default" as const;
+}
 
 const DELIVERY_META: Record<string, { label: string; icon: ReactNode }> = {
 	PRESENCIAL: { label: "Presencial", icon: <Store className="size-4" /> },
@@ -369,8 +369,8 @@ function SaleActionsFooter({
 function OrderSummary({ sale }: { sale: TGetSalesFulfillmentOutputById }) {
 	const phoneLinks = sale.cliente?.telefone ? getCustomerPhoneLinks(sale.cliente.telefone) : null;
 	const attendance = getAttendanceMeta(sale.statusAtendimento, sale.entregaModalidade);
-	const financial = FINANCIAL_META[sale.financeiro];
-	const fiscal = FISCAL_META[sale.fiscal];
+	const financial = SALE_FINANCIAL_STATUS_PRESENTATION[sale.financeiro];
+	const fiscal = SALE_FISCAL_STATUS_PRESENTATION[sale.fiscal];
 
 	return (
 		<section className="overflow-hidden rounded-xl border border-border bg-card">
@@ -437,14 +437,11 @@ function OrderSummary({ sale }: { sale: TGetSalesFulfillmentOutputById }) {
 
 			<div className="flex flex-wrap gap-2 border-t border-border bg-secondary/25 px-4 py-2.5 sm:px-5">
 				<SummaryStatus icon={attendance.icon}>{attendance.label}</SummaryStatus>
-				<SummaryStatus icon={financial?.icon} tone={sale.financeiro === "EM_ATRASO" ? "danger" : sale.financeiro === "RECEBIDA" ? "success" : "default"}>
-					{financial?.label ?? sale.financeiro}
+				<SummaryStatus icon={FINANCIAL_STATUS_ICONS[sale.financeiro]} tone={toSummaryTone(financial.tone)}>
+					{financial.label}
 				</SummaryStatus>
-				<SummaryStatus
-					icon={fiscal?.icon}
-					tone={["REJEITADO", "ERRO"].includes(sale.fiscal) ? "danger" : sale.fiscal === "AUTORIZADO" ? "success" : "default"}
-				>
-					{fiscal?.label ?? sale.fiscal}
+				<SummaryStatus icon={FISCAL_STATUS_ICONS[sale.fiscal]} tone={toSummaryTone(fiscal.tone)}>
+					{fiscal.label}
 				</SummaryStatus>
 			</div>
 		</section>
@@ -457,7 +454,7 @@ function SummaryStatus({ children, icon, tone = "default" }: { children: ReactNo
 			className={cn(
 				"inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium",
 				tone === "default" && "border-border bg-background text-muted-foreground",
-				tone === "success" && "border-green-500/20 bg-green-500/10 text-green-700 dark:text-green-400",
+				tone === "success" && "border-success/20 bg-success/10 text-success",
 				tone === "danger" && "border-destructive/20 bg-destructive/10 text-destructive",
 			)}
 		>

@@ -38,6 +38,12 @@ export type TSaleEditability = {
 	fiscalBloqueia: boolean;
 	cancelamentoDisponivel: boolean;
 	cancelamentoExigeFiscal: boolean;
+	/**
+	 * Exclusão é mais restrita que edição: qualquer documento fiscal a trava, inclusive os mortos
+	 * (cancelado/inutilizado), porque a numeração emitida precisa continuar rastreável à venda.
+	 * Espelha a guarda do DELETE em `/api/sales`.
+	 */
+	exclusaoBloqueadaPorFiscal: boolean;
 };
 
 /**
@@ -71,6 +77,7 @@ export function resolveSaleEditability(sale: TSaleEditabilityRow): TSaleEditabil
 		fiscalBloqueia,
 		cancelamentoDisponivel,
 		cancelamentoExigeFiscal: cancelamentoDisponivel && fiscalBloqueia,
+		exclusaoBloqueadaPorFiscal: sale.documentosFiscais.length > 0,
 	};
 
 	if (sale.processamentoOrigem !== "INTERNO") {

@@ -14,6 +14,10 @@ import { getAgeFromBirthdayDate } from "@/lib/dates";
 import { getErrorMessage } from "@/lib/errors";
 import { appRoutes } from "@/lib/navigation/routes";
 import { formatDateAsLocale, formatDateBirthdayAsLocale, formatNameAsInitials, formatToMoney, formatToPhone } from "@/lib/formatting";
+import { getFiscalRejectionInfo } from "@/lib/fiscal/rejections";
+import { PAYMENT_METHOD_LABELS } from "@/lib/payments/labels";
+import { SALE_FINANCIAL_STATUS_PRESENTATION, SALE_FISCAL_STATUS_PRESENTATION } from "@/lib/sales/status-presentation";
+import { mapInternalFiscalStatus } from "@/lib/sales/utils";
 import { useSalesById } from "@/lib/queries/sales";
 import { cn } from "@/lib/utils";
 import type { TGetSalesOutputById } from "@/app/api/sales/route";
@@ -29,6 +33,8 @@ import {
 	Clock,
 	Code,
 	Diamond,
+	FileCode,
+	FileText,
 	Grid3X3,
 	Mail,
 	MapPin,
@@ -37,6 +43,7 @@ import {
 	PencilLine,
 	Phone,
 	Receipt,
+	ReceiptText,
 	ShoppingCart,
 	Tag,
 	Ticket,
@@ -44,6 +51,7 @@ import {
 	TrendingDown,
 	TrendingUp,
 	Truck,
+	Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -88,6 +96,9 @@ function formatCouponValidationMode(snapshot: TGetSalesOutputById["resgatesCupom
 }
 
 export default function SaleByIdPage({ saleId, userCanDeleteSales, userCanEditSales }: SaleByIdPageProps) {
+	// `orgHasERPAccess` e `userFiscalPermissions` não são lidos aqui de propósito: o gate real é o
+	// da API, que devolve `erp: null` sem o módulo e `erp.fiscal: null` sem permissão fiscal.
+	// Duplicar a regra no cliente criaria duas fontes de verdade que podem divergir.
 	const { data: sale, isLoading, isError, error, isSuccess } = useSalesById({ id: saleId });
 
 	if (isLoading) return <LoadingComponent />;
@@ -95,12 +106,15 @@ export default function SaleByIdPage({ saleId, userCanDeleteSales, userCanEditSa
 	if (!isSuccess || !sale) return <ErrorComponent msg="Venda não encontrada." />;
 
 	return (
-		<div className="w-full h-full flex flex-col gap-4">
+		// `min-h-full` e não `h-full`: esta página tem mais conteúdo que a viewport, e declarar
+		// altura fixa faria as seções ou serem espremidas ou vazarem para fora de uma caixa que o
+		// scrollport do layout não mede. Com altura mínima, a página cresce e o scroll é do layout.
+		<div className="w-full min-h-full flex flex-col gap-4">
 			{/* Page Header */}
 			<div className="flex items-center justify-between">
 				<div className="w-full flex items-center gap-3">
 					<Button variant="ghost" size="fit" asChild className="rounded-full hover:bg-brand/10 flex items-center gap-1 px-2 py-2">
-				<Link href={appRoutes.sales.root()} className="flex items-center gap-1">
+						<Link href={appRoutes.sales.root()} className="flex items-center gap-1">
 							<ArrowLeft className="w-5 h-5" />
 							VOLTAR
 						</Link>
@@ -132,6 +146,24 @@ export default function SaleByIdPage({ saleId, userCanDeleteSales, userCanEditSa
 					<SaleBenefitsSection cashbackTransactions={sale.transacoesCashback} couponRedemptions={sale.resgatesCupom} />
 				</div>
 			</div>
+			{/* ERP Section: só existe para organizações com o módulo (a API devolve erp: null nas demais). */}
+			{sale.erp ? (
+				<div className="w-full flex flex-col lg:flex-row gap-4 lg:items-stretch">
+					<div className="w-full lg:w-1/2 flex">
+						<SalePaymentsSection
+							financeiro={sale.erp.financeiro}
+							saleTotal={sale.valorTotal}
+							processamentoOrigem={sale.processamentoOrigem}
+							integracao={sale.integracao}
+						/>
+					</div>
+					{sale.erp.fiscal ? (
+						<div className="w-full lg:w-1/2 flex">
+							<SaleFiscalSection fiscal={sale.erp.fiscal} />
+						</div>
+					) : null}
+				</div>
+			) : null}
 			{/* Sale Items Section */}
 			<SaleItemsSection items={sale.itens} />
 		</div>
@@ -230,7 +262,7 @@ function ClientSection({ client }: { client: TGetSalesOutputById["cliente"] }) {
 			icon={<CircleUser className="w-4 h-4 min-w-4 min-h-4" />}
 			actions={
 				<Button variant="ghost" size="xs" asChild>
-					<Link href={`${appRoutes.customers.root()}?id=${client.id}`}>
+					<Link href={`${appRoutes.customers.root()}/${client.id}`}>
 						VER PERFIL
 						<ArrowRight className="w-3 h-3 ml-1" />
 					</Link>
@@ -551,6 +583,204 @@ function CashbackTransactionBenefitCard({ transaction }: { transaction: TGetSale
 	);
 }
 
+type SaleErpDetail = NonNullable<TGetSalesOutputById["erp"]>;
+
+/**
+ * Selo de status no slot `actions` do SectionWrapper: a resposta ("recebeu?", "emitiu?") chega no
+ * cabeçalho, antes de qualquer linha do corpo ser lida. É o que faz a leitura de relance funcionar.
+ */
+function SectionStatusBadge({ label, className }: { label: string; className: string }) {
+	return <span className={cn("rounded-full border px-2.5 py-1 text-[0.65rem] font-bold tracking-tight", className)}>{label}</span>;
+}
+
+function SalePaymentsSection({
+	financeiro,
+	saleTotal,
+	processamentoOrigem,
+	integracao,
+}: {
+	financeiro: SaleErpDetail["financeiro"];
+	saleTotal: number;
+	processamentoOrigem: TGetSalesOutputById["processamentoOrigem"];
+	integracao: TGetSalesOutputById["integracao"];
+}) {
+	const presentation = SALE_FINANCIAL_STATUS_PRESENTATION[financeiro.status];
+	const integrationName = integracao?.apelido ?? integracao?.tipo ?? null;
+
+	return (
+		<SectionWrapper
+			title="PAGAMENTOS"
+			icon={<Wallet className="w-4 h-4 min-w-4 min-h-4" />}
+			actions={<SectionStatusBadge label={presentation.chipLabel} className={presentation.className} />}
+		>
+			{financeiro.pagamentos.length === 0 ? (
+				<div className="w-full flex flex-col items-center justify-center gap-1 rounded-lg bg-secondary/30 px-3 py-6 text-center">
+					<span className="text-sm font-semibold text-muted-foreground">NENHUM RECEBIMENTO REGISTRADO</span>
+					<span className="text-xs text-muted-foreground">
+						{processamentoOrigem === "EXTERNO"
+							? `Venda importada${integrationName ? ` de ${integrationName}` : ""}: o recebimento foi registrado fora da plataforma.`
+							: "Os recebimentos desta venda aparecerão aqui quando forem gerados."}
+					</span>
+				</div>
+			) : (
+				<div className="w-full flex flex-col gap-2">
+					{financeiro.pagamentos.map((payment) => (
+						<SalePaymentGroupRow key={payment.id} payment={payment} />
+					))}
+					<div className="w-full flex items-center justify-between gap-3 border-t border-border pt-2">
+						<span className="text-xs font-bold uppercase tracking-tight text-muted-foreground">Recebido</span>
+						<span className="text-sm font-bold tabular-nums">
+							{formatToMoney(financeiro.valorRecebido)}
+							<span className="ml-1 text-xs font-semibold text-muted-foreground">de {formatToMoney(saleTotal)}</span>
+						</span>
+					</div>
+				</div>
+			)}
+		</SectionWrapper>
+	);
+}
+
+function SalePaymentGroupRow({ payment }: { payment: SaleErpDetail["financeiro"]["pagamentos"][number] }) {
+	const isInstallment = payment.parcelasTotal > 1;
+	const methodLabel = `${PAYMENT_METHOD_LABELS[payment.metodo] ?? payment.metodo}${isInstallment ? ` ${payment.parcelasTotal}x` : ""}`;
+
+	const status = (() => {
+		if (payment.cancelado) return { label: "Cancelado ou estornado", className: "text-destructive" };
+		if (isInstallment) {
+			const progress = `${payment.parcelasRecebidas} de ${payment.parcelasTotal} recebidas`;
+			if (payment.emAtraso) return { label: `${progress} · parcela em atraso`, className: "text-destructive" };
+			if (payment.proximoVencimento)
+				return { label: `${progress} · próxima em ${formatDateAsLocale(payment.proximoVencimento)}`, className: "text-muted-foreground" };
+			return { label: progress, className: "text-success" };
+		}
+		if (payment.ultimoRecebimento) return { label: `Recebido em ${formatDateAsLocale(payment.ultimoRecebimento)}`, className: "text-success" };
+		if (payment.emAtraso) return { label: `Vencido em ${formatDateAsLocale(payment.proximoVencimento)}`, className: "text-destructive" };
+		if (payment.proximoVencimento) return { label: `Vence em ${formatDateAsLocale(payment.proximoVencimento)}`, className: "text-muted-foreground" };
+		return { label: "Pendente", className: "text-muted-foreground" };
+	})();
+
+	return (
+		<div className="w-full flex items-start justify-between gap-3 rounded-lg bg-secondary/30 px-3 py-2.5">
+			<div className="min-w-0 flex flex-col gap-0.5">
+				<span className="truncate text-sm font-semibold tracking-tight">{methodLabel}</span>
+				<span className={cn("text-xs font-semibold", status.className)}>{status.label}</span>
+			</div>
+			<span className="shrink-0 text-sm font-bold tabular-nums">{formatToMoney(payment.valor)}</span>
+		</div>
+	);
+}
+
+// Documento com arquivo em SEFAZ. Nos demais status (rascunho, rejeitada, em processamento,
+// inutilizada) não existe XML nem DANFE para servir — a nota cancelada continua tendo os dois,
+// porque o evento de cancelamento faz parte do próprio XML.
+const FISCAL_STATUSES_WITH_ASSETS = new Set(["AUTORIZADO", "CANCELADO"]);
+
+function SaleFiscalSection({ fiscal }: { fiscal: NonNullable<SaleErpDetail["fiscal"]> }) {
+	const presentation = SALE_FISCAL_STATUS_PRESENTATION[fiscal.status];
+
+	return (
+		<SectionWrapper
+			title="FISCAL"
+			icon={<ReceiptText className="w-4 h-4 min-w-4 min-h-4" />}
+			actions={<SectionStatusBadge label={presentation.chipLabel} className={presentation.className} />}
+		>
+			{fiscal.documentos.length === 0 ? (
+				<div className="w-full flex flex-col items-center justify-center gap-1 rounded-lg bg-secondary/30 px-3 py-6 text-center">
+					<span className="text-sm font-semibold text-muted-foreground">NENHUM DOCUMENTO FISCAL EMITIDO</span>
+					<span className="text-xs text-muted-foreground">As notas emitidas para esta venda aparecerão aqui.</span>
+				</div>
+			) : (
+				<div className="w-full flex flex-col gap-2">
+					{fiscal.documentos.map((document) => (
+						<SaleFiscalDocumentRow key={document.id} document={document} />
+					))}
+				</div>
+			)}
+		</SectionWrapper>
+	);
+}
+
+function SaleFiscalDocumentRow({ document }: { document: NonNullable<SaleErpDetail["fiscal"]>["documentos"][number] }) {
+	// `statusInterno` é o ciclo de vida do documento (RASCUNHO, CANCELAMENTO_PENDENTE...), mais
+	// granular que o status derivado da venda. A mesma tradução que o cabeçalho usa.
+	const derivedStatus = mapInternalFiscalStatus(document.statusInterno);
+	const presentation = derivedStatus ? SALE_FISCAL_STATUS_PRESENTATION[derivedStatus] : null;
+	const hasAssets = FISCAL_STATUSES_WITH_ASSETS.has(document.statusInterno);
+	const rejection = getFiscalRejectionInfo(document.codigoRejeicao);
+	const isFailed = derivedStatus === "REJEITADO" || derivedStatus === "ERRO";
+	const providerMessages = document.mensagens?.filter((message) => message?.trim()) ?? [];
+	// Nota de homologação não tem valor fiscal. Sem esta marca, ela se lê como uma nota real.
+	const isHomologation = document.ambiente === "HOMOLOGACAO";
+	const openAsset = (asset: "xml" | "pdf") =>
+		window.open(`/api/fiscal/document-assets?documentId=${document.id}&asset=${asset}`, "_blank", "noopener,noreferrer");
+
+	const timeline = document.dataCancelamento
+		? `Cancelada em ${formatDateAsLocale(document.dataCancelamento, true)}`
+		: document.dataAutorizacao
+			? `Autorizada em ${formatDateAsLocale(document.dataAutorizacao, true)}`
+			: `Criada em ${formatDateAsLocale(document.dataInsercao, true)}`;
+
+	return (
+		<div className="w-full flex flex-col gap-2 rounded-lg bg-secondary/30 px-3 py-2.5">
+			<div className="w-full flex items-start justify-between gap-3">
+				<div className="min-w-0 flex flex-col gap-0.5">
+					<span className="truncate text-sm font-semibold tracking-tight">
+						{document.tipo} {document.numero ? `nº ${document.numero}` : "sem numeração"}
+						{document.serie ? <span className="ml-1 font-medium text-muted-foreground">· Série {document.serie}</span> : null}
+					</span>
+					<span className="text-xs font-semibold text-muted-foreground">{timeline}</span>
+					{document.documentoOrigemNumero ? (
+						<span className="text-xs font-medium text-muted-foreground">Referente à nº {document.documentoOrigemNumero}</span>
+					) : null}
+				</div>
+				<div className="shrink-0 flex flex-col items-end gap-1">
+					{presentation ? <SectionStatusBadge label={presentation.chipLabel} className={presentation.className} /> : null}
+					{isHomologation ? <SectionStatusBadge label="HOMOLOGAÇÃO" className="border-border/60 bg-muted/30 text-muted-foreground" /> : null}
+				</div>
+			</div>
+
+			{/* Nota rejeitada sem explicação é um beco sem saída: o código sozinho não diz o que fazer.
+			    Sem código catalogado (típico de ERRO, que não vem da SEFAZ), a mensagem do provedor
+			    é o único sinal — melhor mostrá-la crua do que não mostrar nada. */}
+			{rejection ? (
+				<div className="w-full flex flex-col gap-0.5 rounded-md bg-destructive/10 px-2.5 py-2">
+					<span className="text-xs font-bold text-destructive">
+						Rejeição {document.codigoRejeicao} · {rejection.descricao}
+					</span>
+					<span className="text-xs text-destructive/90">{rejection.acaoSugerida}</span>
+				</div>
+			) : isFailed && providerMessages.length > 0 ? (
+				<div className="w-full flex flex-col gap-0.5 rounded-md bg-destructive/10 px-2.5 py-2">
+					{document.codigoRejeicao ? <span className="text-xs font-bold text-destructive">Rejeição {document.codigoRejeicao}</span> : null}
+					{providerMessages.map((message) => (
+						<span key={message} className="text-xs text-destructive/90">
+							{message}
+						</span>
+					))}
+				</div>
+			) : null}
+
+			{hasAssets ? (
+				<div className="w-full flex items-center gap-1.5">
+					<Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-[0.65rem] font-bold" onClick={() => openAsset("pdf")}>
+						<FileText className="w-3.5 h-3.5" />
+						DANFE
+					</Button>
+					<Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-[0.65rem] font-bold" onClick={() => openAsset("xml")}>
+						<FileCode className="w-3.5 h-3.5" />
+						XML
+					</Button>
+					{document.chaveAcesso ? (
+						<span className="ml-auto truncate font-mono text-[0.6rem] text-muted-foreground" title={document.chaveAcesso}>
+							{document.chaveAcesso}
+						</span>
+					) : null}
+				</div>
+			) : null}
+		</div>
+	);
+}
+
 function SaleItemsSection({ items }: { items: TGetSalesOutputById["itens"] }) {
 	return (
 		<SectionWrapper title={`ITENS (${items.length})`} icon={<Package className="w-4 h-4 min-w-4 min-h-4" />}>
@@ -763,7 +993,7 @@ function SaleDeleteButton({ sale, userCanDeleteSales }: { sale: TGetSalesOutputB
 	const [deleteConfirmMenuIsOpen, setDeleteConfirmMenuIsOpen] = useState(false);
 	const saleIsInternal = sale.processamentoOrigem === "INTERNO";
 	const saleIsConfirmed = sale.statusVenda === "CONFIRMADA";
-	const hasFiscalDocuments = sale.documentosFiscais.length > 0;
+	const hasFiscalDocuments = sale.editabilidade.exclusaoBloqueadaPorFiscal;
 	const canOpenDeleteFlow = saleIsInternal && userCanDeleteSales;
 	const canSubmitDelete = canOpenDeleteFlow && !saleIsConfirmed && !hasFiscalDocuments;
 

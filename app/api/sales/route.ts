@@ -10,7 +10,12 @@ import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } fro
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
 import { getValidClientSaleWhere } from "@/lib/sales/valid-sale";
 import { resolveSaleEditability } from "@/lib/sales/sale-editability";
-import { computeSaleFinancialStatus, computeSaleFiscalStatus } from "@/lib/sales/utils";
+import {
+	classifySalePaymentTransactions,
+	computeSaleFinancialStatus,
+	computeSaleFiscalStatus,
+	groupSalePaymentsByMethod,
+} from "@/lib/sales/utils";
 import {
 	SaleFinancialDerivedStatusEnum,
 	SaleFiscalDerivedStatusEnum,
@@ -311,6 +316,82 @@ async function getSalesErpSummaries({
 	return summaries;
 }
 
+type SaleErpDetailDocument = {
+	id: string;
+	tipo: string;
+	statusInterno: TFiscalDocumentLifecycleStatusEnum;
+	ambiente: string;
+	numero: string | null;
+	serie: string | null;
+	chaveAcesso: string | null;
+	codigoRejeicao: string | null;
+	mensagens: string[] | null;
+	documentoOrigemId: string | null;
+	dataAutorizacao: Date | null;
+	dataCancelamento: Date | null;
+	dataInsercao: Date;
+};
+
+/**
+ * Resumo ERP da venda individual: a versão detalhada do que `getSalesErpSummaries` devolve por
+ * linha da listagem. Não faz consulta — recebe as transações e os documentos que o ramo `byId` já
+ * carregou e só deriva a apresentação.
+ *
+ * Um único `null` no topo gateia a linha inteira na página (organização sem o módulo de ERP); o
+ * `fiscal: null` interno gateia só a metade fiscal (membro sem permissão de visualização).
+ */
+function buildSaleErpDetail({
+	sale,
+	transacoes,
+	documentosFiscais,
+	userCanViewFiscal,
+	now = new Date(),
+}: {
+	sale: { valorTotal: number };
+	transacoes: Parameters<typeof classifySalePaymentTransactions>[0];
+	documentosFiscais: SaleErpDetailDocument[];
+	userCanViewFiscal: boolean;
+	now?: Date;
+}) {
+	const classificacao = classifySalePaymentTransactions(transacoes);
+	const pagamentos = groupSalePaymentsByMethod(classificacao.todas, now);
+
+	// Ordem cronológica: a sequência de documentos conta a história da nota (emitida, depois
+	// cancelada) na direção em que ela aconteceu.
+	const documentos = [...documentosFiscais].sort((a, b) => a.dataInsercao.getTime() - b.dataInsercao.getTime());
+	const numeroPorId = new Map(documentos.map((documento) => [documento.id, documento.numero]));
+
+	return {
+		financeiro: {
+			status: computeSaleFinancialStatus({
+				transactions: classificacao.todas.map((pagamento) => ({
+					valor: pagamento.valor,
+					tipo: "ENTRADA",
+					dataEfetivacao: pagamento.dataEfetivacao,
+					dataPrevisao: pagamento.dataPrevisao,
+					provedorStatus: pagamento.provedorStatus,
+				})),
+				saleTotal: sale.valorTotal,
+				now,
+			}),
+			pagamentos,
+			valorRecebido: pagamentos.reduce((acc, pagamento) => acc + pagamento.valorRecebido, 0),
+		},
+		fiscal: userCanViewFiscal
+			? {
+					status: computeSaleFiscalStatus({ documents: documentos }),
+					documentos: documentos.map((documento) => ({
+						...documento,
+						// O encadeamento (cancelamento/devolução) referencia o documento de origem por id.
+						// Resolver o número aqui evita que a UI precise fazer o lookup — todos os
+						// documentos da venda já estão nesta mesma lista.
+						documentoOrigemNumero: documento.documentoOrigemId ? (numeroPorId.get(documento.documentoOrigemId) ?? null) : null,
+					})),
+				}
+			: null,
+	};
+}
+
 function getFinancialStatusCondition({ orgId, statuses, now }: { orgId: string; statuses: TSaleFinancialDerivedStatusEnum[]; now: Date }) {
 	const receiptCount = sql<number>`count(${financialTransactions.id})`;
 	const settledTotal = sql<number>`coalesce(sum(case when ${financialTransactions.dataEfetivacao} is not null then ${financialTransactions.valor} else 0 end), 0)`;
@@ -399,6 +480,10 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 		saleStatuses,
 	} = input;
 
+	// Lido antes do ramo `byId`: o resumo de ERP da venda individual é gateado pelo mesmo módulo
+	// que gateia os chips da listagem.
+	const orgHasERPAccess = !!sessionUser.membership?.organizacao.configuracao?.recursos?.erp?.acesso;
+
 	if (id) {
 		const sale = await db.query.sales.findFirst({
 			where: (fields, { and, eq }) => and(eq(fields.id, id), eq(fields.organizacaoId, userOrgId)),
@@ -445,7 +530,28 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 						avatarUrl: true,
 					},
 				},
-				documentosFiscais: true,
+				// Colunas explícitas: `true` traria `provedorPayload`, `provedorRetorno` e
+				// `snapshotOrigemVenda` — três colunas `text` com o XML/JSON inteiro da nota, que
+				// viajavam até o cliente em todo carregamento da página sem ninguém lê-las.
+				documentosFiscais: {
+					columns: {
+						id: true,
+						tipo: true,
+						statusInterno: true,
+						ambiente: true,
+						numero: true,
+						serie: true,
+						chaveAcesso: true,
+						protocolo: true,
+						codigoRejeicao: true,
+						mensagens: true,
+						documentoOrigemId: true,
+						dataEmissao: true,
+						dataAutorizacao: true,
+						dataCancelamento: true,
+						dataInsercao: true,
+					},
+				},
 				itens: {
 					columns: {
 						id: true,
@@ -539,12 +645,32 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 			},
 			orderBy: (fields, { desc }) => desc(fields.dataInsercao),
 		});
-		// Transações financeiras da venda (via lançamentos): insumo da política de editabilidade.
+		// Transações financeiras da venda (via lançamentos): insumo da política de editabilidade e
+		// do resumo de recebimentos.
 		const lancamentos = await db.query.accountingEntries.findMany({
 			where: (fields, { and, eq }) => and(eq(fields.organizacaoId, userOrgId), eq(fields.vendaId, sale.id)),
 			columns: { id: true },
-			with: { transacoesFinanceiras: { columns: { valor: true, tipo: true, dataEfetivacao: true, provedorStatus: true } } },
+			with: {
+				transacoesFinanceiras: {
+					columns: {
+						id: true,
+						titulo: true,
+						valor: true,
+						tipo: true,
+						metodo: true,
+						parcela: true,
+						totalParcelas: true,
+						dataEfetivacao: true,
+						dataPrevisao: true,
+						provedorStatus: true,
+						contaFinanceiraId: true,
+					},
+				},
+			},
 		});
+		const transacoes = lancamentos.flatMap((entry) =>
+			entry.transacoesFinanceiras.map((transacao) => ({ ...transacao, lancamentoContabilId: entry.id })),
+		);
 		const editabilidade = resolveSaleEditability({
 			statusVenda: sale.statusVenda,
 			statusAtendimento: sale.statusAtendimento,
@@ -552,15 +678,24 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 			tabId: sale.tabId,
 			valorTotal: sale.valorTotal,
 			documentosFiscais: sale.documentosFiscais,
-			transacoes: lancamentos.flatMap((entry) => entry.transacoesFinanceiras),
+			transacoes,
 		});
+		const { documentosFiscais, ...saleWithoutFiscalDocuments } = sale;
 		return {
 			data: {
 				default: null,
 				byId: {
-					...sale,
+					...saleWithoutFiscalDocuments,
 					resgatesCupom,
 					editabilidade,
+					erp: orgHasERPAccess
+						? buildSaleErpDetail({
+								sale,
+								transacoes,
+								documentosFiscais,
+								userCanViewFiscal: !!sessionUser.membership?.permissoes.fiscal.visualizar,
+							})
+						: null,
 				},
 				byClientId: null,
 			},
@@ -568,7 +703,6 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 		};
 	}
 	const conditions = [eq(sales.organizacaoId, userOrgId)];
-	const orgHasERPAccess = !!sessionUser.membership?.organizacao.configuracao?.recursos?.erp?.acesso;
 	if (!orgHasERPAccess && (financialStatuses.length > 0 || fiscalStatuses.length > 0)) {
 		throw new createHttpError.Forbidden("Sua organização não possui acesso aos filtros financeiros e fiscais do ERP.");
 	}

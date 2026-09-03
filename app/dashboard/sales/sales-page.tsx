@@ -40,6 +40,11 @@ import {
   useAgentPrinters,
 } from "@/lib/queries/desktop-agent";
 import { createManualPrintJob } from "@/lib/mutations/desktop-agent";
+import { PAYMENT_METHOD_CHIP_LABELS } from "@/lib/payments/labels";
+import {
+  SALE_FINANCIAL_STATUS_PRESENTATION,
+  SALE_FISCAL_STATUS_PRESENTATION,
+} from "@/lib/sales/status-presentation";
 import { useSales } from "@/lib/queries/sales";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { useMutation } from "@tanstack/react-query";
@@ -296,79 +301,6 @@ export function SalesHistoryView({
   );
 }
 
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  DINHEIRO: "DINHEIRO",
-  PIX: "PIX",
-  CARTAO_CREDITO: "CRÉDITO",
-  CARTAO_DEBITO: "DÉBITO",
-  BOLETO: "BOLETO",
-  TRANSFERENCIA: "TRANSFERÊNCIA",
-  CASHBACK: "CASHBACK",
-  VALE: "VALE",
-  A_DEFINIR: "A DEFINIR",
-  FIADO_NOTA: "FIADO",
-  OUTRO: "OUTRO",
-};
-
-const FINANCIAL_CHIP_META: Record<
-  string,
-  { label: string; className: string }
-> = {
-  PENDENTE: {
-    label: "A RECEBER",
-    className: "border-border/60 bg-muted/30 text-foreground/80",
-  },
-  PARCIALMENTE_RECEBIDA: {
-    label: "PARCIAL",
-    className: "border-border/60 bg-muted/30 text-foreground/80",
-  },
-  RECEBIDA: {
-    label: "RECEBIDA",
-    className:
-      "border-green-600/25 bg-green-500/10 text-green-700 dark:text-green-400",
-  },
-  EM_ATRASO: {
-    label: "EM ATRASO",
-    className: "border-destructive/30 bg-destructive/10 text-destructive",
-  },
-};
-
-const FISCAL_CHIP_META: Record<string, { label: string; className: string }> = {
-  NAO_EMITIDO: {
-    label: "SEM NOTA",
-    className: "border-border/60 bg-muted/30 text-muted-foreground",
-  },
-  PENDENTE: {
-    label: "NOTA PENDENTE",
-    className: "border-border/60 bg-muted/30 text-foreground/80",
-  },
-  EM_PROCESSAMENTO: {
-    label: "NOTA PROCESSANDO",
-    className: "border-border/60 bg-muted/30 text-foreground/80",
-  },
-  AUTORIZADO: {
-    label: "AUTORIZADA",
-    className:
-      "border-green-600/25 bg-green-500/10 text-green-700 dark:text-green-400",
-  },
-  REJEITADO: {
-    label: "NOTA REJEITADA",
-    className: "border-destructive/30 bg-destructive/10 text-destructive",
-  },
-  CANCELADO: {
-    label: "NOTA CANCELADA",
-    className: "border-border/60 bg-muted/30 text-muted-foreground",
-  },
-  INUTILIZADO: {
-    label: "NOTA INUTILIZADA",
-    className: "border-border/60 bg-muted/30 text-muted-foreground",
-  },
-  ERRO: {
-    label: "ERRO FISCAL",
-    className: "border-destructive/30 bg-destructive/10 text-destructive",
-  },
-};
-
 const FINANCIAL_STATUS_FILTER_OPTIONS: InteractiveFilterOption<TSaleFinancialDerivedStatusEnum>[] =
   [
     {
@@ -562,10 +494,10 @@ function SaleErpSummaryChips({
   const erp = sale.erp;
   if (!erp) return null;
 
-  const financialMeta = FINANCIAL_CHIP_META[erp.financeiro.status];
-  const fiscalMeta = FISCAL_CHIP_META[erp.fiscal.status];
+  const financialMeta = SALE_FINANCIAL_STATUS_PRESENTATION[erp.financeiro.status];
+  const fiscalMeta = SALE_FISCAL_STATUS_PRESENTATION[erp.fiscal.status];
   const paymentLabel = erp.financeiro.metodos
-    .map((metodo) => PAYMENT_METHOD_LABELS[metodo] ?? metodo)
+    .map((metodo) => PAYMENT_METHOD_CHIP_LABELS[metodo] ?? metodo)
     .join(" + ");
   const installmentsLabel =
     erp.financeiro.maxParcelas && erp.financeiro.maxParcelas > 1
@@ -583,7 +515,7 @@ function SaleErpSummaryChips({
           className={financialMeta.className}
         >
           {paymentLabel}
-          {installmentsLabel} · {financialMeta.label}
+          {installmentsLabel} · {financialMeta.chipLabel}
         </SaleChip>
       ) : null}
       {fiscalMeta ? (
@@ -592,7 +524,7 @@ function SaleErpSummaryChips({
           className={fiscalMeta.className}
         >
           {fiscalNumberLabel}
-          {fiscalMeta.label}
+          {fiscalMeta.chipLabel}
         </SaleChip>
       ) : null}
     </>
