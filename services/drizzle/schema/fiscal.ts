@@ -36,12 +36,15 @@ export const fiscalDocumentEvents = newTable(
 		tipo: fiscalDocumentEventTypeEnum("tipo").notNull(),
 		descricao: text("descricao"),
 		payload: text("payload"),
+		origem: varchar("origem", { length: 40 }),
+		provedorEventoId: text("provedor_evento_id"),
 		autorId: varchar("autor_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
 		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
 	},
 	(table) => ({
 		documentoFiscalIdIdx: index("idx_fiscal_document_events_documento_fiscal_id").on(table.documentoFiscalId),
 		tipoIdx: index("idx_fiscal_document_events_tipo").on(table.tipo),
+		provedorEventoIdUq: uniqueIndex("uq_fiscal_document_events_provedor_evento_id").on(table.provedorEventoId),
 	}),
 );
 

@@ -7,7 +7,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Webhook de eventos da Spedy (inbound_invoice.detected / completed / event).
+ * Webhook de eventos de notas emitidas e recebidas da Spedy.
  *
  * A Spedy nao assina o payload (sem HMAC documentado), entao a autenticacao e um segredo na
  * query string (`?secret=SPEDY_WEBHOOK_SECRET`), comparado em tempo constante. O webhook e

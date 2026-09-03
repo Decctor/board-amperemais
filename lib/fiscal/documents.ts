@@ -13,6 +13,7 @@ import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { getErrorMessage } from "../errors";
 import { classifyFiscalDocumentEvent, describeFiscalEmissionResult } from "./document-event-classification";
+import { shouldApplyProviderSnapshot, shouldReplaceActionableRejection } from "./provider-snapshot-policy";
 import { buildFiscalReference } from "./constants";
 import {
   EXCEPTIONAL_PRESENCE_JUSTIFICATION_MAX_LENGTH,
@@ -294,12 +295,16 @@ async function addFiscalDocumentEvent({
   descricao,
   payload,
   autorId,
+  origem,
+  provedorEventoId,
 }: {
   documentoFiscalId: string;
   tipo: typeof fiscalDocumentEvents.$inferInsert.tipo;
   descricao?: string | null;
   payload?: unknown;
   autorId?: string | null;
+  origem?: string | null;
+  provedorEventoId?: string | null;
 }) {
   const [event] = await db
     .insert(fiscalDocumentEvents)
@@ -309,7 +314,10 @@ async function addFiscalDocumentEvent({
       descricao: descricao ?? null,
       payload: serializeJson(payload),
       autorId: autorId ?? null,
+      origem: origem ?? null,
+      provedorEventoId: provedorEventoId ?? null,
     })
+    .onConflictDoNothing()
     .returning();
   return event;
 }
@@ -318,9 +326,50 @@ async function applyProviderDocumentDetails(
   documentoId: string,
   details: TProviderDocumentDetails,
 ) {
+  const current = await db.query.fiscalOutboundDocuments.findFirst({
+    where: (fields, operators) => operators.eq(fields.id, documentoId),
+  });
+  if (!current) return { document: undefined, applied: false, ignored: true, rejectionPreserved: false };
+
+  if (
+    !shouldApplyProviderSnapshot({
+      current,
+      incoming: details,
+    })
+  ) {
+    const [touched] = await db
+      .update(fiscalOutboundDocuments)
+      .set({ dataUltimaSincronizacao: new Date() })
+      .where(eq(fiscalOutboundDocuments.id, documentoId))
+      .returning();
+    return { document: touched ?? current, applied: false, ignored: true, rejectionPreserved: false };
+  }
+
+  const providerMessages = (details.mensagens ?? []).map((message) =>
+    typeof message === "string" ? message : (JSON.stringify(message) ?? String(message)),
+  );
+  const rejectionPatch: Partial<typeof fiscalOutboundDocuments.$inferInsert> = {};
+  let rejectionPreserved = false;
+  if (["AUTORIZADO", "CANCELADO", "INUTILIZADO"].includes(details.statusInterno)) {
+    rejectionPatch.codigoRejeicao = null;
+    rejectionPatch.mensagens = [];
+  } else if (
+    (details.statusInterno === "REJEITADO" || details.statusInterno === "ERRO") &&
+    shouldReplaceActionableRejection({
+      currentCode: current.codigoRejeicao,
+      incomingCode: details.codigoStatus,
+      incomingMessages: providerMessages,
+    })
+  ) {
+    rejectionPatch.codigoRejeicao = details.codigoStatus ?? null;
+    rejectionPatch.mensagens = providerMessages;
+  } else if (details.statusInterno === "REJEITADO" || details.statusInterno === "ERRO") {
+    rejectionPreserved = Boolean(current.codigoRejeicao || current.mensagens?.length);
+  }
+
   // Retornos parciais do provedor (ex.: cancelamento nao traz chave/numero/datas de emissao):
   // campos ausentes ficam undefined e sao ignorados pelo update, preservando o valor persistido.
-  return patchFiscalDocument(documentoId, {
+  const patch: Partial<typeof fiscalOutboundDocuments.$inferInsert> = {
     status: details.status,
     statusInterno: details.statusInterno,
     ambiente: details.ambiente,
@@ -330,18 +379,99 @@ async function applyProviderDocumentDetails(
     numero: details.numero ?? undefined,
     serie: details.serie ?? undefined,
     protocolo: details.protocolo ?? undefined,
-    codigoRejeicao:
-      details.statusInterno === "AUTORIZADO"
-        ? null
-        : (details.codigoStatus ?? null),
-    mensagens: (details.mensagens as string[] | undefined) ?? [],
+    ...rejectionPatch,
     provedorPayload: serializeJson(details.provedorPayload) ?? undefined,
     provedorRetorno: serializeJson(details.provedorRetorno) ?? undefined,
     dataEmissao: details.dataEmissao ?? undefined,
     dataAutorizacao: details.dataAutorizacao ?? undefined,
     dataCancelamento: details.dataCancelamento ?? undefined,
+    provedorProcessadoEm: details.provedorProcessadoEm ?? undefined,
     dataUltimaSincronizacao: new Date(),
+  };
+
+  const incomingStatus = details.statusInterno;
+  const guards = [eq(fiscalOutboundDocuments.id, documentoId)];
+  if (details.provedorProcessadoEm) {
+    guards.push(
+      or(
+        isNull(fiscalOutboundDocuments.provedorProcessadoEm),
+        lte(fiscalOutboundDocuments.provedorProcessadoEm, details.provedorProcessadoEm),
+      )!,
+    );
+  }
+  if (!["AUTORIZADO", "CANCELADO", "INUTILIZADO"].includes(incomingStatus)) {
+    guards.push(sql`${fiscalOutboundDocuments.statusInterno} not in ('AUTORIZADO', 'CANCELADO', 'INUTILIZADO')`);
+  } else if (incomingStatus === "AUTORIZADO") {
+    guards.push(sql`${fiscalOutboundDocuments.statusInterno} not in ('CANCELADO', 'INUTILIZADO')`);
+  } else if (incomingStatus === "CANCELADO") {
+    guards.push(sql`${fiscalOutboundDocuments.statusInterno} <> 'INUTILIZADO'`);
+  } else {
+    guards.push(sql`${fiscalOutboundDocuments.statusInterno} <> 'CANCELADO'`);
+  }
+
+  const [updated] = await db
+    .update(fiscalOutboundDocuments)
+    .set(patch)
+    .where(and(...guards))
+    .returning();
+  if (!updated) {
+    const latest = await db.query.fiscalOutboundDocuments.findFirst({
+      where: (fields, operators) => operators.eq(fields.id, documentoId),
+    });
+    return { document: latest ?? current, applied: false, ignored: true, rejectionPreserved };
+  }
+  const stateChanged =
+    current.statusInterno !== updated.statusInterno ||
+    current.provedorStatus !== updated.provedorStatus ||
+    current.codigoRejeicao !== updated.codigoRejeicao ||
+    JSON.stringify(current.mensagens ?? []) !== JSON.stringify(updated.mensagens ?? []) ||
+    current.chaveAcesso !== updated.chaveAcesso ||
+    current.protocolo !== updated.protocolo;
+  return { document: updated, applied: stateChanged, ignored: false, rejectionPreserved };
+}
+
+export async function applyFiscalProviderWebhookSnapshot({
+  organizationId,
+  documentId,
+  details,
+  providerEventId,
+}: {
+  organizationId: string;
+  documentId: string;
+  details: TProviderDocumentDetails;
+  providerEventId?: string | null;
+}) {
+  const document = await getFiscalDocumentById({ documentId, organizationId });
+  if (!document)
+    throw new createHttpError.NotFound("Documento fiscal nao encontrado.");
+
+  const result = await applyProviderDocumentDetails(document.id, details);
+  const providerMessages = (details.mensagens ?? []).map((message) =>
+    typeof message === "string" ? message : (JSON.stringify(message) ?? String(message)),
+  );
+  const auditOnly = result.ignored || result.rejectionPreserved || !result.applied;
+  await addFiscalDocumentEvent({
+    documentoFiscalId: document.id,
+    tipo: auditOnly ? "SINCRONIZADO" : classifyFiscalDocumentEvent(details.statusInterno),
+    descricao: result.ignored
+      ? "Atualizacao do provedor ignorada por ser anterior ao estado fiscal ja persistido."
+      : result.rejectionPreserved
+        ? "Resposta secundaria do provedor registrada sem substituir a rejeicao fiscal acionavel."
+        : !result.applied
+          ? "Webhook do provedor recebido sem alteracao do estado fiscal."
+      : describeFiscalEmissionResult({
+          status: details.statusInterno,
+          messages: providerMessages,
+        }),
+    payload: details.provedorRetorno,
+    origem: "WEBHOOK",
+    provedorEventoId: providerEventId ?? null,
   });
+
+  if (details.statusInterno === "AUTORIZADO" && result.document) {
+    await persistAuthorizedAssets(result.document, organizationId);
+  }
+  return result.document;
 }
 
 async function createOrUpdateDraftDocument({
@@ -736,12 +866,13 @@ async function persistAuthorizedAssets(
   documento: typeof fiscalOutboundDocuments.$inferSelect,
   organizacaoId: string,
 ) {
+  if (documento.xmlStoragePath && documento.pdfStoragePath) return documento;
   const organizacao = await loadFiscalOrganization(organizacaoId);
   if (!organizacao) return null;
   const provider = resolveFiscalProvider(organizacao.fiscalProvedor);
   const [xmlBuffer, pdfBuffer] = await Promise.all([
-    provider.baixarXml(documento, organizacao),
-    provider.baixarPdf(documento, organizacao),
+    documento.xmlStoragePath ? null : provider.baixarXml(documento, organizacao),
+    documento.pdfStoragePath ? null : provider.baixarPdf(documento, organizacao),
   ]);
   const xmlStoragePath = xmlBuffer
     ? await storeFiscalAsset({
@@ -760,8 +891,8 @@ async function persistAuthorizedAssets(
       })
     : null;
   const patched = await patchFiscalDocument(documento.id, {
-    xmlStoragePath,
-    pdfStoragePath,
+    xmlStoragePath: xmlStoragePath ?? undefined,
+    pdfStoragePath: pdfStoragePath ?? undefined,
   });
   // Auto-print da DANFE: hook único para os dois caminhos de autorização (emissão e sync),
   // depois do pdfStoragePath gravado. Nunca lança; idempotente por DANFE:<documentoId>.
@@ -986,13 +1117,14 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
       context,
       latestDocument,
     );
-    const updatedDocument = await applyProviderDocumentDetails(
+    const providerApplication = await applyProviderDocumentDetails(
       documento.id,
       providerDetails,
     );
+    const updatedDocument = providerApplication.document;
 
     const providerMessages = (providerDetails.mensagens ?? []).map((message) =>
-      typeof message === "string" ? message : JSON.stringify(message),
+      typeof message === "string" ? message : (JSON.stringify(message) ?? String(message)),
     );
     await addFiscalDocumentEvent({
       documentoFiscalId: documento.id,
@@ -1003,6 +1135,7 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
       }),
       payload: providerDetails.provedorRetorno,
       autorId: input.autorId ?? null,
+      origem: "EMISSAO",
     });
 
     if (
@@ -1077,13 +1210,14 @@ export async function syncFiscalDocument(input: TSyncDocumentInput) {
     documento,
     organizacao,
   );
-  const updated = await applyProviderDocumentDetails(
+  const providerApplication = await applyProviderDocumentDetails(
     documento.id,
     providerDetails,
   );
+  const updated = providerApplication.document;
 
   const syncMessages = (providerDetails.mensagens ?? []).map((message) =>
-    typeof message === "string" ? message : JSON.stringify(message),
+    typeof message === "string" ? message : (JSON.stringify(message) ?? String(message)),
   );
   const syncRejectionDetail =
     providerDetails.statusInterno === "REJEITADO" ||
@@ -1091,15 +1225,21 @@ export async function syncFiscalDocument(input: TSyncDocumentInput) {
       ? syncMessages.join("; ") || "sem motivo informado pelo provedor"
       : null;
 
-  await addFiscalDocumentEvent({
-    documentoFiscalId: documento.id,
-    tipo: "SINCRONIZADO",
-    descricao: syncRejectionDetail
-      ? `Sincronizacao: documento ${providerDetails.statusInterno.toLowerCase()} — ${syncRejectionDetail}`
-      : "Documento fiscal sincronizado manualmente.",
-    payload: providerDetails.provedorRetorno,
-    autorId: input.authorId ?? null,
-  });
+  const syncSource = input.source ?? "CONSULTA_MANUAL";
+  if (providerApplication.applied) {
+    await addFiscalDocumentEvent({
+      documentoFiscalId: documento.id,
+      tipo: "SINCRONIZADO",
+      descricao: syncRejectionDetail
+        ? `Consulta ao provedor: documento ${providerDetails.statusInterno.toLowerCase()} — ${syncRejectionDetail}`
+        : syncSource === "CONSULTA_AUTOMATICA"
+          ? "Status fiscal atualizado automaticamente a partir do provedor."
+          : "Status fiscal atualizado a partir de uma consulta ao provedor.",
+      payload: providerDetails.provedorRetorno,
+      autorId: input.authorId ?? null,
+      origem: syncSource,
+    });
+  }
 
   if (
     providerDetails.statusInterno === "REJEITADO" ||
@@ -1152,10 +1292,11 @@ export async function cancelFiscalDocument(input: TCancelDocumentInput) {
     documento,
     organizacao,
   );
-  const updated = await applyProviderDocumentDetails(
+  const providerApplication = await applyProviderDocumentDetails(
     documento.id,
     providerDetails,
   );
+  const updated = providerApplication.document;
 
   await addFiscalDocumentEvent({
     documentoFiscalId: documento.id,
@@ -1166,6 +1307,7 @@ export async function cancelFiscalDocument(input: TCancelDocumentInput) {
         : "Falha ao cancelar documento.",
     payload: providerDetails.provedorRetorno,
     autorId: input.authorId ?? null,
+    origem: "CANCELAMENTO",
   });
 
   return {
@@ -1436,7 +1578,11 @@ export async function syncPendingFiscalDocuments({
   const results = [];
   for (const document of pendingDocuments) {
     results.push(
-      await syncFiscalDocument({ organizationId, documentId: document.id }),
+      await syncFiscalDocument({
+        organizationId,
+        documentId: document.id,
+        source: "CONSULTA_AUTOMATICA",
+      }),
     );
   }
   return results;

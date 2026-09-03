@@ -108,6 +108,7 @@ export type TSyncDocumentInput = {
   organizationId: string;
   documentId: string;
   authorId?: string | null;
+  source?: "CONSULTA_MANUAL" | "CONSULTA_AUTOMATICA";
 };
 
 export type TSyncDocumentResult = {
@@ -162,6 +163,7 @@ export type TProviderDocumentDetails = {
   dataEmissao?: Date | null;
   dataAutorizacao?: Date | null;
   dataCancelamento?: Date | null;
+  provedorProcessadoEm?: Date | null;
   codigoStatus?: string | null;
   mensagens?: unknown[];
   provedorPayload?: Record<string, unknown> | null;

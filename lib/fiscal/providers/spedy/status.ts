@@ -9,6 +9,12 @@ export function mapFiscalEnvironmentToSpedy(value: "HOMOLOGACAO" | "PRODUCAO" | 
 	return value === "PRODUCAO" ? "production" : "development";
 }
 
+function parseSpedyDate(value: string | null | undefined): Date | null {
+	if (!value) return null;
+	const parsed = new Date(value);
+	return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function mapDocumentStatus(status: TSpedyInvoiceStatus | null | undefined): TProviderDocumentDetails["status"] {
 	switch (status) {
 		case "authorized":
@@ -51,8 +57,9 @@ export function mapSpedyInvoiceResponse(response: TSpedyInvoiceResponse): TProvi
 		numero: response.number?.toString() ?? null,
 		serie: response.series ?? null,
 		protocolo: response.authorization?.protocol ?? null,
-		dataEmissao: response.issuedOn ? new Date(response.issuedOn) : null,
-		dataAutorizacao: response.authorization?.date ? new Date(response.authorization.date) : null,
+		dataEmissao: parseSpedyDate(response.issuedOn),
+		dataAutorizacao: parseSpedyDate(response.authorization?.date),
+		provedorProcessadoEm: parseSpedyDate(response.processingDetail?.on),
 		codigoStatus: response.processingDetail?.code ?? null,
 		mensagens: messages,
 		provedorRetorno: response as unknown as Record<string, unknown>,

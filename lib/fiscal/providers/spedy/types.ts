@@ -35,6 +35,9 @@ export type TSpedyInvoiceResponse = {
 	processingDetail?: TSpedyProcessingDetail | null;
 	accessKey?: string | null;
 	series?: string | null;
+	company?: {
+		federalTaxNumber?: string | null;
+	} | null;
 };
 
 export type TSpedyCompanyResponse = {

@@ -105,6 +105,7 @@ export async function processFiscalQueue({
       await syncFiscalDocument({
         organizationId: doc.organizacaoId,
         documentId: doc.id,
+        source: "CONSULTA_AUTOMATICA",
       });
       results.sincronizados++;
     } catch (error) {
