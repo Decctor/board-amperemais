@@ -8,13 +8,19 @@ import { buildSalesIntegrationFilterOptions } from "@/components/Sales/sales-int
 import { InteractiveFilter, type InteractiveFilterOption } from "@/components/ui/interactive-filter";
 import { Button } from "@/components/ui/button";
 import type { TAuthUserSession } from "@/lib/authentication/types";
-import { formatInteractiveCountSummary, formatInteractiveDateRangeSummary, formatInteractiveNumberRangeSummary, formatInteractiveOptionSummary } from "@/components/ui/interactive-filter-formatting";
+import {
+	formatInteractiveCountSummary,
+	formatInteractiveDateRangeSummary,
+	formatInteractiveNumberRangeSummary,
+	formatInteractiveOptionSummary,
+} from "@/components/ui/interactive-filter-formatting";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import type { TSaleStatsGeneralQueryParams } from "@/schemas/query-params-utils";
 import { RFMLabels } from "@/utils/rfm";
 import dayjs from "dayjs";
 import { BadgeDollarSign, Calendar, GitCompare, ListFilter } from "lucide-react";
 import { useState } from "react";
+import { formatDateOnInputChange } from "@/lib/formatting";
 
 const initialPeriodStart = dayjs().startOf("month").toISOString();
 const initialPeriodEnd = dayjs().endOf("day").toISOString();
@@ -72,9 +78,14 @@ type CommercialInlineFiltersProps = {
 
 function CommercialInlineFilters({ scopeSellersIds, queryParams, updateQueryParams }: CommercialInlineFiltersProps) {
 	const { data: filterOptions } = useSaleQueryFilterOptions();
-	const sellerOptions = ((scopeSellersIds ? filterOptions?.sellers.filter((s) => scopeSellersIds.includes(s.id)) : filterOptions?.sellers) ?? []) as InteractiveFilterOption<string>[];
+	const sellerOptions = ((scopeSellersIds ? filterOptions?.sellers.filter((s) => scopeSellersIds.includes(s.id)) : filterOptions?.sellers) ??
+		[]) as InteractiveFilterOption<string>[];
 	const integrationOptions = buildSalesIntegrationFilterOptions(filterOptions?.integrations);
-	const rfmOptions = RFMLabels.map((item, index) => ({ id: index + 1, label: item.text, value: item.text })) satisfies InteractiveFilterOption<string>[];
+	const rfmOptions = RFMLabels.map((item, index) => ({
+		id: index + 1,
+		label: item.text,
+		value: item.text,
+	})) satisfies InteractiveFilterOption<string>[];
 
 	const hasSellers = queryParams.sellersIds.length > 0;
 	const hasIntegrations = queryParams.integrationsIds.length > 0;
@@ -101,8 +112,8 @@ function CommercialInlineFilters({ scopeSellersIds, queryParams, updateQueryPara
 						onChange={(period) =>
 							updateQueryParams({
 								period: {
-									after: period.from?.toISOString() ?? queryParams.period.after,
-									before: period.to?.toISOString() ?? queryParams.period.before,
+									after: period.from ? (formatDateOnInputChange(period.from.toISOString(), "string", "start") as string) : queryParams.period.after,
+									before: period.to ? (formatDateOnInputChange(period.to.toISOString(), "string", "end") as string) : queryParams.period.before,
 								},
 							})
 						}
@@ -110,7 +121,15 @@ function CommercialInlineFilters({ scopeSellersIds, queryParams, updateQueryPara
 				</InteractiveFilter.Content>
 			</InteractiveFilter.Root>
 
-			{hasSellers ? <CommercialMultiFilter label="VENDEDORES" options={sellerOptions} value={queryParams.sellersIds} onChange={(sellersIds) => updateQueryParams({ sellersIds })} onClear={() => updateQueryParams({ sellersIds: [] })} /> : null}
+			{hasSellers ? (
+				<CommercialMultiFilter
+					label="VENDEDORES"
+					options={sellerOptions}
+					value={queryParams.sellersIds}
+					onChange={(sellersIds) => updateQueryParams({ sellersIds })}
+					onClear={() => updateQueryParams({ sellersIds: [] })}
+				/>
+			) : null}
 			{hasIntegrations ? (
 				<CommercialMultiFilter
 					label="INTEGRAÇÕES"
@@ -120,7 +139,15 @@ function CommercialInlineFilters({ scopeSellersIds, queryParams, updateQueryPara
 					onClear={() => updateQueryParams({ integrationsIds: [] })}
 				/>
 			) : null}
-			{hasRFM ? <CommercialMultiFilter label="RFM" options={rfmOptions} value={queryParams.clientRFMTitles} onChange={(clientRFMTitles) => updateQueryParams({ clientRFMTitles })} onClear={() => updateQueryParams({ clientRFMTitles: [] })} /> : null}
+			{hasRFM ? (
+				<CommercialMultiFilter
+					label="RFM"
+					options={rfmOptions}
+					value={queryParams.clientRFMTitles}
+					onChange={(clientRFMTitles) => updateQueryParams({ clientRFMTitles })}
+					onClear={() => updateQueryParams({ clientRFMTitles: [] })}
+				/>
+			) : null}
 			{hasTotal ? <CommercialTotalFilter queryParams={queryParams} updateQueryParams={updateQueryParams} /> : null}
 			{hasExcludedSales ? <CommercialExcludedSalesFilter queryParams={queryParams} updateQueryParams={updateQueryParams} /> : null}
 
@@ -133,17 +160,35 @@ function CommercialInlineFilters({ scopeSellersIds, queryParams, updateQueryPara
 					<InteractiveFilter.AddFilterSection heading="Filtros">
 						{!hasSellers ? (
 							<InteractiveFilter.AddFilterItem id="sellers" label="VENDEDORES" icon={<ListFilter className="h-4 w-4" />}>
-								<InteractiveFilter.MultiContent options={sellerOptions} value={queryParams.sellersIds} onChange={(sellersIds) => updateQueryParams({ sellersIds })} onClear={() => updateQueryParams({ sellersIds: [] })} clearLabel="TODOS" />
+								<InteractiveFilter.MultiContent
+									options={sellerOptions}
+									value={queryParams.sellersIds}
+									onChange={(sellersIds) => updateQueryParams({ sellersIds })}
+									onClear={() => updateQueryParams({ sellersIds: [] })}
+									clearLabel="TODOS"
+								/>
 							</InteractiveFilter.AddFilterItem>
 						) : null}
 						{!hasIntegrations ? (
 							<InteractiveFilter.AddFilterItem id="integrations" label="INTEGRAÇÕES" icon={<ListFilter className="h-4 w-4" />}>
-								<InteractiveFilter.MultiContent options={integrationOptions} value={queryParams.integrationsIds} onChange={(integrationsIds) => updateQueryParams({ integrationsIds })} onClear={() => updateQueryParams({ integrationsIds: [] })} clearLabel="TODAS" />
+								<InteractiveFilter.MultiContent
+									options={integrationOptions}
+									value={queryParams.integrationsIds}
+									onChange={(integrationsIds) => updateQueryParams({ integrationsIds })}
+									onClear={() => updateQueryParams({ integrationsIds: [] })}
+									clearLabel="TODAS"
+								/>
 							</InteractiveFilter.AddFilterItem>
 						) : null}
 						{!hasRFM ? (
 							<InteractiveFilter.AddFilterItem id="rfm" label="RFM" icon={<ListFilter className="h-4 w-4" />}>
-								<InteractiveFilter.MultiContent options={rfmOptions} value={queryParams.clientRFMTitles} onChange={(clientRFMTitles) => updateQueryParams({ clientRFMTitles })} onClear={() => updateQueryParams({ clientRFMTitles: [] })} clearLabel="TODOS" />
+								<InteractiveFilter.MultiContent
+									options={rfmOptions}
+									value={queryParams.clientRFMTitles}
+									onChange={(clientRFMTitles) => updateQueryParams({ clientRFMTitles })}
+									onClear={() => updateQueryParams({ clientRFMTitles: [] })}
+									clearLabel="TODOS"
+								/>
 							</InteractiveFilter.AddFilterItem>
 						) : null}
 						{!hasTotal ? (
