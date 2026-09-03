@@ -1698,3 +1698,33 @@ export const UploadPurposeEnum = z.enum(["MIDIA_TEMPLATE_MENSAGEM"], {
   invalid_type_error: "Tipo não válido para o propósito do upload.",
 });
 export type TUploadPurposeEnum = z.infer<typeof UploadPurposeEnum>;
+
+// ============================================================================
+// PDV — CATÁLOGO DE VENDA
+// ============================================================================
+
+/**
+ * Ordenação da grade de produtos do PDV.
+ * VALOR_VENDIDO e QUANTIDADE_VENDIDA olham a janela recente de vendas confirmadas — o que a loja
+ * realmente gira fica na primeira página, sem precisar de uma faixa separada de "mais pedidos".
+ * NOME é a ordem de catálogo, para quem procura um item específico na grade.
+ */
+export const POSProductOrderingEnum = z.enum(
+  ["VALOR_VENDIDO", "QUANTIDADE_VENDIDA", "NOME"],
+  {
+    invalid_type_error: "Tipo não válido para a ordenação dos produtos do PDV.",
+  },
+);
+export type TPOSProductOrderingEnum = z.infer<typeof POSProductOrderingEnum>;
+
+export const POS_PRODUCT_ORDERING_DEFAULT: TPOSProductOrderingEnum =
+  "VALOR_VENDIDO";
+
+export const POS_PRODUCT_ORDERING_LABELS: Record<
+  TPOSProductOrderingEnum,
+  string
+> = {
+  VALOR_VENDIDO: "Mais faturados",
+  QUANTIDADE_VENDIDA: "Mais vendidos",
+  NOME: "Nome (A-Z)",
+};
