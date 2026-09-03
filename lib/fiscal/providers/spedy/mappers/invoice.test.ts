@@ -1,0 +1,120 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import type { TFiscalSaleContext } from "@/lib/fiscal/types";
+import type { TFiscalDocument } from "@/services/drizzle/schema";
+import { mapSaleContextToSpedyInvoicePayload } from "./invoice";
+
+test("envia o frete da loja nos itens e mantem pagamentos iguais ao total da NFC-e", () => {
+	const context = {
+		venda: {
+			integracaoMetadados: null,
+			rascunhoMetadados: { shop: { entrega: { taxa: 7 } } },
+			entregaModalidade: "ENTREGA",
+			acrescimosTotal: 7,
+			itens: [
+				{
+					produtoId: "gelato",
+					quantidade: 1,
+					valorVendaUnitario: 28,
+					valorVendaTotalBruto: 28,
+					valorTotalDesconto: 0,
+					metadados: { nome: "Gelato" },
+				},
+				{
+					produtoId: "recompensa",
+					quantidade: 1,
+					valorVendaUnitario: 17,
+					valorVendaTotalBruto: 17,
+					valorTotalDesconto: 17,
+					metadados: { nome: "Recompensa" },
+				},
+			],
+		},
+		organizacao: {
+			id: "org",
+			fiscalConfiguracao: {
+				ambiente: "PRODUCAO",
+				regimeTributario: 1,
+				endereco: { uf: "MG" },
+			},
+		},
+		serie: { serie: "3", proximoNumero: 97 },
+		operacao: {
+			tipoDocumento: "NFCE",
+			finalidade: "NORMAL",
+			presencaConsumidor: "OPERACAO_PRESENCIAL",
+			consumidorFinal: true,
+			cfopPadrao: "5102",
+			naturezaOperacao: "Venda de mercadorias",
+		},
+		perfisProdutos: [
+			{
+				produtoId: "gelato",
+				grupoTributarioId: "grupo",
+				origemMercadoria: "NACIONAL",
+				ncm: "21050010",
+				cest: null,
+				cfopPadrao: "5102",
+				unidadeComercial: "UN",
+			},
+			{
+				produtoId: "recompensa",
+				grupoTributarioId: "grupo",
+				origemMercadoria: "NACIONAL",
+				ncm: "19053100",
+				cest: null,
+				cfopPadrao: "5102",
+				unidadeComercial: "UN",
+			},
+		],
+		gruposTributarios: [
+			{
+				id: "grupo",
+				csosn: "102",
+				aliquotaIcms: 0,
+				percentualReducaoBc: 0,
+				modalidadeBc: 3,
+				percentualCreditoSn: null,
+				temSubstituicaoTributaria: false,
+				mvaSt: null,
+				aliquotaIcmsSt: null,
+				aliquotaInternaDestino: null,
+				percentualReducaoBcSt: null,
+				aliquotaFcp: 0,
+				aliquotaFcpSt: 0,
+				cstPis: "49",
+				aliquotaPis: 0,
+				cstCofins: "49",
+				aliquotaCofins: 0,
+				regras: [],
+			},
+		],
+		ibptRates: [],
+		destinatarioSnapshot: null,
+		pagamentos: [{ metodo: "CARTAO_CREDITO", valor: 35 }],
+	} as unknown as TFiscalSaleContext;
+	const document = {
+		tipo: "NFCE",
+		referencia: "VENDA:test",
+		numero: "96",
+		tentativasEnvio: 1,
+		chaveAcessoReferencia: null,
+	} as unknown as TFiscalDocument;
+
+	const payload = mapSaleContextToSpedyInvoicePayload(context, document) as {
+		items: { freightAmount?: number }[];
+		total: { invoiceAmount: number; freightAmount: number };
+		payments: { amount: number }[];
+	};
+
+	assert.deepEqual(
+		payload.items.map((item) => item.freightAmount ?? 0),
+		[7, 0],
+	);
+	assert.equal(payload.total.freightAmount, 7);
+	assert.equal(payload.total.invoiceAmount, 35);
+	assert.equal(
+		payload.payments.reduce((sum, payment) => sum + payment.amount, 0),
+		35,
+	);
+});

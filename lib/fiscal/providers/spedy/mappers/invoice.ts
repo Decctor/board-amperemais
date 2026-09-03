@@ -106,7 +106,7 @@ export function mapSaleContextToSpedyInvoicePayload(context: TFiscalSaleContext,
 		isFinalCustomer: context.operacao.consumidorFinal,
 		environmentType: ambienteSpedy,
 		receiver: mapReceiver(context.destinatarioSnapshot, ambienteSpedy === "development"),
-		items: taxation.itens.map(({ item, result }, index) => {
+		items: taxation.itens.map(({ item, result, valorFrete }, index) => {
 			const perfil = context.perfisProdutos.find((profile) => profile.produtoId === item.produtoId);
 			return {
 				code: item.produtoId,
@@ -123,6 +123,7 @@ export function mapSaleContextToSpedyInvoicePayload(context: TFiscalSaleContext,
 				quantityTax: item.quantidade,
 				unitTaxAmount: item.valorVendaUnitario,
 				discountAmount: item.valorTotalDesconto > 0 ? item.valorTotalDesconto : undefined,
+				freightAmount: valorFrete > 0 ? valorFrete : undefined,
 				makeupTotal: true,
 				taxBenefitCode: perfil?.codigoBeneficioFiscal ?? undefined,
 				taxes: buildSpedyItemTaxes(result),

@@ -51,6 +51,7 @@ export type TFiscalItemInput = {
 	quantidade: number;
 	valorBruto: number; // valor total bruto do item (sem desconto)
 	valorDesconto: number;
+	valorFrete?: number; // parcela do frete alocada ao item
 };
 
 export type TFiscalValidationSeverity = "ERRO" | "AVISO";

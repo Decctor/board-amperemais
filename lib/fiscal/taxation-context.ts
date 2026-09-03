@@ -11,6 +11,7 @@ import {
 	type TFiscalValidationError,
 	type TItemTaxResult,
 } from "./engine";
+import { allocateFiscalFreight } from "./freight-allocation";
 import { resolveFiscalShopDeliveryFee } from "@/lib/shop/config";
 import type { TFiscalSaleContext } from "./types";
 
@@ -79,6 +80,7 @@ function buildFallbackGroup(organizacaoId: string): TFiscalTaxGroupWithRules {
 export type TSaleItemTaxation = {
 	item: TFiscalSaleContext["venda"]["itens"][number];
 	result: TItemTaxResult;
+	valorFrete: number;
 };
 
 export type TSaleTaxation = {
@@ -92,8 +94,25 @@ export type TSaleTaxation = {
 export function computeSaleTaxation(context: TFiscalSaleContext): TSaleTaxation {
 	const scenario = buildSaleScenario(context);
 	const extraErrors: TFiscalValidationError[] = [];
+	// Frete de canal gerenciado: entrega propria (LOJA) e receita da loja e compoe a NF; entrega
+	// feita pelo canal fica fora. A taxa da loja digital tambem e sempre receita da loja.
+	const integracaoMetadados = context.venda.integracaoMetadados;
+	const vFreteCanal = integracaoMetadados?.entrega.realizadaPor === "LOJA" ? Math.max(integracaoMetadados.entrega.valorFrete, 0) : 0;
+	const vFreteLoja = resolveFiscalShopDeliveryFee({
+		rascunhoMetadados: context.venda.rascunhoMetadados,
+		modalidade: context.venda.entregaModalidade,
+		acrescimosTotal: context.venda.acrescimosTotal,
+	});
+	const vFrete = vFreteCanal + vFreteLoja;
+	const freightByItem = allocateFiscalFreight({
+		valorFrete: vFrete,
+		itens: context.venda.itens.map((item) => ({
+			valorBruto: item.valorVendaTotalBruto,
+			valorDesconto: item.valorTotalDesconto,
+		})),
+	});
 
-	const itens = context.venda.itens.map((item) => {
+	const itens = context.venda.itens.map((item, index) => {
 		console.log("[COMPUTE SALE TAXATION] Item", item);
 		const perfil = context.perfisProdutos.find((profile) => profile.produtoId === item.produtoId);
 		const grupo = perfil?.grupoTributarioId ? context.gruposTributarios.find((g) => g.id === perfil.grupoTributarioId) : undefined;
@@ -119,7 +138,11 @@ export function computeSaleTaxation(context: TFiscalSaleContext): TSaleTaxation 
 
 		// vTotTrib (Lei 12.741) a partir da tabela IBPT carregada no contexto (por NCM + UF de origem).
 		const ibptRate = selectIbptRate(context.ibptRates, { ncm: perfil?.ncm ?? "", uf: scenario.ufOrigem, exTipi: perfil?.exTipi ?? null });
-		const vTotTrib = computeVTotTrib({ rate: ibptRate, origem: origemMercadoria, baseValue: item.valorVendaTotalBruto - item.valorTotalDesconto });
+		const vTotTrib = computeVTotTrib({
+			rate: ibptRate,
+			origem: origemMercadoria,
+			baseValue: item.valorVendaTotalBruto - item.valorTotalDesconto + freightByItem[index],
+		});
 
 		const result = computeItemTaxation({
 			scenario,
@@ -132,25 +155,13 @@ export function computeSaleTaxation(context: TFiscalSaleContext): TSaleTaxation 
 				quantidade: item.quantidade,
 				valorBruto: item.valorVendaTotalBruto,
 				valorDesconto: item.valorTotalDesconto,
+				valorFrete: freightByItem[index],
 			},
 			vTotTrib,
 		});
 
-		return { item, result };
+		return { item, result, valorFrete: freightByItem[index] };
 	});
-
-	// Frete de canal gerenciado (fase 5/C3): entrega própria (LOJA) é receita da loja e compõe a
-	// NF como vFrete; entrega feita pelo canal fica fora.
-	const integracaoMetadados = context.venda.integracaoMetadados;
-	const vFreteCanal = integracaoMetadados?.entrega.realizadaPor === "LOJA" ? Math.max(integracaoMetadados.entrega.valorFrete, 0) : 0;
-	// Taxa de entrega da loja digital: entrega sempre própria, logo é receita da loja e entra na NF.
-	// Precisa compor vNF, senão os pagamentos (que já incluem a taxa) não fecham e a NFC-e ganha vTroco fantasma.
-	const vFreteLoja = resolveFiscalShopDeliveryFee({
-		rascunhoMetadados: context.venda.rascunhoMetadados,
-		modalidade: context.venda.entregaModalidade,
-		acrescimosTotal: context.venda.acrescimosTotal,
-	});
-	const vFrete = vFreteCanal + vFreteLoja;
 
 	const totais = computeDocumentTotals(
 		itens.map(({ result, item }) => ({ result, valorBruto: item.valorVendaTotalBruto, valorDesconto: item.valorTotalDesconto })),

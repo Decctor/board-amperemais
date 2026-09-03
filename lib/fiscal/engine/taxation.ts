@@ -189,7 +189,9 @@ export type TComputeItemTaxationInput = {
 
 export function computeItemTaxation({ scenario, item, group, vTotTrib }: TComputeItemTaxationInput): TItemTaxResult {
 	const erros: TFiscalValidationError[] = [];
-	const baseLiquida = round2(item.valorBruto - item.valorDesconto);
+	// Frete cobrado do destinatario compoe a base tributavel do item. O rateio e feito antes desta
+	// etapa para manter bases, itens e totais do documento coerentes.
+	const baseLiquida = round2(item.valorBruto - item.valorDesconto + (item.valorFrete ?? 0));
 	const origemCodigo = mapOrigemToCodigo(item.origemMercadoria);
 
 	const config = resolveEffectiveTaxConfig(group, scenario);
