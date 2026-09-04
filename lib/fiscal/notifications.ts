@@ -54,48 +54,36 @@ type NotifyFiscalEmissionFailureParams = {
 	errorMessage: string;
 };
 
+// Best-effort developer alert. Customers are not notified: an automatic emission failure is
+// retried/resolved from the fiscal module, and the e-mail was only adding noise for them.
+// Never throws: a failure to notify must not break sale processing.
 export async function notifyFiscalEmissionFailure({ organization, sale, errorMessage }: NotifyFiscalEmissionFailureParams) {
+	const recipient = process.env.BUG_REPORT_EMAIL;
+	if (!recipient) {
+		console.error("[FISCAL] BUG_REPORT_EMAIL is not set; skipping developer alert email.", { saleId: sale.id, organizacaoId: organization.id, errorMessage });
+		return;
+	}
+
+	const fiscalUrl = `${getAppBaseUrl()}${appRoutes.fiscal()}`;
+
 	try {
-		const recipients = await listFiscalNotificationRecipients(organization);
-		if (recipients.length === 0) return;
+		const { error } = await resend.emails.send({
+			from: "RecompraCRM <fiscal@recompracrm.com.br>",
+			to: [recipient],
+			subject: `[ALERTA] Falha na emissão fiscal automática — ${organization.nome}`,
+			text: [
+				`A venda ${sale.id} foi confirmada, mas a emissão fiscal automática falhou.`,
+				"",
+				`Organização: ${organization.nome} (${organization.id})`,
+				`Canal: ${sale.canal ?? "N/A"}`,
+				`Valor: ${formatToMoney(sale.valorTotal)}`,
+				`Erro: ${errorMessage}`,
+				"",
+				`Módulo fiscal: ${fiscalUrl}`,
+			].join("\n"),
+		});
 
-		const fiscalUrl = `${getAppBaseUrl()}${appRoutes.fiscal()}`;
-		const safeOrganizationName = escapeHtml(organization.nome);
-		const safeError = escapeHtml(errorMessage);
-		const safeSaleId = escapeHtml(sale.id);
-		const safeChannel = escapeHtml(sale.canal ?? "N/A");
-
-		await Promise.allSettled(
-			recipients.map((recipient) =>
-				resend.emails.send({
-					from: "RecompraCRM <fiscal@recompracrm.com.br>",
-					to: [recipient],
-					subject: "Emissão fiscal pendente no RecompraCRM",
-					text: [
-						`A venda ${sale.id} foi confirmada, mas a emissão fiscal falhou.`,
-						`Organização: ${organization.nome}`,
-						`Canal: ${sale.canal ?? "N/A"}`,
-						`Valor: ${formatToMoney(sale.valorTotal)}`,
-						`Erro: ${errorMessage}`,
-						`Acesse o módulo fiscal para revisar e emitir novamente: ${fiscalUrl}`,
-					].join("\n"),
-					html: `
-						<div style="font-family: Arial, sans-serif; color: #111827; line-height: 1.5;">
-							<h2 style="margin: 0 0 12px;">Emissão fiscal pendente</h2>
-							<p>A venda <strong>${safeSaleId}</strong> foi confirmada, mas a emissão fiscal falhou.</p>
-							<table style="border-collapse: collapse; margin: 16px 0; width: 100%; max-width: 560px;">
-								<tr><td style="padding: 8px; border: 1px solid #e5e7eb;"><strong>Organização</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${safeOrganizationName}</td></tr>
-								<tr><td style="padding: 8px; border: 1px solid #e5e7eb;"><strong>Canal</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${safeChannel}</td></tr>
-								<tr><td style="padding: 8px; border: 1px solid #e5e7eb;"><strong>Valor</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${escapeHtml(formatToMoney(sale.valorTotal))}</td></tr>
-								<tr><td style="padding: 8px; border: 1px solid #e5e7eb;"><strong>Erro</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${safeError}</td></tr>
-							</table>
-							<p>Revise a pendência no módulo fiscal e emita novamente quando estiver pronto.</p>
-							<p><a href="${fiscalUrl}" style="color: #2563eb; font-weight: 700;">Abrir módulo fiscal</a></p>
-						</div>
-					`,
-				}),
-			),
-		);
+		if (error) console.error("[FISCAL] Failed to send developer alert email:", error);
 	} catch (error) {
 		console.error("[FISCAL] Error notifying fiscal emission failure.", error);
 	}
