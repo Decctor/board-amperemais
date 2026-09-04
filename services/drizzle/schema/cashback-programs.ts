@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { doublePrecision, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { doublePrecision, index, jsonb, timestamp } from "drizzle-orm/pg-core";
 import { boolean, text, varchar } from "drizzle-orm/pg-core";
 import { campaigns } from "./campaigns";
 import { clients } from "./clients";
@@ -124,40 +124,48 @@ export const cashbackProgramBalanceRelations = relations(cashbackProgramBalances
 	}),
 }));
 
-export const cashbackProgramTransactions = newTable("cashback_program_transactions", {
-	id: varchar("id", { length: 255 })
-		.primaryKey()
-		.$defaultFn(() => crypto.randomUUID()),
-	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id, { onDelete: "cascade" }),
-	clienteId: varchar("cliente_id", { length: 255 })
-		.references(() => clients.id, { onDelete: "cascade" })
-		.notNull(),
-	vendaId: varchar("venda_id", { length: 255 }).references(() => sales.id),
-	vendaValor: doublePrecision("venda_valor").notNull().default(0),
-	programaId: varchar("programa_id", { length: 255 })
-		.references(() => cashbackPrograms.id)
-		.notNull(),
-	status: cashbackProgramTransactionStatusEnum("status").notNull().default("ATIVO"),
-	tipo: cashbackProgramTransactionTypeEnum("tipo").notNull(),
-	valor: doublePrecision("valor").notNull(),
-	valorRestante: doublePrecision("valor_restante").notNull(),
+export const cashbackProgramTransactions = newTable(
+	"cashback_program_transactions",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id, { onDelete: "cascade" }),
+		clienteId: varchar("cliente_id", { length: 255 })
+			.references(() => clients.id, { onDelete: "cascade" })
+			.notNull(),
+		vendaId: varchar("venda_id", { length: 255 }).references(() => sales.id),
+		vendaValor: doublePrecision("venda_valor").notNull().default(0),
+		programaId: varchar("programa_id", { length: 255 })
+			.references(() => cashbackPrograms.id)
+			.notNull(),
+		status: cashbackProgramTransactionStatusEnum("status").notNull().default("ATIVO"),
+		tipo: cashbackProgramTransactionTypeEnum("tipo").notNull(),
+		valor: doublePrecision("valor").notNull(),
+		valorRestante: doublePrecision("valor_restante").notNull(),
 
-	saldoValorAnterior: doublePrecision("saldo_valor_anterior").notNull(),
-	saldoValorPosterior: doublePrecision("saldo_valor_posterior").notNull(),
+		saldoValorAnterior: doublePrecision("saldo_valor_anterior").notNull(),
+		saldoValorPosterior: doublePrecision("saldo_valor_posterior").notNull(),
 
-	expiracaoData: timestamp("expiracao_data"),
+		expiracaoData: timestamp("expiracao_data"),
 
-	// Fields to track the reward given for the redemption
-	resgateRecompensaId: varchar("resgate_recompensa_id", { length: 255 }).references(() => cashbackProgramPrizes.id),
-	resgateRecompensaValor: doublePrecision("resgate_recompensa_valor"),
+		// Fields to track the reward given for the redemption
+		resgateRecompensaId: varchar("resgate_recompensa_id", { length: 255 }).references(() => cashbackProgramPrizes.id),
+		resgateRecompensaValor: doublePrecision("resgate_recompensa_valor"),
 
-	operadorId: varchar("operador_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
-	operadorVendedorId: varchar("operador_vendedor_id", { length: 255 }).references(() => sellers.id, { onDelete: "set null" }),
-	campanhaId: varchar("campanha_id", { length: 255 }).references(() => campaigns.id),
-	metadados: jsonb("metadados"),
-	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
-	dataAtualizacao: timestamp("data_atualizacao").$defaultFn(() => new Date()),
-});
+		operadorId: varchar("operador_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+		operadorVendedorId: varchar("operador_vendedor_id", { length: 255 }).references(() => sellers.id, { onDelete: "set null" }),
+		campanhaId: varchar("campanha_id", { length: 255 }).references(() => campaigns.id),
+		metadados: jsonb("metadados"),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+		dataAtualizacao: timestamp("data_atualizacao").$defaultFn(() => new Date()),
+	},
+	(table) => ({
+		// FK sem índice: a listagem de vendas hidrata `transacoesCashback` por venda (LATERAL) e cada
+		// lookup era um seq scan da tabela inteira.
+		vendaIdIdx: index("idx_cashback_program_transactions_venda_id").on(table.vendaId),
+	}),
+);
 export const cashbackProgramTransactionRelations = relations(cashbackProgramTransactions, ({ one }) => ({
 	venda: one(sales, {
 		fields: [cashbackProgramTransactions.vendaId],

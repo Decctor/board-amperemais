@@ -30,7 +30,7 @@ import {
 	saleItems,
 	sales,
 } from "@/services/drizzle/schema";
-import { and, asc, count, desc, eq, gt, gte, inArray, isNull, lt, lte, max, min, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNull, lt, lte, max, min, notInArray, or, type SQL, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { z } from "zod";
 
@@ -631,22 +631,38 @@ async function getProducts({ input, session }: GetProductsParams) {
 	if (integrationCondition) statsConditions.push(integrationCondition);
 	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
 	if (input.statsSellerIds && input.statsSellerIds.length > 0) statsConditions.push(inArray(sales.vendedorId, input.statsSellerIds));
-	const havingConditions = [];
-	if (input.statsTotalMin) {
-		havingConditions.push(gte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMin));
-	}
-	if (input.statsTotalMax) {
-		havingConditions.push(lte(sql<number>`sum(${sales.valorTotal})`, input.statsTotalMax));
-	}
+	// Filtros sobre o total das vendas por produto (uma parcela por item, como o HAVING anterior).
+	const statsTotalConditions: SQL[] = [];
 
 	const PAGE_SIZE = 25;
 	const skip = PAGE_SIZE * (input.page - 1);
 
-	// Fragmento SQL reutilizável para o valor total (só considera quando a venda passa nos filtros)
-	const totalSalesSql = sql`COALESCE(sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END), 0)`;
+	// Stats por produto pré-agregadas a partir dos itens da organização (índice org+produto), com hash
+	// join nas vendas que passam nos filtros. A forma anterior (products LEFT JOIN sale_items LEFT JOIN
+	// sales) levava o planejador a um lookup em `sales` por item (50k por requisição nesta org), e a
+	// contagem repetia tudo: ~760 ms de banco por requisição. Agora é uma agregação (~90 ms), uma vez.
+	const salesStatsSubquery = db
+		.select({
+			produtoId: saleItems.produtoId,
+			totalSalesValue: sql<number>`sum(${saleItems.valorVendaTotalLiquido})`.as("total_sales_value"),
+			totalSalesQty: sql<number>`sum(${saleItems.quantidade})`.as("total_sales_qty"),
+			totalCostValue: sql<number>`sum(${saleItems.valorCustoTotal})`.as("total_cost_value"),
+			firstSaleDate: min(sales.dataVenda).as("first_sale_date"),
+			lastSaleDate: max(sales.dataVenda).as("last_sale_date"),
+			salesTotalSum: sql<number>`sum(${sales.valorTotal})`.as("sales_total_sum"),
+		})
+		.from(saleItems)
+		.innerJoin(sales, and(eq(sales.id, saleItems.vendaId), ...statsConditions))
+		.where(eq(saleItems.organizacaoId, userOrgId))
+		.groupBy(saleItems.produtoId)
+		.as("sales_stats");
+	if (input.statsTotalMin) statsTotalConditions.push(gte(salesStatsSubquery.salesTotalSum, input.statsTotalMin));
+	if (input.statsTotalMax) statsTotalConditions.push(lte(salesStatsSubquery.salesTotalSum, input.statsTotalMax));
 
-	// Query única que retorna produtos + stats já ordenados e paginados
-	// Usa LEFT JOINs condicionais para aplicar filtros de stats apenas quando necessário
+	// Fragmento reutilizável para o valor total (0 para produto sem venda no filtro)
+	const totalSalesSql = sql`COALESCE(${salesStatsSubquery.totalSalesValue}, 0)`;
+
+	// Produtos filtrados + stats; a curva ABC (window functions) é calculada sobre esse conjunto.
 	const baseQuery = db
 		.select({
 			// Campos do produto
@@ -664,27 +680,20 @@ async function getProducts({ input, session }: GetProductsParams) {
 			quantidade: products.quantidade,
 			organizacaoId: products.organizacaoId,
 			dataUltimaSincronizacao: products.dataUltimaSincronizacao,
-			// Campos de stats - só considera valores quando a venda passa nos filtros
-			totalSalesValue: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorVendaTotalLiquido} ELSE 0 END)`.as("total_sales_value"),
-			totalSalesQty: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.quantidade} ELSE 0 END)`.as("total_sales_qty"),
-			totalCostValue: sql<number>`sum(CASE WHEN ${sales.id} IS NOT NULL THEN ${saleItems.valorCustoTotal} ELSE 0 END)`.as("total_cost_value"),
-			firstSaleDate: min(sales.dataVenda).as("first_sale_date"),
-			lastSaleDate: max(sales.dataVenda).as("last_sale_date"),
+			// Campos de stats - 0 quando nenhuma venda passa nos filtros
+			totalSalesValue: sql<number>`COALESCE(${salesStatsSubquery.totalSalesValue}, 0)`.as("total_sales_value"),
+			totalSalesQty: sql<number>`COALESCE(${salesStatsSubquery.totalSalesQty}, 0)`.as("total_sales_qty"),
+			totalCostValue: sql<number>`COALESCE(${salesStatsSubquery.totalCostValue}, 0)`.as("total_cost_value"),
+			firstSaleDate: salesStatsSubquery.firstSaleDate,
+			lastSaleDate: salesStatsSubquery.lastSaleDate,
 			// Curva ABC - calculamos via window functions
 			accumulatedSales: sql<number>`sum(${totalSalesSql}) OVER (ORDER BY ${totalSalesSql} DESC, ${products.id} ASC)`.as("accumulated_sales"),
 			totalSalesGlobal: sql<number>`sum(${totalSalesSql}) OVER ()`.as("total_sales_global"),
 		})
 		.from(products)
-		.leftJoin(saleItems, eq(products.id, saleItems.produtoId))
-		.leftJoin(sales, and(eq(saleItems.vendaId, sales.id), ...statsConditions))
-		.where(and(...productQueryConditions))
-		.groupBy(products.id);
+		.leftJoin(salesStatsSubquery, eq(salesStatsSubquery.produtoId, products.id))
+		.where(and(...productQueryConditions, ...statsTotalConditions));
 
-	if (havingConditions.length > 0) {
-		baseQuery.having(and(...havingConditions));
-	}
-
-	// Conta total de produtos que correspondem aos filtros
 	const productStatsSubquery = baseQuery.as("product_stats");
 	const curvaABCSql = sql<string>`
 		CASE
@@ -695,31 +704,31 @@ async function getProducts({ input, session }: GetProductsParams) {
 		END
 	`;
 
+	// Mesmas colunas em todas as camadas (ABC, corte por resultLimit, página); só a fonte muda.
+	const pickProductFields = <T extends Record<string, any>>(source: T) => ({
+		productId: source.productId,
+		codigo: source.codigo,
+		nome: source.nome,
+		descricao: source.descricao,
+		unidade: source.unidade,
+		ncm: source.ncm,
+		tipo: source.tipo,
+		grupo: source.grupo,
+		imagemCapaUrl: source.imagemCapaUrl,
+		precoVenda: source.precoVenda,
+		precoCusto: source.precoCusto,
+		quantidade: source.quantidade,
+		organizacaoId: source.organizacaoId,
+		dataUltimaSincronizacao: source.dataUltimaSincronizacao,
+		totalSalesValue: source.totalSalesValue,
+		totalSalesQty: source.totalSalesQty,
+		totalCostValue: source.totalCostValue,
+		firstSaleDate: source.firstSaleDate,
+		lastSaleDate: source.lastSaleDate,
+	});
+
 	// Aplica ordenação e paginação
-	const productsWithABCQuery = db
-		.select({
-			productId: productStatsSubquery.productId,
-			codigo: productStatsSubquery.codigo,
-			nome: productStatsSubquery.nome,
-			descricao: productStatsSubquery.descricao,
-			unidade: productStatsSubquery.unidade,
-			ncm: productStatsSubquery.ncm,
-			tipo: productStatsSubquery.tipo,
-			grupo: productStatsSubquery.grupo,
-			imagemCapaUrl: productStatsSubquery.imagemCapaUrl,
-			precoVenda: productStatsSubquery.precoVenda,
-			precoCusto: productStatsSubquery.precoCusto,
-			quantidade: productStatsSubquery.quantidade,
-			organizacaoId: productStatsSubquery.organizacaoId,
-			dataUltimaSincronizacao: productStatsSubquery.dataUltimaSincronizacao,
-			totalSalesValue: productStatsSubquery.totalSalesValue,
-			totalSalesQty: productStatsSubquery.totalSalesQty,
-			totalCostValue: productStatsSubquery.totalCostValue,
-			firstSaleDate: productStatsSubquery.firstSaleDate,
-			lastSaleDate: productStatsSubquery.lastSaleDate,
-			curvaABC: curvaABCSql.as("curva_abc"),
-		})
-		.from(productStatsSubquery);
+	const productsWithABCQuery = db.select({ ...pickProductFields(productStatsSubquery), curvaABC: curvaABCSql.as("curva_abc") }).from(productStatsSubquery);
 
 	if (input.abcClasses && input.abcClasses.length > 0) {
 		productsWithABCQuery.where(
@@ -758,10 +767,20 @@ async function getProducts({ input, session }: GetProductsParams) {
 		? db.select().from(productsWithABCSubquery).orderBy(buildOrderByClause(productsWithABCSubquery)).limit(input.resultLimit).as("products_capped")
 		: productsWithABCSubquery;
 
-	const matchedCountResult = await db.select({ count: count() }).from(paginationSource);
-	const statsByProductMatchedCount = matchedCountResult[0]?.count ?? 0;
-
-	const productsWithStatsResult = await db.select().from(paginationSource).orderBy(buildOrderByClause(paginationSource)).offset(skip).limit(PAGE_SIZE);
+	// Total via window function na própria página: evita recomputar a agregação só para contar.
+	const productsWithStatsResult = await db
+		.select({ ...pickProductFields(paginationSource), curvaABC: paginationSource.curvaABC, productsMatched: sql<number>`count(*) over ()` })
+		.from(paginationSource)
+		.orderBy(buildOrderByClause(paginationSource))
+		.offset(skip)
+		.limit(PAGE_SIZE);
+	// Página vazia além do fim não traz o total: só nesse caso paga a contagem separada.
+	const statsByProductMatchedCount =
+		productsWithStatsResult.length > 0
+			? Number(productsWithStatsResult[0].productsMatched)
+			: skip > 0
+				? ((await db.select({ count: count() }).from(paginationSource))[0]?.count ?? 0)
+				: 0;
 
 	// Mapeia os resultados para o formato final
 	const productsWithStats = productsWithStatsResult.map((row) => {

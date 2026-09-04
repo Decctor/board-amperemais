@@ -41,6 +41,7 @@ import {
 } from "@/lib/queries/desktop-agent";
 import { createManualPrintJob } from "@/lib/mutations/desktop-agent";
 import { PAYMENT_METHOD_CHIP_LABELS } from "@/lib/payments/labels";
+import { PaymentMethodEnum } from "@/schemas/enums";
 import {
   SALE_FINANCIAL_STATUS_PRESENTATION,
   SALE_FISCAL_STATUS_PRESENTATION,
@@ -56,6 +57,7 @@ import type {
   TGetSalesOutputDefault,
 } from "@/app/api/sales/route";
 import type {
+  TPaymentMethodEnum,
   TSaleFinancialDerivedStatusEnum,
   TSaleFiscalDerivedStatusEnum,
   TSaleStatusEnum,
@@ -72,6 +74,7 @@ import {
   CircleOff,
   CircleUser,
   Clock,
+  CreditCard,
   FileSpreadsheet,
   FileText,
   FileX2,
@@ -238,6 +241,7 @@ export function SalesHistoryView({
       integrationsIds: [],
       financialStatuses: [],
       fiscalStatuses: [],
+      paymentMethods: [],
       saleStatuses: [],
     },
   });
@@ -416,6 +420,13 @@ const SALE_STATUS_CHIP_META: Record<
     icon: <Ban className="w-3 h-3" />,
   },
 };
+
+const PAYMENT_METHOD_FILTER_OPTIONS: InteractiveFilterOption<TPaymentMethodEnum>[] =
+  PaymentMethodEnum.options.map((metodo) => ({
+    id: metodo,
+    value: metodo,
+    label: PAYMENT_METHOD_CHIP_LABELS[metodo],
+  }));
 
 const SALE_STATUS_FILTER_OPTIONS: InteractiveFilterOption<TSaleStatusEnum>[] = [
   {
@@ -1060,6 +1071,7 @@ function SalesInlineFilters({
   const hasPartners = (filters.partnersIds ?? []).length > 0;
   const hasFinancialStatuses = filters.financialStatuses.length > 0;
   const hasFiscalStatuses = filters.fiscalStatuses.length > 0;
+  const hasPaymentMethods = filters.paymentMethods.length > 0;
   const hasSaleStatuses = filters.saleStatuses.length > 0;
 
   return (
@@ -1168,6 +1180,18 @@ function SalesInlineFilters({
             updateFilters({ fiscalStatuses, page: 1 })
           }
           onClear={() => updateFilters({ fiscalStatuses: [], page: 1 })}
+        />
+      ) : null}
+      {orgHasERPAccess && hasPaymentMethods ? (
+        <SalesMultiFilter
+          icon={<CreditCard className="h-4 w-4" />}
+          label="PAGAMENTO"
+          options={PAYMENT_METHOD_FILTER_OPTIONS}
+          value={filters.paymentMethods}
+          onChange={(paymentMethods) =>
+            updateFilters({ paymentMethods, page: 1 })
+          }
+          onClear={() => updateFilters({ paymentMethods: [], page: 1 })}
         />
       ) : null}
 
@@ -1280,6 +1304,23 @@ function SalesInlineFilters({
                     updateFilters({ fiscalStatuses, page: 1 })
                   }
                   onClear={() => updateFilters({ fiscalStatuses: [], page: 1 })}
+                  clearLabel="TODOS"
+                />
+              </InteractiveFilter.AddFilterItem>
+            ) : null}
+            {orgHasERPAccess && !hasPaymentMethods ? (
+              <InteractiveFilter.AddFilterItem
+                id="payment-methods"
+                label="PAGAMENTO"
+                icon={<CreditCard className="h-4 w-4" />}
+              >
+                <InteractiveFilter.MultiContent
+                  options={PAYMENT_METHOD_FILTER_OPTIONS}
+                  value={filters.paymentMethods}
+                  onChange={(paymentMethods) =>
+                    updateFilters({ paymentMethods, page: 1 })
+                  }
+                  onClear={() => updateFilters({ paymentMethods: [], page: 1 })}
                   clearLabel="TODOS"
                 />
               </InteractiveFilter.AddFilterItem>
