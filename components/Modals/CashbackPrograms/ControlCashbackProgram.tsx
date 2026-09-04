@@ -1,3 +1,4 @@
+import { NO_CASHBACK_REDEMPTION_SURFACE_MESSAGE, hasAnyCashbackRedemptionSurface } from "@/lib/cashback/redemption-policy";
 import type { TGetCashbackProgramOutput } from "@/app/api/cashback-programs/route";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import type { TAuthUserSession } from "@/lib/authentication/types";
@@ -13,6 +14,7 @@ import CashbackProgramsExpirationBlock from "./Blocks/Expiration";
 import CashbackProgramsGeneralBlock from "./Blocks/General";
 import CashbackProgramsPrizesBlock from "./Blocks/Prizes";
 import CashbackProgramsRedemptionLimitBlock from "./Blocks/RedemptionLimit";
+import CashbackProgramsRedemptionSurfacesBlock from "./Blocks/RedemptionSurfaces";
 
 type EditCashbackProgramProps = {
 	user: TAuthUserSession["user"];
@@ -56,7 +58,9 @@ export default function EditCashbackProgram({ user, userOrg, cashbackProgram, cl
 					acumuloRegraValorMinimo: cashbackProgram.acumuloRegraValorMinimo,
 					acumuloPermitirViaIntegracao: cashbackProgram.acumuloPermitirViaIntegracao,
 					acumuloPermitirViaPontoIntegracao: cashbackProgram.acumuloPermitirViaPontoIntegracao,
+					resgatePermitirViaPos: cashbackProgram.resgatePermitirViaPos,
 					resgatePermitirViaPontoIntegracao: cashbackProgram.resgatePermitirViaPontoIntegracao,
+					resgatePermitirViaLojaDigital: cashbackProgram.resgatePermitirViaLojaDigital,
 					expiracaoRegraValidadeValor: cashbackProgram.expiracaoRegraValidadeValor,
 					resgateLimiteTipo: cashbackProgram.resgateLimiteTipo,
 					resgateLimiteValor: cashbackProgram.resgateLimiteValor,
@@ -93,13 +97,14 @@ export default function EditCashbackProgram({ user, userOrg, cashbackProgram, cl
 			menuDescription="Atualize os campos abaixo para editar o programa de cashback"
 			menuActionButtonText="SALVAR ALTERAÇÕES"
 			menuCancelButtonText="CANCELAR"
-			actionFunction={() =>
-				handleUpdateCashbackProgramMutation({
+			actionFunction={() => {
+				if (!hasAnyCashbackRedemptionSurface(state.cashbackProgram)) return toast.error(NO_CASHBACK_REDEMPTION_SURFACE_MESSAGE);
+				return handleUpdateCashbackProgramMutation({
 					cashbackProgramId: cashbackProgram.id,
 					cashbackProgram: state.cashbackProgram,
 					cashbackProgramPrizes: state.cashbackProgramPrizes,
-				})
-			}
+				});
+			}}
 			closeMenu={closeModal}
 			actionIsLoading={isPending}
 			stateIsLoading={false}
@@ -114,6 +119,7 @@ export default function EditCashbackProgram({ user, userOrg, cashbackProgram, cl
 			/>
 			<CashbackProgramsExpirationBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateState} />
 			<CashbackProgramsRedemptionLimitBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateState} />
+			<CashbackProgramsRedemptionSurfacesBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateState} />
 			<CashbackProgramsPrizesBlock
 				terminology={state.cashbackProgram.terminologia}
 				cashbackProgramPrizes={state.cashbackProgramPrizes}

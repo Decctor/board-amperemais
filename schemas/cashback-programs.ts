@@ -68,11 +68,24 @@ export const CashbackProgramSchema = z.object({
 			invalid_type_error: "Tipo não válido para a permissão de acumulação via ponto de integração.",
 		})
 		.default(false),
-	// Configurations for redemption source
+	// Superfícies de resgate — ver o comentário das colunas em services/drizzle/schema/cashback-programs.ts.
+	// Default true: payload antigo (onboarding, scripts) que omite o campo preserva o comportamento vigente.
+	resgatePermitirViaPos: z
+		.boolean({
+			required_error: "Permissão de resgate via PDV não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de resgate via PDV.",
+		})
+		.default(true),
 	resgatePermitirViaPontoIntegracao: z
 		.boolean({
 			required_error: "Permissão de resgate via ponto de integração não informada.",
 			invalid_type_error: "Tipo não válido para a permissão de resgate via ponto de integração.",
+		})
+		.default(true),
+	resgatePermitirViaLojaDigital: z
+		.boolean({
+			required_error: "Permissão de resgate via loja digital não informada.",
+			invalid_type_error: "Tipo não válido para a permissão de resgate via loja digital.",
 		})
 		.default(true),
 	expiracaoRegraValidadeValor: z

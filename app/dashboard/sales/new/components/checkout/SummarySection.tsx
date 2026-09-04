@@ -115,7 +115,8 @@ export default function SummarySection({ saleState, organizationCashbackProgram,
 		: false;
 	// Modalidades desabilitadas não viram bloco desabilitado: somem do checkout. O programa vem
 	// do servidor (page.tsx), então não há piscada de carregamento antes de decidir.
-	const programaCashbackAtivo = !!organizationCashbackProgram?.ativo;
+	// Superfície POS do programa (`resgatePermitirViaPos`): desligada, os dois blocos de resgate somem.
+	const programaCashbackAtivo = !!organizationCashbackProgram?.ativo && !!organizationCashbackProgram.resgatePermitirViaPos;
 	const podeResgatarPorDesconto = programaCashbackAtivo && !!organizationCashbackProgram?.modalidadeDescontosPermitida;
 	const podeResgatarRecompensa = programaCashbackAtivo && !!organizationCashbackProgram?.modalidadeRecompensasPermitida;
 	const mostrarBlocosDeResgate = !editMode && !!saleState.state.cliente;

@@ -1,3 +1,4 @@
+import type { TBenefitRedemptionSurface } from "@/schemas/enums";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
@@ -161,6 +162,10 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 	// O cupom aplicado no rascunho ja esta refletido nos totais da venda; aqui apenas resolve qual registrar no ledger.
 	const shopAppliedCoupon = shopMetadata?.shop?.cupom ?? null;
 	const effectiveAppliedCoupon = input.cupomResgate ?? shopAppliedCoupon ?? shopMetadata?.cupom ?? null;
+	// Superfície do resgate de cashback/recompensa = onde ele foi PEDIDO. Desconto digitado pelo
+	// operador é POS; o herdado do rascunho da loja (e a recompensa de um orçamento SHOP) continua
+	// LOJA_DIGITAL — o gate do programa é por superfície, não pelo canal em que a venda fecha.
+	const cashbackRedemptionSurface: TBenefitRedemptionSurface = input.cashbackResgate > 0 || saleDraft.canal !== "SHOP" ? "POS" : "LOJA_DIGITAL";
 
 	// Recompensa: o rascunho guarda apenas o snapshot carimbado pelo servidor. Revalida tudo
 	// aqui (premio pode ter sido desativado, precos podem ter mudado) e so entao cria o item e
@@ -175,6 +180,7 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 				programaId: rewardSnapshot.programaId,
 				hasCoupon: !!effectiveAppliedCoupon,
 				cashbackResgate: effectiveCashbackResgate,
+				surface: cashbackRedemptionSurface,
 				// Preço do prêmio conferido no canal da venda: um orçamento do shop valida contra o SHOP.
 				canal: toSalesChannelType(saleDraft.canal),
 			})
@@ -218,6 +224,7 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 		saleClientId: input.clienteId,
 		saleCashbackProgramId: effectiveCashbackProgramaId,
 		saleCashbackRedemptionValue: effectiveCashbackResgate,
+		saleCashbackRedemptionSurface: cashbackRedemptionSurface,
 		saleCouponId: effectiveAppliedCoupon?.cupomId ?? null,
 		saleCouponDeclaredDiscountValue: effectiveAppliedCoupon?.valorDesconto ?? null,
 		saleCouponRedemptionSurface: !input.cupomResgate && shopAppliedCoupon ? "LOJA_DIGITAL" : undefined,

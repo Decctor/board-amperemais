@@ -1,5 +1,6 @@
 "use client";
 
+import { getShopCashbackCapabilities } from "@/lib/shop/checkout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,8 +57,7 @@ export default function CashbackStep({ onNext }: CashbackStepProps) {
 		itens: cartItemsForCoupon,
 	});
 	const program = catalog.cashbackProgram;
-	const supportsCashbackDiscount = !!program?.modalidadeDescontosPermitida;
-	const supportsRewards = !!program?.modalidadeRecompensasPermitida;
+	const { descontoCashback: supportsCashbackDiscount, recompensas: supportsRewards } = getShopCashbackCapabilities(program);
 	// Sem a modalidade não há o que listar — a rota faria 4 queries para devolver lista vazia.
 	const { data: rewardsData, isLoading: isLoadingRewards } = useShopAvailableRewards({
 		orgId,

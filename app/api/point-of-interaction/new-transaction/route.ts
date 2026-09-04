@@ -1,3 +1,4 @@
+import { getCashbackRedemptionBlockReason } from "@/lib/cashback/redemption-policy";
 import { appApiHandler } from "@/lib/app-api";
 import { recomputeClientDuplicatesSafely } from "@/lib/clients/duplicates";
 import { accumulateCashbackForClient, calculateAccumulatedCashbackValue, ensureCashbackBalanceForClient } from "@/lib/cashback/accumulation";
@@ -283,11 +284,13 @@ async function preparePointOfInteractionTransaction({ input, operatorContext, tx
 		if (!cashbackProgramIsActive && requestedCashbackRedemption) {
 			throw new createHttpError.BadRequest("Programa de cashback inativo. Resgates não estão disponíveis.");
 		}
-		// Resgate pelo POI é config explícita do programa (simétrica a `acumuloPermitirViaPontoIntegracao`).
-		// Quando desligada, qualquer resgate PEDIDO no payload — desconto em cashback ou recompensa —
-		// falha alto: pular em silêncio cobraria o preço cheio de um cliente que espera o desconto.
-		if (!program.resgatePermitirViaPontoIntegracao && (requestedCashbackRedemption || isPrizeRedemption)) {
-			throw new createHttpError.Forbidden("Resgates pelo ponto de interação estão desativados para esta organização.");
+		// Resgate pelo POI é config explícita do programa (superfície PONTO_INTERACAO da política
+		// em lib/cashback/redemption-policy). Quando desligada, qualquer resgate PEDIDO no payload —
+		// desconto em cashback ou recompensa — falha alto: pular em silêncio cobraria o preço cheio
+		// de um cliente que espera o desconto.
+		const redemptionSurfaceBlockReason = getCashbackRedemptionBlockReason({ program, surface: "PONTO_INTERACAO" });
+		if (redemptionSurfaceBlockReason && (requestedCashbackRedemption || isPrizeRedemption)) {
+			throw new createHttpError.Forbidden(redemptionSurfaceBlockReason);
 		}
 		const transactionRequiresRedemptionProcessing = cashbackProgramIsActive && program.resgatePermitirViaPontoIntegracao && requestedCashbackRedemption;
 		console.log("[POI] [TRANSACTION_FLAGS]", {

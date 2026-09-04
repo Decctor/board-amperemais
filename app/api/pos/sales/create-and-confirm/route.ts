@@ -111,6 +111,7 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 				programaId: input.recompensaResgate.programaId,
 				hasCoupon: !!input.cupomResgate,
 				cashbackResgate: input.cashbackResgate ?? 0,
+				surface: "POS",
 			})
 		: null;
 

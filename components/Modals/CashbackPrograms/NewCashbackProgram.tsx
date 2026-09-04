@@ -1,3 +1,4 @@
+import { NO_CASHBACK_REDEMPTION_SURFACE_MESSAGE, hasAnyCashbackRedemptionSurface } from "@/lib/cashback/redemption-policy";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
@@ -10,6 +11,7 @@ import CashbackProgramsAccumulationBlock from "./Blocks/Accumulation";
 import CashbackProgramsExpirationBlock from "./Blocks/Expiration";
 import CashbackProgramsGeneralBlock from "./Blocks/General";
 import CashbackProgramsRedemptionLimitBlock from "./Blocks/RedemptionLimit";
+import CashbackProgramsRedemptionSurfacesBlock from "./Blocks/RedemptionSurfaces";
 
 type NewCashbackProgramProps = {
 	user: TAuthUserSession["user"];
@@ -47,7 +49,9 @@ export default function NewCashbackProgram({ user, userOrg, closeModal, callback
 				expiracaoRegraValidadeValor: 0,
 				acumuloPermitirViaIntegracao: userOrgHasActiveDataSource,
 				acumuloPermitirViaPontoIntegracao: poiSalesRegistrationEnabled,
+				resgatePermitirViaPos: true,
 				resgatePermitirViaPontoIntegracao: !userOrgHasErpAccess,
+				resgatePermitirViaLojaDigital: true,
 				descricao: "",
 				resgateLimiteTipo: null,
 				resgateLimiteValor: null,
@@ -81,9 +85,10 @@ export default function NewCashbackProgram({ user, userOrg, closeModal, callback
 			menuDescription="Preencha os campos abaixo para criar um novo programa de cashback"
 			menuActionButtonText="CRIAR PROGRAMA DE CASHBACK"
 			menuCancelButtonText="CANCELAR"
-			actionFunction={() =>
-				handleCreateCashbackProgramMutation({ cashbackProgram: state.cashbackProgram, cashbackProgramPrizes: state.cashbackProgramPrizes })
-			}
+			actionFunction={() => {
+				if (!hasAnyCashbackRedemptionSurface(state.cashbackProgram)) return toast.error(NO_CASHBACK_REDEMPTION_SURFACE_MESSAGE);
+				return handleCreateCashbackProgramMutation({ cashbackProgram: state.cashbackProgram, cashbackProgramPrizes: state.cashbackProgramPrizes });
+			}}
 			closeMenu={closeModal}
 			actionIsLoading={isPending}
 			stateIsLoading={false}
@@ -98,6 +103,7 @@ export default function NewCashbackProgram({ user, userOrg, closeModal, callback
 			/>
 			<CashbackProgramsExpirationBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateCashbackProgram} />
 			<CashbackProgramsRedemptionLimitBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateCashbackProgram} />
+			<CashbackProgramsRedemptionSurfacesBlock cashbackProgram={state.cashbackProgram} updateCashbackProgram={updateCashbackProgram} />
 		</ResponsiveMenu>
 	);
 }

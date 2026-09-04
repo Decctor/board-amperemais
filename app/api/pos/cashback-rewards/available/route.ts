@@ -24,6 +24,7 @@ async function getAvailablePosRewards({ input, session }: { input: TGetAvailable
 		tx: db,
 		organizacaoId: organizationId,
 		clienteId: input.clienteId,
+		surface: "POS",
 	});
 
 	return {

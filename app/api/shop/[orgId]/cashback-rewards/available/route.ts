@@ -29,6 +29,7 @@ async function getAvailableShopRewards({ orgId, input }: { orgId: string; input:
 		tx: db,
 		organizacaoId: orgId,
 		clienteId: input.clienteId,
+		surface: "LOJA_DIGITAL",
 		channelState,
 	});
 

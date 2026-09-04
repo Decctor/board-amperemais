@@ -19,6 +19,26 @@ export type TShopBenefitCapabilities = {
 	recompensas: boolean;
 };
 
+export type TShopCashbackCapabilityProgram = {
+	modalidadeDescontosPermitida: boolean;
+	modalidadeRecompensasPermitida: boolean;
+	resgatePermitirViaLojaDigital: boolean;
+};
+
+/**
+ * O que o programa de cashback oferece NA LOJA: modalidade × superfície. Sem o resgate pela loja
+ * digital (`resgatePermitirViaLojaDigital`, lib/cashback/redemption-policy) nenhuma modalidade
+ * aparece — a etapa de benefícios some inteira, como quando não há cupom. Compartilhada por
+ * CheckoutSheet e CashbackStep para as duas telas não divergirem.
+ */
+export function getShopCashbackCapabilities(program: TShopCashbackCapabilityProgram | null | undefined) {
+	const shopRedemptionAllowed = !!program?.resgatePermitirViaLojaDigital;
+	return {
+		descontoCashback: shopRedemptionAllowed && !!program?.modalidadeDescontosPermitida,
+		recompensas: shopRedemptionAllowed && !!program?.modalidadeRecompensasPermitida,
+	};
+}
+
 export function hasShopBenefits(capabilities: TShopBenefitCapabilities) {
 	return capabilities.cupons || capabilities.descontoCashback || capabilities.recompensas;
 }

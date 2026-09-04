@@ -1,6 +1,8 @@
 import { accumulateCashbackForClient } from "@/lib/cashback/accumulation";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
+import { getCashbackRedemptionBlockReason } from "@/lib/cashback/redemption-policy";
 import { type TCouponCartItem, type TCouponRedemptionSurface, evaluateCouponAgainstCart } from "@/lib/coupons/engine";
+import type { TBenefitRedemptionSurface } from "@/schemas/enums";
 import { processCouponRedemption } from "@/lib/coupons/redemption";
 import { processSaleCupomAutoPrintIfEligible } from "@/lib/desktop-agent/auto-print";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
@@ -25,6 +27,10 @@ export type TProcessSaleConfirmationInput = {
 
 	saleCashbackProgramId?: string | null;
 	saleCashbackRedemptionValue?: number;
+	// Superfície onde o cliente PEDIU o desconto em cashback ou a recompensa (não o canal da
+	// venda): um orçamento da loja confirmado no PDV continua LOJA_DIGITAL. Gate do programa
+	// (`resgatePermitirVia*`) via lib/cashback/redemption-policy. Default POS = operador no balcão.
+	saleCashbackRedemptionSurface?: TBenefitRedemptionSurface;
 
 	// Resgate de recompensa (prêmio) do programa de cashback. Mutuamente exclusivo com
 	// saleCashbackRedemptionValue e com cupom: a idempotência do ledger é "existe RESGATE
@@ -193,6 +199,8 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 			});
 			if (!program) throw new createHttpError.NotFound("Programa de cashback nao encontrado.");
 			if (!program.modalidadeRecompensasPermitida) throw new createHttpError.BadRequest("Resgate de recompensas nao permitido para esta venda.");
+			const surfaceBlockReason = getCashbackRedemptionBlockReason({ program, surface: input.saleCashbackRedemptionSurface ?? "POS" });
+			if (surfaceBlockReason) throw new createHttpError.Forbidden(surfaceBlockReason);
 			// Sem checagem de resgateLimite*: o teto e da modalidade desconto. O "preco" da
 			// recompensa e o proprio valor do premio, validado contra o catalogo pelo caller.
 
@@ -272,6 +280,8 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 			});
 			if (!program) throw new createHttpError.NotFound("Programa de cashback nao encontrado.");
 			if (!program.modalidadeDescontosPermitida) throw new createHttpError.BadRequest("Resgate de cashback nao permitido para esta venda.");
+			const surfaceBlockReason = getCashbackRedemptionBlockReason({ program, surface: input.saleCashbackRedemptionSurface ?? "POS" });
+			if (surfaceBlockReason) throw new createHttpError.Forbidden(surfaceBlockReason);
 			if (program.resgateLimiteTipo && program.resgateLimiteValor !== null && program.resgateLimiteValor !== undefined) {
 				const saleValueBeforeCashback = sale.valorTotal + redemptionValue;
 				const maxAllowed =

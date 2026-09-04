@@ -1,6 +1,8 @@
 import { type TValidatedPrizeForRedemption, validatePrizeForRedemption } from "@/lib/cashback/prizes";
+import { getCashbackRedemptionBlockReason } from "@/lib/cashback/redemption-policy";
 import { loadChannelState } from "@/lib/products/sales-channels-store";
 import { POS_REWARD_SALE_ITEM_ORIGIN, type TSaleRewardDraftSnapshot } from "@/lib/sales/sale-reward-snapshot";
+import type { TBenefitRedemptionSurface } from "@/schemas/enums";
 import type { DB, DBTransaction } from "@/services/drizzle";
 import createHttpError from "http-errors";
 
@@ -16,7 +18,8 @@ export type TAdmittedSaleReward = {
 /**
  * Admissão do resgate de recompensa em uma venda: exige cliente vinculado, aplica as
  * regras de exclusividade (cupom e resgate-desconto não são combináveis — a idempotência do
- * ledger é "1 RESGATE por venda"), resolve o programa, exige a modalidade de recompensas,
+ * ledger é "1 RESGATE por venda"), resolve o programa, exige a modalidade de recompensas e a
+ * superfície de resgate (`surface` = onde o cliente PEDIU a recompensa, não o canal da venda),
  * valida o prêmio contra o catálogo (com o preço do canal, quando informado) e pré-checa o
  * saldo do cliente. Tudo que vira item/ledger sai daqui — o cliente informa apenas o id do prêmio.
  */
@@ -28,6 +31,7 @@ export async function admitSaleRewardRedemption({
 	programaId,
 	hasCoupon,
 	cashbackResgate,
+	surface,
 	canal,
 }: {
 	tx: DB | DBTransaction;
@@ -37,6 +41,7 @@ export async function admitSaleRewardRedemption({
 	programaId?: string | null;
 	hasCoupon: boolean;
 	cashbackResgate: number;
+	surface: TBenefitRedemptionSurface;
 	canal?: Parameters<typeof loadChannelState>[0]["canal"] | null;
 }): Promise<TAdmittedSaleReward> {
 	if (!clienteId) throw new createHttpError.BadRequest("Vincule um cliente para resgatar uma recompensa.");
@@ -55,12 +60,20 @@ export async function admitSaleRewardRedemption({
 
 	const program = await tx.query.cashbackPrograms.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, resolvedProgramId), eq(fields.organizacaoId, organizacaoId), eq(fields.ativo, true)),
-		columns: { id: true, modalidadeRecompensasPermitida: true },
+		columns: {
+			id: true,
+			modalidadeRecompensasPermitida: true,
+			resgatePermitirViaPos: true,
+			resgatePermitirViaPontoIntegracao: true,
+			resgatePermitirViaLojaDigital: true,
+		},
 	});
 	if (!program) throw new createHttpError.NotFound("Programa de cashback não encontrado.");
 	if (!program.modalidadeRecompensasPermitida) {
 		throw new createHttpError.BadRequest("O programa de cashback não permite resgate de recompensas.");
 	}
+	const surfaceBlockReason = getCashbackRedemptionBlockReason({ program, surface });
+	if (surfaceBlockReason) throw new createHttpError.Forbidden(surfaceBlockReason);
 
 	const channelState = canal ? await loadChannelState({ orgId: organizacaoId, canal }) : null;
 	const prize = await validatePrizeForRedemption({
