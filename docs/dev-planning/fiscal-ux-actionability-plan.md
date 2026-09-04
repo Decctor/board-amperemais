@@ -297,15 +297,13 @@ Cada fase é entregável sozinha e melhora o produto sem as seguintes.
 
 ---
 
-## 6. Decisões em aberto (precisam de resposta antes da Fase 1)
+## 6. Decisões tomadas (set/2026)
 
-1. **Janelas por UF.** Manter só o padrão configurável por organização (proposta), ou embutir uma tabela UF → prazo? Proposta: configurável, com sugestão automática a partir da UF do endereço fiscal quando soubermos o valor daquele estado.
-2. **Cancelamento extemporâneo via Spedy.** Se a Spedy expõe o evento, vale expor com aviso de multa. Proposta: fora de escopo até confirmar com o provedor.
-3. **Devolução libera a venda?** A proposta em §4.3 muda uma regra de negócio (`process-confirmed-sale-cancellation.ts:39`). Precisa de ok explícito porque toca estoque e financeiro.
-4. **Quem é avisado.** Membros com `fiscal.emitir` (proposta) ou apenas `fiscal.configurar`?
-5. **Perfil fiscal por variante.** A review de jul/2026 (item 14) aponta que perfis de variante são ignorados na emissão. A aba Pendências vai listar por produto; se variantes passarem a contar, o alvo precisa de `produtoVarianteId`.
-
----
+1. **Janelas por UF.** Padrão único em código (`FISCAL_DEADLINES` em `lib/fiscal/constants.ts`): NFC-e 30 min, NF-e 24h. Sem configuração por organização por enquanto; quando surgir a necessidade, o override entra em `fiscalConfiguracao` e a matriz de ações já recebe `prazos` como parâmetro.
+2. **Cancelamento extemporâneo.** Confirmado na documentação da Spedy (`guides/cancelamento-correcao-inutilizacao`): a API não oferece o evento; fora da janela a saída é carta de correção ou devolução. Fica como orientação na UI, nunca como ação.
+3. **Devolução libera a venda.** Implementado: `saleFiscalDocumentsAllowCancellation` em `lib/sales/sale-editability.ts` aceita a original `AUTORIZADO` quando existe devolução `AUTORIZADO` apontando para ela. Vale para o cancelamento da venda e para o sinal `cancelamentoExigeFiscal`.
+4. **Quem é avisado.** Apenas membros com `fiscal.configurar` (mais `emailFiscal` da organização), por e-mail diário (`/api/cron/fiscal-pending-digest`, dias úteis 08:00 BRT) e pelo badge da sidebar. O alerta por falha individual continua indo só para o e-mail de bug report.
+5. **Perfil fiscal por variante.** Continua fora: a emissão ignora perfis de variante (review de jul/2026, item 14) e a aba Pendências lista por produto.
 
 ## 7. O que este plano não cobre
 

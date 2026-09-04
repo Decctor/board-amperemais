@@ -6,6 +6,7 @@ import { organizationMembers } from "@/services/drizzle/schema";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import type { TSaleEntity } from "@/services/drizzle/schema/sales";
 import type { TIbptRefreshFailure, TIbptUf } from "./ibpt-rates";
+import type { TFiscalPendingSummary } from "./pending";
 import { eq, isNotNull } from "drizzle-orm";
 
 function escapeHtml(value: unknown) {
@@ -145,5 +146,76 @@ export async function notifyFiscalIbptRefreshFailure(failures: TIbptNotification
 		}
 	} catch (error) {
 		console.error("[IBPT] Erro inesperado ao notificar falha de atualização.", error);
+	}
+}
+
+// Quem recebe o resumo diario de pendencias: membros com `fiscal.configurar` (quem consegue
+// resolver a causa) e o e-mail fiscal da organizacao, quando configurado.
+async function listFiscalPendingDigestRecipients(organization: Pick<TOrganizationEntity, "id" | "fiscalConfiguracao">) {
+	const members = await db.query.organizationMembers.findMany({
+		where: eq(organizationMembers.organizacaoId, organization.id),
+		with: { usuario: { columns: { email: true } } },
+	});
+	const emails = new Set<string>();
+	if (organization.fiscalConfiguracao?.emailFiscal) emails.add(organization.fiscalConfiguracao.emailFiscal);
+	for (const member of members) {
+		if (member.permissoes?.fiscal?.configurar && member.usuario?.email) emails.add(member.usuario.email);
+	}
+	return [...emails];
+}
+
+type NotifyFiscalPendingDigestParams = {
+	organization: Pick<TOrganizationEntity, "id" | "nome" | "fiscalConfiguracao">;
+	summary: TFiscalPendingSummary;
+};
+
+/**
+ * Resumo diario do trabalho fiscal pendente. Um e-mail por organizacao por dia, agrupado por
+ * causa (nao por venda), com link direto para a aba Pendencias. Nunca lanca.
+ */
+export async function notifyFiscalPendingDigest({ organization, summary }: NotifyFiscalPendingDigestParams) {
+	if (summary.resumo.total === 0) return { enviado: false, destinatarios: 0 };
+	const recipients = await listFiscalPendingDigestRecipients(organization);
+	if (recipients.length === 0) return { enviado: false, destinatarios: 0 };
+
+	const pendingUrl = `${getAppBaseUrl()}${appRoutes.fiscal.pending()}`;
+	const causes = summary.porAlvo.slice(0, 10).map((group) => {
+		const title = group.alvo.rotulo ? `${group.alvo.rotulo}: ${group.problema.acaoSugerida}` : group.problema.mensagem;
+		return `${title} — ${group.documentos.length} documento(s), ${formatToMoney(group.valorTravado)} travados`;
+	});
+	const products = summary.produtosSemPerfil.slice(0, 10).map((product) => `${product.nome} — ${product.vendasRecentes} venda(s) nos últimos 30 dias`);
+	const lines = [
+		`Sua organização tem ${summary.resumo.documentos} documento(s) fiscal(is) travado(s) (${formatToMoney(summary.resumo.valorTravado)}) e ${summary.resumo.produtosSemPerfil} produto(s) vendido(s) sem perfil fiscal.`,
+		"",
+		...(causes.length > 0 ? ["Causas:", ...causes.map((cause) => `- ${cause}`), ""] : []),
+		...(products.length > 0 ? ["Produtos sem perfil fiscal:", ...products.map((product) => `- ${product}`), ""] : []),
+		`Resolva em: ${pendingUrl}`,
+	];
+	const html = `
+		<div style="font-family: Arial, sans-serif; color: #111827; line-height: 1.5;">
+			<h2 style="margin: 0 0 12px;">Pendências fiscais — ${escapeHtml(organization.nome)}</h2>
+			<p>${escapeHtml(lines[0])}</p>
+			${causes.length > 0 ? `<h3 style="margin: 16px 0 6px; font-size: 14px;">Causas</h3><ul>${causes.map((cause) => `<li>${escapeHtml(cause)}</li>`).join("")}</ul>` : ""}
+			${products.length > 0 ? `<h3 style="margin: 16px 0 6px; font-size: 14px;">Produtos sem perfil fiscal</h3><ul>${products.map((product) => `<li>${escapeHtml(product)}</li>`).join("")}</ul>` : ""}
+			<p><a href="${escapeHtml(pendingUrl)}">Abrir pendências fiscais</a></p>
+		</div>
+	`;
+
+	try {
+		const { error } = await resend.emails.send({
+			from: "RecompraCRM <fiscal@recompracrm.com.br>",
+			to: recipients,
+			subject: `[FISCAL] ${summary.resumo.documentos} documento(s) com pendência — ${organization.nome}`,
+			text: lines.join("\n"),
+			html,
+		});
+		if (error) {
+			console.error("[FISCAL] Falha ao enviar resumo de pendências:", error);
+			return { enviado: false, destinatarios: recipients.length };
+		}
+		return { enviado: true, destinatarios: recipients.length };
+	} catch (error) {
+		console.error("[FISCAL] Erro inesperado ao enviar resumo de pendências.", error);
+		return { enviado: false, destinatarios: recipients.length };
 	}
 }
