@@ -41,12 +41,15 @@ import {
 } from "@/lib/queries/desktop-agent";
 import { createManualPrintJob } from "@/lib/mutations/desktop-agent";
 import { PAYMENT_METHOD_CHIP_LABELS } from "@/lib/payments/labels";
-import { PaymentMethodEnum } from "@/schemas/enums";
+import { DeliveryModeEnum, PaymentMethodEnum } from "@/schemas/enums";
 import {
   SALE_FINANCIAL_STATUS_PRESENTATION,
   SALE_FISCAL_STATUS_PRESENTATION,
 } from "@/lib/sales/status-presentation";
-import { useSales } from "@/lib/queries/sales";
+import { useSalesQuery } from "@/lib/queries/sales";
+import { salesHistoryParsers, toSalesHistoryInput } from "@/lib/sales/history-url-state";
+import { useQueryStates } from "nuqs";
+import { DELIVERY_MODE_META } from "@/app/dashboard/sales/_components/fulfillment/config";
 import { useSaleQueryFilterOptions } from "@/lib/queries/stats/utils";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -57,6 +60,7 @@ import type {
   TGetSalesOutputDefault,
 } from "@/app/api/sales/route";
 import type {
+  TDeliveryModeEnum,
   TPaymentMethodEnum,
   TSaleFinancialDerivedStatusEnum,
   TSaleFiscalDerivedStatusEnum,
@@ -92,6 +96,7 @@ import {
   Tag,
   TrendingDown,
   TrendingUp,
+  Truck,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
@@ -222,29 +227,22 @@ export function SalesHistoryView({
   exceptionalPresenceEnabled: boolean;
   orgHasERPAccess: boolean;
 }) {
+  // Filtros na URL (nuqs): compartilháveis e alvo de links de outras telas (ex.: resultados).
+  const [urlState, setUrlState] = useQueryStates(salesHistoryParsers, {
+    history: "replace",
+  });
+  const params = toSalesHistoryInput(urlState);
+  const updateParams = (next: Partial<TGetSalesInput>) => {
+    const { clientId: _clientId, ...urlNext } = next;
+    void setUrlState(urlNext);
+  };
   const {
     data: salesResult,
     isLoading,
     isError,
     isSuccess,
     error,
-    params,
-    updateParams,
-  } = useSales({
-    initialParams: {
-      page: 1,
-      search: "",
-      periodAfter: null,
-      periodBefore: null,
-      sellersIds: [],
-      partnersIds: [],
-      integrationsIds: [],
-      financialStatuses: [],
-      fiscalStatuses: [],
-      paymentMethods: [],
-      saleStatuses: [],
-    },
-  });
+  } = useSalesQuery({ params });
 
   const sales = salesResult?.sales;
   const salesShowing = sales ? sales.length : 0;
@@ -427,6 +425,20 @@ const PAYMENT_METHOD_FILTER_OPTIONS: InteractiveFilterOption<TPaymentMethodEnum>
     value: metodo,
     label: PAYMENT_METHOD_CHIP_LABELS[metodo],
   }));
+
+const DELIVERY_MODE_FILTER_OPTIONS: InteractiveFilterOption<TDeliveryModeEnum>[] =
+  DeliveryModeEnum.options.map((modalidade) => {
+    const meta = DELIVERY_MODE_META[modalidade];
+    const Icon = meta?.icon;
+    return {
+      id: modalidade,
+      value: modalidade,
+      label: (meta?.label ?? modalidade).toUpperCase(),
+      startContent: Icon ? (
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      ) : undefined,
+    };
+  });
 
 const SALE_STATUS_FILTER_OPTIONS: InteractiveFilterOption<TSaleStatusEnum>[] = [
   {
@@ -1072,6 +1084,7 @@ function SalesInlineFilters({
   const hasFinancialStatuses = filters.financialStatuses.length > 0;
   const hasFiscalStatuses = filters.fiscalStatuses.length > 0;
   const hasPaymentMethods = filters.paymentMethods.length > 0;
+  const hasDeliveryModes = filters.deliveryModes.length > 0;
   const hasSaleStatuses = filters.saleStatuses.length > 0;
 
   return (
@@ -1192,6 +1205,18 @@ function SalesInlineFilters({
             updateFilters({ paymentMethods, page: 1 })
           }
           onClear={() => updateFilters({ paymentMethods: [], page: 1 })}
+        />
+      ) : null}
+      {hasDeliveryModes ? (
+        <SalesMultiFilter
+          icon={<Truck className="h-4 w-4" />}
+          label="MODALIDADE"
+          options={DELIVERY_MODE_FILTER_OPTIONS}
+          value={filters.deliveryModes}
+          onChange={(deliveryModes) =>
+            updateFilters({ deliveryModes, page: 1 })
+          }
+          onClear={() => updateFilters({ deliveryModes: [], page: 1 })}
         />
       ) : null}
 
@@ -1322,6 +1347,23 @@ function SalesInlineFilters({
                   }
                   onClear={() => updateFilters({ paymentMethods: [], page: 1 })}
                   clearLabel="TODOS"
+                />
+              </InteractiveFilter.AddFilterItem>
+            ) : null}
+            {!hasDeliveryModes ? (
+              <InteractiveFilter.AddFilterItem
+                id="delivery-modes"
+                label="MODALIDADE"
+                icon={<Truck className="h-4 w-4" />}
+              >
+                <InteractiveFilter.MultiContent
+                  options={DELIVERY_MODE_FILTER_OPTIONS}
+                  value={filters.deliveryModes}
+                  onChange={(deliveryModes) =>
+                    updateFilters({ deliveryModes, page: 1 })
+                  }
+                  onClear={() => updateFilters({ deliveryModes: [], page: 1 })}
+                  clearLabel="TODAS"
                 />
               </InteractiveFilter.AddFilterItem>
             ) : null}

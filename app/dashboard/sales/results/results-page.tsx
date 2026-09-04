@@ -37,6 +37,13 @@ export default function SalesResultsPage({ hasResultsScope, canViewSensitive }: 
 	);
 
 	const { data, isLoading, isError, error } = useSalesResults(params);
+	// Recorte do relatório levado para o histórico ao clicar num cartão. Canal não existe lá.
+	const historyFilters = {
+		periodAfter: params.after,
+		periodBefore: params.before,
+		sellersIds: params.sellersIds,
+		saleStatuses: ["CONFIRMADA" as const],
+	};
 
 	const hasSales = (data?.resumo.qtdeVendas.atual ?? 0) > 0 || (data?.resumo.canceladas.qtde ?? 0) > 0;
 
@@ -45,7 +52,9 @@ export default function SalesResultsPage({ hasResultsScope, canViewSensitive }: 
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div className="flex flex-col">
 					<h1 className="font-black text-2xl tracking-tight">Resultados</h1>
-					<p className="text-sm text-muted-foreground">Vendas, recebimentos por método, resultado por modalidade e por vendedor e emissão fiscal do período.</p>
+					<p className="text-sm text-muted-foreground">
+						Vendas, recebimentos por método, resultado por modalidade e por vendedor e emissão fiscal do período.
+					</p>
 				</div>
 			</div>
 
@@ -61,15 +70,19 @@ export default function SalesResultsPage({ hasResultsScope, canViewSensitive }: 
 			) : isError ? (
 				<ErrorComponent msg={getErrorMessage(error)} />
 			) : !data ? null : !hasSales ? (
-				<StatEmptyState icon={ChartNoAxesColumnIncreasing} title="Nenhuma venda no período" description="Ajuste o período ou os filtros para ver os resultados." />
+				<StatEmptyState
+					icon={ChartNoAxesColumnIncreasing}
+					title="Nenhuma venda no período"
+					description="Ajuste o período ou os filtros para ver os resultados."
+				/>
 			) : (
 				<>
 					<SummaryBlock resumo={data.resumo} canViewSensitive={canViewSensitive} />
 					<div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-2">
-						<PaymentMethodsBlock porMetodo={data.porMetodo} faturamento={data.resumo.faturamento.atual ?? 0} />
+						<PaymentMethodsBlock porMetodo={data.porMetodo} faturamento={data.resumo.faturamento.atual ?? 0} historyFilters={historyFilters} />
 						<FiscalHealthBlock fiscal={data.fiscal} qtdeVendas={data.resumo.qtdeVendas.atual ?? 0} />
 					</div>
-					<DeliveryModesBlock porModalidade={data.porModalidade} canViewSensitive={canViewSensitive} />
+					<DeliveryModesBlock porModalidade={data.porModalidade} canViewSensitive={canViewSensitive} historyFilters={historyFilters} />
 					<SellersBlock porVendedor={data.porVendedor} canViewSensitive={canViewSensitive} />
 				</>
 			)}

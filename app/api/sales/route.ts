@@ -14,8 +14,10 @@ import { classifySalePaymentTransactions, computeSaleFinancialStatus, computeSal
 import {
 	SaleFinancialDerivedStatusEnum,
 	SaleFiscalDerivedStatusEnum,
+	DeliveryModeEnum,
 	PaymentMethodEnum,
 	SaleStatusEnum,
+	type TDeliveryModeEnum,
 	type TPaymentMethodEnum,
 	type TSaleFinancialDerivedStatusEnum,
 	type TSaleFiscalDerivedStatusEnum,
@@ -208,6 +210,12 @@ const GetSalesInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? val.split(",").filter((method): method is TPaymentMethodEnum => PaymentMethodEnum.safeParse(method).success) : [])),
+	// Modalidade de atendimento da venda (presencial, retirada, entrega, comanda): qualquer uma das informadas.
+	deliveryModes: z
+		.string({ invalid_type_error: "Tipo inválido para as modalidades de atendimento." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? val.split(",").filter((mode): mode is TDeliveryModeEnum => DeliveryModeEnum.safeParse(mode).success) : [])),
 	// Status comercial da venda. O histórico mistura orçamento, condicional e venda confirmada de
 	// propósito — quem acabou de criar um orçamento espera achá-lo aqui. O filtro é para triagem.
 	saleStatuses: z
@@ -541,6 +549,7 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 		financialStatuses,
 		fiscalStatuses,
 		paymentMethods,
+		deliveryModes,
 		saleStatuses,
 	} = input;
 
@@ -796,6 +805,7 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	if (fiscalStatuses.length > 0) conditions.push(getFiscalStatusCondition({ orgId: userOrgId, statuses: fiscalStatuses })!);
 	if (paymentMethods.length > 0) conditions.push(getPaymentMethodCondition({ orgId: userOrgId, methods: paymentMethods }));
 	if (saleStatuses.length > 0) conditions.push(inArray(sales.statusVenda, saleStatuses));
+	if (deliveryModes.length > 0) conditions.push(inArray(sales.entregaModalidade, deliveryModes));
 	if (productIds && productIds.length > 0) {
 		conditions.push(
 			inArray(
