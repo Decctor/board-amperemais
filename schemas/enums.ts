@@ -1729,3 +1729,15 @@ export const POS_PRODUCT_ORDERING_LABELS: Record<
   QUANTIDADE_VENDIDA: "Mais vendidos",
   NOME: "Nome (A-Z)",
 };
+
+export const ClientDuplicateSignalTypeEnum = z.enum(["TELEFONE", "EMAIL", "CPF_CNPJ", "INSTAGRAM_USERNAME"], {
+	required_error: "Tipo do sinal de duplicidade não informado.",
+	invalid_type_error: "Tipo não válido para o sinal de duplicidade.",
+});
+export type TClientDuplicateSignalTypeEnum = z.infer<typeof ClientDuplicateSignalTypeEnum>;
+
+export const ClientDuplicateStatusEnum = z.enum(["PENDENTE", "DESCARTADO", "MESCLADO"], {
+	required_error: "Status do par de duplicidade não informado.",
+	invalid_type_error: "Tipo não válido para o status do par de duplicidade.",
+});
+export type TClientDuplicateStatusEnum = z.infer<typeof ClientDuplicateStatusEnum>;

@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { doublePrecision, index, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { doublePrecision, index, jsonb, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { boolean, text, varchar } from "drizzle-orm/pg-core";
 import { campaigns } from "./campaigns";
 import { clients } from "./clients";
@@ -94,25 +94,35 @@ export const cashbackProgramPrizeRelations = relations(cashbackProgramPrizes, ({
 }));
 export type TCashbackProgramPrizeEntity = typeof cashbackProgramPrizes.$inferSelect;
 export type TNewCashbackProgramPrizeEntity = typeof cashbackProgramPrizes.$inferInsert;
-export const cashbackProgramBalances = newTable("cashback_program_balances", {
-	id: varchar("id", { length: 255 })
-		.primaryKey()
-		.$defaultFn(() => crypto.randomUUID()),
-	organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id, { onDelete: "cascade" }),
-	clienteId: varchar("cliente_id", { length: 255 })
-		.references(() => clients.id, { onDelete: "cascade" })
-		.notNull(),
-	programaId: varchar("programa_id", { length: 255 })
-		.references(() => cashbackPrograms.id)
-		.notNull(),
-	saldoValorDisponivel: doublePrecision("saldo_valor_disponivel").notNull().default(0),
-	saldoValorAcumuladoTotal: doublePrecision("saldo_valor_acumulado_total").notNull().default(0),
-	saldoValorResgatadoTotal: doublePrecision("saldo_valor_resgatado_total").notNull().default(0),
-	// Momento explícito de adesão ao clube ("Membro desde").
-	dataAdesao: timestamp("data_adesao").defaultNow().notNull(),
-	dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
-	dataAtualizacao: timestamp("data_atualizacao").$defaultFn(() => new Date()),
-});
+export const cashbackProgramBalances = newTable(
+	"cashback_program_balances",
+	{
+		id: varchar("id", { length: 255 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizacaoId: varchar("organizacao_id", { length: 255 }).references(() => organizations.id, { onDelete: "cascade" }),
+		clienteId: varchar("cliente_id", { length: 255 })
+			.references(() => clients.id, { onDelete: "cascade" })
+			.notNull(),
+		programaId: varchar("programa_id", { length: 255 })
+			.references(() => cashbackPrograms.id)
+			.notNull(),
+		saldoValorDisponivel: doublePrecision("saldo_valor_disponivel").notNull().default(0),
+		saldoValorAcumuladoTotal: doublePrecision("saldo_valor_acumulado_total").notNull().default(0),
+		saldoValorResgatadoTotal: doublePrecision("saldo_valor_resgatado_total").notNull().default(0),
+		// Momento explícito de adesão ao clube ("Membro desde").
+		dataAdesao: timestamp("data_adesao").defaultNow().notNull(),
+		dataInsercao: timestamp("data_insercao").defaultNow().notNull(),
+		dataAtualizacao: timestamp("data_atualizacao").$defaultFn(() => new Date()),
+	},
+	(table) => ({
+		// ensureCashbackBalanceForClient sempre assumiu "no máximo uma linha por
+		// (org, cliente, programa)"; o índice torna a suposição verdadeira e dá à
+		// consolidação de saldo do merge de clientes contra o que se defender.
+		// Migration 0096 deduplica as linhas existentes antes de criar o índice.
+		orgClienteProgramaUnique: uniqueIndex("idx_cashback_balances_org_cliente_programa").on(table.organizacaoId, table.clienteId, table.programaId),
+	}),
+);
 export const cashbackProgramBalanceRelations = relations(cashbackProgramBalances, ({ one }) => ({
 	cliente: one(clients, {
 		fields: [cashbackProgramBalances.clienteId],

@@ -1,6 +1,9 @@
 # Reconciliação de Clientes Duplicados — Plano de Implementação
 
-> Status: **planejado** (nada em código ainda).
+> Status: **implementado** (fases 0–8). Pendente de deploy: aplicar
+> `drizzle/0096_client_duplicate_reconciliation.sql` (ou `npm run db:push`) — a
+> varredura do cron (`30 3 * * *`, `vercel.json`) faz o backfill dos candidatos
+> no primeiro ciclo. Decisões tomadas e desvios do plano em [§11](#11-como-foi-implementado).
 > Porte do Syncroniza Control (`src/server/clients/{duplicates,merge}.ts`,
 > `src/server/api/routers/client-duplicates/`, `src/components/clients/duplicates/`),
 > adaptado à superfície de dados do RecompraCRM.
@@ -361,3 +364,65 @@ que hoje ninguém tem.
    sequenciais (o par restante migra para o keeper automaticamente). Aceitável no v1?
 5. **Desfazer** — o `origemSnapshot` permite recuperação **manual**; não há botão de desfazer.
    No Control é assim. Confirmar que serve aqui, dado que envolve dinheiro.
+
+## 11. Como foi implementado
+
+Registro das decisões tomadas nas questões em aberto (§10) e dos desvios do plano.
+
+### Decisões
+
+1. **Permissão** — caminho 3: `empresa.editar` gate descarte e mesclagem (sem
+   migration de permissões no v1). Ver e comparar é livre. Se um grupo
+   `clientes` nascer no futuro, os dois checks estão em
+   `app/api/clients/duplicates/{dismiss,merge}/route.ts` e nos `page.tsx` que
+   passam `canReconcileClients`.
+2. **Agregados de referência** — recomputados inline pós-merge (não espera o
+   cron). Vínculo de vendedor re-rankeado por cliente (auto-contido); afinidade
+   de produto re-rankeada nas partições dos produtos que o keeper toca.
+3. **Rastro de cashback** — merge log apenas (`saldos_cashback` no
+   `client_merge_logs`); nenhum tipo novo no enum de transação.
+4. **Merge de três ou mais** — pares sequenciais, como planejado (os pares
+   restantes migram automaticamente para o keeper).
+5. **Desfazer** — snapshot no merge log para recuperação manual, como no Control.
+
+### Desvios do plano
+
+- **§5.5 (recomputações)**: os crons noturnos NÃO foram refatorados para chamar
+  as funções por cliente. Os crons são jobs de lote otimizados (SQL set-based
+  por organização); forçá-los a um loop por cliente seria regressão de
+  performance. `lib/clients/recompute.ts` espelha as constantes e fórmulas dos
+  crons com comentários cruzados nos dois lados — mudou lá, muda aqui.
+- **§5.2 (`audience_destination_members`)**: fica INTACTO no merge, melhor que o
+  planejado. A tabela guarda os hashes justamente para remover da Meta clientes
+  que deixaram de existir: a linha da origem vira delta de remoção no próximo
+  `meta-audiences-sync` e o keeper entra pelo delta normal. Repointar destruiria
+  o hash necessário para o DELETE.
+- **§4 (ganchos de redetecção)**: seis caminhos interativos ganharam gancho
+  (cadastro/edição manual, POI cliente e transação, loja digital, webhook do
+  WhatsApp). Os caminhos de lote (importações bulk, data-collecting-v2, syncs
+  SMB, vínculo de parceiro, playground) ficam com a varredura noturna — o
+  recompute "safely" engole erro, e um erro engolido DENTRO da transação do
+  chamador abortaria a transação inteira no Postgres.
+- **§8 (montagem do pill)**: na página da venda o pill usa `entityType="client"`
+  direto (a página já tem o id do cliente); o modo `sale` da API existe para
+  telas que só conhecem o id da venda.
+- **RFM no merge**: recomputa o título sem disparar campanhas de
+  entrada/permanência em segmentação — merge é operação de dados, não
+  comportamento do cliente. A mudança de título fica visível no cadastro na
+  hora; automações seguem por conta do ciclo normal.
+
+### Mapa de arquivos
+
+| Peça | Arquivo |
+| --- | --- |
+| Migration (fase 0 + tabelas) | `drizzle/0096_client_duplicate_reconciliation.sql` |
+| Schema Drizzle | `services/drizzle/schema/client-duplicates.ts` (+ índice único em `cashback-programs.ts`) |
+| Zod | `schemas/enums.ts`, `schemas/clients.ts` |
+| Detecção | `lib/clients/duplicates.ts` |
+| Cron | `app/api/cron/sweep-client-duplicates/route.ts` + `vercel.json` |
+| Recomputações por cliente | `lib/clients/recompute.ts` |
+| Merge | `lib/clients/merge.ts` |
+| API | `app/api/clients/duplicates/{route,comparison/route,dismiss/route,merge/route}.ts` |
+| Queries/mutations | `lib/queries/client-duplicates.ts`, `lib/mutations/client-duplicates.ts` |
+| UI | `components/Clients/duplicates/{ClientDuplicatePill,ClientReconciliationDialog,ClientReconciliationQueue}.tsx` |
+| Montagens | página do cliente (`ClientDetailsMain`), página da venda (`sale-by-id-page`), fila em `customers/clients-page` |

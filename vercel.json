@@ -114,6 +114,10 @@
 		{
 			"path": "/api/cron/subscription-reconciliation",
 			"schedule": "0 7 * * *"
+		},
+		{
+			"path": "/api/cron/sweep-client-duplicates",
+			"schedule": "30 3 * * *"
 		}
 	]
 }

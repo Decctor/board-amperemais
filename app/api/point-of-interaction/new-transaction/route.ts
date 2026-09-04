@@ -1,4 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
+import { recomputeClientDuplicatesSafely } from "@/lib/clients/duplicates";
 import { accumulateCashbackForClient, calculateAccumulatedCashbackValue, ensureCashbackBalanceForClient } from "@/lib/cashback/accumulation";
 import { type TValidatedPrizeForRedemption, validatePrizeForRedemption } from "@/lib/cashback/prizes";
 import { applyCashbackRedemptionFIFO } from "@/lib/cashback/redemption";
@@ -953,10 +954,15 @@ async function preparePointOfInteractionTransaction({ input, operatorContext, tx
 			visualClientAccumulatedCashbackValue,
 			visualClientNewOverallAvailableBalance,
 			immediateProcessingDataList,
+			createdClienteId: clientIsNew && clientId ? clientId : null,
 		};
 	})();
 
 	const afterCommit = () => {
+		// Redetecção de duplicidade pós-commit para cadastros criados nesta transação (best-effort).
+		if (result.createdClienteId) {
+			void recomputeClientDuplicatesSafely({ organizacaoId: input.orgId, clienteId: result.createdClienteId });
+		}
 		if (result.immediateProcessingDataList && result.immediateProcessingDataList.length > 0) {
 			const weeklyLimitCache = createCampaignWeeklyLimitCache();
 

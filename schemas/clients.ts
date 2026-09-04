@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ClientTagIconEnum, FiscalClientTaxIndicatorEnum } from "./enums";
+import { ClientDuplicateSignalTypeEnum, ClientTagIconEnum, FiscalClientTaxIndicatorEnum } from "./enums";
 import type { TSale } from "./sales";
 
 export const ClientTagMetadataSchema = z.discriminatedUnion("tipo", [
@@ -324,3 +324,16 @@ export const BulkClientImportInputSchema = z.object({
 	clients: z.array(BulkClientImportRowSchema).min(1, "É necessário pelo menos 1 cliente para importar."),
 });
 export type TBulkClientImportInput = z.infer<typeof BulkClientImportInputSchema>;
+
+// ─── Reconciliação de clientes duplicados ────────────────────────────────────
+// Enums em /schemas/enums.ts (ClientDuplicateSignalTypeEnum, ClientDuplicateStatusEnum).
+
+export const ClientDuplicateReasonSchema = z.object({
+	tipo: ClientDuplicateSignalTypeEnum,
+	valor: z.string({ invalid_type_error: "Tipo não válido para o valor do sinal de duplicidade." }),
+});
+export type TClientDuplicateReason = z.infer<typeof ClientDuplicateReasonSchema>;
+
+// Escolha explícita por campo quando keeper e origem conflitam na UI de mesclagem.
+export const ClientMergeFieldChoicesSchema = z.record(z.enum(["keeper", "source"]));
+export type TClientMergeFieldChoices = z.infer<typeof ClientMergeFieldChoicesSchema>;

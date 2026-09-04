@@ -5,11 +5,12 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 type ClientPageProps = {
 	user: TAuthUserSession["user"];
 	id: string;
+	canReconcileClients: boolean;
 };
-export default function ClientPage({ user, id }: ClientPageProps) {
+export default function ClientPage({ user, id, canReconcileClients }: ClientPageProps) {
 	return (
 		<div className="flex w-full max-w-full grow flex-col overflow-x-hidden bg-background px-6 lg:px-12 py-6 gap-3">
-			<ClientMain id={id} user={user} />
+			<ClientMain id={id} user={user} canReconcileClients={canReconcileClients} />
 		</div>
 	);
 }
