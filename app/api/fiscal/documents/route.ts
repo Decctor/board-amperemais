@@ -12,6 +12,7 @@ import {
   EXCEPTIONAL_PRESENCE_JUSTIFICATION_MIN_LENGTH,
   getExceptionalPresenceRestriction,
 } from "@/lib/fiscal/exceptional-presence";
+import { blocksNewManualFiscalEmission } from "@/lib/fiscal/manual-emission-policy";
 import { loadFiscalOrganization } from "@/lib/fiscal/settings";
 import { FiscalDocumentTypeEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
@@ -202,8 +203,7 @@ async function createFiscalDocument({
       );
     }
     const hasActiveFiscalDocument = saleBelongsToOrg.documentosFiscais.some(
-      (document) =>
-        !["CANCELADO", "INUTILIZADO"].includes(document.statusInterno ?? ""),
+      (document) => blocksNewManualFiscalEmission(document.statusInterno),
     );
     if (hasActiveFiscalDocument) {
       throw new createHttpError.Conflict(

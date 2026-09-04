@@ -11,6 +11,15 @@ test("preserva a mensagem de um erro de dominio", () => {
 	const error = new FiscalReadinessError("Nenhum perfil fiscal de produto encontrado para a venda.");
 
 	assert.equal(getErrorMessage(error), error.message);
+	assert.equal(createHttpError.isHttpError(error), true);
+	assert.equal(error.statusCode, 400);
+	assert.equal(error.expose, true);
+});
+
+test("preserva a mensagem acionavel de validacao fiscal do destinatario", () => {
+	const message = "Informe um CPF ou CNPJ valido para o destinatario da entrega antes de emitir o documento fiscal.";
+
+	assert.equal(getErrorMessage(new FiscalReadinessError(message)), message);
 });
 
 test("preserva a mensagem de um Error comum", () => {
