@@ -25,6 +25,7 @@
 		"backfill:online-software-sales": "tsx ./scripts/backfill-online-software-sales.ts",
 		"backfill:cashback-prize-organizacao": "tsx ./scripts/backfill-cashback-prize-organizacao.ts",
 		"backfill:fiscal-freight-rejections": "tsx --conditions=react-server ./scripts/backfill-fiscal-freight-rejections.ts",
+		"repair:fiscal-provider-history": "tsx --conditions=react-server ./scripts/repair-fiscal-provider-history.ts",
 		"retry:fiscal-document": "tsx --conditions=react-server ./scripts/retry-fiscal-document.ts",
 		"backfill:stripe-control-metadata": "tsx ./scripts/backfill-stripe-control-metadata.ts",
 		"backfill:organization-slugs": "tsx ./scripts/backfill-organization-slugs.ts",
