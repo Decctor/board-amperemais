@@ -372,7 +372,7 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				id: "fiscal",
 				capability: "fiscal",
 				title: "Fiscal",
-				url: appRoutes.fiscal(),
+				url: appRoutes.fiscal.root(),
 				icon: <BookText className="size-4" />,
 				items: null,
 			},

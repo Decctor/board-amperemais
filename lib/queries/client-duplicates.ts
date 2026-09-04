@@ -1,6 +1,7 @@
 import type { TGetClientDuplicatesOutput } from "@/app/api/clients/duplicates/route";
 import type { TGetClientDuplicateComparisonOutput } from "@/app/api/clients/duplicates/comparison/route";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import type { TClientDuplicateSignalTypeEnum } from "@/schemas/enums";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 export type TClientDuplicateEntityType = "client" | "sale";
@@ -25,9 +26,18 @@ export function useClientDuplicatesForEntity({ entityType, entityId }: { entityT
 	};
 }
 
-async function fetchClientDuplicatesList({ cursor, limit }: { cursor: { dataInsercao: string; id: string } | null; limit?: number }) {
+async function fetchClientDuplicatesList({
+	cursor,
+	limit,
+	signalType,
+}: {
+	cursor: { dataInsercao: string; id: string } | null;
+	limit?: number;
+	signalType?: TClientDuplicateSignalTypeEnum | null;
+}) {
 	const searchParams = new URLSearchParams();
 	searchParams.set("status", "PENDENTE");
+	if (signalType) searchParams.set("signalType", signalType);
 	if (cursor) {
 		searchParams.set("cursorDataInsercao", cursor.dataInsercao);
 		searchParams.set("cursorId", cursor.id);
@@ -38,17 +48,23 @@ async function fetchClientDuplicatesList({ cursor, limit }: { cursor: { dataInse
 	return data.data.default;
 }
 
-export function usePendingClientDuplicates({ enabled = true }: { enabled?: boolean } = {}) {
+export function usePendingClientDuplicates({
+	enabled = true,
+	signalType = null,
+}: { enabled?: boolean; signalType?: TClientDuplicateSignalTypeEnum | null } = {}) {
+	const queryKey = ["client-duplicates-pending", signalType];
 	return {
 		...useInfiniteQuery({
-			queryKey: ["client-duplicates-pending"],
-			queryFn: ({ pageParam }) => fetchClientDuplicatesList({ cursor: pageParam }),
+			queryKey,
+			queryFn: ({ pageParam }) => fetchClientDuplicatesList({ cursor: pageParam, signalType }),
 			initialPageParam: null as { dataInsercao: string; id: string } | null,
 			getNextPageParam: (lastPage) => lastPage.nextCursor,
 			enabled,
 			refetchOnWindowFocus: false,
+			// Ao trocar o filtro, mantém a lista anterior visível enquanto a nova chega.
+			placeholderData: keepPreviousData,
 		}),
-		queryKey: ["client-duplicates-pending"],
+		queryKey,
 	};
 }
 

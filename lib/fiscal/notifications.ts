@@ -64,7 +64,7 @@ export async function notifyFiscalEmissionFailure({ organization, sale, errorMes
 		return;
 	}
 
-	const fiscalUrl = `${getAppBaseUrl()}${appRoutes.fiscal()}`;
+	const fiscalUrl = `${getAppBaseUrl()}${appRoutes.fiscal.root()}`;
 
 	try {
 		const { error } = await resend.emails.send({

@@ -67,6 +67,7 @@ type SaleByIdPageProps = {
 	userCanDeleteSales: boolean;
 	userCanEditSales: boolean;
 	userCanReconcileClients: boolean;
+	userCanViewFinances: boolean;
 	userFiscalPermissions: {
 		view: boolean;
 		configure: boolean;
@@ -97,7 +98,13 @@ function formatCouponValidationMode(snapshot: TGetSalesOutputById["resgatesCupom
 	return typeof mode === "string" ? mode : null;
 }
 
-export default function SaleByIdPage({ saleId, userCanDeleteSales, userCanEditSales, userCanReconcileClients }: SaleByIdPageProps) {
+export default function SaleByIdPage({
+	saleId,
+	userCanDeleteSales,
+	userCanEditSales,
+	userCanReconcileClients,
+	userCanViewFinances,
+}: SaleByIdPageProps) {
 	// `orgHasERPAccess` e `userFiscalPermissions` não são lidos aqui de propósito: o gate real é o
 	// da API, que devolve `erp: null` sem o módulo e `erp.fiscal: null` sem permissão fiscal.
 	// Duplicar a regra no cliente criaria duas fontes de verdade que podem divergir.
@@ -157,6 +164,7 @@ export default function SaleByIdPage({ saleId, userCanDeleteSales, userCanEditSa
 							saleTotal={sale.valorTotal}
 							processamentoOrigem={sale.processamentoOrigem}
 							integracao={sale.integracao}
+							userCanViewFinances={userCanViewFinances}
 						/>
 					</div>
 					{sale.erp.fiscal ? (
@@ -601,11 +609,13 @@ function SalePaymentsSection({
 	saleTotal,
 	processamentoOrigem,
 	integracao,
+	userCanViewFinances,
 }: {
 	financeiro: SaleErpDetail["financeiro"];
 	saleTotal: number;
 	processamentoOrigem: TGetSalesOutputById["processamentoOrigem"];
 	integracao: TGetSalesOutputById["integracao"];
+	userCanViewFinances: boolean;
 }) {
 	const presentation = SALE_FINANCIAL_STATUS_PRESENTATION[financeiro.status];
 	const integrationName = integracao?.apelido ?? integracao?.tipo ?? null;
@@ -628,7 +638,7 @@ function SalePaymentsSection({
 			) : (
 				<div className="w-full flex flex-col gap-2">
 					{financeiro.pagamentos.map((payment) => (
-						<SalePaymentGroupRow key={payment.id} payment={payment} />
+						<SalePaymentGroupRow key={payment.id} payment={payment} userCanViewFinances={userCanViewFinances} />
 					))}
 					<div className="w-full flex items-center justify-between gap-3 border-t border-border pt-2">
 						<span className="text-xs font-bold uppercase tracking-tight text-muted-foreground">Recebido</span>
@@ -643,7 +653,13 @@ function SalePaymentsSection({
 	);
 }
 
-function SalePaymentGroupRow({ payment }: { payment: SaleErpDetail["financeiro"]["pagamentos"][number] }) {
+function SalePaymentGroupRow({
+	payment,
+	userCanViewFinances,
+}: {
+	payment: SaleErpDetail["financeiro"]["pagamentos"][number];
+	userCanViewFinances: boolean;
+}) {
 	const isInstallment = payment.parcelasTotal > 1;
 	const methodLabel = `${PAYMENT_METHOD_LABELS[payment.metodo] ?? payment.metodo}${isInstallment ? ` ${payment.parcelasTotal}x` : ""}`;
 
@@ -662,14 +678,32 @@ function SalePaymentGroupRow({ payment }: { payment: SaleErpDetail["financeiro"]
 		return { label: "Pendente", className: "text-muted-foreground" };
 	})();
 
-	return (
-		<div className="w-full flex items-start justify-between gap-3 rounded-lg bg-secondary/30 px-3 py-2.5">
+	const content = (
+		<>
 			<div className="min-w-0 flex flex-col gap-0.5">
 				<span className="truncate text-sm font-semibold tracking-tight">{methodLabel}</span>
 				<span className={cn("text-xs font-semibold", status.className)}>{status.label}</span>
 			</div>
-			<span className="shrink-0 text-sm font-bold tabular-nums">{formatToMoney(payment.valor)}</span>
-		</div>
+			<div className="shrink-0 flex items-center gap-1.5">
+				<span className="text-sm font-bold tabular-nums">{formatToMoney(payment.valor)}</span>
+				{userCanViewFinances ? <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" /> : null}
+			</div>
+		</>
+	);
+
+	// Sem permissão no financeiro a linha fica estática: o destino devolveria "não autorizado".
+	if (!userCanViewFinances) {
+		return <div className="w-full flex items-start justify-between gap-3 rounded-lg bg-secondary/30 px-3 py-2.5">{content}</div>;
+	}
+
+	return (
+		<Link
+			href={appRoutes.finance.entry(payment.lancamentoContabilId)}
+			title="Abrir lançamento contábil deste pagamento"
+			className="w-full flex items-start justify-between gap-3 rounded-lg bg-secondary/30 px-3 py-2.5 transition-colors hover:bg-secondary/60"
+		>
+			{content}
+		</Link>
 	);
 }
 
@@ -763,23 +797,33 @@ function SaleFiscalDocumentRow({ document }: { document: NonNullable<SaleErpDeta
 				</div>
 			) : null}
 
-			{hasAssets ? (
-				<div className="w-full flex items-center gap-1.5">
-					<Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-[0.65rem] font-bold" onClick={() => openAsset("pdf")}>
-						<FileText className="w-3.5 h-3.5" />
-						DANFE
-					</Button>
-					<Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-[0.65rem] font-bold" onClick={() => openAsset("xml")}>
-						<FileCode className="w-3.5 h-3.5" />
-						XML
-					</Button>
-					{document.chaveAcesso ? (
-						<span className="ml-auto truncate font-mono text-[0.6rem] text-muted-foreground" title={document.chaveAcesso}>
-							{document.chaveAcesso}
-						</span>
-					) : null}
-				</div>
-			) : null}
+			{/* Sempre renderizada: mesmo sem XML nem DANFE (rascunho, rejeitada), o documento existe
+			    no módulo fiscal e é lá que se age sobre ele. */}
+			<div className="w-full flex items-center gap-1.5">
+				<Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-[0.65rem] font-bold" asChild>
+					<Link href={appRoutes.fiscal.document(document.id)} title="Abrir este documento no módulo fiscal">
+						<ReceiptText className="w-3.5 h-3.5" />
+						VER DOCUMENTO
+					</Link>
+				</Button>
+				{hasAssets ? (
+					<>
+						<Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-[0.65rem] font-bold" onClick={() => openAsset("pdf")}>
+							<FileText className="w-3.5 h-3.5" />
+							DANFE
+						</Button>
+						<Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-[0.65rem] font-bold" onClick={() => openAsset("xml")}>
+							<FileCode className="w-3.5 h-3.5" />
+							XML
+						</Button>
+					</>
+				) : null}
+				{document.chaveAcesso ? (
+					<span className="ml-auto truncate font-mono text-[0.6rem] text-muted-foreground" title={document.chaveAcesso}>
+						{document.chaveAcesso}
+					</span>
+				) : null}
+			</div>
 		</div>
 	);
 }

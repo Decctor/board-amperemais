@@ -1,7 +1,7 @@
 import type { TClientDuplicateReason } from "@/schemas/clients";
 import { type DB, type DBTransaction, db as defaultDb } from "@/services/drizzle";
 import { clientDuplicateCandidates, clients } from "@/services/drizzle/schema";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { type SQL, and, eq, ne, sql } from "drizzle-orm";
 
 type TDetectionDb = DB | DBTransaction;
 
@@ -13,6 +13,40 @@ function normalizeInstagramHandle(handle: string | null | undefined): string | n
 
 function normalizePair(clienteXId: string, clienteYId: string) {
 	return clienteXId < clienteYId ? ([clienteXId, clienteYId] as const) : ([clienteYId, clienteXId] as const);
+}
+
+/**
+ * Acima disto, o valor não é duplicidade — é preenchimento genérico. A base real
+ * tinha 608 cadastros com "invalido@invalido.com.br" e 60 com "1111111111" numa
+ * mesma organização: sem o corte, esse único e-mail geraria 184 mil pares e a
+ * fila de reconciliação viraria ruído. Duplicidade legítima por valor
+ * compartilhado (casal, telefone da empresa) fica bem abaixo do limite.
+ */
+const MAX_CLIENTS_PER_SIGNAL_VALUE = 10;
+
+/**
+ * Outros clientes da organização que compartilham o valor do sinal. Devolve
+ * vazio quando o valor é genérico demais — o `limit` também impede que um
+ * placeholder faça o gancho de criação de cliente varrer centenas de linhas.
+ */
+async function findSignalMatches({
+	db,
+	organizacaoId,
+	clienteId,
+	condition,
+}: {
+	db: TDetectionDb;
+	organizacaoId: string;
+	clienteId: string;
+	condition: SQL;
+}) {
+	const matches = await db.query.clients.findMany({
+		columns: { id: true },
+		where: and(eq(clients.organizacaoId, organizacaoId), ne(clients.id, clienteId), condition),
+		limit: MAX_CLIENTS_PER_SIGNAL_VALUE,
+	});
+	// `matches` exclui o próprio cliente: MAX linhas significam um grupo maior que MAX.
+	return matches.length >= MAX_CLIENTS_PER_SIGNAL_VALUE ? [] : matches;
 }
 
 /**
@@ -44,44 +78,26 @@ export async function recomputeClientDuplicatesForClient(input: { db?: TDetectio
 		reasonsByOtherClient.set(otherClientId, reasons);
 	}
 
-	const phoneBase = client.telefoneBase?.trim() ?? "";
-	if (phoneBase) {
-		const matches = await db.query.clients.findMany({
-			columns: { id: true },
-			where: and(eq(clients.organizacaoId, input.organizacaoId), eq(clients.telefoneBase, phoneBase), ne(clients.id, client.id)),
-		});
-		for (const match of matches) addReason(match.id, { tipo: "TELEFONE", valor: phoneBase });
-	}
+	const signals: { tipo: TClientDuplicateReason["tipo"]; valor: string | null; condition: (valor: string) => SQL }[] = [
+		{ tipo: "TELEFONE", valor: client.telefoneBase?.trim() || null, condition: (valor) => eq(clients.telefoneBase, valor) },
+		{ tipo: "EMAIL", valor: client.email?.trim().toLowerCase() || null, condition: (valor) => sql`lower(${clients.email}) = ${valor}` },
+		{ tipo: "CPF_CNPJ", valor: client.cpfCnpj?.trim() || null, condition: (valor) => eq(clients.cpfCnpj, valor) },
+		{
+			tipo: "INSTAGRAM_USERNAME",
+			valor: normalizeInstagramHandle(client.instagram),
+			condition: (valor) => sql`lower(trim(leading '@' from coalesce(${clients.instagram}, ''))) = ${valor}`,
+		},
+	];
 
-	const email = client.email?.trim().toLowerCase() ?? "";
-	if (email) {
-		const matches = await db.query.clients.findMany({
-			columns: { id: true },
-			where: and(eq(clients.organizacaoId, input.organizacaoId), sql`lower(${clients.email}) = ${email}`, ne(clients.id, client.id)),
+	for (const signal of signals) {
+		if (!signal.valor) continue;
+		const matches = await findSignalMatches({
+			db,
+			organizacaoId: input.organizacaoId,
+			clienteId: client.id,
+			condition: signal.condition(signal.valor),
 		});
-		for (const match of matches) addReason(match.id, { tipo: "EMAIL", valor: email });
-	}
-
-	const cpfCnpj = client.cpfCnpj?.trim() ?? "";
-	if (cpfCnpj) {
-		const matches = await db.query.clients.findMany({
-			columns: { id: true },
-			where: and(eq(clients.organizacaoId, input.organizacaoId), eq(clients.cpfCnpj, cpfCnpj), ne(clients.id, client.id)),
-		});
-		for (const match of matches) addReason(match.id, { tipo: "CPF_CNPJ", valor: cpfCnpj });
-	}
-
-	const instagramHandle = normalizeInstagramHandle(client.instagram);
-	if (instagramHandle) {
-		const matches = await db.query.clients.findMany({
-			columns: { id: true },
-			where: and(
-				eq(clients.organizacaoId, input.organizacaoId),
-				ne(clients.id, client.id),
-				sql`lower(trim(leading '@' from coalesce(${clients.instagram}, ''))) = ${instagramHandle}`,
-			),
-		});
-		for (const match of matches) addReason(match.id, { tipo: "INSTAGRAM_USERNAME", valor: instagramHandle });
+		for (const match of matches) addReason(match.id, { tipo: signal.tipo, valor: signal.valor });
 	}
 
 	let upserted = 0;
@@ -113,63 +129,40 @@ export async function recomputeClientDuplicatesSafely(input: { db?: TDetectionDb
  * sinal via INSERT..SELECT com ON CONFLICT DO NOTHING. Pares que coincidem em
  * mais de um sinal ficam com o motivo do primeiro insert; o recheck ao vivo de
  * `getForEntity` completa os motivos quando a página é aberta.
+ *
+ * O CTE `valores` aplica o mesmo corte de MAX_CLIENTS_PER_SIGNAL_VALUE do
+ * caminho event-driven: só valores compartilhados por 2..MAX cadastros da
+ * organização viram pares.
  */
+const SWEEP_SIGNALS: { tipo: TClientDuplicateReason["tipo"]; valorExpr: (alias: string) => string }[] = [
+	{ tipo: "TELEFONE", valorExpr: (alias) => `nullif(trim(coalesce(${alias}.telefone_base, '')), '')` },
+	{ tipo: "EMAIL", valorExpr: (alias) => `nullif(lower(trim(coalesce(${alias}.email, ''))), '')` },
+	{ tipo: "CPF_CNPJ", valorExpr: (alias) => `nullif(trim(coalesce(${alias}.cpf_cnpj, '')), '')` },
+	{ tipo: "INSTAGRAM_USERNAME", valorExpr: (alias) => `nullif(lower(trim(leading '@' from coalesce(${alias}.instagram, ''))), '')` },
+];
+
 export async function sweepClientDuplicates(input?: { db?: DB }): Promise<void> {
 	const db = input?.db ?? defaultDb;
 
-	// Telefone base
-	await db.execute(sql`
-		INSERT INTO ampmais_client_duplicate_candidates (id, organizacao_id, cliente_a_id, cliente_b_id, motivos, status)
-		SELECT gen_random_uuid(), a.organizacao_id, least(a.id, b.id), greatest(a.id, b.id),
-			jsonb_build_array(jsonb_build_object('tipo', 'TELEFONE', 'valor', a.telefone_base)), 'PENDENTE'
-		FROM ampmais_clients a
-		JOIN ampmais_clients b
-			ON b.organizacao_id = a.organizacao_id
-			AND b.telefone_base = a.telefone_base
-			AND a.id < b.id
-		WHERE coalesce(a.telefone_base, '') <> ''
-		ON CONFLICT (organizacao_id, cliente_a_id, cliente_b_id) DO NOTHING
-	`);
-
-	// E-mail (case-insensitive)
-	await db.execute(sql`
-		INSERT INTO ampmais_client_duplicate_candidates (id, organizacao_id, cliente_a_id, cliente_b_id, motivos, status)
-		SELECT gen_random_uuid(), a.organizacao_id, least(a.id, b.id), greatest(a.id, b.id),
-			jsonb_build_array(jsonb_build_object('tipo', 'EMAIL', 'valor', lower(a.email))), 'PENDENTE'
-		FROM ampmais_clients a
-		JOIN ampmais_clients b
-			ON b.organizacao_id = a.organizacao_id
-			AND lower(b.email) = lower(a.email)
-			AND a.id < b.id
-		WHERE coalesce(a.email, '') <> ''
-		ON CONFLICT (organizacao_id, cliente_a_id, cliente_b_id) DO NOTHING
-	`);
-
-	// CPF/CNPJ
-	await db.execute(sql`
-		INSERT INTO ampmais_client_duplicate_candidates (id, organizacao_id, cliente_a_id, cliente_b_id, motivos, status)
-		SELECT gen_random_uuid(), a.organizacao_id, least(a.id, b.id), greatest(a.id, b.id),
-			jsonb_build_array(jsonb_build_object('tipo', 'CPF_CNPJ', 'valor', a.cpf_cnpj)), 'PENDENTE'
-		FROM ampmais_clients a
-		JOIN ampmais_clients b
-			ON b.organizacao_id = a.organizacao_id
-			AND b.cpf_cnpj = a.cpf_cnpj
-			AND a.id < b.id
-		WHERE coalesce(a.cpf_cnpj, '') <> ''
-		ON CONFLICT (organizacao_id, cliente_a_id, cliente_b_id) DO NOTHING
-	`);
-
-	// Instagram (@handle normalizado)
-	await db.execute(sql`
-		INSERT INTO ampmais_client_duplicate_candidates (id, organizacao_id, cliente_a_id, cliente_b_id, motivos, status)
-		SELECT gen_random_uuid(), a.organizacao_id, least(a.id, b.id), greatest(a.id, b.id),
-			jsonb_build_array(jsonb_build_object('tipo', 'INSTAGRAM_USERNAME', 'valor', lower(trim(leading '@' from a.instagram)))), 'PENDENTE'
-		FROM ampmais_clients a
-		JOIN ampmais_clients b
-			ON b.organizacao_id = a.organizacao_id
-			AND lower(trim(leading '@' from coalesce(b.instagram, ''))) = lower(trim(leading '@' from coalesce(a.instagram, '')))
-			AND a.id < b.id
-		WHERE coalesce(trim(leading '@' from coalesce(a.instagram, '')), '') <> ''
-		ON CONFLICT (organizacao_id, cliente_a_id, cliente_b_id) DO NOTHING
-	`);
+	for (const signal of SWEEP_SIGNALS) {
+		// Sem interpolação de dado externo: alias e tipo são constantes deste módulo.
+		await db.execute(
+			sql.raw(`
+				WITH valores AS (
+					SELECT c.organizacao_id, ${signal.valorExpr("c")} AS valor
+					FROM ampmais_clients c
+					WHERE ${signal.valorExpr("c")} IS NOT NULL
+					GROUP BY c.organizacao_id, ${signal.valorExpr("c")}
+					HAVING count(*) BETWEEN 2 AND ${MAX_CLIENTS_PER_SIGNAL_VALUE}
+				)
+				INSERT INTO ampmais_client_duplicate_candidates (id, organizacao_id, cliente_a_id, cliente_b_id, motivos, status)
+				SELECT gen_random_uuid(), v.organizacao_id, a.id, b.id,
+					jsonb_build_array(jsonb_build_object('tipo', '${signal.tipo}', 'valor', v.valor)), 'PENDENTE'
+				FROM valores v
+				JOIN ampmais_clients a ON a.organizacao_id = v.organizacao_id AND ${signal.valorExpr("a")} = v.valor
+				JOIN ampmais_clients b ON b.organizacao_id = v.organizacao_id AND ${signal.valorExpr("b")} = v.valor AND a.id < b.id
+				ON CONFLICT (organizacao_id, cliente_a_id, cliente_b_id) DO NOTHING
+			`),
+		);
+	}
 }

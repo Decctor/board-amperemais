@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ClientReconciliationDialog } from "./ClientReconciliationDialog";
+import { DUPLICATE_SIGNAL_CLASS } from "./signals";
 
 type ClientDuplicatePillProps = {
 	entityType: TClientDuplicateEntityType;
@@ -36,9 +37,9 @@ export function ClientDuplicatePill({ entityType, entityId, canReconcile }: Clie
 				type="button"
 				onClick={() => setDialogOpen(true)}
 				aria-label="Abrir reconciliação de clientes duplicados"
-				className="cursor-pointer transition-opacity hover:opacity-80"
+				className="cursor-pointer rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
 			>
-				<Chip.Root size="sm" shape="pill" className="bg-amber-100 text-amber-700 dark:bg-amber-200/20 dark:text-amber-500">
+				<Chip.Root size="sm" shape="pill" className={DUPLICATE_SIGNAL_CLASS}>
 					<Chip.Icon>
 						<CopyXIcon />
 					</Chip.Icon>

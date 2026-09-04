@@ -210,9 +210,9 @@ function FiscalDocumentsView({
   userHasFiscalCancelPermission: boolean;
   userHasFiscalConfigurePermission: boolean;
 }) {
-  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
-    null,
-  );
+  // Na URL, e não em `useState`: é assim que a venda consegue linkar direto para o documento dela
+  // (`appRoutes.fiscal.document`) sem que esta página precise saber de onde a navegação veio.
+  const [selectedDocumentId, setSelectedDocumentId] = useQueryState("documentId");
   const { data, isLoading, isError, isSuccess, error, filters, updateFilters } =
     useFiscalDocuments();
   const { data: fiscalSettings } = useFiscalSettings({

@@ -38,6 +38,8 @@ export const appRoutes = {
 	finance: {
 		root: () => "/dashboard/finance",
 		entries: () => "/dashboard/finance/entries",
+		/** Abre a listagem já com o menu de edição do lançamento aberto (query state via nuqs). */
+		entry: (entryId: string) => `/dashboard/finance/entries?entryId=${encodeURIComponent(entryId)}`,
 		transactions: () => "/dashboard/finance/transactions",
 		accounts: () => "/dashboard/finance/accounts",
 		creditCards: () => "/dashboard/finance/credit-cards",
@@ -49,7 +51,11 @@ export const appRoutes = {
 			receivablesPayables: () => "/dashboard/finance/reports/receivables-payables",
 		},
 	},
-	fiscal: () => "/dashboard/fiscal",
+	fiscal: {
+		root: () => "/dashboard/fiscal",
+		/** Abre a aba de documentos já com o menu de detalhes do documento aberto (query state via nuqs). */
+		document: (documentId: string) => `/dashboard/fiscal?view=documents&documentId=${encodeURIComponent(documentId)}`,
+	},
 	catalog: {
 		products: () => "/dashboard/catalog/products",
 		product: (productId: string) => `/dashboard/catalog/products/${productId}`,

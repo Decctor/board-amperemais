@@ -2,10 +2,10 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { recomputeClientDuplicatesForClient } from "@/lib/clients/duplicates";
-import { ClientDuplicateStatusEnum } from "@/schemas/enums";
+import { ClientDuplicateSignalTypeEnum, ClientDuplicateStatusEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { clientDuplicateCandidates, clients, sales } from "@/services/drizzle/schema";
-import { and, desc, eq, lt, or } from "drizzle-orm";
+import { and, desc, eq, lt, or, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -18,6 +18,7 @@ const GetClientDuplicatesInputSchema = z.object({
 	entityId: z.string({ invalid_type_error: "Tipo não válido para o ID da entidade." }).optional().nullable(),
 	// Listing params (fila de reconciliação)
 	status: ClientDuplicateStatusEnum.optional().nullable().catch(null),
+	signalType: ClientDuplicateSignalTypeEnum.optional().nullable().catch(null),
 	cursorDataInsercao: z.string({ invalid_type_error: "Tipo não válido para o cursor de data." }).optional().nullable(),
 	cursorId: z.string({ invalid_type_error: "Tipo não válido para o cursor de ID." }).optional().nullable(),
 	limit: z
@@ -125,6 +126,10 @@ async function getClientDuplicates({ input, session }: { input: TGetClientDuplic
 	// ── Modo listagem: fila de reconciliação, paginada por cursor ──────────────
 	const status = input.status ?? "PENDENTE";
 	const whereConditions = [eq(clientDuplicateCandidates.organizacaoId, organizacaoId), eq(clientDuplicateCandidates.status, status)];
+	if (input.signalType) {
+		// Containment em jsonb: casa qualquer elemento de `motivos` com o tipo pedido.
+		whereConditions.push(sql`${clientDuplicateCandidates.motivos} @> ${JSON.stringify([{ tipo: input.signalType }])}::jsonb`);
+	}
 	if (input.cursorDataInsercao && input.cursorId) {
 		const cursorDate = new Date(input.cursorDataInsercao);
 		const cursorCondition = or(
@@ -148,12 +153,36 @@ async function getClientDuplicates({ input, session }: { input: TGetClientDuplic
 	const pageRows = hasMore ? rows.slice(0, input.limit) : rows;
 	const lastRow = pageRows[pageRows.length - 1];
 
+	// Contagem agregada por tipo de sinal, ignorando o filtro e a paginação: os
+	// filtros da fila não podem depender das páginas já carregadas. Só na
+	// primeira página, para não repetir o agregado a cada "carregar mais".
+	let signalCounts: { total: number; byType: Record<string, number> } | null = null;
+	if (!input.cursorDataInsercao || !input.cursorId) {
+		const [countRows, [{ total } = { total: 0 }]] = await Promise.all([
+			db.execute<{ tipo: string; count: number }>(sql`
+				select motivo->>'tipo' as tipo, count(distinct c.id)::int as count
+				from ampmais_client_duplicate_candidates c, jsonb_array_elements(c.motivos) motivo
+				where c.organizacao_id = ${organizacaoId} and c.status = ${status}
+				group by 1
+			`),
+			db
+				.select({ total: sql<number>`count(*)::int` })
+				.from(clientDuplicateCandidates)
+				.where(and(eq(clientDuplicateCandidates.organizacaoId, organizacaoId), eq(clientDuplicateCandidates.status, status))),
+		]);
+		signalCounts = {
+			total,
+			byType: Object.fromEntries([...countRows].map((row) => [row.tipo, Number(row.count)])),
+		};
+	}
+
 	return {
 		data: {
 			byEntity: null,
 			default: {
 				items: pageRows.map(mapPair),
 				nextCursor: hasMore && lastRow ? { dataInsercao: lastRow.dataInsercao.toISOString(), id: lastRow.id } : null,
+				signalCounts,
 			},
 		},
 		message: "Duplicidades carregadas.",
@@ -170,6 +199,7 @@ async function getClientDuplicatesRoute(request: NextRequest) {
 		entityType: searchParams.get("entityType"),
 		entityId: searchParams.get("entityId"),
 		status: searchParams.get("status"),
+		signalType: searchParams.get("signalType"),
 		cursorDataInsercao: searchParams.get("cursorDataInsercao"),
 		cursorId: searchParams.get("cursorId"),
 		limit: searchParams.get("limit"),

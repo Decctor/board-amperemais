@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import { useQueryState } from "nuqs";
 import {
 	ArrowRight,
 	BookOpen,
@@ -79,7 +80,9 @@ const SORT_ORDER_OPTIONS = [
 
 export default function FinanceEntriesPage() {
 	const [newEntryMenuIsOpen, setNewEntryMenuIsOpen] = useState(false);
-	const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+	// Na URL, e não em `useState`: é assim que a venda consegue linkar direto para o lançamento que
+	// originou o pagamento (`appRoutes.finance.entry`) sem que esta página saiba de onde a navegação veio.
+	const [editingEntryId, setEditingEntryId] = useQueryState("entryId");
 	const { data, isLoading, isError, isSuccess, error, filters, updateFilters } = useFinancesAccountingEntries({
 		initialFilters: { page: 1, search: "" },
 	});

@@ -139,6 +139,7 @@ export type SalePaymentTransactionInput = {
 
 export type ClassifiedPayment = {
 	id: string;
+	lancamentoContabilId: string;
 	metodo: TPaymentMethodEnum;
 	valor: number;
 	parcela: number | null;
@@ -212,6 +213,7 @@ export function classifySalePaymentTransactions(transactions: SalePaymentTransac
 		const motivoNaoEditavel = getPaymentNonEditableReason(transaction);
 		return {
 			id: transaction.id,
+			lancamentoContabilId: transaction.lancamentoContabilId,
 			metodo: transaction.metodo,
 			valor: transaction.valor,
 			parcela: transaction.parcela ?? null,
@@ -252,6 +254,12 @@ export function classifySalePaymentTransactions(transactions: SalePaymentTransac
 
 export type TSalePaymentGroup = {
 	id: string;
+	/**
+	 * Lançamento contábil que originou as parcelas. Um grupo nunca cruza lançamentos: parcelado
+	 * agrupa por `grupoParcelasId`, que já carrega o lançamento na chave, e à vista agrupa por
+	 * transação. É por ele que a venda linka para o registro em Financeiro > Lançamentos.
+	 */
+	lancamentoContabilId: string;
 	metodo: TPaymentMethodEnum;
 	/** Soma das parcelas do grupo. */
 	valor: number;
@@ -297,6 +305,7 @@ export function groupSalePaymentsByMethod(payments: ClassifiedPayment[], now = n
 
 		return {
 			id,
+			lancamentoContabilId: parcelas[0].lancamentoContabilId,
 			metodo: parcelas[0].metodo,
 			valor: parcelas.reduce((acc, parcela) => acc + parcela.valor, 0),
 			// `totalParcelas` e a fonte de verdade: uma venda em 6x cujas parcelas futuras ainda nao
