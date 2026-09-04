@@ -2,6 +2,7 @@ import { reverseSaleCashback } from "@/lib/cashback/reverse-sale-cashback";
 import { writeDefaultAccountingEntryLines } from "@/lib/finances/accounting-entry-lines";
 import { cancelCouponRedemption } from "@/lib/coupons/redemption";
 import { registerRefundCashMovement, resolveActiveSalesSession } from "@/lib/sales-sessions";
+import { saleFiscalDocumentsAllowCancellation } from "@/lib/sales/sale-editability";
 import { reverseSaleItemStock } from "@/lib/sales/sale-processing/reverse-sale-item-stock";
 import { applyStockMovement } from "@/lib/stock/apply-stock-movement";
 import { db } from "@/services/drizzle";
@@ -26,7 +27,7 @@ export async function processConfirmedSaleCancellation({
 	const sale = await db.query.sales.findFirst({
 		where: (fields, { and, eq }) => and(eq(fields.id, saleId), eq(fields.organizacaoId, organizationId)),
 		with: {
-			documentosFiscais: { columns: { id: true, statusInterno: true } },
+			documentosFiscais: { columns: { id: true, statusInterno: true, documentoOrigemId: true } },
 			lancamentosContabeis: {
 				columns: { id: true, idContaDebito: true, idContaCredito: true, valor: true },
 				with: { transacoesFinanceiras: true },
@@ -36,8 +37,10 @@ export async function processConfirmedSaleCancellation({
 	});
 	if (!sale) throw new createHttpError.NotFound("Venda não encontrada.");
 	if (sale.statusVenda !== "CONFIRMADA") throw new createHttpError.BadRequest("Somente vendas confirmadas podem ser canceladas por este processo.");
-	if (sale.documentosFiscais.some((document) => !["CANCELADO", "INUTILIZADO"].includes(document.statusInterno ?? ""))) {
-		throw new createHttpError.BadRequest("Cancele o documento fiscal da venda antes de cancelar o pedido.");
+	if (!saleFiscalDocumentsAllowCancellation(sale.documentosFiscais)) {
+		throw new createHttpError.BadRequest(
+			"Cancele o documento fiscal da venda antes de cancelar o pedido. Fora do prazo de cancelamento, gere a NF-e de devolução pelo módulo fiscal.",
+		);
 	}
 
 	// Estorno de gaveta: dinheiro efetivamente recebido nesta venda, líquido do troco já entregue
@@ -170,7 +173,10 @@ export async function processConfirmedSaleCancellation({
 		}
 
 		// Venda terminal: nenhuma quantidade permanece "entregue" para fins de dedup de baixa.
-		await tx.update(saleItems).set({ quantidadeEntregue: 0 }).where(and(eq(saleItems.vendaId, saleId), eq(saleItems.organizacaoId, organizationId)));
+		await tx
+			.update(saleItems)
+			.set({ quantidadeEntregue: 0 })
+			.where(and(eq(saleItems.vendaId, saleId), eq(saleItems.organizacaoId, organizationId)));
 
 		await tx
 			.update(sales)

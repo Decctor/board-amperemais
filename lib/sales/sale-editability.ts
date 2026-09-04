@@ -21,7 +21,9 @@ export type TSaleEditabilityRow = {
 	processamentoOrigem: string | null;
 	tabId?: string | null;
 	valorTotal: number;
-	documentosFiscais: { statusInterno: string | null }[];
+	// `id`/`documentoOrigemId` alimentam a regra de cancelamento (devolucao autorizada libera a
+	// original); chamadores que nao os carregam continuam validos — sem eles, so os mortos liberam.
+	documentosFiscais: { id?: string; statusInterno: string | null; documentoOrigemId?: string | null }[];
 	transacoes: {
 		valor: number;
 		tipo?: string | null;
@@ -70,6 +72,25 @@ export function saleHasLiveFiscalDocument(documentosFiscais: TSaleEditabilityRow
 	return documentosFiscais.some((document) => !DEAD_FISCAL_STATUSES.has(document.statusInterno ?? ""));
 }
 
+/**
+ * A venda segue a nota: so cancela quando nenhum documento fiscal esta vivo. Um documento
+ * autorizado conta como "resolvido" quando existe uma devolucao autorizada referenciando-o —
+ * e a saida legal quando a janela de cancelamento ja fechou.
+ */
+export function saleFiscalDocumentsAllowCancellation(documents: TSaleEditabilityRow["documentosFiscais"]) {
+	const authorizedReturnsByOrigin = new Set(
+		documents.filter((document) => document.statusInterno === "AUTORIZADO" && document.documentoOrigemId).map((document) => document.documentoOrigemId),
+	);
+	return documents.every((document) => {
+		const status = document.statusInterno ?? "";
+		if (status === "CANCELADO" || status === "INUTILIZADO") return true;
+		// A propria devolucao autorizada e viva, mas e o que fecha a original: nao bloqueia.
+		if (status === "AUTORIZADO" && document.documentoOrigemId) return true;
+		if (status === "AUTORIZADO" && authorizedReturnsByOrigin.has(document.id)) return true;
+		return false;
+	});
+}
+
 export function resolveSaleEditability(sale: TSaleEditabilityRow): TSaleEditability {
 	const fiscalBloqueia = saleHasLiveFiscalDocument(sale.documentosFiscais);
 	const valorMinimoEdicao = getSaleSettledTotal(sale.transacoes);
@@ -80,12 +101,18 @@ export function resolveSaleEditability(sale: TSaleEditabilityRow): TSaleEditabil
 		valorMinimoEdicao,
 		fiscalBloqueia,
 		cancelamentoDisponivel,
-		cancelamentoExigeFiscal: cancelamentoDisponivel && fiscalBloqueia,
+		cancelamentoExigeFiscal: cancelamentoDisponivel && !saleFiscalDocumentsAllowCancellation(sale.documentosFiscais),
 		exclusaoBloqueadaPorFiscal: sale.documentosFiscais.length > 0,
 	};
 
 	if (sale.processamentoOrigem !== "INTERNO") {
-		return { ...base, nivel: "NENHUMA", cancelamentoDisponivel: false, cancelamentoExigeFiscal: false, motivos: ["Vendas de canais externos não são editáveis."] };
+		return {
+			...base,
+			nivel: "NENHUMA",
+			cancelamentoDisponivel: false,
+			cancelamentoExigeFiscal: false,
+			motivos: ["Vendas de canais externos não são editáveis."],
+		};
 	}
 	if (sale.statusVenda === "CANCELADA" || sale.statusAtendimento === "CANCELADO") {
 		return { ...base, nivel: "NENHUMA", cancelamentoDisponivel: false, cancelamentoExigeFiscal: false, motivos: ["Venda cancelada."] };
@@ -101,7 +128,8 @@ export function resolveSaleEditability(sale: TSaleEditabilityRow): TSaleEditabil
 	}
 
 	if (fiscalBloqueia) {
-		const entregueERecebida = DELIVERED_ATTENDANCE_STATUSES.has(sale.statusAtendimento) && valorMinimoEdicao >= sale.valorTotal - ACCOUNTING_ENTRY_BALANCE_TOLERANCE;
+		const entregueERecebida =
+			DELIVERED_ATTENDANCE_STATUSES.has(sale.statusAtendimento) && valorMinimoEdicao >= sale.valorTotal - ACCOUNTING_ENTRY_BALANCE_TOLERANCE;
 		if (entregueERecebida) {
 			return { ...base, nivel: "CANCELAMENTO", motivos: ["Venda entregue, recebida e com nota emitida: somente cancelamento com estorno."] };
 		}

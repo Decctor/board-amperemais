@@ -12,6 +12,20 @@ export type TFiscalRejectionCategory =
 	| "INFRAESTRUTURA"
 	| "OUTRO";
 
+// Sobre o que o operador precisa agir para resolver a rejeicao (vira CTA na UI).
+export type TFiscalRejectionTarget =
+	| "PRODUTO"
+	| "GRUPO_TRIBUTARIO"
+	| "SERIE"
+	| "PERFIL_OPERACAO"
+	| "CONFIGURACAO_FISCAL"
+	| "CERTIFICADO"
+	| "EMPRESA_PROVEDOR"
+	| "CLIENTE"
+	| "PAGAMENTOS"
+	| "VENDA"
+	| "NENHUM";
+
 export type TFiscalRejectionInfo = {
 	descricao: string;
 	causaProvavel: string;
@@ -19,6 +33,7 @@ export type TFiscalRejectionInfo = {
 	categoria: TFiscalRejectionCategory;
 	// Indica se, apos corrigir a causa, o documento pode ser reenviado com a mesma numeracao.
 	reenviavel: boolean;
+	alvo: TFiscalRejectionTarget;
 };
 
 export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
@@ -28,6 +43,7 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		acaoSugerida: "Verifique se a nota ja foi autorizada. Se necessario, avance a numeracao da serie.",
 		categoria: "DUPLICIDADE",
 		reenviavel: false,
+		alvo: "SERIE",
 	},
 	"215": {
 		descricao: "Falha no schema XML",
@@ -35,6 +51,7 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		acaoSugerida: "Revise o payload do documento (campos obrigatorios/formatos). Erro de integracao.",
 		categoria: "SCHEMA",
 		reenviavel: true,
+		alvo: "NENHUM",
 	},
 	"225": {
 		descricao: "Falha no schema XML do lote",
@@ -42,6 +59,7 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		acaoSugerida: "Revise o payload do documento. Erro de integracao.",
 		categoria: "SCHEMA",
 		reenviavel: true,
+		alvo: "NENHUM",
 	},
 	"233": {
 		descricao: "Inscricao Estadual do destinatario nao informada/invalida",
@@ -49,6 +67,7 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		acaoSugerida: "Cadastre a IE do cliente ou ajuste o indicador de IE do destinatario.",
 		categoria: "CADASTRO",
 		reenviavel: true,
+		alvo: "CLIENTE",
 	},
 	"280": {
 		descricao: "Certificado digital invalido",
@@ -56,6 +75,7 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		acaoSugerida: "Atualize o certificado digital nas configuracoes fiscais.",
 		categoria: "CERTIFICADO",
 		reenviavel: true,
+		alvo: "CERTIFICADO",
 	},
 	"281": {
 		descricao: "Certificado digital - data de validade",
@@ -63,6 +83,7 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		acaoSugerida: "Renove e reenvie o certificado digital.",
 		categoria: "CERTIFICADO",
 		reenviavel: true,
+		alvo: "CERTIFICADO",
 	},
 	"301": {
 		descricao: "Irregularidade fiscal do emitente",
@@ -70,6 +91,7 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		acaoSugerida: "Regularize a situacao fiscal do emitente junto a SEFAZ.",
 		categoria: "CADASTRO",
 		reenviavel: true,
+		alvo: "CONFIGURACAO_FISCAL",
 	},
 	"302": {
 		descricao: "Irregularidade fiscal do destinatario",
@@ -77,6 +99,7 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		acaoSugerida: "Verifique a situacao cadastral do cliente.",
 		categoria: "CADASTRO",
 		reenviavel: true,
+		alvo: "CLIENTE",
 	},
 	"539": {
 		descricao: "Duplicidade de NF-e com chave diferente",
@@ -84,6 +107,7 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		acaoSugerida: "Avance a numeracao e reemita.",
 		categoria: "DUPLICIDADE",
 		reenviavel: false,
+		alvo: "SERIE",
 	},
 	"562": {
 		descricao: "Codigo numerico da chave de acesso difere do codigo numerico da NF-e",
@@ -92,6 +116,7 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		acaoSugerida: "Avance a numeracao da serie (ou troque de serie) e reemita.",
 		categoria: "DUPLICIDADE",
 		reenviavel: false,
+		alvo: "SERIE",
 	},
 	"610": {
 		descricao: "Total do ICMS difere do somatorio dos itens",
@@ -99,6 +124,7 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		acaoSugerida: "Revise o calculo de ICMS do grupo tributario dos produtos.",
 		categoria: "TRIBUTARIO",
 		reenviavel: true,
+		alvo: "GRUPO_TRIBUTARIO",
 	},
 	"685": {
 		descricao: "Total do Valor Aproximado dos Tributos difere do somatorio dos itens",
@@ -106,6 +132,7 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		acaoSugerida: "Verifique a tabela IBPT e o calculo do vTotTrib por item.",
 		categoria: "TRIBUTARIO",
 		reenviavel: true,
+		alvo: "PRODUTO",
 	},
 	"778": {
 		descricao: "NCM inexistente",
@@ -113,6 +140,7 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		acaoSugerida: "Corrija o NCM no perfil fiscal do produto.",
 		categoria: "CADASTRO",
 		reenviavel: true,
+		alvo: "PRODUTO",
 	},
 	"866": {
 		descricao: "Ausência de troco quando os pagamentos superam o total da nota",
@@ -120,6 +148,7 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		acaoSugerida: "Corrija a composição do total da nota ou informe o troco real e reenvie.",
 		categoria: "TRIBUTARIO",
 		reenviavel: true,
+		alvo: "PAGAMENTOS",
 	},
 };
 
@@ -129,6 +158,7 @@ const FALLBACK_REJECTION: TFiscalRejectionInfo = {
 	acaoSugerida: "Consulte a mensagem retornada pela SEFAZ para o motivo detalhado.",
 	categoria: "OUTRO",
 	reenviavel: true,
+	alvo: "NENHUM",
 };
 
 // Retorna a informacao do catalogo para um codigo (cStat), ou um fallback generico.

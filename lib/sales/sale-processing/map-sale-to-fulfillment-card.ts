@@ -20,7 +20,7 @@ type SaleFulfillmentRow = {
 	tabId?: string | null;
 	integracao?: { tipo: TIntegrationTipoEnum; apelido: string | null } | null;
 	cliente: { id: string; nome: string; telefone: string | null } | null;
-	documentosFiscais: { statusInterno: string | null; dataInsercao: Date }[];
+	documentosFiscais: { id?: string; statusInterno: string | null; documentoOrigemId?: string | null; dataInsercao: Date }[];
 	lancamentosContabeis: {
 		id: string;
 		transacoesFinanceiras: {
