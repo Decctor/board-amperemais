@@ -151,6 +151,20 @@ export const CashbackProgramRedemptionLimitTypeEnum = z.enum([
 export type TCashbackProgramRedemptionLimitTypeEnum = z.infer<
   typeof CashbackProgramRedemptionLimitTypeEnum
 >;
+
+// Superfície onde um benefício (cashback, recompensa, cupom) é PEDIDO — não o canal da venda
+// (`sales.canal`, POS|SHOP|COMANDA|IFOOD). Os dois conjuntos não coincidem: o ponto de
+// interação resgata sem ser canal de venda, e iFood/comanda são canais sem resgate. Um
+// orçamento da loja confirmado no PDV continua LOJA_DIGITAL para os benefícios que herdou.
+// Fechar comanda é operação do atendente e conta como POS.
+export const BenefitRedemptionSurfaceEnum = z.enum([
+  "POS",
+  "PONTO_INTERACAO",
+  "LOJA_DIGITAL",
+]);
+export type TBenefitRedemptionSurface = z.infer<
+  typeof BenefitRedemptionSurfaceEnum
+>;
 export const CashbackProgramTransactionTypeEnum = z.enum([
   "ACÚMULO",
   "RESGATE",

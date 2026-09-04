@@ -1,3 +1,4 @@
+import type { TBenefitRedemptionSurface } from "@/schemas/enums";
 import type { TCouponAudienceEntity, TCouponEntity, TCouponGrantEntity, TCouponTargetEntity } from "@/services/drizzle/schema";
 
 /**
@@ -20,7 +21,8 @@ export type TCouponCartItem = {
 	valorVendaUnitario: number;
 };
 
-export type TCouponRedemptionSurface = "POS" | "PONTO_INTERACAO" | "LOJA_DIGITAL";
+// Vocabulário único de superfície, compartilhado com o resgate de cashback (`schemas/enums.ts`).
+export type TCouponRedemptionSurface = TBenefitRedemptionSurface;
 
 export type TCouponEvaluationResult =
 	| { elegivel: false; motivo: string }

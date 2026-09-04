@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getNextShopCheckoutStep, getPreviousShopCheckoutStep, getShopBenefitsTitle, getShopCheckoutSteps } from "./checkout";
+import {
+	getNextShopCheckoutStep,
+	getPreviousShopCheckoutStep,
+	getShopBenefitsTitle,
+	getShopCashbackCapabilities,
+	getShopCheckoutSteps,
+} from "./checkout";
 
 test("omits the benefits step when the organization exposes no checkout benefits", () => {
 	assert.deepEqual(getShopCheckoutSteps({ cupons: false, descontoCashback: false, recompensas: false }), [
@@ -47,4 +53,16 @@ test("clamps at the edges of the visible list", () => {
 	const steps = getShopCheckoutSteps({ cupons: true, descontoCashback: true, recompensas: true });
 	assert.equal(getNextShopCheckoutStep("REVISAO", steps), "REVISAO");
 	assert.equal(getPreviousShopCheckoutStep("CLIENTE", steps), "CLIENTE");
+});
+
+test("hides every cashback modality in the shop when the program disallows the digital store surface", () => {
+	const program = { modalidadeDescontosPermitida: true, modalidadeRecompensasPermitida: true, resgatePermitirViaLojaDigital: false };
+	assert.deepEqual(getShopCashbackCapabilities(program), { descontoCashback: false, recompensas: false });
+	assert.deepEqual(getShopCheckoutSteps({ cupons: false, ...getShopCashbackCapabilities(program) }), ["CLIENTE", "ENTREGA", "PAGAMENTO", "REVISAO"]);
+});
+
+test("keeps the modality gate when the digital store surface is allowed", () => {
+	const program = { modalidadeDescontosPermitida: false, modalidadeRecompensasPermitida: true, resgatePermitirViaLojaDigital: true };
+	assert.deepEqual(getShopCashbackCapabilities(program), { descontoCashback: false, recompensas: true });
+	assert.deepEqual(getShopCashbackCapabilities(null), { descontoCashback: false, recompensas: false });
 });

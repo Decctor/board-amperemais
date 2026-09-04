@@ -142,6 +142,7 @@ async function createSaleDraft({ input, session }: { input: TCreateSaleDraftInpu
 				programaId: input.recompensaResgate.programaId,
 				hasCoupon: !!input.cupomResgate,
 				cashbackResgate: input.cashbackResgate,
+				surface: "POS",
 			})
 		: null;
 
@@ -435,6 +436,7 @@ async function updateSaleDraft({ input, session }: { input: TUpdateSaleDraftInpu
 					programaId: input.recompensaResgate.programaId,
 					hasCoupon: !!input.cupomResgate,
 					cashbackResgate: input.cashbackResgate,
+					surface: "POS",
 				})
 			: null;
 	const recompensaPersistida = admittedReward

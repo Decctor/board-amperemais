@@ -12,6 +12,7 @@ import {
 	getNextShopCheckoutStep,
 	getPreviousShopCheckoutStep,
 	getShopBenefitsTitle,
+	getShopCashbackCapabilities,
 	getShopCheckoutSteps,
 } from "@/lib/shop/checkout";
 import { useShopAvailableCoupons } from "@/lib/queries/shop";
@@ -77,25 +78,34 @@ export default function CheckoutSheet() {
 	});
 	const program = catalog.cashbackProgram;
 	const hasCouponBenefit = !!customer.id && (isLoadingCoupons || (availableCoupons?.length ?? 0) > 0 || !!orderState.state.coupon.resgate);
+	const { descontoCashback: supportsCashbackDiscount, recompensas: supportsRewards } = getShopCashbackCapabilities(program);
 	const benefitCapabilities = {
 		cupons: hasCouponBenefit,
-		descontoCashback: !!customer.id && !!program?.modalidadeDescontosPermitida,
-		recompensas: !!customer.id && !!program?.modalidadeRecompensasPermitida,
+		descontoCashback: !!customer.id && supportsCashbackDiscount,
+		recompensas: !!customer.id && supportsRewards,
 	};
 	const benefitsTitle = getShopBenefitsTitle(benefitCapabilities);
 
 	useEffect(() => {
-		if (!program?.modalidadeDescontosPermitida && orderState.state.cashback.resgateSolicitado > 0) {
+		if (!supportsCashbackDiscount && orderState.state.cashback.resgateSolicitado > 0) {
 			orderState.updateCashback({ resgateSolicitado: 0 });
 		}
 		// Só descarta a recompensa quando a regra é do programa dela: numa org com mais de um
 		// programa, o do catálogo (findFirst ativo) pode não ser o do saldo do cliente — nesse caso
 		// quem valida é a revalidação da etapa de benefícios e a admissão no servidor.
 		const appliedReward = orderState.state.reward.resgate;
-		if (!program?.modalidadeRecompensasPermitida && appliedReward && (!program || appliedReward.programaId === program.id)) {
+		if (!supportsRewards && appliedReward && (!program || appliedReward.programaId === program.id)) {
 			orderState.updateReward(null);
 		}
-	}, [program, orderState.state.cashback.resgateSolicitado, orderState.state.reward.resgate, orderState.updateCashback, orderState.updateReward]);
+	}, [
+		program,
+		supportsCashbackDiscount,
+		supportsRewards,
+		orderState.state.cashback.resgateSolicitado,
+		orderState.state.reward.resgate,
+		orderState.updateCashback,
+		orderState.updateReward,
+	]);
 	const visibleSteps = getShopCheckoutSteps(benefitCapabilities);
 	const stepIndex = visibleSteps.indexOf(checkoutStep);
 	const stepProgress = stepIndex >= 0 ? ((stepIndex + 1) / visibleSteps.length) * 100 : 0;

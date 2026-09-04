@@ -37,8 +37,15 @@ export const cashbackPrograms = newTable("cashback_programs", {
 	// Configurations for accumulation source
 	acumuloPermitirViaIntegracao: boolean("acumulo_permitir_via_integracao").notNull().default(false),
 	acumuloPermitirViaPontoIntegracao: boolean("acumulo_permitir_via_ponto_integracao").notNull().default(false),
-	// Configurations for redemption source
+	// Superfícies de resgate (desconto em cashback E recompensa): o programa decide onde o cliente
+	// pode resgatar — mesmo desenho dos cupons (`coupons.resgate_permitir_via_*`). Mora no
+	// programa, e não em `sales_channels`, porque superfície ≠ canal de venda (o POI resgata sem
+	// ser canal; iFood/comanda são canais sem resgate) e porque canais de venda são só do tier ERP,
+	// enquanto loja digital e cashback não são. Default true = comportamento vigente antes do gate.
+	// O nome da coluna do POI ("integracao") é histórico — não corrigir sem migração.
+	resgatePermitirViaPos: boolean("resgate_permitir_via_pos").notNull().default(true),
 	resgatePermitirViaPontoIntegracao: boolean("resgate_permitir_via_ponto_integracao").notNull().default(true),
+	resgatePermitirViaLojaDigital: boolean("resgate_permitir_via_loja_digital").notNull().default(true),
 	expiracaoRegraValidadeValor: doublePrecision("expiracao_regra_validade_valor").notNull().default(0),
 	resgateLimiteTipo: cashbackProgramRedemptionLimitTypeEnum(),
 	resgateLimiteValor: doublePrecision("resgate_limite_valor"),

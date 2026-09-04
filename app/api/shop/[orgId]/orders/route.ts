@@ -1,3 +1,4 @@
+import { getCashbackRedemptionBlockReason } from "@/lib/cashback/redemption-policy";
 import { appApiHandler } from "@/lib/app-api";
 import { recomputeClientDuplicatesSafely } from "@/lib/clients/duplicates";
 import { getAvailableCouponsForClient } from "@/lib/coupons/availability";
@@ -389,6 +390,12 @@ async function validateCashbackRequest({
     throw new createHttpError.BadRequest(
       "Resgate de cashback não permitido para esta loja.",
     );
+  const surfaceBlockReason = getCashbackRedemptionBlockReason({
+    program,
+    surface: "LOJA_DIGITAL",
+  });
+  if (surfaceBlockReason)
+    throw new createHttpError.Forbidden(surfaceBlockReason);
 
   const balance = await db.query.cashbackProgramBalances.findFirst({
     where: and(
@@ -690,6 +697,7 @@ async function createShopOrder(request: NextRequest) {
         programaId: input.recompensaResgate.programaId,
         hasCoupon: !!appliedCoupon,
         cashbackResgate: requestedCashback,
+        surface: "LOJA_DIGITAL",
         // Preço comercial resolvido no canal SHOP — o mesmo que a listagem de recompensas exibe.
         canal: "SHOP",
       })
@@ -929,6 +937,7 @@ async function createShopOrder(request: NextRequest) {
       saleClientId: client.id,
       saleCashbackProgramId: programId,
       saleCashbackRedemptionValue: requestedCashback,
+      saleCashbackRedemptionSurface: "LOJA_DIGITAL",
       saleRewardRedemption: admittedReward
         ? {
             recompensaId: admittedReward.prize.id,

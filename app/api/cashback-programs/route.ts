@@ -1,3 +1,4 @@
+import { NO_CASHBACK_REDEMPTION_SURFACE_MESSAGE, hasAnyCashbackRedemptionSurface } from "@/lib/cashback/redemption-policy";
 import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
@@ -64,6 +65,9 @@ async function createCashbackProgram({ input, session }: { input: TCreateCashbac
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	if (input.cashbackProgramPrizes.some((prize) => !prize.produtoId)) {
 		throw new createHttpError.BadRequest("Toda recompensa deve estar vinculada a um produto.");
+	}
+	if (!hasAnyCashbackRedemptionSurface(input.cashbackProgram)) {
+		throw new createHttpError.BadRequest(NO_CASHBACK_REDEMPTION_SURFACE_MESSAGE);
 	}
 
 	const existingCashbackProgram = await db.query.cashbackPrograms.findFirst({
@@ -179,6 +183,9 @@ async function updateCashbackProgram({ input, session }: { input: TUpdateCashbac
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 	if (input.cashbackProgramPrizes.some((prize) => !prize.deletar && !prize.produtoId)) {
 		throw new createHttpError.BadRequest("Toda recompensa deve estar vinculada a um produto.");
+	}
+	if (!hasAnyCashbackRedemptionSurface(input.cashbackProgram)) {
+		throw new createHttpError.BadRequest(NO_CASHBACK_REDEMPTION_SURFACE_MESSAGE);
 	}
 
 	const transactionReturn = await db.transaction(async (tx) => {

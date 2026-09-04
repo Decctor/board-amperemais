@@ -1,3 +1,5 @@
+import { isCashbackRedemptionAllowedOnSurface } from "@/lib/cashback/redemption-policy";
+import type { TBenefitRedemptionSurface } from "@/schemas/enums";
 import { type TChannelState, channelNodePrice, channelProductFilter } from "@/lib/products/sales-channels-store";
 import type { DB, DBTransaction } from "@/services/drizzle";
 import createHttpError from "http-errors";
@@ -143,11 +145,14 @@ export async function listAvailableCashbackRewards({
 	tx,
 	organizacaoId,
 	clienteId,
+	surface,
 	channelState,
 }: {
 	tx: DB | DBTransaction;
 	organizacaoId: string;
 	clienteId: string;
+	/** Superfície que vai exibir a lista — sem resgate nela, a lista sai vazia (a admissão recusaria de qualquer forma). */
+	surface: TBenefitRedemptionSurface;
 	channelState?: TChannelState | null;
 }) {
 	// Mesma resolução do resgate (`admitSaleRewardRedemption`): o programa do cliente é o do seu
@@ -163,9 +168,17 @@ export async function listAvailableCashbackRewards({
 			clientBalance?.programaId
 				? and(eq(fields.id, clientBalance.programaId), eq(fields.organizacaoId, organizacaoId))
 				: and(eq(fields.organizacaoId, organizacaoId), eq(fields.ativo, true)),
-		columns: { id: true, ativo: true, terminologia: true, modalidadeRecompensasPermitida: true },
+		columns: {
+			id: true,
+			ativo: true,
+			terminologia: true,
+			modalidadeRecompensasPermitida: true,
+			resgatePermitirViaPos: true,
+			resgatePermitirViaPontoIntegracao: true,
+			resgatePermitirViaLojaDigital: true,
+		},
 	});
-	const rewardsAvailable = !!program?.ativo && program.modalidadeRecompensasPermitida;
+	const rewardsAvailable = !!program?.ativo && program.modalidadeRecompensasPermitida && isCashbackRedemptionAllowedOnSurface(program, surface);
 	// Saldo só conta quando é do programa resolvido.
 	const balance = clientBalance && clientBalance.programaId === program?.id ? clientBalance : null;
 	const saldoValorDisponivel = balance?.saldoValorDisponivel ?? 0;
