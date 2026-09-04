@@ -6,28 +6,22 @@ type TSnapshotState = {
 };
 
 const IMMUTABLE_FINAL_STATUSES = new Set<TFiscalDocumentLifecycleStatusEnum>(["CANCELADO", "INUTILIZADO"]);
+const PROVIDER_TERMINAL_STATUSES = new Set<TFiscalDocumentLifecycleStatusEnum>(["AUTORIZADO", "CANCELADO", "INUTILIZADO"]);
 
-export function shouldApplyProviderSnapshot({
-	current,
-	incoming,
-}: {
-	current: TSnapshotState;
-	incoming: TSnapshotState;
-}): boolean {
+export function shouldApplyProviderSnapshot({ current, incoming }: { current: TSnapshotState; incoming: TSnapshotState }): boolean {
 	if (IMMUTABLE_FINAL_STATUSES.has(current.statusInterno)) {
 		return incoming.statusInterno === current.statusInterno;
 	}
-	if (
-		current.statusInterno === "AUTORIZADO" &&
-		!["AUTORIZADO", "CANCELADO", "INUTILIZADO"].includes(incoming.statusInterno)
-	) {
+	if (current.statusInterno === "AUTORIZADO" && !["AUTORIZADO", "CANCELADO", "INUTILIZADO"].includes(incoming.statusInterno)) {
 		return false;
 	}
-	if (
-		current.provedorProcessadoEm &&
-		incoming.provedorProcessadoEm &&
-		incoming.provedorProcessadoEm < current.provedorProcessadoEm
-	) {
+	// O provedor pode devolver timestamps com precisao diferente entre webhook e GET (por exemplo,
+	// 21:38:05.680 vs 21:38:05). Uma transicao valida para estado terminal deve prevalecer sobre
+	// essa diferenca subsegundo; os guards acima continuam impedindo regressao de finalizados.
+	if (PROVIDER_TERMINAL_STATUSES.has(incoming.statusInterno) && incoming.statusInterno !== current.statusInterno) {
+		return true;
+	}
+	if (current.provedorProcessadoEm && incoming.provedorProcessadoEm && incoming.provedorProcessadoEm < current.provedorProcessadoEm) {
 		return false;
 	}
 	return true;

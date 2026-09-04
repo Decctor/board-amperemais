@@ -1,6 +1,7 @@
 import type { TFiscalOrganization } from "@/lib/fiscal/types";
 import axios, { type AxiosInstance } from "axios";
 import createHttpError from "http-errors";
+import { attachSpedyRateLimit } from "./rate-limit";
 
 /**
  * Host fixo da Spedy. Nao e configuravel por organizacao de proposito.
@@ -19,13 +20,14 @@ export const SPEDY_BASE_URL = "https://api.spedy.com.br";
 
 export function createSpedyClient({ apiKey }: { apiKey?: string | null }): AxiosInstance {
 	if (!apiKey) throw new createHttpError.BadRequest("Chave de API da Spedy não configurada.");
-	return axios.create({
+	const client = axios.create({
 		baseURL: SPEDY_BASE_URL,
 		headers: {
 			"X-Api-Key": apiKey,
 			"Content-Type": "application/json",
 		},
 	});
+	return attachSpedyRateLimit(client, apiKey);
 }
 
 export function getSpedyOwnerClient() {

@@ -12,8 +12,9 @@ import { externalEvents, fiscalDocumentEvents, fiscalOutboundDocuments } from "@
 import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 
 const TERMINAL_EVENT_TYPES = ["REJEITADO", "ERRO"] as const;
-// A Spedy limita cada chave a 5 req/s e 100 req/min. O intervalo respeita as duas janelas.
-const REQUEST_INTERVAL_MS = 650;
+// O client compartilhado ja aplica o limite oficial (5 req/s e 60 req/min). Esta pausa adicional
+// mantem o script de manutencao conservador e legivel mesmo ao alternar entre organizacoes.
+const REQUEST_INTERVAL_MS = 1_100;
 
 function arg(name: string) {
 	const prefix = `--${name}=`;
