@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useCallback, useMemo, useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
+import { useDebouncedText } from "../hooks/use-debounced-text";
 import { TGetClientTagsOutput } from "@/app/api/clients/tags/route";
 
 async function fetchClients(input: TGetClientsInput) {
@@ -96,15 +97,15 @@ export function useClients({ initialFilters }: UseClientsParams) {
 	};
 }
 
-export async function fetchClientsBySearch({ search }: { search: string }) {
+export async function fetchClientsBySearch({ search, signal }: { search: string; signal?: AbortSignal }) {
 	try {
 		const searchParams = new URLSearchParams();
 		searchParams.set("search", search);
-		const { data } = await axios.get<TSearchClientsOutput>(`/api/clients/search?${searchParams.toString()}`);
+		const { data } = await axios.get<TSearchClientsOutput>(`/api/clients/search?${searchParams.toString()}`, { signal });
 
 		return data.data.clients;
 	} catch (error) {
-		console.log("Error running fetchClientsBySearch", error);
+		if (!axios.isCancel(error)) console.log("Error running fetchClientsBySearch", error);
 		throw error;
 	}
 }
@@ -147,9 +148,8 @@ type UseClientsBySearchParams = {
 };
 export function useClientsBySearch({ initialSearch = "" }: UseClientsBySearchParams) {
 	const [search, setSearch] = useState(initialSearch);
-	const debouncedParams = useDebounceMemo({ search }, 1200);
-	const queryKey = ["clients-by-search", debouncedParams.search];
-	const debouncedSearch = debouncedParams.search;
+	const debouncedSearch = useDebouncedText(search).trim();
+	const queryKey = ["clients-by-search", debouncedSearch];
 	const isSearchPending = search.trim() !== debouncedSearch.trim();
 
 	function updateSearch(value: string) {
@@ -159,8 +159,8 @@ export function useClientsBySearch({ initialSearch = "" }: UseClientsBySearchPar
 	return {
 		...useQuery({
 			queryKey,
-			queryFn: () => fetchClientsBySearch({ search: debouncedParams.search }),
-			enabled: debouncedParams.search.trim().length >= 2,
+			queryFn: ({ signal }) => fetchClientsBySearch({ search: debouncedSearch, signal }),
+			enabled: debouncedSearch.length >= 2,
 		}),
 		queryKey,
 		search,

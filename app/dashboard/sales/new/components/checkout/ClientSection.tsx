@@ -6,12 +6,13 @@ import { HatGlasses, PanelRightOpen, User, UserRound, X } from "lucide-react";
 type ClientSectionProps = {
 	saleState: TUseSaleState;
 	onOpenVinculationMenu: () => void;
+	onPreloadVinculationMenu?: () => void;
 	onOpenContext?: () => void;
 	// Modo edição: o cliente da venda é imutável (benefícios, atribuição e acúmulos já apontam para ele).
 	locked?: boolean;
 };
 
-export default function ClientSection({ saleState, onOpenVinculationMenu, onOpenContext, locked }: ClientSectionProps) {
+export default function ClientSection({ saleState, onOpenVinculationMenu, onPreloadVinculationMenu, onOpenContext, locked }: ClientSectionProps) {
 	return (
 		<div className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-3 shadow-2xs">
 			<div className="flex items-center justify-between">
@@ -35,6 +36,8 @@ export default function ClientSection({ saleState, onOpenVinculationMenu, onOpen
 							size="fit"
 							className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs"
 							variant={saleState.state.modoCliente === "VINCULADO" ? "brand" : "ghost"}
+							onPointerEnter={onPreloadVinculationMenu}
+							onFocus={onPreloadVinculationMenu}
 							onClick={() => {
 								saleState.setModoCliente("VINCULADO");
 								onOpenVinculationMenu();

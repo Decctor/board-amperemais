@@ -12,9 +12,10 @@ type DeliverySectionProps = {
 	saleState: TUseSaleState;
 	locationOptions: { id: string; value: string; label: string }[];
 	onOpenNewLocation: () => void;
+	onPreloadNewLocation?: () => void;
 };
 
-export default function DeliverySection({ saleState, locationOptions, onOpenNewLocation }: DeliverySectionProps) {
+export default function DeliverySection({ saleState, locationOptions, onOpenNewLocation, onPreloadNewLocation }: DeliverySectionProps) {
 	const { data: shopSettings } = useShopSettings();
 	const configuracoes = shopSettings?.configuracoes ?? null;
 	// Mesma regra da loja digital, aplicada ao subtotal de itens do PDV.
@@ -80,7 +81,15 @@ export default function DeliverySection({ saleState, locationOptions, onOpenNewL
 						onReset={() => saleState.setEntregaLocalizacaoId(null)}
 						resetOptionLabel="Selecione um endereço"
 					/>
-					<Button type="button" variant="outline" size="sm" disabled={!saleState.state.cliente} onClick={onOpenNewLocation}>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						disabled={!saleState.state.cliente}
+						onPointerEnter={onPreloadNewLocation}
+						onFocus={onPreloadNewLocation}
+						onClick={onOpenNewLocation}
+					>
 						NOVA LOCALIZAÇÃO
 					</Button>
 				</>

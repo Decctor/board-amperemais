@@ -1,6 +1,6 @@
-import ClientVinculationMenu from "@/components/Clients/ClientVinculationMenu";
+"use client";
+
 import SelectInput from "@/components/Inputs/SelectInput";
-import { NewClientLocation } from "@/components/Modals/Clients/Locations/NewClientLocation";
 import type { TAutoEmissionExceptions } from "@/lib/fiscal/auto-emission-policy";
 import type { TDiscountAuthority } from "@/lib/permissions/discounts";
 import { useClientLocations } from "@/lib/queries/clients/locations";
@@ -9,6 +9,7 @@ import { useSellersSimplified } from "@/lib/queries/sellers";
 import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import type { TUseSaleState } from "@/state-hooks/use-sale-state";
 import { PencilLine, ShoppingCart } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import ActionsSection from "./checkout/ActionsSection";
 import ClientSection from "./checkout/ClientSection";
@@ -17,6 +18,17 @@ import FiscalEmissionSection from "./checkout/FiscalEmissionSection";
 import ItemsSection from "./checkout/ItemsSection";
 import PaymentsSection from "./checkout/PaymentsSection";
 import SummarySection from "./checkout/SummarySection";
+
+const ClientVinculationMenu = dynamic(() => import("@/components/Clients/ClientVinculationMenu"));
+const NewClientLocation = dynamic(() => import("@/components/Modals/Clients/Locations/NewClientLocation").then((module) => module.NewClientLocation));
+
+function preloadClientVinculationMenu() {
+	void import("@/components/Clients/ClientVinculationMenu");
+}
+
+function preloadNewClientLocation() {
+	void import("@/components/Modals/Clients/Locations/NewClientLocation");
+}
 
 // Modo edição de venda confirmada: mesma superfície do checkout, com o que é imutável travado
 // (cliente, cupom, resgate de cashback, pagamentos recebidos) e o CTA trocado para salvar.
@@ -122,9 +134,20 @@ export default function CheckoutPanel({
 					resetOptionLabel="SELECIONE UM VENDEDOR"
 				/>
 
-				<ClientSection saleState={saleState} onOpenVinculationMenu={() => setIsVinculationMenuOpen(true)} onOpenContext={onOpenContext} locked={!!edit} />
+				<ClientSection
+					saleState={saleState}
+					onOpenVinculationMenu={() => setIsVinculationMenuOpen(true)}
+					onPreloadVinculationMenu={preloadClientVinculationMenu}
+					onOpenContext={onOpenContext}
+					locked={!!edit}
+				/>
 				<ItemsSection saleState={saleState} />
-				<DeliverySection saleState={saleState} locationOptions={locationOptions} onOpenNewLocation={() => setIsNewLocationOpen(true)} />
+				<DeliverySection
+					saleState={saleState}
+					locationOptions={locationOptions}
+					onOpenNewLocation={() => setIsNewLocationOpen(true)}
+					onPreloadNewLocation={preloadNewClientLocation}
+				/>
 				<PaymentsSection saleState={saleState} pagamentosEfetivados={edit?.pagamentosEfetivados} />
 				<SummarySection
 					saleState={saleState}

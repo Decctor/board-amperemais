@@ -1,22 +1,31 @@
 "use client";
 
-import ClientGeneralBlock from "@/components/Modals/Clients/Blocks/General";
-import ClientLocationsBlock from "@/components/Modals/Clients/Blocks/Locations";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { clientVinculationFlowReducer, INITIAL_CLIENT_VINCULATION_FLOW_STATE } from "@/lib/clients/client-vinculation-flow";
+import { parseClientSearchIntent } from "@/lib/clients/parse-client-search-intent";
 import { getErrorMessage } from "@/lib/errors";
-import { getClientSearchIntentLabel, parseClientSearchIntent } from "@/lib/clients/parse-client-search-intent";
 import { createClient } from "@/lib/mutations/clients";
 import { useClientsBySearch } from "@/lib/queries/clients";
 import { cn } from "@/lib/utils";
 import type { TSearchClientsOutput } from "@/app/api/clients/search/route";
 import { useClientState } from "@/state-hooks/use-client-state";
 import { useMutation } from "@tanstack/react-query";
-import { LinkIcon, Search, UserRound } from "lucide-react";
-import { IdCard, Mail, Phone } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { IdCard, LinkIcon, Mail, Phone, Search, UserPlus } from "lucide-react";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { toast } from "sonner";
 import ResponsiveMenuViewOnly from "../Utils/ResponsiveMenuViewOnly";
 import { Input } from "../ui/input";
+
+const ClientVinculationCreationForm = dynamic(() => import("./ClientVinculationCreationForm"), {
+	loading: ClientCreationFormSkeleton,
+});
+
+function preloadClientVinculationCreationForm() {
+	void import("./ClientVinculationCreationForm");
+}
+
 type ClientVinculationMenuProps = {
 	closeModal: () => void;
 	onSelectClient: (client: { id: string; nome: string; telefone: string }) => void;
@@ -26,9 +35,19 @@ type ClientVinculationMenuProps = {
 };
 
 export default function ClientVinculationMenu({ closeModal, onSelectClient, authorSellerId }: ClientVinculationMenuProps) {
-	const { search, updateSearch, debouncedSearch, isSearchPending, data: clients = [], isFetching } = useClientsBySearch({ initialSearch: "" });
+	const {
+		search,
+		updateSearch,
+		debouncedSearch,
+		isSearchPending,
+		data: clients = [],
+		isFetching,
+		isError,
+		refetch,
+	} = useClientsBySearch({ initialSearch: "" });
 	const { state, updateClient, addClientLocation, updateClientLocation, removeClientLocation, resetState } = useClientState();
-	const lastAppliedSearchRef = useRef<string | null>(null);
+	const [flowState, dispatchFlow] = useReducer(clientVinculationFlowReducer, INITIAL_CLIENT_VINCULATION_FLOW_STATE);
+	const [isCreationFormReady, setIsCreationFormReady] = useState(false);
 
 	const { mutate: handleCreateClient, isPending } = useMutation({
 		mutationKey: ["create-client-from-vinculation"],
@@ -48,40 +67,60 @@ export default function ClientVinculationMenu({ closeModal, onSelectClient, auth
 		},
 	});
 
-	const hasSearch = search.trim().length > 0;
+	const normalizedSearch = search.trim();
+	const normalizedDebouncedSearch = debouncedSearch.trim();
+	const hasSearch = normalizedSearch.length > 0;
+	const hasEnoughSearch = normalizedSearch.length >= 2;
 	const hasResults = clients.length > 0;
-	const isSearchSettled = debouncedSearch.trim().length >= 2 && !isSearchPending;
-	const showCreateForm = isSearchSettled && !isFetching && !hasResults;
-	const searchIntent = showCreateForm ? parseClientSearchIntent(debouncedSearch) : null;
+	const isSearchSettled = normalizedDebouncedSearch.length >= 2 && !isSearchPending && !isFetching;
+	const isCreating = flowState.mode === "create";
+	const showResults = flowState.mode === "search" && isSearchSettled && !isError && hasResults;
+	const showEmptyResults = flowState.mode === "search" && isSearchSettled && !isError && !hasResults;
 	const isCreateValid = state.client.nome.trim().length > 0;
 
-	useEffect(() => {
-		if (!showCreateForm) {
-			if (lastAppliedSearchRef.current !== null) {
-				resetState();
-				lastAppliedSearchRef.current = null;
+	const startCreation = useCallback(
+		({ searchToApply, source }: { searchToApply: string; source: "manual" | "no_results" }) => {
+			const normalizedSearchToApply = searchToApply.trim();
+			setIsCreationFormReady(false);
+			resetState();
+
+			const intent = parseClientSearchIntent(normalizedSearchToApply);
+			switch (intent.kind) {
+				case "name":
+					updateClient({ nome: intent.nome });
+					break;
+				case "phone":
+					updateClient({ telefone: intent.telefone });
+					break;
+				case "cpf_cnpj":
+					updateClient({ cpfCnpj: intent.cpfCnpj });
+					break;
 			}
-			return;
-		}
 
-		const settledSearch = debouncedSearch.trim();
-		if (lastAppliedSearchRef.current === settledSearch) return;
+			dispatchFlow({ type: "START_CREATION", source, search: normalizedSearchToApply });
+		},
+		[resetState, updateClient],
+	);
 
+	useEffect(() => {
+		if (flowState.mode !== "search" || !isSearchSettled || isError || hasResults) return;
+		if (flowState.suppressAutomaticCreationFor === normalizedDebouncedSearch) return;
+
+		startCreation({ searchToApply: normalizedDebouncedSearch, source: "no_results" });
+	}, [flowState, hasResults, isError, isSearchSettled, normalizedDebouncedSearch, startCreation]);
+
+	function handleSearchChange(value: string) {
+		dispatchFlow({ type: "SEARCH_CHANGED", search: value });
+		updateSearch(value);
+	}
+
+	function handleReturnToSearch() {
+		setIsCreationFormReady(false);
 		resetState();
-		const intent = parseClientSearchIntent(settledSearch);
-		switch (intent.kind) {
-			case "name":
-				updateClient({ nome: intent.nome });
-				break;
-			case "phone":
-				updateClient({ telefone: intent.telefone });
-				break;
-			case "cpf_cnpj":
-				updateClient({ cpfCnpj: intent.cpfCnpj });
-				break;
-		}
-		lastAppliedSearchRef.current = settledSearch;
-	}, [debouncedSearch, resetState, showCreateForm, updateClient]);
+		dispatchFlow({ type: "RETURN_TO_SEARCH" });
+	}
+
+	const handleCreationFormReady = useCallback(() => setIsCreationFormReady(true), []);
 
 	function handleCreateAndLink() {
 		if (!state.client.nome.trim()) {
@@ -118,23 +157,26 @@ export default function ClientVinculationMenu({ closeModal, onSelectClient, auth
 			menuTitle="VINCULAR CLIENTE"
 			menuDescription="Busque por nome, telefone ou CPF/CNPJ para vincular um cliente na venda."
 			menuCancelButtonText="CANCELAR"
-			menuActionButtonText={showCreateForm ? "VINCULAR" : undefined}
-			actionFunction={showCreateForm ? handleCreateAndLink : undefined}
+			menuActionButtonText={isCreating ? "CADASTRAR E VINCULAR" : undefined}
+			actionFunction={isCreating ? handleCreateAndLink : undefined}
 			actionIsLoading={isPending}
-			menuActionButtonDisabled={!isCreateValid}
+			menuActionButtonDisabled={!isCreating || !isCreationFormReady || !isCreateValid}
 			stateIsLoading={false}
 			stateError={null}
 			closeMenu={closeModal}
 			dialogVariant="sm"
 			drawerVariant="full"
 		>
-			<Input
-				value={search ?? ""}
-				placeholder="Pesquisar cliente por nome, telefone ou CPF/CNPJ..."
-				onChange={(e) => updateSearch(e.target.value)}
-				className="w-full rounded-xl min-h-10"
-			/>
-			{!hasSearch ? (
+			{flowState.mode === "search" ? (
+				<Input
+					value={search ?? ""}
+					placeholder="Pesquisar cliente por nome, telefone ou CPF/CNPJ..."
+					onChange={(event) => handleSearchChange(event.target.value)}
+					className="min-h-10 w-full rounded-xl"
+					autoFocus
+				/>
+			) : null}
+			{flowState.mode === "search" && !hasSearch ? (
 				<div className="flex flex-col items-center justify-center py-10 px-4">
 					<div className="relative mb-4">
 						<div className="relative w-14 h-14 rounded-2xl flex items-center justify-center bg-brand/5 border border-brand shadow-sm">
@@ -154,9 +196,27 @@ export default function ClientVinculationMenu({ closeModal, onSelectClient, auth
 					</div>
 				</div>
 			) : null}
-			{isSearchPending || isFetching ? <p className="text-sm text-muted-foreground">Buscando clientes...</p> : null}
-			{hasResults ? (
+			{flowState.mode === "search" && hasSearch && !hasEnoughSearch ? (
+				<p className="py-6 text-center text-sm text-muted-foreground">Digite pelo menos 2 caracteres para buscar.</p>
+			) : null}
+			{flowState.mode === "search" && hasEnoughSearch && (isSearchPending || isFetching) ? <ClientSearchSkeleton /> : null}
+			{flowState.mode === "search" && isSearchSettled && isError ? (
+				<div className="flex flex-col items-center gap-3 py-8 text-center">
+					<div className="space-y-1">
+						<p className="text-sm font-semibold">Não foi possível buscar os clientes.</p>
+						<p className="text-xs text-muted-foreground">Confira sua conexão e tente novamente.</p>
+					</div>
+					<Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+						TENTAR NOVAMENTE
+					</Button>
+				</div>
+			) : null}
+			{showResults ? (
 				<div className="w-full flex flex-col gap-3">
+					<CreateClientTrigger
+						onPreload={preloadClientVinculationCreationForm}
+						onClick={() => startCreation({ searchToApply: normalizedDebouncedSearch, source: "manual" })}
+					/>
 					<p className="text-sm font-medium">Clientes encontrados:</p>
 					{clients.map((client) => (
 						<ClientVinculationMenuCard key={client.id} client={client} handleSelectClient={onSelectClient} closeModal={closeModal} />
@@ -164,25 +224,88 @@ export default function ClientVinculationMenu({ closeModal, onSelectClient, auth
 				</div>
 			) : null}
 
-			{showCreateForm ? (
-				<div className="flex flex-col gap-3 rounded-lg border border-dashed p-3">
+			{showEmptyResults ? (
+				<div className="flex flex-col items-center gap-3 py-8 text-center">
 					<div className="space-y-1">
-						<div className="flex items-center gap-2 text-sm font-semibold">
-							<UserRound className="h-4 w-4" />
-							{searchIntent ? getClientSearchIntentLabel(searchIntent.kind) : null}
-						</div>
-						<p className="text-xs text-muted-foreground">Preenchemos automaticamente o campo detectado na busca.</p>
+						<p className="text-sm font-semibold">Nenhum cliente encontrado.</p>
+						<p className="text-xs text-muted-foreground">Tente outra busca ou cadastre um novo cliente.</p>
 					</div>
-					<ClientGeneralBlock client={state.client} updateClient={updateClient} />
-					<ClientLocationsBlock
-						locations={state.clientLocations}
-						addClientLocation={addClientLocation}
-						updateClientLocation={updateClientLocation}
-						removeClientLocation={removeClientLocation}
-					/>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onPointerEnter={preloadClientVinculationCreationForm}
+						onFocus={preloadClientVinculationCreationForm}
+						onClick={() => startCreation({ searchToApply: normalizedDebouncedSearch, source: "manual" })}
+					>
+						<UserPlus className="size-4" />
+						CADASTRAR NOVO CLIENTE
+					</Button>
 				</div>
 			) : null}
+
+			{isCreating ? (
+				<ClientVinculationCreationForm
+					source={flowState.source}
+					seedSearch={flowState.seedSearch}
+					state={state}
+					updateClient={updateClient}
+					addClientLocation={addClientLocation}
+					updateClientLocation={updateClientLocation}
+					removeClientLocation={removeClientLocation}
+					onReturnToSearch={handleReturnToSearch}
+					onReady={handleCreationFormReady}
+				/>
+			) : null}
 		</ResponsiveMenuViewOnly>
+	);
+}
+
+function CreateClientTrigger({ onClick, onPreload }: { onClick: () => void; onPreload: () => void }) {
+	return (
+		<Button
+			type="button"
+			variant="outline"
+			className="h-auto w-full justify-start gap-3 rounded-xl px-3 py-2.5 text-left"
+			onPointerEnter={onPreload}
+			onFocus={onPreload}
+			onClick={onClick}
+		>
+			<span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+				<UserPlus className="size-4" />
+			</span>
+			<span className="min-w-0 whitespace-normal">
+				<span className="block text-sm font-semibold">Não é nenhum destes?</span>
+				<span className="block text-xs font-normal text-muted-foreground">Cadastrar um novo cliente</span>
+			</span>
+		</Button>
+	);
+}
+
+function ClientSearchSkeleton() {
+	return (
+		<div className="flex flex-col gap-3" aria-label="Buscando clientes">
+			<Skeleton className="h-4 w-36" />
+			{[0, 1, 2].map((item) => (
+				<Skeleton key={item} className="h-[68px] w-full rounded-xl" />
+			))}
+		</div>
+	);
+}
+
+function ClientCreationFormSkeleton() {
+	return (
+		<div className="flex flex-col gap-4" aria-label="Carregando formulário de cadastro">
+			<Skeleton className="h-8 w-44" />
+			<div className="grid grid-cols-1 gap-3 rounded-xl border border-border p-3 md:grid-cols-2">
+				{[0, 1, 2, 3, 4].map((item) => (
+					<div key={item} className="space-y-2">
+						<Skeleton className="h-3 w-20" />
+						<Skeleton className="h-10 w-full" />
+					</div>
+				))}
+			</div>
+		</div>
 	);
 }
 
