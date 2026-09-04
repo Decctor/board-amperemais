@@ -1,4 +1,5 @@
 import { appApiHandler } from "@/lib/app-api";
+import { recomputeClientDuplicatesSafely } from "@/lib/clients/duplicates";
 import { getAvailableCouponsForClient } from "@/lib/coupons/availability";
 import {
   type TCouponCartItem,
@@ -311,6 +312,10 @@ async function getOrCreateShopClient({
     .returning();
   if (!inserted)
     throw new createHttpError.InternalServerError("Erro ao criar cliente.");
+  await recomputeClientDuplicatesSafely({
+    organizacaoId: orgId,
+    clienteId: inserted.id,
+  });
   return inserted;
 }
 

@@ -24,5 +24,6 @@ export default async function CommercialClients() {
 		return <ClientsEmptyState />;
 	}
 
-	return <ClientsPage user={sessionUser.user} />;
+	const canReconcileClients = sessionUser.membership?.permissoes.empresa.editar ?? false;
+	return <ClientsPage user={sessionUser.user} canReconcileClients={canReconcileClients} />;
 }

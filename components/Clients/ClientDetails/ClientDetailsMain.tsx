@@ -13,6 +13,7 @@ import ErrorComponent from "../../Layouts/ErrorComponent";
 import LoadingComponent from "../../Layouts/LoadingComponent";
 import StatUnitCard from "../../Stats/StatUnitCard";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../ui/tooltip";
+import { ClientDuplicatePill } from "@/components/Clients/duplicates/ClientDuplicatePill";
 import ClientCashback from "./Blocks/ClientCashback";
 import ClientPurchases from "./Blocks/ClientPurchases";
 import { getAgeFromBirthdayDate } from "@/lib/dates";
@@ -21,8 +22,9 @@ import { getRFMConfigByLabel } from "@/utils/rfm";
 type ClientMainProps = {
 	id: string;
 	user: TAuthUserSession["user"];
+	canReconcileClients: boolean;
 };
-export default function ClientMain({ id, user }: ClientMainProps) {
+export default function ClientMain({ id, user, canReconcileClients }: ClientMainProps) {
 	const {
 		data: stats,
 		isLoading,
@@ -67,6 +69,7 @@ export default function ClientMain({ id, user }: ClientMainProps) {
 									<Grid3X3 className="w-4 h-4 min-w-4 min-h-4" />
 									<p className={cn("text-xs font-medium tracking-tight uppercase", rfmConfig.textCollor)}>{stats?.cliente.analiseRFMTitulo}</p>
 								</div>
+								<ClientDuplicatePill entityType="client" entityId={id} canReconcile={canReconcileClients} />
 							</div>
 
 							<div className="w-full flex items-center gap-2 flex-wrap">

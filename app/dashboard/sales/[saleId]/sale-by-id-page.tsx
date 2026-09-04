@@ -1,6 +1,7 @@
 "use client";
 
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
+import { ClientDuplicatePill } from "@/components/Clients/duplicates/ClientDuplicatePill";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { CancelConfirmedSaleDialog } from "@/components/Modals/Sales/CancelConfirmedSaleDialog";
 import { LoadingButton } from "@/components/loading-button";
@@ -65,6 +66,7 @@ type SaleByIdPageProps = {
 	orgHasERPAccess: boolean;
 	userCanDeleteSales: boolean;
 	userCanEditSales: boolean;
+	userCanReconcileClients: boolean;
 	userFiscalPermissions: {
 		view: boolean;
 		configure: boolean;
@@ -95,7 +97,7 @@ function formatCouponValidationMode(snapshot: TGetSalesOutputById["resgatesCupom
 	return typeof mode === "string" ? mode : null;
 }
 
-export default function SaleByIdPage({ saleId, userCanDeleteSales, userCanEditSales }: SaleByIdPageProps) {
+export default function SaleByIdPage({ saleId, userCanDeleteSales, userCanEditSales, userCanReconcileClients }: SaleByIdPageProps) {
 	// `orgHasERPAccess` e `userFiscalPermissions` não são lidos aqui de propósito: o gate real é o
 	// da API, que devolve `erp: null` sem o módulo e `erp.fiscal: null` sem permissão fiscal.
 	// Duplicar a regra no cliente criaria duas fontes de verdade que podem divergir.
@@ -135,7 +137,7 @@ export default function SaleByIdPage({ saleId, userCanDeleteSales, userCanEditSa
 					<SaleOverviewSection sale={sale} />
 				</div>
 				<div className="w-full lg:w-1/2 flex">
-					<ClientSection client={sale.cliente} />
+					<ClientSection client={sale.cliente} canReconcile={userCanReconcileClients} />
 				</div>
 			</div>
 			<div className="w-full flex flex-col lg:flex-row gap-4 lg:items-stretch">
@@ -247,7 +249,7 @@ function SaleOverviewSection({ sale }: { sale: TGetSalesOutputById }) {
 	);
 }
 
-function ClientSection({ client }: { client: TGetSalesOutputById["cliente"] }) {
+function ClientSection({ client, canReconcile }: { client: TGetSalesOutputById["cliente"]; canReconcile: boolean }) {
 	if (!client)
 		return (
 			<SectionWrapper title="CLIENTE" icon={<CircleUser className="w-4 h-4 min-w-4 min-h-4" />}>
@@ -275,6 +277,7 @@ function ClientSection({ client }: { client: TGetSalesOutputById["cliente"] }) {
 					<CircleUser className="w-4 h-4 text-muted-foreground" />
 					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">NOME</h3>
 					<h3 className="text-sm font-semibold tracking-tight">{client.nome}</h3>
+					<ClientDuplicatePill entityType="client" entityId={client.id} canReconcile={canReconcile} />
 				</div>
 
 				{/* Phone */}

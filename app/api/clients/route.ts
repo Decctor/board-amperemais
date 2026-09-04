@@ -14,6 +14,7 @@ import z from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { handleSimpleChildRowsProcessing } from "@/lib/db-utils";
 import { resolveValidatedAuthorSeller } from "@/lib/clients/authorship";
+import { recomputeClientDuplicatesSafely } from "@/lib/clients/duplicates";
 import { normalizeSocialProfile, normalizeWebsiteUrl } from "@/lib/socials";
 
 const GetClientsInputSchema = z.object({
@@ -467,6 +468,8 @@ async function createClientService({ input, session }: { input: TCreateClientInp
 		return insertedClientId;
 	});
 
+	await recomputeClientDuplicatesSafely({ organizacaoId: userOrgId, clienteId: insertedId });
+
 	return {
 		data: {
 			insertedId,
@@ -572,6 +575,9 @@ async function updateClientService({ input, session }: { input: TUpdateClientInp
 			updatedId: updatedClientId,
 		};
 	});
+
+	await recomputeClientDuplicatesSafely({ organizacaoId: userOrgId, clienteId: input.clientId });
+
 	return {
 		data: {
 			updatedId: transactionResult.updatedId,

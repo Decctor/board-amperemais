@@ -1,4 +1,5 @@
 import { formatPhoneAsBase } from "@/lib/formatting";
+import { recomputeClientDuplicatesSafely } from "@/lib/clients/duplicates";
 import { db } from "@/services/drizzle";
 import { clients } from "@/services/drizzle/schema";
 import { and, eq, sql } from "drizzle-orm";
@@ -36,7 +37,7 @@ export async function resolveWhatsappClient(input: {
 
 	const phoneBase = phoneNumber ? formatPhoneAsBase(phoneNumber) : null;
 
-	return db.transaction(async (tx) => {
+	const resolved = await db.transaction(async (tx) => {
 		const lockKey = `whatsapp-client:${input.organizationId}:${whatsappUserId ?? phoneBase}`;
 		await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`);
 
@@ -81,4 +82,11 @@ export async function resolveWhatsappClient(input: {
 
 		return { clientId: created.id, phoneNumber, isNew: true };
 	});
+
+	// Pós-commit: um contato novo (ou que ganhou telefone/BSUID agora) pode colidir
+	// com um cadastro existente de outra origem. Best-effort por contrato.
+	if (resolved.isNew) {
+		await recomputeClientDuplicatesSafely({ organizacaoId: input.organizationId, clienteId: resolved.clientId });
+	}
+	return resolved;
 }

@@ -10,5 +10,6 @@ export default async function Client({ params }: { params: Promise<{ customerId:
 	if (access.unauthorized) return access.unauthorized;
 	const sessionUser = access.sessionUser;
 	if (!sessionUser) redirect("/auth/signin");
-	return <ClientPage user={sessionUser.user} id={customerId} />;
+	const canReconcileClients = sessionUser.membership?.permissoes.empresa.editar ?? false;
+	return <ClientPage user={sessionUser.user} id={customerId} canReconcileClients={canReconcileClients} />;
 }

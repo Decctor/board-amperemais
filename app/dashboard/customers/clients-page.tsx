@@ -1,6 +1,7 @@
 ﻿"use client";
 import { buildSalesIntegrationFilterOptions } from "@/components/Sales/sales-integration-filter-options";
 import ClientsGraphs from "@/components/Clients/ClientsGraphs";
+import { ClientReconciliationQueue } from "@/components/Clients/duplicates/ClientReconciliationQueue";
 import ClientsRanking from "@/components/Clients/ClientsRanking";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
@@ -59,22 +60,26 @@ import ExportClients from "@/components/Modals/Clients/ExportClients";
 import { ClientsGeographicMap } from "@/components/Stats/ClientsGeographicMap";
 type ClientsPageProps = {
 	user: TAuthUserSession["user"];
+	canReconcileClients: boolean;
 };
-export default function ClientsPage({ user }: ClientsPageProps) {
+export default function ClientsPage({ user, canReconcileClients }: ClientsPageProps) {
 	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum(["stats", "database"]));
 	return (
 		<div className="w-full h-full flex flex-col gap-3">
 			<Tabs value={viewMode ?? "stats"} onValueChange={(v: string) => setViewMode(v as "stats" | "database")}>
-				<TabsList variant="page">
-					<TabsTrigger value="stats">
-						<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />
-						Estatísticas
-					</TabsTrigger>
-					<TabsTrigger value="database">
-						<Users className="w-4 h-4 min-w-4 min-h-4" />
-						Banco de Dados
-					</TabsTrigger>
-				</TabsList>
+				<div className="w-full flex items-center justify-between gap-2 flex-wrap">
+					<TabsList variant="page">
+						<TabsTrigger value="stats">
+							<TrendingUp className="w-4 h-4 min-w-4 min-h-4" />
+							Estatísticas
+						</TabsTrigger>
+						<TabsTrigger value="database">
+							<Users className="w-4 h-4 min-w-4 min-h-4" />
+							Banco de Dados
+						</TabsTrigger>
+					</TabsList>
+					<ClientReconciliationQueue canReconcile={canReconcileClients} />
+				</div>
 				<TabsContent value="stats">
 					<ClientsStatsView />
 				</TabsContent>
