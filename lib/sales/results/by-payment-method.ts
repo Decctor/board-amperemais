@@ -1,14 +1,18 @@
 import type { TPaymentMethodEnum } from "@/schemas/enums";
+import { SALE_CHANGE_TRANSACTION_ORIGIN } from "@/lib/sales/sale-change";
 import { db } from "@/services/drizzle";
 import { accountingEntries, financialTransactions, sales } from "@/services/drizzle/schema";
 import { and, count, countDistinct, eq, inArray, notExists, sql, sum } from "drizzle-orm";
 import { computeShare } from "./classify";
+import { reconcilePaymentTotals } from "./payment-reconciliation";
 import { buildSalesUniverseConditions, buildSalesUniverseIdsSubquery, type TSalesResultsFilters } from "./universe";
 
 /**
  * Recebimentos por método, em regime de competência: a transação é atribuída à data da venda que
  * a originou (`sales.dataVenda`), via `accountingEntries.vendaId` → `financialTransactions`.
- * Uma venda parcelada aparece inteira no método, dividida entre efetivado e pendente.
+ * Uma venda parcelada aparece inteira no método, dividida entre efetivado e pendente. As linhas
+ * preservam a composição bruta por método; o total líquido desconta troco e taxas de canal e usa
+ * o valor da venda como teto para absorver troco legado ainda sem SAÍDA persistida.
  *
  * O que entrou nas contas no período é pergunta do financeiro (fluxo de caixa por
  * `dataEfetivacao`), não deste relatório.
@@ -16,7 +20,7 @@ import { buildSalesUniverseConditions, buildSalesUniverseIdsSubquery, type TSale
 export async function getSalesResultsByPaymentMethod({ filters }: { filters: TSalesResultsFilters }) {
 	const universeIds = buildSalesUniverseIdsSubquery(filters, "CONFIRMADA");
 
-	const [rows, [coverageRow], [universeRow]] = await Promise.all([
+	const [rows, reconciliationRows, [coverageRow], [universeRow]] = await Promise.all([
 		db
 			.select({
 				metodo: financialTransactions.metodo,
@@ -37,6 +41,26 @@ export async function getSalesResultsByPaymentMethod({ filters }: { filters: TSa
 				),
 			)
 			.groupBy(financialTransactions.metodo),
+		db
+			.select({
+				valorVenda: sales.valorTotal,
+				valorEntradas: sql<string>`coalesce(sum(case when ${financialTransactions.tipo} = 'ENTRADA' then ${financialTransactions.valor} else 0 end), 0)`,
+				valorDinheiro: sql<string>`coalesce(sum(case when ${financialTransactions.tipo} = 'ENTRADA' and ${financialTransactions.metodo} = 'DINHEIRO' then ${financialTransactions.valor} else 0 end), 0)`,
+				trocoRegistrado: sql<string>`coalesce(sum(case when ${financialTransactions.tipo} = 'SAIDA' and ${financialTransactions.modificadoresMetadata}->>'origem' = ${SALE_CHANGE_TRANSACTION_ORIGIN} and coalesce(${financialTransactions.provedorStatus}, '') not in ('CANCELADO', 'ESTORNADO') then ${financialTransactions.valor} else 0 end), 0)`,
+				taxasCanal: sql<string>`coalesce(sum(case when ${financialTransactions.tipo} = 'SAIDA' and ${accountingEntries.chaveIdempotencia} like 'taxas-canal:%' and coalesce(${financialTransactions.provedorStatus}, '') not in ('CANCELADO', 'ESTORNADO') then ${financialTransactions.valor} else 0 end), 0)`,
+			})
+			.from(sales)
+			.innerJoin(accountingEntries, eq(accountingEntries.vendaId, sales.id))
+			.innerJoin(financialTransactions, eq(financialTransactions.lancamentoContabilId, accountingEntries.id))
+			.where(
+				and(
+					...buildSalesUniverseConditions(filters, "CONFIRMADA"),
+					eq(accountingEntries.organizacaoId, filters.organizacaoId),
+					eq(accountingEntries.origemTipo, "VENDA"),
+					eq(financialTransactions.organizacaoId, filters.organizacaoId),
+				),
+			)
+			.groupBy(sales.id, sales.valorTotal),
 		// Vendas do universo SEM nenhuma transação de pagamento (processadas externamente, ou
 		// anteriores ao ERP): explicam por que Σ recebimentos difere do faturamento.
 		db
@@ -68,15 +92,26 @@ export async function getSalesResultsByPaymentMethod({ filters }: { filters: TSa
 		valorPendente: Number(row.valorPendente ?? 0),
 		valorTaxas: Number(row.valorTaxas ?? 0),
 	}));
-	const totalRecebido = linhasBase.reduce((acc, linha) => acc + linha.valor, 0);
+	const reconciliation = reconcilePaymentTotals(
+		reconciliationRows.map((row) => ({
+			valorVenda: row.valorVenda,
+			valorEntradas: Number(row.valorEntradas),
+			valorDinheiro: Number(row.valorDinheiro),
+			trocoRegistrado: Number(row.trocoRegistrado),
+			taxasCanal: Number(row.taxasCanal),
+		})),
+	);
+	const totalRecebido = reconciliation.totalRecebido;
 	const linhas = linhasBase
-		.map((linha) => ({ ...linha, participacaoPercentual: computeShare(linha.valor, totalRecebido) }))
+		.map((linha) => ({ ...linha, participacaoPercentual: computeShare(linha.valor, reconciliation.totalBruto) }))
 		.sort((a, b) => b.valor - a.valor);
 
 	const vendasSemPagamento = coverageRow.qtde;
 	return {
 		linhas,
 		totalRecebido,
+		totalBruto: reconciliation.totalBruto,
+		ajustes: reconciliation.ajustes,
 		cobertura: {
 			vendasComPagamento: universeRow.qtde - vendasSemPagamento,
 			vendasSemPagamento,

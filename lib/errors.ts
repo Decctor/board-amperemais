@@ -2,17 +2,24 @@ import { AxiosError } from "axios";
 import createHttpError from "http-errors";
 import { ZodError } from "zod";
 
+const UNKNOWN_ERROR_MESSAGE = "Houve um erro desconhecido, por favor, comunique o setor de tecnologia.";
+
 export function getErrorMessage(error: any) {
-	const isDefaultError = !!error.response && !!error.response.data && !!error.response.data.message;
+	const isDefaultError = !!error?.response && !!error.response.data && !!error.response.data.message;
 	if (isDefaultError) return error.response.data.message as string;
-	if (createHttpError.isHttpError(error) && error.expose) return error.message as string;
+	// Erros HTTP 5xx nao expostos podem conter detalhes internos. Preserve a mensagem somente
+	// quando o proprio http-errors a marca como segura para o cliente.
+	if (createHttpError.isHttpError(error)) return error.expose ? (error.message as string) : UNKNOWN_ERROR_MESSAGE;
 	if (error instanceof AxiosError) {
 		const personalizedHttpError = error?.response?.data.error;
 		if (personalizedHttpError) return personalizedHttpError.message as string;
 		return error.message;
 	}
 	if (error instanceof ZodError) return error.errors[0].message;
-	return "Houve um erro desconhecido, por favor, comunique o setor de tecnologia.";
+	// Erros de dominio (por exemplo, FiscalReadinessError) sao Error comuns. Ignorar sua
+	// mensagem escondia a causa acionavel e persistia apenas o fallback generico no historico.
+	if (error instanceof Error && error.message.trim()) return error.message;
+	return UNKNOWN_ERROR_MESSAGE;
 }
 
 /**

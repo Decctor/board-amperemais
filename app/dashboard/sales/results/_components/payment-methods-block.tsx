@@ -15,8 +15,13 @@ type PaymentMethodsBlockProps = {
 };
 
 export function PaymentMethodsBlock({ porMetodo, faturamento, historyFilters }: PaymentMethodsBlockProps) {
-	const { linhas, totalRecebido, cobertura } = porMetodo;
+	const { linhas, totalRecebido, totalBruto, ajustes, cobertura } = porMetodo;
 	const totalPendente = linhas.reduce((acc, linha) => acc + linha.valorPendente, 0);
+	const adjustmentParts = [
+		ajustes.troco > 0 ? `${formatToMoney(ajustes.troco)} de troco` : null,
+		ajustes.taxasCanal > 0 ? `${formatToMoney(ajustes.taxasCanal)} de taxas do canal` : null,
+		ajustes.naoClassificado > 0 ? `${formatToMoney(ajustes.naoClassificado)} ainda não classificados` : null,
+	].filter((part): part is string => part !== null);
 
 	return (
 		<section className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
@@ -62,6 +67,11 @@ export function PaymentMethodsBlock({ porMetodo, faturamento, historyFilters }: 
 			)}
 
 			<div className="flex flex-col gap-1 border-t border-border pt-2 text-[11px] text-muted-foreground">
+				{ajustes.total > 0 ? (
+					<span>
+						Recebimentos brutos de {formatToMoney(totalBruto)}, menos {adjustmentParts.join(" e ")}.
+					</span>
+				) : null}
 				{totalPendente > 0 ? <span>{formatToMoney(totalPendente)} ainda a receber (parcelas, boletos e prazos), atribuídos à data da venda.</span> : null}
 				{cobertura.vendasSemPagamento > 0 ? (
 					<span>
