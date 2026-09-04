@@ -5,7 +5,8 @@ import { db } from "@/services/drizzle";
 import { organizationMembers } from "@/services/drizzle/schema";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import type { TSaleEntity } from "@/services/drizzle/schema/sales";
-import { eq } from "drizzle-orm";
+import type { TIbptRefreshFailure, TIbptUf } from "./ibpt-rates";
+import { eq, isNotNull } from "drizzle-orm";
 
 function escapeHtml(value: unknown) {
 	return String(value ?? "")
@@ -97,5 +98,64 @@ export async function notifyFiscalEmissionFailure({ organization, sale, errorMes
 		);
 	} catch (error) {
 		console.error("[FISCAL] Error notifying fiscal emission failure.", error);
+	}
+}
+
+type TIbptNotificationFailure = Omit<TIbptRefreshFailure, "uf"> & { uf: TIbptUf | null };
+
+export async function notifyFiscalIbptRefreshFailure(failures: TIbptNotificationFailure[]) {
+	if (failures.length === 0) return;
+
+	try {
+		const failedUfs = new Set(failures.flatMap((failure) => (failure.uf ? [failure.uf] : [])));
+		const fiscalOrganizations = await db.query.organizations.findMany({
+			where: (fields) => isNotNull(fields.fiscalConfiguracao),
+		});
+		const affectedOrganizations =
+			failedUfs.size === 0
+				? fiscalOrganizations
+				: fiscalOrganizations.filter((organization) => failedUfs.has(organization.fiscalConfiguracao?.endereco?.uf?.trim().toUpperCase() as TIbptUf));
+		const recipientLists = await Promise.all(affectedOrganizations.map(listFiscalNotificationRecipients));
+		const recipients = new Set(recipientLists.flat());
+		if (process.env.BUG_REPORT_EMAIL) recipients.add(process.env.BUG_REPORT_EMAIL);
+
+		if (recipients.size === 0) {
+			console.error("[IBPT] Nenhum destinatário configurado para o alerta de falha.", failures);
+			return;
+		}
+
+		const details = failures.map((failure) => `${failure.uf ?? "GERAL"}: falha após ${failure.tentativas} tentativa(s) — ${failure.erro}`);
+		const safeDetails = details.map((detail) => `<li>${escapeHtml(detail)}</li>`).join("");
+		const result = await Promise.allSettled(
+			[...recipients].map(async (recipient) => {
+				const { error } = await resend.emails.send({
+					from: "RecompraCRM <fiscal@recompracrm.com.br>",
+					to: [recipient],
+					subject: "[ALERTA] Falha na atualização da tabela IBPT",
+					text: [
+						"A atualização automática da tabela IBPT falhou após as retentativas configuradas.",
+						"",
+						...details,
+						"",
+						"As tabelas instaladas anteriormente foram preservadas. Verifique a API de origem e execute a atualização manual se necessário.",
+					].join("\n"),
+					html: `
+						<div style="font-family: Arial, sans-serif; color: #111827; line-height: 1.5;">
+							<h2 style="margin: 0 0 12px;">Falha na atualização da tabela IBPT</h2>
+							<p>A atualização automática falhou após as retentativas configuradas:</p>
+							<ul>${safeDetails}</ul>
+							<p>As tabelas instaladas anteriormente foram preservadas. Verifique a API de origem e execute a atualização manual se necessário.</p>
+						</div>
+					`,
+				});
+				if (error) throw new Error(error.message);
+			}),
+		);
+
+		for (const rejected of result.filter((item) => item.status === "rejected")) {
+			console.error("[IBPT] Falha ao enviar e-mail de alerta:", rejected.reason);
+		}
+	} catch (error) {
+		console.error("[IBPT] Erro inesperado ao notificar falha de atualização.", error);
 	}
 }
