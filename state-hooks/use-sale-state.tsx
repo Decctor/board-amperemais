@@ -9,6 +9,7 @@ import {
 	getOrganizationPaymentMethodsConfig,
 	type TResolvedPaymentMethodDefault,
 } from "@/lib/payments/defaults";
+import { resolveSaleChange } from "@/lib/sales/sale-change";
 import type { TDeliveryModeEnum } from "@/schemas/enums";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import { useCallback, useMemo, useState } from "react";
@@ -508,10 +509,12 @@ export const useSaleState = ({ initialState, organizationConfig, contasFinanceir
 	// Modo edição: os splits editáveis só precisam cobrir o que ainda não foi recebido.
 	const valorAposEfetivados = useMemo(() => Math.max(0, valorFinal - state.pagamentosEfetivadosTotal), [valorFinal, state.pagamentosEfetivadosTotal]);
 	const valorRestante = useMemo(() => Math.max(0, valorAposEfetivados - totalPagamentos), [valorAposEfetivados, totalPagamentos]);
-	const troco = useMemo(
-		() => (totalPagamentos > valorAposEfetivados ? totalPagamentos - valorAposEfetivados : 0),
-		[totalPagamentos, valorAposEfetivados],
-	);
+	// Troco: mesmas regras do servidor (lib/sales/sale-change.ts) — excesso só sobre pagamentos
+	// imediatos; excesso fora do dinheiro pede confirmação explícita antes de finalizar.
+	const change = useMemo(() => resolveSaleChange({ payments: state.pagamentos, saleTotal: valorAposEfetivados }), [state.pagamentos, valorAposEfetivados]);
+	const troco = change.troco;
+	const trocoBloqueio = change.bloqueio;
+	const trocoCobertoPorDinheiro = change.cobertoPorDinheiro;
 	const pagamentoCompleto = useMemo(() => valorRestante <= 0.01, [valorRestante]);
 
 	const isReadyForDraft = useMemo(() => {
@@ -526,6 +529,7 @@ export const useSaleState = ({ initialState, organizationConfig, contasFinanceir
 		if (state.entregaModalidade === "ENTREGA" && !state.entregaLocalizacaoId) return false;
 		if (state.entregaModalidade === "COMANDA" && !state.comandaNumero?.trim()) return false;
 		if (!pagamentoCompleto) return false;
+		if (trocoBloqueio) return false;
 		if (valorAposEfetivados > 0.01 && state.pagamentos.length === 0) return false;
 		if (
 			state.pagamentos.some(
@@ -547,6 +551,7 @@ export const useSaleState = ({ initialState, organizationConfig, contasFinanceir
 		state.pagamentos,
 		state.cliente,
 		pagamentoCompleto,
+		trocoBloqueio,
 		valorAposEfetivados,
 	]);
 
@@ -611,6 +616,8 @@ export const useSaleState = ({ initialState, organizationConfig, contasFinanceir
 		valorAposEfetivados,
 		valorRestante,
 		troco,
+		trocoBloqueio,
+		trocoCobertoPorDinheiro,
 		pagamentoCompleto,
 		isReadyForDraft,
 		isReadyForFinalize,

@@ -13,6 +13,7 @@ import { resolveInitialAttendanceStatus } from "./attendance";
 import { createAccountingEntry } from "./create-accounting-entry";
 import { processSaleAutomaticFiscalEmissionIfEligible } from "./process-sale-automatic-fiscal-emission";
 import { processStockDeduction } from "./process-stock-deduction";
+import { registerSaleChangeTransaction } from "./register-sale-change";
 
 export type TProcessSaleConfirmationInput = {
 	organization: TOrganizationEntity;
@@ -133,6 +134,18 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 		},
 		tx,
 	);
+
+	// Pagamentos entram pelo valor entregue pelo cliente; o excesso sobre o total vira uma SAÍDA
+	// de troco em dinheiro no mesmo lançamento (valida as regras e lança, ou aborta a confirmação).
+	const change = await registerSaleChangeTransaction({
+		tx,
+		organization: input.organization,
+		lancamentoContabilId: entry.id,
+		salePayments: input.salePayments,
+		saleTotal: sale.valorTotal,
+		sessaoVendaId: input.sessaoVendaId ?? null,
+		autorId: input.saleAuthorId,
+	});
 
 	let cashbackRedemptionResult: {
 		transactionId: string;
@@ -424,6 +437,7 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 		vendaId: input.saleId,
 		lancamentoContabilId: entry.id,
 		pagamentos: paymentResults,
+		troco: change?.valor ?? 0,
 		cashbackResgate: cashbackRedemptionResult,
 		cashbackAcumulo: cashbackAccumulationResult,
 		cupomResgate: couponRedemptionResult,

@@ -157,6 +157,7 @@ async function getSaleForEdit({ input, session }: { input: TGetSaleForEditInput;
 							dataEfetivacao: true,
 							dataPrevisao: true,
 							provedorStatus: true,
+							modificadoresMetadata: true,
 						},
 					},
 				},

@@ -3,14 +3,18 @@
 import type { TSalesResults } from "@/lib/sales/results";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { formatPaymentMethod } from "@/lib/payments/labels";
+import { buildSalesHistoryHref, type TSalesHistoryUrlState } from "@/lib/sales/history-url-state";
 import { Wallet } from "lucide-react";
+import Link from "next/link";
 
 type PaymentMethodsBlockProps = {
 	porMetodo: TSalesResults["porMetodo"];
 	faturamento: number;
+	/** Recorte do relatório (período, vendedores, status) que cada linha carrega para o histórico. */
+	historyFilters: Partial<TSalesHistoryUrlState>;
 };
 
-export function PaymentMethodsBlock({ porMetodo, faturamento }: PaymentMethodsBlockProps) {
+export function PaymentMethodsBlock({ porMetodo, faturamento, historyFilters }: PaymentMethodsBlockProps) {
 	const { linhas, totalRecebido, cobertura } = porMetodo;
 	const totalPendente = linhas.reduce((acc, linha) => acc + linha.valorPendente, 0);
 
@@ -31,7 +35,12 @@ export function PaymentMethodsBlock({ porMetodo, faturamento }: PaymentMethodsBl
 			) : (
 				<div className="flex flex-col gap-2">
 					{linhas.map((linha) => (
-						<div key={linha.metodo} className="flex flex-col gap-1">
+						<Link
+							key={linha.metodo}
+							href={buildSalesHistoryHref({ ...historyFilters, paymentMethods: [linha.metodo] })}
+							title="Ver as vendas deste método no histórico"
+							className="flex flex-col gap-1 rounded-md -mx-1 px-1 py-0.5 transition-colors hover:bg-muted/60"
+						>
 							<div className="flex items-center justify-between gap-2 text-xs">
 								<span className="font-semibold">{formatPaymentMethod(linha.metodo)}</span>
 								<div className="flex items-center gap-3 tabular-nums">
@@ -47,7 +56,7 @@ export function PaymentMethodsBlock({ porMetodo, faturamento }: PaymentMethodsBl
 							<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
 								<div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, linha.participacaoPercentual))}%` }} />
 							</div>
-						</div>
+						</Link>
 					))}
 				</div>
 			)}
@@ -56,8 +65,8 @@ export function PaymentMethodsBlock({ porMetodo, faturamento }: PaymentMethodsBl
 				{totalPendente > 0 ? <span>{formatToMoney(totalPendente)} ainda a receber (parcelas, boletos e prazos), atribuídos à data da venda.</span> : null}
 				{cobertura.vendasSemPagamento > 0 ? (
 					<span>
-						{cobertura.vendasSemPagamento} {cobertura.vendasSemPagamento === 1 ? "venda" : "vendas"} ({formatToMoney(cobertura.valorSemPagamento)}) sem registro
-						de pagamento, por isso os recebimentos não fecham com o faturamento de {formatToMoney(faturamento)}.
+						{cobertura.vendasSemPagamento} {cobertura.vendasSemPagamento === 1 ? "venda" : "vendas"} ({formatToMoney(cobertura.valorSemPagamento)}) sem
+						registro de pagamento, por isso os recebimentos não fecham com o faturamento de {formatToMoney(faturamento)}.
 					</span>
 				) : null}
 			</div>

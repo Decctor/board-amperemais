@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import CashSessionBar from "@/components/CashSessions/CashSessionBar";
 import CashSessionGate from "@/components/CashSessions/CashSessionGate";
 import ControlClient from "@/components/Modals/Clients/ControlClient";
+import { ConfirmSaleChange } from "@/components/Modals/Sales/ConfirmSaleChange";
 import { DiscountApproval } from "@/components/Modals/Sales/DiscountApproval";
 import { getErrorMessage } from "@/lib/errors";
 import type { TQuotePermissions } from "@/components/Chats/Quotes/config";
@@ -132,6 +133,7 @@ export default function NewSalePage({
 		? evaluateDiscount({ authority: discountAuthority, ...descontoAgregado }) === "REQUER_APROVACAO"
 		: false;
 	const [isDiscountApprovalOpen, setIsDiscountApprovalOpen] = useState(false);
+	const [isChangeConfirmOpen, setIsChangeConfirmOpen] = useState(false);
 	// Aprovação concedida fica atrelada aos valores aprovados: mudou o carrinho/desconto, invalida.
 	const [discountApproval, setDiscountApproval] = useState<{ id: string; valorBase: number; descontoTotal: number } | null>(null);
 	useEffect(() => {
@@ -378,12 +380,7 @@ export default function NewSalePage({
 		});
 	};
 
-	const handleFinalizeSale = () => {
-		if (!saleState.isReadyForFinalize) {
-			toast.error("Complete entrega e pagamento para finalizar a venda.");
-			return;
-		}
-
+	const proceedFinalizeSale = () => {
 		// Desconto acima do teto do vendedor: abre o fluxo de aprovação (PIN ou remota) antes de finalizar.
 		if (discountRequiresApproval && !discountApproval) {
 			setIsDiscountApprovalOpen(true);
@@ -391,6 +388,21 @@ export default function NewSalePage({
 		}
 
 		submitFinalizeSale(discountApproval?.id ?? null);
+	};
+
+	const handleFinalizeSale = () => {
+		if (!saleState.isReadyForFinalize) {
+			toast.error(saleState.trocoBloqueio ?? "Complete entrega e pagamento para finalizar a venda.");
+			return;
+		}
+
+		// Troco sem dinheiro recebido (excesso no cartão/PIX) é quase sempre valor digitado errado: confirma antes.
+		if (saleState.troco > 0 && !saleState.trocoCobertoPorDinheiro) {
+			setIsChangeConfirmOpen(true);
+			return;
+		}
+
+		proceedFinalizeSale();
 	};
 
 	if (saleState.state.success) {
@@ -578,6 +590,17 @@ export default function NewSalePage({
 							setDiscountApproval({ id: approvalRequestId, ...descontoAgregado });
 							setIsDiscountApprovalOpen(false);
 							submitFinalizeSale(approvalRequestId);
+						}}
+					/>
+				) : null}
+
+				{isChangeConfirmOpen ? (
+					<ConfirmSaleChange
+						troco={saleState.troco}
+						closeModal={() => setIsChangeConfirmOpen(false)}
+						onConfirm={() => {
+							setIsChangeConfirmOpen(false);
+							proceedFinalizeSale();
 						}}
 					/>
 				) : null}

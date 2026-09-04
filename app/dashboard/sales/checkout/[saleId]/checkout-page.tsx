@@ -1,6 +1,7 @@
 "use client";
 
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
+import { ConfirmSaleChange } from "@/components/Modals/Sales/ConfirmSaleChange";
 import { DiscountApproval } from "@/components/Modals/Sales/DiscountApproval";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -191,6 +192,7 @@ export default function CheckoutPage({
 		? evaluateDiscount({ authority: discountAuthority, ...descontoAgregado }) === "REQUER_APROVACAO"
 		: false;
 	const [isDiscountApprovalOpen, setIsDiscountApprovalOpen] = useState(false);
+	const [isChangeConfirmOpen, setIsChangeConfirmOpen] = useState(false);
 	const [discountApproval, setDiscountApproval] = useState<{ id: string; valorBase: number; descontoTotal: number } | null>(null);
 	useEffect(() => {
 		if (!discountApproval) return;
@@ -279,16 +281,29 @@ export default function CheckoutPage({
 				? "Nenhum caixa aberto para o vendedor desta venda."
 				: null;
 
-	const handleFinalizeSale = () => {
-		if (finalizeBlockedReason) {
-			toast.error(finalizeBlockedReason);
-			return;
-		}
+	const proceedFinalizeSale = () => {
 		if (discountRequiresApproval && !discountApproval) {
 			setIsDiscountApprovalOpen(true);
 			return;
 		}
 		confirm(discountApproval?.id ?? null);
+	};
+
+	const handleFinalizeSale = () => {
+		if (finalizeBlockedReason) {
+			toast.error(finalizeBlockedReason);
+			return;
+		}
+		if (saleState.trocoBloqueio) {
+			toast.error(saleState.trocoBloqueio);
+			return;
+		}
+		// Troco sem dinheiro recebido (excesso no cartão/PIX) é quase sempre valor digitado errado: confirma antes.
+		if (saleState.troco > 0 && !saleState.trocoCobertoPorDinheiro) {
+			setIsChangeConfirmOpen(true);
+			return;
+		}
+		proceedFinalizeSale();
 	};
 
 	const handleSearchChange = useCallback(
@@ -506,6 +521,17 @@ export default function CheckoutPage({
 							setDiscountApproval({ id: approvalRequestId, ...descontoAgregado });
 							setIsDiscountApprovalOpen(false);
 							confirm(approvalRequestId);
+						}}
+					/>
+				) : null}
+
+				{isChangeConfirmOpen ? (
+					<ConfirmSaleChange
+						troco={saleState.troco}
+						closeModal={() => setIsChangeConfirmOpen(false)}
+						onConfirm={() => {
+							setIsChangeConfirmOpen(false);
+							proceedFinalizeSale();
 						}}
 					/>
 				) : null}

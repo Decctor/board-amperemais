@@ -22,6 +22,8 @@ async function fetchSales(input: TGetSalesInput) {
 	if (input.totalMax !== null && input.totalMax !== undefined) searchParams.set("totalMax", input.totalMax.toString());
 	if (input.financialStatuses.length > 0) searchParams.set("financialStatuses", input.financialStatuses.join(","));
 	if (input.fiscalStatuses.length > 0) searchParams.set("fiscalStatuses", input.fiscalStatuses.join(","));
+	if (input.paymentMethods.length > 0) searchParams.set("paymentMethods", input.paymentMethods.join(","));
+	if (input.deliveryModes.length > 0) searchParams.set("deliveryModes", input.deliveryModes.join(","));
 	if (input.saleStatuses.length > 0) searchParams.set("saleStatuses", input.saleStatuses.join(","));
 	const { data } = await axios.get<TGetSalesOutput>(`/api/sales?${searchParams.toString()}`);
 	const result = input.clientId ? data.data.byClientId : data.data.default;
@@ -48,19 +50,25 @@ export function useSales({ initialParams }: UseSalesParams) {
 		totalMax: initialParams.totalMax ?? null,
 		financialStatuses: initialParams.financialStatuses ?? [],
 		fiscalStatuses: initialParams.fiscalStatuses ?? [],
+		paymentMethods: initialParams.paymentMethods ?? [],
+		deliveryModes: initialParams.deliveryModes ?? [],
 		saleStatuses: initialParams.saleStatuses ?? [],
 	});
 	function updateParams(newParams: Partial<TGetSalesInput>) {
 		setParams((prev) => ({ ...prev, ...newParams }));
 	}
+	return { ...useSalesQuery({ params }), params, updateParams };
+}
+
+/** Consulta de vendas com parâmetros controlados de fora (ex.: estado na URL via nuqs). */
+export function useSalesQuery({ params }: { params: TGetSalesInput }) {
+	const queryKey = ["sales", params];
 	return {
 		...useQuery({
-			queryKey: ["sales", params],
+			queryKey,
 			queryFn: async () => await fetchSales(params),
 		}),
-		queryKey: ["sales", params],
-		params,
-		updateParams,
+		queryKey,
 	};
 }
 

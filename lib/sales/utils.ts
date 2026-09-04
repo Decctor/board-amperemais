@@ -134,6 +134,7 @@ export type SalePaymentTransactionInput = {
 	dataPrevisao?: Date | string | null;
 	provedorStatus?: string | null;
 	contaFinanceiraId?: string | null;
+	modificadoresMetadata?: { origem?: string | null } | null;
 };
 
 export type ClassifiedPayment = {

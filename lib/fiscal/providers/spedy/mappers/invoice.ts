@@ -17,6 +17,7 @@ import {
 	nonEmptyString,
 	onlyDigits,
 	resolveFiscalItemName,
+	sanitizeNfeText,
 } from "./utils";
 
 /**
@@ -39,7 +40,7 @@ function mapReceiver(snapshot: TFiscalSaleContext["destinatarioSnapshot"], isHom
 				complemento?: string | null;
 		  }
 		| undefined;
-	const nomeReal = typeof snapshot.nome === "string" ? snapshot.nome : undefined;
+	const nomeReal = sanitizeNfeText(typeof snapshot.nome === "string" ? snapshot.nome : undefined, 60);
 
 	return {
 		name: isHomologacao ? NOME_DESTINATARIO_HOMOLOGACAO : nomeReal,

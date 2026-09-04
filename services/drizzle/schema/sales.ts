@@ -210,6 +210,9 @@ export const saleItems = newTable(
 		produtoIdIdx: index("idx_sale_items_produto_id").on(table.produtoId),
 		clienteIdIdx: index("idx_sale_items_cliente_id").on(table.clienteId),
 		valoresIdx: index("idx_sale_items_valores").on(table.valorVendaTotalLiquido, table.valorCustoTotal),
+		// Agregações por organização (stats de produtos, filtros de produto no histórico de vendas) sem
+		// varrer os itens de todas as organizações.
+		orgProdutoIdx: index("idx_sale_items_org_produto").on(table.organizacaoId, table.produtoId),
 	}),
 );
 export const saleItemsRelations = relations(saleItems, ({ one, many }) => ({

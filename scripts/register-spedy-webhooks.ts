@@ -3,7 +3,7 @@ import axios from "axios";
 import { SPEDY_BASE_URL } from "@/lib/fiscal/providers/spedy/client";
 
 /**
- * Registro one-shot dos webhooks inbound da Spedy. Webhooks sao por CONTA (owner key), nao por
+ * Registro one-shot dos webhooks da Spedy. Webhooks sao por CONTA (owner key), nao por
  * empresa: um unico endpoint recebe eventos de todas as organizacoes. Cada webhook assina
  * exatamente um evento, entao criamos um por evento. Idempotente: eventos ja registrados para a
  * mesma URL sao pulados.
@@ -12,7 +12,8 @@ import { SPEDY_BASE_URL } from "@/lib/fiscal/providers/spedy/client";
  * Requer SPEDY_OWNER_API_KEY e SPEDY_WEBHOOK_SECRET no ambiente.
  */
 
-const INBOUND_EVENTS = [
+const WEBHOOK_EVENTS = [
+  "invoice.status_changed",
   "inbound_invoice.detected",
   "inbound_invoice.completed",
   "inbound_invoice.event",
@@ -63,7 +64,7 @@ async function main() {
   const existing = extractWebhooks(response);
   console.log(`${existing.length} webhook(s) ja registrados na conta.`);
 
-  for (const event of INBOUND_EVENTS) {
+  for (const event of WEBHOOK_EVENTS) {
     const found = existing.find(
       (webhook) => webhook.event === event && webhook.url === webhookUrl,
     );

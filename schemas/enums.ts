@@ -574,6 +574,7 @@ export type TFiscalDocumentLifecycleStatusEnum = z.infer<
 export const FiscalDocumentEventTypeEnum = z.enum([
   "CRIADO",
   "ENVIO_SOLICITADO",
+  "PROCESSAMENTO_INICIADO",
   "AUTORIZADO",
   "REJEITADO",
   "SINCRONIZADO",

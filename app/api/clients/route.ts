@@ -88,7 +88,6 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
-	console.log("INPUT:", input);
 	if ("id" in input && input.id) {
 		const clientId = input.id;
 		if (!clientId) throw new createHttpError.BadRequest("ID do cliente não informado.");
@@ -123,17 +122,14 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 			createSimplifiedPhoneSearchCondition(clients.telefoneBase, input.search),
 			createSimplifiedEmailSearchCondition(clients.email, input.search),
 		);
-		console.log("SEARCH CONDITION APPIED");
 		if (searchCondition) {
 			clientConditions.push(searchCondition);
 		}
 	}
 	if (input.acquisitionChannels && input.acquisitionChannels.length > 0) {
-		console.log("ACQUISITION CHANNELS CONDITION APPIED");
 		clientConditions.push(inArray(clients.canalAquisicao, input.acquisitionChannels));
 	}
 	if (input.segmentationTitles && input.segmentationTitles.length > 0) {
-		console.log("SEGMENTATION TITLES CONDITION APPIED");
 		clientConditions.push(inArray(clients.analiseRFMTitulo, input.segmentationTitles));
 	}
 	const PAGE_SIZE = 25;
@@ -159,7 +155,6 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 			},
 		};
 	}
-	console.log("CONDITIONS:", clientConditions.length);
 
 	const statsConditions = [eq(sales.organizacaoId, userOrgId), eq(sales.statusVenda, "CONFIRMADA")];
 	if (input.statsPeriodAfter) statsConditions.push(gte(sales.dataVenda, input.statsPeriodAfter));
@@ -168,57 +163,102 @@ async function getClients({ input, session }: { input: TGetClientsInput; session
 	if (integrationCondition) statsConditions.push(integrationCondition);
 	if (input.statsExcludedSalesIds && input.statsExcludedSalesIds.length > 0) statsConditions.push(notInArray(sales.id, input.statsExcludedSalesIds));
 
-	const statsByClientSubquery = db
-		.select({
-			clientId: sales.clienteId,
-			totalPurchasesValue: sum(sales.valorTotal).as("totalPurchasesValue"),
-			totalPurchasesQty: count(sales.id).as("totalPurchasesQty"),
-			firstPurchaseDate: min(sales.dataVenda).as("firstPurchaseDate"),
-			lastPurchaseDate: max(sales.dataVenda).as("lastPurchaseDate"),
-		})
-		.from(sales)
-		.where(and(...statsConditions))
-		.groupBy(sales.clienteId)
-		.as("stats_by_client");
+	const statsSelection = {
+		clientId: sales.clienteId,
+		totalPurchasesValue: sum(sales.valorTotal).as("totalPurchasesValue"),
+		totalPurchasesQty: count(sales.id).as("totalPurchasesQty"),
+		firstPurchaseDate: min(sales.dataVenda).as("firstPurchaseDate"),
+		lastPurchaseDate: max(sales.dataVenda).as("lastPurchaseDate"),
+	};
+	type TClientPageStats = {
+		clientId: string;
+		totalPurchasesValue: number | string | null;
+		totalPurchasesQty: number | string | null;
+		firstPurchaseDate: Date | null;
+		lastPurchaseDate: Date | null;
+	};
 
+	// `clients.id` como último critério: sem um desempate único, OFFSET/LIMIT pode repetir ou pular
+	// clientes homônimos entre páginas.
 	const direction = input.orderByDirection === "desc" ? desc : asc;
-	let orderByClause = asc(clients.nome);
-	switch (input.orderByField) {
-		case "nome":
-			orderByClause = direction(clients.nome);
-			break;
-		case "comprasValorTotal":
-			orderByClause = direction(sql`COALESCE(${statsByClientSubquery.totalPurchasesValue}, 0)`);
-			break;
-		case "comprasQtdeTotal":
-			orderByClause = direction(sql`COALESCE(${statsByClientSubquery.totalPurchasesQty}, 0)`);
-			break;
-		case "primeiraCompraData":
-			orderByClause = direction(sql`COALESCE(${statsByClientSubquery.firstPurchaseDate}, '1900-01-01'::timestamp)`);
-			break;
-		case "ultimaCompraData":
-			orderByClause = direction(sql`COALESCE(${statsByClientSubquery.lastPurchaseDate}, '1900-01-01'::timestamp)`);
-			break;
-		default:
-			orderByClause = asc(clients.nome);
-			break;
+	const orderByField = input.orderByField ?? "nome";
+
+	let paginatedClientsWithStats: TClientPageStats[];
+	if (orderByField === "nome") {
+		// Ordenação por nome não depende das estatísticas: pagina os clientes primeiro e agrega as
+		// vendas (LATERAL, via índice de cliente_id) só para as 25 linhas da página, em vez de agregar
+		// todas as vendas da organização a cada requisição. Uma consulta só: com a função longe do
+		// banco, uma ida a mais custa mais do que a agregação economizada.
+		const clientsPage = db
+			.select({ id: clients.id, nome: clients.nome })
+			.from(clients)
+			.where(and(...clientConditions))
+			.orderBy(direction(clients.nome), asc(clients.id))
+			.offset(skip)
+			.limit(PAGE_SIZE)
+			.as("clients_page");
+		const pageStats = db
+			.select({
+				totalPurchasesValue: statsSelection.totalPurchasesValue,
+				totalPurchasesQty: statsSelection.totalPurchasesQty,
+				firstPurchaseDate: statsSelection.firstPurchaseDate,
+				lastPurchaseDate: statsSelection.lastPurchaseDate,
+			})
+			.from(sales)
+			.where(and(...statsConditions, eq(sales.clienteId, clientsPage.id)))
+			.as("stats_by_client");
+		paginatedClientsWithStats = await db
+			.select({
+				clientId: clientsPage.id,
+				totalPurchasesValue: sql<number>`COALESCE(${pageStats.totalPurchasesValue}, 0)`,
+				totalPurchasesQty: sql<number>`COALESCE(${pageStats.totalPurchasesQty}, 0)`,
+				firstPurchaseDate: pageStats.firstPurchaseDate,
+				lastPurchaseDate: pageStats.lastPurchaseDate,
+			})
+			.from(clientsPage)
+			.leftJoinLateral(pageStats, sql`true`)
+			.orderBy(direction(clientsPage.nome), asc(clientsPage.id));
+	} else {
+		// Ordenação por estatística exige agregar as vendas de todos os clientes candidatos. Com busca
+		// textual o conjunto é pequeno e vale restringir a agregação a ele; sem busca, restringir só
+		// piora o plano (merge join por idx_sales_client_id varrendo vendas de outras organizações).
+		const hasSearch = !!input.search && input.search.trim().length > 0;
+		const scopedStatsConditions = hasSearch
+			? [...statsConditions, inArray(sales.clienteId, db.select({ id: clients.id }).from(clients).where(and(...clientConditions)))]
+			: statsConditions;
+		const statsByClientSubquery = db.select(statsSelection).from(sales).where(and(...scopedStatsConditions)).groupBy(sales.clienteId).as("stats_by_client");
+
+		let orderByClause = asc(clients.nome);
+		switch (orderByField) {
+			case "comprasValorTotal":
+				orderByClause = direction(sql`COALESCE(${statsByClientSubquery.totalPurchasesValue}, 0)`);
+				break;
+			case "comprasQtdeTotal":
+				orderByClause = direction(sql`COALESCE(${statsByClientSubquery.totalPurchasesQty}, 0)`);
+				break;
+			case "primeiraCompraData":
+				orderByClause = direction(sql`COALESCE(${statsByClientSubquery.firstPurchaseDate}, '1900-01-01'::timestamp)`);
+				break;
+			case "ultimaCompraData":
+				orderByClause = direction(sql`COALESCE(${statsByClientSubquery.lastPurchaseDate}, '1900-01-01'::timestamp)`);
+				break;
+		}
+
+		paginatedClientsWithStats = await db
+			.select({
+				clientId: clients.id,
+				totalPurchasesValue: sql<number>`COALESCE(${statsByClientSubquery.totalPurchasesValue}, 0)`,
+				totalPurchasesQty: sql<number>`COALESCE(${statsByClientSubquery.totalPurchasesQty}, 0)`,
+				firstPurchaseDate: statsByClientSubquery.firstPurchaseDate,
+				lastPurchaseDate: statsByClientSubquery.lastPurchaseDate,
+			})
+			.from(clients)
+			.leftJoin(statsByClientSubquery, eq(clients.id, statsByClientSubquery.clientId))
+			.where(and(...clientConditions))
+			.orderBy(orderByClause, asc(clients.nome), asc(clients.id))
+			.offset(skip)
+			.limit(PAGE_SIZE);
 	}
-
-	const paginatedClientsWithStats = await db
-		.select({
-			clientId: clients.id,
-			totalPurchasesValue: sql<number>`COALESCE(${statsByClientSubquery.totalPurchasesValue}, 0)`,
-			totalPurchasesQty: sql<number>`COALESCE(${statsByClientSubquery.totalPurchasesQty}, 0)`,
-			firstPurchaseDate: statsByClientSubquery.firstPurchaseDate,
-			lastPurchaseDate: statsByClientSubquery.lastPurchaseDate,
-		})
-		.from(clients)
-		.leftJoin(statsByClientSubquery, eq(clients.id, statsByClientSubquery.clientId))
-		.where(and(...clientConditions))
-		.orderBy(orderByClause, asc(clients.nome))
-		.offset(skip)
-		.limit(PAGE_SIZE);
-
 	const clientIds = paginatedClientsWithStats.map((client) => client.clientId);
 	if (clientIds.length === 0) {
 		return {

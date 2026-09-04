@@ -515,6 +515,7 @@ export const fiscalOutboundDocuments = newTable(
       "data_declaracao_presenca_consumidor",
     ),
     dataUltimaSincronizacao: timestamp("data_ultima_sincronizacao"),
+    provedorProcessadoEm: timestamp("provedor_processado_em"),
     dataAutorizacao: timestamp("data_autorizacao"),
     dataCancelamento: timestamp("data_cancelamento"),
     // Document chaining (cancellation/return references)

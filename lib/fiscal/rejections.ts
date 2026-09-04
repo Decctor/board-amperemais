@@ -114,6 +114,13 @@ export const FISCAL_REJECTION_CATALOG: Record<string, TFiscalRejectionInfo> = {
 		categoria: "CADASTRO",
 		reenviavel: true,
 	},
+	"866": {
+		descricao: "Ausência de troco quando os pagamentos superam o total da nota",
+		causaProvavel: "A soma dos pagamentos ficou maior que o vNF e o documento nao informou vTroco.",
+		acaoSugerida: "Corrija a composição do total da nota ou informe o troco real e reenvie.",
+		categoria: "TRIBUTARIO",
+		reenviavel: true,
+	},
 };
 
 const FALLBACK_REJECTION: TFiscalRejectionInfo = {

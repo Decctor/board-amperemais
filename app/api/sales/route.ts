@@ -10,16 +10,14 @@ import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } fro
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
 import { getValidClientSaleWhere } from "@/lib/sales/valid-sale";
 import { resolveSaleEditability } from "@/lib/sales/sale-editability";
-import {
-	classifySalePaymentTransactions,
-	computeSaleFinancialStatus,
-	computeSaleFiscalStatus,
-	groupSalePaymentsByMethod,
-} from "@/lib/sales/utils";
+import { classifySalePaymentTransactions, computeSaleFinancialStatus, computeSaleFiscalStatus, groupSalePaymentsByMethod } from "@/lib/sales/utils";
 import {
 	SaleFinancialDerivedStatusEnum,
 	SaleFiscalDerivedStatusEnum,
+	DeliveryModeEnum,
+	PaymentMethodEnum,
 	SaleStatusEnum,
+	type TDeliveryModeEnum,
 	type TPaymentMethodEnum,
 	type TSaleFinancialDerivedStatusEnum,
 	type TSaleFiscalDerivedStatusEnum,
@@ -44,7 +42,7 @@ import {
 	fiscalOutboundDocuments,
 } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, notInArray, or, type SQL, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import z from "zod";
 
@@ -206,6 +204,18 @@ const GetSalesInputSchema = z.object({
 		.transform((val) =>
 			val ? val.split(",").filter((status): status is TSaleFiscalDerivedStatusEnum => SaleFiscalDerivedStatusEnum.safeParse(status).success) : [],
 		),
+	// Vendas com ao menos um recebimento em algum dos métodos informados (OR entre os métodos).
+	paymentMethods: z
+		.string({ invalid_type_error: "Tipo inválido para os métodos de pagamento." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? val.split(",").filter((method): method is TPaymentMethodEnum => PaymentMethodEnum.safeParse(method).success) : [])),
+	// Modalidade de atendimento da venda (presencial, retirada, entrega, comanda): qualquer uma das informadas.
+	deliveryModes: z
+		.string({ invalid_type_error: "Tipo inválido para as modalidades de atendimento." })
+		.optional()
+		.nullable()
+		.transform((val) => (val ? val.split(",").filter((mode): mode is TDeliveryModeEnum => DeliveryModeEnum.safeParse(mode).success) : [])),
 	// Status comercial da venda. O histórico mistura orçamento, condicional e venda confirmada de
 	// propósito — quem acabou de criar um orçamento espera achá-lo aqui. O filtro é para triagem.
 	saleStatuses: z
@@ -392,6 +402,17 @@ function buildSaleErpDetail({
 	};
 }
 
+/**
+ * Filtros de status financeiro/fiscal derivado.
+ *
+ * As agregações partem das tabelas do ERP (lançamentos/documentos, centenas de linhas por
+ * organização), nunca de `sales` (dezenas de milhares): agrupar todas as vendas só para derivar
+ * o status de cada uma custava ~300-500 ms por consulta. As vendas sem lançamento/documento são
+ * resolvidas por anti-join (`NOT IN` sobre o conjunto de `venda_id`, filtrado por `IS NOT NULL`
+ * para não anular o `NOT IN`). A condição precisa ser não-correlacionada: a consulta relacional
+ * (`db.query.sales.findMany`) apelida a tabela raiz como `sales`, então um `EXISTS` correlacionado
+ * a `ampmais_sales` falha.
+ */
 function getFinancialStatusCondition({ orgId, statuses, now }: { orgId: string; statuses: TSaleFinancialDerivedStatusEnum[]; now: Date }) {
 	const receiptCount = sql<number>`count(${financialTransactions.id})`;
 	const settledTotal = sql<number>`coalesce(sum(case when ${financialTransactions.dataEfetivacao} is not null then ${financialTransactions.valor} else 0 end), 0)`;
@@ -409,10 +430,12 @@ function getFinancialStatusCondition({ orgId, statuses, now }: { orgId: string; 
 		when ${overdueCount} > 0 then 'EM_ATRASO'
 		else 'PENDENTE'
 	end`;
-	const matchingSaleIds = db
+	// Vendas com ao menos um lançamento: agregação dirigida por `accounting_entries`, com inner join
+	// em `sales` apenas para ler `valor_total` das vendas envolvidas.
+	const salesWithEntries = db
 		.select({ id: sales.id })
-		.from(sales)
-		.leftJoin(accountingEntries, and(eq(accountingEntries.vendaId, sales.id), eq(accountingEntries.organizacaoId, orgId)))
+		.from(accountingEntries)
+		.innerJoin(sales, eq(sales.id, accountingEntries.vendaId))
 		.leftJoin(
 			financialTransactions,
 			and(
@@ -422,22 +445,33 @@ function getFinancialStatusCondition({ orgId, statuses, now }: { orgId: string; 
 				or(isNull(financialTransactions.provedorStatus), notInArray(financialTransactions.provedorStatus, ["CANCELADO", "ESTORNADO"])),
 			),
 		)
-		.where(eq(sales.organizacaoId, orgId))
+		.where(and(eq(accountingEntries.organizacaoId, orgId), isNotNull(accountingEntries.vendaId)))
 		.groupBy(sales.id, sales.valorTotal)
 		.having(inArray(derivedStatus, statuses));
+	const conditions: SQL[] = [inArray(sales.id, salesWithEntries)];
 
-	return inArray(sales.id, matchingSaleIds);
+	// Vendas sem nenhum lançamento: o status depende só de `valor_total` (mesma ordem do CASE acima).
+	const hasNoEntry = notInArray(
+		sales.id,
+		db
+			.select({ id: accountingEntries.vendaId })
+			.from(accountingEntries)
+			.where(and(eq(accountingEntries.organizacaoId, orgId), isNotNull(accountingEntries.vendaId))),
+	);
+	if (statuses.includes("NAO_GERADO")) conditions.push(and(gt(sales.valorTotal, 0), hasNoEntry)!);
+	if (statuses.includes("RECEBIDA")) conditions.push(and(lte(sales.valorTotal, 0), hasNoEntry)!);
+
+	return or(...conditions)!;
 }
 
 function getFiscalStatusCondition({ orgId, statuses }: { orgId: string; statuses: TSaleFiscalDerivedStatusEnum[] }) {
-	const documentCount = sql<number>`count(${fiscalOutboundDocuments.id})`;
 	const hasStatus = (...internalStatuses: TFiscalDocumentLifecycleStatusEnum[]) =>
 		sql<boolean>`coalesce(bool_or(${fiscalOutboundDocuments.statusInterno} in (${sql.join(
 			internalStatuses.map((status) => sql`${status}`),
 			sql`, `,
 		)})), false)`;
+	// Só avaliado para vendas com documento; `NAO_EMITIDO` é o anti-join abaixo.
 	const derivedStatus = sql<TSaleFiscalDerivedStatusEnum>`case
-		when ${documentCount} = 0 then 'NAO_EMITIDO'
 		when ${hasStatus("AUTORIZADO")} then 'AUTORIZADO'
 		when ${hasStatus("EM_PROCESSAMENTO", "CANCELAMENTO_PENDENTE")} then 'EM_PROCESSAMENTO'
 		when ${hasStatus("RASCUNHO", "PRONTO_PARA_ENVIO")} then 'PENDENTE'
@@ -447,15 +481,52 @@ function getFiscalStatusCondition({ orgId, statuses }: { orgId: string; statuses
 		when ${hasStatus("INUTILIZADO")} then 'INUTILIZADO'
 		else 'PENDENTE'
 	end`;
-	const matchingSaleIds = db
-		.select({ id: sales.id })
-		.from(sales)
-		.leftJoin(fiscalOutboundDocuments, and(eq(fiscalOutboundDocuments.vendaId, sales.id), eq(fiscalOutboundDocuments.organizacaoId, orgId)))
-		.where(eq(sales.organizacaoId, orgId))
-		.groupBy(sales.id)
+	const salesWithDocuments = db
+		.select({ id: fiscalOutboundDocuments.vendaId })
+		.from(fiscalOutboundDocuments)
+		.where(and(eq(fiscalOutboundDocuments.organizacaoId, orgId), isNotNull(fiscalOutboundDocuments.vendaId)))
+		.groupBy(fiscalOutboundDocuments.vendaId)
 		.having(inArray(derivedStatus, statuses));
+	const conditions: SQL[] = [inArray(sales.id, salesWithDocuments)];
 
-	return inArray(sales.id, matchingSaleIds);
+	if (statuses.includes("NAO_EMITIDO")) {
+		conditions.push(
+			notInArray(
+				sales.id,
+				db
+					.select({ id: fiscalOutboundDocuments.vendaId })
+					.from(fiscalOutboundDocuments)
+					.where(and(eq(fiscalOutboundDocuments.organizacaoId, orgId), isNotNull(fiscalOutboundDocuments.vendaId))),
+			),
+		);
+	}
+
+	return or(...conditions)!;
+}
+
+/**
+ * Vendas com ao menos um recebimento (ENTRADA não cancelada/estornada) em algum dos métodos.
+ * Mesmo critério de recebimento usado em `getSalesErpSummaries` para os chips; dirigido pelos
+ * lançamentos (índice de venda_id), como os demais filtros do ERP.
+ */
+function getPaymentMethodCondition({ orgId, methods }: { orgId: string; methods: TPaymentMethodEnum[] }) {
+	const salesWithMethod = db
+		.selectDistinct({ id: accountingEntries.vendaId })
+		.from(accountingEntries)
+		.innerJoin(
+			financialTransactions,
+			and(eq(financialTransactions.lancamentoContabilId, accountingEntries.id), eq(financialTransactions.organizacaoId, orgId)),
+		)
+		.where(
+			and(
+				eq(accountingEntries.organizacaoId, orgId),
+				isNotNull(accountingEntries.vendaId),
+				eq(financialTransactions.tipo, "ENTRADA"),
+				or(isNull(financialTransactions.provedorStatus), notInArray(financialTransactions.provedorStatus, ["CANCELADO", "ESTORNADO"])),
+				inArray(financialTransactions.metodo, methods),
+			),
+		);
+	return inArray(sales.id, salesWithMethod);
 }
 
 async function getSales({ input, sessionUser }: { input: TGetSalesInput; sessionUser: TAuthUserSession }) {
@@ -477,6 +548,8 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 		totalMax,
 		financialStatuses,
 		fiscalStatuses,
+		paymentMethods,
+		deliveryModes,
 		saleStatuses,
 	} = input;
 
@@ -703,7 +776,7 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 		};
 	}
 	const conditions = [eq(sales.organizacaoId, userOrgId)];
-	if (!orgHasERPAccess && (financialStatuses.length > 0 || fiscalStatuses.length > 0)) {
+	if (!orgHasERPAccess && (financialStatuses.length > 0 || fiscalStatuses.length > 0 || paymentMethods.length > 0)) {
 		throw new createHttpError.Forbidden("Sua organização não possui acesso aos filtros financeiros e fiscais do ERP.");
 	}
 
@@ -730,7 +803,9 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	if (totalMax !== null && totalMax !== undefined) conditions.push(lte(sales.valorTotal, totalMax));
 	if (financialStatuses.length > 0) conditions.push(getFinancialStatusCondition({ orgId: userOrgId, statuses: financialStatuses, now: new Date() })!);
 	if (fiscalStatuses.length > 0) conditions.push(getFiscalStatusCondition({ orgId: userOrgId, statuses: fiscalStatuses })!);
+	if (paymentMethods.length > 0) conditions.push(getPaymentMethodCondition({ orgId: userOrgId, methods: paymentMethods }));
 	if (saleStatuses.length > 0) conditions.push(inArray(sales.statusVenda, saleStatuses));
+	if (deliveryModes.length > 0) conditions.push(inArray(sales.entregaModalidade, deliveryModes));
 	if (productIds && productIds.length > 0) {
 		conditions.push(
 			inArray(
@@ -763,113 +838,132 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	const skip = PAGE_SIZE * (input.page - 1);
 	const limit = PAGE_SIZE;
 
-	const salesResultPromise = db.query.sales.findMany({
-		where: and(...conditions),
-		with: {
-			integracao: {
-				columns: {
-					tipo: true,
-					apelido: true,
-				},
-			},
-			cliente: {
-				columns: {
-					id: true,
-					nome: true,
-					telefone: true,
-					localizacaoCep: true,
-					localizacaoEstado: true,
-					localizacaoCidade: true,
-					localizacaoBairro: true,
-					localizacaoLogradouro: true,
-					localizacaoNumero: true,
-					localizacaoComplemento: true,
-					primeiraCompraData: true,
-				},
-			},
-			vendedor: {
-				columns: {
-					id: true,
-					nome: true,
-					avatarUrl: true,
-				},
-			},
-			parceiro: {
-				columns: {
-					id: true,
-					nome: true,
-					avatarUrl: true,
-				},
-			},
-			itens: {
-				columns: {
-					id: true,
-					quantidade: true,
-					valorVendaUnitario: true,
-					valorTotalDesconto: true,
-					valorVendaTotalLiquido: true,
-				},
-				with: {
-					produto: {
-						columns: {
-							id: true,
-							nome: true,
+	// Duas etapas: primeiro só os IDs da página (consulta leve, ordenada e paginada), depois a
+	// hidratação relacional restrita a esses IDs. Numa consulta única, quando o planejador
+	// subestimava os filtros do ERP, ele varria todas as vendas da organização executando os
+	// LATERAL joins de cada uma antes de filtrar — minutos, até estourar o timeout.
+	const salesPagePromise = db
+		.select({ id: sales.id })
+		.from(sales)
+		.where(and(...conditions))
+		.orderBy(desc(sales.dataVenda), desc(sales.id))
+		.offset(skip)
+		.limit(limit);
+	const [salesMatched, salesPage] = await Promise.all([salesMatchedPromise, salesPagePromise]);
+	const salesPageIds = salesPage.map((sale) => sale.id);
+
+	const salesHydrated =
+		salesPageIds.length === 0
+			? []
+			: await db.query.sales.findMany({
+					where: inArray(sales.id, salesPageIds),
+					with: {
+						integracao: {
+							columns: {
+								tipo: true,
+								apelido: true,
+							},
+						},
+						cliente: {
+							columns: {
+								id: true,
+								nome: true,
+								telefone: true,
+								localizacaoCep: true,
+								localizacaoEstado: true,
+								localizacaoCidade: true,
+								localizacaoBairro: true,
+								localizacaoLogradouro: true,
+								localizacaoNumero: true,
+								localizacaoComplemento: true,
+								primeiraCompraData: true,
+							},
+						},
+						vendedor: {
+							columns: {
+								id: true,
+								nome: true,
+								avatarUrl: true,
+							},
+						},
+						parceiro: {
+							columns: {
+								id: true,
+								nome: true,
+								avatarUrl: true,
+							},
+						},
+						itens: {
+							columns: {
+								id: true,
+								quantidade: true,
+								valorVendaUnitario: true,
+								valorTotalDesconto: true,
+								valorVendaTotalLiquido: true,
+							},
+							with: {
+								produto: {
+									columns: {
+										id: true,
+										nome: true,
+									},
+								},
+							},
+						},
+						transacoesCashback: {
+							columns: {
+								id: true,
+								valor: true,
+								tipo: true,
+								status: true,
+								expiracaoData: true,
+								dataInsercao: true,
+								saldoValorAnterior: true,
+								saldoValorPosterior: true,
+							},
+							with: {
+								programa: {
+									columns: {
+										id: true,
+										titulo: true,
+									},
+								},
+							},
+						},
+						atribuicaoCampanhaConversao: {
+							columns: {
+								id: true,
+								dataInteracao: true,
+								dataConversao: true,
+								tempoParaConversaoMinutos: true,
+								atribuicaoReceita: true,
+							},
+							with: {
+								campanha: {
+									columns: {
+										id: true,
+										titulo: true,
+										cashbackGeracaoTipo: true,
+										cashbackGeracaoValor: true,
+									},
+								},
+								interacao: {
+									columns: {
+										id: true,
+										titulo: true,
+										dataEnvio: true,
+									},
+								},
+							},
 						},
 					},
-				},
-			},
-			transacoesCashback: {
-				columns: {
-					id: true,
-					valor: true,
-					tipo: true,
-					status: true,
-					expiracaoData: true,
-					dataInsercao: true,
-					saldoValorAnterior: true,
-					saldoValorPosterior: true,
-				},
-				with: {
-					programa: {
-						columns: {
-							id: true,
-							titulo: true,
-						},
-					},
-				},
-			},
-			atribuicaoCampanhaConversao: {
-				columns: {
-					id: true,
-					dataInteracao: true,
-					dataConversao: true,
-					tempoParaConversaoMinutos: true,
-					atribuicaoReceita: true,
-				},
-				with: {
-					campanha: {
-						columns: {
-							id: true,
-							titulo: true,
-							cashbackGeracaoTipo: true,
-							cashbackGeracaoValor: true,
-						},
-					},
-					interacao: {
-						columns: {
-							id: true,
-							titulo: true,
-							dataEnvio: true,
-						},
-					},
-				},
-			},
-		},
-		orderBy: (fields, { desc }) => desc(fields.dataVenda),
-		offset: skip,
-		limit: limit,
+				});
+	// Preserva a ordem da página: `IN (...)` não garante ordem.
+	const salesHydratedById = new Map(salesHydrated.map((sale) => [sale.id, sale]));
+	const salesResult = salesPageIds.flatMap((id) => {
+		const sale = salesHydratedById.get(id);
+		return sale ? [sale] : [];
 	});
-	const [salesMatched, salesResult] = await Promise.all([salesMatchedPromise, salesResultPromise]);
 	const salesMatchedCount = salesMatched[0]?.count ?? 0;
 	const totalPages = Math.ceil(salesMatchedCount / PAGE_SIZE);
 

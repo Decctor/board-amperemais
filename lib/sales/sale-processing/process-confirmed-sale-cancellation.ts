@@ -40,11 +40,15 @@ export async function processConfirmedSaleCancellation({
 		throw new createHttpError.BadRequest("Cancele o documento fiscal da venda antes de cancelar o pedido.");
 	}
 
-	// Estorno de gaveta: total de dinheiro efetivamente recebido nesta venda (só métodos de gaveta).
-	const cashEfetivado = sale.lancamentosContabeis
-		.flatMap((entry) => entry.transacoesFinanceiras)
-		.filter((transaction) => transaction.metodo === "DINHEIRO" && transaction.dataEfetivacao)
-		.reduce((acc, transaction) => acc + transaction.valor, 0);
+	// Estorno de gaveta: dinheiro efetivamente recebido nesta venda, líquido do troco já entregue
+	// (SAÍDA em DINHEIRO do próprio lançamento) — devolve-se ao cliente o que ele pagou de fato.
+	const cashEfetivado = Math.max(
+		0,
+		sale.lancamentosContabeis
+			.flatMap((entry) => entry.transacoesFinanceiras)
+			.filter((transaction) => transaction.metodo === "DINHEIRO" && transaction.dataEfetivacao)
+			.reduce((acc, transaction) => acc + (transaction.tipo === "SAIDA" ? -transaction.valor : transaction.valor), 0),
+	);
 	// A sessão é uma lente: o estorno cai sempre na sessão atualmente aberta, nunca na original (imutável).
 	const activeSession = sessaoVendaId ? await resolveActiveSalesSession({ orgId: organizationId, sessaoVendaId }) : null;
 
