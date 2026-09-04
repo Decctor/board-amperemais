@@ -6,7 +6,7 @@ import { countIncrementalConversionsExpr, sumIncrementalRevenueExpr } from "@/li
 import { db } from "@/services/drizzle";
 import { campaignConversions, campaigns, interactions } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
-import { and, asc, count, eq, gte, inArray, lte, sql, sum } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, lte, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import z from "zod";
@@ -35,11 +35,11 @@ async function getCampaignStatsOverall({ input, session }: { input: TGetCampaign
 	if (!startDate) {
 		const firstInteraction = await db
 			.select({
-				date: interactions.dataInsercao,
+				date: interactions.dataEnvio,
 			})
 			.from(interactions)
 			.where(eq(interactions.organizacaoId, userOrgId))
-			.orderBy(asc(interactions.dataInsercao))
+			.orderBy(asc(interactions.dataEnvio))
 			.limit(1);
 		startDate = firstInteraction[0]?.date ?? dayjs().subtract(30, "day").toDate();
 	}
@@ -67,8 +67,8 @@ async function getCampaignStatsOverall({ input, session }: { input: TGetCampaign
 				eq(interactions.organizacaoId, userOrgId),
 				eq(interactions.tipo, "ENVIO-MENSAGEM"),
 				inArray(interactions.statusEnvio, [...CAMPAIGN_SENT_INTERACTION_STATUSES]),
-				gte(interactions.dataInsercao, startDate),
-				lte(interactions.dataInsercao, endDate),
+				gte(interactions.dataEnvio, startDate),
+				lte(interactions.dataEnvio, endDate),
 			),
 		)
 		.groupBy(interactions.campanhaId);

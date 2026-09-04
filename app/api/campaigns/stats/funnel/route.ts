@@ -33,11 +33,11 @@ async function getCampaignFunnel({ input, session }: { input: TGetCampaignFunnel
 	if (!startDate) {
 		const firstInteraction = await db
 			.select({
-				date: interactions.dataInsercao,
+				date: interactions.dataEnvio,
 			})
 			.from(interactions)
 			.where(eq(interactions.organizacaoId, userOrgId))
-			.orderBy(asc(interactions.dataInsercao))
+			.orderBy(asc(interactions.dataEnvio))
 			.limit(1);
 		startDate = firstInteraction[0]?.date ?? dayjs().subtract(30, "day").toDate();
 	}
@@ -53,8 +53,8 @@ async function getCampaignFunnel({ input, session }: { input: TGetCampaignFunnel
 				eq(interactions.organizacaoId, userOrgId),
 				eq(interactions.tipo, "ENVIO-MENSAGEM"),
 				inArray(interactions.statusEnvio, [...CAMPAIGN_SENT_INTERACTION_STATUSES]),
-				gte(interactions.dataInsercao, startDate),
-				lte(interactions.dataInsercao, endDate),
+				gte(interactions.dataEnvio, startDate),
+				lte(interactions.dataEnvio, endDate),
 			),
 		);
 
@@ -72,8 +72,8 @@ async function getCampaignFunnel({ input, session }: { input: TGetCampaignFunnel
 				eq(interactions.organizacaoId, userOrgId),
 				eq(interactions.tipo, "ENVIO-MENSAGEM"),
 				inArray(interactions.statusEnvio, [...CAMPAIGN_SENT_INTERACTION_STATUSES]),
-				gte(interactions.dataInsercao, startDate),
-				lte(interactions.dataInsercao, endDate),
+				gte(interactions.dataEnvio, startDate),
+				lte(interactions.dataEnvio, endDate),
 			),
 		)
 		.groupBy(interactions.statusEnvio);

@@ -84,7 +84,7 @@ async function getGraphDataForPeriod({
 	if (graphType === "interactions") {
 		const interactionData = await db
 			.select({
-				date: sql<string>`date_trunc('day', ${interactions.dataInsercao})::text`,
+				date: sql<string>`date_trunc('day', ${interactions.dataEnvio})::text`,
 				total: count(interactions.id),
 			})
 			.from(interactions)
@@ -93,13 +93,13 @@ async function getGraphDataForPeriod({
 					eq(interactions.organizacaoId, userOrgId),
 					eq(interactions.tipo, "ENVIO-MENSAGEM"),
 					inArray(interactions.statusEnvio, [...CAMPAIGN_SENT_INTERACTION_STATUSES]),
-					gte(interactions.dataInsercao, period.after),
-					lte(interactions.dataInsercao, period.before),
+					gte(interactions.dataEnvio, period.after),
+					lte(interactions.dataEnvio, period.before),
 					...(campanhaId ? [eq(interactions.campanhaId, campanhaId)] : []),
 				),
 			)
-			.orderBy(sql`date_trunc('day', ${interactions.dataInsercao})`)
-			.groupBy(sql`date_trunc('day', ${interactions.dataInsercao})`);
+			.orderBy(sql`date_trunc('day', ${interactions.dataEnvio})`)
+			.groupBy(sql`date_trunc('day', ${interactions.dataEnvio})`);
 
 		const initialData = Object.fromEntries(periodDatesStrs.map((date) => [dayjs(date).format(groupingFormat), { value: 0 }]));
 
@@ -221,11 +221,11 @@ async function getCampaignGraph({ input, session }: { input: TGetCampaignGraphIn
 	if (!period.after) {
 		const firstInteraction = await db
 			.select({
-				date: interactions.dataInsercao,
+				date: interactions.dataEnvio,
 			})
 			.from(interactions)
 			.where(eq(interactions.organizacaoId, userOrgId))
-			.orderBy(asc(interactions.dataInsercao))
+			.orderBy(asc(interactions.dataEnvio))
 			.limit(1);
 		period.after = firstInteraction[0]?.date ?? undefined;
 		if (!period.after) throw new createHttpError.BadRequest("Não foi possível encontrar a primeira interação cadastrada.");

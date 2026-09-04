@@ -4,7 +4,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CAMPAIGN_SENT_INTERACTION_STATUSES } from "@/lib/campaigns/utils";
 import { db } from "@/services/drizzle";
 import { campaignConversions, campaigns, interactions } from "@/services/drizzle/schema";
-import { and, count, desc, eq, gte, inArray, lte, sum } from "drizzle-orm";
+import { and, count, eq, gte, inArray, lte, sum } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -77,8 +77,8 @@ async function fetchRankingForPeriod({
 		eq(interactions.tipo, "ENVIO-MENSAGEM"),
 		inArray(interactions.statusEnvio, [...CAMPAIGN_SENT_INTERACTION_STATUSES]),
 	];
-	if (startDate) interactionConditions.push(gte(interactions.dataInsercao, startDate));
-	if (endDate) interactionConditions.push(lte(interactions.dataInsercao, endDate));
+	if (startDate) interactionConditions.push(gte(interactions.dataEnvio, startDate));
+	if (endDate) interactionConditions.push(lte(interactions.dataEnvio, endDate));
 
 	// Get interactions per campaign grouped by statusEnvio to compute taxaEntrega/taxaLeitura
 	const interactionsData = await db
