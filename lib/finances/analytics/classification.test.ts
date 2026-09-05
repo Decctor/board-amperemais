@@ -28,11 +28,16 @@ test("accumulates revenue by credit side and cost/expense by debit side", () => 
 	const classification = buildDreClassification(chart);
 	const totals = accumulateCategoryTotals(
 		[
-			{ creditId: "rec-vendas-loja", debitId: "atv-caixa", total: 100 },
-			{ creditId: "atv-caixa", debitId: "cus-insumos", total: 40 },
-			{ creditId: "atv-caixa", debitId: "des-aluguel", total: 25 },
+			// Cada lançamento vira duas linhas: o crédito e o débito.
+			{ contaId: "rec-vendas-loja", natureza: "CREDITO", total: 100 },
+			{ contaId: "atv-caixa", natureza: "DEBITO", total: 100 },
+			{ contaId: "atv-caixa", natureza: "CREDITO", total: 40 },
+			{ contaId: "cus-insumos", natureza: "DEBITO", total: 40 },
+			{ contaId: "atv-caixa", natureza: "CREDITO", total: 25 },
+			{ contaId: "des-aluguel", natureza: "DEBITO", total: 25 },
 			// Crédito em receita e débito em custo no mesmo lançamento contam nos dois lados.
-			{ creditId: "rec-servicos", debitId: "cus-insumos", total: 10 },
+			{ contaId: "rec-servicos", natureza: "CREDITO", total: 10 },
+			{ contaId: "cus-insumos", natureza: "DEBITO", total: 10 },
 		],
 		classification,
 	);

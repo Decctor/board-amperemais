@@ -212,7 +212,7 @@ export function CardQuickActions({ card, organizationConfig, disabled, onPatch }
 			) : null}
 
 			<QuickActionRow label="Nota fiscal">
-				<FiscalStatusChip status={card.fiscal} />
+				<FiscalStatusChip status={card.fiscal} documentId={card.documentoFiscalId} />
 			</QuickActionRow>
 
 			{observationsText ? <QuickActionFullWidthBlock label="Observações">{observationsText}</QuickActionFullWidthBlock> : null}

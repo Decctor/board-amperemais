@@ -2,6 +2,7 @@ import type { TFiscalDocumentTypeEnum } from "@/schemas/enums";
 import { db } from "@/services/drizzle";
 import { fiscalOutboundDocuments, sales } from "@/services/drizzle/schema";
 import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { resolveFiscalDocumentProblems } from "@/lib/fiscal/problems";
 import { classifyFiscalLifecycleStatus, type TFiscalHealthBucket } from "./classify";
 import { buildSalesUniverseConditions, buildSalesUniverseIdsSubquery, type TSalesResultsFilters } from "./universe";
 
@@ -41,12 +42,18 @@ export async function getSalesResultsFiscalHealth({ filters }: { filters: TSales
 				referencia: fiscalOutboundDocuments.referencia,
 				codigoRejeicao: fiscalOutboundDocuments.codigoRejeicao,
 				mensagens: fiscalOutboundDocuments.mensagens,
+				problemas: fiscalOutboundDocuments.problemas,
 				dataInsercao: fiscalOutboundDocuments.dataInsercao,
 				valorVenda: sales.valorTotal,
 			})
 			.from(fiscalOutboundDocuments)
 			.innerJoin(sales, eq(fiscalOutboundDocuments.vendaId, sales.id))
-			.where(and(eq(fiscalOutboundDocuments.organizacaoId, filters.organizacaoId), inArray(fiscalOutboundDocuments.vendaId, buildSalesUniverseIdsSubquery(filters, "CONFIRMADA"))))
+			.where(
+				and(
+					eq(fiscalOutboundDocuments.organizacaoId, filters.organizacaoId),
+					inArray(fiscalOutboundDocuments.vendaId, buildSalesUniverseIdsSubquery(filters, "CONFIRMADA")),
+				),
+			)
 			.orderBy(fiscalOutboundDocuments.vendaId, desc(fiscalOutboundDocuments.dataInsercao)),
 		db
 			.select({ qtde: count(sales.id) })
@@ -55,7 +62,12 @@ export async function getSalesResultsFiscalHealth({ filters }: { filters: TSales
 	]);
 
 	const porTipo = new Map<TFiscalDocumentTypeEnum, ReturnType<typeof emptyBuckets>>();
-	const rejeicoes = new Map<string, { codigoRejeicao: string | null; mensagem: string | null; qtde: number }>();
+	// Agrupado pelo codigo do problema (PERFIL_FISCAL_AUSENTE, SEFAZ_778...), nao so pelo cStat:
+	// falhas de prontidao nao tem cStat e antes caiam todas em "SEM_CODIGO".
+	const rejeicoes = new Map<
+		string,
+		{ codigoRejeicao: string | null; codigoProblema: string; categoria: string; mensagem: string | null; qtde: number }
+	>();
 	const pendencias: {
 		vendaId: string;
 		documentoId: string;
@@ -64,6 +76,7 @@ export async function getSalesResultsFiscalHealth({ filters }: { filters: TSales
 		referencia: string;
 		dataInsercao: Date;
 		valorVenda: number;
+		problema: { codigo: string; categoria: string; mensagem: string; acaoSugerida: string } | null;
 	}[] = [];
 	let vendasComPendencia = { qtde: 0, valor: 0 };
 
@@ -74,9 +87,17 @@ export async function getSalesResultsFiscalHealth({ filters }: { filters: TSales
 		if (bucket === "AUTORIZADA") tipoBuckets.valorAutorizado += doc.valorVenda;
 		porTipo.set(doc.tipo, tipoBuckets);
 
+		const problemas = bucket === "REJEITADA" ? resolveFiscalDocumentProblems(doc) : [];
+		const primaryProblem = problemas.find((problem) => !problem.resolvidoAutomaticamente) ?? problemas[0] ?? null;
 		if (bucket === "REJEITADA") {
-			const key = doc.codigoRejeicao ?? doc.mensagens?.[0] ?? "SEM_CODIGO";
-			const entry = rejeicoes.get(key) ?? { codigoRejeicao: doc.codigoRejeicao ?? null, mensagem: doc.mensagens?.[0] ?? null, qtde: 0 };
+			const key = primaryProblem?.codigo ?? doc.codigoRejeicao ?? "SEM_CODIGO";
+			const entry = rejeicoes.get(key) ?? {
+				codigoRejeicao: doc.codigoRejeicao ?? null,
+				codigoProblema: key,
+				categoria: primaryProblem?.categoria ?? "OUTRO",
+				mensagem: primaryProblem?.acaoSugerida ?? doc.mensagens?.[0] ?? null,
+				qtde: 0,
+			};
 			entry.qtde += 1;
 			rejeicoes.set(key, entry);
 		}
@@ -91,6 +112,14 @@ export async function getSalesResultsFiscalHealth({ filters }: { filters: TSales
 					referencia: doc.referencia,
 					dataInsercao: doc.dataInsercao,
 					valorVenda: doc.valorVenda,
+					problema: primaryProblem
+						? {
+								codigo: primaryProblem.codigo,
+								categoria: primaryProblem.categoria,
+								mensagem: primaryProblem.mensagem,
+								acaoSugerida: primaryProblem.acaoSugerida,
+							}
+						: null,
 				});
 			}
 		}

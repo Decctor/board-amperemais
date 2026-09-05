@@ -1,4 +1,4 @@
-import { appApiHandler } from "@/lib/app-api";
+import { errorHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { db } from "@/services/drizzle";
 import { organizations } from "@/services/drizzle/schema";
@@ -59,6 +59,11 @@ async function updateOrganizationColors(request: NextRequest, { params }: RouteP
 	});
 }
 
-export const PATCH = appApiHandler({
-	PATCH: updateOrganizationColors,
-});
+// `appApiHandler` nao repassa o contexto de rota (params); o handler precisa dele para o orgId.
+export async function PATCH(request: NextRequest, context: RouteParams) {
+	try {
+		return await updateOrganizationColors(request, context);
+	} catch (error) {
+		return errorHandler(error);
+	}
+}

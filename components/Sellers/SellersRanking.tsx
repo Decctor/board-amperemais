@@ -38,7 +38,7 @@ export default function SellersRanking({ periodAfter, periodBefore, comparingPer
 			<Ranking.Panel>
 				<Ranking.Provider>
 					<Ranking.Header>
-						<Ranking.Title>{RANKING_LABEL_MAP[rankingBy]}</Ranking.Title>
+						<Ranking.Title>{RANKING_LABEL_MAP[rankingBy ?? "sales-total-value"]}</Ranking.Title>
 						<Ranking.Actions>
 							<Ranking.SortButton
 								active={rankingBy === "sales-total-value"}

@@ -12,6 +12,7 @@ import ClientProfileBlock from "./Blocks/Profile";
 import ClientSocialsBlock from "./Blocks/Socials";
 import ClientTagsBlock from "./Blocks/Tags";
 import { useClientById } from "@/lib/queries/clients";
+import type { TClientTagIconEnum } from "@/schemas/enums";
 import { useEffect } from "react";
 
 type ControlClientProps = {
@@ -97,14 +98,15 @@ function ControlClient({ clientId, closeModal, callbacks }: ControlClientProps) 
 		if (!client) return;
 
 		redefineState({
-			client,
+			// Cliente antigo pode nao ter indicador de IE; o formulario exige um valor.
+			client: { ...client, indicadorInscricaoEstadual: client.indicadorInscricaoEstadual ?? "NAO_CONTRIBUINTE" },
 			clientLocations: client.localizacoes,
 			clientTags: client.tagReferencias.map((reference) => ({
 				id: reference.id,
 				clienteTagId: reference.clienteTagId,
 				tag: {
 					titulo: reference.tag.titulo,
-					icone: reference.tag.icone,
+					icone: reference.tag.icone as TClientTagIconEnum,
 					cor: reference.tag.cor,
 					corForeground: reference.tag.corForeground,
 				},

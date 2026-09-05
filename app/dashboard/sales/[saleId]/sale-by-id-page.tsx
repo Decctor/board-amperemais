@@ -15,7 +15,13 @@ import { getAgeFromBirthdayDate } from "@/lib/dates";
 import { getErrorMessage } from "@/lib/errors";
 import { appRoutes } from "@/lib/navigation/routes";
 import { formatDateAsLocale, formatDateBirthdayAsLocale, formatNameAsInitials, formatToMoney, formatToPhone } from "@/lib/formatting";
-import { getFiscalRejectionInfo } from "@/lib/fiscal/rejections";
+import { FiscalProblemCta } from "@/components/Fiscal/FiscalProblemCta";
+import {
+	FISCAL_PROBLEM_CATEGORY_LABELS,
+	findFiscalAction,
+	formatRemainingTime,
+	pickPrimaryFiscalProblem,
+} from "@/components/Fiscal/fiscal-problem-presentation";
 import { PAYMENT_METHOD_LABELS } from "@/lib/payments/labels";
 import { SALE_FINANCIAL_STATUS_PRESENTATION, SALE_FISCAL_STATUS_PRESENTATION } from "@/lib/sales/status-presentation";
 import { mapInternalFiscalStatus } from "@/lib/sales/utils";
@@ -104,9 +110,11 @@ export default function SaleByIdPage({
 	userCanEditSales,
 	userCanReconcileClients,
 	userCanViewFinances,
+	userFiscalPermissions,
 }: SaleByIdPageProps) {
-	// `orgHasERPAccess` e `userFiscalPermissions` não são lidos aqui de propósito: o gate real é o
-	// da API, que devolve `erp: null` sem o módulo e `erp.fiscal: null` sem permissão fiscal.
+	// `orgHasERPAccess` não é lido aqui de propósito: o gate real é o da API, que devolve
+	// `erp: null` sem o módulo e `erp.fiscal: null` sem permissão fiscal. `userFiscalPermissions`
+	// só decide se a CTA de resolver um problema fiscal (ex.: perfil do produto) fica habilitada.
 	// Duplicar a regra no cliente criaria duas fontes de verdade que podem divergir.
 	const { data: sale, isLoading, isError, error, isSuccess } = useSalesById({ id: saleId });
 
@@ -169,7 +177,7 @@ export default function SaleByIdPage({
 					</div>
 					{sale.erp.fiscal ? (
 						<div className="w-full lg:w-1/2 flex">
-							<SaleFiscalSection fiscal={sale.erp.fiscal} />
+							<SaleFiscalSection fiscal={sale.erp.fiscal} canConfigureFiscal={userFiscalPermissions.configure} />
 						</div>
 					) : null}
 				</div>
@@ -712,7 +720,7 @@ function SalePaymentGroupRow({
 // porque o evento de cancelamento faz parte do próprio XML.
 const FISCAL_STATUSES_WITH_ASSETS = new Set(["AUTORIZADO", "CANCELADO"]);
 
-function SaleFiscalSection({ fiscal }: { fiscal: NonNullable<SaleErpDetail["fiscal"]> }) {
+function SaleFiscalSection({ fiscal, canConfigureFiscal }: { fiscal: NonNullable<SaleErpDetail["fiscal"]>; canConfigureFiscal: boolean }) {
 	const presentation = SALE_FISCAL_STATUS_PRESENTATION[fiscal.status];
 
 	return (
@@ -729,7 +737,7 @@ function SaleFiscalSection({ fiscal }: { fiscal: NonNullable<SaleErpDetail["fisc
 			) : (
 				<div className="w-full flex flex-col gap-2">
 					{fiscal.documentos.map((document) => (
-						<SaleFiscalDocumentRow key={document.id} document={document} />
+						<SaleFiscalDocumentRow key={document.id} document={document} canConfigureFiscal={canConfigureFiscal} />
 					))}
 				</div>
 			)}
@@ -737,15 +745,22 @@ function SaleFiscalSection({ fiscal }: { fiscal: NonNullable<SaleErpDetail["fisc
 	);
 }
 
-function SaleFiscalDocumentRow({ document }: { document: NonNullable<SaleErpDetail["fiscal"]>["documentos"][number] }) {
+function SaleFiscalDocumentRow({
+	document,
+	canConfigureFiscal,
+}: {
+	document: NonNullable<SaleErpDetail["fiscal"]>["documentos"][number];
+	canConfigureFiscal: boolean;
+}) {
 	// `statusInterno` é o ciclo de vida do documento (RASCUNHO, CANCELAMENTO_PENDENTE...), mais
 	// granular que o status derivado da venda. A mesma tradução que o cabeçalho usa.
 	const derivedStatus = mapInternalFiscalStatus(document.statusInterno);
 	const presentation = derivedStatus ? SALE_FISCAL_STATUS_PRESENTATION[derivedStatus] : null;
 	const hasAssets = FISCAL_STATUSES_WITH_ASSETS.has(document.statusInterno);
-	const rejection = getFiscalRejectionInfo(document.codigoRejeicao);
 	const isFailed = derivedStatus === "REJEITADO" || derivedStatus === "ERRO";
-	const providerMessages = document.mensagens?.filter((message) => message?.trim()) ?? [];
+	const primaryProblem = isFailed ? pickPrimaryFiscalProblem(document.problemas ?? []) : null;
+	const cancelAction = document.statusInterno === "AUTORIZADO" ? findFiscalAction(document.acoes, "CANCELAR") : null;
+	const cancelRemaining = cancelAction?.prazoLimite ? formatRemainingTime(cancelAction.prazoLimite) : null;
 	// Nota de homologação não tem valor fiscal. Sem esta marca, ela se lê como uma nota real.
 	const isHomologation = document.ambiente === "HOMOLOGACAO";
 	const openAsset = (asset: "xml" | "pdf") =>
@@ -776,24 +791,38 @@ function SaleFiscalDocumentRow({ document }: { document: NonNullable<SaleErpDeta
 				</div>
 			</div>
 
-			{/* Nota rejeitada sem explicação é um beco sem saída: o código sozinho não diz o que fazer.
-			    Sem código catalogado (típico de ERRO, que não vem da SEFAZ), a mensagem do provedor
-			    é o único sinal — melhor mostrá-la crua do que não mostrar nada. */}
-			{rejection ? (
-				<div className="w-full flex flex-col gap-0.5 rounded-md bg-destructive/10 px-2.5 py-2">
-					<span className="text-xs font-bold text-destructive">
-						Rejeição {document.codigoRejeicao} · {rejection.descricao}
-					</span>
-					<span className="text-xs text-destructive/90">{rejection.acaoSugerida}</span>
-				</div>
-			) : isFailed && providerMessages.length > 0 ? (
-				<div className="w-full flex flex-col gap-0.5 rounded-md bg-destructive/10 px-2.5 py-2">
-					{document.codigoRejeicao ? <span className="text-xs font-bold text-destructive">Rejeição {document.codigoRejeicao}</span> : null}
-					{providerMessages.map((message) => (
-						<span key={message} className="text-xs text-destructive/90">
-							{message}
+			{/* Nota rejeitada sem explicação é um beco sem saída: o problema vem como dado (categoria,
+			    mensagem, ação sugerida e alvo) e a CTA resolve o alvo daqui mesmo — perfil fiscal do
+			    produto, série, certificado — sem passar pelo módulo fiscal. */}
+			{isFailed ? (
+				<div className="w-full flex flex-wrap items-start justify-between gap-2 rounded-md bg-destructive/10 px-2.5 py-2">
+					<div className="min-w-0 flex flex-col gap-0.5">
+						<span className="text-xs font-bold text-destructive">
+							{document.codigoRejeicao ? `Rejeição ${document.codigoRejeicao}` : "Falha na emissão"}
+							{primaryProblem ? ` · ${FISCAL_PROBLEM_CATEGORY_LABELS[primaryProblem.categoria]}` : ""}
 						</span>
-					))}
+						<span className="text-xs text-destructive/90">
+							{primaryProblem?.mensagem ?? document.mensagens?.[0] ?? "Sem detalhe registrado pelo provedor."}
+						</span>
+						{primaryProblem ? <span className="text-[11px] text-muted-foreground">{primaryProblem.acaoSugerida}</span> : null}
+					</div>
+					{primaryProblem && !primaryProblem.resolvidoAutomaticamente ? (
+						<FiscalProblemCta problem={primaryProblem} vendaId={document.vendaId} canConfigureFiscal={canConfigureFiscal} />
+					) : null}
+				</div>
+			) : null}
+
+			{/* Autorizada: a janela de cancelamento é a informação que muda o que o operador faz a seguir. */}
+			{cancelAction ? (
+				<div className="w-full flex flex-wrap items-center justify-between gap-2 rounded-md bg-secondary/60 px-2.5 py-1.5">
+					<span className="text-[11px] text-muted-foreground">
+						{cancelAction.disponivel
+							? `Cancelamento disponível por mais ${cancelRemaining ?? "alguns minutos"}.`
+							: `${cancelAction.motivoIndisponivel ?? "Cancelamento indisponível."}${cancelAction.alternativas.includes("DEVOLUCAO") ? " Saída: NF-e de devolução." : ""}`}
+					</span>
+					<Button type="button" variant="outline" size="sm" className="h-6 gap-1 px-2 text-[0.6rem] font-bold" asChild>
+						<Link href={appRoutes.fiscal.document(document.id)}>{cancelAction.disponivel ? "CANCELAR NOTA" : "GERAR DEVOLUÇÃO"}</Link>
+					</Button>
 				</div>
 			) : null}
 
@@ -1027,6 +1056,7 @@ function SaleCancelButton({ sale, userCanDeleteSales }: { sale: TGetSalesOutputB
 					valorTotal={sale.valorTotal}
 					clienteNome={sale.cliente?.nome}
 					exigeCancelamentoFiscal={editability.cancelamentoExigeFiscal}
+					documentosFiscais={sale.erp?.fiscal?.documentos ?? []}
 					closeModal={() => setCancelDialogIsOpen(false)}
 				/>
 			) : null}

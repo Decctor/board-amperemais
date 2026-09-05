@@ -107,7 +107,8 @@ export default function CheckoutSheet() {
 		orderState.updateReward,
 	]);
 	const visibleSteps = getShopCheckoutSteps(benefitCapabilities);
-	const stepIndex = visibleSteps.indexOf(checkoutStep);
+	// "CARRINHO" nao e um passo do checkout: indexOf devolve -1 e o progresso fica em zero.
+	const stepIndex = visibleSteps.indexOf(checkoutStep as (typeof visibleSteps)[number]);
 	const stepProgress = stepIndex >= 0 ? ((stepIndex + 1) / visibleSteps.length) * 100 : 0;
 
 	const handleBack = () => {

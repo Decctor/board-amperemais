@@ -50,7 +50,7 @@ async function rejectPoiTransactionRequest({ requestId, input }: { requestId: st
 }
 export type TRejectPoiTransactionRequestOutput = Awaited<ReturnType<typeof rejectPoiTransactionRequest>>;
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ requestId: string }> }) {
+export async function POST(request: NextRequest) {
 	try {
 		const searchParams = request.nextUrl.searchParams;
 		const requestId = searchParams.get("requestId");

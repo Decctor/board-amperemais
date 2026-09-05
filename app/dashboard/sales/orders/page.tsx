@@ -18,5 +18,12 @@ export default async function SalesOrders() {
 		return <UnauthorizedPage message="Você não possui permissão para visualizar pedidos." />;
 	}
 
-	return <SalesOrdersPage organization={organizacao} canEditSales={permissoes.vendas.editar} canDeleteSales={permissoes.vendas.excluir} />;
+	return (
+		<SalesOrdersPage
+			organization={organizacao}
+			canEditSales={permissoes.vendas.editar}
+			canDeleteSales={permissoes.vendas.excluir}
+			fiscalPermissions={permissoes.fiscal}
+		/>
+	);
 }

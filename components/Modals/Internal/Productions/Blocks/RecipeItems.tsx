@@ -205,12 +205,7 @@ function RecipeInputTableRow({ item, gridRow, gridBounds, handleUpdate, handleRe
 					<DeleteRowButton onRemove={handleRemove} ariaLabel="Remover insumo" />
 				</div>
 				<MobileEditableField label="Quantidade">
-					<EditableNumberCell
-						value={item.quantidade ?? 0}
-						ariaLabel="Editar quantidade"
-						min={0}
-						onCommit={(quantidade) => handleUpdate({ quantidade })}
-					/>
+					<EditableNumberCell value={item.quantidade ?? 0} ariaLabel="Editar quantidade" min={0} onCommit={(quantidade) => handleUpdate({ quantidade })} />
 				</MobileEditableField>
 			</div>
 		</div>
@@ -479,8 +474,8 @@ function DraftRecipeOutputRow({
 type ProductItemLike = {
 	produtoId: string;
 	produtoVarianteId?: string | null;
-	produto?: { id?: string; nome: string; codigo: string | null; unidade?: string | null; imagemCapaUrl: string | null } | null;
-	produtoVariante?: { id?: string; nome: string; codigo: string | null; imagemCapaUrl: string | null } | null;
+	produto?: { id?: string; nome: string; codigo?: string | null; unidade?: string | null; imagemCapaUrl?: string | null } | null;
+	produtoVariante?: { id?: string; nome: string; codigo?: string | null; imagemCapaUrl?: string | null } | null;
 };
 
 function ProductCell<TItem extends ProductItemLike>({

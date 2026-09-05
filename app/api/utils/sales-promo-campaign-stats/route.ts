@@ -62,10 +62,7 @@ export type TCampaignStatsOutput = {
 	message: string;
 };
 
-async function getCampaignStats({
-	input,
-	session,
-}: { input: TGetCampaignStatsInput; session: TAuthUserSession }): Promise<TCampaignStatsOutput> {
+async function getCampaignStats({ input, session }: { input: TGetCampaignStatsInput; session: TAuthUserSession }): Promise<TCampaignStatsOutput> {
 	const userOrgId = session.membership?.organizacao.id;
 	if (!userOrgId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
@@ -84,7 +81,7 @@ async function getCampaignStats({
 	}
 
 	// Extract campaign data
-	const campaignData = campaign.valor as {
+	const campaignData = campaign.valor as unknown as {
 		identificador: "SALES_PROMO_CAMPAIGN";
 		dados: {
 			titulo: string;

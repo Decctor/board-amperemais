@@ -2,6 +2,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } fr
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { appRoutes } from "@/lib/navigation/routes";
 import type { TDashboardCapability } from "@/lib/access/capabilities";
+import { FiscalPendingSidebarBadge } from "@/components/Fiscal/FiscalPendingSidebarBadge";
 import { filterNavigationItems } from "@/lib/access/navigation";
 import {
 	ArrowRightLeft,
@@ -62,6 +63,8 @@ export type TSidebarItem = {
 	title: string;
 	url: string | null;
 	icon: React.ReactNode;
+	// Contagem viva ao lado do titulo (ex.: pendencias fiscais). Renderizado so quando > 0.
+	badge?: React.ReactNode;
 	items: TSidebarItem[] | null;
 };
 
@@ -374,6 +377,7 @@ const SidebarConfig: TSidebarConfigItemWithAccess[] = [
 				title: "Fiscal",
 				url: appRoutes.fiscal.root(),
 				icon: <BookText className="size-4" />,
+				badge: <FiscalPendingSidebarBadge />,
 				items: null,
 			},
 			{

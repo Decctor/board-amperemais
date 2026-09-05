@@ -10,7 +10,7 @@ import type { TGetProductStatsInput, TGetProductStatsOutput } from "@/app/api/pr
 import type { TGetProductsGraphInput, TGetProductsGraphOutput } from "@/app/api/products/stats/graph/route";
 import type { TGetProductsOverallStatsInput, TGetProductsOverallStatsOutput } from "@/app/api/products/stats/overall/route";
 import type { TGetProductsRankingInput, TGetProductsRankingOutput } from "@/app/api/products/stats/ranking/route";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { useDebounceMemo } from "../hooks/use-debounce";
@@ -613,6 +613,29 @@ async function fetchProductFiscalProfileById(productFiscalProfileId: string) {
 		console.log("Error running fetchProductFiscalProfileById", error);
 		throw error;
 	}
+}
+
+/**
+ * Quais produtos do carrinho nao tem perfil fiscal ativo. Uma query por produto (endpoint
+ * existente), cacheada por id; so roda quando `enabled` — o checkout liga isto apenas com a
+ * emissao automatica ativa, para avisar antes da nota falhar.
+ */
+export function useProductsMissingFiscalProfile({ productIds, enabled = true }: { productIds: string[]; enabled?: boolean }) {
+	const uniqueIds = [...new Set(productIds)].sort();
+	const results = useQueries({
+		queries: uniqueIds.map((productId) => ({
+			queryKey: ["product-fiscal-profiles-by-product-id", productId],
+			queryFn: () => fetchProductFiscalProfilesByProductId(productId),
+			enabled,
+			staleTime: 60_000,
+			retry: false,
+		})),
+	});
+	const missingProductIds = uniqueIds.filter((_, index) => results[index]?.isSuccess && (results[index]?.data?.length ?? 0) === 0);
+	return {
+		missingProductIds,
+		isLoading: results.some((result) => result.isLoading),
+	};
 }
 
 export function useProductFiscalProfilesByProductId({ productId }: { productId: string }) {

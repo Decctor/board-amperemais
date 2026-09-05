@@ -156,6 +156,10 @@ export function OnboardingPage({ user, initialStage, existingOrganization }: Onb
 				terminologia: state.cashback.terminologia,
 				modalidadeDescontosPermitida: state.cashback.modalidadeDescontosPermitida,
 				modalidadeRecompensasPermitida: state.cashback.modalidadeRecompensasPermitida,
+				// Superficies de resgate: mesmo default do schema (todas liberadas) — o onboarding nao pergunta.
+				resgatePermitirViaPos: true,
+				resgatePermitirViaPontoIntegracao: true,
+				resgatePermitirViaLojaDigital: true,
 				acumuloTipo: state.cashback.acumuloTipo,
 				acumuloValor: state.cashback.acumuloValor,
 				acumuloValorParceiro: state.cashback.acumuloValorParceiro,

@@ -38,7 +38,7 @@ export default function FinancialTransactionSummaryBlock({ transaction }: Financ
 						{typeConfig ? (
 							<Chip.Root size="xs" shape="xl" className={cn(typeConfig.colors.background, typeConfig.colors.text)}>
 								<Chip.Icon>
-									{isValidElement(typeConfig.icon)
+									{isValidElement<{ className?: string }>(typeConfig.icon)
 										? cloneElement(typeConfig.icon, {
 												className: cn(CHIP_XS_ICON_CLASS, typeConfig.icon.props.className),
 											})

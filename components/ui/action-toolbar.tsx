@@ -149,7 +149,7 @@ function ActionToolbarOverflowItem({ icon: Icon, children, asChild, onClick }: A
 	}
 
 	return (
-		<DropdownMenuItem onClick={onClick} className="flex items-center gap-2">
+		<DropdownMenuItem onClick={onClick as React.MouseEventHandler<HTMLDivElement> | undefined} className="flex items-center gap-2">
 			{renderIcon(Icon)}
 			{children}
 		</DropdownMenuItem>

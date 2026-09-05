@@ -502,6 +502,9 @@ export const fiscalOutboundDocuments = newTable(
     proximaTentativaEm: timestamp("proxima_tentativa_em"),
     bloqueadoEm: timestamp("bloqueado_em"),
     codigoRejeicao: varchar("codigo_rejeicao", { length: 10 }),
+    // Problemas estruturados da ultima falha (JSON de TFiscalProblem[]): codigo, alvo e acao.
+    // `mensagens` guarda o texto bruto; isto e o que a UI transforma em CTA.
+    problemas: text("problemas"),
     presencaConsumidorDeclarada: fiscalOperationConsumerPresenceEnum(
       "presenca_consumidor_declarada",
     ),

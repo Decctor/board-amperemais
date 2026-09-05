@@ -1,7 +1,7 @@
 import { isManagedFulfillmentSaleModel } from "@/lib/sales/fulfillment-channels/policy";
 import { resolveSaleEditability } from "@/lib/sales/sale-editability";
 import { classifySalePaymentTransactions, extractPaymentObservacoesFromTitle, type SalePaymentTransactionInput } from "@/lib/sales/utils";
-import { computeSaleFinancialStatus, computeSaleFiscalStatus } from "@/lib/sales/utils";
+import { computeSaleFinancialStatus, computeSaleFiscalStatus, mapInternalFiscalStatus } from "@/lib/sales/utils";
 import type { TIntegrationTipoEnum, TSaleAttendanceStatusEnum } from "@/schemas/enums";
 
 type SaleFulfillmentRow = {
@@ -20,7 +20,7 @@ type SaleFulfillmentRow = {
 	tabId?: string | null;
 	integracao?: { tipo: TIntegrationTipoEnum; apelido: string | null } | null;
 	cliente: { id: string; nome: string; telefone: string | null } | null;
-	documentosFiscais: { statusInterno: string | null; dataInsercao: Date }[];
+	documentosFiscais: { id?: string; statusInterno: string | null; documentoOrigemId?: string | null; dataInsercao: Date }[];
 	lancamentosContabeis: {
 		id: string;
 		transacoesFinanceiras: {
@@ -40,8 +40,23 @@ type SaleFulfillmentRow = {
 	}[];
 };
 
+/**
+ * Documento que responde pelo status fiscal derivado da venda: o mais recente entre os que mapeiam
+ * para esse status. É o alvo do popover do chip fiscal no card (abrir, baixar, resolver problema).
+ */
+function resolveFiscalStatusDocumentId(
+	documents: SaleFulfillmentRow["documentosFiscais"],
+	derivedStatus: ReturnType<typeof computeSaleFiscalStatus>,
+) {
+	const match = [...documents]
+		.sort((a, b) => b.dataInsercao.getTime() - a.dataInsercao.getTime())
+		.find((document) => mapInternalFiscalStatus(document.statusInterno) === derivedStatus);
+	return match?.id ?? null;
+}
+
 export function mapSaleRowToFulfillmentCard(sale: SaleFulfillmentRow) {
 	const now = new Date();
+	const fiscal = computeSaleFiscalStatus({ documents: sale.documentosFiscais });
 	const rawTransactions: SalePaymentTransactionInput[] = sale.lancamentosContabeis.flatMap((entry) =>
 		entry.transacoesFinanceiras.map((transaction) => ({
 			...transaction,
@@ -81,7 +96,8 @@ export function mapSaleRowToFulfillmentCard(sale: SaleFulfillmentRow) {
 		pagamentos: classification.todas,
 		resumoPagamentos: classification.resumo,
 		pagamentoObservacoes: paymentNotes === sale.observacoes ? null : paymentNotes,
-		fiscal: computeSaleFiscalStatus({ documents: sale.documentosFiscais }),
+		fiscal,
+		documentoFiscalId: resolveFiscalStatusDocumentId(sale.documentosFiscais, fiscal),
 		editabilidade: resolveSaleEditability({
 			statusVenda: sale.statusVenda,
 			statusAtendimento: sale.statusAtendimento,

@@ -26,7 +26,17 @@ import {
   type TFiscalTaxGroupWithRules,
 } from "./engine";
 import { FiscalReadinessError } from "./errors";
+import {
+  buildFiscalProblem,
+  buildSefazProblem,
+  buildValidationProblems,
+  serializeFiscalProblems,
+  toFiscalProblemsFromError,
+  type TFiscalProblem,
+} from "./problems";
 import { computeSaleTaxation } from "./taxation-context";
+import { assertFiscalDocumentActionAvailable } from "./document-actions";
+import { loadFiscalDocumentActions } from "./document-actions-loader";
 import { ManualFiscalProvider } from "./providers/manual";
 import { SpedyFiscalProvider } from "./providers/spedy";
 import {
@@ -322,6 +332,22 @@ async function addFiscalDocumentEvent({
   return event;
 }
 
+// Rejeicao/erro devolvido pelo provedor: com cStat vira problema SEFAZ catalogado; sem codigo,
+// a mensagem e classificada por padrao (instabilidade, credenciais, payload recusado).
+function buildProviderOutcomeProblems(
+  codigoStatus: string | null | undefined,
+  messages: string[],
+): TFiscalProblem[] {
+  if (codigoStatus) return [buildSefazProblem(codigoStatus, messages[0] ?? null)];
+  if (messages.length === 0)
+    return [
+      buildFiscalProblem("ERRO_DESCONHECIDO", {
+        mensagem: "O provedor não informou o motivo da falha.",
+      }),
+    ];
+  return messages.flatMap((message) => toFiscalProblemsFromError(null, message));
+}
+
 async function applyProviderDocumentDetails(
   documentoId: string,
   details: TProviderDocumentDetails,
@@ -353,6 +379,7 @@ async function applyProviderDocumentDetails(
   if (["AUTORIZADO", "CANCELADO", "INUTILIZADO"].includes(details.statusInterno)) {
     rejectionPatch.codigoRejeicao = null;
     rejectionPatch.mensagens = [];
+    rejectionPatch.problemas = null;
   } else if (
     (details.statusInterno === "REJEITADO" || details.statusInterno === "ERRO") &&
     shouldReplaceActionableRejection({
@@ -363,6 +390,9 @@ async function applyProviderDocumentDetails(
   ) {
     rejectionPatch.codigoRejeicao = details.codigoStatus ?? null;
     rejectionPatch.mensagens = providerMessages;
+    rejectionPatch.problemas = serializeFiscalProblems(
+      buildProviderOutcomeProblems(details.codigoStatus, providerMessages),
+    );
   } else if (details.statusInterno === "REJEITADO" || details.statusInterno === "ERRO") {
     rejectionPreserved = Boolean(current.codigoRejeicao || current.mensagens?.length);
   }
@@ -677,49 +707,78 @@ function buildDestinatarioSnapshot(venda: TSaleForFiscal | null) {
   };
 }
 
+// Erro de prontidao com o problema estruturado embutido: a mensagem continua a mesma para o
+// historico, e o problema (codigo + alvo) e o que a UI transforma em CTA.
+function readinessError(
+  message: string,
+  code: Parameters<typeof buildFiscalProblem>[0],
+  alvo?: Partial<TFiscalProblem["alvo"]>,
+) {
+  return new FiscalReadinessError(message, [
+    buildFiscalProblem(code, { mensagem: message, alvo }),
+  ]);
+}
+
 function assertFiscalReadiness(context: TFiscalSaleContext) {
   const fiscalConfig = context.organizacao.fiscalConfiguracao;
   if (!fiscalConfig)
-    throw new FiscalReadinessError(
+    throw readinessError(
       "Configuracao fiscal da organizacao nao encontrada.",
+      "CONFIGURACAO_FISCAL_INCOMPLETA",
     );
   if (!context.serie?.id)
-    throw new FiscalReadinessError(
+    throw readinessError(
       "Serie fiscal ativa nao encontrada para esta emissao.",
+      "SERIE_AUSENTE",
     );
   if (!context.operacao?.id)
-    throw new FiscalReadinessError(
+    throw readinessError(
       "Perfil de operacao fiscal nao encontrado para esta emissao.",
+      "PERFIL_OPERACAO_AUSENTE",
     );
   if (!fiscalConfig.cpfCnpj)
-    throw new FiscalReadinessError(
+    throw readinessError(
       "CPF/CNPJ fiscal da organizacao nao configurado.",
+      "CONFIGURACAO_FISCAL_INCOMPLETA",
     );
   if (!fiscalConfig.nomeRazaoSocial)
-    throw new FiscalReadinessError(
+    throw readinessError(
       "Razao social fiscal da organizacao nao configurada.",
+      "CONFIGURACAO_FISCAL_INCOMPLETA",
     );
   if (
     context.venda.entregaModalidade === "ENTREGA" &&
     !isValidCpfCnpj(context.venda.cliente?.cpfCnpj ?? "") &&
     !context.classificacaoPresencaExcepcional
   ) {
-    throw new FiscalReadinessError(
+    throw readinessError(
       "Informe um CPF ou CNPJ valido para o destinatario da entrega antes de emitir o documento fiscal.",
+      "CLIENTE_SEM_DOCUMENTO",
+      {
+        id: context.venda.cliente?.id ?? context.venda.clienteId ?? null,
+        rotulo: context.venda.cliente?.nome ?? null,
+      },
     );
   }
 
   // CSC/token e companyApiKey sao credenciais da emissao via Spedy; no provedor MANUAL nao ha envio.
   if (context.organizacao.fiscalProvedor === "SPEDY") {
     if (!fiscalConfig.spedy?.companyApiKey)
-      throw new FiscalReadinessError(
+      throw readinessError(
         "Empresa fiscal nao sincronizada com a Spedy.",
+        "EMPRESA_PROVEDOR_NAO_SINCRONIZADA",
       );
     if (context.operacao.tipoDocumento === "NFCE") {
       if (!fiscalConfig.spedy?.nfce?.csc)
-        throw new FiscalReadinessError("CSC da NFC-e nao configurado.");
+        throw readinessError(
+          "CSC da NFC-e nao configurado.",
+          "NFCE_CREDENCIAIS_AUSENTES",
+        );
       if (!fiscalConfig.spedy?.nfce?.tokenId)
-        throw new FiscalReadinessError("Token da NFC-e nao configurado.");
+        throw readinessError(
+          "Token da NFC-e nao configurado.",
+          "NFCE_CREDENCIAIS_AUSENTES",
+        );
     }
   }
   if (
@@ -732,16 +791,50 @@ function assertFiscalReadiness(context: TFiscalSaleContext) {
     );
     // A visao fiscal ja sai liquida do troco (loadSalePayments); bloqueia apenas pagamento insuficiente.
     if (paymentTotal + 0.01 < context.venda.valorTotal) {
-      throw new FiscalReadinessError(
+      throw readinessError(
         "A soma dos pagamentos e menor que o valor total da venda.",
+        "PAGAMENTOS_INSUFICIENTES",
+        { id: context.venda.id },
       );
     }
   }
 
-  if (context.perfisProdutos.length === 0)
+  if (context.perfisProdutos.length === 0) {
+    // Nenhum item tem perfil: um problema por produto, para a UI oferecer o cadastro de cada um.
+    const produtos = new Map<string, string | null>();
+    for (const item of context.venda.itens)
+      produtos.set(item.produtoId, resolveSaleItemLabel(item.metadados));
     throw new FiscalReadinessError(
       "Nenhum perfil fiscal de produto encontrado para a venda.",
+      [...produtos.entries()].map(([produtoId, rotulo]) =>
+        buildFiscalProblem("PERFIL_FISCAL_AUSENTE", {
+          mensagem: rotulo
+            ? `${rotulo}: produto sem perfil fiscal cadastrado.`
+            : "Produto sem perfil fiscal cadastrado.",
+          alvo: { tipo: "PRODUTO", id: produtoId, rotulo },
+        }),
+      ),
     );
+  }
+}
+
+function resolveSaleItemLabel(metadados: unknown): string | null {
+  if (!metadados || typeof metadados !== "object") return null;
+  const record = metadados as Record<string, unknown>;
+  for (const key of ["nomeProduto", "descricao", "nome"]) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+function buildSaleProductLabelResolver(context: TFiscalSaleContext) {
+  const labels = new Map<string, string | null>();
+  for (const item of context.venda.itens) {
+    if (!labels.has(item.produtoId))
+      labels.set(item.produtoId, resolveSaleItemLabel(item.metadados));
+  }
+  return (produtoId: string) => labels.get(produtoId) ?? null;
 }
 
 async function buildSaleFiscalContext(
@@ -824,7 +917,7 @@ async function buildSaleFiscalContext(
       ambiente,
     }));
   if (!serie)
-    throw new createHttpError.BadRequest("Serie fiscal nao configurada.");
+    throw readinessError("Serie fiscal nao configurada.", "SERIE_AUSENTE");
 
   const [perfisProdutos, pagamentos] = await Promise.all([
     loadProductFiscalProfilesForSale(venda),
@@ -858,6 +951,10 @@ function assertFiscalTaxationValid(context: TFiscalSaleContext) {
   if (hasBlockingErrors(taxation.erros)) {
     throw new FiscalReadinessError(
       `Validacao fiscal falhou: ${formatValidationMessages(taxation.erros).join("; ")}`,
+      buildValidationProblems(
+        taxation.erros,
+        buildSaleProductLabelResolver(context),
+      ),
     );
   }
 }
@@ -967,6 +1064,7 @@ async function prepareFiscalDocumentForSend({
 
   await patchFiscalDocument(documento.id, {
     codigoRejeicao: null,
+    problemas: null,
     statusInterno: "PRONTO_PARA_ENVIO",
     ambiente: context.organizacao.fiscalConfiguracao?.ambiente ?? "HOMOLOGACAO",
     referencia,
@@ -1038,6 +1136,7 @@ export async function enqueueFiscalDocument(input: TEmitirDocumentoInput) {
     await patchFiscalDocument(documento.id, {
       statusInterno: "ERRO",
       mensagens: [message],
+      problemas: serializeFiscalProblems(toFiscalProblemsFromError(error, message)),
       proximaTentativaEm: null,
     });
     await addFiscalDocumentEvent({
@@ -1178,6 +1277,7 @@ export async function emitFiscalDocument(input: TEmitirDocumentoInput) {
     await patchFiscalDocument(documento.id, {
       statusInterno: "ERRO",
       mensagens: [message],
+      problemas: serializeFiscalProblems(toFiscalProblemsFromError(error, message)),
     });
     await addFiscalDocumentEvent({
       documentoFiscalId: documento.id,
@@ -1278,6 +1378,11 @@ export async function cancelFiscalDocument(input: TCancelDocumentInput) {
     throw new createHttpError.NotFound(
       "Organizacao do documento fiscal nao encontrada.",
     );
+  // Mesma regra da UI (status + janela legal): nao chama a SEFAZ para ouvir "nao".
+  assertFiscalDocumentActionAvailable(
+    await loadFiscalDocumentActions(documento, organizacao.fiscalProvedor),
+    "CANCELAR",
+  );
 
   await addFiscalDocumentEvent({
     documentoFiscalId: documento.id,
@@ -1324,20 +1429,16 @@ export async function registerFiscalCorrection(input: TFiscalCorrectionInput) {
   });
   if (!documento)
     throw new createHttpError.NotFound("Documento fiscal nao encontrado.");
-  if (documento.tipo !== "NFE")
-    throw new createHttpError.BadRequest(
-      "Carta de correcao disponivel apenas para NF-e.",
-    );
-  if (documento.statusInterno !== "AUTORIZADO")
-    throw new createHttpError.BadRequest(
-      "Carta de correcao disponivel apenas para documento autorizado.",
-    );
 
   const organizacao = await loadFiscalOrganization(documento.organizacaoId);
   if (!organizacao)
     throw new createHttpError.NotFound(
       "Organizacao do documento fiscal nao encontrada.",
     );
+  assertFiscalDocumentActionAvailable(
+    await loadFiscalDocumentActions(documento, organizacao.fiscalProvedor),
+    "CARTA_CORRECAO",
+  );
 
   const provider = resolveFiscalProvider(organizacao.fiscalProvedor);
   const result = await provider.cartaCorrecaoDocumento(
@@ -1370,20 +1471,16 @@ export async function inutilizeFiscalDocument(
   });
   if (!documento)
     throw new createHttpError.NotFound("Documento fiscal nao encontrado.");
-  if (
-    documento.statusInterno === "AUTORIZADO" ||
-    documento.status === "AUTORIZADA"
-  ) {
-    throw new createHttpError.BadRequest(
-      "Nao e possivel inutilizar a numeracao de um documento autorizado.",
-    );
-  }
 
   const organizacao = await loadFiscalOrganization(documento.organizacaoId);
   if (!organizacao)
     throw new createHttpError.NotFound(
       "Organizacao do documento fiscal nao encontrada.",
     );
+  assertFiscalDocumentActionAvailable(
+    await loadFiscalDocumentActions(documento, organizacao.fiscalProvedor),
+    "INUTILIZAR",
+  );
 
   const provider = resolveFiscalProvider(organizacao.fiscalProvedor);
   const result = await provider.inutilizarNumeracao(
@@ -1434,17 +1531,15 @@ export async function createReturnFiscalDocument({
     throw new createHttpError.NotFound(
       "Documento fiscal original nao encontrado.",
     );
-  if (original.statusInterno !== "AUTORIZADO")
+  const organizacao = await loadFiscalOrganization(organizationId);
+  assertFiscalDocumentActionAvailable(
+    await loadFiscalDocumentActions(original, organizacao?.fiscalProvedor),
+    "DEVOLUCAO",
+  );
+  // A matriz ja garante status AUTORIZADO, venda e chave; os narrows abaixo sao para o compilador.
+  if (!original.vendaId || !original.chaveAcesso)
     throw new createHttpError.BadRequest(
-      "A devolucao so pode ser gerada a partir de um documento autorizado.",
-    );
-  if (!original.vendaId)
-    throw new createHttpError.BadRequest(
-      "Documento original sem venda vinculada.",
-    );
-  if (!original.chaveAcesso)
-    throw new createHttpError.BadRequest(
-      "Documento original sem chave de acesso.",
+      "Documento original sem venda vinculada ou sem chave de acesso.",
     );
 
   let profileId = operationProfileId ?? null;

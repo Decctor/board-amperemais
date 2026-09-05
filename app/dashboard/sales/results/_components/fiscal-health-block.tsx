@@ -5,7 +5,7 @@ import { formatToMoney } from "@/lib/formatting";
 import { appRoutes } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
-import { FileCheck2 } from "lucide-react";
+import { FileCheck2, Wrench } from "lucide-react";
 import Link from "next/link";
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = { NFCE: "NFC-e", NFE: "NF-e", NFSE: "NFS-e" };
@@ -57,9 +57,13 @@ export function FiscalHealthBlock({ fiscal, qtdeVendas }: FiscalHealthBlockProps
 					<h1 className="text-xs font-medium leading-none tracking-tight">EMISSÃO FISCAL</h1>
 				</div>
 				{fiscal.vendasComPendencia.qtde > 0 ? (
-					<span className="rounded-md bg-red-500/10 px-1.5 py-0.5 text-[0.6rem] font-medium text-red-700 dark:text-red-400">
-						{fiscal.vendasComPendencia.qtde} com pendência · {formatToMoney(fiscal.vendasComPendencia.valor)}
-					</span>
+					<Link
+						href={appRoutes.fiscal.pending()}
+						className="flex items-center gap-1 rounded-md bg-red-500/10 px-1.5 py-0.5 text-[0.6rem] font-medium text-red-700 transition-colors hover:bg-red-500/20 dark:text-red-400"
+					>
+						<Wrench className="h-3 w-3" />
+						{fiscal.vendasComPendencia.qtde} com pendência · {formatToMoney(fiscal.vendasComPendencia.valor)} · resolver
+					</Link>
 				) : null}
 			</div>
 
@@ -95,13 +99,17 @@ export function FiscalHealthBlock({ fiscal, qtdeVendas }: FiscalHealthBlockProps
 				<div className="flex flex-col gap-1">
 					<span className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Motivos de rejeição</span>
 					{fiscal.rejeicoes.map((rejeicao) => (
-						<div key={`${rejeicao.codigoRejeicao ?? "sem-codigo"}-${rejeicao.mensagem ?? ""}`} className="flex items-start justify-between gap-2 text-xs">
+						<Link
+							key={rejeicao.codigoProblema}
+							href={appRoutes.fiscal.pending()}
+							className="flex items-start justify-between gap-2 rounded px-1 text-xs transition-colors hover:bg-muted/50"
+						>
 							<span className="min-w-0 truncate">
-								{rejeicao.codigoRejeicao ? <span className="mr-1 font-mono text-[10px] text-muted-foreground">{rejeicao.codigoRejeicao}</span> : null}
+								<span className="mr-1 font-mono text-[10px] text-muted-foreground">{rejeicao.codigoRejeicao ?? rejeicao.categoria}</span>
 								{rejeicao.mensagem ?? "Sem mensagem do provedor"}
 							</span>
 							<span className="shrink-0 tabular-nums text-muted-foreground">{rejeicao.qtde}×</span>
-						</div>
+						</Link>
 					))}
 				</div>
 			) : null}
@@ -113,14 +121,17 @@ export function FiscalHealthBlock({ fiscal, qtdeVendas }: FiscalHealthBlockProps
 						{fiscal.ultimasPendencias.map((pendencia) => (
 							<Link
 								key={pendencia.documentoId}
-								href={appRoutes.sales.details(pendencia.vendaId)}
+								href={appRoutes.fiscal.document(pendencia.documentoId)}
 								className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs transition-colors hover:bg-muted/50"
 							>
 								<div className="flex min-w-0 flex-col">
 									<span className="truncate font-medium">
 										{DOCUMENT_TYPE_LABELS[pendencia.tipo] ?? pendencia.tipo} · {LIFECYCLE_LABELS[pendencia.statusInterno] ?? pendencia.statusInterno}
 									</span>
-									<span className="text-[10px] text-muted-foreground">{dayjs(pendencia.dataInsercao).format("DD/MM HH:mm")}</span>
+									<span className="truncate text-[10px] text-muted-foreground">
+										{dayjs(pendencia.dataInsercao).format("DD/MM HH:mm")}
+										{pendencia.problema ? ` · ${pendencia.problema.mensagem}` : ""}
+									</span>
 								</div>
 								<span className="shrink-0 tabular-nums">{formatToMoney(pendencia.valorVenda)}</span>
 							</Link>

@@ -1,11 +1,12 @@
-import { gateway, generateText, experimental_transcribe as transcribe } from "ai";
+import { gateway, generateText, transcribe } from "ai";
 
 export async function handleAIAudioProcessing(fileBuffer: Buffer, mimeType: string): Promise<{ transcription: string; summary: string }> {
 	console.log("[AI_MEDIA] Processing audio file");
 
 	try {
 		const transcriptionResponse = await transcribe({
-			model: gateway("openai/whisper-1"),
+			// AI SDK 7: transcricao passa pelo AI Gateway como qualquer outro modelo (sem chave da OpenAI).
+			model: gateway.transcription("openai/whisper-1"),
 			audio: fileBuffer,
 		});
 

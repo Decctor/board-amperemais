@@ -108,7 +108,10 @@ type GatewayTemplatePayload = {
 	};
 };
 
-export function parseTemplatePayloadToGatewayContent(templatePayload: GatewayTemplatePayload, options?: { fallbackText?: string }): SendMessageContent {
+export function parseTemplatePayloadToGatewayContent(
+	templatePayload: GatewayTemplatePayload,
+	options?: { fallbackText?: string },
+): SendMessageContent {
 	const components = templatePayload.template.components ?? [];
 	let media:
 		| {
@@ -364,7 +367,7 @@ export async function downloadMedia(mediaUrl: string): Promise<{ buffer: Buffer;
 			responseType: "arraybuffer",
 		});
 
-		const mimeType = response.headers["content-type"] || "application/octet-stream";
+		const mimeType = String(response.headers["content-type"] || "application/octet-stream");
 
 		return {
 			buffer: Buffer.from(response.data),

@@ -13,7 +13,6 @@ import ErrorComponent from "../Layouts/ErrorComponent";
 import LoadingComponent from "../Layouts/LoadingComponent";
 import NewOrganizationMembershipInvitation from "../Modals/OrganizationsMembershipInvitations/NewOrganizationMembershipInvitation";
 import EditUser from "../Modals/Users/EditUser";
-import NewUser from "../Modals/Users/NewUser";
 import { Button } from "../ui/button";
 
 type SettingsUsersProps = {

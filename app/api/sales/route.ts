@@ -10,6 +10,8 @@ import { DASTJS_TIME_DURATION_UNITS_MAP, getPostponedDateFromReferenceDate } fro
 import { type ImmediateProcessingData, processOrganizationInteractionsBatch, processSingleInteractionImmediately } from "@/lib/interactions";
 import { getValidClientSaleWhere } from "@/lib/sales/valid-sale";
 import { resolveSaleEditability } from "@/lib/sales/sale-editability";
+import { decorateFiscalDocuments, type TFiscalDocumentDecoration } from "@/lib/fiscal/document-actions-loader";
+import { loadFiscalOrganization } from "@/lib/fiscal/settings";
 import { classifySalePaymentTransactions, computeSaleFinancialStatus, computeSaleFiscalStatus, groupSalePaymentsByMethod } from "@/lib/sales/utils";
 import {
 	SaleFinancialDerivedStatusEnum,
@@ -25,7 +27,7 @@ import {
 	type TFiscalDocumentLifecycleStatusEnum,
 } from "@/schemas/enums";
 import { createCampaignWeeklyLimitCache } from "@/lib/interactions/campaign-weekly-limits";
-import type { TTimeDurationUnitsEnum } from "@/schemas/enums";
+import type { TFiscalDocumentStatusEnum, TFiscalDocumentTypeEnum, TTimeDurationUnitsEnum } from "@/schemas/enums";
 import { type DBTransaction, db } from "@/services/drizzle";
 import {
 	cashbackProgramBalances,
@@ -328,19 +330,45 @@ async function getSalesErpSummaries({
 
 type SaleErpDetailDocument = {
 	id: string;
-	tipo: string;
+	organizacaoId: string;
+	tipo: TFiscalDocumentTypeEnum;
+	status: TFiscalDocumentStatusEnum;
 	statusInterno: TFiscalDocumentLifecycleStatusEnum;
 	ambiente: string;
 	numero: string | null;
 	serie: string | null;
 	chaveAcesso: string | null;
+	vendaId: string | null;
+	provedorDocumentoId: string | null;
+	xmlStoragePath: string | null;
+	pdfStoragePath: string | null;
 	codigoRejeicao: string | null;
 	mensagens: string[] | null;
+	problemas: string | null;
 	documentoOrigemId: string | null;
 	dataAutorizacao: Date | null;
 	dataCancelamento: Date | null;
 	dataInsercao: Date;
 };
+
+/**
+ * Documentos fiscais da venda com `acoes` + `problemas` (mesma decoração do módulo fiscal), para
+ * que a página da venda mostre o que fazer sem recalcular regra nenhuma. Sem permissão fiscal
+ * não decora: a seção inteira é gateada por `fiscal: null` logo abaixo.
+ */
+async function decorateSaleFiscalDocuments({
+	documents,
+	organizationId,
+	userCanViewFiscal,
+}: {
+	documents: SaleErpDetailDocument[];
+	organizationId: string;
+	userCanViewFiscal: boolean;
+}): Promise<(SaleErpDetailDocument & TFiscalDocumentDecoration)[]> {
+	if (!userCanViewFiscal || documents.length === 0) return [];
+	const organization = await loadFiscalOrganization(organizationId);
+	return decorateFiscalDocuments({ documents, organizationId, provider: organization?.fiscalProvedor });
+}
 
 /**
  * Resumo ERP da venda individual: a versão detalhada do que `getSalesErpSummaries` devolve por
@@ -359,7 +387,7 @@ function buildSaleErpDetail({
 }: {
 	sale: { valorTotal: number };
 	transacoes: Parameters<typeof classifySalePaymentTransactions>[0];
-	documentosFiscais: SaleErpDetailDocument[];
+	documentosFiscais: (SaleErpDetailDocument & TFiscalDocumentDecoration)[];
 	userCanViewFiscal: boolean;
 	now?: Date;
 }) {
@@ -609,15 +637,23 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 				documentosFiscais: {
 					columns: {
 						id: true,
+						organizacaoId: true,
 						tipo: true,
+						status: true,
 						statusInterno: true,
 						ambiente: true,
 						numero: true,
 						serie: true,
 						chaveAcesso: true,
 						protocolo: true,
+						vendaId: true,
+						provedorDocumentoId: true,
+						xmlStoragePath: true,
+						pdfStoragePath: true,
 						codigoRejeicao: true,
 						mensagens: true,
+						// `problemas` (JSON) alimenta `resolveFiscalDocumentProblems`: o erro como dado, com alvo e CTA.
+						problemas: true,
 						documentoOrigemId: true,
 						dataEmissao: true,
 						dataAutorizacao: true,
@@ -754,6 +790,10 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 			transacoes,
 		});
 		const { documentosFiscais, ...saleWithoutFiscalDocuments } = sale;
+		const userCanViewFiscal = !!sessionUser.membership?.permissoes.fiscal.visualizar;
+		const documentosFiscaisDecorados = orgHasERPAccess
+			? await decorateSaleFiscalDocuments({ documents: documentosFiscais, organizationId: userOrgId, userCanViewFiscal })
+			: [];
 		return {
 			data: {
 				default: null,
@@ -765,8 +805,8 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 						? buildSaleErpDetail({
 								sale,
 								transacoes,
-								documentosFiscais,
-								userCanViewFiscal: !!sessionUser.membership?.permissoes.fiscal.visualizar,
+								documentosFiscais: documentosFiscaisDecorados,
+								userCanViewFiscal,
 							})
 						: null,
 				},

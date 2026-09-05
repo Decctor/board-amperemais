@@ -21,7 +21,7 @@ const DELIVERED_VISIBILITY_DAYS = 2;
 const SALE_FULFILLMENT_WITH = {
 	integracao: { columns: { tipo: true, apelido: true } },
 	cliente: { columns: { id: true, nome: true, telefone: true } },
-	documentosFiscais: { columns: { statusInterno: true, dataInsercao: true } },
+	documentosFiscais: { columns: { id: true, statusInterno: true, documentoOrigemId: true, dataInsercao: true } },
 	lancamentosContabeis: {
 		columns: { id: true },
 		with: {

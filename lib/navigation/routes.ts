@@ -55,6 +55,11 @@ export const appRoutes = {
 		root: () => "/dashboard/fiscal",
 		/** Abre a aba de documentos já com o menu de detalhes do documento aberto (query state via nuqs). */
 		document: (documentId: string) => `/dashboard/fiscal?view=documents&documentId=${encodeURIComponent(documentId)}`,
+		/** Aba de pendências: trabalho fiscal agrupado por causa, prazos expirando e produtos sem perfil. */
+		pending: () => "/dashboard/fiscal?view=pending",
+		/** Aba de configuração; `section` rola até o bloco (empresa, series, operation-profiles, tax-groups, certificate). */
+		configuration: (section?: "company" | "series" | "operation-profiles" | "tax-groups" | "certificate") =>
+			section ? `/dashboard/fiscal?view=configuration&section=${section}` : "/dashboard/fiscal?view=configuration",
 	},
 	catalog: {
 		products: () => "/dashboard/catalog/products",

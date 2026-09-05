@@ -36,7 +36,8 @@ export type TResolvedClientForImport = {
 
 export type TResolvedVariantForImport = {
 	produtoId: string;
-	produtoVarianteId: string;
+	// Vinculo de catalogo pode apontar para o produto sem variante; `sync-sales` ja trata o null.
+	produtoVarianteId: string | null;
 	// Snapshot dos eixos (Cor: Preto, Tamanho: G) para gravar em sale_items.metadados.
 	opcoes: Array<{ eixo: string; valor: string }>;
 };

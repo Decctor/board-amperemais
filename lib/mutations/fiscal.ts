@@ -6,6 +6,7 @@ import type { TInutilizeFiscalDocumentInput, TInutilizeFiscalDocumentOutput } fr
 import type { TManifestInboundInput, TManifestInboundOutput } from "@/app/api/fiscal/inbound/manifest/route";
 import type { TRequestInboundSyncOutput } from "@/app/api/fiscal/inbound/sync/route";
 import type { TReturnFiscalDocumentInput, TReturnFiscalDocumentOutput } from "@/app/api/fiscal/documents/return/route";
+import type { TRetryFiscalDocumentsInput, TRetryFiscalDocumentsOutput } from "@/app/api/fiscal/documents/retry/route";
 import type { TCreateFiscalDocumentOutput, TEmitFiscalDocumentInput } from "@/app/api/fiscal/documents/route";
 import type { TSyncFiscalDocumentInput, TSyncFiscalDocumentOutput } from "@/app/api/fiscal/documents/sync/route";
 import type {
@@ -112,5 +113,10 @@ export async function createFiscalTaxGroupMutation(input: TCreateFiscalTaxGroupI
 }
 export async function updateFiscalTaxGroupMutation(input: TUpdateFiscalTaxGroupInput) {
 	const { data } = await axios.put<TUpdateFiscalTaxGroupOutput>("/api/fiscal/tax-groups", input);
+	return data;
+}
+
+export async function retryFiscalDocumentsMutation(input: TRetryFiscalDocumentsInput) {
+	const { data } = await axios.post<TRetryFiscalDocumentsOutput>("/api/fiscal/documents/retry", input);
 	return data;
 }

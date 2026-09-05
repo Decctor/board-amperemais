@@ -159,8 +159,7 @@ export function OnboardingQualityBubble() {
 						<div className="relative pt-1 pb-2">
 							<Progress
 								value={percentComplete}
-								className="h-2.5 bg-secondary rounded-full"
-								indicatorClassName="bg-brand transition-all duration-700 ease-out"
+								className="h-2.5 bg-secondary rounded-full [&>[data-slot=progress-indicator]]:bg-brand [&>[data-slot=progress-indicator]]:duration-700 [&>[data-slot=progress-indicator]]:ease-out"
 							/>
 						</div>
 					</div>

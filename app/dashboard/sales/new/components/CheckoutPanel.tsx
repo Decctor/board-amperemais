@@ -44,6 +44,7 @@ type CheckoutPanelProps = {
 	organizationAutoFiscalCapable: boolean;
 	autoEmissionExceptions: TAutoEmissionExceptions;
 	canEmitFiscal: boolean;
+	canConfigureFiscal?: boolean;
 	discountAuthority?: TDiscountAuthority | null;
 	onCreateDraft: () => void;
 	onFinalizeSale: () => void;
@@ -65,6 +66,7 @@ export default function CheckoutPanel({
 	organizationAutoFiscalCapable,
 	autoEmissionExceptions,
 	canEmitFiscal,
+	canConfigureFiscal,
 	discountAuthority,
 	onCreateDraft,
 	onFinalizeSale,
@@ -161,6 +163,7 @@ export default function CheckoutPanel({
 					organizationAutoFiscalCapable={organizationAutoFiscalCapable}
 					autoEmissionExceptions={autoEmissionExceptions}
 					canEmitFiscal={canEmitFiscal}
+					canConfigureFiscal={canConfigureFiscal}
 				/>
 				{beforeActions}
 				<ActionsSection
