@@ -237,7 +237,7 @@ function Header({ className, ...props }: React.ComponentProps<"div">) {
 	return <div className={cn("flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1", className)} {...props} />;
 }
 
-/** Chip do tipo (ACÚMULO, RESGATE…). Um acúmulo liquidado perde a cor: o que importa é o estado. */
+/** Chip do tipo (ACÚMULO, RESGATE…). Um acúmulo liquidado perde a cor: o estado vem em `Status`. */
 function Type({ className }: { className?: string }) {
 	const { presentation } = useCashbackTransaction();
 	return (
@@ -265,24 +265,6 @@ function TypeLabel({ className }: { className?: string }) {
 		<span className={cn("text-sm font-semibold leading-tight", presentation.isSettled ? "text-muted-foreground" : "text-foreground", className)}>
 			{presentation.typeLabel}
 		</span>
-	);
-}
-
-/** Estado final de um acúmulo, como chip: EXPIRADO / UTILIZADO. Não renderiza nos demais casos. */
-function Lifecycle({ className }: { className?: string }) {
-	const { presentation } = useCashbackTransaction();
-	if (!presentation.isSettled) return null;
-	const expired = presentation.lifecycle === "expired";
-	return (
-		<Chip.Root
-			size="xs"
-			shape="pill"
-			className={cn("px-2 py-0.5 tracking-wide", expired ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground", className)}
-		>
-			<Chip.Label caps weight="bold">
-				{expired ? "Expirado" : "Utilizado"}
-			</Chip.Label>
-		</Chip.Root>
 	);
 }
 
@@ -323,20 +305,20 @@ function Operator({ className }: { className?: string }) {
 }
 
 /**
- * Prazo do acúmulo: "Expira" enquanto vale, "Expirou" depois. Um acúmulo utilizado não tem prazo a
- * mostrar (o chip `Lifecycle` já diz que foi usado), e os outros tipos não têm prazo. A cor fica
- * esmaecida de propósito: quem sinaliza a perda é o chip, não uma segunda linha vermelha.
+ * Situação do acúmulo, em texto: "Expira dd/mm" enquanto vale, "Expirou dd/mm" depois, "Utilizado"
+ * quando foi todo consumido em resgates. É o único portador do estado na linha (não há segundo
+ * chip), por isso o expirado fala em destrutivo. Os outros tipos não têm situação e não renderizam.
  */
-function Expiration({ format = "date", className }: { format?: "date" | "datetime"; className?: string }) {
+function Status({ format = "date", className }: { format?: "date" | "datetime"; className?: string }) {
 	const { presentation } = useCashbackTransaction();
 	const { lifecycle, expiracaoData } = presentation;
-	if (lifecycle === "none" || lifecycle === "consumed" || !expiracaoData) return null;
+	if (lifecycle === "none") return null;
+	const base = "shrink-0 text-[11px] font-medium leading-tight tabular-nums";
+	if (lifecycle === "consumed") return <span className={cn(base, "text-muted-foreground", className)}>Utilizado</span>;
+	if (!expiracaoData) return null;
 	const date = formatDateAsLocale(expiracaoData, format === "datetime");
-	return (
-		<span className={cn("shrink-0 text-[11px] font-medium leading-tight text-muted-foreground tabular-nums", className)}>
-			{lifecycle === "expired" ? `Expirou ${date}` : `Expira ${date}`}
-		</span>
-	);
+	if (lifecycle === "expired") return <span className={cn(base, "text-destructive", className)}>Expirou {date}</span>;
+	return <span className={cn(base, "text-muted-foreground", className)}>Expira {date}</span>;
 }
 
 const AMOUNT_SIZE = {
@@ -475,12 +457,11 @@ export const CashbackTransaction = {
 	Header,
 	Type,
 	TypeLabel,
-	Lifecycle,
 	Title,
 	Meta,
 	Date: MetaDate,
 	Operator,
-	Expiration,
+	Status,
 	Trailing,
 	Amount,
 	Balance,
@@ -499,9 +480,10 @@ type VariantProps = {
 
 /**
  * Bloco de saldo do cliente: a tela já é dele, então não repete o nome. Duas linhas sempre, em
- * duas colunas — à esquerda o que e quando (tipo, data), à direita quanto e até quando (valor,
- * prazo). Em 390px "data · prazo" numa linha só não cabe; dividir por coluna resolve sem quebra.
- * A hora fica no detalhe.
+ * duas colunas — à esquerda o que e quando (tipo, data), à direita quanto e a situação (valor,
+ * "Expira", "Expirou", "Utilizado"). Um chip só: o estado é texto sob o valor, não um segundo pill.
+ * Em 390px "data · prazo" numa linha só não cabe; dividir por coluna resolve sem quebra. A hora
+ * fica no detalhe.
  */
 export function ClientCashbackTransactionRow({ transaction, terminology }: VariantProps) {
 	return (
@@ -513,7 +495,6 @@ export function ClientCashbackTransactionRow({ transaction, terminology }: Varia
 					<CashbackTransaction.Body>
 						<CashbackTransaction.Header>
 							<CashbackTransaction.Type />
-							<CashbackTransaction.Lifecycle />
 						</CashbackTransaction.Header>
 						<CashbackTransaction.Meta>
 							<CashbackTransaction.Date format="date" />
@@ -521,7 +502,7 @@ export function ClientCashbackTransactionRow({ transaction, terminology }: Varia
 					</CashbackTransaction.Body>
 					<CashbackTransaction.Trailing>
 						<CashbackTransaction.Amount />
-						<CashbackTransaction.Expiration />
+						<CashbackTransaction.Status />
 					</CashbackTransaction.Trailing>
 				</CashbackTransaction.Row>
 			</CashbackTransaction.Details>
@@ -531,7 +512,7 @@ export function ClientCashbackTransactionRow({ transaction, terminology }: Varia
 
 /**
  * Lista de transações do programa: quem, por quem, quando. O prêmio resgatado aparece no ícone;
- * há largura para data com hora e prazo na mesma linha de metadados.
+ * a situação fica sob o valor, como no bloco do cliente, para as duas telas lerem igual.
  */
 export function ProgramCashbackTransactionRow({ transaction, terminology }: VariantProps) {
 	return (
@@ -543,15 +524,16 @@ export function ProgramCashbackTransactionRow({ transaction, terminology }: Vari
 						<CashbackTransaction.Header>
 							<CashbackTransaction.Title>{transaction.cliente?.nome ?? "Cliente"}</CashbackTransaction.Title>
 							<CashbackTransaction.Type />
-							<CashbackTransaction.Lifecycle />
 						</CashbackTransaction.Header>
 						<CashbackTransaction.Meta>
 							<CashbackTransaction.Operator />
 							<CashbackTransaction.Date />
-							<CashbackTransaction.Expiration format="datetime" />
 						</CashbackTransaction.Meta>
 					</CashbackTransaction.Body>
-					<CashbackTransaction.Amount />
+					<CashbackTransaction.Trailing>
+						<CashbackTransaction.Amount />
+						<CashbackTransaction.Status format="datetime" />
+					</CashbackTransaction.Trailing>
 				</CashbackTransaction.Row>
 			</CashbackTransaction.Details>
 		</CashbackTransaction.Provider>

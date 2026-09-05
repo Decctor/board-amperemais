@@ -126,7 +126,6 @@ function VariantCard({ transaction }: { transaction: TCashbackTransactionCardDat
 				<CashbackTransaction.Body>
 					<CashbackTransaction.Header>
 						<CashbackTransaction.Type />
-						<CashbackTransaction.Lifecycle />
 					</CashbackTransaction.Header>
 					<CashbackTransaction.Meta>
 						<CashbackTransaction.Date format="date" />
@@ -134,7 +133,7 @@ function VariantCard({ transaction }: { transaction: TCashbackTransactionCardDat
 				</CashbackTransaction.Body>
 				<CashbackTransaction.Trailing>
 					<CashbackTransaction.Amount />
-					<CashbackTransaction.Expiration />
+					<CashbackTransaction.Status />
 				</CashbackTransaction.Trailing>
 			</CashbackTransaction.Row>
 		</CashbackTransaction.Provider>
@@ -151,7 +150,6 @@ function VariantTitle({ transaction }: { transaction: TCashbackTransactionCardDa
 					<CashbackTransaction.Body>
 						<CashbackTransaction.Header>
 							<CashbackTransaction.TypeLabel />
-							<CashbackTransaction.Lifecycle />
 						</CashbackTransaction.Header>
 						<CashbackTransaction.Meta>
 							<CashbackTransaction.Date format="date" />
@@ -159,7 +157,7 @@ function VariantTitle({ transaction }: { transaction: TCashbackTransactionCardDa
 					</CashbackTransaction.Body>
 					<CashbackTransaction.Trailing>
 						<CashbackTransaction.Amount />
-						<CashbackTransaction.Expiration />
+						<CashbackTransaction.Status />
 					</CashbackTransaction.Trailing>
 				</CashbackTransaction.Row>
 			</CashbackTransaction.Details>
