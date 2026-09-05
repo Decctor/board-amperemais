@@ -3,8 +3,9 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { createSimplifiedSearchCondition } from "@/lib/search";
 import { db } from "@/services/drizzle";
-import { cashbackProgramBalances, clients } from "@/services/drizzle/schema";
-import { and, asc, count, desc, eq } from "drizzle-orm";
+import { cashbackProgramBalances, cashbackProgramTransactions, cashbackPrograms, clients } from "@/services/drizzle/schema";
+import { and, asc, count, desc, eq, gt, lte, sql } from "drizzle-orm";
+import dayjs from "dayjs";
 import createHttpError from "http-errors";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -39,32 +40,87 @@ const GetCashbackBalancesInputSchema = z.object({
 });
 export type TGetCashbackBalancesInput = z.infer<typeof GetCashbackBalancesInputSchema>;
 
+const EXPIRING_SOON_WINDOW_DAYS = 30;
+
+/**
+ * Quanto do saldo do cliente vence em breve, e quando vence o primeiro pedaço.
+ *
+ * Mesmo predicado do cron de aviso de expiração: acúmulos ativos com valor restante, com prazo
+ * entre hoje e o fim da janela. A janela consultada é sempre de 30 dias; a janela INFORMADA é
+ * limitada à validade do programa, porque nenhum acúmulo vence além de "agora + validade" e um
+ * programa de 15 dias diria "nos próximos 30 dias" sobre um valor que é o saldo inteiro. Limitar
+ * só o rótulo, e não a consulta, mantém as três leituras em paralelo.
+ */
+async function getClientExpiringSoon({ organizationId, clientId }: { organizationId: string; clientId: string }) {
+	const today = new Date();
+	const windowEndDate = dayjs(today).add(EXPIRING_SOON_WINDOW_DAYS, "day").endOf("day").toDate();
+
+	const [program, [aggregate]] = await Promise.all([
+		db.query.cashbackPrograms.findFirst({
+			where: eq(cashbackPrograms.organizacaoId, organizationId),
+			columns: { expiracaoRegraValidadeValor: true },
+		}),
+		db
+			.select({
+				valor: sql<number>`coalesce(sum(${cashbackProgramTransactions.valorRestante}), 0)`.mapWith(Number),
+				proximaExpiracaoData: sql<Date | null>`min(${cashbackProgramTransactions.expiracaoData})`.mapWith((value) => (value ? new Date(value) : null)),
+			})
+			.from(cashbackProgramTransactions)
+			.where(
+				and(
+					eq(cashbackProgramTransactions.organizacaoId, organizationId),
+					eq(cashbackProgramTransactions.clienteId, clientId),
+					eq(cashbackProgramTransactions.tipo, "ACÚMULO"),
+					eq(cashbackProgramTransactions.status, "ATIVO"),
+					gt(cashbackProgramTransactions.valorRestante, 0),
+					gt(cashbackProgramTransactions.expiracaoData, today),
+					lte(cashbackProgramTransactions.expiracaoData, windowEndDate),
+				),
+			),
+	]);
+
+	const validityDays = program?.expiracaoRegraValidadeValor ?? 0;
+	const janelaDias = validityDays > 0 ? Math.min(EXPIRING_SOON_WINDOW_DAYS, Math.ceil(validityDays)) : EXPIRING_SOON_WINDOW_DAYS;
+
+	return {
+		valor: aggregate?.valor ?? 0,
+		proximaExpiracaoData: aggregate?.proximaExpiracaoData ?? null,
+		janelaDias,
+	};
+}
+
 async function getCashbackBalances({ input, session }: { input: TGetCashbackBalancesInput; session: TAuthUserSession }) {
 	const organizationId = session.membership?.organizacao.id;
 	if (!organizationId) throw new createHttpError.Unauthorized("Você precisa estar vinculado a uma organização para acessar esse recurso.");
 
 	if (input.clientId) {
-		const balance = await db.query.cashbackProgramBalances.findFirst({
-			where: and(eq(cashbackProgramBalances.organizacaoId, organizationId), eq(cashbackProgramBalances.clienteId, input.clientId)),
-			columns: {
-				id: true,
-				clienteId: true,
-				programaId: true,
-				saldoValorDisponivel: true,
-				saldoValorAcumuladoTotal: true,
-				saldoValorResgatadoTotal: true,
-			},
-		});
+		const [balance, expiringSoon] = await Promise.all([
+			db.query.cashbackProgramBalances.findFirst({
+				where: and(eq(cashbackProgramBalances.organizacaoId, organizationId), eq(cashbackProgramBalances.clienteId, input.clientId)),
+				columns: {
+					id: true,
+					clienteId: true,
+					programaId: true,
+					saldoValorDisponivel: true,
+					saldoValorAcumuladoTotal: true,
+					saldoValorResgatadoTotal: true,
+				},
+			}),
+			getClientExpiringSoon({ organizationId, clientId: input.clientId }),
+		]);
 
 		return {
 			data: {
-				byClientId: balance ?? {
-					id: null,
-					clienteId: input.clientId,
-					programaId: null,
-					saldoValorDisponivel: 0,
-					saldoValorAcumuladoTotal: 0,
-					saldoValorResgatadoTotal: 0,
+				byClientId: {
+					...(balance ?? {
+						id: null,
+						clienteId: input.clientId,
+						programaId: null,
+						saldoValorDisponivel: 0,
+						saldoValorAcumuladoTotal: 0,
+						saldoValorResgatadoTotal: 0,
+					}),
+					expirandoEmBreve: expiringSoon,
 				},
 				default: null,
 			},

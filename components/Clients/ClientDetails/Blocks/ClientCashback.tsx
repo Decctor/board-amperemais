@@ -1,7 +1,7 @@
 import { CashbackTransaction, ClientCashbackTransactionRow } from "@/components/CashbackPrograms/CashbackTransactionCard";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
-import { formatCashbackValue, getCashbackUnitLabel } from "@/lib/formatting";
+import { formatCashbackValue, formatDateAsLocale, getCashbackUnitLabel } from "@/lib/formatting";
 import { useCashbackProgram, useCashbackProgramTransactionsByClientId, useClientCashbackBalance } from "@/lib/queries/cashback-programs";
 import { BadgePercent } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -43,6 +43,8 @@ export default function ClientCashback({ clientId }: ClientCashbackProps) {
 		() => formatCashbackValue(balance?.saldoValorDisponivel ?? 0, terminology),
 		[balance?.saldoValorDisponivel, terminology],
 	);
+	// Só aparece quando há algo a perder: zero não é informação, é ruído embaixo do destaque.
+	const expiringSoon = balance?.expirandoEmBreve && balance.expirandoEmBreve.valor > 0 ? balance.expirandoEmBreve : null;
 
 	return (
 		<div className="bg-card border-border flex h-full w-full flex-col gap-3 rounded-xl border px-4 py-4 shadow-2xs">
@@ -52,6 +54,12 @@ export default function ClientCashback({ clientId }: ClientCashbackProps) {
 					<p className="text-xs font-semibold tracking-tight uppercase text-brand">SALDO EM {getCashbackUnitLabel(terminology, { uppercase: true })}</p>
 				</div>
 				<p className="text-2xl font-black tracking-tight text-brand">{isBalanceLoading ? "Carregando..." : formattedBalance}</p>
+				{expiringSoon ? (
+					<p className="text-xs font-medium leading-tight text-muted-foreground tabular-nums">
+						{formatCashbackValue(expiringSoon.valor, terminology)} expiram nos próximos {expiringSoon.janelaDias} dias
+						{expiringSoon.proximaExpiracaoData ? ` · primeiro em ${formatDateAsLocale(expiringSoon.proximaExpiracaoData)}` : ""}
+					</p>
+				) : null}
 			</div>
 
 			<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 w-full min-h-0 flex-1 flex flex-col gap-1.5 overflow-y-auto">
