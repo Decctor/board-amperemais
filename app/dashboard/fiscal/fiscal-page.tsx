@@ -382,12 +382,13 @@ function FiscalDocumentCard({
 					isErrored ? "border-rose-400/60 dark:border-rose-500/60" : "border-border hover:border-primary/30 hover:bg-muted/20",
 				)}
 			>
-				<div className="flex w-full items-start justify-between gap-3">
-					<button type="button" onClick={openDetails} className="flex min-w-0 flex-1 flex-col gap-0.5 text-left">
+				{/* No celular os badges descem para a linha de baixo: lado a lado eles esmagavam o titulo. */}
+				<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+					<button type="button" onClick={openDetails} className="flex w-full min-w-0 flex-col gap-0.5 text-left sm:flex-1">
 						<p className="text-sm font-bold tracking-tight">{buildFiscalDocumentCardTitle(document)}</p>
 						{subtitle ? <p className="truncate text-xs text-muted-foreground tabular-nums">{subtitle}</p> : null}
 					</button>
-					<div className="flex shrink-0 items-center gap-1.5" onClick={(event) => event.stopPropagation()}>
+					<div className="flex flex-wrap items-center gap-1.5 sm:shrink-0 sm:justify-end" onClick={(event) => event.stopPropagation()}>
 						{document.ambiente === "HOMOLOGACAO" ? (
 							<StatBadge
 								icon={<Globe className="h-4 min-h-4 w-4 min-w-4" />}
@@ -447,16 +448,21 @@ function FiscalDocumentCardProblems({
 	const problems = document.problemas ?? [];
 	const primary = pickPrimaryFiscalProblem(problems);
 	return (
-		<div className="flex w-full flex-wrap items-center justify-between gap-2 rounded-md bg-rose-50 px-2 py-1.5 dark:bg-rose-950/40">
-			<button type="button" onClick={openDetails} className="min-w-0 flex-1 text-left">
+		<div className="flex w-full flex-col gap-2 rounded-md bg-rose-50 px-2 py-1.5 dark:bg-rose-950/40 sm:flex-row sm:items-center sm:justify-between">
+			<button type="button" onClick={openDetails} className="w-full min-w-0 text-left sm:flex-1">
 				{problems.length > 0 ? (
-					<FiscalProblemChips problems={problems} />
+					<FiscalProblemChips problems={problems} wrap />
 				) : (
 					<span className="text-[0.7rem] font-medium text-rose-700 dark:text-rose-300">Falha sem detalhe registrado. Abra o documento para reenviar.</span>
 				)}
 			</button>
 			{primary && !primary.resolvidoAutomaticamente ? (
-				<FiscalProblemCta problem={primary} vendaId={document.vendaId} canConfigureFiscal={userHasFiscalConfigurePermission} />
+				<FiscalProblemCta
+					problem={primary}
+					vendaId={document.vendaId}
+					canConfigureFiscal={userHasFiscalConfigurePermission}
+					className="w-full sm:w-auto"
+				/>
 			) : null}
 		</div>
 	);
