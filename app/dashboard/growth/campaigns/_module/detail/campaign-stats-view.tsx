@@ -674,12 +674,14 @@ function InteractionLogCard({ interaction }: { interaction: TGetCampaignInteract
 							{interaction.erroEnvio ? (
 								<TooltipProvider>
 									<Tooltip>
-										<TooltipTrigger asChild>
-											<div className="flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-red-500 text-white">
-												<CircleX className="w-4 min-w-4 h-4 min-h-4" />
-												<p className="text-[0.65rem] font-medium tracking-tight">FALHOU</p>
-											</div>
-										</TooltipTrigger>
+										<TooltipTrigger
+											render={
+												<div className="flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-[0.65rem] font-bold bg-red-500 text-white">
+													<CircleX className="w-4 min-w-4 h-4 min-h-4" />
+													<p className="text-[0.65rem] font-medium tracking-tight">FALHOU</p>
+												</div>
+											}
+										/>
 										<TooltipContent>
 											<p className="text-xs font-medium tracking-tight text-red-500">{interaction.erroEnvio}</p>
 										</TooltipContent>

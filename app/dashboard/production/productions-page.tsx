@@ -12,6 +12,7 @@ import ProductionRecipePreparationMethodViewer from "@/components/Modals/Interna
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
 import {
+	DropdownMenuGroup,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -121,8 +122,7 @@ export default function ProductionsPage() {
 			showSuccessActionToast({
 				message: data.message,
 				actionLabel: "IMPRIMIR ETIQUETAS",
-				onAction: () =>
-					window.open(`${appRoutes.inventory.lotLabelsPreview()}?ids=${createdStockLotIds.join(",")}`, "_blank", "noopener,noreferrer"),
+				onAction: () => window.open(`${appRoutes.inventory.lotLabelsPreview()}?ids=${createdStockLotIds.join(",")}`, "_blank", "noopener,noreferrer"),
 			});
 		},
 		onError: (error) => toast.error(getErrorMessage(error)),
@@ -408,13 +408,7 @@ function ProductionCard({ production, onEdit, onComplete, completionIsPending }:
 
 // Menu de ações rápidas da produção (mesmo padrão do módulo fiscal): impressão de etiquetas de
 // lote via agente desktop — uma etiqueta por saída da produção, montada no servidor.
-function ProductionCardActionsMenu({
-	production,
-	onEdit,
-}: {
-	production: TGetProductionsOutputDefault["productions"][number];
-	onEdit: () => void;
-}) {
+function ProductionCardActionsMenu({ production, onEdit }: { production: TGetProductionsOutputDefault["productions"][number]; onEdit: () => void }) {
 	const { data: printers } = useAgentPrinters();
 	const canPrintLabels = organizationHasPrinterForFinalidade(printers, "ETIQUETA_LOTE") && production.saidas.length > 0;
 
@@ -427,32 +421,38 @@ function ProductionCardActionsMenu({
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button variant="ghost" size="icon" aria-label="Mais ações da produção">
-					<MoreHorizontal className="h-4 w-4" />
-				</Button>
-			</DropdownMenuTrigger>
+			<DropdownMenuTrigger
+				render={
+					<Button variant="ghost" size="icon" aria-label="Mais ações da produção">
+						<MoreHorizontal className="h-4 w-4" />
+					</Button>
+				}
+			/>
 			<DropdownMenuContent align="end" className="w-56">
-				<DropdownMenuLabel>Ações rápidas</DropdownMenuLabel>
-				<DropdownMenuItem onClick={onEdit}>
-					<Pencil className="h-4 w-4" />
-					EDITAR PRODUÇÃO
-				</DropdownMenuItem>
+				<DropdownMenuGroup>
+					<DropdownMenuLabel>Ações rápidas</DropdownMenuLabel>
+					<DropdownMenuItem onClick={onEdit}>
+						<Pencil className="h-4 w-4" />
+						EDITAR PRODUÇÃO
+					</DropdownMenuItem>
+				</DropdownMenuGroup>
 				<DropdownMenuSeparator />
-				<DropdownMenuItem
-					disabled={!canPrintLabels || printIsPending}
-					onClick={() => printLabels({ finalidade: "ETIQUETA_LOTE", producaoId: production.id })}
-				>
-					<Printer className="h-4 w-4" />
-					IMPRIMIR ETIQUETAS
-				</DropdownMenuItem>
-				{production.saidas.length === 0 ? (
-					<p className="px-2 pb-1.5 pt-0.5 text-[0.65rem] leading-tight text-muted-foreground">A produção não possui saídas para etiquetar.</p>
-				) : !canPrintLabels ? (
-					<p className="px-2 pb-1.5 pt-0.5 text-[0.65rem] leading-tight text-muted-foreground">
-						Nenhuma impressora ativa atende a etiquetas. Configure em Configurações → Dispositivos.
-					</p>
-				) : null}
+				<DropdownMenuGroup>
+					<DropdownMenuItem
+						disabled={!canPrintLabels || printIsPending}
+						onClick={() => printLabels({ finalidade: "ETIQUETA_LOTE", producaoId: production.id })}
+					>
+						<Printer className="h-4 w-4" />
+						IMPRIMIR ETIQUETAS
+					</DropdownMenuItem>
+					{production.saidas.length === 0 ? (
+						<p className="px-2 pb-1.5 pt-0.5 text-[0.65rem] leading-tight text-muted-foreground">A produção não possui saídas para etiquetar.</p>
+					) : !canPrintLabels ? (
+						<p className="px-2 pb-1.5 pt-0.5 text-[0.65rem] leading-tight text-muted-foreground">
+							Nenhuma impressora ativa atende a etiquetas. Configure em Configurações → Dispositivos.
+						</p>
+					) : null}
+				</DropdownMenuGroup>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

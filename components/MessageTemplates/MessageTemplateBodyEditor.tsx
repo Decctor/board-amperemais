@@ -1,7 +1,14 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+	DropdownMenuGroup,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { MessageTemplateNativeVariables, getDefaultMessageTemplateVariableExample } from "@/lib/message-templates";
 import { MessageTemplateVariables } from "@/lib/message-templates";
 import type { TMessageTemplateContent } from "@/schemas/message-templates";
@@ -50,12 +57,7 @@ function extractTemplateVariableIdsFromText(text: string) {
 }
 
 function escapeHtml(text: string) {
-	return text
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&#39;");
+	return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 function normalizeContentForEditor(content: string) {
@@ -187,9 +189,14 @@ export function MessageTemplateBodyEditor({ content, onContentChange, parametros
 
 	return (
 		<div className="border-border overflow-hidden rounded-xl border bg-background">
-			<TooltipProvider delayDuration={400}>
+			<TooltipProvider delay={400}>
 				<div className="border-border flex flex-wrap items-center gap-2 border-b p-2">
-					<EditorToolbarButton tooltip="Negrito" shortcut="Ctrl+B" isActive={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
+					<EditorToolbarButton
+						tooltip="Negrito"
+						shortcut="Ctrl+B"
+						isActive={editor.isActive("bold")}
+						onClick={() => editor.chain().focus().toggleBold().run()}
+					>
 						<Bold className="h-4 w-4" />
 					</EditorToolbarButton>
 					<EditorToolbarButton
@@ -225,36 +232,46 @@ export function MessageTemplateBodyEditor({ content, onContentChange, parametros
 						<ListOrdered className="h-4 w-4" />
 					</EditorToolbarButton>
 
-				<div className="bg-border h-6 w-px" />
+					<div className="bg-border h-6 w-px" />
 
-				<DropdownMenu modal={false}>
-					<DropdownMenuTrigger asChild>
-						<Button type="button" size="sm" variant="secondary" className="gap-1.5">
-							<Braces className="h-3.5 w-3.5" />
-							<span>+ VARIÁVEL</span>
-							<ChevronDown className="h-3.5 w-3.5 opacity-70" />
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="start" sideOffset={8} className="z-110 w-[320px] overflow-hidden p-0">
-						<div className="border-b bg-muted/40 px-3 py-2.5">
-							<span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">Variáveis do template</span>
-						</div>
-						<div className="max-h-[300px] overflow-y-auto p-1 [scrollbar-width:thin]">
-							{MessageTemplateNativeVariables.map((variable) => (
-								<DropdownMenuItem key={variable.identificador} onSelect={() => insertVariable(variable.identificador)} className="items-start rounded-md px-2 py-2">
-									<div className="flex min-w-0 flex-col">
-										<span className="truncate font-medium">{variable.label}</span>
-										<span className="text-muted-foreground truncate text-xs">{`{{${variable.identificador}}}`}</span>
-									</div>
-								</DropdownMenuItem>
-							))}
-						</div>
-						<DropdownMenuSeparator className="my-0" />
-						<div className="text-muted-foreground px-3 py-2 text-[11px]">
-							Dica: digite <span className="font-mono">{"{"}</span> no editor para abrir sugestões rápidas.
-						</div>
-					</DropdownMenuContent>
-				</DropdownMenu>
+					<DropdownMenu modal={false}>
+						<DropdownMenuTrigger
+							render={
+								<Button type="button" size="sm" variant="secondary" className="gap-1.5">
+									<Braces className="h-3.5 w-3.5" />
+									<span>+ VARIÁVEL</span>
+									<ChevronDown className="h-3.5 w-3.5 opacity-70" />
+								</Button>
+							}
+						/>
+						<DropdownMenuContent align="start" sideOffset={8} className="z-110 w-[320px] overflow-hidden p-0">
+							<DropdownMenuGroup>
+								<div className="border-b bg-muted/40 px-3 py-2.5">
+									<span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">Variáveis do template</span>
+								</div>
+								<div className="max-h-[300px] overflow-y-auto p-1 [scrollbar-width:thin]">
+									{MessageTemplateNativeVariables.map((variable) => (
+										<DropdownMenuItem
+											key={variable.identificador}
+											onClick={() => insertVariable(variable.identificador)}
+											className="items-start rounded-md px-2 py-2"
+										>
+											<div className="flex min-w-0 flex-col">
+												<span className="truncate font-medium">{variable.label}</span>
+												<span className="text-muted-foreground truncate text-xs">{`{{${variable.identificador}}}`}</span>
+											</div>
+										</DropdownMenuItem>
+									))}
+								</div>
+							</DropdownMenuGroup>
+							<DropdownMenuSeparator className="my-0" />
+							<DropdownMenuGroup>
+								<div className="text-muted-foreground px-3 py-2 text-[11px]">
+									Dica: digite <span className="font-mono">{"{"}</span> no editor para abrir sugestões rápidas.
+								</div>
+							</DropdownMenuGroup>
+						</DropdownMenuContent>
+					</DropdownMenu>
 
 					<span className={`ml-auto text-sm font-medium ${isOverLimit ? "text-red-500" : "text-muted-foreground"}`}>
 						{charCount} / {maxChars}

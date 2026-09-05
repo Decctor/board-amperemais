@@ -5,7 +5,7 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectGroup, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
@@ -55,21 +55,13 @@ export default function AudiencesPage({ user: _user }: AudiencesPageProps) {
 			) : (
 				<div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
 					{list.map((audience) => (
-						<AudienceCard
-							key={audience.id}
-							audience={audience}
-							accounts={accounts}
-							onEdit={() => setEditingId(audience.id)}
-							onChanged={invalidate}
-						/>
+						<AudienceCard key={audience.id} audience={audience} accounts={accounts} onEdit={() => setEditingId(audience.id)} onChanged={invalidate} />
 					))}
 				</div>
 			)}
 
 			{newModalOpen ? <NewAudience closeModal={() => setNewModalOpen(false)} callbacks={{ onSuccess: invalidate }} /> : null}
-			{editingId ? (
-				<ControlAudience audienceId={editingId} closeModal={() => setEditingId(null)} callbacks={{ onSuccess: invalidate }} />
-			) : null}
+			{editingId ? <ControlAudience audienceId={editingId} closeModal={() => setEditingId(null)} callbacks={{ onSuccess: invalidate }} /> : null}
 		</div>
 	);
 }
@@ -180,16 +172,29 @@ function AudienceCard({
 
 				{availableAccounts.length > 0 ? (
 					<div className="flex items-center gap-2 pt-2.5">
-						<Select value={selectedAccountId ?? undefined} onValueChange={setSelectedAccountId}>
+						<Select
+							items={[
+								...availableAccounts.map((account) => ({
+									value: account.id,
+									label: account.apelido ?? (account.configuracao?.tipo === "META_ADS" ? account.configuracao.adAccountName : account.id),
+								})),
+							]}
+							value={selectedAccountId ?? null}
+							onValueChange={(value) => {
+								if (value !== null) setSelectedAccountId(value);
+							}}
+						>
 							<SelectTrigger className="h-8 flex-1 text-xs">
 								<SelectValue placeholder="Conectar ao Meta Ads..." />
 							</SelectTrigger>
 							<SelectContent>
-								{availableAccounts.map((account) => (
-									<SelectItem key={account.id} value={account.id}>
-										{account.apelido ?? (account.configuracao?.tipo === "META_ADS" ? account.configuracao.adAccountName : account.id)}
-									</SelectItem>
-								))}
+								<SelectGroup>
+									{availableAccounts.map((account) => (
+										<SelectItem key={account.id} value={account.id}>
+											{account.apelido ?? (account.configuracao?.tipo === "META_ADS" ? account.configuracao.adAccountName : account.id)}
+										</SelectItem>
+									))}
+								</SelectGroup>
 							</SelectContent>
 						</Select>
 						<Button

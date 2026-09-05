@@ -225,16 +225,19 @@ function GroupedByMonthDay({ data }: { data: TGetClientStatsOutput["data"]["resu
 		const ticketMedio = result && result.quantidade > 0 ? result.total / result.quantidade : 0;
 
 		return (
-			<Tooltip delayDuration={200}>
-				<TooltipTrigger asChild>
-					<div
-						key={index.toString()}
-						className="flex flex-col items-center justify-center p-2 rounded-md border border-border w-full gap-1 min-h-[60px] transition-all hover:scale-[1.02] cursor-pointer"
-						style={{ backgroundColor: bgColor }}
-					>
-						<h1 className="text-xs font-bold tracking-tight">{index + 1}</h1>
-					</div>
-				</TooltipTrigger>
+			<Tooltip>
+				<TooltipTrigger
+					delay={200}
+					render={
+						<div
+							key={index.toString()}
+							className="flex flex-col items-center justify-center p-2 rounded-md border border-border w-full gap-1 min-h-[60px] transition-all hover:scale-[1.02] cursor-pointer"
+							style={{ backgroundColor: bgColor }}
+						>
+							<h1 className="text-xs font-bold tracking-tight">{index + 1}</h1>
+						</div>
+					}
+				/>
 				{result ? (
 					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
@@ -347,16 +350,19 @@ function GroupedByMonth({ data }: { data: TGetClientStatsOutput["data"]["resulta
 		const ticketMedio = result && result.quantidade > 0 ? result.total / result.quantidade : 0;
 
 		return (
-			<Tooltip delayDuration={200}>
-				<TooltipTrigger asChild>
-					<div
-						key={index.toString()}
-						className="flex flex-col items-center justify-center p-3 rounded-md border border-border w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
-						style={{ backgroundColor: bgColor }}
-					>
-						<h1 className="text-xs font-bold tracking-tight uppercase">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h1>
-					</div>
-				</TooltipTrigger>
+			<Tooltip>
+				<TooltipTrigger
+					delay={200}
+					render={
+						<div
+							key={index.toString()}
+							className="flex flex-col items-center justify-center p-3 rounded-md border border-border w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
+							style={{ backgroundColor: bgColor }}
+						>
+							<h1 className="text-xs font-bold tracking-tight uppercase">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h1>
+						</div>
+					}
+				/>
 				{result ? (
 					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
@@ -462,16 +468,19 @@ function GroupedByWeekDay({ data }: { data: TGetClientStatsOutput["data"]["resul
 		const ticketMedio = result && result.quantidade > 0 ? result.total / result.quantidade : 0;
 
 		return (
-			<Tooltip delayDuration={200}>
-				<TooltipTrigger asChild>
-					<div
-						key={index.toString()}
-						className="flex flex-col items-center justify-center p-3 rounded-md border border-border w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
-						style={{ backgroundColor: bgColor }}
-					>
-						<h1 className="text-xs font-bold tracking-tight uppercase">{WEEKDAY_MAP[index as keyof typeof WEEKDAY_MAP]}</h1>
-					</div>
-				</TooltipTrigger>
+			<Tooltip>
+				<TooltipTrigger
+					delay={200}
+					render={
+						<div
+							key={index.toString()}
+							className="flex flex-col items-center justify-center p-3 rounded-md border border-border w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
+							style={{ backgroundColor: bgColor }}
+						>
+							<h1 className="text-xs font-bold tracking-tight uppercase">{WEEKDAY_MAP[index as keyof typeof WEEKDAY_MAP]}</h1>
+						</div>
+					}
+				/>
 				{result ? (
 					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">

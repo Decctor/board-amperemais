@@ -51,23 +51,25 @@ export function SalesChannelPill({ canal }: SalesChannelPillProps) {
 
 	return (
 		<Popover>
-			<PopoverTrigger asChild>
-				<button
-					type="button"
-					aria-label={`${canal.rotulo}: ${config.rotulo.toLowerCase()}. Abrir detalhes.`}
-					className={cn(
-						"flex shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-2 py-1.5 md:gap-2",
-						"transition-colors duration-200 hover:bg-secondary/70",
-						"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-					)}
-				>
-					<ChannelMark canal={canal.canal} />
-					<span className="flex items-center gap-1.5">
-						<span aria-hidden className={cn("size-1.5 shrink-0 rounded-full transition-colors duration-200", DOT_CLASS[config.tone])} />
-						<span className={cn("max-md:sr-only text-xs font-semibold leading-none", LABEL_CLASS[config.tone])}>{config.rotulo}</span>
-					</span>
-				</button>
-			</PopoverTrigger>
+			<PopoverTrigger
+				render={
+					<button
+						type="button"
+						aria-label={`${canal.rotulo}: ${config.rotulo.toLowerCase()}. Abrir detalhes.`}
+						className={cn(
+							"flex shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-2 py-1.5 md:gap-2",
+							"transition-colors duration-200 hover:bg-secondary/70",
+							"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+						)}
+					>
+						<ChannelMark canal={canal.canal} />
+						<span className="flex items-center gap-1.5">
+							<span aria-hidden className={cn("size-1.5 shrink-0 rounded-full transition-colors duration-200", DOT_CLASS[config.tone])} />
+							<span className={cn("max-md:sr-only text-xs font-semibold leading-none", LABEL_CLASS[config.tone])}>{config.rotulo}</span>
+						</span>
+					</button>
+				}
+			/>
 			<PopoverContent align="end" sideOffset={8} className="w-72 p-0">
 				<SalesChannelDetail canal={canal} estadoRotulo={config.rotulo} />
 			</PopoverContent>

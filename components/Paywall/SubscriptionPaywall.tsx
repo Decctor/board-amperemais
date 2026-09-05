@@ -3,6 +3,7 @@
 import type { TGenerateCheckoutOutput } from "@/app/api/integrations/stripe/generate-checkout/route";
 import { Button } from "@/components/ui/button";
 import {
+	DropdownMenuGroup,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -93,74 +94,88 @@ function PaywallOrgSwitcher({ disabled }: { disabled?: boolean }) {
 		<div className="w-full items-center flex justify-center flex-col py-2 gap-1.5">
 			<h3 className="text-sm font-medium text-muted-foreground">Você está usando a organização:</h3>
 			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<Button
-						type="button"
-						variant="ghost"
-						disabled={disabled || switchOrgMutation.isPending}
-						className="h-auto min-h-11 justify-between gap-2 rounded-lg border-border bg-muted/30 px-3 py-2 font-normal shadow-none hover:bg-muted/50"
-					>
-						<div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg">
-							<Image src={currentOrg?.logoUrl ?? LogoIcon} alt={currentOrg?.nome ?? "Organização"} fill className="object-cover" />
-						</div>
-						<div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
-							<span className="truncate font-medium">{currentOrg?.nome ?? "Selecionar organização"}</span>
-						</div>
-						{switchOrgMutation.isPending ? (
-							<Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
-						) : (
-							<ChevronsUpDown className="size-4 shrink-0 opacity-60" aria-hidden />
-						)}
-					</Button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg z-200" side="bottom" align="center" sideOffset={4}>
-					<DropdownMenuLabel>Organizações</DropdownMenuLabel>
-					<DropdownMenuSeparator />
-					{memberships.map((membership) => {
-						const isActive = membership.organizacao.id === activeOrganizationId;
-						return (
-							<DropdownMenuItem
-								key={membership.id}
-								onClick={() => {
-									if (!isActive && !switchOrgMutation.isPending) {
-										switchOrgMutation.mutate({ organizationId: membership.organizacao.id });
-									}
-								}}
-								className="cursor-pointer"
-								disabled={switchOrgMutation.isPending}
-							>
-								<div className="flex w-full items-center gap-2">
-									<div className="relative h-6 w-6 min-h-6 min-w-6 overflow-hidden rounded-md">
-										<Image src={membership.organizacao.logoUrl ?? LogoIcon} alt={membership.organizacao.nome} fill className="object-cover" />
-									</div>
-									<span className="flex-1 truncate">{membership.organizacao.nome}</span>
-									{isActive && <Check className="size-4 text-foreground" aria-hidden />}
-								</div>
-							</DropdownMenuItem>
-						);
-					})}
-					<DropdownMenuSeparator />
-					<DropdownMenuItem asChild className="cursor-pointer">
-						<Link href="/onboarding">
-							<div className="flex w-full items-center justify-center gap-2">
-								<Plus className="h-4 w-4 min-h-4 min-w-4 shrink-0" />
-								<span className="flex-1 truncate">NOVA ORGANIZAÇÃO</span>
+				<DropdownMenuTrigger
+					render={
+						<Button
+							type="button"
+							variant="ghost"
+							disabled={disabled || switchOrgMutation.isPending}
+							className="h-auto min-h-11 justify-between gap-2 rounded-lg border-border bg-muted/30 px-3 py-2 font-normal shadow-none hover:bg-muted/50"
+						>
+							<div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg">
+								<Image src={currentOrg?.logoUrl ?? LogoIcon} alt={currentOrg?.nome ?? "Organização"} fill className="object-cover" />
 							</div>
-						</Link>
-					</DropdownMenuItem>
-					{showPanelLink && (
-						<>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem asChild className="cursor-pointer">
-								<Link href={panelHref}>
+							<div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
+								<span className="truncate font-medium">{currentOrg?.nome ?? "Selecionar organização"}</span>
+							</div>
+							{switchOrgMutation.isPending ? (
+								<Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+							) : (
+								<ChevronsUpDown className="size-4 shrink-0 opacity-60" aria-hidden />
+							)}
+						</Button>
+					}
+				/>
+				<DropdownMenuContent className="w-(--anchor-width) min-w-56 rounded-lg z-200" side="bottom" align="center" sideOffset={4}>
+					<DropdownMenuGroup>
+						<DropdownMenuLabel>Organizações</DropdownMenuLabel>
+					</DropdownMenuGroup>
+					<DropdownMenuSeparator />
+					<DropdownMenuGroup>
+						{memberships.map((membership) => {
+							const isActive = membership.organizacao.id === activeOrganizationId;
+							return (
+								<DropdownMenuItem
+									key={membership.id}
+									onClick={() => {
+										if (!isActive && !switchOrgMutation.isPending) {
+											switchOrgMutation.mutate({ organizationId: membership.organizacao.id });
+										}
+									}}
+									className="cursor-pointer"
+									disabled={switchOrgMutation.isPending}
+								>
+									<div className="flex w-full items-center gap-2">
+										<div className="relative h-6 w-6 min-h-6 min-w-6 overflow-hidden rounded-md">
+											<Image src={membership.organizacao.logoUrl ?? LogoIcon} alt={membership.organizacao.nome} fill className="object-cover" />
+										</div>
+										<span className="flex-1 truncate">{membership.organizacao.nome}</span>
+										{isActive && <Check className="size-4 text-foreground" aria-hidden />}
+									</div>
+								</DropdownMenuItem>
+							);
+						})}
+					</DropdownMenuGroup>
+					<DropdownMenuSeparator />
+					<DropdownMenuGroup>
+						<DropdownMenuItem
+							className="cursor-pointer"
+							render={
+								<Link href="/onboarding">
 									<div className="flex w-full items-center justify-center gap-2">
-										<Shield className="h-4 w-4 min-h-4 min-w-4 shrink-0" />
-										<span className="flex-1 truncate">{panelLabelUppercase}</span>
+										<Plus className="h-4 w-4 min-h-4 min-w-4 shrink-0" />
+										<span className="flex-1 truncate">NOVA ORGANIZAÇÃO</span>
 									</div>
 								</Link>
-							</DropdownMenuItem>
-						</>
-					)}
+							}
+						/>
+						{showPanelLink && (
+							<>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem
+									className="cursor-pointer"
+									render={
+										<Link href={panelHref}>
+											<div className="flex w-full items-center justify-center gap-2">
+												<Shield className="h-4 w-4 min-h-4 min-w-4 shrink-0" />
+												<span className="flex-1 truncate">{panelLabelUppercase}</span>
+											</div>
+										</Link>
+									}
+								/>
+							</>
+						)}
+					</DropdownMenuGroup>
 				</DropdownMenuContent>
 			</DropdownMenu>
 		</div>

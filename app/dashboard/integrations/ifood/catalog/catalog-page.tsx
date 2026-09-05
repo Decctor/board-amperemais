@@ -4,7 +4,7 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import SectionApplyBar from "@/components/Utils/SectionApplyBar";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectGroup, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { canManageIntegrations } from "@/lib/integrations/mask";
@@ -135,16 +135,24 @@ export default function IfoodCatalogPage({ membership, initialMerchantId }: Ifoo
 				</div>
 				<div className="flex shrink-0 items-center gap-2">
 					{merchants.length > 1 ? (
-						<Select value={merchantId ?? undefined} onValueChange={setMerchantId}>
+						<Select
+							items={[...merchants.map((merchant) => ({ value: merchant.id, label: merchant.nome ?? merchant.id }))]}
+							value={merchantId ?? null}
+							onValueChange={(value) => {
+								if (value !== null) setMerchantId(value);
+							}}
+						>
 							<SelectTrigger className="w-[220px]">
 								<SelectValue placeholder="Selecione a loja" />
 							</SelectTrigger>
 							<SelectContent>
-								{merchants.map((merchant) => (
-									<SelectItem key={merchant.id} value={merchant.id}>
-										{merchant.nome ?? merchant.id}
-									</SelectItem>
-								))}
+								<SelectGroup>
+									{merchants.map((merchant) => (
+										<SelectItem key={merchant.id} value={merchant.id}>
+											{merchant.nome ?? merchant.id}
+										</SelectItem>
+									))}
+								</SelectGroup>
 							</SelectContent>
 						</Select>
 					) : null}
@@ -202,16 +210,26 @@ export default function IfoodCatalogPage({ membership, initialMerchantId }: Ifoo
 					) : isV1 ? null : (
 						<>
 							{catalogos.length > 1 ? (
-								<Select value={catalogId ?? undefined} onValueChange={setCatalogId}>
+								<Select
+									items={[
+										...catalogos.map((catalogo) => ({ value: catalogo.id, label: catalogo.contextos.length ? catalogo.contextos.join(", ") : catalogo.id })),
+									]}
+									value={catalogId ?? null}
+									onValueChange={(value) => {
+										if (value !== null) setCatalogId(value);
+									}}
+								>
 									<SelectTrigger className="w-full sm:w-[280px]">
 										<SelectValue placeholder="Selecione o catálogo" />
 									</SelectTrigger>
 									<SelectContent>
-										{catalogos.map((catalogo) => (
-											<SelectItem key={catalogo.id} value={catalogo.id}>
-												{catalogo.contextos.length ? catalogo.contextos.join(", ") : catalogo.id}
-											</SelectItem>
-										))}
+										<SelectGroup>
+											{catalogos.map((catalogo) => (
+												<SelectItem key={catalogo.id} value={catalogo.id}>
+													{catalogo.contextos.length ? catalogo.contextos.join(", ") : catalogo.id}
+												</SelectItem>
+											))}
+										</SelectGroup>
 									</SelectContent>
 								</Select>
 							) : null}

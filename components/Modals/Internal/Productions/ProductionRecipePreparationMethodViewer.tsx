@@ -58,20 +58,22 @@ export default function ProductionRecipePreparationMethodViewer({ recipeId, reci
 
 	return (
 		<>
-			<TooltipProvider delayDuration={400}>
+			<TooltipProvider delay={400}>
 				<Tooltip>
-					<TooltipTrigger asChild>
-						<Button
-							type="button"
-							size="icon"
-							variant="ghost"
-							onClick={() => setIsOpen(true)}
-							aria-label="Ver modo de preparo"
-							className={cn("text-muted-foreground hover:text-foreground h-7 w-7", className)}
-						>
-							<BookOpenText className="h-4 w-4" />
-						</Button>
-					</TooltipTrigger>
+					<TooltipTrigger
+						render={
+							<Button
+								type="button"
+								size="icon"
+								variant="ghost"
+								onClick={() => setIsOpen(true)}
+								aria-label="Ver modo de preparo"
+								className={cn("text-muted-foreground hover:text-foreground h-7 w-7", className)}
+							>
+								<BookOpenText className="h-4 w-4" />
+							</Button>
+						}
+					/>
 					<TooltipContent side="top">Ver modo de preparo</TooltipContent>
 				</Tooltip>
 			</TooltipProvider>

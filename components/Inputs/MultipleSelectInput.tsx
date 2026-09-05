@@ -57,21 +57,23 @@ function MultipleSelectInput({
 
 			{isDesktop ? (
 				<Popover open={isOpen} onOpenChange={setIsOpen}>
-					<PopoverTrigger asChild>
-						<Button
-							id={inputIdentifier}
-							type="button"
-							disabled={!editable}
-							variant="outline"
-							aria-haspopup="listbox"
-							aria-expanded={isOpen}
-							className={cn("w-full justify-between truncate border border-border", holderClassName)}
-						>
-							<SelectedOptions selectedOptions={selectedOptions ?? []} placeholderText={resetOptionLabel} />
-							<ChevronsUpDown className="w-3 h-3 min-w-3 min-h-3" />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]">
+					<PopoverTrigger
+						render={
+							<Button
+								id={inputIdentifier}
+								type="button"
+								disabled={!editable}
+								variant="outline"
+								aria-haspopup="listbox"
+								aria-expanded={isOpen}
+								className={cn("w-full justify-between truncate border border-border", holderClassName)}
+							>
+								<SelectedOptions selectedOptions={selectedOptions ?? []} placeholderText={resetOptionLabel} />
+								<ChevronsUpDown className="w-3 h-3 min-w-3 min-h-3" />
+							</Button>
+						}
+					/>
+					<PopoverContent className="p-0 w-[var(--anchor-width)]">
 						<OptionsList
 							value={selected?.map((p) => p.toString()) ?? null}
 							selectedOptions={selectedOptions ?? []}

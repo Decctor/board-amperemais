@@ -71,17 +71,19 @@ export default function OpenQuotesPill({ canViewQuotes, permissions, cartItemCou
 	return (
 		<>
 			<Popover>
-				<PopoverTrigger asChild>
-					<button
-						type="button"
-						aria-label={`${summary}. Ver detalhes.`}
-						className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-[11px] font-bold text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-					>
-						<FileText className="size-3.5 shrink-0" />
-						<span className="tabular-nums">{total}</span>
-						<span className="hidden uppercase tracking-tight sm:inline">{label}</span>
-					</button>
-				</PopoverTrigger>
+				<PopoverTrigger
+					render={
+						<button
+							type="button"
+							aria-label={`${summary}. Ver detalhes.`}
+							className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-[11px] font-bold text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+						>
+							<FileText className="size-3.5 shrink-0" />
+							<span className="tabular-nums">{total}</span>
+							<span className="hidden uppercase tracking-tight sm:inline">{label}</span>
+						</button>
+					}
+				/>
 
 				<PopoverContent align="end" className="w-[min(26rem,92vw)] p-3">
 					<div className="mb-2 flex items-baseline justify-between gap-2">

@@ -143,12 +143,12 @@ export function ChatThread({ chatId, organizationId, currentUser, quotePermissio
 				// O realtime não traz o join de autor: para mensagens de terceiros o nome só
 				// aparece depois de um refetch.
 				if (message.autorTipo !== "CLIENTE" && message.autorUsuario?.id !== currentUser.id) void refetchRef.current();
-					// Um orçamento criado pelo agente sempre vem acompanhado de mensagem, então a própria
-					// thread serve de sinal — sem abrir um canal de realtime em `sales`. Invalidação por
-					// prefixo: só uma conversa está aberta por vez, e assim o `clienteId` não precisa
-					// entrar nas dependências desta inscrição.
-					if (message.autorTipo !== "CLIENTE") void queryClient.invalidateQueries({ queryKey: ["client-open-quotes"] });
-					if (message.autorTipo === "CLIENTE") markReadRef.current.mutate({ chatId });
+				// Um orçamento criado pelo agente sempre vem acompanhado de mensagem, então a própria
+				// thread serve de sinal — sem abrir um canal de realtime em `sales`. Invalidação por
+				// prefixo: só uma conversa está aberta por vez, e assim o `clienteId` não precisa
+				// entrar nas dependências desta inscrição.
+				if (message.autorTipo !== "CLIENTE") void queryClient.invalidateQueries({ queryKey: ["client-open-quotes"] });
+				if (message.autorTipo === "CLIENTE") markReadRef.current.mutate({ chatId });
 			})
 			.on("postgres_changes", { event: "UPDATE", schema: "public", table: "ampmais_chat_messages", filter: `chat_id=eq.${chatId}` }, (payload) => {
 				const row = payload.new as TRealtimeChatMessageRow;
@@ -298,21 +298,17 @@ export function ChatThread({ chatId, organizationId, currentUser, quotePermissio
 						/>
 
 						{/* Header carrega só posse e roteamento; status e prioridade vivem no painel. */}
-						<ChatAssignmentActions
-							chatId={chatId}
-							atendimento={atendimento}
-							atendimentoIa={chat.atendimentoIa}
-							currentUserId={currentUser.id}
-							compact
-						/>
+						<ChatAssignmentActions chatId={chatId} atendimento={atendimento} atendimentoIa={chat.atendimentoIa} currentUserId={currentUser.id} compact />
 
 						{/* Abaixo de xl o painel não cabe como coluna; vira gaveta sob demanda. */}
 						<Sheet>
-							<SheetTrigger asChild>
-								<Button variant="ghost" size="icon" className="shrink-0 xl:hidden" aria-label="Abrir contexto do atendimento">
-									<PanelRightOpen className="h-4 w-4" />
-								</Button>
-							</SheetTrigger>
+							<SheetTrigger
+								render={
+									<Button variant="ghost" size="icon" className="shrink-0 xl:hidden" aria-label="Abrir contexto do atendimento">
+										<PanelRightOpen className="h-4 w-4" />
+									</Button>
+								}
+							/>
 							<SheetContent side="right" className="w-[min(22rem,90vw)] p-0">
 								<SheetTitle className="sr-only">Contexto do atendimento</SheetTitle>
 								<ChatContextPanel

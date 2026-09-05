@@ -4,7 +4,7 @@ import { getMessageTemplateButtonPreset, MESSAGE_TEMPLATE_BUTTON_PRESET_OPTIONS 
 import type { TUseMessageTemplateState } from "@/state-hooks/use-message-template-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectGroup, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LinkIcon, Plus, Trash2 } from "lucide-react";
 
 type TButton = TUseMessageTemplateState["state"]["messageTemplate"]["conteudo"]["botoes"][number];
@@ -86,8 +86,14 @@ function MessageTemplateButtonEditor({
 	return (
 		<div className="grid gap-2 rounded-lg bg-background p-2 md:grid-cols-[140px_1fr_1fr_auto]">
 			<Select
+				items={[
+					{ value: "URL", label: "URL" },
+					{ value: "RESPOSTA RÁPIDA", label: "RESPOSTA RÁPIDA" },
+					{ value: "TELEFONE", label: "TELEFONE" },
+				]}
 				value={button.tipo}
 				onValueChange={(value) => {
+					if (value === null) return;
 					if (value === "URL") updateButton(index, { tipo: "URL", texto: button.texto, url: "url" in button ? button.url : "https://" });
 					if (value === "RESPOSTA RÁPIDA") updateButton(index, { tipo: "RESPOSTA RÁPIDA", texto: button.texto });
 					if (value === "TELEFONE") updateButton(index, { tipo: "TELEFONE", texto: button.texto, telefone: "telefone" in button ? button.telefone : "" });
@@ -97,9 +103,11 @@ function MessageTemplateButtonEditor({
 					<SelectValue />
 				</SelectTrigger>
 				<SelectContent>
-					<SelectItem value="URL">URL</SelectItem>
-					<SelectItem value="RESPOSTA RÁPIDA">RESPOSTA RÁPIDA</SelectItem>
-					<SelectItem value="TELEFONE">TELEFONE</SelectItem>
+					<SelectGroup>
+						<SelectItem value="URL">URL</SelectItem>
+						<SelectItem value="RESPOSTA RÁPIDA">RESPOSTA RÁPIDA</SelectItem>
+						<SelectItem value="TELEFONE">TELEFONE</SelectItem>
+					</SelectGroup>
 				</SelectContent>
 			</Select>
 			<Input value={button.texto} onChange={(event) => updateButton(index, { ...button, texto: event.target.value } as TButton)} placeholder="Texto" />

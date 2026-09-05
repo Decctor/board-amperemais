@@ -95,12 +95,14 @@ type FiscalProfileChipProps = {
 function FiscalProfileChip({ icon, label, tooltip, variant = "secondary" }: FiscalProfileChipProps) {
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>
-				<Chip.Root variant={variant} size="md" shape="xl">
-					<Chip.Icon>{icon}</Chip.Icon>
-					<Chip.Label caps>{label}</Chip.Label>
-				</Chip.Root>
-			</TooltipTrigger>
+			<TooltipTrigger
+				render={
+					<Chip.Root variant={variant} size="md" shape="xl">
+						<Chip.Icon>{icon}</Chip.Icon>
+						<Chip.Label caps>{label}</Chip.Label>
+					</Chip.Root>
+				}
+			/>
 			<TooltipContent>{tooltip}</TooltipContent>
 		</Tooltip>
 	);

@@ -1,4 +1,8 @@
-﻿"use client";
+"use client";
+
+import { ResponsiveMenuAnimatedBody } from "@/components/Utils/ResponsiveMenuAnimatedBody";
+import { LoadingButton } from "@/components/loading-button";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 
 import { TSyncSegmentationsInput } from "@/app/api/segmentations/sync/route";
 import { buildSalesIntegrationFilterOptions } from "@/components/Sales/sales-integration-filter-options";
@@ -9,8 +13,6 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import EditRFMConfig from "@/components/Modals/RFMConfig/EditRFMConfig";
 import NewRFMConfig from "@/components/Modals/RFMConfig/NewRFMConfig";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
-import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
-import ResponsiveMenuViewOnly from "@/components/Utils/ResponsiveMenuViewOnly";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
@@ -824,8 +826,8 @@ function RFMSegmentCell({ item, index, formatDecimal, prefersHoverInteraction, o
 
 	if (prefersHoverInteraction) {
 		return (
-			<HoverCard openDelay={150}>
-				<HoverCardTrigger asChild>{block}</HoverCardTrigger>
+			<HoverCard>
+				<HoverCardTrigger delay={150} render={block} />
 				<HoverCardContent {...detailPanelProps}>{detailContent}</HoverCardContent>
 			</HoverCard>
 		);
@@ -833,7 +835,7 @@ function RFMSegmentCell({ item, index, formatDecimal, prefersHoverInteraction, o
 
 	return (
 		<Popover open={openSegmentKey === segmentKey} onOpenChange={(open) => onOpenSegmentKeyChange(open ? segmentKey : null)}>
-			<PopoverTrigger asChild>{block}</PopoverTrigger>
+			<PopoverTrigger render={block} />
 			<PopoverContent side="bottom" {...detailPanelProps}>
 				{detailContent}
 			</PopoverContent>
@@ -944,24 +946,33 @@ function SegmentsPageMatrixRFMSyncMenu({ closeMenu, callbacks }: SegmentsPageMat
 		},
 	});
 	return (
-		<ResponsiveMenuV2
-			menuTitle="SINCRONIZAR SEGMENTAÇÕES"
-			menuDescription="Sincronize as segmentações RFM para atualizar os dados da matriz."
-			menuActionButtonText="SINCRONIZAR"
-			menuCancelButtonText="CANCELAR"
-			actionFunction={() => handleSyncSegmentations({ runCampaigns: false })}
-			closeMenu={closeMenu}
-			actionIsLoading={isPending}
-			stateIsLoading={false}
-			stateError={null}
+		<ResponsiveMenu.Root
+			open
+			onOpenChange={(open) => {
+				if (!open) closeMenu();
+			}}
 		>
-			<p className="text-sm text-muted-foreground">Esta ação irá recomputar as segmentações RFM de toda a sua base de clientes.</p>
-			<CheckboxInput
-				checked={params.runCampaigns}
-				labelTrue="DESEJO EXECUTAR AS CAMPANHAS"
-				labelFalse="DESEJO EXECUTAR AS CAMPANHAS"
-				handleChange={(value) => setParams({ ...params, runCampaigns: value })}
-			/>
-		</ResponsiveMenuV2>
+			<ResponsiveMenu.Content drawerClassName="max-h-[70dvh]">
+				<ResponsiveMenu.Header>
+					<ResponsiveMenu.Title>SINCRONIZAR SEGMENTAÇÕES</ResponsiveMenu.Title>
+					<ResponsiveMenu.Description>Sincronize as segmentações RFM para atualizar os dados da matriz.</ResponsiveMenu.Description>
+				</ResponsiveMenu.Header>
+				<ResponsiveMenuAnimatedBody stateKey="content" className="overflow-x-hidden overflow-y-auto">
+					<p className="text-sm text-muted-foreground">Esta ação irá recomputar as segmentações RFM de toda a sua base de clientes.</p>
+					<CheckboxInput
+						checked={params.runCampaigns}
+						labelTrue="DESEJO EXECUTAR AS CAMPANHAS"
+						labelFalse="DESEJO EXECUTAR AS CAMPANHAS"
+						handleChange={(value) => setParams({ ...params, runCampaigns: value })}
+					/>
+				</ResponsiveMenuAnimatedBody>
+				<ResponsiveMenu.Footer>
+					<ResponsiveMenu.Close variant="outline">CANCELAR</ResponsiveMenu.Close>
+					<LoadingButton loading={isPending} onClick={() => handleSyncSegmentations({ runCampaigns: false })}>
+						SINCRONIZAR
+					</LoadingButton>
+				</ResponsiveMenu.Footer>
+			</ResponsiveMenu.Content>
+		</ResponsiveMenu.Root>
 	);
 }

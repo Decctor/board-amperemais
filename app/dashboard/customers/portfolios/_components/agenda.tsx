@@ -105,33 +105,37 @@ export function PortfolioAgenda({ sellerId, onChanged }: PortfolioAgendaProps) {
 				<TooltipProvider>
 					<div className="flex items-center gap-1 rounded-full bg-primary/10 p-0.5">
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<button
-									type="button"
-									onClick={() => setViewMode("list")}
-									className={cn("flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full text-foreground duration-300 ease-in-out", {
-										"bg-primary text-primary-foreground": viewMode === "list",
-									})}
-								>
-									<LayoutList className="w-3.5 h-3.5" />
-								</button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<button
+										type="button"
+										onClick={() => setViewMode("list")}
+										className={cn("flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full text-foreground duration-300 ease-in-out", {
+											"bg-primary text-primary-foreground": viewMode === "list",
+										})}
+									>
+										<LayoutList className="w-3.5 h-3.5" />
+									</button>
+								}
+							/>
 							<TooltipContent>
 								<p>Visualização em lista</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<button
-									type="button"
-									onClick={() => setViewMode("calendar")}
-									className={cn("flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full text-foreground duration-300 ease-in-out", {
-										"bg-primary text-primary-foreground": viewMode === "calendar",
-									})}
-								>
-									<CalendarIcon className="w-3.5 h-3.5" />
-								</button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<button
+										type="button"
+										onClick={() => setViewMode("calendar")}
+										className={cn("flex h-6 min-h-6 w-6 min-w-6 items-center justify-center rounded-full text-foreground duration-300 ease-in-out", {
+											"bg-primary text-primary-foreground": viewMode === "calendar",
+										})}
+									>
+										<CalendarIcon className="w-3.5 h-3.5" />
+									</button>
+								}
+							/>
 							<TooltipContent>
 								<p>Visualização em calendário</p>
 							</TooltipContent>
@@ -145,14 +149,16 @@ export function PortfolioAgenda({ sellerId, onChanged }: PortfolioAgendaProps) {
 				<div className="flex flex-wrap gap-2">
 					{chips.map((chip) => (
 						<Tooltip key={chip.simplifiedLabel}>
-							<TooltipTrigger asChild>
-								<div className={cn("flex items-center gap-2 rounded-lg px-2 py-1 shadow-2xs h-7", chip.className)}>
-									{chip.icon}
-									<span className="text-xs font-medium">
-										{chip.value} {chip.simplifiedLabel}
-									</span>
-								</div>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<div className={cn("flex items-center gap-2 rounded-lg px-2 py-1 shadow-2xs h-7", chip.className)}>
+										{chip.icon}
+										<span className="text-xs font-medium">
+											{chip.value} {chip.simplifiedLabel}
+										</span>
+									</div>
+								}
+							/>
 							<TooltipContent>
 								<p>{chip.label}</p>
 							</TooltipContent>

@@ -7,11 +7,11 @@ import { appRoutes } from "@/lib/navigation/routes";
 import { CodeIcon, IdCardIcon, InfoIcon, Mail, MapPinIcon, Phone, PhoneIcon, TagIcon, UserRound } from "lucide-react";
 import { MailIcon } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
 import { Button } from "../ui/button";
 type ClientHoverCardProps = {
 	clientId: string;
-	children: ReactNode;
+	children: ReactElement;
 };
 
 export default function ClientHoverCard({ clientId, children }: ClientHoverCardProps) {
@@ -19,7 +19,7 @@ export default function ClientHoverCard({ clientId, children }: ClientHoverCardP
 
 	return (
 		<HoverCard>
-			<HoverCardTrigger asChild>{children}</HoverCardTrigger>
+			<HoverCardTrigger render={children} />
 			<HoverCardContent className="w-80 p-0 overflow-hidden" align="start">
 				<div className="w-full flex flex-col gap-3 p-4">
 					{isLoading ? <p className="text-xs text-muted-foreground animate-pulse">Carregando cliente...</p> : null}
@@ -85,7 +85,7 @@ export default function ClientHoverCard({ clientId, children }: ClientHoverCardP
 							<div className="h-px w-full bg-border" />
 							<div className="w-full flex items-center justify-center">
 								<Button variant="ghost" size="xs" className="flex items-center gap-1.5 w-fit" asChild>
-					<Link href={appRoutes.customers.details(client.id)}>
+									<Link href={appRoutes.customers.details(client.id)}>
 										<InfoIcon className="w-3 h-3 min-w-3 min-h-3" />
 										VER PERFIL
 									</Link>

@@ -369,23 +369,25 @@ function PurchaseItemCostModifiersControl({
 
 	return (
 		<Popover modal={false} open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<button
-					ref={triggerRef}
-					type="button"
-					title="Custos e tributos do item"
-					aria-label="Editar custos e tributos do item"
-					className={cn(
-						"flex h-7 shrink-0 items-center gap-1 rounded-md border px-1.5 text-[0.7rem] font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40",
-						count > 0
-							? "border-primary/30 bg-primary/5 text-primary"
-							: "border-dashed border-border text-muted-foreground hover:border-primary/50 hover:text-primary",
-					)}
-				>
-					<ReceiptText className="h-3.5 w-3.5" />
-					{count > 0 ? <span>{count}</span> : null}
-				</button>
-			</PopoverTrigger>
+			<PopoverTrigger
+				render={
+					<button
+						ref={triggerRef}
+						type="button"
+						title="Custos e tributos do item"
+						aria-label="Editar custos e tributos do item"
+						className={cn(
+							"flex h-7 shrink-0 items-center gap-1 rounded-md border px-1.5 text-[0.7rem] font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40",
+							count > 0
+								? "border-primary/30 bg-primary/5 text-primary"
+								: "border-dashed border-border text-muted-foreground hover:border-primary/50 hover:text-primary",
+						)}
+					>
+						<ReceiptText className="h-3.5 w-3.5" />
+						{count > 0 ? <span>{count}</span> : null}
+					</button>
+				}
+			/>
 			<PopoverContent container={dialogContainer} align="start" className="w-[min(32rem,calc(100vw-2rem))] space-y-3">
 				<div>
 					<p className="text-xs font-semibold uppercase tracking-wide">Custos e tributos</p>
@@ -548,21 +550,23 @@ function PurchaseItemExpiryControl({
 
 	return (
 		<Popover modal={false} open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<button
-					ref={triggerRef}
-					type="button"
-					title={validade ? "Validade e lote do item" : "Definir validade (item perecível)"}
-					aria-label={validade ? "Editar validade e lote do item" : "Definir validade do item perecível"}
-					className={cn(
-						"flex h-7 shrink-0 items-center gap-1 rounded-md border px-1.5 text-[0.7rem] font-medium tabular-nums transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40",
-						summary ? EXPIRY_TONE_CLASS[summary.tone] : "border-dashed border-border text-muted-foreground hover:border-amber-400/60 hover:text-amber-500",
-					)}
-				>
-					<CalendarClock className="h-3.5 w-3.5 shrink-0" />
-					{summary ? <span className="whitespace-nowrap">{summary.label}</span> : null}
-				</button>
-			</PopoverTrigger>
+			<PopoverTrigger
+				render={
+					<button
+						ref={triggerRef}
+						type="button"
+						title={validade ? "Validade e lote do item" : "Definir validade (item perecível)"}
+						aria-label={validade ? "Editar validade e lote do item" : "Definir validade do item perecível"}
+						className={cn(
+							"flex h-7 shrink-0 items-center gap-1 rounded-md border px-1.5 text-[0.7rem] font-medium tabular-nums transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40",
+							summary ? EXPIRY_TONE_CLASS[summary.tone] : "border-dashed border-border text-muted-foreground hover:border-amber-400/60 hover:text-amber-500",
+						)}
+					>
+						<CalendarClock className="h-3.5 w-3.5 shrink-0" />
+						{summary ? <span className="whitespace-nowrap">{summary.label}</span> : null}
+					</button>
+				}
+			/>
 			<PopoverContent container={dialogContainer} align="end" className="w-72 space-y-2.5">
 				<div className="flex items-center gap-1.5 text-[0.68rem] font-medium tracking-tight text-muted-foreground">
 					<CalendarClock className="h-3.5 w-3.5" />
@@ -862,7 +866,7 @@ function ProductCell({
 			selectedLabel={item.produtoId ? selectedName : placeholder}
 			resetOptionLabel="SELECIONE UM PRODUTO"
 			holderClassName="h-auto min-h-8 rounded-md border-transparent bg-transparent px-2 py-1 text-left shadow-none hover:border-border hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40"
-			popoverContentClassName="w-[var(--radix-popover-trigger-width)] min-w-[410px] max-w-[520px]"
+			popoverContentClassName="w-[var(--anchor-width)] min-w-[410px] max-w-[520px]"
 			commandListClassName="max-h-[360px]"
 			handleChange={handleChange}
 			onReset={() => onChange(createEmptyPurchaseItem())}

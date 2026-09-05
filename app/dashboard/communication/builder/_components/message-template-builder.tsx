@@ -1,7 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectGroup, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import TemplateMediaUpload from "@/components/MessageTemplates/TemplateMediaUpload";
 import { getDefaultAppOrigin, getMessageTemplateButtonPreset, MESSAGE_TEMPLATE_BUTTON_PRESET_OPTIONS } from "@/lib/message-templates/buttons/presets";
 import { ArrowLeft, BadgeCheck, Braces, Eye, FileText, ImageIcon, LinkIcon, Mail, Plus, Save, Trash2 } from "lucide-react";
@@ -172,30 +172,48 @@ export default function MessageTemplateBuilder({
 						</Field>
 						<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
 							<Field label="Status">
-								<Select value={state.messageTemplate.status} onValueChange={(value) => updateTemplate({ status: value as TTemplateStatus })}>
+								<Select
+									items={[...statusOptions.map((status) => ({ value: status, label: status }))]}
+									value={state.messageTemplate.status}
+									onValueChange={(value) => {
+										if (value === null) return;
+										updateTemplate({ status: value as TTemplateStatus });
+									}}
+								>
 									<SelectTrigger className="w-full">
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										{statusOptions.map((status) => (
-											<SelectItem key={status} value={status}>
-												{status}
-											</SelectItem>
-										))}
+										<SelectGroup>
+											{statusOptions.map((status) => (
+												<SelectItem key={status} value={status}>
+													{status}
+												</SelectItem>
+											))}
+										</SelectGroup>
 									</SelectContent>
 								</Select>
 							</Field>
 							<Field label="Categoria">
-								<Select value={state.messageTemplate.categoria} onValueChange={(value) => updateTemplate({ categoria: value as TTemplateCategory })}>
+								<Select
+									items={[...categoryOptions.map((category) => ({ value: category, label: category }))]}
+									value={state.messageTemplate.categoria}
+									onValueChange={(value) => {
+										if (value === null) return;
+										updateTemplate({ categoria: value as TTemplateCategory });
+									}}
+								>
 									<SelectTrigger className="w-full">
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										{categoryOptions.map((category) => (
-											<SelectItem key={category} value={category}>
-												{category}
-											</SelectItem>
-										))}
+										<SelectGroup>
+											{categoryOptions.map((category) => (
+												<SelectItem key={category} value={category}>
+													{category}
+												</SelectItem>
+											))}
+										</SelectGroup>
 									</SelectContent>
 								</Select>
 							</Field>
@@ -229,26 +247,30 @@ export default function MessageTemplateBuilder({
 					<div className="flex flex-col gap-4">
 						<Field label="Cabeçalho">
 							<Select
+								items={[...headerTypeOptions.map((type) => ({ value: type.id, label: type.label }))]}
 								value={state.messageTemplate.conteudo.cabecalho?.tipo || "NENHUM"}
-								onValueChange={(value) =>
+								onValueChange={(value) => {
+									if (value === null) return;
 									updateTemplateContentHeader({
 										tipo: value as Exclude<TUseMessageTemplateState["state"]["messageTemplate"]["conteudo"]["cabecalho"], null | undefined>["tipo"],
 										conteudoMidiaUrl: value === "IMAGEM_DINAMICA" ? "" : state.messageTemplate.conteudo.cabecalho?.conteudoMidiaUrl || "",
 										// O handle da Meta é vinculado ao formato do cabeçalho, então trocar de tipo invalida o handle existente.
 										conteudoMidiaHandle: null,
 										imagemDinamicaPreset: state.messageTemplate.conteudo.cabecalho?.imagemDinamicaPreset || "CASHBACK_AVAILABLE_BALANCE",
-									})
-								}
+									});
+								}}
 							>
 								<SelectTrigger className="w-full">
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									{headerTypeOptions.map((type) => (
-										<SelectItem key={type.id} value={type.id}>
-											{type.label}
-										</SelectItem>
-									))}
+									<SelectGroup>
+										{headerTypeOptions.map((type) => (
+											<SelectItem key={type.id} value={type.id}>
+												{type.label}
+											</SelectItem>
+										))}
+									</SelectGroup>
 								</SelectContent>
 							</Select>
 						</Field>
@@ -449,16 +471,25 @@ function DynamicHeaderPresetPicker({
 		<div className="sm:col-span-2">
 			<div className="flex flex-col gap-3">
 				<Field label="Preset da imagem">
-					<Select value={presetId} onValueChange={(value) => onChange(value as TTemplateDynamicHeaderPreset)}>
+					<Select
+						items={[...MessageTemplateDynamicHeaderPresetOptions.map((preset) => ({ value: preset.id, label: preset.label }))]}
+						value={presetId}
+						onValueChange={(value) => {
+							if (value === null) return;
+							onChange(value as TTemplateDynamicHeaderPreset);
+						}}
+					>
 						<SelectTrigger className="w-full">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							{MessageTemplateDynamicHeaderPresetOptions.map((preset) => (
-								<SelectItem key={preset.id} value={preset.id}>
-									{preset.label}
-								</SelectItem>
-							))}
+							<SelectGroup>
+								{MessageTemplateDynamicHeaderPresetOptions.map((preset) => (
+									<SelectItem key={preset.id} value={preset.id}>
+										{preset.label}
+									</SelectItem>
+								))}
+							</SelectGroup>
 						</SelectContent>
 					</Select>
 				</Field>
@@ -501,8 +532,14 @@ function ButtonEditor({
 	return (
 		<div className="grid gap-2 rounded-lg bg-background p-2 md:grid-cols-[140px_1fr_1fr_auto]">
 			<Select
+				items={[
+					{ value: "URL", label: "URL" },
+					{ value: "RESPOSTA RÁPIDA", label: "RESPOSTA RÁPIDA" },
+					{ value: "TELEFONE", label: "TELEFONE" },
+				]}
 				value={button.tipo}
 				onValueChange={(value) => {
+					if (value === null) return;
 					if (value === "URL")
 						updateButton(index, {
 							tipo: "URL",
@@ -526,9 +563,11 @@ function ButtonEditor({
 					<SelectValue />
 				</SelectTrigger>
 				<SelectContent>
-					<SelectItem value="URL">URL</SelectItem>
-					<SelectItem value="RESPOSTA RÁPIDA">RESPOSTA RÁPIDA</SelectItem>
-					<SelectItem value="TELEFONE">TELEFONE</SelectItem>
+					<SelectGroup>
+						<SelectItem value="URL">URL</SelectItem>
+						<SelectItem value="RESPOSTA RÁPIDA">RESPOSTA RÁPIDA</SelectItem>
+						<SelectItem value="TELEFONE">TELEFONE</SelectItem>
+					</SelectGroup>
 				</SelectContent>
 			</Select>
 			<Input

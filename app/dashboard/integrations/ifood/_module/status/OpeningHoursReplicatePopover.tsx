@@ -46,18 +46,20 @@ export function OpeningHoursReplicatePopover({ source, onReplicate }: OpeningHou
 
 	return (
 		<Popover open={isOpen} onOpenChange={handleOpenChange}>
-			<PopoverTrigger asChild>
-				<Button
-					type="button"
-					variant="ghost"
-					size="xs"
-					aria-label={`Replicar horário de ${IFOOD_DAY_LABELS[source]} para outros dias`}
-					className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
-				>
-					<CopyIcon className="w-4 h-4 min-w-4 min-h-4" />
-					REPLICAR
-				</Button>
-			</PopoverTrigger>
+			<PopoverTrigger
+				render={
+					<Button
+						type="button"
+						variant="ghost"
+						size="xs"
+						aria-label={`Replicar horário de ${IFOOD_DAY_LABELS[source]} para outros dias`}
+						className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+					>
+						<CopyIcon className="w-4 h-4 min-w-4 min-h-4" />
+						REPLICAR
+					</Button>
+				}
+			/>
 			<PopoverContent align="end" className="flex w-64 flex-col gap-3">
 				<div className="flex flex-col gap-0.5">
 					<span className="text-[0.68rem] font-medium tracking-tight text-muted-foreground uppercase">Replicar {IFOOD_DAY_LABELS[source]}</span>

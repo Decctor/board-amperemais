@@ -21,7 +21,7 @@ export function QuickActionRow({ label, tooltip, children }: QuickActionRowProps
 
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>{row}</TooltipTrigger>
+			<TooltipTrigger render={row} />
 			<TooltipContent>{tooltip}</TooltipContent>
 		</Tooltip>
 	);

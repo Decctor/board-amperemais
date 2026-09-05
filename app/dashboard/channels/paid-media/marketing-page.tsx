@@ -6,7 +6,7 @@ import { useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { StatEmptyState } from "@/components/SalesStats/StatEmptyState";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectGroup, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { formatToMoney } from "@/lib/formatting";
 import type { TMetaAdsLibraryAd } from "@/lib/integrations/meta/ads/types";
@@ -66,7 +66,12 @@ export default function MarketingPage({ user: _user }: MarketingPageProps) {
 
 	const { since, until } = useMemo(
 		// Janela inclusiva nas duas pontas na Meta: "Últimos N dias" = [hoje-(N-1) … hoje], somando N dias.
-		() => ({ since: dayjs().subtract(Number(periodDays) - 1, "day").format("YYYY-MM-DD"), until: dayjs().format("YYYY-MM-DD") }),
+		() => ({
+			since: dayjs()
+				.subtract(Number(periodDays) - 1, "day")
+				.format("YYYY-MM-DD"),
+			until: dayjs().format("YYYY-MM-DD"),
+		}),
 		[periodDays],
 	);
 
@@ -80,29 +85,50 @@ export default function MarketingPage({ user: _user }: MarketingPageProps) {
 			) : (
 				<>
 					<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-						<Select value={selectedIntegrationId ?? undefined} onValueChange={setSelectedIntegrationId}>
+						<Select
+							items={[
+								...metaAccounts.map((account) => ({
+									value: account.id,
+									label: account.apelido ?? (account.configuracao?.tipo === "META_ADS" ? account.configuracao.adAccountName : account.id),
+								})),
+							]}
+							value={selectedIntegrationId ?? null}
+							onValueChange={(value) => {
+								if (value !== null) setSelectedIntegrationId(value);
+							}}
+						>
 							<SelectTrigger className="w-full sm:w-[280px]">
 								<SelectValue placeholder="Selecione a conta" />
 							</SelectTrigger>
 							<SelectContent>
-								{metaAccounts.map((account) => (
-									<SelectItem key={account.id} value={account.id}>
-										{account.apelido ?? (account.configuracao?.tipo === "META_ADS" ? account.configuracao.adAccountName : account.id)}
-									</SelectItem>
-								))}
+								<SelectGroup>
+									{metaAccounts.map((account) => (
+										<SelectItem key={account.id} value={account.id}>
+											{account.apelido ?? (account.configuracao?.tipo === "META_ADS" ? account.configuracao.adAccountName : account.id)}
+										</SelectItem>
+									))}
+								</SelectGroup>
 							</SelectContent>
 						</Select>
 						<div className="flex w-full items-center gap-2 sm:w-auto">
-							<Select value={periodDays} onValueChange={setPeriodDays}>
+							<Select
+								items={[...PERIOD_OPTIONS.map((option) => ({ value: option.value, label: option.label }))]}
+								value={periodDays}
+								onValueChange={(value) => {
+									if (value !== null) setPeriodDays(value);
+								}}
+							>
 								<SelectTrigger className="w-full sm:w-[200px]">
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									{PERIOD_OPTIONS.map((option) => (
-										<SelectItem key={option.value} value={option.value}>
-											{option.label}
-										</SelectItem>
-									))}
+									<SelectGroup>
+										{PERIOD_OPTIONS.map((option) => (
+											<SelectItem key={option.value} value={option.value}>
+												{option.label}
+											</SelectItem>
+										))}
+									</SelectGroup>
 								</SelectContent>
 							</Select>
 							<Button variant="outline" size="icon" title="Conversions API" onClick={() => setCapiModalOpen(true)} disabled={!selectedIntegrationId}>
@@ -236,16 +262,25 @@ function MetaAdsDashboard({ integrationId, since, until, libraryStatus, onLibrar
 			<div className="flex w-full flex-col gap-3">
 				<div className="flex w-full items-center justify-between gap-2 flex-wrap">
 					<h1 className="text-xs font-medium tracking-tight uppercase">Biblioteca de anúncios</h1>
-					<Select value={libraryStatus} onValueChange={(value) => onLibraryStatusChange(value as "all" | "active" | "paused")}>
+					<Select
+						items={[...LIBRARY_STATUS_OPTIONS.map((option) => ({ value: option.value, label: option.label }))]}
+						value={libraryStatus}
+						onValueChange={(value) => {
+							if (value === null) return;
+							onLibraryStatusChange(value as "all" | "active" | "paused");
+						}}
+					>
 						<SelectTrigger className="w-full sm:w-[160px]">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							{LIBRARY_STATUS_OPTIONS.map((option) => (
-								<SelectItem key={option.value} value={option.value}>
-									{option.label}
-								</SelectItem>
-							))}
+							<SelectGroup>
+								{LIBRARY_STATUS_OPTIONS.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectGroup>
 						</SelectContent>
 					</Select>
 				</div>

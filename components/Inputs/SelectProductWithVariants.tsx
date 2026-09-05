@@ -284,13 +284,10 @@ function SelectProductWithVariants({
 					</FieldLabel>
 				)}
 				<Popover modal={false} open={isOpen} onOpenChange={setIsOpen}>
-					<PopoverTrigger asChild>{renderTrigger()}</PopoverTrigger>
+					<PopoverTrigger render={renderTrigger()} />
 					<PopoverContent
 						container={dialogContainer}
-						className={cn(
-							"flex max-h-[min(480px,var(--radix-popover-content-available-height))] w-[410px] flex-col overflow-hidden p-0",
-							popoverContentClassName,
-						)}
+						className={cn("flex max-h-[min(480px,var(--available-height))] w-[410px] flex-col overflow-hidden p-0", popoverContentClassName)}
 						align="start"
 					>
 						{renderContent()}

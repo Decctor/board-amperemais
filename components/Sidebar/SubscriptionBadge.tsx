@@ -72,7 +72,7 @@ export default function SubscriptionBadge({ organization }: TSubscriptionBadgePr
 					badgeContent
 				) : (
 					<Tooltip>
-						<TooltipTrigger asChild>{badgeContent}</TooltipTrigger>
+						<TooltipTrigger render={badgeContent} />
 						<TooltipContent side="right" sideOffset={8}>
 							Gerenciar assinatura
 						</TooltipContent>
@@ -106,7 +106,7 @@ export default function SubscriptionBadge({ organization }: TSubscriptionBadgePr
 						trialContent
 					) : (
 						<Tooltip>
-							<TooltipTrigger asChild>{trialContent}</TooltipTrigger>
+							<TooltipTrigger render={trialContent} />
 							<TooltipContent side="right" sideOffset={8}>
 								Você está em período de testes — escolha um plano
 							</TooltipContent>
@@ -136,7 +136,7 @@ export default function SubscriptionBadge({ organization }: TSubscriptionBadgePr
 					acquireContent
 				) : (
 					<Tooltip>
-						<TooltipTrigger asChild>{acquireContent}</TooltipTrigger>
+						<TooltipTrigger render={acquireContent} />
 						<TooltipContent side="right" sideOffset={8}>
 							Adquirir Plano
 						</TooltipContent>

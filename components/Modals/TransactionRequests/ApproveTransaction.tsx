@@ -1,6 +1,8 @@
 "use client";
+import { ResponsiveMenuAnimatedBody } from "@/components/Utils/ResponsiveMenuAnimatedBody";
+import { LoadingButton } from "@/components/loading-button";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 
-import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import { SaleValueConfirmationInput } from "@/app/(external)/point-of-interaction/[orgId]/_shared/components/sale-value-confirmation-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -173,111 +175,120 @@ export function ApproveTransaction({
 		: "Informe os 5 dígitos da senha do operador (vendedor) que receberá esta venda.";
 
 	return (
-		<ResponsiveMenuV2
-			menuTitle="APROVAR SOLICITAÇÃO"
-			menuDescription={clientDisplayName ? `Cliente: ${clientDisplayName}.` : "Confira o valor e identifique o operador."}
-			menuActionButtonText="APROVAR"
-			menuCancelButtonText="CANCELAR"
-			actionFunction={handleApprove}
-			actionIsLoading={isPending}
-			stateIsLoading={false}
-			stateError={null}
-			closeMenu={closeModal}
-			dialogContentClassName="min-w-0 overflow-x-hidden sm:max-w-lg"
-			drawerContentClassName="overflow-x-hidden"
+		<ResponsiveMenu.Root
+			open
+			onOpenChange={(open) => {
+				if (!open) closeModal();
+			}}
 		>
-			<div className="flex w-full min-w-0 flex-col gap-4 overflow-x-hidden py-2">
-				{/* Valor em destaque: o operador deve conferir o valor no momento da aprovação. */}
-				<div className="flex w-full flex-col items-center gap-1 rounded-2xl border border-brand/20 bg-brand/5 px-4 py-5 text-center">
-					<span className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">Valor a aprovar</span>
-					<HighlightedMoney value={valorFinal} />
-					{hasDiscount ? (
-						<span className="text-[0.7rem] font-medium text-muted-foreground">Bruto: {formatToMoney(valorBruto)} · com desconto/resgate aplicado</span>
-					) : null}
-				</div>
-
-				{requiresHighValueConfirmation ? (
-					<label
-						htmlFor="poi-approve-high-value"
-						className={cn(
-							"flex w-full cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors",
-							highValueConfirmed ? "border-brand/40 bg-brand/5" : "border-amber-300 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/10",
-						)}
-					>
-						<Checkbox
-							id="poi-approve-high-value"
-							checked={highValueConfirmed}
-							onCheckedChange={(v) => setHighValueConfirmed(v === true)}
-							className="mt-0.5"
-						/>
-						<span className="flex items-start gap-1.5 text-xs font-medium leading-snug text-foreground/90">
-							<AlertTriangle className="mt-0.5 h-4 w-4 min-h-4 min-w-4 text-amber-500" />
-							Valor elevado. Confirmo que conferi e o valor de <strong className="font-black">{formatToMoney(valorFinal)}</strong> está correto.
-						</span>
-					</label>
-				) : null}
-
-				{coupon ? (
-					<div className="flex w-full flex-col gap-2 rounded-xl border border-brand/20 bg-brand/5 px-3 py-3">
-						<div className="flex items-center justify-between">
-							<span className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
-								Cupom {coupon.codigo ?? ""} — {coupon.titulo ?? ""}
-							</span>
-							{coupon.valorDesconto ? <span className="text-xs font-black text-green-600">- {formatToMoney(coupon.valorDesconto)}</span> : null}
+			<ResponsiveMenu.Content dialogClassName="min-w-0 overflow-x-hidden sm:max-w-lg" drawerClassName={"max-h-[70dvh]" + " " + "overflow-x-hidden"}>
+				<ResponsiveMenu.Header>
+					<ResponsiveMenu.Title>APROVAR SOLICITAÇÃO</ResponsiveMenu.Title>
+					<ResponsiveMenu.Description>
+						{clientDisplayName ? `Cliente: ${clientDisplayName}.` : "Confira o valor e identifique o operador."}
+					</ResponsiveMenu.Description>
+				</ResponsiveMenu.Header>
+				<ResponsiveMenuAnimatedBody stateKey="content" className="overflow-x-hidden overflow-y-auto">
+					<div className="flex w-full min-w-0 flex-col gap-4 overflow-x-hidden py-2">
+						{/* Valor em destaque: o operador deve conferir o valor no momento da aprovação. */}
+						<div className="flex w-full flex-col items-center gap-1 rounded-2xl border border-brand/20 bg-brand/5 px-4 py-5 text-center">
+							<span className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">Valor a aprovar</span>
+							<HighlightedMoney value={valorFinal} />
+							{hasDiscount ? (
+								<span className="text-[0.7rem] font-medium text-muted-foreground">Bruto: {formatToMoney(valorBruto)} · com desconto/resgate aplicado</span>
+							) : null}
 						</div>
-						{coupon.condicoesTexto ? <p className="text-[0.7rem] text-muted-foreground">Condições: {coupon.condicoesTexto}</p> : null}
-						{requiresCouponDiscountInput ? (
-							<div className="flex flex-col gap-1">
-								<Label htmlFor="poi-approve-coupon-discount" className="text-xs font-medium tracking-tight text-foreground/80">
-									DESCONTO DO CUPOM (R$)<span className="text-red-500">*</span>
-								</Label>
-								<p className="text-[0.7rem] text-muted-foreground">Confira as condições do cupom na compra e informe o valor do desconto concedido.</p>
-								<Input
-									id="poi-approve-coupon-discount"
-									type="number"
-									placeholder="Ex: 25 para R$ 25,00..."
-									value={operatorCouponDiscountValue ?? ""}
-									onChange={(event) => {
-										const inputValue = Number(event.target.value);
-										setOperatorCouponDiscountValue(Number.isFinite(inputValue) && inputValue > 0 ? inputValue : null);
-									}}
+
+						{requiresHighValueConfirmation ? (
+							<label
+								htmlFor="poi-approve-high-value"
+								className={cn(
+									"flex w-full cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors",
+									highValueConfirmed ? "border-brand/40 bg-brand/5" : "border-amber-300 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/10",
+								)}
+							>
+								<Checkbox
+									id="poi-approve-high-value"
+									checked={highValueConfirmed}
+									onCheckedChange={(v) => setHighValueConfirmed(v === true)}
+									className="mt-0.5"
 								/>
+								<span className="flex items-start gap-1.5 text-xs font-medium leading-snug text-foreground/90">
+									<AlertTriangle className="mt-0.5 h-4 w-4 min-h-4 min-w-4 text-amber-500" />
+									Valor elevado. Confirmo que conferi e o valor de <strong className="font-black">{formatToMoney(valorFinal)}</strong> está correto.
+								</span>
+							</label>
+						) : null}
+
+						{coupon ? (
+							<div className="flex w-full flex-col gap-2 rounded-xl border border-brand/20 bg-brand/5 px-3 py-3">
+								<div className="flex items-center justify-between">
+									<span className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+										Cupom {coupon.codigo ?? ""} — {coupon.titulo ?? ""}
+									</span>
+									{coupon.valorDesconto ? <span className="text-xs font-black text-green-600">- {formatToMoney(coupon.valorDesconto)}</span> : null}
+								</div>
+								{coupon.condicoesTexto ? <p className="text-[0.7rem] text-muted-foreground">Condições: {coupon.condicoesTexto}</p> : null}
+								{requiresCouponDiscountInput ? (
+									<div className="flex flex-col gap-1">
+										<Label htmlFor="poi-approve-coupon-discount" className="text-xs font-medium tracking-tight text-foreground/80">
+											DESCONTO DO CUPOM (R$)<span className="text-red-500">*</span>
+										</Label>
+										<p className="text-[0.7rem] text-muted-foreground">Confira as condições do cupom na compra e informe o valor do desconto concedido.</p>
+										<Input
+											id="poi-approve-coupon-discount"
+											type="number"
+											placeholder="Ex: 25 para R$ 25,00..."
+											value={operatorCouponDiscountValue ?? ""}
+											onChange={(event) => {
+												const inputValue = Number(event.target.value);
+												setOperatorCouponDiscountValue(Number.isFinite(inputValue) && inputValue > 0 ? inputValue : null);
+											}}
+										/>
+									</div>
+								) : null}
 							</div>
 						) : null}
+
+						{requiresSaleValueConfirmation ? (
+							<SaleValueConfirmationInput value={operatorConfirmedSaleValue} onChange={setOperatorConfirmedSaleValue} compact />
+						) : null}
+
+						<div className="flex w-full min-w-0 flex-col gap-3 overflow-x-hidden">
+							<Label htmlFor="poi-approve-operator-password" className="text-sm font-medium tracking-tight text-foreground/80">
+								SENHA DO OPERADOR (5 DÍGITOS)
+								{!hasLinkedSeller || requiresOperatorPassword ? <span className="text-red-500">*</span> : null}
+							</Label>
+							<p className="text-[0.7rem] text-muted-foreground">{description}</p>
+							<InputOTP
+								id="poi-approve-operator-password"
+								maxLength={OPERATOR_PASSWORD_LENGTH}
+								pattern={REGEXP_ONLY_DIGITS}
+								inputMode="numeric"
+								autoComplete="off"
+								pushPasswordManagerStrategy="none"
+								value={operatorPassword}
+								onChange={(value) => setOperatorPassword(value)}
+								containerClassName="mx-auto w-full max-w-full justify-center"
+							>
+								<InputOTPGroup>
+									<InputOTPSlot index={0} />
+									<InputOTPSlot index={1} />
+									<InputOTPSlot index={2} />
+									<InputOTPSlot index={3} />
+									<InputOTPSlot index={4} />
+								</InputOTPGroup>
+							</InputOTP>
+						</div>
 					</div>
-				) : null}
-
-				{requiresSaleValueConfirmation ? (
-					<SaleValueConfirmationInput value={operatorConfirmedSaleValue} onChange={setOperatorConfirmedSaleValue} compact />
-				) : null}
-
-				<div className="flex w-full min-w-0 flex-col gap-3 overflow-x-hidden">
-					<Label htmlFor="poi-approve-operator-password" className="text-sm font-medium tracking-tight text-foreground/80">
-						SENHA DO OPERADOR (5 DÍGITOS)
-						{!hasLinkedSeller || requiresOperatorPassword ? <span className="text-red-500">*</span> : null}
-					</Label>
-					<p className="text-[0.7rem] text-muted-foreground">{description}</p>
-					<InputOTP
-						id="poi-approve-operator-password"
-						maxLength={OPERATOR_PASSWORD_LENGTH}
-						pattern={REGEXP_ONLY_DIGITS}
-						inputMode="numeric"
-						autoComplete="off"
-						pushPasswordManagerStrategy="none"
-						value={operatorPassword}
-						onChange={(value) => setOperatorPassword(value)}
-						containerClassName="mx-auto w-full max-w-full justify-center"
-					>
-						<InputOTPGroup>
-							<InputOTPSlot index={0} />
-							<InputOTPSlot index={1} />
-							<InputOTPSlot index={2} />
-							<InputOTPSlot index={3} />
-							<InputOTPSlot index={4} />
-						</InputOTPGroup>
-					</InputOTP>
-				</div>
-			</div>
-		</ResponsiveMenuV2>
+				</ResponsiveMenuAnimatedBody>
+				<ResponsiveMenu.Footer>
+					<ResponsiveMenu.Close variant="outline">CANCELAR</ResponsiveMenu.Close>
+					<LoadingButton loading={isPending} onClick={handleApprove}>
+						APROVAR
+					</LoadingButton>
+				</ResponsiveMenu.Footer>
+			</ResponsiveMenu.Content>
+		</ResponsiveMenu.Root>
 	);
 }

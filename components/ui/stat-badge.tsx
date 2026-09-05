@@ -31,7 +31,7 @@ export function StatBadge({ icon, value, tooltipContent, className, valueClassNa
 
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>{content}</TooltipTrigger>
+			<TooltipTrigger render={content} />
 			<TooltipContent className={tooltipClassName}>
 				<div className={cn(tooltipContentClassName)}>{tooltipContent}</div>
 			</TooltipContent>

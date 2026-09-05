@@ -1,8 +1,10 @@
 "use client";
+import { ResponsiveMenuAnimatedBody } from "@/components/Utils/ResponsiveMenuAnimatedBody";
+import { LoadingButton } from "@/components/loading-button";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 
 import type { TCreateIfoodAuthorizationOutput } from "@/app/api/integrations/ifood/auth/route";
 import TextInput from "@/components/Inputs/TextInput";
-import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
 import { useMutation } from "@tanstack/react-query";
@@ -73,53 +75,68 @@ export function IfoodConnectMenu({ reconnectIntegrationId, closeMenu }: IfoodCon
 	});
 
 	return (
-		<ResponsiveMenuV2
-			menuTitle="CONECTAR IFOOD"
-			menuDescription="Gere o código, autorize o aplicativo no portal do iFood e cole o código de autorização para concluir."
-			menuActionButtonText={authorization ? "FINALIZAR CONEXÃO" : "GERAR CÓDIGO"}
-			menuCancelButtonText="FECHAR"
-			closeMenu={closeMenu}
-			actionFunction={() => {
-				if (!authorization) return createAuthorizationMutation.mutate();
-				return completeAuthorizationMutation.mutate();
+		<ResponsiveMenu.Root
+			open
+			onOpenChange={(open) => {
+				if (!open) closeMenu();
 			}}
-			actionIsLoading={createAuthorizationMutation.isPending || completeAuthorizationMutation.isPending}
-			stateIsLoading={false}
 		>
-			<div className="flex flex-col gap-4">
-				{authorization ? (
-					<div className="rounded-lg border bg-muted/30 p-4">
-						<p className="text-xs font-semibold text-muted-foreground">CÓDIGO IFOOD</p>
-						<p className="mt-1 text-2xl font-bold tracking-wide">{authorization.userCode}</p>
-						{verificationLink ? (
-							<div className="mt-3 flex flex-col gap-2">
-								<p className="break-all text-xs text-muted-foreground">{verificationLink}</p>
-								<div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-									<Button type="button" size="sm" onClick={() => window.open(verificationLink, "_blank")}>
-										<LinkIcon className="h-4 w-4" />
-										ABRIR PORTAL IFOOD
-									</Button>
-									<Button type="button" size="sm" variant="secondary" onClick={handleCopyVerificationLink}>
-										{linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-										{linkCopied ? "LINK COPIADO" : "COPIAR LINK"}
-									</Button>
-								</div>
+			<ResponsiveMenu.Content drawerClassName="max-h-[70dvh]">
+				<ResponsiveMenu.Header>
+					<ResponsiveMenu.Title>CONECTAR IFOOD</ResponsiveMenu.Title>
+					<ResponsiveMenu.Description>
+						Gere o código, autorize o aplicativo no portal do iFood e cole o código de autorização para concluir.
+					</ResponsiveMenu.Description>
+				</ResponsiveMenu.Header>
+				<ResponsiveMenuAnimatedBody stateKey="content" className="overflow-x-hidden overflow-y-auto">
+					<div className="flex flex-col gap-4">
+						{authorization ? (
+							<div className="rounded-lg border bg-muted/30 p-4">
+								<p className="text-xs font-semibold text-muted-foreground">CÓDIGO IFOOD</p>
+								<p className="mt-1 text-2xl font-bold tracking-wide">{authorization.userCode}</p>
+								{verificationLink ? (
+									<div className="mt-3 flex flex-col gap-2">
+										<p className="break-all text-xs text-muted-foreground">{verificationLink}</p>
+										<div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+											<Button type="button" size="sm" onClick={() => window.open(verificationLink, "_blank")}>
+												<LinkIcon className="h-4 w-4" />
+												ABRIR PORTAL IFOOD
+											</Button>
+											<Button type="button" size="sm" variant="secondary" onClick={handleCopyVerificationLink}>
+												{linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+												{linkCopied ? "LINK COPIADO" : "COPIAR LINK"}
+											</Button>
+										</div>
+									</div>
+								) : null}
 							</div>
+						) : (
+							<p className="text-sm text-muted-foreground">Clique em gerar código para iniciar a autorização distribuída do iFood.</p>
+						)}
+
+						{authorization ? (
+							<TextInput
+								label="CÓDIGO DE AUTORIZAÇÃO"
+								value={authorizationCode}
+								placeholder="Cole aqui o código recebido no portal do iFood..."
+								handleChange={setAuthorizationCode}
+							/>
 						) : null}
 					</div>
-				) : (
-					<p className="text-sm text-muted-foreground">Clique em gerar código para iniciar a autorização distribuída do iFood.</p>
-				)}
-
-				{authorization ? (
-					<TextInput
-						label="CÓDIGO DE AUTORIZAÇÃO"
-						value={authorizationCode}
-						placeholder="Cole aqui o código recebido no portal do iFood..."
-						handleChange={setAuthorizationCode}
-					/>
-				) : null}
-			</div>
-		</ResponsiveMenuV2>
+				</ResponsiveMenuAnimatedBody>
+				<ResponsiveMenu.Footer>
+					<ResponsiveMenu.Close variant="outline">FECHAR</ResponsiveMenu.Close>
+					<LoadingButton
+						loading={createAuthorizationMutation.isPending || completeAuthorizationMutation.isPending}
+						onClick={() => {
+							if (!authorization) return createAuthorizationMutation.mutate();
+							return completeAuthorizationMutation.mutate();
+						}}
+					>
+						{authorization ? "FINALIZAR CONEXÃO" : "GERAR CÓDIGO"}
+					</LoadingButton>
+				</ResponsiveMenu.Footer>
+			</ResponsiveMenu.Content>
+		</ResponsiveMenu.Root>
 	);
 }

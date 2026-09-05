@@ -102,26 +102,28 @@ export function OnboardingQualityBubble() {
 	return (
 		<div className="fixed bottom-6 right-6 z-50 font-sans">
 			<Popover open={isOpen} onOpenChange={setIsOpen}>
-				<PopoverTrigger asChild>
-					<Button
-						size="icon"
-						className={cn(
-							"rounded-full h-14 w-14 shadow-2xl transition-all duration-300 relative border-2 border-white/20",
-							isOpen ? "bg-card text-foreground hover:bg-card/90" : "bg-brand text-brand-foreground hover:bg-brand/90",
-						)}
-					>
-						{isOpen ? (
-							<ChevronDown className="h-6 w-6" />
-						) : (
-							<>
-								<Sparkles className="h-6 w-6 animate-pulse-slow" />
-								<span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-white shadow-sm">
-									{totalApplicable - completedCount}
-								</span>
-							</>
-						)}
-					</Button>
-				</PopoverTrigger>
+				<PopoverTrigger
+					render={
+						<Button
+							size="icon"
+							className={cn(
+								"rounded-full h-14 w-14 shadow-2xl transition-all duration-300 relative border-2 border-white/20",
+								isOpen ? "bg-card text-foreground hover:bg-card/90" : "bg-brand text-brand-foreground hover:bg-brand/90",
+							)}
+						>
+							{isOpen ? (
+								<ChevronDown className="h-6 w-6" />
+							) : (
+								<>
+									<Sparkles className="h-6 w-6 animate-pulse-slow" />
+									<span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-white shadow-sm">
+										{totalApplicable - completedCount}
+									</span>
+								</>
+							)}
+						</Button>
+					}
+				/>
 				<PopoverContent
 					align="end"
 					side="top"

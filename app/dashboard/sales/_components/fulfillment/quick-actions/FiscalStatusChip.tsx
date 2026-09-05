@@ -43,11 +43,13 @@ export function FiscalStatusChip({ status, documentId }: { status: TSaleFiscalDe
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<button type="button" className="max-w-full text-left" onClick={(event) => event.stopPropagation()}>
-					{chip}
-				</button>
-			</PopoverTrigger>
+			<PopoverTrigger
+				render={
+					<button type="button" className="max-w-full text-left" onClick={(event) => event.stopPropagation()}>
+						{chip}
+					</button>
+				}
+			/>
 			<PopoverContent align="end" className="w-auto p-3" onClick={(event) => event.stopPropagation()}>
 				{open ? <FiscalDocumentPopoverContent documentId={documentId} onResolved={() => setOpen(false)} /> : null}
 			</PopoverContent>

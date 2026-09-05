@@ -4,6 +4,7 @@ import type { TSalesFulfillmentCard } from "@/app/api/sales/fulfillment/route";
 import type { TPatchSalesFulfillmentInput } from "@/app/api/sales/fulfillment/route";
 import { Button } from "@/components/ui/button";
 import {
+	DropdownMenuGroup,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -111,48 +112,55 @@ function QuickPaymentMethodControl({
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild disabled={disabled}>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					className={cn("h-7 max-w-full gap-1.5 rounded-md px-2 text-[11px] font-semibold uppercase tracking-tight", toneClasses)}
-					onPointerDown={stopDragPropagation}
-				>
-					{selectedMethod?.icon ?? <Wallet className="h-3 w-3 shrink-0" />}
-					<span className="truncate">{selectedMethod?.label ?? payment.metodo}</span>
-					<span
-						className={cn(
-							"shrink-0 tabular-nums",
-							tone === "overdue" ? "text-destructive/80" : tone === "received" ? "text-green-700/80 dark:text-green-400/80" : "text-muted-foreground",
-						)}
+			<DropdownMenuTrigger
+				disabled={disabled}
+				render={
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						className={cn("h-7 max-w-full gap-1.5 rounded-md px-2 text-[11px] font-semibold uppercase tracking-tight", toneClasses)}
+						onPointerDown={stopDragPropagation}
 					>
-						{formatToMoney(payment.valor)}
-					</span>
-				</Button>
-			</DropdownMenuTrigger>
+						{selectedMethod?.icon ?? <Wallet className="h-3 w-3 shrink-0" />}
+						<span className="truncate">{selectedMethod?.label ?? payment.metodo}</span>
+						<span
+							className={cn(
+								"shrink-0 tabular-nums",
+								tone === "overdue" ? "text-destructive/80" : tone === "received" ? "text-green-700/80 dark:text-green-400/80" : "text-muted-foreground",
+							)}
+						>
+							{formatToMoney(payment.valor)}
+						</span>
+					</Button>
+				}
+			/>
 			<DropdownMenuContent align="end" className="max-w-[240px]">
-				<DropdownMenuLabel className="text-[11px]">MÉTODO</DropdownMenuLabel>
+				<DropdownMenuGroup>
+					<DropdownMenuLabel className="text-[11px]">MÉTODO</DropdownMenuLabel>
+				</DropdownMenuGroup>
 				<DropdownMenuSeparator />
-				{supportedMethods.map((method) => (
-					<DropdownMenuItem
-						key={method.value}
-						onSelect={() =>
-							onPatch({
-								id: saleId,
-								pagamento: { transacaoId: payment.id, metodo: method.value as TPaymentMethodEnum },
-							})
-						}
-					>
-						<div className="flex w-full items-center justify-between gap-2">
-							<div className="flex items-center gap-2">
-								{method.icon}
-								{method.label}
+				<DropdownMenuGroup>
+					{supportedMethods.map((method) => (
+						<DropdownMenuItem
+							key={method.value}
+							onClick={() =>
+								onPatch({
+									id: saleId,
+									pagamento: { transacaoId: payment.id, metodo: method.value as TPaymentMethodEnum },
+								})
+							}
+						>
+							<div className="flex w-full items-center justify-between gap-2">
+								<div className="flex items-center gap-2">
+									{method.icon}
+									{method.label}
+								</div>
+								{method.value === payment.metodo ? <Check className="h-4 w-4" /> : null}
 							</div>
-							{method.value === payment.metodo ? <Check className="h-4 w-4" /> : null}
-						</div>
-					</DropdownMenuItem>
-				))}
+						</DropdownMenuItem>
+					))}
+				</DropdownMenuGroup>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
@@ -192,11 +200,13 @@ export function CardQuickActions({ card, organizationConfig, disabled, onPatch }
 				))
 			) : card.resumoPagamentos.totalPendentes === 0 ? null : (
 				<Tooltip>
-					<TooltipTrigger asChild>
-						<QuickActionRow label="Pagamento">
-							<span className="text-[11px] text-muted-foreground">Não editável</span>
-						</QuickActionRow>
-					</TooltipTrigger>
+					<TooltipTrigger
+						render={
+							<QuickActionRow label="Pagamento">
+								<span className="text-[11px] text-muted-foreground">Não editável</span>
+							</QuickActionRow>
+						}
+					/>
 					<TooltipContent>Nenhum recebimento pendente pode ser alterado neste pedido.</TooltipContent>
 				</Tooltip>
 			)}

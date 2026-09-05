@@ -4,6 +4,7 @@ import { BrandLogo } from "@/components/Brand/BrandLogo";
 import { CommunityThemeToggle } from "@/components/Community/CommunityThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
+	DropdownMenuGroup,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -52,61 +53,72 @@ export function CommunityDock({ user }: CommunityDockProps) {
 	const pathname = usePathname();
 
 	return (
-		<TooltipProvider delayDuration={200}>
+		<TooltipProvider delay={200}>
 			<nav aria-label="Navegação da comunidade" className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-4 sm:pb-6">
 				<div className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/8 bg-[#171512] px-2 py-2 shadow-[0_8px_28px_rgba(0,0,0,0.32)]">
 					<div className="flex items-center pl-1">
 						{user ? (
 							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<button
-										type="button"
-										className="flex size-7 items-center justify-center rounded-full outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/30 md:size-9"
-										aria-label="Menu da conta"
-									>
-										<Avatar className="size-8 ring-2 ring-white/15">
-											<AvatarImage src={user.avatarUrl ?? undefined} alt={user.nome} />
-											<AvatarFallback className="bg-white/10 text-xs text-white">{formatNameAsInitials(user.nome)}</AvatarFallback>
-										</Avatar>
-									</button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent side="top" align="start" sideOffset={12} className="min-w-52 rounded-xl">
-									<DropdownMenuLabel className="p-0 font-normal">
-										<div className="flex items-center gap-2 px-2 py-2">
-											<Avatar className="size-8">
+								<DropdownMenuTrigger
+									render={
+										<button
+											type="button"
+											className="flex size-7 items-center justify-center rounded-full outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/30 md:size-9"
+											aria-label="Menu da conta"
+										>
+											<Avatar className="size-8 ring-2 ring-white/15">
 												<AvatarImage src={user.avatarUrl ?? undefined} alt={user.nome} />
-												<AvatarFallback>{formatNameAsInitials(user.nome)}</AvatarFallback>
+												<AvatarFallback className="bg-white/10 text-xs text-white">{formatNameAsInitials(user.nome)}</AvatarFallback>
 											</Avatar>
-											<div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
-												<span className="truncate font-medium">{user.nome}</span>
-												<span className="truncate text-xs text-muted-foreground">{user.email}</span>
+										</button>
+									}
+								/>
+								<DropdownMenuContent side="top" align="start" sideOffset={12} className="min-w-52 rounded-xl">
+									<DropdownMenuGroup>
+										<DropdownMenuLabel className="p-0 font-normal">
+											<div className="flex items-center gap-2 px-2 py-2">
+												<Avatar className="size-8">
+													<AvatarImage src={user.avatarUrl ?? undefined} alt={user.nome} />
+													<AvatarFallback>{formatNameAsInitials(user.nome)}</AvatarFallback>
+												</Avatar>
+												<div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
+													<span className="truncate font-medium">{user.nome}</span>
+													<span className="truncate text-xs text-muted-foreground">{user.email}</span>
+												</div>
 											</div>
-										</div>
-									</DropdownMenuLabel>
+										</DropdownMenuLabel>
+									</DropdownMenuGroup>
 									<DropdownMenuSeparator />
-									<DropdownMenuItem asChild className="cursor-pointer">
-										<Link href="/dashboard">Minha conta</Link>
-									</DropdownMenuItem>
+									<DropdownMenuGroup>
+										<DropdownMenuItem className="cursor-pointer" render={<Link href="/dashboard">Minha conta</Link>} />
+									</DropdownMenuGroup>
 									<DropdownMenuSeparator />
-									<DropdownMenuItem asChild className="cursor-pointer">
-										<Link href="/auth/logout" prefetch={false}>
-											<LogOut className="size-4" />
-											Sair
-										</Link>
-									</DropdownMenuItem>
+									<DropdownMenuGroup>
+										<DropdownMenuItem
+											className="cursor-pointer"
+											render={
+												<Link href="/auth/logout" prefetch={false}>
+													<LogOut className="size-4" />
+													Sair
+												</Link>
+											}
+										/>
+									</DropdownMenuGroup>
 								</DropdownMenuContent>
 							</DropdownMenu>
 						) : (
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Link
-										href="/auth/signup"
-										className="flex size-7 items-center justify-center rounded-full text-white/70 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30 md:size-9"
-										aria-label="Criar conta"
-									>
-										<UserPlus className="size-[18px]" strokeWidth={1.75} />
-									</Link>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Link
+											href="/auth/signup"
+											className="flex size-7 items-center justify-center rounded-full text-white/70 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30 md:size-9"
+											aria-label="Criar conta"
+										>
+											<UserPlus className="size-[18px]" strokeWidth={1.75} />
+										</Link>
+									}
+								/>
 								<TooltipContent side="top" className="text-xs">
 									Criar conta
 								</TooltipContent>
@@ -121,19 +133,21 @@ export function CommunityDock({ user }: CommunityDockProps) {
 							const active = isNavActive(pathname, item);
 							return (
 								<Tooltip key={item.url}>
-									<TooltipTrigger asChild>
-										<Link
-											href={item.url}
-											className={cn(
-												"flex size-7 items-center justify-center rounded-full text-white/60 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30 md:size-9",
-												active && "bg-white/12 text-white",
-											)}
-											aria-label={item.title}
-											aria-current={active ? "page" : undefined}
-										>
-											{item.icon}
-										</Link>
-									</TooltipTrigger>
+									<TooltipTrigger
+										render={
+											<Link
+												href={item.url}
+												className={cn(
+													"flex size-7 items-center justify-center rounded-full text-white/60 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30 md:size-9",
+													active && "bg-white/12 text-white",
+												)}
+												aria-label={item.title}
+												aria-current={active ? "page" : undefined}
+											>
+												{item.icon}
+											</Link>
+										}
+									/>
 									<TooltipContent side="top" className="text-xs">
 										{item.title}
 									</TooltipContent>
@@ -147,17 +161,19 @@ export function CommunityDock({ user }: CommunityDockProps) {
 					<div className="flex items-center gap-0.5 pr-1">
 						<CommunityThemeToggle variant="dock" />
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Link
-									href="/community"
-									className="flex size-9 items-center justify-center rounded-full outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/30"
-									aria-label="RecompraCRM"
-								>
-									<div className="relative flex size-7 items-center justify-center overflow-hidden rounded-lg bg-[#24549C]">
-										<BrandLogo lockup="icon" tone="color-on-dark" alt="" fill className="object-cover" aria-hidden />
-									</div>
-								</Link>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Link
+										href="/community"
+										className="flex size-9 items-center justify-center rounded-full outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/30"
+										aria-label="RecompraCRM"
+									>
+										<div className="relative flex size-7 items-center justify-center overflow-hidden rounded-lg bg-[#24549C]">
+											<BrandLogo lockup="icon" tone="color-on-dark" alt="" fill className="object-cover" aria-hidden />
+										</div>
+									</Link>
+								}
+							/>
 							<TooltipContent side="top" className="text-xs">
 								RecompraCRM
 							</TooltipContent>

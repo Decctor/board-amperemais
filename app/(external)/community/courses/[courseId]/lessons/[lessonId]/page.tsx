@@ -45,10 +45,7 @@ export default function LessonViewerPage({ params }: { params: Promise<{ courseI
 	const prevLesson = currentIndex > 0 ? flatLessons[currentIndex - 1] : null;
 	const nextLesson = currentIndex < flatLessons.length - 1 ? flatLessons[currentIndex + 1] : null;
 
-	const completedLessonIds = useMemo(
-		() => new Set(progress.filter((entry) => entry.concluido).map((entry) => entry.aulaId)),
-		[progress],
-	);
+	const completedLessonIds = useMemo(() => new Set(progress.filter((entry) => entry.concluido).map((entry) => entry.aulaId)), [progress]);
 
 	// Save progress periodically
 	const saveProgress = useCallback(
@@ -175,12 +172,14 @@ export default function LessonViewerPage({ params }: { params: Promise<{ courseI
 							<div className="flex shrink-0 items-center gap-2">
 								{course ? (
 									<Sheet>
-										<SheetTrigger asChild>
-											<Button variant="outline" size="sm" className="rounded-full lg:hidden">
-												<List className="mr-1.5 size-4" />
-												Sumário
-											</Button>
-										</SheetTrigger>
+										<SheetTrigger
+											render={
+												<Button variant="outline" size="sm" className="rounded-full lg:hidden">
+													<List className="mr-1.5 size-4" />
+													Sumário
+												</Button>
+											}
+										/>
 										<SheetContent side="bottom" className="h-[72vh] rounded-t-2xl px-0">
 											<SheetHeader className="px-4 pb-2 text-left">
 												<SheetTitle className="text-base font-extrabold">Conteúdo do curso</SheetTitle>
@@ -197,13 +196,7 @@ export default function LessonViewerPage({ params }: { params: Promise<{ courseI
 										</SheetContent>
 									</Sheet>
 								) : null}
-								<Button
-									variant="ghost"
-									size="icon"
-									className="hidden lg:flex"
-									onClick={() => setSidebarOpen(!sidebarOpen)}
-									aria-label="Alternar sumário"
-								>
+								<Button variant="ghost" size="icon" className="hidden lg:flex" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Alternar sumário">
 									{sidebarOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
 								</Button>
 							</div>

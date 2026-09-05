@@ -1,6 +1,7 @@
+import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
-import ResponsiveMenuViewOnly from "@/components/Utils/ResponsiveMenuViewOnly";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getErrorMessage } from "@/lib/errors";
@@ -32,45 +33,62 @@ export default function ProductVinculation({ handleSelection, closeModal }: Prod
 	const productsMatched = productsResult?.productsMatched || 0;
 	const totalPages = productsResult?.totalPages;
 	return (
-		<ResponsiveMenuViewOnly
-			menuTitle="VINCULAÇÃO DE PRODUTO"
-			menuDescription="Selecione o produto para vincular"
-			menuCancelButtonText="CANCELAR"
-			stateIsLoading={isLoading}
-			stateError={error ? getErrorMessage(error) : undefined}
-			closeMenu={closeModal}
+		<ResponsiveMenu.Root
+			open
+			onOpenChange={(open) => {
+				if (!open) closeModal();
+			}}
 		>
-			<Input
-				value={params.search ?? ""}
-				placeholder="Pesquisar produto..."
-				onChange={(e) => updateParams({ search: e.target.value })}
-				className="grow rounded-xl"
-			/>
-			<div className="h-1 bg-primary/20 w-full" />
-			{isLoading ? <p className="w-full flex items-center justify-center animate-pulse"> Carregando produtos...</p> : null}
-			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
-			{isSuccess ? (
-				<div className="w-full flex flex-col gap-1.5">
-					<GeneralPaginationComponent
-						activePage={params.page}
-						queryLoading={isLoading}
-						selectPage={(page) => updateParams({ page })}
-						totalPages={totalPages || 0}
-						itemsMatchedText={productsMatched > 0 ? `${productsMatched} produtos encontrados.` : `${productsMatched} produto encontrado.`}
-						itemsShowingText={productsShowing > 0 ? `Mostrando ${productsShowing} produtos.` : `Mostrando ${productsShowing} produto.`}
-					/>
-					{products ? (
-						products.length > 0 ? (
-							products.map((product) => (
-								<ProductVinculationProductCard key={product.id} product={product} handleClick={(variantId) => handleSelection(product, variantId)} />
-							))
-						) : (
-							<p className="w-full text-center text-sm italic text-foreground">Sem opções disponíveis.</p>
-						)
-					) : null}
-				</div>
-			) : null}
-		</ResponsiveMenuViewOnly>
+			<ResponsiveMenu.Content dialogClassName="h-[60%] min-h-[60%] w-[40%] min-w-[40%] max-w-[40%]" drawerClassName="max-h-[70dvh]">
+				<ResponsiveMenu.Header>
+					<ResponsiveMenu.Title>VINCULAÇÃO DE PRODUTO</ResponsiveMenu.Title>
+					<ResponsiveMenu.Description>Selecione o produto para vincular</ResponsiveMenu.Description>
+				</ResponsiveMenu.Header>
+				<ResponsiveMenu.Body>
+					{isLoading ? (
+						<LoadingComponent />
+					) : (error ? getErrorMessage(error) : undefined) ? (
+						<ErrorComponent msg={error ? getErrorMessage(error) : undefined} />
+					) : (
+						<>
+							<Input
+								value={params.search ?? ""}
+								placeholder="Pesquisar produto..."
+								onChange={(e) => updateParams({ search: e.target.value })}
+								className="grow rounded-xl"
+							/>
+							<div className="h-1 bg-primary/20 w-full" />
+							{isLoading ? <p className="w-full flex items-center justify-center animate-pulse"> Carregando produtos...</p> : null}
+							{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+							{isSuccess ? (
+								<div className="w-full flex flex-col gap-1.5">
+									<GeneralPaginationComponent
+										activePage={params.page}
+										queryLoading={isLoading}
+										selectPage={(page) => updateParams({ page })}
+										totalPages={totalPages || 0}
+										itemsMatchedText={productsMatched > 0 ? `${productsMatched} produtos encontrados.` : `${productsMatched} produto encontrado.`}
+										itemsShowingText={productsShowing > 0 ? `Mostrando ${productsShowing} produtos.` : `Mostrando ${productsShowing} produto.`}
+									/>
+									{products ? (
+										products.length > 0 ? (
+											products.map((product) => (
+												<ProductVinculationProductCard key={product.id} product={product} handleClick={(variantId) => handleSelection(product, variantId)} />
+											))
+										) : (
+											<p className="w-full text-center text-sm italic text-foreground">Sem opções disponíveis.</p>
+										)
+									) : null}
+								</div>
+							) : null}
+						</>
+					)}
+				</ResponsiveMenu.Body>
+				<ResponsiveMenu.Footer>
+					<ResponsiveMenu.Close variant="outline">CANCELAR</ResponsiveMenu.Close>
+				</ResponsiveMenu.Footer>
+			</ResponsiveMenu.Content>
+		</ResponsiveMenu.Root>
 	);
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectGroup, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TTemplateCategory, TTemplateStatus } from "@/app/dashboard/communication/_components/template-draft-store";
 import type { TUseMessageTemplateState } from "@/state-hooks/use-message-template-state";
 import { Mail } from "lucide-react";
@@ -38,30 +38,48 @@ export function MessageTemplateConfigurationSection({
 			</MessageTemplateField>
 			<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
 				<MessageTemplateField label="Status">
-					<Select value={state.messageTemplate.status} onValueChange={(value) => updateTemplate({ status: value as TTemplateStatus })}>
+					<Select
+						items={[...statusOptions.map((status) => ({ value: status, label: status }))]}
+						value={state.messageTemplate.status}
+						onValueChange={(value) => {
+							if (value === null) return;
+							updateTemplate({ status: value as TTemplateStatus });
+						}}
+					>
 						<SelectTrigger className="w-full">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							{statusOptions.map((status) => (
-								<SelectItem key={status} value={status}>
-									{status}
-								</SelectItem>
-							))}
+							<SelectGroup>
+								{statusOptions.map((status) => (
+									<SelectItem key={status} value={status}>
+										{status}
+									</SelectItem>
+								))}
+							</SelectGroup>
 						</SelectContent>
 					</Select>
 				</MessageTemplateField>
 				<MessageTemplateField label="Categoria">
-					<Select value={state.messageTemplate.categoria} onValueChange={(value) => updateTemplate({ categoria: value as TTemplateCategory })}>
+					<Select
+						items={[...categoryOptions.map((category) => ({ value: category, label: category }))]}
+						value={state.messageTemplate.categoria}
+						onValueChange={(value) => {
+							if (value === null) return;
+							updateTemplate({ categoria: value as TTemplateCategory });
+						}}
+					>
 						<SelectTrigger className="w-full">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							{categoryOptions.map((category) => (
-								<SelectItem key={category} value={category}>
-									{category}
-								</SelectItem>
-							))}
+							<SelectGroup>
+								{categoryOptions.map((category) => (
+									<SelectItem key={category} value={category}>
+										{category}
+									</SelectItem>
+								))}
+							</SelectGroup>
 						</SelectContent>
 					</Select>
 				</MessageTemplateField>

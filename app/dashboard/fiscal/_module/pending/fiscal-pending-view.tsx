@@ -35,7 +35,7 @@ type TPendingGroup = TPendingSummary["porAlvo"][number];
 
 type FiscalPendingViewProps = {
 	permissions: TFiscalPermissions;
-	// Abre o documento no modal de detalhes (aba Documentos com `documentId`).
+	// Abre a página de detalhes do documento fiscal.
 	openDocument: (documentId: string) => void;
 };
 

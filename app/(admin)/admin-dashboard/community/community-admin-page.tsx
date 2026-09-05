@@ -10,7 +10,7 @@ import { ControlCommunityMaterial } from "@/components/Modals/Internal/Materials
 import { NewCommunityMaterial } from "@/components/Modals/Internal/Materials/NewCommunityMaterial";
 import GeneralPaginationComponent from "@/components/Utils/Pagination";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenuGroup, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
@@ -247,20 +247,24 @@ function CommunityMaterialCard({ communityMaterial, handleEditClick }: Community
 						EDITAR
 					</Button>
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" className="flex items-center gap-1.5" size="sm" aria-label="Abrir ações do material">
-								<MoreHorizontal className="w-4 min-w-4 h-4 min-h-4" />
-							</Button>
-						</DropdownMenuTrigger>
+						<DropdownMenuTrigger
+							render={
+								<Button variant="ghost" className="flex items-center gap-1.5" size="sm" aria-label="Abrir ações do material">
+									<MoreHorizontal className="w-4 min-w-4 h-4 min-h-4" />
+								</Button>
+							}
+						/>
 						<DropdownMenuContent align="end" className="w-52">
-							<DropdownMenuItem onClick={() => copyToClipboard(`${window.location.origin}/community/materials/${communityMaterial.slug}`)}>
-								<Copy className="w-3 min-w-3 h-3 min-h-3" />
-								LINK DA COMUNIDADE
-							</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => copyToClipboard(`${window.location.origin}/community/materials/${communityMaterial.slug}/download`)}>
-								<Copy className="w-3 min-w-3 h-3 min-h-3" />
-								LINK DE DOWNLOAD
-							</DropdownMenuItem>
+							<DropdownMenuGroup>
+								<DropdownMenuItem onClick={() => copyToClipboard(`${window.location.origin}/community/materials/${communityMaterial.slug}`)}>
+									<Copy className="w-3 min-w-3 h-3 min-h-3" />
+									LINK DA COMUNIDADE
+								</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => copyToClipboard(`${window.location.origin}/community/materials/${communityMaterial.slug}/download`)}>
+									<Copy className="w-3 min-w-3 h-3 min-h-3" />
+									LINK DE DOWNLOAD
+								</DropdownMenuItem>
+							</DropdownMenuGroup>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>

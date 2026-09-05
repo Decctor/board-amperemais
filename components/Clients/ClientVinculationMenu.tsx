@@ -1,4 +1,6 @@
 "use client";
+import { LoadingButton } from "@/components/loading-button";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +17,6 @@ import { IdCard, LinkIcon, Mail, Phone, Search, UserPlus } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useReducer, useState } from "react";
 import { toast } from "sonner";
-import ResponsiveMenuViewOnly from "../Utils/ResponsiveMenuViewOnly";
 import { Input } from "../ui/input";
 
 const ClientVinculationCreationForm = dynamic(() => import("./ClientVinculationCreationForm"), {
@@ -153,111 +154,123 @@ export default function ClientVinculationMenu({ closeModal, onSelectClient, auth
 	}
 
 	return (
-		<ResponsiveMenuViewOnly
-			menuTitle="VINCULAR CLIENTE"
-			menuDescription="Busque por nome, telefone ou CPF/CNPJ para vincular um cliente na venda."
-			menuCancelButtonText="CANCELAR"
-			menuActionButtonText={isCreating ? "CADASTRAR E VINCULAR" : undefined}
-			actionFunction={isCreating ? handleCreateAndLink : undefined}
-			actionIsLoading={isPending}
-			menuActionButtonDisabled={!isCreating || !isCreationFormReady || !isCreateValid}
-			stateIsLoading={false}
-			stateError={null}
-			closeMenu={closeModal}
-			dialogVariant="sm"
-			drawerVariant="full"
+		<ResponsiveMenu.Root
+			open
+			onOpenChange={(open) => {
+				if (!open) closeModal();
+			}}
 		>
-			{flowState.mode === "search" ? (
-				<Input
-					value={search ?? ""}
-					placeholder="Pesquisar cliente por nome, telefone ou CPF/CNPJ..."
-					onChange={(event) => handleSearchChange(event.target.value)}
-					className="min-h-10 w-full rounded-xl"
-					autoFocus
-				/>
-			) : null}
-			{flowState.mode === "search" && !hasSearch ? (
-				<div className="flex flex-col items-center justify-center py-10 px-4">
-					<div className="relative mb-4">
-						<div className="relative w-14 h-14 rounded-2xl flex items-center justify-center bg-brand/5 border border-brand shadow-sm">
-							<Search className="w-7 h-7 text-brand/60" strokeWidth={1.75} />
+			<ResponsiveMenu.Content dialogVariant="sm" drawerVariant="full" dialogClassName="h-[60%] min-h-[60%] w-[40%] min-w-[40%] max-w-[40%]">
+				<ResponsiveMenu.Header>
+					<ResponsiveMenu.Title>VINCULAR CLIENTE</ResponsiveMenu.Title>
+					<ResponsiveMenu.Description>Busque por nome, telefone ou CPF/CNPJ para vincular um cliente na venda.</ResponsiveMenu.Description>
+				</ResponsiveMenu.Header>
+				<ResponsiveMenu.Body>
+					{flowState.mode === "search" ? (
+						<Input
+							value={search ?? ""}
+							placeholder="Pesquisar cliente por nome, telefone ou CPF/CNPJ..."
+							onChange={(event) => handleSearchChange(event.target.value)}
+							className="min-h-10 w-full rounded-xl"
+							autoFocus
+						/>
+					) : null}
+					{flowState.mode === "search" && !hasSearch ? (
+						<div className="flex flex-col items-center justify-center py-10 px-4">
+							<div className="relative mb-4">
+								<div className="relative w-14 h-14 rounded-2xl flex items-center justify-center bg-brand/5 border border-brand shadow-sm">
+									<Search className="w-7 h-7 text-brand/60" strokeWidth={1.75} />
+								</div>
+							</div>
+							<p className="text-sm font-medium text-foreground mb-1">Comece a buscar</p>
+							<p className="text-xs text-muted-foreground text-center max-w-[240px] leading-relaxed">
+								Digite nome, telefone ou CPF/CNPJ no campo acima para encontrar e vincular o cliente à venda.
+							</p>
+							<div className="mt-4 flex flex-wrap justify-center gap-2">
+								{["NOME", "TELEFONE", "CPF/CNPJ"].map((hint) => (
+									<span key={hint} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-brand/60 text-brand-foreground border border-brand/80">
+										{hint}
+									</span>
+								))}
+							</div>
 						</div>
-					</div>
-					<p className="text-sm font-medium text-foreground mb-1">Comece a buscar</p>
-					<p className="text-xs text-muted-foreground text-center max-w-[240px] leading-relaxed">
-						Digite nome, telefone ou CPF/CNPJ no campo acima para encontrar e vincular o cliente à venda.
-					</p>
-					<div className="mt-4 flex flex-wrap justify-center gap-2">
-						{["NOME", "TELEFONE", "CPF/CNPJ"].map((hint) => (
-							<span key={hint} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-brand/60 text-brand-foreground border border-brand/80">
-								{hint}
-							</span>
-						))}
-					</div>
-				</div>
-			) : null}
-			{flowState.mode === "search" && hasSearch && !hasEnoughSearch ? (
-				<p className="py-6 text-center text-sm text-muted-foreground">Digite pelo menos 2 caracteres para buscar.</p>
-			) : null}
-			{flowState.mode === "search" && hasEnoughSearch && (isSearchPending || isFetching) ? <ClientSearchSkeleton /> : null}
-			{flowState.mode === "search" && isSearchSettled && isError ? (
-				<div className="flex flex-col items-center gap-3 py-8 text-center">
-					<div className="space-y-1">
-						<p className="text-sm font-semibold">Não foi possível buscar os clientes.</p>
-						<p className="text-xs text-muted-foreground">Confira sua conexão e tente novamente.</p>
-					</div>
-					<Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
-						TENTAR NOVAMENTE
-					</Button>
-				</div>
-			) : null}
-			{showResults ? (
-				<div className="w-full flex flex-col gap-3">
-					<CreateClientTrigger
-						onPreload={preloadClientVinculationCreationForm}
-						onClick={() => startCreation({ searchToApply: normalizedDebouncedSearch, source: "manual" })}
-					/>
-					<p className="text-sm font-medium">Clientes encontrados:</p>
-					{clients.map((client) => (
-						<ClientVinculationMenuCard key={client.id} client={client} handleSelectClient={onSelectClient} closeModal={closeModal} />
-					))}
-				</div>
-			) : null}
+					) : null}
+					{flowState.mode === "search" && hasSearch && !hasEnoughSearch ? (
+						<p className="py-6 text-center text-sm text-muted-foreground">Digite pelo menos 2 caracteres para buscar.</p>
+					) : null}
+					{flowState.mode === "search" && hasEnoughSearch && (isSearchPending || isFetching) ? <ClientSearchSkeleton /> : null}
+					{flowState.mode === "search" && isSearchSettled && isError ? (
+						<div className="flex flex-col items-center gap-3 py-8 text-center">
+							<div className="space-y-1">
+								<p className="text-sm font-semibold">Não foi possível buscar os clientes.</p>
+								<p className="text-xs text-muted-foreground">Confira sua conexão e tente novamente.</p>
+							</div>
+							<Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+								TENTAR NOVAMENTE
+							</Button>
+						</div>
+					) : null}
+					{showResults ? (
+						<div className="w-full flex flex-col gap-3">
+							<CreateClientTrigger
+								onPreload={preloadClientVinculationCreationForm}
+								onClick={() => startCreation({ searchToApply: normalizedDebouncedSearch, source: "manual" })}
+							/>
+							<p className="text-sm font-medium">Clientes encontrados:</p>
+							{clients.map((client) => (
+								<ClientVinculationMenuCard key={client.id} client={client} handleSelectClient={onSelectClient} closeModal={closeModal} />
+							))}
+						</div>
+					) : null}
 
-			{showEmptyResults ? (
-				<div className="flex flex-col items-center gap-3 py-8 text-center">
-					<div className="space-y-1">
-						<p className="text-sm font-semibold">Nenhum cliente encontrado.</p>
-						<p className="text-xs text-muted-foreground">Tente outra busca ou cadastre um novo cliente.</p>
-					</div>
-					<Button
-						type="button"
-						variant="outline"
-						size="sm"
-						onPointerEnter={preloadClientVinculationCreationForm}
-						onFocus={preloadClientVinculationCreationForm}
-						onClick={() => startCreation({ searchToApply: normalizedDebouncedSearch, source: "manual" })}
-					>
-						<UserPlus className="size-4" />
-						CADASTRAR NOVO CLIENTE
-					</Button>
-				</div>
-			) : null}
+					{showEmptyResults ? (
+						<div className="flex flex-col items-center gap-3 py-8 text-center">
+							<div className="space-y-1">
+								<p className="text-sm font-semibold">Nenhum cliente encontrado.</p>
+								<p className="text-xs text-muted-foreground">Tente outra busca ou cadastre um novo cliente.</p>
+							</div>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onPointerEnter={preloadClientVinculationCreationForm}
+								onFocus={preloadClientVinculationCreationForm}
+								onClick={() => startCreation({ searchToApply: normalizedDebouncedSearch, source: "manual" })}
+							>
+								<UserPlus className="size-4" />
+								CADASTRAR NOVO CLIENTE
+							</Button>
+						</div>
+					) : null}
 
-			{isCreating ? (
-				<ClientVinculationCreationForm
-					source={flowState.source}
-					seedSearch={flowState.seedSearch}
-					state={state}
-					updateClient={updateClient}
-					addClientLocation={addClientLocation}
-					updateClientLocation={updateClientLocation}
-					removeClientLocation={removeClientLocation}
-					onReturnToSearch={handleReturnToSearch}
-					onReady={handleCreationFormReady}
-				/>
-			) : null}
-		</ResponsiveMenuViewOnly>
+					{isCreating ? (
+						<ClientVinculationCreationForm
+							source={flowState.source}
+							seedSearch={flowState.seedSearch}
+							state={state}
+							updateClient={updateClient}
+							addClientLocation={addClientLocation}
+							updateClientLocation={updateClientLocation}
+							removeClientLocation={removeClientLocation}
+							onReturnToSearch={handleReturnToSearch}
+							onReady={handleCreationFormReady}
+						/>
+					) : null}
+				</ResponsiveMenu.Body>
+				<ResponsiveMenu.Footer>
+					<ResponsiveMenu.Close variant="outline">CANCELAR</ResponsiveMenu.Close>
+					{(isCreating ? "CADASTRAR E VINCULAR" : undefined) ? (
+						<LoadingButton
+							loading={isPending}
+							onClick={isCreating ? handleCreateAndLink : undefined}
+							disabled={!isCreating || !isCreationFormReady || !isCreateValid}
+						>
+							{isCreating ? "CADASTRAR E VINCULAR" : undefined}
+						</LoadingButton>
+					) : null}
+				</ResponsiveMenu.Footer>
+			</ResponsiveMenu.Content>
+		</ResponsiveMenu.Root>
 	);
 }
 

@@ -90,56 +90,64 @@ export default function ProductsGraphs({ periodAfter, periodBefore }: ProductsGr
 					<div className="flex items-center gap-2">
 						<TooltipProvider>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={graphType === "sales-value" ? "default" : "ghost"}
-										size="fit"
-										className="rounded-lg p-2"
-										onClick={() => setGraphType("sales-value")}
-									>
-										<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button
+											variant={graphType === "sales-value" ? "default" : "ghost"}
+											size="fit"
+											className="rounded-lg p-2"
+											onClick={() => setGraphType("sales-value")}
+										>
+											<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Faturamento Total</p>
 								</TooltipContent>
 							</Tooltip>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={graphType === "sales-quantity" ? "default" : "ghost"}
-										size="fit"
-										className="rounded-lg p-2"
-										onClick={() => setGraphType("sales-quantity")}
-									>
-										<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button
+											variant={graphType === "sales-quantity" ? "default" : "ghost"}
+											size="fit"
+											className="rounded-lg p-2"
+											onClick={() => setGraphType("sales-quantity")}
+										>
+											<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Quantidade Vendida</p>
 								</TooltipContent>
 							</Tooltip>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={graphType === "active-products" ? "default" : "ghost"}
-										size="fit"
-										className="rounded-lg p-2"
-										onClick={() => setGraphType("active-products")}
-									>
-										<Package className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button
+											variant={graphType === "active-products" ? "default" : "ghost"}
+											size="fit"
+											className="rounded-lg p-2"
+											onClick={() => setGraphType("active-products")}
+										>
+											<Package className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Produtos Ativos por Período</p>
 								</TooltipContent>
 							</Tooltip>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button variant={graphType === "margin" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setGraphType("margin")}>
-										<TrendingUp className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button variant={graphType === "margin" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setGraphType("margin")}>
+											<TrendingUp className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Evolução da Margem</p>
 								</TooltipContent>

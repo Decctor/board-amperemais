@@ -30,7 +30,14 @@ type SelectProductGroupProps = {
  * "bebidas" e "Bebidas " viravam três grupos diferentes na vitrine, no PDV e nos alvos de cupom.
  * Oferecer o que já existe torna a escolha certa a mais fácil; criar continua a um clique.
  */
-export default function SelectProductGroup({ label = "GRUPO", showLabel = true, value, editable = true, required = false, handleChange }: SelectProductGroupProps) {
+export default function SelectProductGroup({
+	label = "GRUPO",
+	showLabel = true,
+	value,
+	editable = true,
+	required = false,
+	handleChange,
+}: SelectProductGroupProps) {
 	const { data: groups, isLoading } = useProductGroups();
 	const isDesktop = useMediaQuery("(min-width: 768px)");
 	const [isOpen, setIsOpen] = useState(false);
@@ -73,16 +80,9 @@ export default function SelectProductGroup({ label = "GRUPO", showLabel = true, 
 
 			{isDesktop ? (
 				<Popover open={isOpen} onOpenChange={setIsOpen}>
-					<PopoverTrigger asChild>{trigger}</PopoverTrigger>
-					<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-						<GroupOptionsList
-							groups={groups ?? []}
-							isLoading={isLoading}
-							value={value}
-							search={search}
-							setSearch={setSearch}
-							selectGroup={selectGroup}
-						/>
+					<PopoverTrigger render={trigger} />
+					<PopoverContent className="w-[var(--anchor-width)] p-0" align="start">
+						<GroupOptionsList groups={groups ?? []} isLoading={isLoading} value={value} search={search} setSearch={setSearch} selectGroup={selectGroup} />
 					</PopoverContent>
 				</Popover>
 			) : (
@@ -90,14 +90,7 @@ export default function SelectProductGroup({ label = "GRUPO", showLabel = true, 
 					<DrawerTrigger asChild>{trigger}</DrawerTrigger>
 					<DrawerContent className="max-h-[85dvh] overflow-hidden">
 						<div className="mt-4 border-t p-2">
-							<GroupOptionsList
-								groups={groups ?? []}
-								isLoading={isLoading}
-								value={value}
-								search={search}
-								setSearch={setSearch}
-								selectGroup={selectGroup}
-							/>
+							<GroupOptionsList groups={groups ?? []} isLoading={isLoading} value={value} search={search} setSearch={setSearch} selectGroup={selectGroup} />
 						</div>
 					</DrawerContent>
 				</Drawer>
@@ -120,10 +113,7 @@ function GroupOptionsList({ groups, isLoading, value, search, setSearch, selectG
 	// Só oferece criar quando o texto não é um grupo existente. A comparação ignora acento e caixa
 	// de propósito: se o usuário digita "acai" e já existe "Açaí", o caminho certo é escolher o que
 	// existe — criar seria justamente o duplicado que este seletor veio evitar.
-	const alreadyExists = useMemo(
-		() => groups.some((grupo) => normalizeForSearch(grupo) === normalizeForSearch(typed)),
-		[groups, typed],
-	);
+	const alreadyExists = useMemo(() => groups.some((grupo) => normalizeForSearch(grupo) === normalizeForSearch(typed)), [groups, typed]);
 	const canCreate = typed.length > 0 && !alreadyExists;
 
 	return (

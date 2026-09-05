@@ -91,36 +91,42 @@ function SalesGraphBlock({ user, generalQueryParams }: SalesGraphBlockProps) {
 					<div className="flex items-center gap-2">
 						<TooltipProvider>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(salesGraph)}>
-										<Download className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(salesGraph)}>
+											<Download className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Baixar</p>
 								</TooltipContent>
 							</Tooltip>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={graphMetric === "total" ? "default" : "ghost"}
-										size="fit"
-										className="rounded-lg p-2"
-										onClick={() => setGraphMetric("total")}
-									>
-										<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button
+											variant={graphMetric === "total" ? "default" : "ghost"}
+											size="fit"
+											className="rounded-lg p-2"
+											onClick={() => setGraphMetric("total")}
+										>
+											<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Valor Vendido</p>
 								</TooltipContent>
 							</Tooltip>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button variant={graphMetric === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setGraphMetric("qtde")}>
-										<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button variant={graphMetric === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setGraphMetric("qtde")}>
+											<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Quantidade de Vendas</p>
 								</TooltipContent>

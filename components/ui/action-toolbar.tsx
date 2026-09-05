@@ -49,15 +49,7 @@ function mergeAsChildButton({
 	});
 }
 
-function ActionToolbarPrimary({
-	icon: Icon,
-	children,
-	className,
-	size = "sm",
-	variant = "default",
-	asChild,
-	...props
-}: ActionToolbarPrimaryProps) {
+function ActionToolbarPrimary({ icon: Icon, children, className, size = "sm", variant = "default", asChild, ...props }: ActionToolbarPrimaryProps) {
 	if (asChild && React.isValidElement(children)) {
 		return (
 			<Button variant={variant} size={size} className={cn("flex items-center gap-2", className)} asChild {...props}>
@@ -78,15 +70,7 @@ function ActionToolbarPrimary({
 }
 ActionToolbarPrimary.displayName = "ActionToolbarPrimary";
 
-function ActionToolbarAction({
-	icon: Icon,
-	children,
-	className,
-	size = "sm",
-	variant = "ghost",
-	asChild,
-	...props
-}: ActionToolbarActionProps) {
+function ActionToolbarAction({ icon: Icon, children, className, size = "sm", variant = "ghost", asChild, ...props }: ActionToolbarActionProps) {
 	if (asChild && React.isValidElement(children)) {
 		return (
 			<Button variant={variant} size={size} className={cn("flex items-center gap-2", className)} asChild {...props}>
@@ -134,8 +118,8 @@ function ActionToolbarOverflowItem({ icon: Icon, children, asChild, onClick }: A
 	if (asChild && React.isValidElement(children)) {
 		const child = children as React.ReactElement<{ children?: React.ReactNode; className?: string }>;
 		return (
-			<DropdownMenuItem asChild>
-				{React.cloneElement(child, {
+			<DropdownMenuItem
+				render={React.cloneElement(child, {
 					className: cn("flex cursor-pointer items-center gap-2", child.props.className),
 					children: (
 						<>
@@ -144,7 +128,7 @@ function ActionToolbarOverflowItem({ icon: Icon, children, asChild, onClick }: A
 						</>
 					),
 				})}
-			</DropdownMenuItem>
+			/>
 		);
 	}
 
@@ -159,11 +143,13 @@ function ActionToolbarOverflowItem({ icon: Icon, children, asChild, onClick }: A
 function ActionToolbarOverflowMenu({ actions }: { actions: React.ReactElement<ActionToolbarActionProps>[] }) {
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button variant="outline" size="icon-sm" aria-label="Mais ações">
-					<ChevronDown className="h-4 w-4" />
-				</Button>
-			</DropdownMenuTrigger>
+			<DropdownMenuTrigger
+				render={
+					<Button variant="outline" size="icon-sm" aria-label="Mais ações">
+						<ChevronDown className="h-4 w-4" />
+					</Button>
+				}
+			/>
 			<DropdownMenuContent align="end">
 				{actions.map((action, index) => (
 					<ActionToolbarOverflowItem key={index} {...action.props} />

@@ -18,11 +18,13 @@ type EditorToolbarButtonProps = {
 export function EditorToolbarButton({ tooltip, shortcut, isActive, onClick, children }: EditorToolbarButtonProps) {
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>
-				<Button type="button" size="sm" variant={isActive ? "default" : "ghost"} onClick={onClick}>
-					{children}
-				</Button>
-			</TooltipTrigger>
+			<TooltipTrigger
+				render={
+					<Button type="button" size="sm" variant={isActive ? "default" : "ghost"} onClick={onClick}>
+						{children}
+					</Button>
+				}
+			/>
 			<TooltipContent side="top">
 				{tooltip}
 				{shortcut ? <span className="text-background/70">— {shortcut}</span> : null}
@@ -52,7 +54,7 @@ export function WhatsappEditorBubbleMenu({ editor }: WhatsappEditorBubbleMenuPro
 			}}
 			className="z-50"
 		>
-			<TooltipProvider delayDuration={400}>
+			<TooltipProvider delay={400}>
 				<div className="border-border bg-popover flex items-center gap-0.5 rounded-lg border p-1 shadow-md">
 					<EditorToolbarButton
 						tooltip="Negrito"

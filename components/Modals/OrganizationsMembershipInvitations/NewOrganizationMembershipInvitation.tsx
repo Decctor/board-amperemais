@@ -1,4 +1,6 @@
-import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
+import { ResponsiveMenuAnimatedBody } from "@/components/Utils/ResponsiveMenuAnimatedBody";
+import { LoadingButton } from "@/components/loading-button";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
 import { createOrganizationMembershipInvitation } from "@/lib/mutations/organizations";
@@ -78,27 +80,46 @@ export default function NewOrganizationMembershipInvitation({
 	) : null;
 
 	return (
-		<ResponsiveMenuV2
-			menuTitle={successInvitationId ? "" : "NOVO CONVITE DE MEMBRO"}
-			menuDescription={successInvitationId ? "" : "Preencha os campos abaixo para criar um novo convite de membro da organização"}
-			menuActionButtonText="CRIAR CONVITE"
-			menuCancelButtonText="CANCELAR"
-			actionFunction={() => handleCreateOrganizationMembershipInvitationMutation({ invitation: state.invitation })}
-			actionIsLoading={isPending}
-			stateIsLoading={false}
-			stateError={null}
-			closeMenu={closeModal}
-			successContent={successContent}
-			dialogShowFooter={!successInvitationId}
-			drawerShowFooter={!successInvitationId}
+		<ResponsiveMenu.Root
+			open
+			onOpenChange={(open) => {
+				if (!open) closeModal();
+			}}
 		>
-			<OrganizationsMembershipInvitationsGeneralBlock invitation={state.invitation} updateInvitation={updateInvitation} />
-			<OrganizationsMembershipInvitationsSellerBlock invitation={state.invitation} updateInvitation={updateInvitation} />
-			<OrganizationsMembershipInvitationsPermissionsBlock
-				organizationHasERPAccess={organizationHasERPAccess}
-				permissions={state.invitation.permissoes}
-				updateInvitationPermissions={updateInvitationPermissions}
-			/>
-		</ResponsiveMenuV2>
+			<ResponsiveMenu.Content drawerClassName="max-h-[70dvh]">
+				<ResponsiveMenu.Header>
+					<ResponsiveMenu.Title>{successInvitationId ? "" : "NOVO CONVITE DE MEMBRO"}</ResponsiveMenu.Title>
+					<ResponsiveMenu.Description>
+						{successInvitationId ? "" : "Preencha os campos abaixo para criar um novo convite de membro da organização"}
+					</ResponsiveMenu.Description>
+				</ResponsiveMenu.Header>
+				<ResponsiveMenuAnimatedBody
+					stateKey={successContent ? "success" : "content"}
+					className={successContent ? "items-center justify-center p-6" : "overflow-x-hidden overflow-y-auto"}
+				>
+					{successContent ? (
+						successContent
+					) : (
+						<>
+							<OrganizationsMembershipInvitationsGeneralBlock invitation={state.invitation} updateInvitation={updateInvitation} />
+							<OrganizationsMembershipInvitationsSellerBlock invitation={state.invitation} updateInvitation={updateInvitation} />
+							<OrganizationsMembershipInvitationsPermissionsBlock
+								organizationHasERPAccess={organizationHasERPAccess}
+								permissions={state.invitation.permissoes}
+								updateInvitationPermissions={updateInvitationPermissions}
+							/>
+						</>
+					)}
+				</ResponsiveMenuAnimatedBody>
+				{!successContent && !successInvitationId ? (
+					<ResponsiveMenu.Footer>
+						<ResponsiveMenu.Close variant="outline">CANCELAR</ResponsiveMenu.Close>
+						<LoadingButton loading={isPending} onClick={() => handleCreateOrganizationMembershipInvitationMutation({ invitation: state.invitation })}>
+							CRIAR CONVITE
+						</LoadingButton>
+					</ResponsiveMenu.Footer>
+				) : null}
+			</ResponsiveMenu.Content>
+		</ResponsiveMenu.Root>
 	);
 }

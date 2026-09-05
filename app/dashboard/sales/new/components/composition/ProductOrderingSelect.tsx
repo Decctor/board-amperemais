@@ -1,6 +1,6 @@
 "use client";
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectGroup, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { POS_PRODUCT_ORDERING_LABELS, POSProductOrderingEnum, type TPOSProductOrderingEnum } from "@/schemas/enums";
 import { ArrowDownWideNarrow } from "lucide-react";
 
@@ -16,7 +16,15 @@ type ProductOrderingSelectProps = {
  */
 export default function ProductOrderingSelect({ value, onChange, disabled }: ProductOrderingSelectProps) {
 	return (
-		<Select value={value} onValueChange={(selected) => onChange(selected as TPOSProductOrderingEnum)} disabled={disabled}>
+		<Select
+			items={[...POSProductOrderingEnum.options.map((option) => ({ value: option, label: POS_PRODUCT_ORDERING_LABELS[option] }))]}
+			value={value}
+			onValueChange={(selected) => {
+				if (selected === null) return;
+				onChange(selected as TPOSProductOrderingEnum);
+			}}
+			disabled={disabled}
+		>
 			<SelectTrigger
 				aria-label="Ordenar produtos"
 				title="Ordenar produtos"
@@ -26,11 +34,13 @@ export default function ProductOrderingSelect({ value, onChange, disabled }: Pro
 				<SelectValue />
 			</SelectTrigger>
 			<SelectContent align="end">
-				{POSProductOrderingEnum.options.map((option) => (
-					<SelectItem key={option} value={option} className="text-xs font-semibold">
-						{POS_PRODUCT_ORDERING_LABELS[option]}
-					</SelectItem>
-				))}
+				<SelectGroup>
+					{POSProductOrderingEnum.options.map((option) => (
+						<SelectItem key={option} value={option} className="text-xs font-semibold">
+							{POS_PRODUCT_ORDERING_LABELS[option]}
+						</SelectItem>
+					))}
+				</SelectGroup>
 			</SelectContent>
 		</Select>
 	);

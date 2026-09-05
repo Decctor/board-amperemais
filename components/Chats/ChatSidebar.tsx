@@ -5,6 +5,7 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Button } from "@/components/ui/button";
 import {
+	DropdownMenuGroup,
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
@@ -186,20 +187,24 @@ export function ChatSidebar({ organizationId, selectedChatId, onSelectChat, what
 			<div className="flex flex-col gap-2 border-b border-border p-3">
 				<div className="flex flex-wrap items-center gap-2">
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="outline" size="sm" className="h-8 gap-1.5">
-								<SelectedViewIcon className="h-3.5 w-3.5" />
-								{selectedViewMeta.label}
-								<ChevronDown className="h-3 w-3 opacity-60" />
-							</Button>
-						</DropdownMenuTrigger>
+						<DropdownMenuTrigger
+							render={
+								<Button variant="outline" size="sm" className="h-8 gap-1.5">
+									<SelectedViewIcon className="h-3.5 w-3.5" />
+									{selectedViewMeta.label}
+									<ChevronDown className="h-3 w-3 opacity-60" />
+								</Button>
+							}
+						/>
 						<DropdownMenuContent align="start">
-							{INBOX_VIEWS.map((item) => (
-								<DropdownMenuItem key={item.id} onClick={() => setView(item.id)} className="gap-2">
-									<item.icon className="h-3.5 w-3.5" />
-									{item.label}
-								</DropdownMenuItem>
-							))}
+							<DropdownMenuGroup>
+								{INBOX_VIEWS.map((item) => (
+									<DropdownMenuItem key={item.id} onClick={() => setView(item.id)} className="gap-2">
+										<item.icon className="h-3.5 w-3.5" />
+										{item.label}
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuGroup>
 						</DropdownMenuContent>
 					</DropdownMenu>
 
@@ -216,55 +221,61 @@ export function ChatSidebar({ organizationId, selectedChatId, onSelectChat, what
 					) : (
 						phones.length > 1 && (
 							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
-										Número
-										<ChevronDown className="h-3 w-3 opacity-60" />
-									</Button>
-								</DropdownMenuTrigger>
+								<DropdownMenuTrigger
+									render={
+										<Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
+											Número
+											<ChevronDown className="h-3 w-3 opacity-60" />
+										</Button>
+									}
+								/>
 								<DropdownMenuContent align="start">
-									{phones.map((phone) => (
-										<DropdownMenuItem key={phone.id} onClick={() => setSelectedPhoneId(phone.id)}>
-											{phone.numero || phone.nome}
-										</DropdownMenuItem>
-									))}
+									<DropdownMenuGroup>
+										{phones.map((phone) => (
+											<DropdownMenuItem key={phone.id} onClick={() => setSelectedPhoneId(phone.id)}>
+												{phone.numero || phone.nome}
+											</DropdownMenuItem>
+										))}
+									</DropdownMenuGroup>
 								</DropdownMenuContent>
 							</DropdownMenu>
 						)
 					)}
 
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant={statusFilter.length > 0 ? "outline" : "ghost"} size="sm" className="h-8 gap-1 text-xs">
-								Status
-								{statusFilter.length > 0 && (
-									<span className="rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">{statusFilter.length}</span>
-								)}
-								<ChevronDown className="h-3 w-3 opacity-60" />
-							</Button>
-						</DropdownMenuTrigger>
+						<DropdownMenuTrigger
+							render={
+								<Button variant={statusFilter.length > 0 ? "outline" : "ghost"} size="sm" className="h-8 gap-1 text-xs">
+									Status
+									{statusFilter.length > 0 && (
+										<span className="rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">{statusFilter.length}</span>
+									)}
+									<ChevronDown className="h-3 w-3 opacity-60" />
+								</Button>
+							}
+						/>
 						<DropdownMenuContent align="start">
-							{FILTERABLE_STATUSES.map((status) => (
-								<DropdownMenuCheckboxItem
-									key={status}
-									checked={statusFilter.includes(status)}
-									// Sem o preventDefault o menu fecharia a cada clique — inviável
-									// para uma seleção múltipla.
-									onSelect={(event) => event.preventDefault()}
-									onCheckedChange={(checked) =>
-										setStatusFilter((current) => (checked ? [...current, status] : current.filter((item) => item !== status)))
-									}
-								>
-									<span className={cn("h-2 w-2 shrink-0 rounded-full", STATUS_META[status].dot)} />
-									{STATUS_META[status].label}
-								</DropdownMenuCheckboxItem>
-							))}
-							{statusFilter.length > 0 && (
-								<>
-									<DropdownMenuSeparator />
-									<DropdownMenuItem onClick={() => setStatusFilter([])}>Limpar filtro</DropdownMenuItem>
-								</>
-							)}
+							<DropdownMenuGroup>
+								{FILTERABLE_STATUSES.map((status) => (
+									<DropdownMenuCheckboxItem
+										key={status}
+										checked={statusFilter.includes(status)}
+										// Sem o preventDefault o menu fecharia a cada clique — inviável
+										// para uma seleção múltipla.
+										onClick={(event) => event.preventDefault()}
+										onCheckedChange={(checked) => setStatusFilter((current) => (checked ? [...current, status] : current.filter((item) => item !== status)))}
+									>
+										<span className={cn("h-2 w-2 shrink-0 rounded-full", STATUS_META[status].dot)} />
+										{STATUS_META[status].label}
+									</DropdownMenuCheckboxItem>
+								))}
+								{statusFilter.length > 0 && (
+									<>
+										<DropdownMenuSeparator />
+										<DropdownMenuItem onClick={() => setStatusFilter([])}>Limpar filtro</DropdownMenuItem>
+									</>
+								)}
+							</DropdownMenuGroup>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
@@ -284,9 +295,7 @@ export function ChatSidebar({ organizationId, selectedChatId, onSelectChat, what
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				{isPending && <LoadingComponent />}
 				{isError && <ErrorComponent msg={getErrorMessage(error)} />}
-				{!isPending && !isError && chats.length === 0 && (
-					<p className="p-6 text-center text-xs text-muted-foreground">Nenhuma conversa nesta visão.</p>
-				)}
+				{!isPending && !isError && chats.length === 0 && <p className="p-6 text-center text-xs text-muted-foreground">Nenhuma conversa nesta visão.</p>}
 				{chats.map((chat) => (
 					<ChatInboxListItem
 						key={chat.id}

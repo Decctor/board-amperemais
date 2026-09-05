@@ -2,7 +2,7 @@
 
 import type { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/route";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenuGroup, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import type { TChatBoardFilters } from "@/lib/queries/chats-board";
 import { ChatAssignmentPriorityEnum, type TChatInboxView } from "@/schemas/enums";
@@ -34,20 +34,24 @@ export function ChatsBoardFilters({ filters, onChange, whatsappConnections }: Ch
 	return (
 		<div className="flex shrink-0 flex-wrap items-center gap-2">
 			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<Button variant="outline" size="sm" className="h-8 gap-1.5">
-						<SelectedViewIcon className="h-3.5 w-3.5" />
-						{selectedView.label}
-						<ChevronDown className="h-3 w-3 opacity-60" />
-					</Button>
-				</DropdownMenuTrigger>
+				<DropdownMenuTrigger
+					render={
+						<Button variant="outline" size="sm" className="h-8 gap-1.5">
+							<SelectedViewIcon className="h-3.5 w-3.5" />
+							{selectedView.label}
+							<ChevronDown className="h-3 w-3 opacity-60" />
+						</Button>
+					}
+				/>
 				<DropdownMenuContent align="start">
-					{BOARD_VIEWS.map((item) => (
-						<DropdownMenuItem key={item.id} onClick={() => onChange({ view: item.id })} className="gap-2">
-							<item.icon className="h-3.5 w-3.5" />
-							{item.label}
-						</DropdownMenuItem>
-					))}
+					<DropdownMenuGroup>
+						{BOARD_VIEWS.map((item) => (
+							<DropdownMenuItem key={item.id} onClick={() => onChange({ view: item.id })} className="gap-2">
+								<item.icon className="h-3.5 w-3.5" />
+								{item.label}
+							</DropdownMenuItem>
+						))}
+					</DropdownMenuGroup>
 				</DropdownMenuContent>
 			</DropdownMenu>
 
@@ -63,18 +67,22 @@ export function ChatsBoardFilters({ filters, onChange, whatsappConnections }: Ch
 				</button>
 			) : (
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
-							Prioridade
-							<ChevronDown className="h-3 w-3 opacity-60" />
-						</Button>
-					</DropdownMenuTrigger>
+					<DropdownMenuTrigger
+						render={
+							<Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
+								Prioridade
+								<ChevronDown className="h-3 w-3 opacity-60" />
+							</Button>
+						}
+					/>
 					<DropdownMenuContent align="start">
-						{ChatAssignmentPriorityEnum.options.map((prioridade) => (
-							<DropdownMenuItem key={prioridade} onClick={() => onChange({ prioridade })}>
-								{CHAT_PRIORITY_LABEL[prioridade]}
-							</DropdownMenuItem>
-						))}
+						<DropdownMenuGroup>
+							{ChatAssignmentPriorityEnum.options.map((prioridade) => (
+								<DropdownMenuItem key={prioridade} onClick={() => onChange({ prioridade })}>
+									{CHAT_PRIORITY_LABEL[prioridade]}
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuGroup>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			)}
@@ -92,18 +100,22 @@ export function ChatsBoardFilters({ filters, onChange, whatsappConnections }: Ch
 			) : (
 				phones.length > 1 && (
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
-								Número
-								<ChevronDown className="h-3 w-3 opacity-60" />
-							</Button>
-						</DropdownMenuTrigger>
+						<DropdownMenuTrigger
+							render={
+								<Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
+									Número
+									<ChevronDown className="h-3 w-3 opacity-60" />
+								</Button>
+							}
+						/>
 						<DropdownMenuContent align="start">
-							{phones.map((phone) => (
-								<DropdownMenuItem key={phone.id} onClick={() => onChange({ whatsappConexaoTelefoneId: phone.id })}>
-									{phone.numero || phone.nome}
-								</DropdownMenuItem>
-							))}
+							<DropdownMenuGroup>
+								{phones.map((phone) => (
+									<DropdownMenuItem key={phone.id} onClick={() => onChange({ whatsappConexaoTelefoneId: phone.id })}>
+										{phone.numero || phone.nome}
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuGroup>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				)
@@ -112,18 +124,22 @@ export function ChatsBoardFilters({ filters, onChange, whatsappConnections }: Ch
 			{/* A janela dos encerrados é filtro de uma coluna só, mas mora aqui: é a resposta
 			    para "por que sumiu o que eu encerrei ontem?". */}
 			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
-						Encerrados: {filters.encerradosDias}d
-						<ChevronDown className="h-3 w-3 opacity-60" />
-					</Button>
-				</DropdownMenuTrigger>
+				<DropdownMenuTrigger
+					render={
+						<Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
+							Encerrados: {filters.encerradosDias}d
+							<ChevronDown className="h-3 w-3 opacity-60" />
+						</Button>
+					}
+				/>
 				<DropdownMenuContent align="start">
-					{CLOSED_WINDOW_OPTIONS.map((dias) => (
-						<DropdownMenuItem key={dias} onClick={() => onChange({ encerradosDias: dias })}>
-							Últimos {dias} {dias === 1 ? "dia" : "dias"}
-						</DropdownMenuItem>
-					))}
+					<DropdownMenuGroup>
+						{CLOSED_WINDOW_OPTIONS.map((dias) => (
+							<DropdownMenuItem key={dias} onClick={() => onChange({ encerradosDias: dias })}>
+								Últimos {dias} {dias === 1 ? "dia" : "dias"}
+							</DropdownMenuItem>
+						))}
+					</DropdownMenuGroup>
 				</DropdownMenuContent>
 			</DropdownMenu>
 

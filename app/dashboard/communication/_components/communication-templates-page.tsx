@@ -74,9 +74,7 @@ export default function CommunicationTemplatesPage({
 		onSuccess: (response) => {
 			const failedPhones = response.data.phoneErrors;
 			if (failedPhones.length > 0) {
-				const failureSummary = failedPhones
-					.map((phone) => `${phone.telefoneNome} (${phone.telefoneNumero})`)
-					.join(", ");
+				const failureSummary = failedPhones.map((phone) => `${phone.telefoneNome} (${phone.telefoneNumero})`).join(", ");
 				toast.warning(`${response.message} Telefones com falha: ${failureSummary}.`);
 				return;
 			}
@@ -212,13 +210,16 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks }: Templat
 						<p className="text-xs px-2 py-1 rounded-lg bg-primary/10">{template.nome}</p>
 					</div>
 					<div className="flex items-center gap-2">
-						<HoverCard openDelay={200}>
-							<HoverCardTrigger asChild>
-								<Button type="button" size="sm" variant="ghost" className="flex items-center gap-1.5">
-									<Eye className="h-3.5 w-3.5" />
-									PREVIEW
-								</Button>
-							</HoverCardTrigger>
+						<HoverCard>
+							<HoverCardTrigger
+								delay={200}
+								render={
+									<Button type="button" size="sm" variant="ghost" className="flex items-center gap-1.5">
+										<Eye className="h-3.5 w-3.5" />
+										PREVIEW
+									</Button>
+								}
+							/>
 							<HoverCardContent
 								className="w-[360px] p-2 overflow-auto max-h-[70vh] scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30"
 								side="left"
@@ -229,15 +230,17 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks }: Templat
 						</HoverCard>
 						{template.alerta ? (
 							<HoverCard>
-								<HoverCardTrigger asChild>
-									<button
-										type="button"
-										className="flex items-center gap-1 rounded-full border border-amber-300/60 bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-950"
-									>
-										<AlertTriangle className="h-3 w-3" />
-										<span>ALERTA</span>
-									</button>
-								</HoverCardTrigger>
+								<HoverCardTrigger
+									render={
+										<button
+											type="button"
+											className="flex items-center gap-1 rounded-full border border-amber-300/60 bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-950"
+										>
+											<AlertTriangle className="h-3 w-3" />
+											<span>ALERTA</span>
+										</button>
+									}
+								/>
 								<HoverCardContent className="w-80 p-3" side="bottom" align="end">
 									<div className="flex flex-col gap-1.5">
 										<p className="text-xs font-bold tracking-tight">Atenção na sincronização</p>
@@ -247,30 +250,32 @@ function TemplateCard({ template, whatsappConnectionPhones, callbacks }: Templat
 							</HoverCard>
 						) : null}
 						<HoverCard>
-							<HoverCardTrigger asChild>
-								<div className="flex items-center gap-2">
-									{whatsappConnectionPhones.length > 0 ? (
-										<div className="flex items-center gap-1 text-xs text-muted-foreground">
-											<Phone className="w-3 h-3" />
-											<span>
-												{byPhoneApprovedCount}/{whatsappConnectionPhones.length}
-											</span>
-										</div>
-									) : null}
+							<HoverCardTrigger
+								render={
+									<div className="flex items-center gap-2">
+										{whatsappConnectionPhones.length > 0 ? (
+											<div className="flex items-center gap-1 text-xs text-muted-foreground">
+												<Phone className="w-3 h-3" />
+												<span>
+													{byPhoneApprovedCount}/{whatsappConnectionPhones.length}
+												</span>
+											</div>
+										) : null}
 
-									<div
-										className={cn("px-2 py-0.5 rounded-lg text-[0.65rem] font-bold", {
-											"bg-blue-500 text-white": template.statusGeral === "APROVADO",
-											"bg-primary/20 text-foreground": template.statusGeral === "PENDENTE",
-											"bg-red-500 text-white": template.statusGeral === "REJEITADO",
-											"bg-orange-500 text-white": template.statusGeral === "PAUSADO",
-											"bg-gray-500 text-white": template.statusGeral === "DESABILITADO" || template.statusGeral === "RASCUNHO",
-										})}
-									>
-										{template.statusGeral}
+										<div
+											className={cn("px-2 py-0.5 rounded-lg text-[0.65rem] font-bold", {
+												"bg-blue-500 text-white": template.statusGeral === "APROVADO",
+												"bg-primary/20 text-foreground": template.statusGeral === "PENDENTE",
+												"bg-red-500 text-white": template.statusGeral === "REJEITADO",
+												"bg-orange-500 text-white": template.statusGeral === "PAUSADO",
+												"bg-gray-500 text-white": template.statusGeral === "DESABILITADO" || template.statusGeral === "RASCUNHO",
+											})}
+										>
+											{template.statusGeral}
+										</div>
 									</div>
-								</div>
-							</HoverCardTrigger>
+								}
+							/>
 							<HoverCardContent className="flex w-80 flex-col gap-2.5 p-3">
 								<div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2">
 									<h3 className="text-xs font-medium tracking-tight">TELEFONES CONECTADOS</h3>

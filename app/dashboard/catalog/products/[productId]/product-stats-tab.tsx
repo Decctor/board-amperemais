@@ -400,16 +400,19 @@ function GroupedByMonthDay({ data }: { data: TGetProductStatsOutput["data"]["res
 		const avgValue = result && result.quantidade > 0 ? result.total / result.quantidade : 0;
 
 		return (
-			<Tooltip delayDuration={200}>
-				<TooltipTrigger asChild>
-					<div
-						key={index.toString()}
-						className="flex flex-col items-center justify-center p-2 rounded-md border border-border w-full gap-1 min-h-[60px] transition-all hover:scale-[1.02] cursor-pointer"
-						style={{ backgroundColor: bgColor }}
-					>
-						<h1 className="text-xs font-bold tracking-tight">{index + 1}</h1>
-					</div>
-				</TooltipTrigger>
+			<Tooltip>
+				<TooltipTrigger
+					delay={200}
+					render={
+						<div
+							key={index.toString()}
+							className="flex flex-col items-center justify-center p-2 rounded-md border border-border w-full gap-1 min-h-[60px] transition-all hover:scale-[1.02] cursor-pointer"
+							style={{ backgroundColor: bgColor }}
+						>
+							<h1 className="text-xs font-bold tracking-tight">{index + 1}</h1>
+						</div>
+					}
+				/>
 				{result ? (
 					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
@@ -511,16 +514,19 @@ function GroupedByMonth({ data }: { data: TGetProductStatsOutput["data"]["result
 		const avgValue = result && result.quantidade > 0 ? result.total / result.quantidade : 0;
 
 		return (
-			<Tooltip delayDuration={200}>
-				<TooltipTrigger asChild>
-					<div
-						key={index.toString()}
-						className="flex flex-col items-center justify-center p-3 rounded-md border border-border w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
-						style={{ backgroundColor: bgColor }}
-					>
-						<h1 className="text-xs font-bold tracking-tight uppercase">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h1>
-					</div>
-				</TooltipTrigger>
+			<Tooltip>
+				<TooltipTrigger
+					delay={200}
+					render={
+						<div
+							key={index.toString()}
+							className="flex flex-col items-center justify-center p-3 rounded-md border border-border w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
+							style={{ backgroundColor: bgColor }}
+						>
+							<h1 className="text-xs font-bold tracking-tight uppercase">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h1>
+						</div>
+					}
+				/>
 				{result ? (
 					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
@@ -617,16 +623,19 @@ function GroupedByWeekDay({ data }: { data: TGetProductStatsOutput["data"]["resu
 		const avgValue = result && result.quantidade > 0 ? result.total / result.quantidade : 0;
 
 		return (
-			<Tooltip delayDuration={200}>
-				<TooltipTrigger asChild>
-					<div
-						key={index.toString()}
-						className="flex flex-col items-center justify-center p-3 rounded-md border border-border w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
-						style={{ backgroundColor: bgColor }}
-					>
-						<h1 className="text-xs font-bold tracking-tight uppercase">{WEEKDAY_MAP[index as keyof typeof WEEKDAY_MAP]}</h1>
-					</div>
-				</TooltipTrigger>
+			<Tooltip>
+				<TooltipTrigger
+					delay={200}
+					render={
+						<div
+							key={index.toString()}
+							className="flex flex-col items-center justify-center p-3 rounded-md border border-border w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
+							style={{ backgroundColor: bgColor }}
+						>
+							<h1 className="text-xs font-bold tracking-tight uppercase">{WEEKDAY_MAP[index as keyof typeof WEEKDAY_MAP]}</h1>
+						</div>
+					}
+				/>
 				{result ? (
 					<TooltipContent className="bg-primary text-foreground-foreground p-3 min-w-[180px]">
 						<div className="flex flex-col gap-2">
@@ -1193,71 +1202,81 @@ function ProductGraphBlock({
 					<div className="flex items-center gap-2">
 						<TooltipProvider>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(productGraph)}>
-										<Download className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(productGraph)}>
+											<Download className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Baixar</p>
 								</TooltipContent>
 							</Tooltip>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={graphMetric === "valorLiquido" ? "default" : "ghost"}
-										size="fit"
-										className="rounded-lg p-2"
-										onClick={() => setGraphMetric("valorLiquido")}
-									>
-										<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button
+											variant={graphMetric === "valorLiquido" ? "default" : "ghost"}
+											size="fit"
+											className="rounded-lg p-2"
+											onClick={() => setGraphMetric("valorLiquido")}
+										>
+											<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Valor Líquido</p>
 								</TooltipContent>
 							</Tooltip>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={graphMetric === "quantidade" ? "default" : "ghost"}
-										size="fit"
-										className="rounded-lg p-2"
-										onClick={() => setGraphMetric("quantidade")}
-									>
-										<ShoppingBag className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button
+											variant={graphMetric === "quantidade" ? "default" : "ghost"}
+											size="fit"
+											className="rounded-lg p-2"
+											onClick={() => setGraphMetric("quantidade")}
+										>
+											<ShoppingBag className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Quantidade</p>
 								</TooltipContent>
 							</Tooltip>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={graphMetric === "margemPercentual" ? "default" : "ghost"}
-										size="fit"
-										className="rounded-lg p-2"
-										onClick={() => setGraphMetric("margemPercentual")}
-									>
-										<Percent className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button
+											variant={graphMetric === "margemPercentual" ? "default" : "ghost"}
+											size="fit"
+											className="rounded-lg p-2"
+											onClick={() => setGraphMetric("margemPercentual")}
+										>
+											<Percent className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Margem %</p>
 								</TooltipContent>
 							</Tooltip>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={graphMetric === "ticketMedio" ? "default" : "ghost"}
-										size="fit"
-										className="rounded-lg p-2"
-										onClick={() => setGraphMetric("ticketMedio")}
-									>
-										<ChartBar className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button
+											variant={graphMetric === "ticketMedio" ? "default" : "ghost"}
+											size="fit"
+											className="rounded-lg p-2"
+											onClick={() => setGraphMetric("ticketMedio")}
+										>
+											<ChartBar className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Ticket Médio</p>
 								</TooltipContent>

@@ -59,9 +59,7 @@ function StatsPeriodComparisonMenu({ closeMenu }: StatsPeriodComparisonMenuProps
 					<StatsPeriodComparisonMenuData />
 				</div>
 				<DialogFooter>
-					<DialogClose asChild>
-						<Button variant="outline">FECHAR</Button>
-					</DialogClose>
+					<DialogClose render={<Button variant="outline" />}>FECHAR</DialogClose>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

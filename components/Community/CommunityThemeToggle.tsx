@@ -31,11 +31,13 @@ export function CommunityThemeToggle({ variant = "header", className }: Communit
 
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>
-				<button type="button" className={cn(buttonClass, className)} onClick={() => setTheme(isDark ? "light" : "dark")} aria-label={label}>
-					{isDark ? <Sun className="size-[18px]" strokeWidth={1.75} /> : <Moon className="size-[18px]" strokeWidth={1.75} />}
-				</button>
-			</TooltipTrigger>
+			<TooltipTrigger
+				render={
+					<button type="button" className={cn(buttonClass, className)} onClick={() => setTheme(isDark ? "light" : "dark")} aria-label={label}>
+						{isDark ? <Sun className="size-[18px]" strokeWidth={1.75} /> : <Moon className="size-[18px]" strokeWidth={1.75} />}
+					</button>
+				}
+			/>
 			<TooltipContent side="top" className="text-xs">
 				{label}
 			</TooltipContent>

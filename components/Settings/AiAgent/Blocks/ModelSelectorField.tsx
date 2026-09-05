@@ -52,14 +52,12 @@ export default function ModelSelectorField({ value, onChange }: ModelSelectorFie
 			<span className="text-start text-sm font-medium tracking-tight text-foreground/80">MODELO</span>
 
 			<ModelSelector onOpenChange={setIsOpen} open={isOpen}>
-				<ModelSelectorTrigger asChild>
-					<Button className="w-full justify-between gap-2" disabled={isLoading} variant="outline">
+				<ModelSelectorTrigger disabled={isLoading} render={<Button className="w-full justify-between gap-2" variant="outline" />}>
 						<span className="flex min-w-0 items-center gap-2">
 							{selected ? <ModelSelectorLogo provider={selected.fornecedorSlug} /> : null}
 							<ModelSelectorName>{selected?.nome ?? value}</ModelSelectorName>
 						</span>
 						<ChevronsUpDown className="size-4 shrink-0 opacity-50" />
-					</Button>
 				</ModelSelectorTrigger>
 
 				<ModelSelectorContent title="Escolha do modelo do agente">

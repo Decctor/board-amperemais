@@ -77,12 +77,8 @@ export function ServicePointPills({ points, tabsByPoint, now, onSelectPoint, onC
 					className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-2.5 text-xs font-bold transition-colors hover:bg-secondary/70"
 				>
 					+{hidden.length}
-					{hiddenOccupied > 0 ? (
-						<span className={cn("size-1.5 rounded-full", hiddenHasLate ? "bg-destructive" : "bg-amber-500")} aria-hidden />
-					) : null}
-					<span className="sr-only">
-						{hiddenOccupied > 0 ? `${hiddenOccupied} ocupados entre os ocultos` : "todos os ocultos estão livres"}
-					</span>
+					{hiddenOccupied > 0 ? <span className={cn("size-1.5 rounded-full", hiddenHasLate ? "bg-destructive" : "bg-amber-500")} aria-hidden /> : null}
+					<span className="sr-only">{hiddenOccupied > 0 ? `${hiddenOccupied} ocupados entre os ocultos` : "todos os ocultos estão livres"}</span>
 				</button>
 			) : null}
 
@@ -130,20 +126,22 @@ function PointPill({ point, occupied, tabCount, consumo, urgencia, onClick }: Po
 
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>
-				<button
-					type="button"
-					onClick={onClick}
-					className={cn("flex h-9 max-w-full shrink-0 items-center gap-2 rounded-lg border px-2.5 transition-colors", tone)}
-				>
-					<span
-						className={cn("size-2 shrink-0 rounded-full", occupied ? (urgencia ? URGENCY_META[urgencia].dot : "bg-foreground/40") : "bg-green-500")}
-						aria-hidden
-					/>
-					<span className="min-w-0 max-w-28 truncate text-xs font-bold">{point.rotulo}</span>
-					<span className="shrink-0 text-xs font-semibold tabular-nums opacity-80">{statusLabel}</span>
-				</button>
-			</TooltipTrigger>
+			<TooltipTrigger
+				render={
+					<button
+						type="button"
+						onClick={onClick}
+						className={cn("flex h-9 max-w-full shrink-0 items-center gap-2 rounded-lg border px-2.5 transition-colors", tone)}
+					>
+						<span
+							className={cn("size-2 shrink-0 rounded-full", occupied ? (urgencia ? URGENCY_META[urgencia].dot : "bg-foreground/40") : "bg-green-500")}
+							aria-hidden
+						/>
+						<span className="min-w-0 max-w-28 truncate text-xs font-bold">{point.rotulo}</span>
+						<span className="shrink-0 text-xs font-semibold tabular-nums opacity-80">{statusLabel}</span>
+					</button>
+				}
+			/>
 			<TooltipContent side="bottom" className="flex flex-col gap-0.5 px-3 py-2">
 				<span className="font-semibold">
 					{point.rotulo}

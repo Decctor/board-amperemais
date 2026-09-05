@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	DropdownMenuGroup,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -103,82 +104,91 @@ export default function AppSidebarHeader({ sessionUserOrg, user, mode = "app" }:
 		<SidebarMenu>
 			<SidebarMenuItem>
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<SidebarMenuButton
-							size="lg"
-							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
-						>
-							<div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg">
-								<Image
-									src={isAdminMode ? LogoIcon : (currentOrg?.logoUrl ?? LogoIcon)}
-									alt={isAdminMode ? "Admin" : (currentOrg?.nome ?? "Organização")}
-									fill
-									className="object-cover"
-								/>
-							</div>
-							<div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-								<span className="truncate font-medium">{isAdminMode ? "ADMIN" : (currentOrg?.nome ?? "Selecionar organização")}</span>
-							</div>
-							{switchOrgMutation.isPending ? (
-								<Loader2 className="ml-auto size-4 animate-spin group-data-[collapsible=icon]:hidden" />
-							) : (
-								<ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
-							)}
-						</SidebarMenuButton>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent
-						className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-						side={isMobile ? "bottom" : "right"}
-						align="start"
-						sideOffset={4}
-					>
-						<DropdownMenuLabel>Organizações</DropdownMenuLabel>
-						<DropdownMenuSeparator />
-						{memberships.map((membership) => {
-							const isActive = membership.organizacao.id === activeOrganizationId;
-							return (
-								<DropdownMenuItem
-									key={membership.id}
-									onClick={() => {
-										if (!isActive && !switchOrgMutation.isPending) {
-											switchOrgMutation.mutate({ organizationId: membership.organizacao.id });
-										}
-									}}
-									className="cursor-pointer"
-									disabled={switchOrgMutation.isPending}
-								>
-									<div className="flex items-center gap-2 w-full">
-										<div className="relative w-6 h-6 min-w-6 min-h-6 rounded-md overflow-hidden">
-											<Image src={membership.organizacao.logoUrl ?? LogoIcon} alt={membership.organizacao.nome} fill />
-										</div>
-										<span className="flex-1 truncate">{membership.organizacao.nome}</span>
-										{isActive && <Check className="size-4 text-foreground" />}
-									</div>
-								</DropdownMenuItem>
-							);
-						})}
-						<DropdownMenuSeparator />
-						<DropdownMenuItem asChild className="cursor-pointer">
-							<Link href="/onboarding?new=true">
-								<div className="flex items-center justify-center gap-2 w-full">
-									<Plus className="w-4 h-4 min-w-4 min-h-4" />
-									<span className="flex-1 truncate">NOVA ORGANIZAÇÃO</span>
+					<DropdownMenuTrigger
+						render={
+							<SidebarMenuButton
+								size="lg"
+								className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
+							>
+								<div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg">
+									<Image
+										src={isAdminMode ? LogoIcon : (currentOrg?.logoUrl ?? LogoIcon)}
+										alt={isAdminMode ? "Admin" : (currentOrg?.nome ?? "Organização")}
+										fill
+										className="object-cover"
+									/>
 								</div>
-							</Link>
-						</DropdownMenuItem>
-						{showPanelLink && (
-							<>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem asChild className="cursor-pointer">
-									<Link href={panelHref}>
+								<div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+									<span className="truncate font-medium">{isAdminMode ? "ADMIN" : (currentOrg?.nome ?? "Selecionar organização")}</span>
+								</div>
+								{switchOrgMutation.isPending ? (
+									<Loader2 className="ml-auto size-4 animate-spin group-data-[collapsible=icon]:hidden" />
+								) : (
+									<ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+								)}
+							</SidebarMenuButton>
+						}
+					/>
+					<DropdownMenuContent className="w-(--anchor-width) min-w-56 rounded-lg" side={isMobile ? "bottom" : "right"} align="start" sideOffset={4}>
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Organizações</DropdownMenuLabel>
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							{memberships.map((membership) => {
+								const isActive = membership.organizacao.id === activeOrganizationId;
+								return (
+									<DropdownMenuItem
+										key={membership.id}
+										onClick={() => {
+											if (!isActive && !switchOrgMutation.isPending) {
+												switchOrgMutation.mutate({ organizationId: membership.organizacao.id });
+											}
+										}}
+										className="cursor-pointer"
+										disabled={switchOrgMutation.isPending}
+									>
+										<div className="flex items-center gap-2 w-full">
+											<div className="relative w-6 h-6 min-w-6 min-h-6 rounded-md overflow-hidden">
+												<Image src={membership.organizacao.logoUrl ?? LogoIcon} alt={membership.organizacao.nome} fill />
+											</div>
+											<span className="flex-1 truncate">{membership.organizacao.nome}</span>
+											{isActive && <Check className="size-4 text-foreground" />}
+										</div>
+									</DropdownMenuItem>
+								);
+							})}
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuItem
+								className="cursor-pointer"
+								render={
+									<Link href="/onboarding?new=true">
 										<div className="flex items-center justify-center gap-2 w-full">
-											<PanelIcon className="w-4 h-4 min-w-4 min-h-4" />
-											<span className="flex-1 truncate">{panelLabelUppercase}</span>
+											<Plus className="w-4 h-4 min-w-4 min-h-4" />
+											<span className="flex-1 truncate">NOVA ORGANIZAÇÃO</span>
 										</div>
 									</Link>
-								</DropdownMenuItem>
-							</>
-						)}
+								}
+							/>
+							{showPanelLink && (
+								<>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem
+										className="cursor-pointer"
+										render={
+											<Link href={panelHref}>
+												<div className="flex items-center justify-center gap-2 w-full">
+													<PanelIcon className="w-4 h-4 min-w-4 min-h-4" />
+													<span className="flex-1 truncate">{panelLabelUppercase}</span>
+												</div>
+											</Link>
+										}
+									/>
+								</>
+							)}
+						</DropdownMenuGroup>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>

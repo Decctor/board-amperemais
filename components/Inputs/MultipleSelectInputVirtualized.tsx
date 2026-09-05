@@ -71,21 +71,23 @@ function MultipleSelectInputVirtualized({
 
 			{isDesktop ? (
 				<Popover open={isOpen} onOpenChange={setIsOpen}>
-					<PopoverTrigger asChild>
-						<Button
-							ref={triggerRef}
-							id={inputIdentifier}
-							type="button"
-							variant="outline"
-							aria-haspopup="listbox"
-							aria-expanded={isOpen}
-							className={cn("w-full justify-between truncate border border-border", holderClassName)}
-						>
-							<SelectedOptions selectedOptions={selectedOptions} placeholderText={resetOptionLabel} />
-							<ChevronsUpDown className="opacity-50" />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent container={dialogContainer} className="p-0 w-[var(--radix-popover-trigger-width)]">
+					<PopoverTrigger
+						render={
+							<Button
+								ref={triggerRef}
+								id={inputIdentifier}
+								type="button"
+								variant="outline"
+								aria-haspopup="listbox"
+								aria-expanded={isOpen}
+								className={cn("w-full justify-between truncate border border-border", holderClassName)}
+							>
+								<SelectedOptions selectedOptions={selectedOptions} placeholderText={resetOptionLabel} />
+								<ChevronsUpDown className="opacity-50" />
+							</Button>
+						}
+					/>
+					<PopoverContent container={dialogContainer} className="p-0 w-[var(--anchor-width)]">
 						<VirtualizedOptionsList
 							value={selected?.map((p) => p.toString()) ?? null}
 							selectedOptions={selectedOptions}

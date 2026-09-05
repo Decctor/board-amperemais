@@ -123,55 +123,61 @@ function AnalyticsSlideContent() {
 						<div className="flex bg-zinc-800 rounded-lg p-1 gap-1">
 							<TooltipProvider>
 								<Tooltip>
-									<TooltipTrigger asChild>
-										<Button
-											variant={rankingTab === "sellers" ? "default" : "ghost"}
-											size="icon"
-											className={cn(
-												"h-8 w-8 rounded-md",
-												rankingTab === "sellers" ? "bg-[#24549C] text-white" : "text-white/60 hover:text-white hover:bg-white/10",
-											)}
-											onClick={() => setRankingTab("sellers")}
-										>
-											<Users className="w-4 h-4" />
-										</Button>
-									</TooltipTrigger>
+									<TooltipTrigger
+										render={
+											<Button
+												variant={rankingTab === "sellers" ? "default" : "ghost"}
+												size="icon"
+												className={cn(
+													"h-8 w-8 rounded-md",
+													rankingTab === "sellers" ? "bg-[#24549C] text-white" : "text-white/60 hover:text-white hover:bg-white/10",
+												)}
+												onClick={() => setRankingTab("sellers")}
+											>
+												<Users className="w-4 h-4" />
+											</Button>
+										}
+									/>
 									<TooltipContent>
 										<p>Vendedores</p>
 									</TooltipContent>
 								</Tooltip>
 								<Tooltip>
-									<TooltipTrigger asChild>
-										<Button
-											variant={rankingTab === "partners" ? "default" : "ghost"}
-											size="icon"
-											className={cn(
-												"h-8 w-8 rounded-md",
-												rankingTab === "partners" ? "bg-[#24549C] text-white" : "text-white/60 hover:text-white hover:bg-white/10",
-											)}
-											onClick={() => setRankingTab("partners")}
-										>
-											<Handshake className="w-4 h-4" />
-										</Button>
-									</TooltipTrigger>
+									<TooltipTrigger
+										render={
+											<Button
+												variant={rankingTab === "partners" ? "default" : "ghost"}
+												size="icon"
+												className={cn(
+													"h-8 w-8 rounded-md",
+													rankingTab === "partners" ? "bg-[#24549C] text-white" : "text-white/60 hover:text-white hover:bg-white/10",
+												)}
+												onClick={() => setRankingTab("partners")}
+											>
+												<Handshake className="w-4 h-4" />
+											</Button>
+										}
+									/>
 									<TooltipContent>
 										<p>Parceiros</p>
 									</TooltipContent>
 								</Tooltip>
 								<Tooltip>
-									<TooltipTrigger asChild>
-										<Button
-											variant={rankingTab === "products" ? "default" : "ghost"}
-											size="icon"
-											className={cn(
-												"h-8 w-8 rounded-md",
-												rankingTab === "products" ? "bg-[#24549C] text-white" : "text-white/60 hover:text-white hover:bg-white/10",
-											)}
-											onClick={() => setRankingTab("products")}
-										>
-											<Package className="w-4 h-4" />
-										</Button>
-									</TooltipTrigger>
+									<TooltipTrigger
+										render={
+											<Button
+												variant={rankingTab === "products" ? "default" : "ghost"}
+												size="icon"
+												className={cn(
+													"h-8 w-8 rounded-md",
+													rankingTab === "products" ? "bg-[#24549C] text-white" : "text-white/60 hover:text-white hover:bg-white/10",
+												)}
+												onClick={() => setRankingTab("products")}
+											>
+												<Package className="w-4 h-4" />
+											</Button>
+										}
+									/>
 									<TooltipContent>
 										<p>Produtos</p>
 									</TooltipContent>

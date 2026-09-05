@@ -54,24 +54,28 @@ export function ChatQuotesHeaderActions({ chatId, clientId, clientName, permissi
 				{/* Erro e carregamento não renderizam nada: a pill é informação ambiente e não pode
 				    piscar um esqueleto a cada troca de conversa nem quebrar o atendimento. */}
 				{hasQuotes && (
-					<TooltipProvider delayDuration={300}>
+					<TooltipProvider delay={300}>
 						<Tooltip>
 							<Popover>
-								<TooltipTrigger asChild>
-									<PopoverTrigger asChild>
-										<button
-											type="button"
-											aria-label={`${summary} em aberto. Ver detalhes.`}
-											className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95"
-										>
-											<FileText className="size-3 shrink-0" />
-											<span className="tabular-nums">{total}</span>
-											<span className="hidden sm:inline">
-												{total === 1 ? "orçamento" : "orçamentos"} · {formatToMoney(data?.valorTotalEmAberto ?? 0)}
-											</span>
-										</button>
-									</PopoverTrigger>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<PopoverTrigger
+											render={
+												<button
+													type="button"
+													aria-label={`${summary} em aberto. Ver detalhes.`}
+													className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95"
+												>
+													<FileText className="size-3 shrink-0" />
+													<span className="tabular-nums">{total}</span>
+													<span className="hidden sm:inline">
+														{total === 1 ? "orçamento" : "orçamentos"} · {formatToMoney(data?.valorTotalEmAberto ?? 0)}
+													</span>
+												</button>
+											}
+										/>
+									}
+								/>
 
 								<TooltipContent side="bottom">{summary}</TooltipContent>
 
@@ -103,13 +107,15 @@ export function ChatQuotesHeaderActions({ chatId, clientId, clientName, permissi
 				)}
 
 				{permissions.criar && (
-					<TooltipProvider delayDuration={300}>
+					<TooltipProvider delay={300}>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant="ghost" size="icon" className="shrink-0" aria-label="Novo orçamento" onClick={() => setIsBuilderOpen(true)}>
-									<Plus className="size-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant="ghost" size="icon" className="shrink-0" aria-label="Novo orçamento" onClick={() => setIsBuilderOpen(true)}>
+										<Plus className="size-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent side="bottom">Novo orçamento</TooltipContent>
 						</Tooltip>
 					</TooltipProvider>

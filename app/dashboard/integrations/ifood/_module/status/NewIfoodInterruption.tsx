@@ -1,8 +1,10 @@
 "use client";
+import { ResponsiveMenuAnimatedBody } from "@/components/Utils/ResponsiveMenuAnimatedBody";
+import { LoadingButton } from "@/components/loading-button";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 
 import DateTimeInput from "@/components/Inputs/DateTimeInput";
 import TextInput from "@/components/Inputs/TextInput";
-import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import { getErrorMessage } from "@/lib/errors";
 import { createIfoodInterruption } from "@/lib/mutations/ifood";
 import { useMutation } from "@tanstack/react-query";
@@ -48,26 +50,38 @@ export function NewIfoodInterruption({ merchantId, closeModal, callbacks }: NewI
 	}
 
 	return (
-		<ResponsiveMenuV2
-			menuTitle="PAUSAR LOJA"
-			menuDescription="Cria uma pausa programada no iFood. A loja ficará fechada para pedidos durante o período informado."
-			menuActionButtonText="PAUSAR LOJA"
-			menuCancelButtonText="CANCELAR"
-			closeMenu={closeModal}
-			actionFunction={handleSubmit}
-			actionIsLoading={isPending}
-			stateIsLoading={false}
+		<ResponsiveMenu.Root
+			open
+			onOpenChange={(open) => {
+				if (!open) closeModal();
+			}}
 		>
-			<div className="flex flex-col gap-4">
-				<TextInput
-					label="MOTIVO DA PAUSA"
-					value={descricao}
-					placeholder="Ex: Manutenção na cozinha, feriado, alta demanda..."
-					handleChange={setDescricao}
-				/>
-				<DateTimeInput label="INÍCIO DA PAUSA" value={inicio} handleChange={setInicio} required />
-				<DateTimeInput label="FIM DA PAUSA" value={fim} handleChange={setFim} required />
-			</div>
-		</ResponsiveMenuV2>
+			<ResponsiveMenu.Content drawerClassName="max-h-[70dvh]">
+				<ResponsiveMenu.Header>
+					<ResponsiveMenu.Title>PAUSAR LOJA</ResponsiveMenu.Title>
+					<ResponsiveMenu.Description>
+						Cria uma pausa programada no iFood. A loja ficará fechada para pedidos durante o período informado.
+					</ResponsiveMenu.Description>
+				</ResponsiveMenu.Header>
+				<ResponsiveMenuAnimatedBody stateKey="content" className="overflow-x-hidden overflow-y-auto">
+					<div className="flex flex-col gap-4">
+						<TextInput
+							label="MOTIVO DA PAUSA"
+							value={descricao}
+							placeholder="Ex: Manutenção na cozinha, feriado, alta demanda..."
+							handleChange={setDescricao}
+						/>
+						<DateTimeInput label="INÍCIO DA PAUSA" value={inicio} handleChange={setInicio} required />
+						<DateTimeInput label="FIM DA PAUSA" value={fim} handleChange={setFim} required />
+					</div>
+				</ResponsiveMenuAnimatedBody>
+				<ResponsiveMenu.Footer>
+					<ResponsiveMenu.Close variant="outline">CANCELAR</ResponsiveMenu.Close>
+					<LoadingButton loading={isPending} onClick={handleSubmit}>
+						PAUSAR LOJA
+					</LoadingButton>
+				</ResponsiveMenu.Footer>
+			</ResponsiveMenu.Content>
+		</ResponsiveMenu.Root>
 	);
 }

@@ -37,60 +37,61 @@ export default function AppSidebarFooter({
 
 			<SidebarMenuItem>
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<SidebarMenuButton
-							size="lg"
-							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
-						>
-							<Avatar className="h-8 w-8 shrink-0 rounded-lg">
-								<AvatarImage src={user.avatarUrl ?? undefined} alt={user.nome} />
-								<AvatarFallback className="rounded-lg">{formatNameAsInitials(user.nome)}</AvatarFallback>
-							</Avatar>
-							<div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-								<span className="truncate font-medium">{user.nome}</span>
-								<span className="truncate text-xs">{user.email}</span>
-							</div>
-							<ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
-						</SidebarMenuButton>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent
-						className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-						side={isMobile ? "bottom" : "right"}
-						align="end"
-						sideOffset={4}
-					>
-						<DropdownMenuLabel className="p-0 font-normal">
-							<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-								<Avatar className="h-8 w-8 rounded-lg">
+					<DropdownMenuTrigger
+						render={
+							<SidebarMenuButton
+								size="lg"
+								className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
+							>
+								<Avatar className="h-8 w-8 shrink-0 rounded-lg">
 									<AvatarImage src={user.avatarUrl ?? undefined} alt={user.nome} />
 									<AvatarFallback className="rounded-lg">{formatNameAsInitials(user.nome)}</AvatarFallback>
 								</Avatar>
-								<div className="grid flex-1 text-left text-sm leading-tight">
+								<div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
 									<span className="truncate font-medium">{user.nome}</span>
 									<span className="truncate text-xs">{user.email}</span>
 								</div>
-							</div>
-						</DropdownMenuLabel>
+								<ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+							</SidebarMenuButton>
+						}
+					/>
+					<DropdownMenuContent className="w-(--anchor-width) min-w-56 rounded-lg" side={isMobile ? "bottom" : "right"} align="end" sideOffset={4}>
+						<DropdownMenuGroup>
+							<DropdownMenuLabel className="p-0 font-normal">
+								<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+									<Avatar className="h-8 w-8 rounded-lg">
+										<AvatarImage src={user.avatarUrl ?? undefined} alt={user.nome} />
+										<AvatarFallback className="rounded-lg">{formatNameAsInitials(user.nome)}</AvatarFallback>
+									</Avatar>
+									<div className="grid flex-1 text-left text-sm leading-tight">
+										<span className="truncate font-medium">{user.nome}</span>
+										<span className="truncate text-xs">{user.email}</span>
+									</div>
+								</div>
+							</DropdownMenuLabel>
 
+							<DropdownMenuGroup>
+								<DropdownMenuItem>
+									<SidebarMenuButton asChild>
+										<Link href={appRoutes.settings()}>
+											<UserRound />
+											Configurações
+										</Link>
+									</SidebarMenuButton>
+								</DropdownMenuItem>
+							</DropdownMenuGroup>
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
 							<DropdownMenuItem>
 								<SidebarMenuButton asChild>
-									<Link href={appRoutes.settings()}>
-										<UserRound />
-										Configurações
+									<Link href="/auth/logout" prefetch={false}>
+										<LogOut />
+										Sair
 									</Link>
 								</SidebarMenuButton>
 							</DropdownMenuItem>
 						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem>
-							<SidebarMenuButton asChild>
-								<Link href="/auth/logout" prefetch={false}>
-									<LogOut />
-									Sair
-								</Link>
-							</SidebarMenuButton>
-						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>

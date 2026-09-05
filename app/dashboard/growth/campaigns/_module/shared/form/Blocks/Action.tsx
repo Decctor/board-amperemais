@@ -181,13 +181,16 @@ export default function CampaignsActionBlock({
 
 					<div className="flex w-full items-center justify-end gap-3">
 						{selectedTemplate ? (
-							<HoverCard openDelay={200}>
-								<HoverCardTrigger asChild>
-									<Button type="button" size="sm" variant="ghost" className="flex items-center gap-1.5">
-										<Eye className="h-3.5 w-3.5" />
-										PRÉ-VISUALIZAR
-									</Button>
-								</HoverCardTrigger>
+							<HoverCard>
+								<HoverCardTrigger
+									delay={200}
+									render={
+										<Button type="button" size="sm" variant="ghost" className="flex items-center gap-1.5">
+											<Eye className="h-3.5 w-3.5" />
+											PRÉ-VISUALIZAR
+										</Button>
+									}
+								/>
 								<HoverCardContent className="max-h-[70vh] w-[360px] overflow-auto p-2" side="left" align="end">
 									<TemplatePreview content={selectedTemplate.conteudo} />
 								</HoverCardContent>
@@ -209,18 +212,21 @@ export default function CampaignsActionBlock({
 
 					{hiddenCount > 0 ? (
 						<TooltipProvider>
-							<Tooltip delayDuration={150}>
-								<TooltipTrigger asChild>
-									<div className="text-muted-foreground hover:bg-muted/60 flex cursor-help items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs leading-snug transition-colors">
-										<Info className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-										<span>
-											{hiddenCount === 1
-												? "Mais um template não aparece aqui porque usa variáveis que este tipo de gatilho não fornece."
-												: `Mais ${hiddenCount} templates não aparecem aqui porque usam variáveis que este tipo de gatilho não fornece.`}{" "}
-											Passe o cursor para ver o nome de cada um e quais variáveis são.
-										</span>
-									</div>
-								</TooltipTrigger>
+							<Tooltip>
+								<TooltipTrigger
+									delay={150}
+									render={
+										<div className="text-muted-foreground hover:bg-muted/60 flex cursor-help items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs leading-snug transition-colors">
+											<Info className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+											<span>
+												{hiddenCount === 1
+													? "Mais um template não aparece aqui porque usa variáveis que este tipo de gatilho não fornece."
+													: `Mais ${hiddenCount} templates não aparecem aqui porque usam variáveis que este tipo de gatilho não fornece.`}{" "}
+												Passe o cursor para ver o nome de cada um e quais variáveis são.
+											</span>
+										</div>
+									}
+								/>
 								<TooltipContent
 									side="top"
 									align="start"

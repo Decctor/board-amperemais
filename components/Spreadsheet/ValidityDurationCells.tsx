@@ -2,13 +2,9 @@
 
 import EditableNumberCell from "@/components/Spreadsheet/EditableNumberCell";
 import SpreadsheetCellWrapper from "@/components/Spreadsheet/SpreadsheetCellWrapper";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectGroup, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatNumericInputValue } from "@/lib/formatting";
-import {
-	consumeProgrammaticSpreadsheetFocus,
-	handleSpreadsheetNavigationKeyDown,
-	type SpreadsheetGridBounds,
-} from "@/lib/spreadsheet-navigation";
+import { consumeProgrammaticSpreadsheetFocus, handleSpreadsheetNavigationKeyDown, type SpreadsheetGridBounds } from "@/lib/spreadsheet-navigation";
 import type { KeyboardEvent } from "react";
 
 export type ValidityDurationMeasure = "MINUTOS" | "HORAS" | "DIAS";
@@ -67,14 +63,7 @@ type ValidityDurationMeasureCellProps = {
 	onReset: () => void;
 };
 
-export function ValidityDurationMeasureCell({
-	measure,
-	gridRow,
-	gridCol,
-	gridBounds,
-	onMeasureChange,
-	onReset,
-}: ValidityDurationMeasureCellProps) {
+export function ValidityDurationMeasureCell({ measure, gridRow, gridCol, gridBounds, onMeasureChange, onReset }: ValidityDurationMeasureCellProps) {
 	function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
 		if (event.currentTarget.getAttribute("data-state") === "open") return;
 
@@ -89,8 +78,10 @@ export function ValidityDurationMeasureCell({
 	return (
 		<SpreadsheetCellWrapper gridRow={gridRow} gridCol={gridCol}>
 			<Select
-				value={measure ?? undefined}
+				items={[...VALIDITY_DURATION_OPTIONS.map((option) => ({ value: option.value, label: option.label })), { value: "__reset__", label: "Limpar" }]}
+				value={measure ?? null}
 				onValueChange={(nextMeasure) => {
+					if (nextMeasure === null) return;
 					if (nextMeasure === "__reset__") {
 						onReset();
 						return;
@@ -108,14 +99,16 @@ export function ValidityDurationMeasureCell({
 					<SelectValue placeholder="Med." />
 				</SelectTrigger>
 				<SelectContent>
-					{VALIDITY_DURATION_OPTIONS.map((option) => (
-						<SelectItem key={option.id} value={option.value} className="text-xs">
-							{option.label}
+					<SelectGroup>
+						{VALIDITY_DURATION_OPTIONS.map((option) => (
+							<SelectItem key={option.id} value={option.value} className="text-xs">
+								{option.label}
+							</SelectItem>
+						))}
+						<SelectItem value="__reset__" className="text-xs text-muted-foreground">
+							Limpar
 						</SelectItem>
-					))}
-					<SelectItem value="__reset__" className="text-xs text-muted-foreground">
-						Limpar
-					</SelectItem>
+					</SelectGroup>
 				</SelectContent>
 			</Select>
 		</SpreadsheetCellWrapper>

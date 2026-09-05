@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import {
+	DropdownMenuGroup,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -47,60 +48,72 @@ function PaymentCard({ saleState, payment }: PaymentCardProps) {
 			<div className="flex items-center gap-1.5 justify-between">
 				<div className="flex items-center gap-1.5">
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant={payment.efetivacaoTipo === "IMEDIATA" ? "success-light" : "warning-light"} size="fit" className="px-2 py-1 rounded-lg">
-								{payment.efetivacaoTipo === "IMEDIATA" ? <CheckCheck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-							</Button>
-						</DropdownMenuTrigger>
+						<DropdownMenuTrigger
+							render={
+								<Button variant={payment.efetivacaoTipo === "IMEDIATA" ? "success-light" : "warning-light"} size="fit" className="px-2 py-1 rounded-lg">
+									{payment.efetivacaoTipo === "IMEDIATA" ? <CheckCheck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+								</Button>
+							}
+						/>
 						<DropdownMenuContent>
-							<DropdownMenuLabel>EFETIVAÇÃO</DropdownMenuLabel>
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>EFETIVAÇÃO</DropdownMenuLabel>
+							</DropdownMenuGroup>
 							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								onClick={() =>
-									saleState.updatePagamento(payment.id, {
-										efetivacaoTipo: "IMEDIATA",
-										dataPrevisao: getTodayDateInputValue(),
-									})
-								}
-							>
-								<CheckCheck className="w-3 h-3" />
-								RECEBER AGORA
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={() =>
-									saleState.updatePagamento(payment.id, {
-										efetivacaoTipo: "PENDENTE",
-										dataPrevisao: payment.dataPrevisao ?? getTodayDateInputValue(),
-									})
-								}
-							>
-								<Clock className="w-3 h-3" />
-								RECEBER DEPOIS
-							</DropdownMenuItem>
+							<DropdownMenuGroup>
+								<DropdownMenuItem
+									onClick={() =>
+										saleState.updatePagamento(payment.id, {
+											efetivacaoTipo: "IMEDIATA",
+											dataPrevisao: getTodayDateInputValue(),
+										})
+									}
+								>
+									<CheckCheck className="w-3 h-3" />
+									RECEBER AGORA
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									onClick={() =>
+										saleState.updatePagamento(payment.id, {
+											efetivacaoTipo: "PENDENTE",
+											dataPrevisao: payment.dataPrevisao ?? getTodayDateInputValue(),
+										})
+									}
+								>
+									<Clock className="w-3 h-3" />
+									RECEBER DEPOIS
+								</DropdownMenuItem>
+							</DropdownMenuGroup>
 						</DropdownMenuContent>
 					</DropdownMenu>
 
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" size="sm" className="flex items-center gap-1.5 uppercase text-xs">
-								{selectedMethod?.icon ?? <Wallet className="w-4 h-4" />}
-								{selectedMethod?.label ?? payment.metodo}
-							</Button>
-						</DropdownMenuTrigger>
+						<DropdownMenuTrigger
+							render={
+								<Button variant="ghost" size="sm" className="flex items-center gap-1.5 uppercase text-xs">
+									{selectedMethod?.icon ?? <Wallet className="w-4 h-4" />}
+									{selectedMethod?.label ?? payment.metodo}
+								</Button>
+							}
+						/>
 						<DropdownMenuContent>
-							<DropdownMenuLabel>MÉTODO</DropdownMenuLabel>
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>MÉTODO</DropdownMenuLabel>
+							</DropdownMenuGroup>
 							<DropdownMenuSeparator />
-							{supportedMethodOptions.map((method) => (
-								<DropdownMenuItem key={method.value} onClick={() => saleState.updatePagamento(payment.id, { metodo: method.value })}>
-									<div className="flex items-center gap-2 w-full justify-between">
-										<div className="flex items-center gap-2">
-											{method.icon}
-											{method.label}
+							<DropdownMenuGroup>
+								{supportedMethodOptions.map((method) => (
+									<DropdownMenuItem key={method.value} onClick={() => saleState.updatePagamento(payment.id, { metodo: method.value })}>
+										<div className="flex items-center gap-2 w-full justify-between">
+											<div className="flex items-center gap-2">
+												{method.icon}
+												{method.label}
+											</div>
+											{method.value === payment.metodo ? <Check className="w-4 h-4" /> : null}
 										</div>
-										{method.value === payment.metodo ? <Check className="w-4 h-4" /> : null}
-									</div>
-								</DropdownMenuItem>
-							))}
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuGroup>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
@@ -123,45 +136,57 @@ function PaymentCard({ saleState, payment }: PaymentCardProps) {
 					{/* Ordem do modificador mais estrutural para o mais temporal: onde cai → como divide → quando entra. */}
 					{shouldShowAccount ? (
 						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5 text-[0.7rem] min-w-0">
-									<Landmark className="w-3.5 h-3.5 shrink-0" />
-									{/* O nome é dado do usuário: preserva a capitalização que a organização escreveu. */}
-									<span className="truncate max-w-[11rem]">{selectedAccount?.nome ?? "DEFINIR CONTA"}</span>
-								</Button>
-							</DropdownMenuTrigger>
+							<DropdownMenuTrigger
+								render={
+									<Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5 text-[0.7rem] min-w-0">
+										<Landmark className="w-3.5 h-3.5 shrink-0" />
+										{/* O nome é dado do usuário: preserva a capitalização que a organização escreveu. */}
+										<span className="truncate max-w-[11rem]">{selectedAccount?.nome ?? "DEFINIR CONTA"}</span>
+									</Button>
+								}
+							/>
 							<DropdownMenuContent align="end">
-								<DropdownMenuLabel>CONTA FINANCEIRA</DropdownMenuLabel>
+								<DropdownMenuGroup>
+									<DropdownMenuLabel>CONTA FINANCEIRA</DropdownMenuLabel>
+								</DropdownMenuGroup>
 								<DropdownMenuSeparator />
-								{accountOptions.map((account) => (
-									<DropdownMenuItem key={account.id} onClick={() => saleState.updatePagamento(payment.id, { contaFinanceiraId: account.id })}>
-										<div className="flex items-center gap-2 w-full justify-between">
-											{account.nome}
-											{account.id === payment.contaFinanceiraId ? <Check className="w-4 h-4" /> : null}
-										</div>
-									</DropdownMenuItem>
-								))}
+								<DropdownMenuGroup>
+									{accountOptions.map((account) => (
+										<DropdownMenuItem key={account.id} onClick={() => saleState.updatePagamento(payment.id, { contaFinanceiraId: account.id })}>
+											<div className="flex items-center gap-2 w-full justify-between">
+												{account.nome}
+												{account.id === payment.contaFinanceiraId ? <Check className="w-4 h-4" /> : null}
+											</div>
+										</DropdownMenuItem>
+									))}
+								</DropdownMenuGroup>
 							</DropdownMenuContent>
 						</DropdownMenu>
 					) : null}
 					{shouldShowInstallments ? (
 						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5 text-[0.7rem]">
-									{payment.totalParcelas ? `${payment.totalParcelas}x` : "PARCELAS"}
-								</Button>
-							</DropdownMenuTrigger>
+							<DropdownMenuTrigger
+								render={
+									<Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5 text-[0.7rem]">
+										{payment.totalParcelas ? `${payment.totalParcelas}x` : "PARCELAS"}
+									</Button>
+								}
+							/>
 							<DropdownMenuContent align="end">
-								<DropdownMenuLabel>PARCELAMENTO</DropdownMenuLabel>
+								<DropdownMenuGroup>
+									<DropdownMenuLabel>PARCELAMENTO</DropdownMenuLabel>
+								</DropdownMenuGroup>
 								<DropdownMenuSeparator />
-								{installmentOptions.map((parcelas) => (
-									<DropdownMenuItem key={parcelas} onClick={() => saleState.updatePagamento(payment.id, { totalParcelas: parcelas })}>
-										<div className="flex items-center gap-2 w-full justify-between">
-											<span>{parcelas}x</span>
-											{payment.totalParcelas === parcelas ? <Check className="w-4 h-4" /> : null}
-										</div>
-									</DropdownMenuItem>
-								))}
+								<DropdownMenuGroup>
+									{installmentOptions.map((parcelas) => (
+										<DropdownMenuItem key={parcelas} onClick={() => saleState.updatePagamento(payment.id, { totalParcelas: parcelas })}>
+											<div className="flex items-center gap-2 w-full justify-between">
+												<span>{parcelas}x</span>
+												{payment.totalParcelas === parcelas ? <Check className="w-4 h-4" /> : null}
+											</div>
+										</DropdownMenuItem>
+									))}
+								</DropdownMenuGroup>
 							</DropdownMenuContent>
 						</DropdownMenu>
 					) : null}

@@ -253,18 +253,22 @@ function InteractionCardMessagePreview({ className }: { className?: string }) {
 	if (!templateContent) return null;
 
 	return (
-		<HoverCard openDelay={200} closeDelay={100}>
-			<HoverCardTrigger asChild>
-				<Button
-					type="button"
-					size="icon"
-					variant="ghost"
-					className={cn("h-7 w-7 text-muted-foreground hover:text-foreground", className)}
-					aria-label="Preview da mensagem"
-				>
-					<Eye className="h-4 w-4" />
-				</Button>
-			</HoverCardTrigger>
+		<HoverCard>
+			<HoverCardTrigger
+				delay={200}
+				closeDelay={100}
+				render={
+					<Button
+						type="button"
+						size="icon"
+						variant="ghost"
+						className={cn("h-7 w-7 text-muted-foreground hover:text-foreground", className)}
+						aria-label="Preview da mensagem"
+					>
+						<Eye className="h-4 w-4" />
+					</Button>
+				}
+			/>
 			<HoverCardContent
 				className="w-[360px] overflow-auto p-2 max-h-[70vh] scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30"
 				align="end"
@@ -282,18 +286,22 @@ function InteractionCardDataForNerds({ className }: { className?: string }) {
 	const channelBlocks = [buildWhatsappBlock(metadata), buildEmailBlock(metadata)].filter((block): block is NerdsChannelBlock => block !== null);
 
 	return (
-		<HoverCard openDelay={200} closeDelay={100}>
-			<HoverCardTrigger asChild>
-				<Button
-					type="button"
-					size="icon"
-					variant="ghost"
-					className={cn("h-7 w-7 text-muted-foreground hover:text-foreground", className)}
-					aria-label="Data for nerds"
-				>
-					<Code className="h-4 w-4" />
-				</Button>
-			</HoverCardTrigger>
+		<HoverCard>
+			<HoverCardTrigger
+				delay={200}
+				closeDelay={100}
+				render={
+					<Button
+						type="button"
+						size="icon"
+						variant="ghost"
+						className={cn("h-7 w-7 text-muted-foreground hover:text-foreground", className)}
+						aria-label="Data for nerds"
+					>
+						<Code className="h-4 w-4" />
+					</Button>
+				}
+			/>
 			<HoverCardContent className="max-h-[70vh] w-88 overflow-auto p-0" align="end" side="bottom">
 				<div className="border-border bg-secondary/40 border-b px-4 py-3">
 					<div className="flex items-center gap-2">
@@ -334,20 +342,22 @@ function InteractionCardSentStatus() {
 	return (
 		<TooltipProvider>
 			<Tooltip>
-				<TooltipTrigger asChild>
-					<Chip.Root variant="ghost" size="sm" shape="pill" className={cn(sentStatusConfig.className, "border-none")}>
-						<Chip.Icon>
-							{isValidElement<{ className?: string }>(sentStatusConfig.icon)
-								? cloneElement(sentStatusConfig.icon, {
-										className: cn("w-4 h-4 min-w-4 min-h-4", sentStatusConfig.icon.props.className),
-									})
-								: sentStatusConfig.icon}
-						</Chip.Icon>
-						<Chip.Label caps weight="bold">
-							{sentStatusConfig.label}
-						</Chip.Label>
-					</Chip.Root>
-				</TooltipTrigger>
+				<TooltipTrigger
+					render={
+						<Chip.Root variant="ghost" size="sm" shape="pill" className={cn(sentStatusConfig.className, "border-none")}>
+							<Chip.Icon>
+								{isValidElement<{ className?: string }>(sentStatusConfig.icon)
+									? cloneElement(sentStatusConfig.icon, {
+											className: cn("w-4 h-4 min-w-4 min-h-4", sentStatusConfig.icon.props.className),
+										})
+									: sentStatusConfig.icon}
+							</Chip.Icon>
+							<Chip.Label caps weight="bold">
+								{sentStatusConfig.label}
+							</Chip.Label>
+						</Chip.Root>
+					}
+				/>
 				<TooltipContent>
 					<p className="text-xs block py-0.5 text-center italic font-medium leading-tight">
 						{sentStatusConfig.message(interaction.erroEnvio || undefined)}

@@ -3,7 +3,7 @@
 import type { TGetWhatsappConnectionsOutput } from "@/app/api/whatsapp-connections/route";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenuGroup, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { InteractiveFilter } from "@/components/ui/interactive-filter";
 import { formatInteractiveDateRangeSummary } from "@/components/ui/interactive-filter-formatting";
 import { getErrorMessage } from "@/lib/errors";
@@ -48,7 +48,12 @@ export default function ChatsStatsSection({ whatsappConnections, canManageAttend
 		};
 	}, [period, phoneId]);
 
-	const { data: overview, isPending: overviewPending, isError: overviewError, error: overviewErrorObject } = useChatsStatsOverview({ period: statsPeriod });
+	const {
+		data: overview,
+		isPending: overviewPending,
+		isError: overviewError,
+		error: overviewErrorObject,
+	} = useChatsStatsOverview({ period: statsPeriod });
 	const { data: timeseries, isPending: timeseriesPending } = useChatsStatsTimeseries({ period: statsPeriod });
 	const { data: agents, isPending: agentsPending } = useChatsStatsAgents({ period: statsPeriod, enabled: canManageAttendances });
 
@@ -70,18 +75,22 @@ export default function ChatsStatsSection({ whatsappConnections, canManageAttend
 				) : (
 					phones.length > 1 && (
 						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button variant="outline" size="sm" className="h-9 gap-1 text-xs">
-									Número
-									<ChevronDown className="h-3 w-3 opacity-60" />
-								</Button>
-							</DropdownMenuTrigger>
+							<DropdownMenuTrigger
+								render={
+									<Button variant="outline" size="sm" className="h-9 gap-1 text-xs">
+										Número
+										<ChevronDown className="h-3 w-3 opacity-60" />
+									</Button>
+								}
+							/>
 							<DropdownMenuContent align="end">
-								{phones.map((phone) => (
-									<DropdownMenuItem key={phone.id} onClick={() => setPhoneId(phone.id)}>
-										{phone.numero || phone.nome}
-									</DropdownMenuItem>
-								))}
+								<DropdownMenuGroup>
+									{phones.map((phone) => (
+										<DropdownMenuItem key={phone.id} onClick={() => setPhoneId(phone.id)}>
+											{phone.numero || phone.nome}
+										</DropdownMenuItem>
+									))}
+								</DropdownMenuGroup>
 							</DropdownMenuContent>
 						</DropdownMenu>
 					)

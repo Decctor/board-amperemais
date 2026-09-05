@@ -1,9 +1,12 @@
 "use client";
 
-import { MessageTemplateDynamicHeaderPresetOptions, type TTemplateDynamicHeaderPreset } from "@/app/dashboard/communication/_components/template-draft-store";
+import {
+	MessageTemplateDynamicHeaderPresetOptions,
+	type TTemplateDynamicHeaderPreset,
+} from "@/app/dashboard/communication/_components/template-draft-store";
 import TemplateMediaUpload from "@/components/MessageTemplates/TemplateMediaUpload";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectGroup, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TUseMessageTemplateState } from "@/state-hooks/use-message-template-state";
 import { ImageIcon } from "lucide-react";
 import { MessageTemplateField } from "./MessageTemplateFields";
@@ -30,24 +33,28 @@ export function MessageTemplateHeaderTypeSelect({
 	return (
 		<MessageTemplateField label="Cabeçalho">
 			<Select
+				items={[...messageTemplateHeaderTypeOptions.map((type) => ({ value: type.id, label: type.label }))]}
 				value={header?.tipo || "NENHUM"}
-				onValueChange={(value) =>
+				onValueChange={(value) => {
+					if (value === null) return;
 					updateTemplateContentHeader({
 						tipo: value as THeaderType,
 						conteudoMidiaUrl: value === "IMAGEM_DINAMICA" ? "" : header?.conteudoMidiaUrl || "",
 						imagemDinamicaPreset: header?.imagemDinamicaPreset || "CASHBACK_AVAILABLE_BALANCE",
-					})
-				}
+					});
+				}}
 			>
 				<SelectTrigger className="w-full">
 					<SelectValue />
 				</SelectTrigger>
 				<SelectContent>
-					{messageTemplateHeaderTypeOptions.map((type) => (
-						<SelectItem key={type.id} value={type.id}>
-							{type.label}
-						</SelectItem>
-					))}
+					<SelectGroup>
+						{messageTemplateHeaderTypeOptions.map((type) => (
+							<SelectItem key={type.id} value={type.id}>
+								{type.label}
+							</SelectItem>
+						))}
+					</SelectGroup>
 				</SelectContent>
 			</Select>
 		</MessageTemplateField>
@@ -123,23 +130,39 @@ function HeaderMediaUpload({
 	);
 }
 
-function DynamicHeaderPresetPicker({ presetId, onChange }: { presetId: TTemplateDynamicHeaderPreset; onChange: (presetId: TTemplateDynamicHeaderPreset) => void }) {
-	const selectedPreset = MessageTemplateDynamicHeaderPresetOptions.find((preset) => preset.id === presetId) ?? MessageTemplateDynamicHeaderPresetOptions[0];
+function DynamicHeaderPresetPicker({
+	presetId,
+	onChange,
+}: {
+	presetId: TTemplateDynamicHeaderPreset;
+	onChange: (presetId: TTemplateDynamicHeaderPreset) => void;
+}) {
+	const selectedPreset =
+		MessageTemplateDynamicHeaderPresetOptions.find((preset) => preset.id === presetId) ?? MessageTemplateDynamicHeaderPresetOptions[0];
 
 	return (
 		<div className="sm:col-span-2">
 			<div className="flex flex-col gap-3">
 				<MessageTemplateField label="Preset da imagem">
-					<Select value={presetId} onValueChange={(value) => onChange(value as TTemplateDynamicHeaderPreset)}>
+					<Select
+						items={[...MessageTemplateDynamicHeaderPresetOptions.map((preset) => ({ value: preset.id, label: preset.label }))]}
+						value={presetId}
+						onValueChange={(value) => {
+							if (value === null) return;
+							onChange(value as TTemplateDynamicHeaderPreset);
+						}}
+					>
 						<SelectTrigger className="w-full">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							{MessageTemplateDynamicHeaderPresetOptions.map((preset) => (
-								<SelectItem key={preset.id} value={preset.id}>
-									{preset.label}
-								</SelectItem>
-							))}
+							<SelectGroup>
+								{MessageTemplateDynamicHeaderPresetOptions.map((preset) => (
+									<SelectItem key={preset.id} value={preset.id}>
+										{preset.label}
+									</SelectItem>
+								))}
+							</SelectGroup>
 						</SelectContent>
 					</Select>
 				</MessageTemplateField>

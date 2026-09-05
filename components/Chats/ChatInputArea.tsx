@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenuGroup, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { getWhatsappWindowDisplay } from "@/lib/chats/whatsapp-window-status";
@@ -150,18 +150,22 @@ export const ChatInputArea = forwardRef<TChatInputAreaHandle, ChatInputAreaProps
 					{janela.label}. Só um template aprovado pode reabrir a conversa — a janela volta a abrir quando o cliente responder.
 				</p>
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button size="sm" variant="outline" className="self-start text-[11px] font-extrabold uppercase tracking-[0.08em]" disabled={isSending}>
-							ENVIAR TEMPLATE
-						</Button>
-					</DropdownMenuTrigger>
+					<DropdownMenuTrigger
+						render={
+							<Button size="sm" variant="outline" className="self-start text-[11px] font-extrabold uppercase tracking-[0.08em]" disabled={isSending}>
+								ENVIAR TEMPLATE
+							</Button>
+						}
+					/>
 					<DropdownMenuContent align="start" className="max-h-64 overflow-y-auto">
-						{templates.length === 0 && <DropdownMenuItem disabled>Nenhum template aprovado para este número</DropdownMenuItem>}
-						{templates.map((template) => (
-							<DropdownMenuItem key={template.id} onClick={() => onSendTemplate(template.id)}>
-								{template.nome}
-							</DropdownMenuItem>
-						))}
+						<DropdownMenuGroup>
+							{templates.length === 0 && <DropdownMenuItem disabled>Nenhum template aprovado para este número</DropdownMenuItem>}
+							{templates.map((template) => (
+								<DropdownMenuItem key={template.id} onClick={() => onSendTemplate(template.id)}>
+									{template.nome}
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuGroup>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>
@@ -191,7 +195,14 @@ export const ChatInputArea = forwardRef<TChatInputAreaHandle, ChatInputAreaProps
 					}}
 				/>
 				{!isRecordingVoice && (
-					<Button variant="ghost" size="icon" className="shrink-0" aria-label="Anexar arquivo" onClick={() => fileInputRef.current?.click()} disabled={isSending}>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="shrink-0"
+						aria-label="Anexar arquivo"
+						onClick={() => fileInputRef.current?.click()}
+						disabled={isSending}
+					>
 						<Paperclip className="h-4 w-4" />
 					</Button>
 				)}
@@ -199,31 +210,37 @@ export const ChatInputArea = forwardRef<TChatInputAreaHandle, ChatInputAreaProps
 				<ChatVoiceRecorder disabled={isSending} onRecorded={(input) => void handleVoiceRecorded(input)} onActiveChange={setIsRecordingVoice} />
 
 				{!isRecordingVoice && (
-				<Textarea
-					ref={textareaRef}
-					value={texto}
-					onChange={(event) => {
-						setTexto(event.target.value);
-						event.target.style.height = "auto";
-						event.target.style.height = `${Math.min(event.target.scrollHeight, 120)}px`;
-					}}
-					onKeyDown={(event) => {
-						// Enter envia, Shift+Enter quebra linha — convenção de chat, não de formulário.
-						if (event.key === "Enter" && !event.shiftKey) {
-							event.preventDefault();
-							handleSubmit();
-						}
-					}}
-					aria-label="Mensagem"
-					placeholder="Digite uma mensagem..."
-					rows={1}
-					className="min-h-9 resize-none py-2 text-sm"
-					disabled={isSending}
-				/>
+					<Textarea
+						ref={textareaRef}
+						value={texto}
+						onChange={(event) => {
+							setTexto(event.target.value);
+							event.target.style.height = "auto";
+							event.target.style.height = `${Math.min(event.target.scrollHeight, 120)}px`;
+						}}
+						onKeyDown={(event) => {
+							// Enter envia, Shift+Enter quebra linha — convenção de chat, não de formulário.
+							if (event.key === "Enter" && !event.shiftKey) {
+								event.preventDefault();
+								handleSubmit();
+							}
+						}}
+						aria-label="Mensagem"
+						placeholder="Digite uma mensagem..."
+						rows={1}
+						className="min-h-9 resize-none py-2 text-sm"
+						disabled={isSending}
+					/>
 				)}
 
 				{!isRecordingVoice && (
-					<Button size="icon" className="shrink-0" aria-label="Enviar mensagem" onClick={handleSubmit} disabled={isSending || (!texto.trim() && !attachment)}>
+					<Button
+						size="icon"
+						className="shrink-0"
+						aria-label="Enviar mensagem"
+						onClick={handleSubmit}
+						disabled={isSending || (!texto.trim() && !attachment)}
+					>
 						<Send className="h-4 w-4" />
 					</Button>
 				)}

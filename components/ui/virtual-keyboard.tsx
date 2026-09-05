@@ -33,7 +33,7 @@ type BaseProps = {
 	/** Classe aplicada ao botão showcase, para imitar o input original. */
 	triggerClassName?: string;
 	/** Conteúdo customizado do botão showcase; por padrão mostra o valor formatado. */
-	renderTrigger?: (args: { displayValue: string; isEmpty: boolean; open: () => void }) => React.ReactNode;
+	renderTrigger?: (args: { displayValue: string; isEmpty: boolean; open: () => void }) => React.ReactElement;
 	confirmLabel?: string;
 	/** Ícone/elemento inicial dentro do botão showcase. */
 	leading?: React.ReactNode;
@@ -166,25 +166,28 @@ export function VirtualKeyboard(props: VirtualKeyboardProps) {
 
 	return (
 		<Sheet open={open} onOpenChange={setOpen}>
-			<SheetTrigger asChild disabled={disabled}>
-				{renderTrigger ? (
-					(renderTrigger({ displayValue, isEmpty, open: () => setOpen(true) }) as React.ReactElement)
-				) : (
-					<button
-						type="button"
-						disabled={disabled}
-						aria-haspopup="dialog"
-						className={cn(
-							"flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 text-center font-bold text-foreground transition-colors hover:border-brand/40 focus-visible:border-brand focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand/15 disabled:pointer-events-none disabled:opacity-50",
-							isEmpty && "text-muted-foreground",
-							triggerClassName,
-						)}
-					>
-						{leading}
-						<span className="truncate">{isEmpty ? (placeholder ?? "Toque para preencher") : displayValue}</span>
-					</button>
-				)}
-			</SheetTrigger>
+			<SheetTrigger
+				disabled={disabled}
+				render={
+					renderTrigger ? (
+						(renderTrigger({ displayValue, isEmpty, open: () => setOpen(true) }) as React.ReactElement)
+					) : (
+						<button
+							type="button"
+							disabled={disabled}
+							aria-haspopup="dialog"
+							className={cn(
+								"flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 text-center font-bold text-foreground transition-colors hover:border-brand/40 focus-visible:border-brand focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand/15 disabled:pointer-events-none disabled:opacity-50",
+								isEmpty && "text-muted-foreground",
+								triggerClassName,
+							)}
+						>
+							{leading}
+							<span className="truncate">{isEmpty ? (placeholder ?? "Toque para preencher") : displayValue}</span>
+						</button>
+					)
+				}
+			/>
 			<SheetContent
 				side="bottom"
 				showCloseButton={false}
@@ -203,15 +206,17 @@ export function VirtualKeyboard(props: VirtualKeyboardProps) {
 								<SheetDescription className="sr-only">Teclado virtual para preencher {label}.</SheetDescription>
 							)}
 						</div>
-						<SheetClose asChild>
-							<button
-								type="button"
-								aria-label="Fechar"
-								className="-mt-1 flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-brand/10 hover:text-foreground"
-							>
-								<X className="size-5" />
-							</button>
-						</SheetClose>
+						<SheetClose
+							render={
+								<button
+									type="button"
+									aria-label="Fechar"
+									className="-mt-1 flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-brand/10 hover:text-foreground"
+								>
+									<X className="size-5" />
+								</button>
+							}
+						/>
 					</div>
 					<div className="flex min-h-[3.5rem] w-full items-center justify-center px-2">
 						<span
@@ -241,15 +246,17 @@ export function VirtualKeyboard(props: VirtualKeyboardProps) {
 						/>
 					)}
 
-					<SheetClose asChild>
-						<button
-							type="button"
-							className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-brand text-base font-black uppercase tracking-widest text-brand-foreground shadow-sm transition-colors hover:bg-brand/90 motion-reduce:transition-none"
-						>
-							<Check className="size-5" />
-							{confirmLabel ?? "Confirmar"}
-						</button>
-					</SheetClose>
+					<SheetClose
+						render={
+							<button
+								type="button"
+								className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-brand text-base font-black uppercase tracking-widest text-brand-foreground shadow-sm transition-colors hover:bg-brand/90 motion-reduce:transition-none"
+							>
+								<Check className="size-5" />
+								{confirmLabel ?? "Confirmar"}
+							</button>
+						}
+					/>
 				</div>
 			</SheetContent>
 		</Sheet>

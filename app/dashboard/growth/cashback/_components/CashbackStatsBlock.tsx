@@ -354,47 +354,53 @@ function CashbackProgramsGraphBlock({ period, terminology }: CashbackProgramsGra
 				<h1 className="text-xs font-medium tracking-tight uppercase">{METRIC_LABELS[graphType].title}</h1>
 				<div className="flex items-center gap-2">
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								variant={graphType === "participants-growth" ? "default" : "ghost"}
-								size="fit"
-								className="rounded-lg p-2"
-								onClick={() => setGraphType("participants-growth")}
-							>
-								{METRIC_LABELS["participants-growth"].icon}
-							</Button>
-						</TooltipTrigger>
+						<TooltipTrigger
+							render={
+								<Button
+									variant={graphType === "participants-growth" ? "default" : "ghost"}
+									size="fit"
+									className="rounded-lg p-2"
+									onClick={() => setGraphType("participants-growth")}
+								>
+									{METRIC_LABELS["participants-growth"].icon}
+								</Button>
+							}
+						/>
 						<TooltipContent>
 							<p>Total de Participantes</p>
 						</TooltipContent>
 					</Tooltip>
 
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								variant={graphType === "total-cashback-generated" ? "default" : "ghost"}
-								size="fit"
-								className="rounded-lg p-2"
-								onClick={() => setGraphType("total-cashback-generated")}
-							>
-								{METRIC_LABELS["total-cashback-generated"].icon}
-							</Button>
-						</TooltipTrigger>
+						<TooltipTrigger
+							render={
+								<Button
+									variant={graphType === "total-cashback-generated" ? "default" : "ghost"}
+									size="fit"
+									className="rounded-lg p-2"
+									onClick={() => setGraphType("total-cashback-generated")}
+								>
+									{METRIC_LABELS["total-cashback-generated"].icon}
+								</Button>
+							}
+						/>
 						<TooltipContent>
 							<p>Cashback Gerado</p>
 						</TooltipContent>
 					</Tooltip>
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								variant={graphType === "total-cashback-rescued" ? "default" : "ghost"}
-								size="fit"
-								className="rounded-lg p-2"
-								onClick={() => setGraphType("total-cashback-rescued")}
-							>
-								{METRIC_LABELS["total-cashback-rescued"].icon}
-							</Button>
-						</TooltipTrigger>
+						<TooltipTrigger
+							render={
+								<Button
+									variant={graphType === "total-cashback-rescued" ? "default" : "ghost"}
+									size="fit"
+									className="rounded-lg p-2"
+									onClick={() => setGraphType("total-cashback-rescued")}
+								>
+									{METRIC_LABELS["total-cashback-rescued"].icon}
+								</Button>
+							}
+						/>
 						<TooltipContent>
 							<p>Cashback Resgatado</p>
 						</TooltipContent>

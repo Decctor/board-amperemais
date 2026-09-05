@@ -72,18 +72,21 @@ function PeriodHeatmapCell({
 	const ticketMedio = result && result.quantidade > 0 ? result.total / result.quantidade : 0;
 
 	return (
-		<Tooltip delayDuration={200}>
-			<TooltipTrigger asChild>
-				<div
-					className={cn(
-						"flex flex-col items-center justify-center rounded-md border border-border w-full gap-1 transition-all hover:scale-[1.02] cursor-pointer",
-						className,
-					)}
-					style={{ backgroundColor: bgColor }}
-				>
-					<h1 className="text-xs font-bold tracking-tight uppercase">{label}</h1>
-				</div>
-			</TooltipTrigger>
+		<Tooltip>
+			<TooltipTrigger
+				delay={200}
+				render={
+					<div
+						className={cn(
+							"flex flex-col items-center justify-center rounded-md border border-border w-full gap-1 transition-all hover:scale-[1.02] cursor-pointer",
+							className,
+						)}
+						style={{ backgroundColor: bgColor }}
+					>
+						<h1 className="text-xs font-bold tracking-tight uppercase">{label}</h1>
+					</div>
+				}
+			/>
 			{result ? (
 				<TooltipContent className="min-w-[180px] p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 					<div className="flex flex-col gap-2">

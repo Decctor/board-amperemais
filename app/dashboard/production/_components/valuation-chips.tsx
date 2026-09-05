@@ -96,14 +96,16 @@ function ValuationChip({
 }) {
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>
-				<Chip.Root variant={variant} size="xs" shape="pill" className={cn("cursor-default", isProjection && "border-dashed border-current/40")}>
-					<Chip.Icon>{icon}</Chip.Icon>
-					<Chip.Label caps weight="bold">
-						{label}
-					</Chip.Label>
-				</Chip.Root>
-			</TooltipTrigger>
+			<TooltipTrigger
+				render={
+					<Chip.Root variant={variant} size="xs" shape="pill" className={cn("cursor-default", isProjection && "border-dashed border-current/40")}>
+						<Chip.Icon>{icon}</Chip.Icon>
+						<Chip.Label caps weight="bold">
+							{label}
+						</Chip.Label>
+					</Chip.Root>
+				}
+			/>
 			<TooltipContent>{tooltip}</TooltipContent>
 		</Tooltip>
 	);

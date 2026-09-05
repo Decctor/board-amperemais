@@ -302,28 +302,33 @@ function CampaignsPageCampaignCard({ campaign, onTestCampaign }: { campaign: TGe
 						<h1 className="text-xs font-bold tracking-tight lg:text-sm">{campaign.titulo}</h1>
 						<TooltipProvider>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Chip.Root variant="ghost" size="md" shape="xl" className="cursor-default text-foreground">
-										<Chip.Icon>
-											<Grid3x3 className="w-4 min-w-4 h-4 min-h-4" />
-										</Chip.Icon>
-										<Chip.Label caps weight="bold">
-											{campaign.segmentacoes.length} SEGMENTAÇÕES
-										</Chip.Label>
-									</Chip.Root>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Chip.Root variant="ghost" size="md" shape="xl" className="cursor-default text-foreground">
+											<Chip.Icon>
+												<Grid3x3 className="w-4 min-w-4 h-4 min-h-4" />
+											</Chip.Icon>
+											<Chip.Label caps weight="bold">
+												{campaign.segmentacoes.length} SEGMENTAÇÕES
+											</Chip.Label>
+										</Chip.Root>
+									}
+								/>
 								<TooltipContent className="max-w-xs">Incluindo {campaign.segmentacoes.map((s) => s.segmentacao).join(", ")}</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
 					</div>
 					<div className="flex items-center gap-2">
-						<HoverCard openDelay={200}>
-							<HoverCardTrigger asChild>
-								<Button type="button" size="sm" variant="ghost" className="flex items-center gap-1.5">
-									<Eye className="h-3.5 w-3.5" />
-									PREVIEW DO TEMPLATE
-								</Button>
-							</HoverCardTrigger>
+						<HoverCard>
+							<HoverCardTrigger
+								delay={200}
+								render={
+									<Button type="button" size="sm" variant="ghost" className="flex items-center gap-1.5">
+										<Eye className="h-3.5 w-3.5" />
+										PREVIEW DO TEMPLATE
+									</Button>
+								}
+							/>
 							<HoverCardContent
 								className="w-[360px] p-2 overflow-auto max-h-[70vh] scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30"
 								side="left"
@@ -335,16 +340,18 @@ function CampaignsPageCampaignCard({ campaign, onTestCampaign }: { campaign: TGe
 						{!campaign.whatsappConexaoTelefoneId ? (
 							<TooltipProvider>
 								<Tooltip>
-									<TooltipTrigger asChild>
-										<Chip.Root variant="brand" size="md" shape="xl">
-											<Chip.Icon>
-												<AlertTriangle className="w-4 min-w-4 h-4 min-h-4" />
-											</Chip.Icon>
-											<Chip.Label caps weight="bold">
-												WHATSAPP NÃO CONFIGURADO
-											</Chip.Label>
-										</Chip.Root>
-									</TooltipTrigger>
+									<TooltipTrigger
+										render={
+											<Chip.Root variant="brand" size="md" shape="xl">
+												<Chip.Icon>
+													<AlertTriangle className="w-4 min-w-4 h-4 min-h-4" />
+												</Chip.Icon>
+												<Chip.Label caps weight="bold">
+													WHATSAPP NÃO CONFIGURADO
+												</Chip.Label>
+											</Chip.Root>
+										}
+									/>
 									<TooltipContent className="max-w-xs">
 										Sem uma conexão de WhatsApp, a campanha seguirá apenas por e-mail quando houver endereço disponível.
 									</TooltipContent>

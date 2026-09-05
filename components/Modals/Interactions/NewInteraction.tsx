@@ -1,10 +1,12 @@
 "use client";
+import { ResponsiveMenuAnimatedBody } from "@/components/Utils/ResponsiveMenuAnimatedBody";
+import { LoadingButton } from "@/components/loading-button";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 
 import DateInput from "@/components/Inputs/DateInput";
 import SelectClientInput from "@/components/Inputs/SelectClient";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateForInputValue, formatDateOnInputChange } from "@/lib/formatting";
 import { createInteraction } from "@/lib/mutations/interactions";
@@ -83,100 +85,107 @@ export function NewInteraction({ sellerId, initialState, closeModal, callbacks }
 	}
 
 	return (
-		<ResponsiveMenuV2
-			menuTitle="NOVA INTERAÇÃO"
-			menuDescription="Agende uma abordagem para um cliente ou registre um contato já executado."
-			menuActionButtonText={state.modo === "AGENDAR" ? "AGENDAR" : "REGISTRAR"}
-			menuCancelButtonText="CANCELAR"
-			actionFunction={handleSubmit}
-			actionIsLoading={isPending}
-			stateIsLoading={false}
-			stateError={null}
-			closeMenu={closeModal}
-			dialogVariant="sm"
-			drawerVariant="md"
+		<ResponsiveMenu.Root
+			open
+			onOpenChange={(open) => {
+				if (!open) closeModal();
+			}}
 		>
-			<div className="flex w-full flex-col gap-4">
-				{/* Modo */}
-				<div className="flex flex-col gap-1.5">
-					<h3 className="text-xs font-bold tracking-tight uppercase text-muted-foreground">O que deseja fazer?</h3>
-					<div className="flex flex-wrap gap-1.5">
-						<Button
-							type="button"
-							variant={state.modo === "AGENDAR" ? "default" : "outline"}
-							size="sm"
-							className={cn("gap-1.5", state.modo !== "AGENDAR" && "text-muted-foreground")}
-							onClick={() => updateInteraction({ modo: "AGENDAR" })}
-						>
-							<CalendarCheck className="h-3.5 w-3.5" />
-							Agendar abordagem
-						</Button>
-						<Button
-							type="button"
-							variant={state.modo === "EXECUTADO" ? "default" : "outline"}
-							size="sm"
-							className={cn("gap-1.5", state.modo !== "EXECUTADO" && "text-muted-foreground")}
-							onClick={() => updateInteraction({ modo: "EXECUTADO" })}
-						>
-							<CheckCircle2 className="h-3.5 w-3.5" />
-							Registrar contato executado
-						</Button>
+			<ResponsiveMenu.Content dialogVariant="sm" drawerVariant="md">
+				<ResponsiveMenu.Header>
+					<ResponsiveMenu.Title>NOVA INTERAÇÃO</ResponsiveMenu.Title>
+					<ResponsiveMenu.Description>Agende uma abordagem para um cliente ou registre um contato já executado.</ResponsiveMenu.Description>
+				</ResponsiveMenu.Header>
+				<ResponsiveMenuAnimatedBody stateKey="content" className="overflow-x-hidden overflow-y-auto">
+					<div className="flex w-full flex-col gap-4">
+						{/* Modo */}
+						<div className="flex flex-col gap-1.5">
+							<h3 className="text-xs font-bold tracking-tight uppercase text-muted-foreground">O que deseja fazer?</h3>
+							<div className="flex flex-wrap gap-1.5">
+								<Button
+									type="button"
+									variant={state.modo === "AGENDAR" ? "default" : "outline"}
+									size="sm"
+									className={cn("gap-1.5", state.modo !== "AGENDAR" && "text-muted-foreground")}
+									onClick={() => updateInteraction({ modo: "AGENDAR" })}
+								>
+									<CalendarCheck className="h-3.5 w-3.5" />
+									Agendar abordagem
+								</Button>
+								<Button
+									type="button"
+									variant={state.modo === "EXECUTADO" ? "default" : "outline"}
+									size="sm"
+									className={cn("gap-1.5", state.modo !== "EXECUTADO" && "text-muted-foreground")}
+									onClick={() => updateInteraction({ modo: "EXECUTADO" })}
+								>
+									<CheckCircle2 className="h-3.5 w-3.5" />
+									Registrar contato executado
+								</Button>
+							</div>
+						</div>
+
+						{/* Cliente */}
+						<SelectClientInput
+							label="Cliente"
+							labelClassName="text-xs font-bold tracking-tight uppercase text-muted-foreground"
+							resetOptionLabel="Selecione um cliente..."
+							value={state.cliente}
+							handleChange={(client) => updateInteraction({ cliente: { id: client.id, nome: client.nome, telefone: client.telefone } })}
+							onReset={() => updateInteraction({ cliente: null })}
+						/>
+
+						{/* Data (só para agendamento) */}
+						{state.modo === "AGENDAR" ? (
+							<DateInput
+								label="DATA DO AGENDAMENTO"
+								labelClassName="text-xs font-bold tracking-tight uppercase text-muted-foreground"
+								value={formatDateForInputValue(state.dataInteracao)}
+								handleChange={(value) => updateInteraction({ dataInteracao: formatDateOnInputChange(value, "date") })}
+							/>
+						) : null}
+
+						{/* Canal */}
+						<div className="flex flex-col gap-1.5">
+							<h3 className="text-xs font-bold tracking-tight uppercase text-muted-foreground">Canal</h3>
+							<div className="flex flex-wrap gap-1.5">
+								{REGISTER_CHANNELS.map((channel) => (
+									<Button
+										key={channel}
+										type="button"
+										variant={state.canal === channel ? "default" : "outline"}
+										size="sm"
+										className={cn("gap-1.5", state.canal !== channel && "text-muted-foreground")}
+										onClick={() => updateInteraction({ canal: channel })}
+									>
+										{INTERACTION_CHANNEL_META[channel].icon}
+										{INTERACTION_CHANNEL_META[channel].label}
+									</Button>
+								))}
+							</div>
+						</div>
+
+						{/* Nota */}
+						<div className="flex flex-col gap-1.5">
+							<h3 className="text-xs font-bold tracking-tight uppercase text-muted-foreground">Nota (opcional)</h3>
+							<Textarea
+								value={state.descricao}
+								onChange={(event) => updateInteraction({ descricao: event.target.value })}
+								placeholder={
+									state.modo === "AGENDAR" ? "Ex.: ligar para oferecer a reposição do pedido" : "Ex.: confirmou que passa sábado para buscar a encomenda"
+								}
+								rows={3}
+							/>
+						</div>
 					</div>
-				</div>
-
-				{/* Cliente */}
-				<SelectClientInput
-					label="Cliente"
-					labelClassName="text-xs font-bold tracking-tight uppercase text-muted-foreground"
-					resetOptionLabel="Selecione um cliente..."
-					value={state.cliente}
-					handleChange={(client) => updateInteraction({ cliente: { id: client.id, nome: client.nome, telefone: client.telefone } })}
-					onReset={() => updateInteraction({ cliente: null })}
-				/>
-
-				{/* Data (só para agendamento) */}
-				{state.modo === "AGENDAR" ? (
-					<DateInput
-						label="DATA DO AGENDAMENTO"
-						labelClassName="text-xs font-bold tracking-tight uppercase text-muted-foreground"
-						value={formatDateForInputValue(state.dataInteracao)}
-						handleChange={(value) => updateInteraction({ dataInteracao: formatDateOnInputChange(value, "date") })}
-					/>
-				) : null}
-
-				{/* Canal */}
-				<div className="flex flex-col gap-1.5">
-					<h3 className="text-xs font-bold tracking-tight uppercase text-muted-foreground">Canal</h3>
-					<div className="flex flex-wrap gap-1.5">
-						{REGISTER_CHANNELS.map((channel) => (
-							<Button
-								key={channel}
-								type="button"
-								variant={state.canal === channel ? "default" : "outline"}
-								size="sm"
-								className={cn("gap-1.5", state.canal !== channel && "text-muted-foreground")}
-								onClick={() => updateInteraction({ canal: channel })}
-							>
-								{INTERACTION_CHANNEL_META[channel].icon}
-								{INTERACTION_CHANNEL_META[channel].label}
-							</Button>
-						))}
-					</div>
-				</div>
-
-				{/* Nota */}
-				<div className="flex flex-col gap-1.5">
-					<h3 className="text-xs font-bold tracking-tight uppercase text-muted-foreground">Nota (opcional)</h3>
-					<Textarea
-						value={state.descricao}
-						onChange={(event) => updateInteraction({ descricao: event.target.value })}
-						placeholder={
-							state.modo === "AGENDAR" ? "Ex.: ligar para oferecer a reposição do pedido" : "Ex.: confirmou que passa sábado para buscar a encomenda"
-						}
-						rows={3}
-					/>
-				</div>
-			</div>
-		</ResponsiveMenuV2>
+				</ResponsiveMenuAnimatedBody>
+				<ResponsiveMenu.Footer>
+					<ResponsiveMenu.Close variant="outline">CANCELAR</ResponsiveMenu.Close>
+					<LoadingButton loading={isPending} onClick={handleSubmit}>
+						{state.modo === "AGENDAR" ? "AGENDAR" : "REGISTRAR"}
+					</LoadingButton>
+				</ResponsiveMenu.Footer>
+			</ResponsiveMenu.Content>
+		</ResponsiveMenu.Root>
 	);
 }

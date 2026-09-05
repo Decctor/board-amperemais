@@ -6,7 +6,7 @@ import { ConnectorMark } from "@/components/Brand/ConnectorMark";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectGroup, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getErrorMessage } from "@/lib/errors";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
@@ -94,24 +94,49 @@ export function AuthorizeConsent({
 
 						<div className="flex flex-col gap-2">
 							<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Conectar à organização</p>
-							<Select value={selectedTarget} onValueChange={setSelectedTarget} disabled={isPending}>
+							<Select
+								items={[
+									...organizations.map((organization) => ({ value: organization.id, label: organization.nome })),
+									...(platformScopeDescriptors
+										? {
+												value: PLATFORM_ACCESS_VALUE,
+												label: (
+													<>
+														{" "}
+														<span className="flex items-center gap-2">
+															<Globe className="h-4 w-4" />
+															Acesso geral (plataforma)
+														</span>{" "}
+													</>
+												),
+											}
+										: null),
+								]}
+								value={selectedTarget}
+								onValueChange={(value) => {
+									if (value !== null) setSelectedTarget(value);
+								}}
+								disabled={isPending}
+							>
 								<SelectTrigger className="w-full">
 									<SelectValue placeholder="Escolha a organização" />
 								</SelectTrigger>
 								<SelectContent>
-									{organizations.map((organization) => (
-										<SelectItem key={organization.id} value={organization.id}>
-											{organization.nome}
-										</SelectItem>
-									))}
-									{platformScopeDescriptors ? (
-										<SelectItem value={PLATFORM_ACCESS_VALUE}>
-											<span className="flex items-center gap-2">
-												<Globe className="h-4 w-4" />
-												Acesso geral (plataforma)
-											</span>
-										</SelectItem>
-									) : null}
+									<SelectGroup>
+										{organizations.map((organization) => (
+											<SelectItem key={organization.id} value={organization.id}>
+												{organization.nome}
+											</SelectItem>
+										))}
+										{platformScopeDescriptors ? (
+											<SelectItem value={PLATFORM_ACCESS_VALUE}>
+												<span className="flex items-center gap-2">
+													<Globe className="h-4 w-4" />
+													Acesso geral (plataforma)
+												</span>
+											</SelectItem>
+										) : null}
+									</SelectGroup>
 								</SelectContent>
 							</Select>
 						</div>

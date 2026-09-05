@@ -103,46 +103,52 @@ export default function ClientsGraphs({ periodAfter, periodBefore, comparingPeri
 					<div className="flex items-center gap-2">
 						<TooltipProvider>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={graphType === "clients-growth" ? "default" : "ghost"}
-										size="fit"
-										className="rounded-lg p-2"
-										onClick={() => setGraphType("clients-growth")}
-									>
-										<UsersRound className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button
+											variant={graphType === "clients-growth" ? "default" : "ghost"}
+											size="fit"
+											className="rounded-lg p-2"
+											onClick={() => setGraphType("clients-growth")}
+										>
+											<UsersRound className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Crescimento Total de Clientes</p>
 								</TooltipContent>
 							</Tooltip>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={graphType === "new-clients" ? "default" : "ghost"}
-										size="fit"
-										className="rounded-lg p-2"
-										onClick={() => setGraphType("new-clients")}
-									>
-										<UserPlus className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button
+											variant={graphType === "new-clients" ? "default" : "ghost"}
+											size="fit"
+											className="rounded-lg p-2"
+											onClick={() => setGraphType("new-clients")}
+										>
+											<UserPlus className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Novos Clientes por Período</p>
 								</TooltipContent>
 							</Tooltip>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={graphType === "active-clients" ? "default" : "ghost"}
-										size="fit"
-										className="rounded-lg p-2"
-										onClick={() => setGraphType("active-clients")}
-									>
-										<Activity className="h-4 min-h-4 w-4 min-w-4" />
-									</Button>
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={
+										<Button
+											variant={graphType === "active-clients" ? "default" : "ghost"}
+											size="fit"
+											className="rounded-lg p-2"
+											onClick={() => setGraphType("active-clients")}
+										>
+											<Activity className="h-4 min-h-4 w-4 min-w-4" />
+										</Button>
+									}
+								/>
 								<TooltipContent>
 									<p>Clientes Ativos por Período</p>
 								</TooltipContent>

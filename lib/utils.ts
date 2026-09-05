@@ -1,11 +1,7 @@
 import axios from "axios";
-import { type ClassValue, clsx } from "clsx";
 import { toast } from "sonner";
-import { twMerge } from "tailwind-merge";
+export { cn } from "cn";
 
-export function cn(...inputs: ClassValue[]) {
-	return twMerge(clsx(inputs));
-}
 export function absoluteUrl(path: string) {
 	return new URL(path, process.env.NEXT_PUBLIC_APP_URL).href;
 }

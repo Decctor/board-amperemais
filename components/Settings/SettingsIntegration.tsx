@@ -1,4 +1,6 @@
-import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
+import { ResponsiveMenuAnimatedBody } from "@/components/Utils/ResponsiveMenuAnimatedBody";
+import { LoadingButton } from "@/components/loading-button";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import TextInput from "@/components/Inputs/TextInput";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -101,8 +103,7 @@ const INTEGRATIONS: TIntegrationDefinition[] = [
 		id: "ERP-FLEX",
 		name: "ERPFlex",
 		logo: ErpFlexLogo,
-		description:
-			"Conecte sua conta ERPFlex para importar faturamentos, clientes e produtos com as credenciais de API fornecidas pelo time do ERPFlex.",
+		description: "Conecte sua conta ERPFlex para importar faturamentos, clientes e produtos com as credenciais de API fornecidas pelo time do ERPFlex.",
 		buttonText: "CONECTAR COM ERPFLEX",
 		brandColor: "#1B5FAA",
 		brandClassName: "bg-[#1B5FAA] text-white hover:bg-[#1B5FAA]/80",
@@ -177,7 +178,7 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 		// R12: desconectar a última fonte NÃO religa o registro de vendas do POI automaticamente
 		// (D8) — o operador precisa saber e decidir.
 		const warning = isLastActiveDataSource
-			? "Tem certeza que deseja desconectar? Essa ação irá interromper a sincronização de dados.\n\nAtenção: esta é a última fonte de dados ativa e o registro de vendas pelo Ponto de Interação NÃO será reativado automaticamente — ative-o no bloco \"Ponto de Interação\" abaixo, se desejar."
+			? 'Tem certeza que deseja desconectar? Essa ação irá interromper a sincronização de dados.\n\nAtenção: esta é a última fonte de dados ativa e o registro de vendas pelo Ponto de Interação NÃO será reativado automaticamente — ative-o no bloco "Ponto de Interação" abaixo, se desejar.'
 			: "Tem certeza que deseja desconectar? Essa ação irá interromper a sincronização de dados desta conexão.";
 		if (confirm(warning)) {
 			disconnectIntegrationMutation.mutate(integration.id);
@@ -239,9 +240,7 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 			<div className="flex flex-col lg:flex-row items-center justify-between border-b pb-4">
 				<div className="space-y-1">
 					<h2 className="text-xl font-semibold tracking-tight">Configuração de Integração</h2>
-					<p className="text-sm text-muted-foreground">
-						Conecte uma ou mais fontes de dados — inclusive mais de uma conta do mesmo provedor.
-					</p>
+					<p className="text-sm text-muted-foreground">Conecte uma ou mais fontes de dados — inclusive mais de uma conta do mesmo provedor.</p>
 				</div>
 			</div>
 
@@ -296,10 +295,7 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 									{integration.logo ? (
 										<Image src={integration.logo} alt={integration.name} fill className="object-contain object-left" />
 									) : (
-										<div
-											className="flex h-12 w-12 items-center justify-center rounded-lg text-lg font-bold text-white"
-											style={{ backgroundColor: brandColor }}
-										>
+										<div className="flex h-12 w-12 items-center justify-center rounded-lg text-lg font-bold text-white" style={{ backgroundColor: brandColor }}>
 											{integration.name.slice(0, 2)}
 										</div>
 									)}
@@ -339,10 +335,7 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 						if (!integrationDetails) return null;
 						const connectionLabel = connection.apelido ?? (connection.refExterno ? `Conta ${connection.refExterno}` : null);
 						return (
-							<div
-								key={connection.id}
-								className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2"
-							>
+							<div key={connection.id} className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2">
 								<div className="flex items-center gap-2">
 									<span className="text-sm font-semibold">{integrationDetails.name}</span>
 									{connectionLabel ? <span className="text-sm text-muted-foreground">— {connectionLabel}</span> : null}
@@ -355,8 +348,7 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 						);
 					})}
 					<p className="text-xs text-muted-foreground">
-						Reconectar reativa a mesma conexão — as vendas já importadas continuam vinculadas a ela. Conectar pela lista acima cria uma conexão
-						nova.
+						Reconectar reativa a mesma conexão — as vendas já importadas continuam vinculadas a ela. Conectar pela lista acima cria uma conexão nova.
 					</p>
 				</div>
 			) : null}
@@ -368,8 +360,8 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 					<div className="space-y-1">
 						<h3 className="font-semibold">Ponto de Interação — registro de vendas</h3>
 						<p className="text-sm text-muted-foreground">
-							Quando ativo, transações no Ponto de Interação criam vendas internas (com cashback, campanhas e métricas). Pode ficar ativo mesmo
-							com integrações conectadas — ideal para registrar vendas de balcão.
+							Quando ativo, transações no Ponto de Interação criam vendas internas (com cashback, campanhas e métricas). Pode ficar ativo mesmo com
+							integrações conectadas — ideal para registrar vendas de balcão.
 						</p>
 					</div>
 					<Switch
@@ -389,8 +381,8 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 								</Chip.Root>
 							</div>
 							<p className="text-sm text-muted-foreground">
-								Controla se o cliente pode usar o saldo como desconto ou trocar por recompensas direto no totem/celular. A configuração vive no
-								programa de cashback.
+								Controla se o cliente pode usar o saldo como desconto ou trocar por recompensas direto no totem/celular. A configuração vive no programa de
+								cashback.
 							</p>
 						</div>
 						<Button variant="outline" size="sm" asChild>
@@ -402,11 +394,7 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 					</div>
 				) : null}
 
-				<PoiRegistrationSettings
-					storedConfig={poiRegistrationConfig}
-					salesRegistrationEnabled={poiSalesRegistrationEnabled}
-					canEdit={canEdit}
-				/>
+				<PoiRegistrationSettings storedConfig={poiRegistrationConfig} salesRegistrationEnabled={poiSalesRegistrationEnabled} canEdit={canEdit} />
 			</div>
 
 			{isMenuOpen && selectedIntegrationId ? (
@@ -546,16 +534,14 @@ function PoiRegistrationSettings({ storedConfig, salesRegistrationEnabled, canEd
 			<div className="flex flex-col gap-1">
 				<h4 className="text-sm font-semibold">CADASTRO NO PONTO DE INTERAÇÃO</h4>
 				<p className="text-sm text-muted-foreground">
-					No cadastro rápido o cliente informa apenas nome e telefone. No completo, o assistente pergunta também os campos escolhidos abaixo — na ordem
-					em que eles aparecem aqui.
+					No cadastro rápido o cliente informa apenas nome e telefone. No completo, o assistente pergunta também os campos escolhidos abaixo — na ordem em
+					que eles aparecem aqui.
 				</p>
 			</div>
 
 			{POI_REGISTRATION_SURFACES.map((surface) => {
 				const surfaceConfig = config[surface.key];
-				const availableCustomFields = activeCustomFields.filter(
-					(customField) => !surfaceConfig.campos.some((campo) => campo.campoId === customField.id),
-				);
+				const availableCustomFields = activeCustomFields.filter((customField) => !surfaceConfig.campos.some((campo) => campo.campoId === customField.id));
 
 				return (
 					<div key={surface.key} className="flex w-full flex-col gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2">
@@ -584,9 +570,7 @@ function PoiRegistrationSettings({ storedConfig, salesRegistrationEnabled, canEd
 						) : (
 							<div className="flex w-full flex-col gap-2 border-t border-border pt-2">
 								{surfaceConfig.campos.length === 0 ? (
-									<p className="text-xs text-muted-foreground italic">
-										Nenhum campo no cadastro desta superfície — o cliente vai ver o cadastro rápido.
-									</p>
+									<p className="text-xs text-muted-foreground italic">Nenhum campo no cadastro desta superfície — o cliente vai ver o cadastro rápido.</p>
 								) : (
 									surfaceConfig.campos.map((campo, index) => {
 										const definition = activeCustomFields.find((customField) => customField.id === campo.campoId);
@@ -617,9 +601,7 @@ function PoiRegistrationSettings({ storedConfig, salesRegistrationEnabled, canEd
 														{index + 1}. {definition?.titulo ?? "Campo indisponível"}
 													</span>
 													<span className="text-xs text-muted-foreground">
-														{definition
-															? CUSTOM_FIELD_TYPE_LABELS[definition.tipo]
-															: "O campo foi desativado — remova-o para limpar o cadastro."}
+														{definition ? CUSTOM_FIELD_TYPE_LABELS[definition.tipo] : "O campo foi desativado — remova-o para limpar o cadastro."}
 													</span>
 												</div>
 												<label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -689,14 +671,10 @@ function PoiRegistrationSettings({ storedConfig, salesRegistrationEnabled, canEd
 
 			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<p className="text-xs text-muted-foreground">
-					Os campos prontos já são entendidos pela plataforma (segmentação e aniversariantes saem de graça). Campos próprios da organização, se
-					existirem, aparecem na lista acima.
+					Os campos prontos já são entendidos pela plataforma (segmentação e aniversariantes saem de graça). Campos próprios da organização, se existirem,
+					aparecem na lista acima.
 				</p>
-				<Button
-					size="sm"
-					disabled={!canEdit || saveRegistrationConfigMutation.isPending}
-					onClick={() => saveRegistrationConfigMutation.mutate()}
-				>
+				<Button size="sm" disabled={!canEdit || saveRegistrationConfigMutation.isPending} onClick={() => saveRegistrationConfigMutation.mutate()}>
 					SALVAR CADASTRO
 				</Button>
 			</div>
@@ -826,49 +804,64 @@ function IfoodIntegrationMenu({ reconnectIntegrationId, closeMenu }: { reconnect
 	});
 
 	return (
-		<ResponsiveMenuV2
-			menuTitle="CONFIGURAR IFOOD"
-			menuDescription="Gere o código, autorize o aplicativo no portal do iFood e cole o código de autorização para concluir."
-			menuActionButtonText={authorization ? "FINALIZAR CONEXÃO" : "GERAR CÓDIGO"}
-			menuCancelButtonText="FECHAR"
-			closeMenu={closeMenu}
-			actionFunction={() => {
-				if (!authorization) return createAuthorizationMutation.mutate();
-				return completeAuthorizationMutation.mutate();
+		<ResponsiveMenu.Root
+			open
+			onOpenChange={(open) => {
+				if (!open) closeMenu();
 			}}
-			actionIsLoading={createAuthorizationMutation.isPending || completeAuthorizationMutation.isPending}
-			stateIsLoading={false}
 		>
-			<div className="flex flex-col gap-4">
-				{authorization ? (
-					<div className="rounded-lg border bg-muted/30 p-4">
-						<p className="text-xs font-semibold text-muted-foreground">CÓDIGO IFOOD</p>
-						<p className="mt-1 text-2xl font-bold tracking-wide">{authorization.userCode}</p>
-						{authorization.verificationUrlComplete || authorization.verificationUrl ? (
-							<Button
-								type="button"
-								size="sm"
-								className="mt-3"
-								onClick={() => window.open(authorization.verificationUrlComplete ?? authorization.verificationUrl ?? "", "_blank")}
-							>
-								<LinkIcon className="h-4 w-4" />
-								ABRIR PORTAL IFOOD
-							</Button>
+			<ResponsiveMenu.Content drawerClassName="max-h-[70dvh]">
+				<ResponsiveMenu.Header>
+					<ResponsiveMenu.Title>CONFIGURAR IFOOD</ResponsiveMenu.Title>
+					<ResponsiveMenu.Description>
+						Gere o código, autorize o aplicativo no portal do iFood e cole o código de autorização para concluir.
+					</ResponsiveMenu.Description>
+				</ResponsiveMenu.Header>
+				<ResponsiveMenuAnimatedBody stateKey="content" className="overflow-x-hidden overflow-y-auto">
+					<div className="flex flex-col gap-4">
+						{authorization ? (
+							<div className="rounded-lg border bg-muted/30 p-4">
+								<p className="text-xs font-semibold text-muted-foreground">CÓDIGO IFOOD</p>
+								<p className="mt-1 text-2xl font-bold tracking-wide">{authorization.userCode}</p>
+								{authorization.verificationUrlComplete || authorization.verificationUrl ? (
+									<Button
+										type="button"
+										size="sm"
+										className="mt-3"
+										onClick={() => window.open(authorization.verificationUrlComplete ?? authorization.verificationUrl ?? "", "_blank")}
+									>
+										<LinkIcon className="h-4 w-4" />
+										ABRIR PORTAL IFOOD
+									</Button>
+								) : null}
+							</div>
+						) : (
+							<p className="text-sm text-muted-foreground">Clique em gerar código para iniciar a autorização distribuída do iFood.</p>
+						)}
+
+						{authorization ? (
+							<TextInput
+								label="CÓDIGO DE AUTORIZAÇÃO"
+								value={authorizationCode}
+								placeholder="Cole aqui o código recebido no portal do iFood..."
+								handleChange={setAuthorizationCode}
+							/>
 						) : null}
 					</div>
-				) : (
-					<p className="text-sm text-muted-foreground">Clique em gerar código para iniciar a autorização distribuída do iFood.</p>
-				)}
-
-				{authorization ? (
-					<TextInput
-						label="CÓDIGO DE AUTORIZAÇÃO"
-						value={authorizationCode}
-						placeholder="Cole aqui o código recebido no portal do iFood..."
-						handleChange={setAuthorizationCode}
-					/>
-				) : null}
-			</div>
-		</ResponsiveMenuV2>
+				</ResponsiveMenuAnimatedBody>
+				<ResponsiveMenu.Footer>
+					<ResponsiveMenu.Close variant="outline">FECHAR</ResponsiveMenu.Close>
+					<LoadingButton
+						loading={createAuthorizationMutation.isPending || completeAuthorizationMutation.isPending}
+						onClick={() => {
+							if (!authorization) return createAuthorizationMutation.mutate();
+							return completeAuthorizationMutation.mutate();
+						}}
+					>
+						{authorization ? "FINALIZAR CONEXÃO" : "GERAR CÓDIGO"}
+					</LoadingButton>
+				</ResponsiveMenu.Footer>
+			</ResponsiveMenu.Content>
+		</ResponsiveMenu.Root>
 	);
 }

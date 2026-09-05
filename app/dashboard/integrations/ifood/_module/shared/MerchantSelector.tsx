@@ -1,6 +1,6 @@
 "use client";
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectGroup, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TIfoodMerchantSummaryDTO } from "@/lib/integrations/ifood/merchant-types";
 
 type MerchantSelectorProps = {
@@ -14,16 +14,24 @@ export function MerchantSelector({ merchants, selectedMerchantId, onSelect }: Me
 	if (merchants.length <= 1) return null;
 
 	return (
-		<Select value={selectedMerchantId ?? undefined} onValueChange={onSelect}>
+		<Select
+			items={[...merchants.map((merchant) => ({ value: merchant.id, label: merchant.nome ?? merchant.razaoSocial ?? merchant.id }))]}
+			value={selectedMerchantId ?? null}
+			onValueChange={(value) => {
+				if (value !== null) onSelect(value);
+			}}
+		>
 			<SelectTrigger className="w-full sm:w-[280px]">
 				<SelectValue placeholder="Selecione a loja" />
 			</SelectTrigger>
 			<SelectContent>
-				{merchants.map((merchant) => (
-					<SelectItem key={merchant.id} value={merchant.id}>
-						{merchant.nome ?? merchant.razaoSocial ?? merchant.id}
-					</SelectItem>
-				))}
+				<SelectGroup>
+					{merchants.map((merchant) => (
+						<SelectItem key={merchant.id} value={merchant.id}>
+							{merchant.nome ?? merchant.razaoSocial ?? merchant.id}
+						</SelectItem>
+					))}
+				</SelectGroup>
 			</SelectContent>
 		</Select>
 	);

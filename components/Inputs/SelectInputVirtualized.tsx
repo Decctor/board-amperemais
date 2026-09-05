@@ -76,22 +76,24 @@ function SelectInputVirtualized({
 
 			{isDesktop ? (
 				<Popover modal={modal} open={isOpen} onOpenChange={setIsOpen}>
-					<PopoverTrigger asChild>
-						<Button
-							ref={triggerRef}
-							id={inputIdentifier}
-							type="button"
-							disabled={!editable}
-							variant="outline"
-							aria-haspopup="listbox"
-							aria-expanded={isOpen}
-							className={cn("w-full justify-between truncate border border-border", holderClassName)}
-						>
-							<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
-							<ChevronsUpDown className="opacity-50" />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent container={dialogContainer} className="p-0 w-[var(--radix-popover-trigger-width)]">
+					<PopoverTrigger
+						render={
+							<Button
+								ref={triggerRef}
+								id={inputIdentifier}
+								type="button"
+								disabled={!editable}
+								variant="outline"
+								aria-haspopup="listbox"
+								aria-expanded={isOpen}
+								className={cn("w-full justify-between truncate border border-border", holderClassName)}
+							>
+								<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
+								<ChevronsUpDown className="opacity-50" />
+							</Button>
+						}
+					/>
+					<PopoverContent container={dialogContainer} className="p-0 w-[var(--anchor-width)]">
 						<VirtualizedOptionsList
 							value={value}
 							placeholderText={resetOptionLabel}

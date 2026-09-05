@@ -3,6 +3,7 @@
 import type { TPatchSalesFulfillmentInput } from "@/app/api/sales/fulfillment/route";
 import type { TSalesFulfillmentCard } from "@/app/api/sales/fulfillment/route";
 import {
+	DropdownMenuGroup,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -209,13 +210,17 @@ export const FulfillmentCard = forwardRef<HTMLDivElement, FulfillmentCardProps>(
 								<MoveRight className="h-4 w-4" />
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end">
-								<DropdownMenuLabel className="text-[11px]">Mover para</DropdownMenuLabel>
+								<DropdownMenuGroup>
+									<DropdownMenuLabel className="text-[11px]">Mover para</DropdownMenuLabel>
+								</DropdownMenuGroup>
 								<DropdownMenuSeparator />
-								{moveTargets.map((target) => (
-									<DropdownMenuItem key={target} onSelect={() => onMove?.(target)}>
-										{ATTENDANCE_STATUS_LABEL[target]}
-									</DropdownMenuItem>
-								))}
+								<DropdownMenuGroup>
+									{moveTargets.map((target) => (
+										<DropdownMenuItem key={target} onClick={() => onMove?.(target)}>
+											{ATTENDANCE_STATUS_LABEL[target]}
+										</DropdownMenuItem>
+									))}
+								</DropdownMenuGroup>
 							</DropdownMenuContent>
 						</DropdownMenu>
 					) : null}

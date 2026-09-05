@@ -130,46 +130,52 @@ export function CampaignRankingBlock({ startDate, endDate }: CampaignRankingBloc
 				<div className="flex items-center gap-1">
 					<TooltipProvider>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant={rankingBy === "revenue" ? "default" : "ghost"}
-									size="fit"
-									className="min-h-11 min-w-11 rounded-lg p-2"
-									onClick={() => setRankingBy("revenue")}
-								>
-									<BadgeDollarSign className="h-4 w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button
+										variant={rankingBy === "revenue" ? "default" : "ghost"}
+										size="fit"
+										className="min-h-11 min-w-11 rounded-lg p-2"
+										onClick={() => setRankingBy("revenue")}
+									>
+										<BadgeDollarSign className="h-4 w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Ordenar por receita</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant={rankingBy === "conversions" ? "default" : "ghost"}
-									size="fit"
-									className="min-h-11 min-w-11 rounded-lg p-2"
-									onClick={() => setRankingBy("conversions")}
-								>
-									<MousePointerClick className="h-4 w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button
+										variant={rankingBy === "conversions" ? "default" : "ghost"}
+										size="fit"
+										className="min-h-11 min-w-11 rounded-lg p-2"
+										onClick={() => setRankingBy("conversions")}
+									>
+										<MousePointerClick className="h-4 w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Ordenar por conversões</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant={rankingBy === "conversion-rate" ? "default" : "ghost"}
-									size="fit"
-									className="min-h-11 min-w-11 rounded-lg p-2"
-									onClick={() => setRankingBy("conversion-rate")}
-								>
-									<TrendingUp className="h-4 w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button
+										variant={rankingBy === "conversion-rate" ? "default" : "ghost"}
+										size="fit"
+										className="min-h-11 min-w-11 rounded-lg p-2"
+										onClick={() => setRankingBy("conversion-rate")}
+									>
+										<TrendingUp className="h-4 w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Ordenar por taxa de conversão</p>
 							</TooltipContent>

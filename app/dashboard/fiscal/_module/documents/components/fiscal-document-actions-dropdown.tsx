@@ -3,6 +3,7 @@
 import { useFiscalDeadline } from "@/components/Modals/FiscalDocument/use-fiscal-deadline";
 import { Button } from "@/components/ui/button";
 import {
+	DropdownMenuGroup,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -110,29 +111,35 @@ export function FiscalDocumentActionsDropdown({ document, runner, openDetails }:
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button variant="ghost" size="icon" disabled={runner.isPending} className="h-8 w-8 rounded-full" onClick={(event) => event.stopPropagation()}>
-					<MoreHorizontal className="h-4 w-4" />
-				</Button>
-			</DropdownMenuTrigger>
+			<DropdownMenuTrigger
+				render={
+					<Button variant="ghost" size="icon" disabled={runner.isPending} className="h-8 w-8 rounded-full" onClick={(event) => event.stopPropagation()}>
+						<MoreHorizontal className="h-4 w-4" />
+					</Button>
+				}
+			/>
 			<DropdownMenuContent align="end" className="w-72">
-				<DropdownMenuLabel>Ações</DropdownMenuLabel>
-				<DropdownMenuItem onClick={openDetails}>
-					<FileText className="h-4 w-4" />
-					Ver detalhes
-				</DropdownMenuItem>
-				{document.vendaId ? (
-					<DropdownMenuItem asChild>
-						<Link href={appRoutes.sales.details(document.vendaId)}>
-							<Receipt className="h-4 w-4" />
-							Acessar venda
-						</Link>
+				<DropdownMenuGroup>
+					<DropdownMenuLabel>Ações</DropdownMenuLabel>
+					<DropdownMenuItem onClick={openDetails}>
+						<FileText className="h-4 w-4" />
+						Ver detalhes
 					</DropdownMenuItem>
-				) : null}
+					{document.vendaId ? (
+						<DropdownMenuItem
+							render={
+								<Link href={appRoutes.sales.details(document.vendaId)}>
+									<Receipt className="h-4 w-4" />
+									Acessar venda
+								</Link>
+							}
+						/>
+					) : null}
+				</DropdownMenuGroup>
 				<DropdownMenuSeparator />
-				{operational.map(renderItem)}
+				<DropdownMenuGroup>{operational.map(renderItem)}</DropdownMenuGroup>
 				<DropdownMenuSeparator />
-				{downloads.map(renderItem)}
+				<DropdownMenuGroup>{downloads.map(renderItem)}</DropdownMenuGroup>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

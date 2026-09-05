@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import {
+	DropdownMenuGroup,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -98,45 +99,51 @@ export function ChatAssignmentActions({ chatId, atendimento, atendimentoIa, curr
 			)}
 
 			<DropdownMenu open={transferMenuOpen} onOpenChange={setTransferMenuOpen}>
-				<DropdownMenuTrigger asChild>
-					<Button
-						size="sm"
-						variant="outline"
-						className={cn("gap-1 text-[11px] font-extrabold uppercase tracking-[0.08em]", !compact && "col-span-2 w-full")}
-						disabled={isPending}
-					>
-						TRANSFERIR
-						<ChevronDown className="h-3 w-3 opacity-60" />
-					</Button>
-				</DropdownMenuTrigger>
+				<DropdownMenuTrigger
+					render={
+						<Button
+							size="sm"
+							variant="outline"
+							className={cn("gap-1 text-[11px] font-extrabold uppercase tracking-[0.08em]", !compact && "col-span-2 w-full")}
+							disabled={isPending}
+						>
+							TRANSFERIR
+							<ChevronDown className="h-3 w-3 opacity-60" />
+						</Button>
+					}
+				/>
 				<DropdownMenuContent align="end" className="max-h-64 overflow-y-auto">
-					{/* O agente vem primeiro e é irmão das pessoas: transferir é escolher um
+					<DropdownMenuGroup>
+						{/* O agente vem primeiro e é irmão das pessoas: transferir é escolher um
 					    responsável, e a IA é um dos responsáveis possíveis. */}
-					<DropdownMenuLabel className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Agente de IA</DropdownMenuLabel>
-					<DropdownMenuItem
-						className="gap-2"
-						disabled={!canAssignToAgent}
-						onClick={() => mutate({ acao: "transferir", chatId, destino: { tipo: "AGENTE" } })}
-					>
-						<Sparkles className="h-3.5 w-3.5 shrink-0" />
-						<span className="flex min-w-0 flex-col">
-							<span className="truncate">{atendimentoIa.agenteNome ?? "Agente de atendimento"}</span>
-							{agentIsCurrent && <span className="text-[10px] text-muted-foreground">Já é o responsável</span>}
-							{!agentIsCurrent && agentReason && <span className="text-[10px] text-muted-foreground">{agentReason}</span>}
-						</span>
-					</DropdownMenuItem>
+						<DropdownMenuLabel className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Agente de IA</DropdownMenuLabel>
+						<DropdownMenuItem
+							className="gap-2"
+							disabled={!canAssignToAgent}
+							onClick={() => mutate({ acao: "transferir", chatId, destino: { tipo: "AGENTE" } })}
+						>
+							<Sparkles className="h-3.5 w-3.5 shrink-0" />
+							<span className="flex min-w-0 flex-col">
+								<span className="truncate">{atendimentoIa.agenteNome ?? "Agente de atendimento"}</span>
+								{agentIsCurrent && <span className="text-[10px] text-muted-foreground">Já é o responsável</span>}
+								{!agentIsCurrent && agentReason && <span className="text-[10px] text-muted-foreground">{agentReason}</span>}
+							</span>
+						</DropdownMenuItem>
+					</DropdownMenuGroup>
 
 					<DropdownMenuSeparator />
-					<DropdownMenuLabel className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Atendentes</DropdownMenuLabel>
-					{(transferTargets ?? []).length === 0 && <DropdownMenuItem disabled>Nenhum usuário disponível</DropdownMenuItem>}
-					{(transferTargets ?? []).map((target) => (
-						<DropdownMenuItem
-							key={target.id}
-							onClick={() => mutate({ acao: "transferir", chatId, destino: { tipo: "USUARIO", usuarioDestinoId: target.id } })}
-						>
-							{target.nome}
-						</DropdownMenuItem>
-					))}
+					<DropdownMenuGroup>
+						<DropdownMenuLabel className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Atendentes</DropdownMenuLabel>
+						{(transferTargets ?? []).length === 0 && <DropdownMenuItem disabled>Nenhum usuário disponível</DropdownMenuItem>}
+						{(transferTargets ?? []).map((target) => (
+							<DropdownMenuItem
+								key={target.id}
+								onClick={() => mutate({ acao: "transferir", chatId, destino: { tipo: "USUARIO", usuarioDestinoId: target.id } })}
+							>
+								{target.nome}
+							</DropdownMenuItem>
+						))}
+					</DropdownMenuGroup>
 				</DropdownMenuContent>
 			</DropdownMenu>
 
@@ -148,48 +155,56 @@ export function ChatAssignmentActions({ chatId, atendimento, atendimentoIa, curr
 
 			{!compact && (
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button size="sm" variant="outline" className="w-full justify-between gap-2 px-2.5 text-xs" disabled={isPending}>
-							<span className="text-muted-foreground">Status</span>
-							<span className="flex min-w-0 items-center gap-1.5">
-								{atendimento && <span className={cn("h-2 w-2 shrink-0 rounded-full", STATUS_META[atendimento.status].dot)} />}
-								<span className="truncate">{atendimento ? STATUS_META[atendimento.status].label : "Definir"}</span>
-								<ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
-							</span>
-						</Button>
-					</DropdownMenuTrigger>
+					<DropdownMenuTrigger
+						render={
+							<Button size="sm" variant="outline" className="w-full justify-between gap-2 px-2.5 text-xs" disabled={isPending}>
+								<span className="text-muted-foreground">Status</span>
+								<span className="flex min-w-0 items-center gap-1.5">
+									{atendimento && <span className={cn("h-2 w-2 shrink-0 rounded-full", STATUS_META[atendimento.status].dot)} />}
+									<span className="truncate">{atendimento ? STATUS_META[atendimento.status].label : "Definir"}</span>
+									<ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+								</span>
+							</Button>
+						}
+					/>
 					<DropdownMenuContent align="end">
-						{(Object.keys(STATUS_META) as TChatAssignmentStatus[]).map((status) => {
-							const StatusIcon = STATUS_META[status].icon;
-							return (
-								<DropdownMenuItem key={status} className="gap-2" onClick={() => mutate({ acao: "alterar_status", chatId, status })}>
-									<StatusIcon className={cn("h-3.5 w-3.5", STATUS_META[status].dot.replace("bg-", "text-"))} />
-									{STATUS_META[status].label}
-								</DropdownMenuItem>
-							);
-						})}
+						<DropdownMenuGroup>
+							{(Object.keys(STATUS_META) as TChatAssignmentStatus[]).map((status) => {
+								const StatusIcon = STATUS_META[status].icon;
+								return (
+									<DropdownMenuItem key={status} className="gap-2" onClick={() => mutate({ acao: "alterar_status", chatId, status })}>
+										<StatusIcon className={cn("h-3.5 w-3.5", STATUS_META[status].dot.replace("bg-", "text-"))} />
+										{STATUS_META[status].label}
+									</DropdownMenuItem>
+								);
+							})}
+						</DropdownMenuGroup>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			)}
 
 			{!compact && (
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button size="sm" variant="outline" className="w-full justify-between gap-2 px-2.5 text-xs" disabled={isPending}>
-							<span className="text-muted-foreground">Prioridade</span>
-							<span className="flex min-w-0 items-center gap-1">
-								<span className="truncate">{atendimento?.prioridade ? PRIORITY_META[atendimento.prioridade].label : "Nenhuma"}</span>
-								<ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
-							</span>
-						</Button>
-					</DropdownMenuTrigger>
+					<DropdownMenuTrigger
+						render={
+							<Button size="sm" variant="outline" className="w-full justify-between gap-2 px-2.5 text-xs" disabled={isPending}>
+								<span className="text-muted-foreground">Prioridade</span>
+								<span className="flex min-w-0 items-center gap-1">
+									<span className="truncate">{atendimento?.prioridade ? PRIORITY_META[atendimento.prioridade].label : "Nenhuma"}</span>
+									<ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+								</span>
+							</Button>
+						}
+					/>
 					<DropdownMenuContent align="end">
-						<DropdownMenuItem onClick={() => mutate({ acao: "alterar_prioridade", chatId, prioridade: null })}>Sem prioridade</DropdownMenuItem>
-						{(Object.keys(PRIORITY_META) as TChatAssignmentPriority[]).map((prioridade) => (
-							<DropdownMenuItem key={prioridade} onClick={() => mutate({ acao: "alterar_prioridade", chatId, prioridade })}>
-								{PRIORITY_META[prioridade].label}
-							</DropdownMenuItem>
-						))}
+						<DropdownMenuGroup>
+							<DropdownMenuItem onClick={() => mutate({ acao: "alterar_prioridade", chatId, prioridade: null })}>Sem prioridade</DropdownMenuItem>
+							{(Object.keys(PRIORITY_META) as TChatAssignmentPriority[]).map((prioridade) => (
+								<DropdownMenuItem key={prioridade} onClick={() => mutate({ acao: "alterar_prioridade", chatId, prioridade })}>
+									{PRIORITY_META[prioridade].label}
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuGroup>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			)}

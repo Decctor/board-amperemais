@@ -763,12 +763,14 @@ function InstallmentGeneratorPopover({
 
 	return (
 		<Popover open={isOpen} onOpenChange={setIsOpen}>
-			<PopoverTrigger asChild>
-				<Button type="button" size="sm" variant="secondary" className="gap-1.5 text-xs">
-					<Layers3 className="h-3.5 w-3.5" />
-					PARCELAR RESTANTE
-				</Button>
-			</PopoverTrigger>
+			<PopoverTrigger
+				render={
+					<Button type="button" size="sm" variant="secondary" className="gap-1.5 text-xs">
+						<Layers3 className="h-3.5 w-3.5" />
+						PARCELAR RESTANTE
+					</Button>
+				}
+			/>
 			<PopoverContent align="end" className="z-60 flex w-80 flex-col gap-3 p-3">
 				<div className="flex flex-col gap-0.5">
 					<p className="text-sm font-semibold tracking-tight">Parcelar {formatToMoney(remaining)}</p>

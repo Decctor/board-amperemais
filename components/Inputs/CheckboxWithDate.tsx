@@ -24,27 +24,30 @@ function CheckboxWithDate({ date, labelTrue, labelFalse, showDate = true, handle
 	return (
 		<Field className="gap-1" data-disabled={!editable}>
 			<Popover>
-				<PopoverTrigger disabled={!editable} asChild>
-					<Button
-						id={inputIdentifier}
-						variant={"outline"}
-						className={cn("flex flex-col gap-1 shadow-none", !date && "text-muted-foreground", "border-0 hover:bg-transparent")}
-					>
-						<div className="flex items-center gap-2">
-							<div className={"flex h-[16px] w-[16px] items-center justify-center rounded-full border border-black"}>
-								{date ? <BsCheck style={{ color: "black" }} /> : null}
+				<PopoverTrigger
+					disabled={!editable}
+					render={
+						<Button
+							id={inputIdentifier}
+							variant={"outline"}
+							className={cn("flex flex-col gap-1 shadow-none", !date && "text-muted-foreground", "border-0 hover:bg-transparent")}
+						>
+							<div className="flex items-center gap-2">
+								<div className={"flex h-[16px] w-[16px] items-center justify-center rounded-full border border-black"}>
+									{date ? <BsCheck style={{ color: "black" }} /> : null}
+								</div>
+								<p className={"text-xs font-medium leading-none"}>{date ? labelTrue : labelFalse}</p>
 							</div>
-							<p className={"text-xs font-medium leading-none"}>{date ? labelTrue : labelFalse}</p>
-						</div>
 
-						{date && showDate ? (
-							<div className="flex min-h-[10px] items-center gap-1">
-								<BsCalendarCheck size={10} />
-								<p className={"text-[0.6rem] font-medium leading-none"}>{formatDateAsLocale(date)}</p>
-							</div>
-						) : null}
-					</Button>
-				</PopoverTrigger>
+							{date && showDate ? (
+								<div className="flex min-h-[10px] items-center gap-1">
+									<BsCalendarCheck size={10} />
+									<p className={"text-[0.6rem] font-medium leading-none"}>{formatDateAsLocale(date)}</p>
+								</div>
+							) : null}
+						</Button>
+					}
+				/>
 				<PopoverContent className="z-[120] w-auto p-0" align="center">
 					<Calendar
 						mode="single"

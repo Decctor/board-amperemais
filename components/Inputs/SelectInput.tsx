@@ -61,23 +61,25 @@ function SelectInput({
 
 			{isDesktop ? (
 				<Popover open={isOpen} onOpenChange={setIsOpen}>
-					<PopoverTrigger asChild>
-						<Button
-							id={inputIdentifier}
-							type="button"
-							disabled={!editable}
-							variant="outline"
-							aria-haspopup="listbox"
-							aria-expanded={isOpen}
-							className={cn("w-full justify-between truncate border border-border", holderClassName)}
-							{...triggerProps}
-						>
-							<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
-							<ChevronsUpDown className="w-4 h-4 min-w-4 min-h-4" />
-						</Button>
-					</PopoverTrigger>
+					<PopoverTrigger
+						render={
+							<Button
+								id={inputIdentifier}
+								type="button"
+								disabled={!editable}
+								variant="outline"
+								aria-haspopup="listbox"
+								aria-expanded={isOpen}
+								className={cn("w-full justify-between truncate border border-border", holderClassName)}
+								{...triggerProps}
+							>
+								<SelectedOption value={value} options={options ?? []} placeholderText={resetOptionLabel} />
+								<ChevronsUpDown className="w-4 h-4 min-w-4 min-h-4" />
+							</Button>
+						}
+					/>
 					<PopoverContent
-						className="z-60 max-h-[min(22rem,var(--radix-popover-content-available-height))] w-[var(--radix-popover-trigger-width)] overflow-hidden p-0"
+						className="z-60 max-h-[min(22rem,var(--available-height))] w-[var(--anchor-width)] overflow-hidden p-0"
 						onWheel={(event) => event.stopPropagation()}
 					>
 						<OptionsList

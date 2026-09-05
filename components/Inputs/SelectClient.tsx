@@ -94,7 +94,16 @@ function SelectClientRoot({
 	const inputIdentifier = `${label.toLowerCase().replaceAll(" ", "_")}_${generatedId}`;
 	const triggerRef = useRef<HTMLButtonElement>(null);
 
-	const { search, updateSearch, isSearchPending, isFetching, isError, error, data: clients = [], debouncedSearch } = useClientsBySearch({ initialSearch });
+	const {
+		search,
+		updateSearch,
+		isSearchPending,
+		isFetching,
+		isError,
+		error,
+		data: clients = [],
+		debouncedSearch,
+	} = useClientsBySearch({ initialSearch });
 
 	const contextValue: TSelectClientContext = {
 		state: { isOpen, search },
@@ -196,7 +205,12 @@ type SelectClientContentProps = {
 	children?: ReactNode;
 };
 
-function SelectClientContent({ className, listClassName, searchPlaceholder = "Busque por nome, telefone ou CPF/CNPJ...", children }: SelectClientContentProps) {
+function SelectClientContent({
+	className,
+	listClassName,
+	searchPlaceholder = "Busque por nome, telefone ou CPF/CNPJ...",
+	children,
+}: SelectClientContentProps) {
 	const {
 		state: { search },
 		actions: { updateSearch, reset },
@@ -233,7 +247,7 @@ function SelectClientContent({ className, listClassName, searchPlaceholder = "Bu
 		return (
 			<PopoverContent
 				container={dialogContainer}
-				className={cn("flex max-h-[min(480px,var(--radix-popover-content-available-height))] w-[360px] flex-col overflow-hidden p-0", className)}
+				className={cn("flex max-h-[min(480px,var(--available-height))] w-[360px] flex-col overflow-hidden p-0", className)}
 				align="start"
 			>
 				{command}

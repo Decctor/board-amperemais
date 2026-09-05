@@ -1,5 +1,7 @@
+import { ResponsiveMenuAnimatedBody } from "@/components/Utils/ResponsiveMenuAnimatedBody";
+import { LoadingButton } from "@/components/loading-button";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import TextInput from "@/components/Inputs/TextInput";
-import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { getErrorMessage } from "@/lib/errors";
 import { createIntegration } from "@/lib/mutations/integrations";
@@ -131,67 +133,89 @@ export default function ViewIntegration({ integrationType, requireApelido, recon
 			if (callbacks?.onSettled) callbacks.onSettled();
 		},
 	});
+	const menuSuccessContent = isSuccess ? (
+		<div className="flex flex-col items-center justify-center gap-4 py-8 text-center">
+			<motion.div
+				initial={{ scale: 0.5, opacity: 0 }}
+				animate={{ scale: 1, opacity: 1 }}
+				transition={{ type: "spring", stiffness: 300, damping: 20 }}
+				className="rounded-full bg-green-100 p-4 text-green-600 dark:bg-green-900/30 dark:text-green-500"
+			>
+				<CheckCircle2 className="h-12 w-12" />
+			</motion.div>
+			<div className="space-y-2">
+				<h3 className="text-xl font-semibold text-foreground">Integração Conectada!</h3>
+				<p className="text-muted-foreground max-w-xs mx-auto">
+					Suas credenciais foram validadas. A página será recarregada em instantes para aplicar as alterações.
+				</p>
+			</div>
+		</div>
+	) : null;
+
 	return (
-		<ResponsiveMenuV2
-			menuTitle={`CONFIGURAR ${integrationType.toUpperCase()}`}
-			menuDescription="Insira as credenciais para ativar a integração. Esses dados são obtidos diretamente no painel do sistema parceiro."
-			menuActionButtonText="CONECTAR"
-			menuCancelButtonText="FECHAR"
-			closeMenu={closeMenu}
-			actionFunction={() => configureIntegrationMutation(organizationIntegrationConfig)}
-			actionIsLoading={isPending}
-			stateIsLoading={false}
-			successContent={
-				isSuccess ? (
-					<div className="flex flex-col items-center justify-center gap-4 py-8 text-center">
-						<motion.div
-							initial={{ scale: 0.5, opacity: 0 }}
-							animate={{ scale: 1, opacity: 1 }}
-							transition={{ type: "spring", stiffness: 300, damping: 20 }}
-							className="rounded-full bg-green-100 p-4 text-green-600 dark:bg-green-900/30 dark:text-green-500"
-						>
-							<CheckCircle2 className="h-12 w-12" />
-						</motion.div>
-						<div className="space-y-2">
-							<h3 className="text-xl font-semibold text-foreground">Integração Conectada!</h3>
-							<p className="text-muted-foreground max-w-xs mx-auto">
-								Suas credenciais foram validadas. A página será recarregada em instantes para aplicar as alterações.
-							</p>
-						</div>
-					</div>
-				) : null
-			}
+		<ResponsiveMenu.Root
+			open
+			onOpenChange={(open) => {
+				if (!open) closeMenu();
+			}}
 		>
-			{organizationIntegrationConfig.tipo === "ONLINE-SOFTWARE" ? (
-				<OnlineSoftwareIntegrationDetails
-					organizationIntegrationConfig={organizationIntegrationConfig}
-					updateOrganizationIntegrationConfig={updateOrganizationOnlineSoftwareConfig}
-				/>
-			) : null}
+			<ResponsiveMenu.Content drawerClassName="max-h-[70dvh]">
+				<ResponsiveMenu.Header>
+					<ResponsiveMenu.Title>{`CONFIGURAR ${integrationType.toUpperCase()}`}</ResponsiveMenu.Title>
+					<ResponsiveMenu.Description>
+						Insira as credenciais para ativar a integração. Esses dados são obtidos diretamente no painel do sistema parceiro.
+					</ResponsiveMenu.Description>
+				</ResponsiveMenu.Header>
+				<ResponsiveMenuAnimatedBody
+					stateKey={menuSuccessContent ? "success" : "content"}
+					className={menuSuccessContent ? "items-center justify-center p-6" : "overflow-x-hidden overflow-y-auto"}
+				>
+					{menuSuccessContent ? (
+						menuSuccessContent
+					) : (
+						<>
+							{organizationIntegrationConfig.tipo === "ONLINE-SOFTWARE" ? (
+								<OnlineSoftwareIntegrationDetails
+									organizationIntegrationConfig={organizationIntegrationConfig}
+									updateOrganizationIntegrationConfig={updateOrganizationOnlineSoftwareConfig}
+								/>
+							) : null}
 
-			{organizationIntegrationConfig.tipo === "CARDAPIO-WEB" ? (
-				<CardapioWebIntegrationDetails
-					organizationIntegrationConfig={organizationIntegrationConfig}
-					updateOrganizationIntegrationConfig={updateOrganizationCardapioWebConfig}
-				/>
-			) : null}
+							{organizationIntegrationConfig.tipo === "CARDAPIO-WEB" ? (
+								<CardapioWebIntegrationDetails
+									organizationIntegrationConfig={organizationIntegrationConfig}
+									updateOrganizationIntegrationConfig={updateOrganizationCardapioWebConfig}
+								/>
+							) : null}
 
-			{organizationIntegrationConfig.tipo === "ERP-FLEX" ? (
-				<ErpFlexIntegrationDetails
-					organizationIntegrationConfig={organizationIntegrationConfig}
-					updateOrganizationIntegrationConfig={updateOrganizationErpFlexConfig}
-				/>
-			) : null}
+							{organizationIntegrationConfig.tipo === "ERP-FLEX" ? (
+								<ErpFlexIntegrationDetails
+									organizationIntegrationConfig={organizationIntegrationConfig}
+									updateOrganizationIntegrationConfig={updateOrganizationErpFlexConfig}
+								/>
+							) : null}
 
-			<ResponsiveMenuSection title="IDENTIFICAÇÃO" icon={<Tag className="w-4 h-4" />}>
-				<TextInput
-					label={requireApelido ? "APELIDO (OBRIGATÓRIO)" : "APELIDO (OPCIONAL)"}
-					value={apelido}
-					placeholder="Ex.: Loja Centro, Conta principal..."
-					handleChange={setApelido}
-				/>
-			</ResponsiveMenuSection>
-		</ResponsiveMenuV2>
+							<ResponsiveMenuSection title="IDENTIFICAÇÃO" icon={<Tag className="w-4 h-4" />}>
+								<TextInput
+									label={requireApelido ? "APELIDO (OBRIGATÓRIO)" : "APELIDO (OPCIONAL)"}
+									value={apelido}
+									placeholder="Ex.: Loja Centro, Conta principal..."
+									handleChange={setApelido}
+								/>
+							</ResponsiveMenuSection>
+						</>
+					)}
+				</ResponsiveMenuAnimatedBody>
+				{!menuSuccessContent ? (
+					<ResponsiveMenu.Footer>
+						<ResponsiveMenu.Close variant="outline">FECHAR</ResponsiveMenu.Close>
+						<LoadingButton loading={isPending} onClick={() => configureIntegrationMutation(organizationIntegrationConfig)}>
+							CONECTAR
+						</LoadingButton>
+					</ResponsiveMenu.Footer>
+				) : null}
+			</ResponsiveMenu.Content>
+		</ResponsiveMenu.Root>
 	);
 }
 
@@ -252,8 +276,7 @@ function ErpFlexIntegrationDetails({ organizationIntegrationConfig, updateOrgani
 	return (
 		<ResponsiveMenuSection title="INTEGRAÇÃO ERPFLEX" icon={<Globe className="w-4 h-4" />}>
 			<p className="text-xs text-muted-foreground">
-				As credenciais de API do ERPFlex são criadas pelo time deles (api@erpflex.com.br) — use o usuário e a senha de API, não o login do
-				sistema.
+				As credenciais de API do ERPFlex são criadas pelo time deles (api@erpflex.com.br) — use o usuário e a senha de API, não o login do sistema.
 			</p>
 			<TextInput
 				label="USUÁRIO DA API"

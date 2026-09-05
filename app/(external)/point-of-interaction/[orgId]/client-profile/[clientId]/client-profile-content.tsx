@@ -330,11 +330,13 @@ export default function ClientProfileContent({
 												<div className="text-right">
 													{t.tipo === "ACÚMULO" ? (
 														<Tooltip>
-															<TooltipTrigger asChild>
-																<p className="text-lg short:text-sm font-black leading-none text-green-600 cursor-help">
-																	+ {formatCashbackValue(displayValor, cashbackProgram.terminologia)}
-																</p>
-															</TooltipTrigger>
+															<TooltipTrigger
+																render={
+																	<p className="text-lg short:text-sm font-black leading-none text-green-600 cursor-help">
+																		+ {formatCashbackValue(displayValor, cashbackProgram.terminologia)}
+																	</p>
+																}
+															/>
 															<TooltipContent side="left" className="max-w-[200px]">
 																<p className="font-bold">Valor restante: {formatCashbackValue(t.valorRestante, cashbackProgram.terminologia)}</p>
 																<p className="text-[0.65rem] opacity-90 mt-0.5">Parte pode ter sido usada em resgates.</p>

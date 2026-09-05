@@ -88,25 +88,28 @@ function WeeklyRevenueHeatmapWeekDayStrip({
 		const ticketMedio = result && result.qtde > 0 ? result.total / result.qtde : 0;
 
 		return (
-			<Tooltip delayDuration={150}>
-				<TooltipTrigger asChild>
-					<button
-						type="button"
-						className={cn(
-							"flex flex-col items-center justify-center py-2 px-1 rounded-md border border-border min-h-[44px] min-w-0 flex-1 transition-all",
-							onSelectDrilldown ? "hover:scale-[1.02] cursor-pointer" : "cursor-default",
-						)}
-						style={{ backgroundColor: bgColor, color: textColor }}
-						onClick={onSelectDrilldown ? () => onSelectDrilldown({ weekday: index }) : undefined}
-					>
-						<span className="text-[0.6rem] font-bold tracking-tight uppercase">{WEEKDAY_MAP_SHORT[index]}</span>
-						{result ? (
-							<span className="text-[0.6rem] font-medium text-foreground/80 truncate max-w-full text-center">{formatToMoney(result.total)}</span>
-						) : (
-							<span className="text-[0.6rem] text-foreground/80">—</span>
-						)}
-					</button>
-				</TooltipTrigger>
+			<Tooltip>
+				<TooltipTrigger
+					delay={150}
+					render={
+						<button
+							type="button"
+							className={cn(
+								"flex flex-col items-center justify-center py-2 px-1 rounded-md border border-border min-h-[44px] min-w-0 flex-1 transition-all",
+								onSelectDrilldown ? "hover:scale-[1.02] cursor-pointer" : "cursor-default",
+							)}
+							style={{ backgroundColor: bgColor, color: textColor }}
+							onClick={onSelectDrilldown ? () => onSelectDrilldown({ weekday: index }) : undefined}
+						>
+							<span className="text-[0.6rem] font-bold tracking-tight uppercase">{WEEKDAY_MAP_SHORT[index]}</span>
+							{result ? (
+								<span className="text-[0.6rem] font-medium text-foreground/80 truncate max-w-full text-center">{formatToMoney(result.total)}</span>
+							) : (
+								<span className="text-[0.6rem] text-foreground/80">—</span>
+							)}
+						</button>
+					}
+				/>
 				{result ? (
 					<TooltipContent className="min-w-[180px] p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 						<div className="flex flex-col gap-2">
@@ -194,20 +197,23 @@ function WeeklyRevenueHeatmapGrid({
 		const ticketMedio = result && result.qtde > 0 ? result.total / result.qtde : 0;
 
 		return (
-			<Tooltip delayDuration={150}>
-				<TooltipTrigger asChild>
-					<div className="flex-1 min-w-0 min-h-0 flex items-center justify-center p-0.5">
-						<button
-							type="button"
-							className={cn(
-								"w-full aspect-square max-w-full max-h-full rounded-full transition-all border border-border",
-								onSelectDrilldown ? "hover:scale-110 hover:z-10 cursor-pointer" : "cursor-default",
-							)}
-							style={{ backgroundColor: bgColor }}
-							onClick={onSelectDrilldown ? () => onSelectDrilldown({ weekday: diaSemana, hourIntervalStart: hora, hourIntervalEnd: hora + 1 }) : undefined}
-						/>
-					</div>
-				</TooltipTrigger>
+			<Tooltip>
+				<TooltipTrigger
+					delay={150}
+					render={
+						<div className="flex-1 min-w-0 min-h-0 flex items-center justify-center p-0.5">
+							<button
+								type="button"
+								className={cn(
+									"w-full aspect-square max-w-full max-h-full rounded-full transition-all border border-border",
+									onSelectDrilldown ? "hover:scale-110 hover:z-10 cursor-pointer" : "cursor-default",
+								)}
+								style={{ backgroundColor: bgColor }}
+								onClick={onSelectDrilldown ? () => onSelectDrilldown({ weekday: diaSemana, hourIntervalStart: hora, hourIntervalEnd: hora + 1 }) : undefined}
+							/>
+						</div>
+					}
+				/>
 				{result ? (
 					<TooltipContent className="min-w-[180px] p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 						<div className="flex flex-col gap-2">

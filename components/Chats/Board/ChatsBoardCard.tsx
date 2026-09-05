@@ -2,6 +2,7 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
+	DropdownMenuGroup,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -163,44 +164,46 @@ export const ChatsBoardCard = forwardRef<HTMLDivElement, ChatsBoardCardProps>(fu
 								<MoveRight className="h-3.5 w-3.5" />
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end">
-								{moveTargets.length > 0 && (
-									<>
-										<DropdownMenuLabel className="text-[11px]">Mover para</DropdownMenuLabel>
-										<DropdownMenuSeparator />
-										{moveTargets.map((target) => (
-											<DropdownMenuItem key={target} onSelect={() => onMove?.(target)}>
-												{CHAT_ASSIGNMENT_STATUS_LABEL[target]}
+								<DropdownMenuGroup>
+									{moveTargets.length > 0 && (
+										<>
+											<DropdownMenuLabel className="text-[11px]">Mover para</DropdownMenuLabel>
+											<DropdownMenuSeparator />
+											{moveTargets.map((target) => (
+												<DropdownMenuItem key={target} onClick={() => onMove?.(target)}>
+													{CHAT_ASSIGNMENT_STATUS_LABEL[target]}
+												</DropdownMenuItem>
+											))}
+										</>
+									)}
+									{onChangePriority && (
+										<>
+											<DropdownMenuSeparator />
+											<DropdownMenuLabel className="text-[11px]">Prioridade</DropdownMenuLabel>
+											{ChatAssignmentPriorityEnum.options.map((prioridade) => (
+												<DropdownMenuItem key={prioridade} onClick={() => onChangePriority(prioridade)} className="gap-2">
+													<Flag className="h-3.5 w-3.5" />
+													{CHAT_PRIORITY_LABEL[prioridade]}
+												</DropdownMenuItem>
+											))}
+											{card.prioridade && (
+												<DropdownMenuItem onClick={() => onChangePriority(null)} className="gap-2">
+													<Flag className="h-3.5 w-3.5 opacity-40" />
+													Sem prioridade
+												</DropdownMenuItem>
+											)}
+										</>
+									)}
+									{canCancel && (
+										<>
+											<DropdownMenuSeparator />
+											<DropdownMenuItem onClick={() => onMove?.("CANCELADO")} className="gap-2 text-destructive focus:text-destructive">
+												<XCircle className="h-3.5 w-3.5" />
+												Cancelar atendimento
 											</DropdownMenuItem>
-										))}
-									</>
-								)}
-								{onChangePriority && (
-									<>
-										<DropdownMenuSeparator />
-										<DropdownMenuLabel className="text-[11px]">Prioridade</DropdownMenuLabel>
-										{ChatAssignmentPriorityEnum.options.map((prioridade) => (
-											<DropdownMenuItem key={prioridade} onSelect={() => onChangePriority(prioridade)} className="gap-2">
-												<Flag className="h-3.5 w-3.5" />
-												{CHAT_PRIORITY_LABEL[prioridade]}
-											</DropdownMenuItem>
-										))}
-										{card.prioridade && (
-											<DropdownMenuItem onSelect={() => onChangePriority(null)} className="gap-2">
-												<Flag className="h-3.5 w-3.5 opacity-40" />
-												Sem prioridade
-											</DropdownMenuItem>
-										)}
-									</>
-								)}
-								{canCancel && (
-									<>
-										<DropdownMenuSeparator />
-										<DropdownMenuItem onSelect={() => onMove?.("CANCELADO")} className="gap-2 text-destructive focus:text-destructive">
-											<XCircle className="h-3.5 w-3.5" />
-											Cancelar atendimento
-										</DropdownMenuItem>
-									</>
-								)}
+										</>
+									)}
+								</DropdownMenuGroup>
 							</DropdownMenuContent>
 						</DropdownMenu>
 					)}

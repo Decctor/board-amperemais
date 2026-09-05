@@ -7,7 +7,6 @@ import { useFiscalPending } from "@/lib/queries/fiscal";
 import { AlertTriangle, BookText, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { useEffect } from "react";
 import { FiscalConfigurationView } from "./_module/configuration/fiscal-configuration-view";
 import type { TFiscalPermissions } from "./_module/documents/helpers/fiscal-document-action-state";
 import { FiscalDocumentsView } from "./_module/documents/fiscal-documents-view";
@@ -33,12 +32,6 @@ export default function FiscalPage({
 }: FiscalPageProps) {
 	const router = useRouter();
 	const [viewMode, setViewMode] = useQueryState("view", parseAsStringEnum([...FISCAL_VIEWS]));
-	// Links antigos (`?view=documents&documentId=...`) abriam o documento em um dialogo; hoje ele
-	// tem pagina propria. Redireciona para nao quebrar quem guardou o link.
-	const [legacyDocumentId] = useQueryState("documentId");
-	useEffect(() => {
-		if (legacyDocumentId) router.replace(appRoutes.fiscal.document(legacyDocumentId));
-	}, [legacyDocumentId, router]);
 
 	const { data: pending } = useFiscalPending({ enabled: userHasFiscalViewPermission });
 	const pendingTotal = pending?.resumo.total ?? 0;

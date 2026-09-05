@@ -1,6 +1,8 @@
 "use client";
+import { ResponsiveMenuAnimatedBody } from "@/components/Utils/ResponsiveMenuAnimatedBody";
+import { LoadingButton } from "@/components/loading-button";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 
-import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
@@ -135,96 +137,104 @@ export function DiscountApproval({ vendedorId, valorBase, descontoTotal, limiteS
 	const isWaitingRemote = mode === "REMOTA";
 
 	return (
-		<ResponsiveMenuV2
-			menuTitle="APROVAÇÃO DE DESCONTO"
-			menuDescription="O desconto aplicado excede o limite do operador e precisa da aprovação de um gestor."
-			menuActionButtonText="APROVAR COM SENHA"
-			menuCancelButtonText="CANCELAR"
-			menuSecondaryActionButtonText={remoteRequestId ? "VER SOLICITAÇÃO REMOTA" : "SOLICITAR APROVAÇÃO REMOTA"}
-			secondaryActionFunction={handleRequestRemote}
-			actionFunction={handlePinApproval}
-			actionIsLoading={isApprovingWithPin || isRequestingRemote}
-			stateIsLoading={false}
-			stateError={null}
-			closeMenu={closeModal}
-			dialogShowFooter={!isWaitingRemote}
-			drawerShowFooter={!isWaitingRemote}
-			dialogContentClassName="min-w-0 overflow-x-hidden sm:max-w-lg"
-			drawerContentClassName="overflow-x-hidden"
+		<ResponsiveMenu.Root
+			open
+			onOpenChange={(open) => {
+				if (!open) closeModal();
+			}}
 		>
-			<div className="flex w-full min-w-0 flex-col gap-4 overflow-x-hidden py-2">
-				<div className="flex flex-col gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 dark:border-red-800/40 dark:bg-red-900/10">
-					<p className="text-xs font-bold text-red-700 dark:text-red-300">
-						Desconto solicitado: {formatToMoney(descontoTotal)} ({descontoPercentualLabel})
-					</p>
-					<p className="text-[0.65rem] text-red-700/80 dark:text-red-300/80">Valor bruto da venda: {formatToMoney(valorBase)}</p>
-					{limiteSolicitante?.tipo && limiteSolicitante.valor !== null ? (
-						<p className="text-[0.65rem] text-red-700/80 dark:text-red-300/80">
-							Limite do operador: {limiteSolicitante.tipo === "PERCENTUAL" ? `${limiteSolicitante.valor}%` : formatToMoney(limiteSolicitante.valor)}
-						</p>
-					) : null}
-				</div>
+			<ResponsiveMenu.Content dialogClassName="min-w-0 overflow-x-hidden sm:max-w-lg" drawerClassName={"max-h-[70dvh]" + " " + "overflow-x-hidden"}>
+				<ResponsiveMenu.Header>
+					<ResponsiveMenu.Title>APROVAÇÃO DE DESCONTO</ResponsiveMenu.Title>
+					<ResponsiveMenu.Description>O desconto aplicado excede o limite do operador e precisa da aprovação de um gestor.</ResponsiveMenu.Description>
+				</ResponsiveMenu.Header>
+				<ResponsiveMenuAnimatedBody stateKey="content" className="overflow-x-hidden overflow-y-auto">
+					<div className="flex w-full min-w-0 flex-col gap-4 overflow-x-hidden py-2">
+						<div className="flex flex-col gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 dark:border-red-800/40 dark:bg-red-900/10">
+							<p className="text-xs font-bold text-red-700 dark:text-red-300">
+								Desconto solicitado: {formatToMoney(descontoTotal)} ({descontoPercentualLabel})
+							</p>
+							<p className="text-[0.65rem] text-red-700/80 dark:text-red-300/80">Valor bruto da venda: {formatToMoney(valorBase)}</p>
+							{limiteSolicitante?.tipo && limiteSolicitante.valor !== null ? (
+								<p className="text-[0.65rem] text-red-700/80 dark:text-red-300/80">
+									Limite do operador: {limiteSolicitante.tipo === "PERCENTUAL" ? `${limiteSolicitante.valor}%` : formatToMoney(limiteSolicitante.valor)}
+								</p>
+							) : null}
+						</div>
 
-				{isWaitingRemote ? (
-					<div className="flex w-full flex-col items-center gap-4 rounded-2xl border border-brand/20 bg-brand/5 px-4 py-8 text-center">
-						<RefreshCcw className="h-8 w-8 animate-spin text-brand" />
-						<div className="flex flex-col gap-1">
-							<p className="text-sm font-bold">Aguardando aprovação de um gestor...</p>
-							<p className="text-[0.7rem] text-muted-foreground">
-								A solicitação está na fila de aprovações (Vendas → Aprovações) e expira em 15 minutos. Você também pode salvar a venda como orçamento e
-								finalizá-la depois da aprovação.
-							</p>
-						</div>
-						<div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
-							<Button
-								type="button"
-								variant="outline"
-								disabled={isCancelling}
-								onClick={() => (remoteRequestId ? cancelRemoteRequest(remoteRequestId) : closeModal())}
-							>
-								{isCancelling ? "CANCELANDO..." : "CANCELAR"}
-							</Button>
-							<Button type="button" onClick={() => setMode("SENHA")}>
-								<KeyRound className="mr-1.5 h-4 w-4" />
-								APROVAR POR SENHA
-							</Button>
-						</div>
+						{isWaitingRemote ? (
+							<div className="flex w-full flex-col items-center gap-4 rounded-2xl border border-brand/20 bg-brand/5 px-4 py-8 text-center">
+								<RefreshCcw className="h-8 w-8 animate-spin text-brand" />
+								<div className="flex flex-col gap-1">
+									<p className="text-sm font-bold">Aguardando aprovação de um gestor...</p>
+									<p className="text-[0.7rem] text-muted-foreground">
+										A solicitação está na fila de aprovações (Vendas → Aprovações) e expira em 15 minutos. Você também pode salvar a venda como orçamento e
+										finalizá-la depois da aprovação.
+									</p>
+								</div>
+								<div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
+									<Button
+										type="button"
+										variant="outline"
+										disabled={isCancelling}
+										onClick={() => (remoteRequestId ? cancelRemoteRequest(remoteRequestId) : closeModal())}
+									>
+										{isCancelling ? "CANCELANDO..." : "CANCELAR"}
+									</Button>
+									<Button type="button" onClick={() => setMode("SENHA")}>
+										<KeyRound className="mr-1.5 h-4 w-4" />
+										APROVAR POR SENHA
+									</Button>
+								</div>
+							</div>
+						) : (
+							<div className="flex w-full min-w-0 flex-col gap-3 overflow-x-hidden">
+								<Label htmlFor="discount-approval-operator-password" className="text-sm font-medium tracking-tight text-foreground/80">
+									SENHA DO GESTOR APROVADOR (5 DÍGITOS)<span className="text-red-500">*</span>
+								</Label>
+								<p className="text-[0.7rem] text-muted-foreground">
+									Um gestor com permissão de aprovar descontos informa a senha de operador do vendedor vinculado ao seu usuário.
+								</p>
+								<InputOTP
+									id="discount-approval-operator-password"
+									maxLength={OPERATOR_PASSWORD_LENGTH}
+									pattern={REGEXP_ONLY_DIGITS}
+									inputMode="numeric"
+									autoComplete="off"
+									pushPasswordManagerStrategy="none"
+									value={senhaOperador}
+									onChange={(value) => setSenhaOperador(value)}
+									containerClassName="mx-auto w-full max-w-full justify-center"
+								>
+									<InputOTPGroup>
+										<InputOTPSlot index={0} />
+										<InputOTPSlot index={1} />
+										<InputOTPSlot index={2} />
+										<InputOTPSlot index={3} />
+										<InputOTPSlot index={4} />
+									</InputOTPGroup>
+								</InputOTP>
+								{remoteRequestId ? (
+									<p className="flex items-center justify-center gap-1.5 text-center text-[0.7rem] text-muted-foreground">
+										<Send className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />A solicitação remota segue pendente — a primeira aprovação que chegar libera a venda.
+									</p>
+								) : null}
+							</div>
+						)}
 					</div>
-				) : (
-					<div className="flex w-full min-w-0 flex-col gap-3 overflow-x-hidden">
-						<Label htmlFor="discount-approval-operator-password" className="text-sm font-medium tracking-tight text-foreground/80">
-							SENHA DO GESTOR APROVADOR (5 DÍGITOS)<span className="text-red-500">*</span>
-						</Label>
-						<p className="text-[0.7rem] text-muted-foreground">
-							Um gestor com permissão de aprovar descontos informa a senha de operador do vendedor vinculado ao seu usuário.
-						</p>
-						<InputOTP
-							id="discount-approval-operator-password"
-							maxLength={OPERATOR_PASSWORD_LENGTH}
-							pattern={REGEXP_ONLY_DIGITS}
-							inputMode="numeric"
-							autoComplete="off"
-							pushPasswordManagerStrategy="none"
-							value={senhaOperador}
-							onChange={(value) => setSenhaOperador(value)}
-							containerClassName="mx-auto w-full max-w-full justify-center"
-						>
-							<InputOTPGroup>
-								<InputOTPSlot index={0} />
-								<InputOTPSlot index={1} />
-								<InputOTPSlot index={2} />
-								<InputOTPSlot index={3} />
-								<InputOTPSlot index={4} />
-							</InputOTPGroup>
-						</InputOTP>
-						{remoteRequestId ? (
-							<p className="flex items-center justify-center gap-1.5 text-center text-[0.7rem] text-muted-foreground">
-								<Send className="h-3.5 w-3.5 min-h-3.5 min-w-3.5" />A solicitação remota segue pendente — a primeira aprovação que chegar libera a venda.
-							</p>
-						) : null}
-					</div>
-				)}
-			</div>
-		</ResponsiveMenuV2>
+				</ResponsiveMenuAnimatedBody>
+				{!isWaitingRemote ? (
+					<ResponsiveMenu.Footer>
+						<ResponsiveMenu.Close variant="outline">CANCELAR</ResponsiveMenu.Close>
+						<LoadingButton loading={isApprovingWithPin || isRequestingRemote} onClick={handleRequestRemote}>
+							{remoteRequestId ? "VER SOLICITAÇÃO REMOTA" : "SOLICITAR APROVAÇÃO REMOTA"}
+						</LoadingButton>
+						<LoadingButton loading={isApprovingWithPin || isRequestingRemote} onClick={handlePinApproval}>
+							APROVAR COM SENHA
+						</LoadingButton>
+					</ResponsiveMenu.Footer>
+				) : null}
+			</ResponsiveMenu.Content>
+		</ResponsiveMenu.Root>
 	);
 }

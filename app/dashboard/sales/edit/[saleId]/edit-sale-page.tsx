@@ -419,11 +419,13 @@ export default function EditSalePage({
 				{isMobile ? (
 					<div className="fixed bottom-4 right-4 z-50 lg:hidden">
 						<Sheet open={isCheckoutSheetOpen} onOpenChange={setIsCheckoutSheetOpen}>
-							<SheetTrigger asChild>
-								<Button className="rounded-full shadow-lg px-4">
-									<ShoppingCart className="w-4 h-4 mr-2" /> EDIÇÃO ({saleState.itemCount})
-								</Button>
-							</SheetTrigger>
+							<SheetTrigger
+								render={
+									<Button className="rounded-full shadow-lg px-4">
+										<ShoppingCart className="w-4 h-4 mr-2" /> EDIÇÃO ({saleState.itemCount})
+									</Button>
+								}
+							/>
 							<SheetContent
 								side="bottom"
 								className="flex h-[92dvh] max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-2xl p-0 data-[side=bottom]:h-[92dvh]"

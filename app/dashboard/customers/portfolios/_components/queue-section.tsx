@@ -3,7 +3,14 @@
 import type { TGetClientPortfolioOutput } from "@/app/api/client-portfolios/route";
 import { Button } from "@/components/ui/button";
 import { NewInteraction } from "@/components/Modals/Interactions/NewInteraction";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+	DropdownMenuGroup,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { SectionWrapper } from "@/components/ui/section-wrapper";
 import { getErrorMessage } from "@/lib/errors";
@@ -229,22 +236,28 @@ function QueueCard({ item, sellerId, onRegistered }: { item: TQueueItem; sellerI
 						<ClipboardCheck className="h-3.5 w-3.5" /> REGISTRAR
 					</Button>
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" disabled={snoozePending}>
-								DEPOIS <ChevronDown className="h-3.5 w-3.5" />
-							</Button>
-						</DropdownMenuTrigger>
+						<DropdownMenuTrigger
+							render={
+								<Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" disabled={snoozePending}>
+									DEPOIS <ChevronDown className="h-3.5 w-3.5" />
+								</Button>
+							}
+						/>
 						<DropdownMenuContent align="start">
-							{SNOOZE_PRESETS.map((preset) => (
-								<DropdownMenuItem key={preset.label} disabled={snoozePending} onSelect={() => snooze(preset)}>
-									{preset.label}
-									<span className="ml-auto text-xs text-muted-foreground">{preset.getDate().format("DD/MM")}</span>
-								</DropdownMenuItem>
-							))}
+							<DropdownMenuGroup>
+								{SNOOZE_PRESETS.map((preset) => (
+									<DropdownMenuItem key={preset.label} disabled={snoozePending} onClick={() => snooze(preset)}>
+										{preset.label}
+										<span className="ml-auto text-xs text-muted-foreground">{preset.getDate().format("DD/MM")}</span>
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuGroup>
 							<DropdownMenuSeparator />
-							<DropdownMenuItem disabled={snoozePending} onSelect={() => setCustomSnoozeOpen(true)}>
-								Personalizado...
-							</DropdownMenuItem>
+							<DropdownMenuGroup>
+								<DropdownMenuItem disabled={snoozePending} onClick={() => setCustomSnoozeOpen(true)}>
+									Personalizado...
+								</DropdownMenuItem>
+							</DropdownMenuGroup>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>

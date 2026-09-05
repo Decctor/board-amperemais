@@ -4,7 +4,7 @@ import { AdminControlOrganization } from "@/components/Modals/Organizations/Admi
 import { AdminDeleteOrganization } from "@/components/Modals/Organizations/AdminDeleteOrganization";
 import { LoadingButton } from "@/components/loading-button";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenuGroup, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale } from "@/lib/formatting";
@@ -162,20 +162,24 @@ export default function AdminOrganizationRow({ sessionUser, organization, callba
 					GERENCIAR
 				</Button>
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button variant="ghost" size="icon-sm" aria-label="Mais ações">
-							<MoreVertical className="h-4 w-4" />
-						</Button>
-					</DropdownMenuTrigger>
+					<DropdownMenuTrigger
+						render={
+							<Button variant="ghost" size="icon-sm" aria-label="Mais ações">
+								<MoreVertical className="h-4 w-4" />
+							</Button>
+						}
+					/>
 					<DropdownMenuContent align="end">
-						<DropdownMenuItem onClick={() => setWatermarkModalOpen(true)}>
-							<ImageIcon className="h-3.5 w-3.5" />
-							MARCA D'ÁGUA
-						</DropdownMenuItem>
-						<DropdownMenuItem variant="destructive" onClick={() => setDeleteModalOpen(true)}>
-							<Trash2 className="h-3.5 w-3.5" />
-							EXCLUIR
-						</DropdownMenuItem>
+						<DropdownMenuGroup>
+							<DropdownMenuItem onClick={() => setWatermarkModalOpen(true)}>
+								<ImageIcon className="h-3.5 w-3.5" />
+								MARCA D'ÁGUA
+							</DropdownMenuItem>
+							<DropdownMenuItem variant="destructive" onClick={() => setDeleteModalOpen(true)}>
+								<Trash2 className="h-3.5 w-3.5" />
+								EXCLUIR
+							</DropdownMenuItem>
+						</DropdownMenuGroup>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>

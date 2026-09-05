@@ -73,10 +73,7 @@ function RankingRoot({ className, ...props }: ComponentProps<"div">) {
 
 function RankingPanel({ className, ...props }: ComponentProps<"div">) {
 	return (
-		<div
-			className={cn("bg-card border-border flex h-full w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs", className)}
-			{...props}
-		/>
+		<div className={cn("bg-card border-border flex h-full w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs", className)} {...props} />
 	);
 }
 
@@ -130,11 +127,13 @@ type RankingSortButtonProps = {
 function RankingSortButton({ active, tooltip, onClick, children }: RankingSortButtonProps) {
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>
-				<Button variant={active ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={onClick}>
-					{children}
-				</Button>
-			</TooltipTrigger>
+			<TooltipTrigger
+				render={
+					<Button variant={active ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={onClick}>
+						{children}
+					</Button>
+				}
+			/>
 			<TooltipContent>
 				<p>{tooltip}</p>
 			</TooltipContent>
@@ -188,7 +187,7 @@ function RankingItemTitle({ tooltip, className, children, ...props }: RankingIte
 
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>{title}</TooltipTrigger>
+			<TooltipTrigger render={title} />
 			<TooltipContent>
 				<p>{tooltip}</p>
 			</TooltipContent>
@@ -250,16 +249,9 @@ type RankingItemMetaProps = ComponentProps<"div"> & {
 
 function RankingItemMeta({ icon: Icon, className, children, ...props }: RankingItemMetaProps) {
 	return (
-		<div
-			className={cn("col-start-2 row-start-2 flex min-w-0 items-center gap-1 text-muted-foreground lg:col-start-3", className)}
-			{...props}
-		>
+		<div className={cn("col-start-2 row-start-2 flex min-w-0 items-center gap-1 text-muted-foreground lg:col-start-3", className)} {...props}>
 			{Icon ? <Icon className="h-3 w-3 min-h-3 min-w-3 shrink-0 opacity-60" /> : null}
-			{typeof children === "string" ? (
-				<span className="truncate text-[0.65rem] font-medium tabular-nums">{children}</span>
-			) : (
-				children
-			)}
+			{typeof children === "string" ? <span className="truncate text-[0.65rem] font-medium tabular-nums">{children}</span> : children}
 		</div>
 	);
 }
@@ -292,12 +284,7 @@ function RankingItemComparison({ value, className }: { value: string | null; cla
 	if (value === null) return null;
 
 	return (
-		<div
-			className={cn(
-				"col-start-3 row-start-2 justify-self-end text-[0.6rem] text-muted-foreground tabular-nums lg:col-start-4",
-				className,
-			)}
-		>
+		<div className={cn("col-start-3 row-start-2 justify-self-end text-[0.6rem] text-muted-foreground tabular-nums lg:col-start-4", className)}>
 			<span>Anterior: {value}</span>
 		</div>
 	);

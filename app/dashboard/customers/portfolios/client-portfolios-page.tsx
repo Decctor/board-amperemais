@@ -1,6 +1,6 @@
 "use client";
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectGroup, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -70,16 +70,24 @@ export default function ClientPortfoliosPage({ boundSellerId, canPickSeller }: C
 					</EmptyHeader>
 				</Empty>
 				<div className="w-full max-w-xs">
-					<Select onValueChange={(value) => setPickedSellerId(value)}>
+					<Select
+						items={[...(sellersSimplified ?? []).map((seller) => ({ value: seller.id, label: seller.nome }))]}
+						onValueChange={(value) => {
+							if (value === null) return;
+							setPickedSellerId(value);
+						}}
+					>
 						<SelectTrigger className="w-full">
 							<SelectValue placeholder="Selecione um vendedor" />
 						</SelectTrigger>
 						<SelectContent>
-							{(sellersSimplified ?? []).map((seller) => (
-								<SelectItem key={seller.id} value={seller.id}>
-									{seller.nome}
-								</SelectItem>
-							))}
+							<SelectGroup>
+								{(sellersSimplified ?? []).map((seller) => (
+									<SelectItem key={seller.id} value={seller.id}>
+										{seller.nome}
+									</SelectItem>
+								))}
+							</SelectGroup>
 						</SelectContent>
 					</Select>
 				</div>
@@ -96,16 +104,25 @@ export default function ClientPortfoliosPage({ boundSellerId, canPickSeller }: C
 			{!boundSellerId && canPickSeller ? (
 				<div className="flex w-full items-center justify-end">
 					<div className="w-full max-w-60">
-						<Select value={effectiveSellerId} onValueChange={(value) => setPickedSellerId(value)}>
+						<Select
+							items={[...(sellersSimplified ?? []).map((seller) => ({ value: seller.id, label: seller.nome }))]}
+							value={effectiveSellerId}
+							onValueChange={(value) => {
+								if (value === null) return;
+								setPickedSellerId(value);
+							}}
+						>
 							<SelectTrigger className="w-full">
 								<SelectValue placeholder="Selecione um vendedor" />
 							</SelectTrigger>
 							<SelectContent>
-								{(sellersSimplified ?? []).map((seller) => (
-									<SelectItem key={seller.id} value={seller.id}>
-										{seller.nome}
-									</SelectItem>
-								))}
+								<SelectGroup>
+									{(sellersSimplified ?? []).map((seller) => (
+										<SelectItem key={seller.id} value={seller.id}>
+											{seller.nome}
+										</SelectItem>
+									))}
+								</SelectGroup>
 							</SelectContent>
 						</Select>
 					</div>

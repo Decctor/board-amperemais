@@ -82,17 +82,19 @@ export function ChatsLoadHeatmapBlock({ timeseries, isLoading }: ChatsLoadHeatma
 							const Icon = item.icon;
 							return (
 								<Tooltip key={item.id}>
-									<TooltipTrigger asChild>
-										<Button
-											variant={metrica === item.id ? "default" : "ghost"}
-											size="fit"
-											className="rounded-lg p-2"
-											aria-label={item.label}
-											onClick={() => setMetrica(item.id)}
-										>
-											<Icon className="h-4 min-h-4 w-4 min-w-4" />
-										</Button>
-									</TooltipTrigger>
+									<TooltipTrigger
+										render={
+											<Button
+												variant={metrica === item.id ? "default" : "ghost"}
+												size="fit"
+												className="rounded-lg p-2"
+												aria-label={item.label}
+												onClick={() => setMetrica(item.id)}
+											>
+												<Icon className="h-4 min-h-4 w-4 min-w-4" />
+											</Button>
+										}
+									/>
 									<TooltipContent>
 										<p>{item.label}</p>
 									</TooltipContent>
@@ -111,26 +113,26 @@ export function ChatsLoadHeatmapBlock({ timeseries, isLoading }: ChatsLoadHeatma
 								const valor = totaisPorDia[diaSemana] ?? 0;
 								const intensidade = getColorIntensity(valor, picoDiario);
 								return (
-									<Tooltip key={rotulo} delayDuration={150}>
-										<TooltipTrigger asChild>
-											<button
-												type="button"
-												className="flex min-h-11 min-w-0 flex-1 cursor-default flex-col items-center justify-center rounded-md border border-border px-1 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-												style={{
-													backgroundColor: valor > 0 ? hexToRgba(colors.primary, intensidade) : "rgba(0,0,0,0.03)",
-													color: valor > 0 ? hexToRgba(colors.primaryForeground, 0.8) : undefined,
-												}}
-											>
-												<span className="text-[0.6rem] font-bold tracking-tight uppercase">{rotulo}</span>
-												<span className="max-w-full truncate text-center text-[0.6rem] font-medium text-foreground/80">
-													{valor > 0 ? formatDecimalPlaces(valor, 0, 0) : "—"}
-												</span>
-											</button>
-										</TooltipTrigger>
-										<TooltipContent
-											className="min-w-44 p-3"
-											style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}
-										>
+									<Tooltip key={rotulo}>
+										<TooltipTrigger
+											delay={150}
+											render={
+												<button
+													type="button"
+													className="flex min-h-11 min-w-0 flex-1 cursor-default flex-col items-center justify-center rounded-md border border-border px-1 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+													style={{
+														backgroundColor: valor > 0 ? hexToRgba(colors.primary, intensidade) : "rgba(0,0,0,0.03)",
+														color: valor > 0 ? hexToRgba(colors.primaryForeground, 0.8) : undefined,
+													}}
+												>
+													<span className="text-[0.6rem] font-bold tracking-tight uppercase">{rotulo}</span>
+													<span className="max-w-full truncate text-center text-[0.6rem] font-medium text-foreground/80">
+														{valor > 0 ? formatDecimalPlaces(valor, 0, 0) : "—"}
+													</span>
+												</button>
+											}
+										/>
+										<TooltipContent className="min-w-44 p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 											<div className="flex items-center justify-between gap-4">
 												<span className="text-xs font-medium">{DIAS_SEMANA_COMPLETOS[diaSemana]}</span>
 												<span className="text-sm font-bold">{formatDecimalPlaces(valor, 0, 0)}</span>
@@ -161,26 +163,26 @@ export function ChatsLoadHeatmapBlock({ timeseries, isLoading }: ChatsLoadHeatma
 													const valor = grade.get(`${diaSemana}-${hora}`) ?? 0;
 													const intensidade = getColorIntensity(valor, picoHorario);
 													return (
-														<Tooltip key={hora} delayDuration={150}>
-															<TooltipTrigger asChild>
-																<button
-																	type="button"
-																	aria-label={`${DIAS_SEMANA_COMPLETOS[diaSemana]} às ${formatHourLabel(hora)}: ${formatDecimalPlaces(valor, 0, 0)} ${metricaSelecionada.label.toLocaleLowerCase("pt-BR")}`}
-																	className="group flex min-h-0 min-w-0 flex-1 cursor-default items-center justify-center p-0.5 focus-visible:outline-none"
-																>
-																	<span
-																		className={cn(
-																			"aspect-square max-h-full w-full max-w-full rounded-full border border-border group-focus-visible:ring-2 group-focus-visible:ring-ring",
-																			valor === 0 && "bg-muted/40",
-																		)}
-																		style={valor > 0 ? { backgroundColor: hexToRgba(colors.primary, intensidade) } : undefined}
-																	/>
-																</button>
-															</TooltipTrigger>
-															<TooltipContent
-																className="min-w-44 p-3"
-																style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}
-															>
+														<Tooltip key={hora}>
+															<TooltipTrigger
+																delay={150}
+																render={
+																	<button
+																		type="button"
+																		aria-label={`${DIAS_SEMANA_COMPLETOS[diaSemana]} às ${formatHourLabel(hora)}: ${formatDecimalPlaces(valor, 0, 0)} ${metricaSelecionada.label.toLocaleLowerCase("pt-BR")}`}
+																		className="group flex min-h-0 min-w-0 flex-1 cursor-default items-center justify-center p-0.5 focus-visible:outline-none"
+																	>
+																		<span
+																			className={cn(
+																				"aspect-square max-h-full w-full max-w-full rounded-full border border-border group-focus-visible:ring-2 group-focus-visible:ring-ring",
+																				valor === 0 && "bg-muted/40",
+																			)}
+																			style={valor > 0 ? { backgroundColor: hexToRgba(colors.primary, intensidade) } : undefined}
+																		/>
+																	</button>
+																}
+															/>
+															<TooltipContent className="min-w-44 p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 																<div className="flex flex-col gap-2">
 																	<h3 className="text-sm font-semibold">
 																		{DIAS_SEMANA_COMPLETOS[diaSemana]} às {formatHourLabel(hora)}

@@ -892,12 +892,14 @@ function SaleItemCard({ item }: { item: TGetSalesOutputById["itens"][number] }) 
 						{item.produto.unidade ? (
 							<TooltipProvider>
 								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className="flex items-center gap-1.5 px-1 py-0.5">
-											<Package className="w-4 h-4 text-muted-foreground" />
-											<h3 className="text-xs tracking-tighter">{item.produto.unidade}</h3>
-										</div>
-									</TooltipTrigger>
+									<TooltipTrigger
+										render={
+											<div className="flex items-center gap-1.5 px-1 py-0.5">
+												<Package className="w-4 h-4 text-muted-foreground" />
+												<h3 className="text-xs tracking-tighter">{item.produto.unidade}</h3>
+											</div>
+										}
+									/>
 									<TooltipContent>
 										<p>Unidade de medida</p>
 									</TooltipContent>
@@ -907,12 +909,14 @@ function SaleItemCard({ item }: { item: TGetSalesOutputById["itens"][number] }) 
 						{item.produto?.codigo ? (
 							<TooltipProvider>
 								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className="flex items-center gap-1.5 px-1 py-0.5">
-											<Code className="w-4 h-4 text-muted-foreground" />
-											<h3 className="text-xs tracking-tighter">{item.produto.codigo}</h3>
-										</div>
-									</TooltipTrigger>
+									<TooltipTrigger
+										render={
+											<div className="flex items-center gap-1.5 px-1 py-0.5">
+												<Code className="w-4 h-4 text-muted-foreground" />
+												<h3 className="text-xs tracking-tighter">{item.produto.codigo}</h3>
+											</div>
+										}
+									/>
 									<TooltipContent>
 										<p>Código do produto</p>
 									</TooltipContent>
@@ -922,12 +926,14 @@ function SaleItemCard({ item }: { item: TGetSalesOutputById["itens"][number] }) 
 						{item.produto?.grupo ? (
 							<TooltipProvider>
 								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className="flex items-center gap-1.5 px-1 py-0.5">
-											<Diamond className="w-4 h-4 text-muted-foreground" />
-											<h3 className="text-xs tracking-tighter">{item.produto.grupo}</h3>
-										</div>
-									</TooltipTrigger>
+									<TooltipTrigger
+										render={
+											<div className="flex items-center gap-1.5 px-1 py-0.5">
+												<Diamond className="w-4 h-4 text-muted-foreground" />
+												<h3 className="text-xs tracking-tighter">{item.produto.grupo}</h3>
+											</div>
+										}
+									/>
 									<TooltipContent>
 										<p>Grupo do produto</p>
 									</TooltipContent>
@@ -937,12 +943,14 @@ function SaleItemCard({ item }: { item: TGetSalesOutputById["itens"][number] }) 
 						{item.produtoVariante?.nome ? (
 							<TooltipProvider>
 								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className="flex items-center gap-1.5 px-1 py-0.5">
-											<Package className="w-4 h-4 text-muted-foreground" />
-											<h3 className="text-xs tracking-tighter">{item.produtoVariante.nome}</h3>
-										</div>
-									</TooltipTrigger>
+									<TooltipTrigger
+										render={
+											<div className="flex items-center gap-1.5 px-1 py-0.5">
+												<Package className="w-4 h-4 text-muted-foreground" />
+												<h3 className="text-xs tracking-tighter">{item.produtoVariante.nome}</h3>
+											</div>
+										}
+									/>
 									<TooltipContent>
 										<p>Variante do produto</p>
 									</TooltipContent>
@@ -1017,14 +1025,16 @@ function SaleEditButton({ sale, userCanEditSales }: { sale: TGetSalesOutputById;
 	return (
 		<TooltipProvider>
 			<Tooltip>
-				<TooltipTrigger asChild>
-					<span>
-						<Button variant="ghost" size="fit" disabled className="rounded-full flex items-center gap-1 px-2 py-2">
-							<PencilLine className="w-5 h-5" />
-							EDITAR VENDA
-						</Button>
-					</span>
-				</TooltipTrigger>
+				<TooltipTrigger
+					render={
+						<span>
+							<Button variant="ghost" size="fit" disabled className="rounded-full flex items-center gap-1 px-2 py-2">
+								<PencilLine className="w-5 h-5" />
+								EDITAR VENDA
+							</Button>
+						</span>
+					}
+				/>
 				<TooltipContent>{editability.motivos[0] ?? "Edição indisponível para o estado atual da venda."}</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>

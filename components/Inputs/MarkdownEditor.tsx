@@ -61,35 +61,65 @@ export function MarkdownEditor({ value, onChange, placeholder = "Escreva o conte
 	return (
 		<div className="border-border bg-background overflow-hidden rounded-lg border shadow-xs">
 			{editable ? (
-				<TooltipProvider delayDuration={400}>
+				<TooltipProvider delay={400}>
 					<div className="border-border bg-muted/30 flex flex-wrap items-center gap-1 border-b p-2">
-						<EditorToolbarButton tooltip="Negrito" shortcut="Ctrl+B" isActive={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
+						<EditorToolbarButton
+							tooltip="Negrito"
+							shortcut="Ctrl+B"
+							isActive={editor.isActive("bold")}
+							onClick={() => editor.chain().focus().toggleBold().run()}
+						>
 							<Bold className="size-4" />
 						</EditorToolbarButton>
-						<EditorToolbarButton tooltip="Itálico" shortcut="Ctrl+I" isActive={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
+						<EditorToolbarButton
+							tooltip="Itálico"
+							shortcut="Ctrl+I"
+							isActive={editor.isActive("italic")}
+							onClick={() => editor.chain().focus().toggleItalic().run()}
+						>
 							<Italic className="size-4" />
 						</EditorToolbarButton>
 						<EditorToolbarButton tooltip="Tachado" isActive={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()}>
 							<Strikethrough className="size-4" />
 						</EditorToolbarButton>
 						<div className="bg-border mx-1 h-6 w-px" />
-						<EditorToolbarButton tooltip="Título principal" isActive={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
+						<EditorToolbarButton
+							tooltip="Título principal"
+							isActive={editor.isActive("heading", { level: 1 })}
+							onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+						>
 							<Heading1 className="size-4" />
 						</EditorToolbarButton>
-						<EditorToolbarButton tooltip="Subtítulo" isActive={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+						<EditorToolbarButton
+							tooltip="Subtítulo"
+							isActive={editor.isActive("heading", { level: 2 })}
+							onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+						>
 							<Heading2 className="size-4" />
 						</EditorToolbarButton>
 						<div className="bg-border mx-1 h-6 w-px" />
-						<EditorToolbarButton tooltip="Lista com marcadores" isActive={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+						<EditorToolbarButton
+							tooltip="Lista com marcadores"
+							isActive={editor.isActive("bulletList")}
+							onClick={() => editor.chain().focus().toggleBulletList().run()}
+						>
 							<List className="size-4" />
 						</EditorToolbarButton>
-						<EditorToolbarButton tooltip="Lista numerada" isActive={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+						<EditorToolbarButton
+							tooltip="Lista numerada"
+							isActive={editor.isActive("orderedList")}
+							onClick={() => editor.chain().focus().toggleOrderedList().run()}
+						>
 							<ListOrdered className="size-4" />
 						</EditorToolbarButton>
 						<EditorToolbarButton tooltip="Citação" isActive={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
 							<Quote className="size-4" />
 						</EditorToolbarButton>
-						<EditorToolbarButton tooltip="Bloco de código" isActive={editor.isActive("codeBlock")} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
+						<EditorToolbarButton
+							tooltip="Bloco de código"
+							isActive={editor.isActive("codeBlock")}
+							onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+						>
 							<Braces className="size-4" />
 						</EditorToolbarButton>
 					</div>

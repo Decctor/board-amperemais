@@ -418,7 +418,7 @@ function ProductStatCell({ label, tooltip, children }: { label: string; tooltip?
 	if (!tooltip) return content;
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>{content}</TooltipTrigger>
+			<TooltipTrigger render={content} />
 			<TooltipContent>{tooltip}</TooltipContent>
 		</Tooltip>
 	);

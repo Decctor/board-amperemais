@@ -95,31 +95,28 @@ export function ChatMediaAttachment({ tipo, url, arquivoNome, arquivoTamanho, mi
 		if (imageFailed) return <UnavailableMedia label="Imagem indisponível" />;
 		return (
 			<Dialog>
-				<DialogTrigger asChild>
-					<button
-						type="button"
-						aria-label={`Abrir imagem${arquivoNome ? `: ${arquivoNome}` : ""}`}
-						className={cn(
-							// Proporção fluida em vez de quadrado fixo: um 256x256 rígido
-							// distorcia recibos e prints, que é o que mais chega no varejo.
-							"group relative block w-full overflow-hidden rounded-lg bg-current/10",
-							"focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-current/30",
-							className,
-						)}
-					>
-						{!imageLoaded && <div className="absolute inset-0 animate-pulse bg-current/5" />}
-						{/* biome-ignore lint/performance/noImgElement: mídia dinâmica do usuário não deve passar pelo otimizador do Next */}
-						<img
-							src={url}
-							alt={arquivoNome || "Imagem enviada na conversa"}
-							width={640}
-							height={480}
-							loading="lazy"
-							onLoad={() => setImageLoaded(true)}
-							onError={() => setImageFailed(true)}
-							className={cn("block h-auto w-full object-cover transition-opacity group-hover:opacity-90", imageLoaded ? "opacity-100" : "opacity-0")}
+				<DialogTrigger
+					aria-label={`Abrir imagem${arquivoNome ? `: ${arquivoNome}` : ""}`}
+					className={cn(
+						// Proporção fluida em vez de quadrado fixo: um 256x256 rígido
+						// distorcia recibos e prints, que é o que mais chega no varejo.
+						"group relative block w-full overflow-hidden rounded-lg bg-current/10",
+						"focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-current/30",
+						className,
+					)}
+				>
+					{!imageLoaded && <div className="absolute inset-0 animate-pulse bg-current/5" />}
+					{/* biome-ignore lint/performance/noImgElement: mídia dinâmica do usuário não deve passar pelo otimizador do Next */}
+					<img
+						src={url}
+						alt={arquivoNome || "Imagem enviada na conversa"}
+						width={640}
+						height={480}
+						loading="lazy"
+						onLoad={() => setImageLoaded(true)}
+						onError={() => setImageFailed(true)}
+					className={cn("block h-auto w-full object-cover transition-opacity group-hover:opacity-90", imageLoaded ? "opacity-100" : "opacity-0")}
 						/>
-					</button>
 				</DialogTrigger>
 				<DialogContent className="max-w-3xl">
 					<DialogTitle className="sr-only">{nomeExibido}</DialogTitle>

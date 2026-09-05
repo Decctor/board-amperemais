@@ -1,9 +1,9 @@
 "use client";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 
 import type { TGetProductsPortfolioAnalysisOutput } from "@/app/api/products/stats/portfolio-analysis/route";
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
-import ResponsiveMenuViewOnly from "@/components/Utils/ResponsiveMenuViewOnly";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
@@ -175,17 +175,25 @@ function AnalysisSummaryCard({ data }: { data: TPortfolioAnalysisData }) {
 				</div>
 			</div>
 			{findingsMenuIsOpen ? (
-				<ResponsiveMenuViewOnly
-					menuTitle="PONTOS DE LEITURA"
-					menuDescription="Concentração, atividade e margem que merecem leitura antes de decisões sobre o mix."
-					menuCancelButtonText="FECHAR"
-					closeMenu={() => setFindingsMenuIsOpen(false)}
-					stateIsLoading={false}
-					dialogVariant="sm"
-					drawerVariant="md"
+				<ResponsiveMenu.Root
+					open
+					onOpenChange={(open) => {
+						if (!open) (() => setFindingsMenuIsOpen(false))();
+					}}
 				>
-					<FindingsContent findings={data.findings} />
-				</ResponsiveMenuViewOnly>
+					<ResponsiveMenu.Content dialogVariant="sm" drawerVariant="md" dialogClassName="h-[60%] min-h-[60%] w-[40%] min-w-[40%] max-w-[40%]">
+						<ResponsiveMenu.Header>
+							<ResponsiveMenu.Title>PONTOS DE LEITURA</ResponsiveMenu.Title>
+							<ResponsiveMenu.Description>Concentração, atividade e margem que merecem leitura antes de decisões sobre o mix.</ResponsiveMenu.Description>
+						</ResponsiveMenu.Header>
+						<ResponsiveMenu.Body>
+							<FindingsContent findings={data.findings} />
+						</ResponsiveMenu.Body>
+						<ResponsiveMenu.Footer>
+							<ResponsiveMenu.Close variant="outline">FECHAR</ResponsiveMenu.Close>
+						</ResponsiveMenu.Footer>
+					</ResponsiveMenu.Content>
+				</ResponsiveMenu.Root>
 			) : null}
 		</>
 	);

@@ -1,9 +1,11 @@
 "use client";
+import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import ErrorComponent from "@/components/Layouts/ErrorComponent";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import { hexToRgba, useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
-import ResponsiveMenuViewOnly from "@/components/Utils/ResponsiveMenuViewOnly";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getErrorMessage } from "@/lib/errors";
@@ -199,67 +201,82 @@ export default function WeeklyStatsDetailMenu({ params, closeMenu }: WeeklyStats
 		: [];
 
 	return (
-		<ResponsiveMenuViewOnly
-			menuTitle={menuTitle}
-			menuDescription={menuDescription}
-			menuCancelButtonText="FECHAR"
-			closeMenu={closeMenu}
-			stateIsLoading={isLoading}
-			stateError={error ? getErrorMessage(error) : null}
-			dialogVariant="lg"
-			drawerVariant="lg"
+		<ResponsiveMenu.Root
+			open
+			onOpenChange={(open) => {
+				if (!open) closeMenu();
+			}}
 		>
-			{data ? (
-				<div className="flex w-full flex-col gap-5">
-					{/* Context banner — weekday + optional hour + period */}
-					<ContextBanner params={queryParams} updateParams={updateQueryParams} />
+			<ResponsiveMenu.Content dialogVariant="lg" drawerVariant="lg">
+				<ResponsiveMenu.Header>
+					<ResponsiveMenu.Title>{menuTitle}</ResponsiveMenu.Title>
+					<ResponsiveMenu.Description>{menuDescription}</ResponsiveMenu.Description>
+				</ResponsiveMenu.Header>
+				<ResponsiveMenu.Body>
+					{isLoading ? (
+						<LoadingComponent />
+					) : (error ? getErrorMessage(error) : null) ? (
+						<ErrorComponent msg={getErrorMessage(error)} />
+					) : (
+						<>
+							{data ? (
+								<div className="flex w-full flex-col gap-5">
+									{/* Context banner — weekday + optional hour + period */}
+									<ContextBanner params={queryParams} updateParams={updateQueryParams} />
 
-					{/* KPI indicators */}
-					<div className="flex w-full flex-col gap-2">
-						<SectionLabel icon={<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />} label="INDICADORES" />
-						<div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-							<StatUnitCard
-								title="VENDAS"
-								icon={<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />}
-								current={{ value: data.kpis.salesQuantity, format: (v) => formatDecimalPlaces(v) }}
-								className="w-full"
-							/>
-							<StatUnitCard
-								title="FATURAMENTO"
-								icon={<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />}
-								current={{ value: data.kpis.totalRevenue, format: (v) => formatToMoney(v) }}
-								className="w-full"
-							/>
-							<StatUnitCard
-								title="TICKET MÉDIO"
-								icon={<ShoppingCart className="h-4 min-h-4 w-4 min-w-4" />}
-								current={{ value: data.kpis.avgTicket, format: (v) => formatToMoney(v) }}
-								className="w-full"
-							/>
-						</div>
-					</div>
+									{/* KPI indicators */}
+									<div className="flex w-full flex-col gap-2">
+										<SectionLabel icon={<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />} label="INDICADORES" />
+										<div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+											<StatUnitCard
+												title="VENDAS"
+												icon={<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />}
+												current={{ value: data.kpis.salesQuantity, format: (v) => formatDecimalPlaces(v) }}
+												className="w-full"
+											/>
+											<StatUnitCard
+												title="FATURAMENTO"
+												icon={<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />}
+												current={{ value: data.kpis.totalRevenue, format: (v) => formatToMoney(v) }}
+												className="w-full"
+											/>
+											<StatUnitCard
+												title="TICKET MÉDIO"
+												icon={<ShoppingCart className="h-4 min-h-4 w-4 min-w-4" />}
+												current={{ value: data.kpis.avgTicket, format: (v) => formatToMoney(v) }}
+												className="w-full"
+											/>
+										</div>
+									</div>
 
-					{/* Top clients */}
-					<div className="flex w-full flex-col gap-2">
-						<SectionLabel icon={<Users className="h-4 min-h-4 w-4 min-w-4" />} label="TOP 25 CLIENTES" />
-						<ScrollArea className="h-[340px] w-full pr-2">
-							<div className="pb-1">
-								<RankedList rows={topClientRows} emptyMessage="Não há clientes identificados nesta segmentação." />
-							</div>
-						</ScrollArea>
-					</div>
+									{/* Top clients */}
+									<div className="flex w-full flex-col gap-2">
+										<SectionLabel icon={<Users className="h-4 min-h-4 w-4 min-w-4" />} label="TOP 25 CLIENTES" />
+										<ScrollArea className="h-[340px] w-full pr-2">
+											<div className="pb-1">
+												<RankedList rows={topClientRows} emptyMessage="Não há clientes identificados nesta segmentação." />
+											</div>
+										</ScrollArea>
+									</div>
 
-					{/* Top products */}
-					<div className="flex w-full flex-col gap-2">
-						<SectionLabel icon={<Package className="h-4 min-h-4 w-4 min-w-4" />} label="TOP 25 PRODUTOS" />
-						<ScrollArea className="h-[340px] w-full pr-2">
-							<div className="pb-1">
-								<RankedList rows={topProductRows} emptyMessage="Não há produtos vendidos nesta segmentação." />
-							</div>
-						</ScrollArea>
-					</div>
-				</div>
-			) : null}
-		</ResponsiveMenuViewOnly>
+									{/* Top products */}
+									<div className="flex w-full flex-col gap-2">
+										<SectionLabel icon={<Package className="h-4 min-h-4 w-4 min-w-4" />} label="TOP 25 PRODUTOS" />
+										<ScrollArea className="h-[340px] w-full pr-2">
+											<div className="pb-1">
+												<RankedList rows={topProductRows} emptyMessage="Não há produtos vendidos nesta segmentação." />
+											</div>
+										</ScrollArea>
+									</div>
+								</div>
+							) : null}
+						</>
+					)}
+				</ResponsiveMenu.Body>
+				<ResponsiveMenu.Footer>
+					<ResponsiveMenu.Close variant="outline">FECHAR</ResponsiveMenu.Close>
+				</ResponsiveMenu.Footer>
+			</ResponsiveMenu.Content>
+		</ResponsiveMenu.Root>
 	);
 }

@@ -160,7 +160,7 @@ function SelectMultipleClientsInput({
 					</FieldLabel>
 				)}
 				<Popover open={isOpen} onOpenChange={setIsOpen}>
-					<PopoverTrigger asChild>{renderTrigger()}</PopoverTrigger>
+					<PopoverTrigger render={renderTrigger()} />
 					<PopoverContent container={dialogContainer} className="w-[400px] p-0" align="start">
 						{renderContent()}
 					</PopoverContent>

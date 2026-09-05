@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDecimalPlaces } from "@/lib/formatting";
 import {
+	DropdownMenuGroup,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -79,17 +80,19 @@ export function BulkInsertMappingStage({
 									<div className="flex items-center gap-1.5 shrink-0">
 										<TooltipProvider>
 											<Tooltip>
-												<TooltipTrigger asChild>
-													<div
-														className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem] bg-secondary text-foreground", {
-															"bg-green-200 text-green-600": isMapped,
-															"bg-red-200 text-red-600": isRequired && !isMapped,
-															"bg-yellow-200 text-yellow-600": !isRequired && !isMapped,
-														})}
-													>
-														{isMapped ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-													</div>
-												</TooltipTrigger>
+												<TooltipTrigger
+													render={
+														<div
+															className={cn("flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[0.65rem] bg-secondary text-foreground", {
+																"bg-green-200 text-green-600": isMapped,
+																"bg-red-200 text-red-600": isRequired && !isMapped,
+																"bg-yellow-200 text-yellow-600": !isRequired && !isMapped,
+															})}
+														>
+															{isMapped ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+														</div>
+													}
+												/>
 												<TooltipContent>
 													{isMapped
 														? `O campo foi mapeado com sucesso com ${formatDecimalPlaces(confidence * 100, 2)}% de confiança`
@@ -123,23 +126,29 @@ export function BulkInsertMappingStage({
 									</div>
 
 									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<Button variant="ghost" size="sm" className="gap-1 uppercase shrink-0">
-												{currentMapping?.sourceColumn ?? "NÃO MAPEADO"}
-												<ChevronDown className="w-4 h-4" />
-											</Button>
-										</DropdownMenuTrigger>
+										<DropdownMenuTrigger
+											render={
+												<Button variant="ghost" size="sm" className="gap-1 uppercase shrink-0">
+													{currentMapping?.sourceColumn ?? "NÃO MAPEADO"}
+													<ChevronDown className="w-4 h-4" />
+												</Button>
+											}
+										/>
 										<DropdownMenuContent>
-											<DropdownMenuLabel>COLUNA</DropdownMenuLabel>
+											<DropdownMenuGroup>
+												<DropdownMenuLabel>COLUNA</DropdownMenuLabel>
+											</DropdownMenuGroup>
 											<DropdownMenuSeparator />
-											{headers.map((header) => (
-												<DropdownMenuItem key={header} onClick={() => onUpdateMapping(field, header)}>
-													<div className="flex items-center gap-2 w-full justify-between">
-														<div className="flex items-center gap-2">{header}</div>
-														{header === currentMapping?.sourceColumn ? <Check className="w-4 h-4" /> : null}
-													</div>
-												</DropdownMenuItem>
-											))}
+											<DropdownMenuGroup>
+												{headers.map((header) => (
+													<DropdownMenuItem key={header} onClick={() => onUpdateMapping(field, header)}>
+														<div className="flex items-center gap-2 w-full justify-between">
+															<div className="flex items-center gap-2">{header}</div>
+															{header === currentMapping?.sourceColumn ? <Check className="w-4 h-4" /> : null}
+														</div>
+													</DropdownMenuItem>
+												))}
+											</DropdownMenuGroup>
 										</DropdownMenuContent>
 									</DropdownMenu>
 								</div>

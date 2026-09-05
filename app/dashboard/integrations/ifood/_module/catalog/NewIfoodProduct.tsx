@@ -1,10 +1,12 @@
 "use client";
+import { ResponsiveMenuAnimatedBody } from "@/components/Utils/ResponsiveMenuAnimatedBody";
+import { LoadingButton } from "@/components/loading-button";
+import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 
 import NumberInput from "@/components/Inputs/NumberInput";
 import SelectInput from "@/components/Inputs/SelectInput";
 import TextInput from "@/components/Inputs/TextInput";
 import TextareaInput from "@/components/Inputs/TextareaInput";
-import ResponsiveMenuV2 from "@/components/Utils/ResponsiveMenuV2";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getErrorMessage } from "@/lib/errors";
 import type { TIfoodCategoryDTO } from "@/lib/integrations/ifood/catalog-types";
@@ -113,85 +115,93 @@ export function NewIfoodProduct({ merchantId, categories, initialCategoryId, clo
 	const quantidadeCanaisCustomizados = state.canais.filter((canal) => canal.preco != null || canal.status != null || canal.codigoExterno).length;
 
 	return (
-		<ResponsiveMenuV2
-			menuTitle="NOVO PRODUTO"
-			menuDescription="Cria um produto no catálogo do iFood e o disponibiliza na categoria selecionada."
-			menuActionButtonText="CRIAR PRODUTO"
-			menuCancelButtonText="CANCELAR"
-			closeMenu={closeModal}
-			actionFunction={handleSubmit}
-			actionIsLoading={isPending}
-			stateIsLoading={false}
-			dialogVariant="lg"
-			drawerVariant="lg"
+		<ResponsiveMenu.Root
+			open
+			onOpenChange={(open) => {
+				if (!open) closeModal();
+			}}
 		>
-			<Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="flex w-full flex-col gap-4">
-				<TabsList>
-					<TabsTrigger value="geral">GERAL</TabsTrigger>
-					<TabsTrigger value="complementos">
-						COMPLEMENTOS
-						{quantidadeGrupos > 0 ? <span className="ml-1.5 text-xs tabular-nums opacity-70">{quantidadeGrupos}</span> : null}
-					</TabsTrigger>
-					<TabsTrigger value="canais">
-						CANAIS
-						{quantidadeCanaisCustomizados > 0 ? <span className="ml-1.5 text-xs tabular-nums opacity-70">{quantidadeCanaisCustomizados}</span> : null}
-					</TabsTrigger>
-				</TabsList>
+			<ResponsiveMenu.Content dialogVariant="lg" drawerVariant="lg">
+				<ResponsiveMenu.Header>
+					<ResponsiveMenu.Title>NOVO PRODUTO</ResponsiveMenu.Title>
+					<ResponsiveMenu.Description>Cria um produto no catálogo do iFood e o disponibiliza na categoria selecionada.</ResponsiveMenu.Description>
+				</ResponsiveMenu.Header>
+				<ResponsiveMenuAnimatedBody stateKey="content" className="overflow-x-hidden overflow-y-auto">
+					<Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="flex w-full flex-col gap-4">
+						<TabsList>
+							<TabsTrigger value="geral">GERAL</TabsTrigger>
+							<TabsTrigger value="complementos">
+								COMPLEMENTOS
+								{quantidadeGrupos > 0 ? <span className="ml-1.5 text-xs tabular-nums opacity-70">{quantidadeGrupos}</span> : null}
+							</TabsTrigger>
+							<TabsTrigger value="canais">
+								CANAIS
+								{quantidadeCanaisCustomizados > 0 ? <span className="ml-1.5 text-xs tabular-nums opacity-70">{quantidadeCanaisCustomizados}</span> : null}
+							</TabsTrigger>
+						</TabsList>
 
-				<TabsContent value="geral" className="flex flex-col gap-4">
-					<TextInput
-						label="NOME DO PRODUTO"
-						value={state.produto.nome}
-						placeholder="Ex: X-Burguer Especial..."
-						handleChange={(value) => updateProduto({ nome: value })}
-					/>
-					<TextareaInput
-						label="DESCRIÇÃO"
-						value={state.produto.descricao ?? ""}
-						placeholder="Descreva o produto para os clientes..."
-						handleChange={(value) => updateProduto({ descricao: value || null })}
-					/>
-					<SelectInput
-						label="CATEGORIA"
-						value={state.produto.categoriaId}
-						resetOptionLabel="NÃO DEFINIDO"
-						options={categories.map((category) => ({ id: category.id, value: category.id, label: category.nome ?? category.id }))}
-						handleChange={(value) => updateProduto({ categoriaId: value })}
-						onReset={() => updateProduto({ categoriaId: null })}
-					/>
-					<NumberInput
-						label="PREÇO (R$)"
-						value={state.produto.preco}
-						placeholder="Ex: 29,90..."
-						handleChange={(value) => updateProduto({ preco: value })}
-					/>
-					<TextInput
-						label="CÓDIGO EXTERNO (PDV)"
-						value={state.produto.codigoExterno ?? ""}
-						placeholder="Código do produto no seu sistema..."
-						handleChange={(value) => updateProduto({ codigoExterno: value || null })}
-					/>
-					<ProductImageBlock merchantId={merchantId} imagemPath={state.produto.imagemPath} onUploaded={(imagemPath) => updateProduto({ imagemPath })} />
-				</TabsContent>
+						<TabsContent value="geral" className="flex flex-col gap-4">
+							<TextInput
+								label="NOME DO PRODUTO"
+								value={state.produto.nome}
+								placeholder="Ex: X-Burguer Especial..."
+								handleChange={(value) => updateProduto({ nome: value })}
+							/>
+							<TextareaInput
+								label="DESCRIÇÃO"
+								value={state.produto.descricao ?? ""}
+								placeholder="Descreva o produto para os clientes..."
+								handleChange={(value) => updateProduto({ descricao: value || null })}
+							/>
+							<SelectInput
+								label="CATEGORIA"
+								value={state.produto.categoriaId}
+								resetOptionLabel="NÃO DEFINIDO"
+								options={categories.map((category) => ({ id: category.id, value: category.id, label: category.nome ?? category.id }))}
+								handleChange={(value) => updateProduto({ categoriaId: value })}
+								onReset={() => updateProduto({ categoriaId: null })}
+							/>
+							<NumberInput
+								label="PREÇO (R$)"
+								value={state.produto.preco}
+								placeholder="Ex: 29,90..."
+								handleChange={(value) => updateProduto({ preco: value })}
+							/>
+							<TextInput
+								label="CÓDIGO EXTERNO (PDV)"
+								value={state.produto.codigoExterno ?? ""}
+								placeholder="Código do produto no seu sistema..."
+								handleChange={(value) => updateProduto({ codigoExterno: value || null })}
+							/>
+							<ProductImageBlock merchantId={merchantId} imagemPath={state.produto.imagemPath} onUploaded={(imagemPath) => updateProduto({ imagemPath })} />
+						</TabsContent>
 
-				<TabsContent value="complementos">
-					<ProductOptionGroupsBlock
-						embedded
-						grupos={state.gruposComplementos}
-						issues={issuesComplementos}
-						onAddGrupo={addGrupoComplemento}
-						onUpdateGrupo={updateGrupoComplemento}
-						onRemoveGrupo={removeGrupoComplemento}
-						onAddOpcao={addOpcao}
-						onUpdateOpcao={updateOpcao}
-						onRemoveOpcao={removeOpcao}
-					/>
-				</TabsContent>
+						<TabsContent value="complementos">
+							<ProductOptionGroupsBlock
+								embedded
+								grupos={state.gruposComplementos}
+								issues={issuesComplementos}
+								onAddGrupo={addGrupoComplemento}
+								onUpdateGrupo={updateGrupoComplemento}
+								onRemoveGrupo={removeGrupoComplemento}
+								onAddOpcao={addOpcao}
+								onUpdateOpcao={updateOpcao}
+								onRemoveOpcao={removeOpcao}
+							/>
+						</TabsContent>
 
-				<TabsContent value="canais">
-					<ProductChannelsBlock embedded canais={state.canais} precoPadrao={state.produto.preco} onUpdateCanal={updateCanal} />
-				</TabsContent>
-			</Tabs>
-		</ResponsiveMenuV2>
+						<TabsContent value="canais">
+							<ProductChannelsBlock embedded canais={state.canais} precoPadrao={state.produto.preco} onUpdateCanal={updateCanal} />
+						</TabsContent>
+					</Tabs>
+				</ResponsiveMenuAnimatedBody>
+				<ResponsiveMenu.Footer>
+					<ResponsiveMenu.Close variant="outline">CANCELAR</ResponsiveMenu.Close>
+					<LoadingButton loading={isPending} onClick={handleSubmit}>
+						CRIAR PRODUTO
+					</LoadingButton>
+				</ResponsiveMenu.Footer>
+			</ResponsiveMenu.Content>
+		</ResponsiveMenu.Root>
 	);
 }

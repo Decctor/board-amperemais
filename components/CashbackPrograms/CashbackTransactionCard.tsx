@@ -12,7 +12,7 @@ import type { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import { ArrowUpRight, Gift, History, TrendingDown, TrendingUp, Undo2, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { createContext, use, type ReactNode } from "react";
+import { createContext, use, type ReactElement, type ReactNode } from "react";
 
 /**
  * Linha de transação de cashback, em partes compostas.
@@ -191,7 +191,7 @@ function Row({ className, ...props }: React.ComponentProps<"div">) {
 			className={cn(
 				"group/transaction flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors duration-150",
 				"data-[lifecycle=expired]:opacity-80",
-				interactive && "cursor-pointer outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40 data-[state=open]:bg-muted/60",
+				interactive && "cursor-pointer outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40 data-popup-open:bg-muted/60",
 				className,
 			)}
 			{...props}
@@ -422,13 +422,13 @@ function DetailsSheet() {
  * Envolve a linha com o detalhe: hover card em ponteiro fino, popover por toque no mobile (hover
  * não existe lá, e o detalhe era inalcançável). A linha filha vira o gatilho.
  */
-function Details({ children }: { children: ReactNode }) {
+function Details({ children }: { children: ReactElement }) {
 	const isMobile = useIsMobile();
 	if (isMobile) {
 		return (
 			<InteractiveContext value>
 				<Popover>
-					<PopoverTrigger asChild>{children}</PopoverTrigger>
+					<PopoverTrigger nativeButton={false} render={children} />
 					<PopoverContent align="start" className="w-80 p-4">
 						<DetailsSheet />
 					</PopoverContent>
@@ -438,8 +438,8 @@ function Details({ children }: { children: ReactNode }) {
 	}
 	return (
 		<InteractiveContext value>
-			<HoverCard openDelay={250} closeDelay={100}>
-				<HoverCardTrigger asChild>{children}</HoverCardTrigger>
+			<HoverCard>
+				<HoverCardTrigger delay={250} closeDelay={100} render={children} />
 				<HoverCardContent align="start" className="w-80 p-4">
 					<DetailsSheet />
 				</HoverCardContent>

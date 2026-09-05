@@ -57,19 +57,12 @@ export function FiscalDocumentCard({ document, permissions, exceptionalPresenceE
 	const router = useRouter();
 	const detailsHref = appRoutes.fiscal.document(document.id);
 	const openDetails = () => router.push(detailsHref);
-	const isCancelled = document.status === "CANCELADA" || document.statusInterno === "CANCELADO";
 	const isErrored = document.statusInterno === "ERRO" || document.statusInterno === "REJEITADO";
 	const subtitle = buildFiscalDocumentCardSubtitle(document);
 
 	return (
 		<TooltipProvider>
-			<div
-				className={cn(
-					"bg-card flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs transition-colors",
-					isCancelled ? "opacity-70" : null,
-					isErrored ? "border-rose-400/60 dark:border-rose-500/60" : "border-border hover:border-primary/30 hover:bg-muted/20",
-				)}
-			>
+			<div className={"bg-card flex w-full flex-col gap-2 rounded-xl border px-3 py-3 shadow-2xs transition-colors"}>
 				{/* No celular os badges descem para a linha de baixo: lado a lado eles esmagavam o titulo. */}
 				<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
 					<Link href={detailsHref} className="flex w-full min-w-0 flex-col gap-0.5 text-left sm:flex-1">

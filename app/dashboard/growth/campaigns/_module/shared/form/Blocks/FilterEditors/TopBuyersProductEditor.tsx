@@ -133,19 +133,21 @@ function ProductPicker({ value, onChange }: ProductPickerProps) {
 				PRODUTO<span className="text-red-500">*</span>
 			</Label>
 			<Popover open={open} onOpenChange={setOpen}>
-				<PopoverTrigger asChild>
-					<Button
-						type="button"
-						variant="outline"
-						aria-haspopup="listbox"
-						aria-expanded={open}
-						className="w-full justify-between truncate border border-border"
-					>
-						<span className="truncate text-left">{selectedLabel}</span>
-						<ChevronsUpDown className="h-3 w-3 min-h-3 min-w-3" />
-					</Button>
-				</PopoverTrigger>
-				<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+				<PopoverTrigger
+					render={
+						<Button
+							type="button"
+							variant="outline"
+							aria-haspopup="listbox"
+							aria-expanded={open}
+							className="w-full justify-between truncate border border-border"
+						>
+							<span className="truncate text-left">{selectedLabel}</span>
+							<ChevronsUpDown className="h-3 w-3 min-h-3 min-w-3" />
+						</Button>
+					}
+				/>
+				<PopoverContent className="w-[var(--anchor-width)] p-0">
 					<Command shouldFilter={false} loop>
 						<CommandInput placeholder="Buscar produto..." value={search} onValueChange={updateSearch} />
 						<CommandList>

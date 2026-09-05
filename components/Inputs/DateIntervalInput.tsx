@@ -25,30 +25,32 @@ function DateIntervalInput({ label, labelClassName, className, value, handleChan
 				{label}
 			</FieldLabel>
 			<Popover>
-				<PopoverTrigger asChild>
-					<Button
-						id={inputIdentifier}
-						variant={"outline"}
-						className={cn(
-							"w-full justify-start rounded-md border border-border bg-[#fff] text-left text-sm font-normal shadow-xs outline-hidden ease-in-out focus:border-border dark:bg-[#121212]",
-							!value.after && !value.before && "text-muted-foreground",
-							className,
-						)}
-					>
-						<CalendarIcon className="mr-2 h-4 w-4" />
-						{value?.after ? (
-							value.before ? (
-								<>
-									{format(value.after, "dd/MM/yyyy", { locale: ptBR })} - {format(value.before, "dd/MM/yyyy", { locale: ptBR })}
-								</>
+				<PopoverTrigger
+					render={
+						<Button
+							id={inputIdentifier}
+							variant={"outline"}
+							className={cn(
+								"w-full justify-start rounded-md border border-border bg-[#fff] text-left text-sm font-normal shadow-xs outline-hidden ease-in-out focus:border-border dark:bg-[#121212]",
+								!value.after && !value.before && "text-muted-foreground",
+								className,
+							)}
+						>
+							<CalendarIcon className="mr-2 h-4 w-4" />
+							{value?.after ? (
+								value.before ? (
+									<>
+										{format(value.after, "dd/MM/yyyy", { locale: ptBR })} - {format(value.before, "dd/MM/yyyy", { locale: ptBR })}
+									</>
+								) : (
+									format(value.after, "dd/MM/yyyy", { locale: ptBR })
+								)
 							) : (
-								format(value.after, "dd/MM/yyyy", { locale: ptBR })
-							)
-						) : (
-							<span>Escolha uma data</span>
-						)}
-					</Button>
-				</PopoverTrigger>
+								<span>Escolha uma data</span>
+							)}
+						</Button>
+					}
+				/>
 				<PopoverContent className="w-auto p-0" align="start">
 					<Calendar
 						mode="range"

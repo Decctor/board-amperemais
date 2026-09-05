@@ -481,11 +481,13 @@ export default function CheckoutPage({
 				{isMobile ? (
 					<div className="fixed right-4 bottom-4 z-50 lg:hidden">
 						<Sheet open={isCheckoutSheetOpen} onOpenChange={setIsCheckoutSheetOpen}>
-							<SheetTrigger asChild>
-								<Button className="rounded-full px-4 shadow-lg">
-									<ShoppingCart className="mr-2 h-4 w-4" /> CHECKOUT ({saleState.itemCount})
-								</Button>
-							</SheetTrigger>
+							<SheetTrigger
+								render={
+									<Button className="rounded-full px-4 shadow-lg">
+										<ShoppingCart className="mr-2 h-4 w-4" /> CHECKOUT ({saleState.itemCount})
+									</Button>
+								}
+							/>
 							<SheetContent
 								side="bottom"
 								className="flex h-[92dvh] max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-2xl p-0 data-[side=bottom]:h-[92dvh]"

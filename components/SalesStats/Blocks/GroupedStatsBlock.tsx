@@ -147,28 +147,30 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats["porItem"] }) {
 				return (
 					<div style={style} key={`${list[index].titulo}-${index}`} className="w-full">
 						<HoverCard>
-							<HoverCardTrigger asChild>
-								<div className="flex items-center gap-4 w-full hover:bg-primary/10 rounded-lg transition-all px-2 py-0.5">
-									<div className="flex items-center gap-3 w-[250px] min-w-[250px]">
-										<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
+							<HoverCardTrigger
+								render={
+									<div className="flex items-center gap-4 w-full hover:bg-primary/10 rounded-lg transition-all px-2 py-0.5">
+										<div className="flex items-center gap-3 w-[250px] min-w-[250px]">
+											<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
 
-										<div className="flex items-center gap-2 cursor-pointer">
-											<div className="flex flex-col">
-												<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={list[index].titulo}>
-													{list[index].titulo}
-												</span>
-												{/* <span className="text-[0.6rem] text-muted-foreground">ID: {list[index].identificador}</span> */}
+											<div className="flex items-center gap-2 cursor-pointer">
+												<div className="flex flex-col">
+													<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={list[index].titulo}>
+														{list[index].titulo}
+													</span>
+													{/* <span className="text-[0.6rem] text-muted-foreground">ID: {list[index].identificador}</span> */}
+												</div>
 											</div>
 										</div>
-									</div>
 
-									<div className="flex-1 flex flex-col justify-center h-full">
-										<Progress value={percentage} className="h-2 w-full" />
-									</div>
+										<div className="flex-1 flex flex-col justify-center h-full">
+											<Progress value={percentage} className="h-2 w-full" />
+										</div>
 
-									<div className="w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
-								</div>
-							</HoverCardTrigger>
+										<div className="w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
+									</div>
+								}
+							/>
 							<HoverCardContent className="flex flex-col w-80">
 								<div className="w-full flex items-center gap-2">
 									<h2 className="text-sm font-semibold">{list[index].titulo}</h2>
@@ -202,31 +204,37 @@ function ResultsByItemGraph({ data }: { data: TGroupedSalesStats["porItem"] }) {
 				<div className="flex items-center gap-2">
 					<TooltipProvider>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
-									<Download className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
+										<Download className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Baixar</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
-									<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
+										<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Valor Vendido</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
-									<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
+										<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Quantidade de Vendas</p>
 							</TooltipContent>
@@ -278,31 +286,37 @@ function ResultsByProductGroupGraph({ data }: { data: TGroupedSalesStats["porGru
 				<div className="flex items-center gap-2">
 					<TooltipProvider>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
-									<Download className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
+										<Download className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Baixar</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
-									<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
+										<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Valor Vendido</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
-									<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
+										<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Quantidade de Vendas</p>
 							</TooltipContent>
@@ -368,31 +382,37 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 				<div className="flex items-center gap-2">
 					<TooltipProvider>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
-									<Download className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
+										<Download className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Baixar</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
-									<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
+										<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Valor Vendido</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
-									<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
+										<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Quantidade de Vendas</p>
 							</TooltipContent>
@@ -416,32 +436,34 @@ function ResultsBySellerGraph({ data }: { data: TGroupedSalesStats["porVendedor"
 							const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
 							return (
 								<HoverCard key={item.vendedor.id}>
-									<HoverCardTrigger asChild>
-										<div key={item.vendedor.id} className="flex items-center gap-4 w-full group">
-											<div className="flex items-center gap-3 w-[250px] min-w-[250px]">
-												<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
+									<HoverCardTrigger
+										render={
+											<div key={item.vendedor.id} className="flex items-center gap-4 w-full group">
+												<div className="flex items-center gap-3 w-[250px] min-w-[250px]">
+													<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
 
-												<div className="flex items-center gap-2 cursor-pointer">
-													<Avatar className="h-9 w-9 border-2 border-transparent group-hover:border-border transition-colors">
-														<AvatarImage src={item.vendedor.avatarUrl || undefined} alt={item.vendedor.nome} />
-														<AvatarFallback className="font-bold text-foreground">{formatNameAsInitials(item.vendedor.nome)}</AvatarFallback>
-													</Avatar>
-													<div className="flex flex-col">
-														<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.vendedor.nome || "NÃO DEFINIDO"}>
-															{item.vendedor.nome || "NÃO DEFINIDO"}
-														</span>
-														<span className="text-[0.6rem] text-muted-foreground">ID: {item.vendedor.identificador || "N/A"}</span>
+													<div className="flex items-center gap-2 cursor-pointer">
+														<Avatar className="h-9 w-9 border-2 border-transparent group-hover:border-border transition-colors">
+															<AvatarImage src={item.vendedor.avatarUrl || undefined} alt={item.vendedor.nome} />
+															<AvatarFallback className="font-bold text-foreground">{formatNameAsInitials(item.vendedor.nome)}</AvatarFallback>
+														</Avatar>
+														<div className="flex flex-col">
+															<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.vendedor.nome || "NÃO DEFINIDO"}>
+																{item.vendedor.nome || "NÃO DEFINIDO"}
+															</span>
+															<span className="text-[0.6rem] text-muted-foreground">ID: {item.vendedor.identificador || "N/A"}</span>
+														</div>
 													</div>
 												</div>
-											</div>
 
-											<div className="flex-1 flex flex-col justify-center h-full">
-												<Progress value={percentage} className="h-2 w-full" />
-											</div>
+												<div className="flex-1 flex flex-col justify-center h-full">
+													<Progress value={percentage} className="h-2 w-full" />
+												</div>
 
-											<div className="w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
-										</div>
-									</HoverCardTrigger>
+												<div className="w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
+											</div>
+										}
+									/>
 									<HoverCardContent className="flex flex-col w-80">
 										<div className="w-full flex items-center gap-2">
 											<Avatar className="h-12 w-12 min-h-12 min-w-12">
@@ -513,31 +535,37 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 				<div className="flex items-center gap-2">
 					<TooltipProvider>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
-									<Download className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
+										<Download className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Baixar</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
-									<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
+										<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Valor Vendido</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
-									<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
+										<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Quantidade de Vendas</p>
 							</TooltipContent>
@@ -562,31 +590,33 @@ function ResultsByPartnerGraph({ data }: { data: TGroupedSalesStats["porParceiro
 
 							return (
 								<HoverCard key={item.parceiro.id}>
-									<HoverCardTrigger asChild>
-										<div className="flex items-center gap-4 w-full hover:bg-primary/10 rounded-lg transition-all px-2 py-">
-											<div className="flex items-center gap-3 w-fit min-w-fit lg:w-[250px] lg:min-w-[250px]">
-												<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
-												<div className="flex items-center gap-2 cursor-pointer">
-													<Avatar className="h-9 w-9 border-2 border-transparent transition-colors">
-														<AvatarImage src={item.parceiro.avatarUrl || undefined} alt={item.parceiro.nome} />
-														<AvatarFallback className="font-bold text-foreground">{formatNameAsInitials(item.parceiro.nome)}</AvatarFallback>
-													</Avatar>
-													<div className="flex flex-col">
-														<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.parceiro.nome}>
-															{item.parceiro.nome}
-														</span>
-														<span className="text-[0.6rem] text-muted-foreground">ID: {item.parceiro.identificador}</span>
+									<HoverCardTrigger
+										render={
+											<div className="flex items-center gap-4 w-full hover:bg-primary/10 rounded-lg transition-all px-2 py-">
+												<div className="flex items-center gap-3 w-fit min-w-fit lg:w-[250px] lg:min-w-[250px]">
+													<span className="text-xs font-bold text-muted-foreground w-6">#{index + 1}</span>
+													<div className="flex items-center gap-2 cursor-pointer">
+														<Avatar className="h-9 w-9 border-2 border-transparent transition-colors">
+															<AvatarImage src={item.parceiro.avatarUrl || undefined} alt={item.parceiro.nome} />
+															<AvatarFallback className="font-bold text-foreground">{formatNameAsInitials(item.parceiro.nome)}</AvatarFallback>
+														</Avatar>
+														<div className="flex flex-col">
+															<span className="text-sm font-medium truncate max-w-[150px] leading-none" title={item.parceiro.nome}>
+																{item.parceiro.nome}
+															</span>
+															<span className="text-[0.6rem] text-muted-foreground">ID: {item.parceiro.identificador}</span>
+														</div>
 													</div>
 												</div>
-											</div>
 
-											<div className="hidden lg:flex flex-1 flex-col justify-center h-full">
-												<Progress value={percentage} className="h-2 w-full" />
-											</div>
+												<div className="hidden lg:flex flex-1 flex-col justify-center h-full">
+													<Progress value={percentage} className="h-2 w-full" />
+												</div>
 
-											<div className="w-fit lg:w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
-										</div>
-									</HoverCardTrigger>
+												<div className="w-fit lg:w-[100px] text-right font-bold text-sm">{type === "total" ? formatToMoney(value) : value}</div>
+											</div>
+										}
+									/>
 									<HoverCardContent className="flex flex-col w-80">
 										<div className="w-full flex items-center gap-2">
 											<Avatar className="h-12 w-12 min-h-12 min-w-12">
@@ -656,16 +686,19 @@ function GroupedByMonthDay({ data }: { data: TGroupedSalesStats["porDiaDoMes"] }
 		const ticketMedio = result && result.qtde > 0 ? result.total / result.qtde : 0;
 
 		return (
-			<Tooltip delayDuration={200}>
-				<TooltipTrigger asChild>
-					<div
-						key={index.toString()}
-						className="flex flex-col items-center justify-center p-2 rounded-md border border-border w-full gap-1 min-h-[60px] transition-all hover:scale-[1.02] cursor-pointer"
-						style={{ backgroundColor: bgColor }}
-					>
-						<h1 className="text-xs font-bold tracking-tight">{index + 1}</h1>
-					</div>
-				</TooltipTrigger>
+			<Tooltip>
+				<TooltipTrigger
+					delay={200}
+					render={
+						<div
+							key={index.toString()}
+							className="flex flex-col items-center justify-center p-2 rounded-md border border-border w-full gap-1 min-h-[60px] transition-all hover:scale-[1.02] cursor-pointer"
+							style={{ backgroundColor: bgColor }}
+						>
+							<h1 className="text-xs font-bold tracking-tight">{index + 1}</h1>
+						</div>
+					}
+				/>
 				{result ? (
 					<TooltipContent className="min-w-[180px] p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 						<div className="flex flex-col gap-2">
@@ -777,16 +810,19 @@ function GroupedByMonth({ data }: { data: TGroupedSalesStats["porMes"] }) {
 		const ticketMedio = result && result.qtde > 0 ? result.total / result.qtde : 0;
 
 		return (
-			<Tooltip delayDuration={200}>
-				<TooltipTrigger asChild>
-					<div
-						key={index.toString()}
-						className="flex flex-col items-center justify-center p-3 rounded-md border border-border w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
-						style={{ backgroundColor: bgColor }}
-					>
-						<h1 className="text-xs font-bold tracking-tight uppercase">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h1>
-					</div>
-				</TooltipTrigger>
+			<Tooltip>
+				<TooltipTrigger
+					delay={200}
+					render={
+						<div
+							key={index.toString()}
+							className="flex flex-col items-center justify-center p-3 rounded-md border border-border w-full gap-1 min-h-[70px] transition-all hover:scale-[1.02] cursor-pointer"
+							style={{ backgroundColor: bgColor }}
+						>
+							<h1 className="text-xs font-bold tracking-tight uppercase">{MONTH_MAP[(index + 1) as keyof typeof MONTH_MAP]}</h1>
+						</div>
+					}
+				/>
 				{result ? (
 					<TooltipContent className="min-w-[180px] p-3" style={{ backgroundColor: colors.primary, color: colors.primaryForeground }}>
 						<div className="flex flex-col gap-2">
@@ -889,31 +925,37 @@ function ResultsByChannelGraph({ data }: { data: TGroupedSalesStats["porCanal"] 
 				<div className="flex items-center gap-2">
 					<TooltipProvider>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
-									<Download className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
+										<Download className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Baixar</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
-									<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
+										<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Valor Vendido</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
-									<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
+										<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Quantidade de Vendas</p>
 							</TooltipContent>
@@ -988,31 +1030,37 @@ function ResultsByFulfillmentMethodGraph({ data }: { data: TGroupedSalesStats["p
 				<div className="flex items-center gap-2">
 					<TooltipProvider>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
-									<Download className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={"ghost"} size="fit" className="rounded-lg p-2" onClick={() => handleExportData(data)}>
+										<Download className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Baixar</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
-									<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={type === "total" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("total")}>
+										<BadgeDollarSign className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Valor Vendido</p>
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
-									<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
-								</Button>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<Button variant={type === "qtde" ? "default" : "ghost"} size="fit" className="rounded-lg p-2" onClick={() => setType("qtde")}>
+										<CirclePlus className="h-4 min-h-4 w-4 min-w-4" />
+									</Button>
+								}
+							/>
 							<TooltipContent>
 								<p>Quantidade de Vendas</p>
 							</TooltipContent>

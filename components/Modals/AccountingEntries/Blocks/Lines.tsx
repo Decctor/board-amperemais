@@ -3,7 +3,7 @@
 import SelectInput from "@/components/Inputs/SelectInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectGroup, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ResponsiveMenuSection from "@/components/Utils/ResponsiveMenuSection";
 import { formatToMoney } from "@/lib/formatting";
 import { useAccountCharts } from "@/lib/queries/finances";
@@ -109,16 +109,25 @@ export default function AccountingEntryLinesBlock({
 							/>
 						</div>
 						<Select
+							items={[
+								{ value: "DEBITO", label: "Débito" },
+								{ value: "CREDITO", label: "Crédito" },
+							]}
 							disabled={!editable}
 							value={line.natureza}
-							onValueChange={(value) => updateEntryLine({ index, changes: { natureza: value as "DEBITO" | "CREDITO" } })}
+							onValueChange={(value) => {
+								if (value === null) return;
+								updateEntryLine({ index, changes: { natureza: value as "DEBITO" | "CREDITO" } });
+							}}
 						>
 							<SelectTrigger size="sm" aria-label={`Natureza da linha ${index + 1}`} className="w-full text-xs">
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="DEBITO">Débito</SelectItem>
-								<SelectItem value="CREDITO">Crédito</SelectItem>
+								<SelectGroup>
+									<SelectItem value="DEBITO">Débito</SelectItem>
+									<SelectItem value="CREDITO">Crédito</SelectItem>
+								</SelectGroup>
 							</SelectContent>
 						</Select>
 						<Input
