@@ -263,6 +263,9 @@ Outros casos de "não dá para cancelar":
 
 ## 5. Fases de entrega
 
+> **Status (set/2026):** fases 1 a 4 implementadas nesta branch. Deploy exige `npm run db:push` (nova coluna `problemas` em `fiscal_outbound_documents`) e o cron `/api/cron/fiscal-pending-digest` já está em `vercel.json`. Documentos antigos ganham `problemas` derivados de `mensagens`/`codigoRejeicao` na leitura — sem backfill.
+
+
 Cada fase é entregável sozinha e melhora o produto sem as seguintes.
 
 ### Fase 1 — Regras e dados (backend, ~1 sprint)
