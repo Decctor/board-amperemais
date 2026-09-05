@@ -1,7 +1,7 @@
 "use client";
 import { getAppRouteIcon } from "@/config/app-route-icons";
 import { getAppRouteDescription, getAppRouteTitle } from "@/config";
-import { HeaderUtilities } from "@/components/Layouts/HeaderUtilities";
+import { HeaderUtilities, type THeaderSession } from "@/components/Layouts/HeaderUtilities";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -10,9 +10,11 @@ import { SidebarTrigger } from "../ui/sidebar";
 
 type AppHeaderProps = {
 	showSidebarTrigger?: boolean;
+	/** Sessão de organização: habilita a paleta de comandos no trilho de utilidades. */
+	session?: THeaderSession;
 };
 
-export default function AppHeader({ showSidebarTrigger = true }: AppHeaderProps) {
+export default function AppHeader({ showSidebarTrigger = true, session }: AppHeaderProps) {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const title = getAppRouteTitle(pathname || "");
@@ -37,7 +39,7 @@ export default function AppHeader({ showSidebarTrigger = true }: AppHeaderProps)
 					{RouteIcon ? <RouteIcon aria-hidden className="size-4 shrink-0 text-foreground md:size-5" /> : null}
 					<h1 className="truncate text-lg font-black leading-none tracking-tight text-foreground md:text-xl">{title}</h1>
 				</div>
-				<HeaderUtilities />
+				<HeaderUtilities session={session} />
 			</div>
 			<p className="pl-2 text-xs leading-tight text-muted-foreground">{description}</p>
 		</header>

@@ -11,6 +11,10 @@ import { SalesChannelDetail } from "./SalesChannelDetail";
  *
  * O ponto existe para ser lido de canto de olho, mas nunca é o único portador do significado — a
  * palavra ao lado diz a mesma coisa, e é ela que o leitor de tela e o usuário daltônico usam.
+ *
+ * Abaixo de `md` o header não tem largura para marca + ponto + palavra em cada canal ao lado da
+ * busca: a palavra sai da tela mas não da árvore de acessibilidade (`sr-only`), e o popover a
+ * repete por extenso para quem toca no pill.
  */
 
 /** Tom visual do estado. Só existe em código, então fica em inglês, ao contrário do `estado`. */
@@ -52,7 +56,7 @@ export function SalesChannelPill({ canal }: SalesChannelPillProps) {
 					type="button"
 					aria-label={`${canal.rotulo}: ${config.rotulo.toLowerCase()}. Abrir detalhes.`}
 					className={cn(
-						"flex shrink-0 items-center gap-2 rounded-lg bg-secondary px-2 py-1.5",
+						"flex shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-2 py-1.5 md:gap-2",
 						"transition-colors duration-200 hover:bg-secondary/70",
 						"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
 					)}
@@ -60,7 +64,7 @@ export function SalesChannelPill({ canal }: SalesChannelPillProps) {
 					<ChannelMark canal={canal.canal} />
 					<span className="flex items-center gap-1.5">
 						<span aria-hidden className={cn("size-1.5 shrink-0 rounded-full transition-colors duration-200", DOT_CLASS[config.tone])} />
-						<span className={cn("text-xs font-semibold leading-none", LABEL_CLASS[config.tone])}>{config.rotulo}</span>
+						<span className={cn("max-md:sr-only text-xs font-semibold leading-none", LABEL_CLASS[config.tone])}>{config.rotulo}</span>
 					</span>
 				</button>
 			</PopoverTrigger>
