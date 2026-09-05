@@ -92,6 +92,7 @@ function AppSidebarContentGroupItem({ item }: { item: TSidebarItem }) {
 					<Link href={item.url} aria-current={itemIsActive ? "page" : undefined}>
 						{item.icon}
 						<span>{item.title}</span>
+						{item.badge}
 					</Link>
 				) : (
 					<span>

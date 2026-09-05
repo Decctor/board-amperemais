@@ -78,6 +78,7 @@ type NewSalePageProps = {
 	organizationAutoFiscalCapable: boolean;
 	autoEmissionExceptions: TAutoEmissionExceptions;
 	canEmitFiscal: boolean;
+	canConfigureFiscal?: boolean;
 	/** `vendas.visualizar` — gate da fila de orçamentos em aberto da organização. */
 	canViewSales: boolean;
 	quotePermissions: TQuotePermissions;
@@ -90,6 +91,7 @@ export default function NewSalePage({
 	organizationAutoFiscalCapable,
 	autoEmissionExceptions,
 	canEmitFiscal,
+	canConfigureFiscal,
 	canViewSales,
 	quotePermissions,
 }: NewSalePageProps) {
@@ -505,6 +507,7 @@ export default function NewSalePage({
 							organizationAutoFiscalCapable={organizationAutoFiscalCapable}
 							autoEmissionExceptions={autoEmissionExceptions}
 							canEmitFiscal={canEmitFiscal}
+							canConfigureFiscal={canConfigureFiscal}
 							discountAuthority={discountAuthority}
 							onCreateDraft={handleCreateDraft}
 							onFinalizeSale={handleFinalizeSale}
@@ -538,6 +541,7 @@ export default function NewSalePage({
 									organizationAutoFiscalCapable={organizationAutoFiscalCapable}
 									autoEmissionExceptions={autoEmissionExceptions}
 									canEmitFiscal={canEmitFiscal}
+									canConfigureFiscal={canConfigureFiscal}
 									discountAuthority={discountAuthority}
 									onCreateDraft={handleCreateDraft}
 									onFinalizeSale={handleFinalizeSale}

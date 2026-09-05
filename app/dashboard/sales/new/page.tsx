@@ -49,6 +49,7 @@ export default async function NewSale() {
 			organizationAutoFiscalCapable={isOrganizationAutoFiscalCapable(fiscalSettings)}
 			autoEmissionExceptions={fiscalSettings.fiscalConfiguracao?.emissaoAutomatica?.excecoes ?? EMPTY_AUTO_EMISSION_EXCEPTIONS}
 			canEmitFiscal={sessionUser.membership.permissoes.fiscal.emitir}
+			canConfigureFiscal={sessionUser.membership.permissoes.fiscal.configurar}
 			canViewSales={sessionUser.membership.permissoes.vendas.visualizar ?? false}
 			quotePermissions={{
 				criar: sessionUser.membership.permissoes.vendas.criar ?? false,

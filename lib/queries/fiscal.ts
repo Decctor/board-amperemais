@@ -92,6 +92,8 @@ export function useFiscalPending({ enabled = true, refetchInterval = 60_000 }: {
 			queryFn: fetchFiscalPending,
 			enabled,
 			refetchInterval,
+			// 403 (sem permissao fiscal) nao deve ficar retentando em loop na sidebar.
+			retry: false,
 		}),
 		queryKey: FISCAL_PENDING_QUERY_KEY,
 	};
