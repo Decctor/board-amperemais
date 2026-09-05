@@ -3,18 +3,16 @@
 import { useFiscalDeadline } from "@/components/Modals/FiscalDocument/use-fiscal-deadline";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import type { TFiscalDocumentActionKey } from "@/lib/fiscal/document-actions";
-import { appRoutes } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
-import { ArrowLeftRight, Ban, CircleX, FileIcon, FileText, Lock, PencilIcon, Receipt, RefreshCcw, Send, Zap, type LucideIcon } from "lucide-react";
-import Link from "next/link";
+import { ArrowLeftRight, Ban, CircleX, FileIcon, FileText, Lock, PencilIcon, RefreshCcw, Send, Zap, type LucideIcon } from "lucide-react";
 import {
 	FISCAL_ACTION_ORDER,
 	FISCAL_OPERATIONAL_ACTIONS,
 	isFiscalDocumentClosed,
 	type TFiscalDocumentListItem,
 	type TResolvedFiscalAction,
-} from "./fiscal-document-action-state";
-import type { TFiscalDocumentActionRunner } from "./use-fiscal-document-action-runner";
+} from "../helpers/fiscal-document-action-state";
+import type { TFiscalDocumentActionRunner } from "../helpers/use-fiscal-document-action-runner";
 
 const ACTION_ICONS: Record<TFiscalDocumentActionKey, LucideIcon> = {
 	CANCELAR: CircleX,
@@ -109,14 +107,6 @@ export function FiscalDocumentActionBar({ document, runner }: FiscalDocumentActi
 						</Button>
 					);
 				})}
-				{document.vendaId ? (
-					<Button type="button" size="sm" variant="ghost" asChild>
-						<Link href={appRoutes.sales.details(document.vendaId)}>
-							<Receipt className="h-4 w-4" />
-							Acessar venda
-						</Link>
-					</Button>
-				) : null}
 			</div>
 			{unavailable.length > 0 ? (
 				<div className="flex flex-col gap-1 rounded-lg border border-dashed bg-muted/10 px-2.5 py-2">

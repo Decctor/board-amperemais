@@ -225,6 +225,12 @@ const GetSalesInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? val.split(",").filter((status): status is TSaleStatusEnum => SaleStatusEnum.safeParse(status).success) : [])),
+	// Presença de desconto na venda: "true" só as com desconto, "false" só as sem; ausente não filtra.
+	hasDiscount: z
+		.string({ invalid_type_error: "Tipo inválido para o filtro de desconto." })
+		.optional()
+		.nullable()
+		.transform((val) => (val === "true" ? true : val === "false" ? false : null)),
 });
 
 export type TGetSalesInput = z.infer<typeof GetSalesInputSchema>;
@@ -579,6 +585,7 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 		paymentMethods,
 		deliveryModes,
 		saleStatuses,
+		hasDiscount,
 	} = input;
 
 	// Lido antes do ramo `byId`: o resumo de ERP da venda individual é gateado pelo mesmo módulo
@@ -846,6 +853,8 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 	if (paymentMethods.length > 0) conditions.push(getPaymentMethodCondition({ orgId: userOrgId, methods: paymentMethods }));
 	if (saleStatuses.length > 0) conditions.push(inArray(sales.statusVenda, saleStatuses));
 	if (deliveryModes.length > 0) conditions.push(inArray(sales.entregaModalidade, deliveryModes));
+	if (hasDiscount === true) conditions.push(gt(sales.descontosTotal, 0));
+	if (hasDiscount === false) conditions.push(or(isNull(sales.descontosTotal), lte(sales.descontosTotal, 0))!);
 	if (productIds && productIds.length > 0) {
 		conditions.push(
 			inArray(

@@ -1,7 +1,7 @@
 import type { TGetSalesInput } from "@/app/api/sales/route";
 import { appRoutes } from "@/lib/navigation/routes";
 import { DeliveryModeEnum, PaymentMethodEnum, SaleFinancialDerivedStatusEnum, SaleFiscalDerivedStatusEnum, SaleStatusEnum } from "@/schemas/enums";
-import { createSerializer, parseAsArrayOf, parseAsFloat, parseAsInteger, parseAsIsoDateTime, parseAsString, parseAsStringEnum } from "nuqs";
+import { createSerializer, parseAsArrayOf, parseAsBoolean, parseAsFloat, parseAsInteger, parseAsIsoDateTime, parseAsString, parseAsStringEnum } from "nuqs";
 
 /**
  * Filtros do histórico de vendas como estado na URL (nuqs). Uma única definição serve ao
@@ -26,6 +26,8 @@ export const salesHistoryParsers = {
 	paymentMethods: parseAsArrayOf(parseAsStringEnum(PaymentMethodEnum.options)).withDefault([]),
 	deliveryModes: parseAsArrayOf(parseAsStringEnum(DeliveryModeEnum.options)).withDefault([]),
 	saleStatuses: parseAsArrayOf(parseAsStringEnum(SaleStatusEnum.options)).withDefault([]),
+	/** `true` só vendas com desconto, `false` só sem; `null` não filtra. */
+	hasDiscount: parseAsBoolean,
 };
 
 export type TSalesHistoryUrlState = {

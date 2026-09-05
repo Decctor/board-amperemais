@@ -2,9 +2,10 @@
 
 import type { TSalesResults } from "@/lib/sales/results";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { getPaymentMethodIcon } from "@/lib/payments/icons";
 import { formatPaymentMethod } from "@/lib/payments/labels";
 import { buildSalesHistoryHref, type TSalesHistoryUrlState } from "@/lib/sales/history-url-state";
-import { Wallet } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Equal, Wallet } from "lucide-react";
 import Link from "next/link";
 
 type PaymentMethodsBlockProps = {
@@ -40,28 +41,7 @@ export function PaymentMethodsBlock({ porMetodo, faturamento, historyFilters }: 
 			) : (
 				<div className="flex flex-col gap-2">
 					{linhas.map((linha) => (
-						<Link
-							key={linha.metodo}
-							href={buildSalesHistoryHref({ ...historyFilters, paymentMethods: [linha.metodo] })}
-							title="Ver as vendas deste método no histórico"
-							className="flex flex-col gap-1 rounded-md -mx-1 px-1 py-0.5 transition-colors hover:bg-muted/60"
-						>
-							<div className="flex items-center justify-between gap-2 text-xs">
-								<span className="font-semibold">{formatPaymentMethod(linha.metodo)}</span>
-								<div className="flex items-center gap-3 tabular-nums">
-									<span className="text-muted-foreground">
-										{linha.qtdeVendas} {linha.qtdeVendas === 1 ? "venda" : "vendas"}
-									</span>
-									{linha.valorPendente > 0 ? <span className="text-amber-700 dark:text-amber-400">a receber {formatToMoney(linha.valorPendente)}</span> : null}
-									{linha.valorTaxas > 0 ? <span className="text-muted-foreground">taxas {formatToMoney(linha.valorTaxas)}</span> : null}
-									<span className="font-medium">{formatToMoney(linha.valor)}</span>
-									<span className="w-12 text-right text-muted-foreground">{formatDecimalPlaces(linha.participacaoPercentual, 1, 1)}%</span>
-								</div>
-							</div>
-							<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-								<div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, linha.participacaoPercentual))}%` }} />
-							</div>
-						</Link>
+						<PaymentMethodRow key={linha.metodo} linha={linha} historyFilters={historyFilters} />
 					))}
 				</div>
 			)}
@@ -81,5 +61,63 @@ export function PaymentMethodsBlock({ porMetodo, faturamento, historyFilters }: 
 				) : null}
 			</div>
 		</section>
+	);
+}
+
+type PaymentMethodRowProps = {
+	linha: TSalesResults["porMetodo"]["linhas"][number];
+	historyFilters: Partial<TSalesHistoryUrlState>;
+};
+
+function PaymentMethodRow({ linha, historyFilters }: PaymentMethodRowProps) {
+	const Icon = getPaymentMethodIcon(linha.metodo);
+	const hasOutflow = linha.saidas.total > 0;
+	const outflowParts = [
+		linha.saidas.troco > 0 ? `troco ${formatToMoney(linha.saidas.troco)}` : null,
+		linha.saidas.taxasCanal > 0 ? `taxas do canal ${formatToMoney(linha.saidas.taxasCanal)}` : null,
+	].filter((part): part is string => part !== null);
+
+	return (
+		<Link
+			href={buildSalesHistoryHref({ ...historyFilters, paymentMethods: [linha.metodo] })}
+			title="Ver as vendas deste método no histórico"
+			className="flex flex-col gap-1 rounded-md -mx-1 px-1 py-0.5 transition-colors hover:bg-muted/60"
+		>
+			<div className="flex items-center justify-between gap-2 text-xs">
+				<div className="flex items-center gap-1.5">
+					<Icon className="h-3.5 w-3.5 min-h-3.5 min-w-3.5 text-muted-foreground" />
+					<span className="font-semibold">{formatPaymentMethod(linha.metodo)}</span>
+				</div>
+				<div className="flex items-center gap-3 tabular-nums">
+					<span className="text-muted-foreground">
+						{linha.qtdeVendas} {linha.qtdeVendas === 1 ? "venda" : "vendas"}
+					</span>
+					{linha.valorPendente > 0 ? <span className="text-amber-700 dark:text-amber-400">a receber {formatToMoney(linha.valorPendente)}</span> : null}
+					{linha.valorTaxas > 0 ? <span className="text-muted-foreground">taxas {formatToMoney(linha.valorTaxas)}</span> : null}
+					<span className="font-medium">{formatToMoney(linha.valor)}</span>
+					<span className="w-12 text-right text-muted-foreground">{formatDecimalPlaces(linha.participacaoPercentual, 1, 1)}%</span>
+				</div>
+			</div>
+			<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+				<div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, linha.participacaoPercentual))}%` }} />
+			</div>
+			{hasOutflow ? (
+				// Fluxo do método: o valor acima é o que entrou; aqui fica claro quanto saiu e quanto ficou.
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] tabular-nums">
+					<span className="flex items-center gap-0.5 text-green-700 dark:text-green-400">
+						<ArrowDownLeft className="h-3 w-3" />
+						entrou {formatToMoney(linha.valor)}
+					</span>
+					<span className="flex items-center gap-0.5 text-red-700 dark:text-red-400">
+						<ArrowUpRight className="h-3 w-3" />
+						saiu {formatToMoney(linha.saidas.total)} ({outflowParts.join(" + ")})
+					</span>
+					<span className="flex items-center gap-0.5 font-medium">
+						<Equal className="h-3 w-3" />
+						ficou {formatToMoney(linha.valorLiquido)}
+					</span>
+				</div>
+			) : null}
+		</Link>
 	);
 }

@@ -25,6 +25,7 @@ async function fetchSales(input: TGetSalesInput) {
 	if (input.paymentMethods.length > 0) searchParams.set("paymentMethods", input.paymentMethods.join(","));
 	if (input.deliveryModes.length > 0) searchParams.set("deliveryModes", input.deliveryModes.join(","));
 	if (input.saleStatuses.length > 0) searchParams.set("saleStatuses", input.saleStatuses.join(","));
+	if (input.hasDiscount !== null && input.hasDiscount !== undefined) searchParams.set("hasDiscount", String(input.hasDiscount));
 	const { data } = await axios.get<TGetSalesOutput>(`/api/sales?${searchParams.toString()}`);
 	const result = input.clientId ? data.data.byClientId : data.data.default;
 	if (!result) throw new Error("Vendas não encontradas.");
@@ -53,6 +54,7 @@ export function useSales({ initialParams }: UseSalesParams) {
 		paymentMethods: initialParams.paymentMethods ?? [],
 		deliveryModes: initialParams.deliveryModes ?? [],
 		saleStatuses: initialParams.saleStatuses ?? [],
+		hasDiscount: initialParams.hasDiscount ?? null,
 	});
 	function updateParams(newParams: Partial<TGetSalesInput>) {
 		setParams((prev) => ({ ...prev, ...newParams }));

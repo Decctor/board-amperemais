@@ -4,12 +4,15 @@ import type { TSalesResults } from "@/lib/sales/results";
 import { DeltaBadge } from "@/app/dashboard/finance/_components/delta-badge";
 import { StatCard } from "@/app/dashboard/finance/_components/stat-card";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { buildSalesHistoryHref, type TSalesHistoryUrlState } from "@/lib/sales/history-url-state";
 import { cn } from "@/lib/utils";
 import { BadgeDollarSign, Ban, Package, Percent, ReceiptText, Tag, Target, TrendingUp } from "lucide-react";
 
 type SummaryBlockProps = {
 	resumo: TSalesResults["resumo"];
 	canViewSensitive: boolean;
+	/** Recorte do relatório (período, vendedores, status) que os cartões clicáveis levam ao histórico. */
+	historyFilters: Partial<TSalesHistoryUrlState>;
 };
 
 function MetricValue({ atual, anterior, format, invert }: { atual: number | null; anterior: number | null; format: (v: number) => string; invert?: boolean }) {
@@ -21,8 +24,13 @@ function MetricValue({ atual, anterior, format, invert }: { atual: number | null
 	);
 }
 
-export function SummaryBlock({ resumo, canViewSensitive }: SummaryBlockProps) {
+export function SummaryBlock({ resumo, canViewSensitive, historyFilters }: SummaryBlockProps) {
 	const money = (v: number) => formatToMoney(v);
+	// Cada cartão com recorte equivalente no histórico abre a listagem já filtrada. Ticket médio,
+	// itens, margem e meta são derivados sem filtro correspondente e ficam estáticos.
+	const salesHref = buildSalesHistoryHref(historyFilters);
+	const discountedSalesHref = buildSalesHistoryHref({ ...historyFilters, hasDiscount: true });
+	const cancelledSalesHref = buildSalesHistoryHref({ ...historyFilters, saleStatuses: ["CANCELADA"] });
 	const integer = (v: number) => formatDecimalPlaces(v, 0, 0);
 	const margemPercentual =
 		resumo.margemBruta?.atual != null && (resumo.faturamento.atual ?? 0) > 0 ? (resumo.margemBruta.atual / (resumo.faturamento.atual as number)) * 100 : null;
@@ -35,12 +43,16 @@ export function SummaryBlock({ resumo, canViewSensitive }: SummaryBlockProps) {
 					iconWrapperClassName="bg-blue-200 text-blue-600"
 					label="VENDAS"
 					value={<MetricValue atual={resumo.qtdeVendas.atual} anterior={resumo.qtdeVendas.anterior} format={integer} />}
+					href={salesHref}
+					title="Ver as vendas do período no histórico"
 				/>
 				<StatCard
 					icon={<BadgeDollarSign className="h-4 w-4 min-h-4 min-w-4" />}
 					iconWrapperClassName="bg-green-200 text-green-600"
 					label="FATURAMENTO"
 					value={<MetricValue atual={resumo.faturamento.atual} anterior={resumo.faturamento.anterior} format={money} />}
+					href={salesHref}
+					title="Ver as vendas do período no histórico"
 				/>
 				<StatCard
 					icon={<TrendingUp className="h-4 w-4 min-h-4 min-w-4" />}
@@ -61,6 +73,8 @@ export function SummaryBlock({ resumo, canViewSensitive }: SummaryBlockProps) {
 					iconWrapperClassName="bg-orange-200 text-orange-600"
 					label="DESCONTOS"
 					value={<MetricValue atual={resumo.descontos.atual} anterior={resumo.descontos.anterior} format={money} invert />}
+					href={discountedSalesHref}
+					title="Ver as vendas com desconto no histórico"
 				/>
 				<StatCard
 					icon={<Ban className="h-4 w-4 min-h-4 min-w-4" />}
@@ -74,6 +88,8 @@ export function SummaryBlock({ resumo, canViewSensitive }: SummaryBlockProps) {
 							</span>
 						</div>
 					}
+					href={cancelledSalesHref}
+					title="Ver as vendas canceladas no histórico"
 				/>
 				{canViewSensitive && resumo.margemBruta ? (
 					<StatCard

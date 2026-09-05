@@ -3,15 +3,19 @@
 import type { TSalesResults } from "@/lib/sales/results";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
+import { buildSalesHistoryHref, type TSalesHistoryUrlState } from "@/lib/sales/history-url-state";
 import { cn } from "@/lib/utils";
 import { UsersRound } from "lucide-react";
+import Link from "next/link";
 
 type SellersBlockProps = {
 	porVendedor: TSalesResults["porVendedor"];
 	canViewSensitive: boolean;
+	/** Recorte do relatório (período, status) que cada vendedor leva ao histórico. */
+	historyFilters: Partial<TSalesHistoryUrlState>;
 };
 
-export function SellersBlock({ porVendedor, canViewSensitive }: SellersBlockProps) {
+export function SellersBlock({ porVendedor, canViewSensitive, historyFilters }: SellersBlockProps) {
 	return (
 		<section className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
 			<div className="flex items-center gap-2">
@@ -39,7 +43,20 @@ export function SellersBlock({ porVendedor, canViewSensitive }: SellersBlockProp
 					<TableBody>
 						{porVendedor.map((linha) => (
 							<TableRow key={linha.vendedorId ?? "sem-vendedor"}>
-								<TableCell className="font-medium">{linha.vendedorNome}</TableCell>
+								<TableCell className="font-medium">
+									{linha.vendedorId ? (
+										<Link
+											href={buildSalesHistoryHref({ ...historyFilters, sellersIds: [linha.vendedorId] })}
+											title="Ver as vendas deste vendedor no histórico"
+											className="underline-offset-2 hover:underline"
+										>
+											{linha.vendedorNome}
+										</Link>
+									) : (
+										// Venda sem vendedor não tem como ser filtrada no histórico.
+										linha.vendedorNome
+									)}
+								</TableCell>
 								<TableCell className="text-right tabular-nums">{linha.qtdeVendas}</TableCell>
 								<TableCell className="text-right font-medium tabular-nums">{formatToMoney(linha.faturamento)}</TableCell>
 								<TableCell className="text-right tabular-nums">{linha.ticketMedio === null ? "—" : formatToMoney(linha.ticketMedio)}</TableCell>

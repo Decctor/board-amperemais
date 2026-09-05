@@ -17,10 +17,14 @@ import { buildSalesUniverseConditions, buildSalesUniverseIdsSubquery, type TSale
  * O que entrou nas contas no período é pergunta do financeiro (fluxo de caixa por
  * `dataEfetivacao`), não deste relatório.
  */
+function round2(value: number) {
+	return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
 export async function getSalesResultsByPaymentMethod({ filters }: { filters: TSalesResultsFilters }) {
 	const universeIds = buildSalesUniverseIdsSubquery(filters, "CONFIRMADA");
 
-	const [rows, reconciliationRows, [coverageRow], [universeRow]] = await Promise.all([
+	const [rows, outflowRows, reconciliationRows, [coverageRow], [universeRow]] = await Promise.all([
 		db
 			.select({
 				metodo: financialTransactions.metodo,
@@ -38,6 +42,26 @@ export async function getSalesResultsByPaymentMethod({ filters }: { filters: TSa
 					eq(financialTransactions.tipo, "ENTRADA"),
 					eq(accountingEntries.origemTipo, "VENDA"),
 					inArray(accountingEntries.vendaId, universeIds),
+				),
+			)
+			.groupBy(financialTransactions.metodo),
+		// O que saiu por método: troco devolvido ao cliente (SAÍDA com origem TROCO, sempre em
+		// dinheiro) e taxas retidas pelo canal. É o que explica "entrou X, mas ficou Y" em cada linha.
+		db
+			.select({
+				metodo: financialTransactions.metodo,
+				troco: sql<string>`coalesce(sum(case when ${financialTransactions.modificadoresMetadata}->>'origem' = ${SALE_CHANGE_TRANSACTION_ORIGIN} then ${financialTransactions.valor} else 0 end), 0)`,
+				taxasCanal: sql<string>`coalesce(sum(case when ${accountingEntries.chaveIdempotencia} like 'taxas-canal:%' then ${financialTransactions.valor} else 0 end), 0)`,
+			})
+			.from(financialTransactions)
+			.innerJoin(accountingEntries, eq(financialTransactions.lancamentoContabilId, accountingEntries.id))
+			.where(
+				and(
+					eq(financialTransactions.organizacaoId, filters.organizacaoId),
+					eq(financialTransactions.tipo, "SAIDA"),
+					eq(accountingEntries.origemTipo, "VENDA"),
+					inArray(accountingEntries.vendaId, universeIds),
+					sql`coalesce(${financialTransactions.provedorStatus}, '') not in ('CANCELADO', 'ESTORNADO')`,
 				),
 			)
 			.groupBy(financialTransactions.metodo),
@@ -84,14 +108,6 @@ export async function getSalesResultsByPaymentMethod({ filters }: { filters: TSa
 			.where(and(...buildSalesUniverseConditions(filters, "CONFIRMADA"))),
 	]);
 
-	const linhasBase = rows.map((row) => ({
-		metodo: row.metodo as TPaymentMethodEnum,
-		valor: Number(row.valor ?? 0),
-		qtdeVendas: row.qtdeVendas,
-		valorEfetivado: Number(row.valorEfetivado ?? 0),
-		valorPendente: Number(row.valorPendente ?? 0),
-		valorTaxas: Number(row.valorTaxas ?? 0),
-	}));
 	const reconciliation = reconcilePaymentTotals(
 		reconciliationRows.map((row) => ({
 			valorVenda: row.valorVenda,
@@ -102,8 +118,31 @@ export async function getSalesResultsByPaymentMethod({ filters }: { filters: TSa
 		})),
 	);
 	const totalRecebido = reconciliation.totalRecebido;
-	const linhas = linhasBase
-		.map((linha) => ({ ...linha, participacaoPercentual: computeShare(linha.valor, reconciliation.totalBruto) }))
+
+	// Uma linha por método que teve entrada OU saída: taxas de canal podem sair por um método sem
+	// entrada própria, e a linha precisa existir para o fluxo fechar.
+	const outflowByMethod = new Map(outflowRows.map((row) => [row.metodo as TPaymentMethodEnum, { troco: Number(row.troco), taxasCanal: Number(row.taxasCanal) }]));
+	const methods = new Set<TPaymentMethodEnum>([...rows.map((row) => row.metodo as TPaymentMethodEnum), ...outflowByMethod.keys()]);
+	const linhas = Array.from(methods)
+		.map((metodo) => {
+			const row = rows.find((candidate) => candidate.metodo === metodo);
+			const outflow = outflowByMethod.get(metodo) ?? { troco: 0, taxasCanal: 0 };
+			// Troco legado (sem SAÍDA persistida) só existe em dinheiro; entra na linha para o líquido bater com o total.
+			const troco = round2(outflow.troco + (metodo === "DINHEIRO" ? reconciliation.ajustes.trocoInferido : 0));
+			const valor = Number(row?.valor ?? 0);
+			const saidas = { troco, taxasCanal: outflow.taxasCanal, total: round2(troco + outflow.taxasCanal) };
+			return {
+				metodo,
+				valor,
+				qtdeVendas: row?.qtdeVendas ?? 0,
+				valorEfetivado: Number(row?.valorEfetivado ?? 0),
+				valorPendente: Number(row?.valorPendente ?? 0),
+				valorTaxas: Number(row?.valorTaxas ?? 0),
+				saidas,
+				valorLiquido: round2(valor - saidas.total),
+				participacaoPercentual: computeShare(valor, reconciliation.totalBruto),
+			};
+		})
 		.sort((a, b) => b.valor - a.valor);
 
 	const vendasSemPagamento = coverageRow.qtde;

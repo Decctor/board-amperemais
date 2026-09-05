@@ -1059,6 +1059,26 @@ function SaleCardActionsMenu({
   );
 }
 
+// Presença de desconto: o valor vai à URL como "true"/"false" (nuqs parseAsBoolean) e à API igual.
+type TDiscountFilterValue = "true" | "false";
+const DISCOUNT_FILTER_OPTIONS: InteractiveFilterOption<TDiscountFilterValue>[] = [
+  {
+    id: "with-discount",
+    value: "true",
+    label: "COM DESCONTO",
+    startContent: <BadgePercent className="h-4 w-4 text-orange-600" />,
+  },
+  {
+    id: "without-discount",
+    value: "false",
+    label: "SEM DESCONTO",
+    startContent: <CircleOff className="h-4 w-4 text-muted-foreground" />,
+  },
+];
+function toDiscountFilterValue(hasDiscount: boolean | null | undefined): TDiscountFilterValue | null {
+  return hasDiscount === true ? "true" : hasDiscount === false ? "false" : null;
+}
+
 type SalesInlineFiltersProps = {
   filters: TGetSalesInput;
   updateFilters: (filters: Partial<TGetSalesInput>) => void;
@@ -1086,6 +1106,8 @@ function SalesInlineFilters({
   const hasPaymentMethods = filters.paymentMethods.length > 0;
   const hasDeliveryModes = filters.deliveryModes.length > 0;
   const hasSaleStatuses = filters.saleStatuses.length > 0;
+  const discountFilterValue = toDiscountFilterValue(filters.hasDiscount);
+  const hasDiscountFilter = discountFilterValue !== null;
 
   return (
     <div className="flex w-full flex-wrap items-center gap-2">
@@ -1217,6 +1239,18 @@ function SalesInlineFilters({
             updateFilters({ deliveryModes, page: 1 })
           }
           onClear={() => updateFilters({ deliveryModes: [], page: 1 })}
+        />
+      ) : null}
+      {hasDiscountFilter ? (
+        <SalesSingleFilter
+          icon={<BadgePercent className="h-4 w-4" />}
+          label="DESCONTO"
+          options={DISCOUNT_FILTER_OPTIONS}
+          value={discountFilterValue}
+          onChange={(value) =>
+            updateFilters({ hasDiscount: value === "true", page: 1 })
+          }
+          onClear={() => updateFilters({ hasDiscount: null, page: 1 })}
         />
       ) : null}
 
@@ -1367,10 +1401,69 @@ function SalesInlineFilters({
                 />
               </InteractiveFilter.AddFilterItem>
             ) : null}
+            {!hasDiscountFilter ? (
+              <InteractiveFilter.AddFilterItem
+                id="discount"
+                label="DESCONTO"
+                icon={<BadgePercent className="h-4 w-4" />}
+              >
+                <InteractiveFilter.SingleContent
+                  options={DISCOUNT_FILTER_OPTIONS}
+                  value={discountFilterValue}
+                  onChange={(value) =>
+                    updateFilters({ hasDiscount: value === "true", page: 1 })
+                  }
+                  onClear={() => updateFilters({ hasDiscount: null, page: 1 })}
+                  clearLabel="TODAS"
+                />
+              </InteractiveFilter.AddFilterItem>
+            ) : null}
           </InteractiveFilter.AddFilterSection>
         </InteractiveFilter.AddFilterContent>
       </InteractiveFilter.AddFilterRoot>
     </div>
+  );
+}
+
+function SalesSingleFilter<T extends string>({
+  icon,
+  label,
+  options,
+  value,
+  onChange,
+  onClear,
+  clearLabel = "TODAS",
+}: {
+  icon: ReactNode;
+  label: string;
+  options: InteractiveFilterOption<T>[];
+  value: T | null;
+  onChange: (value: T) => void;
+  onClear: () => void;
+  clearLabel?: string;
+}) {
+  return (
+    <InteractiveFilter.Root className="w-fit">
+      <InteractiveFilter.Trigger>
+        <InteractiveFilter.Icon>
+          {icon}
+          <InteractiveFilter.Label>{label}</InteractiveFilter.Label>
+        </InteractiveFilter.Icon>
+        <InteractiveFilter.Value>
+          {formatInteractiveOptionSummary(options, value === null ? [] : [value])}
+        </InteractiveFilter.Value>
+        <InteractiveFilter.Clear onClear={onClear} />
+      </InteractiveFilter.Trigger>
+      <InteractiveFilter.Content className="w-60 p-0">
+        <InteractiveFilter.SingleContent
+          options={options}
+          value={value}
+          onChange={onChange}
+          onClear={onClear}
+          clearLabel={clearLabel}
+        />
+      </InteractiveFilter.Content>
+    </InteractiveFilter.Root>
   );
 }
 

@@ -28,7 +28,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Clock, ExternalLink, Layers, Package, Send, Wrench } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { formatFiscalDocumentTypeLabel, type TFiscalPermissions } from "./fiscal-document-action-state";
+import { formatFiscalDocumentTypeLabel, type TFiscalPermissions } from "../documents/helpers/fiscal-document-action-state";
 
 type TPendingSummary = TGetFiscalPendingOutput["data"];
 type TPendingGroup = TPendingSummary["porAlvo"][number];

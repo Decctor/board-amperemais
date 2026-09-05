@@ -32,8 +32,8 @@ import {
 	isFiscalDocumentClosed,
 	type TFiscalDocumentListItem,
 	type TResolvedFiscalAction,
-} from "./fiscal-document-action-state";
-import type { TFiscalDocumentActionRunner } from "./use-fiscal-document-action-runner";
+} from "../helpers/fiscal-document-action-state";
+import type { TFiscalDocumentActionRunner } from "../helpers/use-fiscal-document-action-runner";
 
 const ACTION_ICONS: Record<TFiscalDocumentActionKey, LucideIcon> = {
 	CANCELAR: CircleX,

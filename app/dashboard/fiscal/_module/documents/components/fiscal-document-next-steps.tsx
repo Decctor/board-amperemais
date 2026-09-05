@@ -16,8 +16,8 @@ import {
 	isFiscalDocumentFailed,
 	type TFiscalDocumentListItem,
 	type TFiscalPermissions,
-} from "./fiscal-document-action-state";
-import type { TFiscalDocumentActionRunner } from "./use-fiscal-document-action-runner";
+} from "../helpers/fiscal-document-action-state";
+import type { TFiscalDocumentActionRunner } from "../helpers/use-fiscal-document-action-runner";
 
 type FiscalDocumentNextStepsProps = {
 	document: TFiscalDocumentListItem;

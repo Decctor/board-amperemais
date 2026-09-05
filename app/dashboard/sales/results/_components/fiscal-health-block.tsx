@@ -3,7 +3,9 @@
 import type { TSalesResults } from "@/lib/sales/results";
 import { formatToMoney } from "@/lib/formatting";
 import { appRoutes } from "@/lib/navigation/routes";
+import { buildSalesHistoryHref, type TSalesHistoryUrlState } from "@/lib/sales/history-url-state";
 import { cn } from "@/lib/utils";
+import type { TSaleFiscalDerivedStatusEnum } from "@/schemas/enums";
 import dayjs from "dayjs";
 import { FileCheck2, Wrench } from "lucide-react";
 import Link from "next/link";
@@ -24,11 +26,27 @@ const LIFECYCLE_LABELS: Record<string, string> = {
 type FiscalHealthBlockProps = {
 	fiscal: TSalesResults["fiscal"];
 	qtdeVendas: number;
+	/** Recorte do relatório (período, vendedores, status) que os contadores levam ao histórico. */
+	historyFilters: Partial<TSalesHistoryUrlState>;
 };
 
-function Count({ label, value, tone }: { label: string; value: number; tone: "ok" | "warn" | "bad" | "muted" }) {
+// Cada balde do relatório em termos do status fiscal derivado do histórico. O relatório classifica
+// a venda pelo documento mais recente e o histórico pela prioridade entre todos os documentos, então
+// vendas com reemissão podem cair em baldes diferentes nas duas telas.
+const FISCAL_BUCKET_HISTORY_STATUSES: Record<"autorizadas" | "pendentes" | "rejeitadas" | "canceladas", TSaleFiscalDerivedStatusEnum[]> = {
+	autorizadas: ["AUTORIZADO"],
+	pendentes: ["PENDENTE", "EM_PROCESSAMENTO"],
+	rejeitadas: ["REJEITADO", "ERRO"],
+	canceladas: ["CANCELADO", "INUTILIZADO"],
+};
+
+function Count({ label, value, tone, href }: { label: string; value: number; tone: "ok" | "warn" | "bad" | "muted"; href: string }) {
 	return (
-		<div className="flex flex-col items-center rounded-lg bg-muted/50 px-2 py-1.5">
+		<Link
+			href={href}
+			title="Ver estas vendas no histórico"
+			className="flex flex-col items-center rounded-lg bg-muted/50 px-2 py-1.5 transition-colors hover:bg-muted"
+		>
 			<span
 				className={cn("text-sm font-bold tabular-nums", {
 					"text-green-700 dark:text-green-400": tone === "ok" && value > 0,
@@ -40,12 +58,15 @@ function Count({ label, value, tone }: { label: string; value: number; tone: "ok
 				{value}
 			</span>
 			<span className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</span>
-		</div>
+		</Link>
 	);
 }
 
-export function FiscalHealthBlock({ fiscal, qtdeVendas }: FiscalHealthBlockProps) {
+export function FiscalHealthBlock({ fiscal, qtdeVendas, historyFilters }: FiscalHealthBlockProps) {
 	const hasAnyDocument = fiscal.porTipo.length > 0;
+	const bucketHref = (bucket: keyof typeof FISCAL_BUCKET_HISTORY_STATUSES) =>
+		buildSalesHistoryHref({ ...historyFilters, fiscalStatuses: FISCAL_BUCKET_HISTORY_STATUSES[bucket] });
+	const withoutDocumentHref = buildSalesHistoryHref({ ...historyFilters, fiscalStatuses: ["NAO_EMITIDO"] });
 
 	return (
 		<section className="bg-card border-border flex w-full flex-col gap-3 rounded-xl border px-3 py-4 shadow-2xs">
@@ -78,22 +99,26 @@ export function FiscalHealthBlock({ fiscal, qtdeVendas }: FiscalHealthBlockProps
 								<span className="tabular-nums text-muted-foreground">autorizado {formatToMoney(tipo.valorAutorizado)}</span>
 							</div>
 							<div className="grid grid-cols-4 gap-1.5">
-								<Count label="Autorizadas" value={tipo.autorizadas} tone="ok" />
-								<Count label="Pendentes" value={tipo.pendentes} tone="warn" />
-								<Count label="Rejeitadas" value={tipo.rejeitadas} tone="bad" />
-								<Count label="Canceladas" value={tipo.canceladas} tone="muted" />
+								<Count label="Autorizadas" value={tipo.autorizadas} tone="ok" href={bucketHref("autorizadas")} />
+								<Count label="Pendentes" value={tipo.pendentes} tone="warn" href={bucketHref("pendentes")} />
+								<Count label="Rejeitadas" value={tipo.rejeitadas} tone="bad" href={bucketHref("rejeitadas")} />
+								<Count label="Canceladas" value={tipo.canceladas} tone="muted" href={bucketHref("canceladas")} />
 							</div>
 						</div>
 					))}
 				</div>
 			)}
 
-			<div className="flex items-center justify-between border-t border-border pt-2 text-[11px] text-muted-foreground">
+			<Link
+				href={withoutDocumentHref}
+				title="Ver as vendas sem documento fiscal no histórico"
+				className="flex items-center justify-between border-t border-border pt-2 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+			>
 				<span>Vendas sem documento fiscal</span>
 				<span className="tabular-nums">
 					{fiscal.vendasSemDocumento.qtde} de {qtdeVendas}
 				</span>
-			</div>
+			</Link>
 
 			{fiscal.rejeicoes.length > 0 ? (
 				<div className="flex flex-col gap-1">
