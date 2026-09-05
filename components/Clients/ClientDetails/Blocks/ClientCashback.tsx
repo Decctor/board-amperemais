@@ -1,13 +1,9 @@
-import type { TGetCashbackProgramTransactionsOutputByClientId } from "@/app/api/cashback-programs/transactions/route";
+import { CashbackTransaction, ClientCashbackTransactionRow } from "@/components/CashbackPrograms/CashbackTransactionCard";
 import { Button } from "@/components/ui/button";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { getErrorMessage } from "@/lib/errors";
-import { formatCashbackValue, formatDateAsLocale, getCashbackUnitLabel, formatToMoney } from "@/lib/formatting";
-import { appRoutes } from "@/lib/navigation/routes";
+import { formatCashbackValue, getCashbackUnitLabel } from "@/lib/formatting";
 import { useCashbackProgram, useCashbackProgramTransactionsByClientId, useClientCashbackBalance } from "@/lib/queries/cashback-programs";
-import { cn } from "@/lib/utils";
-import { ArrowUpRight, BadgePercent, History, TrendingDown, TrendingUp } from "lucide-react";
-import Link from "next/link";
+import { BadgePercent } from "lucide-react";
 import { useMemo, useState } from "react";
 type ClientCashbackProps = {
 	clientId: string;
@@ -70,9 +66,11 @@ export default function ClientCashback({ clientId }: ClientCashbackProps) {
 					<p className="text-sm text-muted-foreground">Nenhuma transação encontrada.</p>
 				) : null}
 
-				{transactions.map((transaction) => (
-					<TransactionCard key={transaction.id} transaction={transaction} terminology={terminology} />
-				))}
+				<CashbackTransaction.List>
+					{transactions.map((transaction) => (
+						<ClientCashbackTransactionRow key={transaction.id} transaction={transaction} terminology={terminology} />
+					))}
+				</CashbackTransaction.List>
 			</div>
 			{totalPages > 1 ? (
 				<div className="mt-1 shrink-0 flex items-center justify-end gap-2">
@@ -88,158 +86,5 @@ export default function ClientCashback({ clientId }: ClientCashbackProps) {
 				</div>
 			) : null}
 		</div>
-	);
-}
-
-function TransactionTypeBadge({ type }: { type: "ACÚMULO" | "RESGATE" | "EXPIRAÇÃO" | "CANCELAMENTO" }) {
-	if (type === "ACÚMULO") {
-		return (
-			<span className="inline-flex items-center rounded-md border border-green-300 bg-green-100 px-2 py-1 text-xs font-semibold text-green-700 w-fit">
-				ACÚMULO
-			</span>
-		);
-	}
-
-	if (type === "RESGATE") {
-		return (
-			<span className="inline-flex items-center rounded-md border border-blue-300 bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700 w-fit">
-				RESGATE
-			</span>
-		);
-	}
-
-	if (type === "EXPIRAÇÃO") {
-		return (
-			<span className="inline-flex items-center rounded-md border border-amber-300 bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700 w-fit">
-				EXPIRAÇÃO
-			</span>
-		);
-	}
-
-	return (
-		<span className="inline-flex items-center rounded-md border border-gray-300 bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700 w-fit">
-			CANCELAMENTO
-		</span>
-	);
-}
-
-function TransactionCard({
-	transaction,
-	terminology,
-}: {
-	transaction: TGetCashbackProgramTransactionsOutputByClientId["transactions"][number];
-	terminology: "DINHEIRO" | "PONTOS";
-}) {
-	return (
-		<HoverCard key={transaction.id}>
-			<HoverCardTrigger asChild>
-				<div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-primary/5 transition-colors cursor-pointer group">
-					<div
-						className={cn(
-							"h-10 w-10 min-h-10 min-w-10 rounded-full flex items-center justify-center border",
-							transaction.tipo === "ACÚMULO"
-								? "bg-green-100 border-green-200 text-green-700"
-								: transaction.tipo === "RESGATE"
-									? "bg-blue-100 border-blue-200 text-blue-700"
-									: "bg-red-100 border-red-200 text-red-700",
-						)}
-					>
-						{transaction.tipo === "ACÚMULO" ? (
-							<TrendingUp className="h-5 w-5" />
-						) : transaction.tipo === "RESGATE" ? (
-							<TrendingDown className="h-5 w-5" />
-						) : (
-							<History className="h-5 w-5" />
-						)}
-					</div>
-
-					<div className="flex-1 flex flex-col gap-1">
-						<TransactionTypeBadge type={transaction.tipo} />
-						<div className="flex items-center gap-2 text-xs text-muted-foreground">
-							<span>{formatDateAsLocale(transaction.dataInsercao, true)}</span>
-							{transaction.expiracaoData && <span>• Expira: {formatDateAsLocale(transaction.expiracaoData, true)}</span>}
-						</div>
-					</div>
-
-					<div className={cn("text-sm font-bold", transaction.tipo === "RESGATE" ? "text-red-600" : "text-green-600")}>
-						{transaction.tipo === "RESGATE" ? "-" : "+"} {formatCashbackValue(Math.abs(transaction.valor), terminology)}
-					</div>
-				</div>
-			</HoverCardTrigger>
-			<HoverCardContent className="w-80 overflow-hidden p-4 flex flex-col gap-3" align="start">
-				<div className="w-full flex flex-col gap-3">
-					<div className="flex items-center gap-3">
-						<div
-							className={cn(
-								"h-10 w-10 min-h-10 min-w-10 rounded-full flex items-center justify-center border",
-								transaction.tipo === "ACÚMULO"
-									? "bg-green-100 border-green-200 text-green-700"
-									: transaction.tipo === "RESGATE"
-										? "bg-blue-100 border-blue-200 text-blue-700"
-										: "bg-red-100 border-red-200 text-red-700",
-							)}
-						>
-							{transaction.tipo === "ACÚMULO" ? (
-								<TrendingUp className="h-5 w-5" />
-							) : transaction.tipo === "RESGATE" ? (
-								<TrendingDown className="h-5 w-5" />
-							) : (
-								<History className="h-5 w-5" />
-							)}
-						</div>
-						<div>
-							<p className="text-sm font-bold">{transaction.tipo}</p>
-							<p className="text-xs text-muted-foreground">{formatDateAsLocale(transaction.dataInsercao)}</p>
-						</div>
-						<div className="ml-auto">
-							<span className={cn("text-sm font-bold", transaction.tipo === "RESGATE" ? "text-red-600" : "text-green-600")}>
-								{transaction.tipo === "RESGATE" ? "-" : "+"} {formatCashbackValue(Math.abs(transaction.valor), terminology)}
-							</span>
-						</div>
-					</div>
-					<div className="pt-4 w-full flex flex-col gap-1.5 border-t">
-						<div className="flex items-center justify-between gap-1.5">
-							<span className="text-xs text-muted-foreground">CLIENTE</span>
-							<span className="text-xs font-medium text-right">{transaction.cliente.nome}</span>
-						</div>
-
-						{transaction.venda && (
-							<>
-								<div className="flex items-center justify-between gap-1.5">
-									<span className="text-xs text-muted-foreground">VENDA</span>
-									<span className="text-xs font-medium trucate text-end">#{transaction.venda.id}</span>
-								</div>
-								<div className="flex items-center justify-between gap-1.5">
-									<span className="text-xs text-muted-foreground">VALOR DA VENDA</span>
-									<span className="text-xs font-medium truncate text-end">{formatToMoney(transaction.venda.valorTotal)}</span>
-								</div>
-								{transaction.venda.canal && (
-									<div className="flex items-center justify-between gap-1.5">
-										<span className="text-xs text-muted-foreground">CANAL</span>
-										<span className="text-xs font-medium truncate text-end">{transaction.venda.canal}</span>
-									</div>
-								)}
-								{transaction.venda.vendedor && (
-									<div className="flex items-center justify-between gap-1.5">
-										<span className="text-xs text-muted-foreground">VENDEDOR</span>
-										<span className="text-xs font-medium truncate text-end">{transaction.venda.vendedor.nome}</span>
-									</div>
-								)}
-							</>
-						)}
-					</div>
-				</div>
-				{transaction.venda && (
-					<div className="pt-4 flex items-center justify-center">
-						<Button size="sm" variant="ghost" className="w-full gap-2" asChild>
-							<Link href={appRoutes.sales.details(transaction.venda.id)}>
-								VER VENDA
-								<ArrowUpRight className="h-4 w-4" />
-							</Link>
-						</Button>
-					</div>
-				)}
-			</HoverCardContent>
-		</HoverCard>
 	);
 }
