@@ -41,7 +41,7 @@ const MainLayout = async ({ children }: { children: ReactNode }) => {
 							corSecundaria={user.membership.organizacao.corSecundaria}
 							corSecundariaForeground={user.membership.organizacao.corSecundariaForeground}
 						>
-							<AppHeader />
+							<AppHeader session={{ user: user.user, membership: user.membership }} />
 							{children}
 							<OnboardingQualityBubble />
 							<SubscriptionPaywall />
