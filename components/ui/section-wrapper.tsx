@@ -16,8 +16,8 @@ export function SectionWrapper({ children, title, icon, actions, wrapperClassNam
 		// pede via `wrapperClassName="min-h-0"`, não o padrão. O `min-h-0` da div interna abaixo é
 		// outro: aquele é o que habilita a rolagem interna quando a altura vem de fora.
 		<div className={cn("bg-card border-border flex w-full flex-col gap-6 rounded-xl border px-3 py-4 shadow-xs", wrapperClassName)}>
-			<div className="flex items-center justify-between min-h-8">
-				<div className="flex items-center gap-1">
+			<div className="flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-2">
+				<div className="flex min-w-0 items-center gap-1">
 					{icon}
 					<h1 className="text-xs font-bold tracking-tight uppercase">{title}</h1>
 				</div>

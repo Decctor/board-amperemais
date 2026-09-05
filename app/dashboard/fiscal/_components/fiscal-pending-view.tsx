@@ -127,7 +127,7 @@ function ExpiringDeadlineRow({ item, openDocument }: { item: TPendingSummary["pr
 	const deadline = useFiscalDeadline(item.prazoLimite);
 	if (deadline.expired) return null;
 	return (
-		<div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+		<div className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
 			<div className="flex min-w-0 flex-col">
 				<span className="text-sm font-semibold">
 					{formatFiscalDocumentTypeLabel(item.tipo)} {item.numero ? `nº ${item.numero}` : ""}
@@ -209,8 +209,9 @@ function BlockerCard({
 
 	return (
 		<div className="flex w-full flex-col gap-2 rounded-xl border border-rose-300/60 bg-card px-3 py-3 dark:border-rose-900/50">
-			<div className="flex flex-wrap items-start justify-between gap-2">
-				<div className="flex min-w-0 flex-1 flex-col gap-1">
+			{/* Botoes abaixo do texto no celular: ao lado, o texto virava uma coluna de uma palavra. */}
+			<div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+				<div className="flex w-full min-w-0 flex-col gap-1 sm:flex-1">
 					<div className="flex flex-wrap items-center gap-1.5">
 						<Chip.Root variant="destructive" size="xs">
 							<Chip.Label>{FISCAL_PROBLEM_CATEGORY_LABELS[group.problema.categoria]}</Chip.Label>
@@ -219,14 +220,15 @@ function BlockerCard({
 							{group.documentos.length} documento{group.documentos.length > 1 ? "s" : ""} · {formatToMoney(group.valorTravado)} travados
 						</span>
 					</div>
-					<p className="text-sm font-bold tracking-tight">{title}</p>
-					{group.alvo.rotulo ? <p className="text-xs text-muted-foreground">{group.problema.mensagem}</p> : null}
-					<p className="flex items-start gap-1 text-xs text-muted-foreground">
+					{/* `anywhere`: mensagens da SEFAZ trazem chaves de acesso de 44 digitos sem espaco. */}
+					<p className="text-sm font-bold tracking-tight [overflow-wrap:anywhere]">{title}</p>
+					{group.alvo.rotulo ? <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{group.problema.mensagem}</p> : null}
+					<p className="flex items-start gap-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">
 						<Wrench className="mt-0.5 h-3 w-3 shrink-0" />
 						{group.problema.acaoSugerida}
 					</p>
 				</div>
-				<div className="flex shrink-0 flex-wrap items-center gap-1.5">
+				<div className="flex flex-wrap items-center gap-1.5 sm:shrink-0 sm:justify-end">
 					<FiscalProblemCta problem={problem} canConfigureFiscal={permissions.configurar} onResolved={onChanged} />
 					{group.problema.reenviavel ? (
 						<Button
@@ -305,7 +307,7 @@ function ProductsWithoutProfileSection({
 			icon={<Package className="h-4 min-h-4 w-4 min-w-4" />}
 			actions={
 				permissions.configurar ? (
-					<div className="flex items-center gap-1.5">
+					<div className="flex flex-wrap items-center gap-1.5">
 						<Button
 							type="button"
 							size="sm"
