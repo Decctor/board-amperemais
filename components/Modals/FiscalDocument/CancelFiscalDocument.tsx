@@ -67,7 +67,7 @@ export default function CancelFiscalDocument({ document, prazoLimite, closeMenu,
 			lockClose={isPending}
 		>
 			<div className="space-y-4">
-				{deadline.prazoLimite ? (
+				{deadline.deadline ? (
 					<div
 						className={cn(
 							"flex items-start gap-2 rounded-lg border p-3 text-sm",

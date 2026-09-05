@@ -17,4 +17,3 @@ test("bloqueia documentos vivos e estados desconhecidos", () => {
 		assert.equal(blocksNewManualFiscalEmission(status), true, `status ${status}`);
 	}
 });
-

@@ -30,8 +30,8 @@ function buildDocument(overrides: Partial<TFiscalDocumentForActions> = {}): TFis
 	};
 }
 
-function actionsFor(overrides: Partial<TFiscalDocumentForActions> = {}, contexto = {}) {
-	return resolveFiscalDocumentActions({ documento: buildDocument(overrides), agora: NOW, contexto });
+function actionsFor(overrides: Partial<TFiscalDocumentForActions> = {}, context = {}) {
+	return resolveFiscalDocumentActions({ document: buildDocument(overrides), now: NOW, context });
 }
 
 test("prazo de cancelamento: NFC-e 30 min, NF-e 24h a partir da autorizacao", () => {
@@ -45,7 +45,7 @@ test("prazo de inutilizacao: dia 10 do mes seguinte", () => {
 	const deadline = resolveInutilizationDeadline({ dataInsercao: new Date(2026, 8, 20, 10, 0, 0) });
 	assert.equal(deadline.getFullYear(), 2026);
 	assert.equal(deadline.getMonth(), 9);
-	assert.equal(deadline.getDate(), FISCAL_DEADLINES.inutilizacaoDiaLimiteMesSeguinte);
+	assert.equal(deadline.getDate(), FISCAL_DEADLINES.inutilizationDayOfNextMonth);
 });
 
 test("NFC-e autorizada dentro da janela: cancelar disponivel com prazo; inutilizar bloqueado", () => {
@@ -84,14 +84,14 @@ test("NF-e autorizada dentro de 24h ainda cancela", () => {
 });
 
 test("provedor MANUAL ignora janela de cancelamento", () => {
-	const actions = actionsFor({ dataAutorizacao: new Date(NOW.getTime() - 5 * 3_600_000) }, { provedor: "MANUAL" });
+	const actions = actionsFor({ dataAutorizacao: new Date(NOW.getTime() - 5 * 3_600_000) }, { provider: "MANUAL" });
 	assert.equal(getFiscalDocumentAction(actions, "CANCELAR").disponivel, true);
 });
 
 test("carta de correcao respeita o limite de 20 eventos", () => {
-	const ok = actionsFor({ tipo: "NFE" }, { cartasCorrecaoEmitidas: 19 });
+	const ok = actionsFor({ tipo: "NFE" }, { correctionLettersIssued: 19 });
 	assert.equal(getFiscalDocumentAction(ok, "CARTA_CORRECAO").disponivel, true);
-	const full = actionsFor({ tipo: "NFE" }, { cartasCorrecaoEmitidas: 20 });
+	const full = actionsFor({ tipo: "NFE" }, { correctionLettersIssued: 20 });
 	const action = getFiscalDocumentAction(full, "CARTA_CORRECAO");
 	assert.equal(action.disponivel, false);
 	assert.deepEqual(action.alternativas, ["DEVOLUCAO"]);
@@ -162,10 +162,10 @@ test("cancelado: terminal, mas permite reemitir para a venda e baixar XML", () =
 });
 
 test("devolucao: bloqueada sem perfil de devolucao ou quando ja existe devolucao autorizada", () => {
-	const semPerfil = getFiscalDocumentAction(actionsFor({}, { possuiPerfilDevolucao: false }), "DEVOLUCAO");
+	const semPerfil = getFiscalDocumentAction(actionsFor({}, { hasReturnProfile: false }), "DEVOLUCAO");
 	assert.equal(semPerfil.disponivel, false);
 	assert.match(semPerfil.motivoIndisponivel ?? "", /perfil de operação fiscal de devolução/);
-	const jaDevolvida = getFiscalDocumentAction(actionsFor({}, { possuiDevolucaoAutorizada: true }), "DEVOLUCAO");
+	const jaDevolvida = getFiscalDocumentAction(actionsFor({}, { hasAuthorizedReturn: true }), "DEVOLUCAO");
 	assert.equal(jaDevolvida.disponivel, false);
 });
 

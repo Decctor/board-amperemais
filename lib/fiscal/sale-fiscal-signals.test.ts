@@ -22,10 +22,9 @@ test("venda com entrega em NF-e prefere INTERNET (indPres=2)", () => {
 
 test("venda com entrega em NFC-e mantém ENTREGA_DOMICILIO (indPres=4)", () => {
 	// No modelo 65 o indPres=4 é o valor correto — a regra não pode inverter os dois casos.
-	assert.deepEqual(
-		resolveExpectedConsumerPresenceCandidates({ canal: "mobile", entregaModalidade: "ENTREGA", tipoDocumento: "NFCE" }),
-		["ENTREGA_DOMICILIO"],
-	);
+	assert.deepEqual(resolveExpectedConsumerPresenceCandidates({ canal: "mobile", entregaModalidade: "ENTREGA", tipoDocumento: "NFCE" }), [
+		"ENTREGA_DOMICILIO",
+	]);
 });
 
 test("sem tipo de documento informado, entrega mantém o comportamento anterior", () => {

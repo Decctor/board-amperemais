@@ -46,13 +46,13 @@ export type TFiscalDocumentForActions = {
 
 export type TFiscalDocumentActionContext = {
 	// Cartas de correcao ja registradas (limite legal de 20). Desconhecido = nao limita.
-	cartasCorrecaoEmitidas?: number | null;
+	correctionLettersIssued?: number | null;
 	// Existe perfil de operacao DEVOLUCAO ativo? Desconhecido = assume que sim (a rota valida).
-	possuiPerfilDevolucao?: boolean | null;
+	hasReturnProfile?: boolean | null;
 	// Existe devolucao autorizada referenciando este documento? Uma segunda nao faz sentido.
-	possuiDevolucaoAutorizada?: boolean | null;
+	hasAuthorizedReturn?: boolean | null;
 	// Provedor MANUAL registra o fato localmente; nao ha SEFAZ para negar.
-	provedor?: string | null;
+	provider?: string | null;
 };
 
 const TWO_DIGITS = (value: number) => String(value).padStart(2, "0");
@@ -64,25 +64,30 @@ function formatDeadline(date: Date) {
 export function resolveCancellationDeadline({
 	tipo,
 	dataAutorizacao,
-	prazos = FISCAL_DEADLINES,
+	deadlines = FISCAL_DEADLINES,
 }: {
 	tipo: TFiscalDocumentTypeEnum;
 	dataAutorizacao: Date | null;
-	prazos?: TFiscalDeadlines;
+	deadlines?: TFiscalDeadlines;
 }): Date | null {
 	if (!dataAutorizacao) return null;
-	const windowMs = tipo === "NFCE" ? prazos.cancelamentoNfceMinutos * 60_000 : prazos.cancelamentoNfeHoras * 3_600_000;
+	const windowMs = tipo === "NFCE" ? deadlines.nfceCancellationMinutes * 60_000 : deadlines.nfeCancellationHours * 3_600_000;
 	return new Date(dataAutorizacao.getTime() + windowMs);
 }
 
 // Inutilizacao: ate o dia N do mes seguinte ao da reserva da numeracao (fim do dia, hora local).
-export function resolveInutilizationDeadline({ dataInsercao, prazos = FISCAL_DEADLINES }: { dataInsercao: Date; prazos?: TFiscalDeadlines }): Date {
-	const deadline = new Date(dataInsercao.getFullYear(), dataInsercao.getMonth() + 1, prazos.inutilizacaoDiaLimiteMesSeguinte, 23, 59, 59, 999);
-	return deadline;
+export function resolveInutilizationDeadline({
+	dataInsercao,
+	deadlines = FISCAL_DEADLINES,
+}: {
+	dataInsercao: Date;
+	deadlines?: TFiscalDeadlines;
+}): Date {
+	return new Date(dataInsercao.getFullYear(), dataInsercao.getMonth() + 1, deadlines.inutilizationDayOfNextMonth, 23, 59, 59, 999);
 }
 
-function describeCancellationWindow(tipo: TFiscalDocumentTypeEnum, prazos: TFiscalDeadlines) {
-	return tipo === "NFCE" ? `${prazos.cancelamentoNfceMinutos} min` : `${prazos.cancelamentoNfeHoras}h`;
+function describeCancellationWindow(tipo: TFiscalDocumentTypeEnum, deadlines: TFiscalDeadlines) {
+	return tipo === "NFCE" ? `${deadlines.nfceCancellationMinutes} min` : `${deadlines.nfeCancellationHours}h`;
 }
 
 const LIFECYCLE_EXPLANATION: Record<TFiscalDocumentLifecycleStatusEnum, string> = {
@@ -98,36 +103,36 @@ const LIFECYCLE_EXPLANATION: Record<TFiscalDocumentLifecycleStatusEnum, string> 
 };
 
 export function resolveFiscalDocumentActions({
-	documento,
-	agora = new Date(),
-	contexto = {},
-	prazos = FISCAL_DEADLINES,
+	document,
+	now = new Date(),
+	context = {},
+	deadlines = FISCAL_DEADLINES,
 }: {
-	documento: TFiscalDocumentForActions;
-	agora?: Date;
-	contexto?: TFiscalDocumentActionContext;
-	prazos?: TFiscalDeadlines;
+	document: TFiscalDocumentForActions;
+	now?: Date;
+	context?: TFiscalDocumentActionContext;
+	deadlines?: TFiscalDeadlines;
 }): TFiscalDocumentAction[] {
-	const status = documento.statusInterno;
-	const isAuthorized = status === "AUTORIZADO" && documento.status === "AUTORIZADA";
+	const status = document.statusInterno;
+	const isAuthorized = status === "AUTORIZADO" && document.status === "AUTORIZADA";
 	const isFailed = status === "ERRO" || status === "REJEITADO";
 	const isClosed = status === "CANCELADO" || status === "INUTILIZADO";
-	const isManualProvider = contexto.provedor === "MANUAL";
+	const isManualProvider = context.provider === "MANUAL";
 	const explanation = LIFECYCLE_EXPLANATION[status];
 
-	const cancelDeadline = resolveCancellationDeadline({ tipo: documento.tipo, dataAutorizacao: documento.dataAutorizacao, prazos });
-	const cancelWindowOpen = isManualProvider || !cancelDeadline || cancelDeadline.getTime() > agora.getTime();
+	const cancelDeadline = resolveCancellationDeadline({ tipo: document.tipo, dataAutorizacao: document.dataAutorizacao, deadlines });
+	const cancelWindowOpen = isManualProvider || !cancelDeadline || cancelDeadline.getTime() > now.getTime();
 
 	const cancelar: TFiscalDocumentAction = (() => {
 		if (isAuthorized && cancelWindowOpen) {
 			return { acao: "CANCELAR", disponivel: true, motivoIndisponivel: null, prazoLimite: cancelDeadline, alternativas: [] };
 		}
 		if (isAuthorized && cancelDeadline) {
-			const alternativas: TFiscalDocumentActionKey[] = documento.tipo === "NFE" ? ["DEVOLUCAO", "CARTA_CORRECAO"] : ["DEVOLUCAO"];
+			const alternativas: TFiscalDocumentActionKey[] = document.tipo === "NFE" ? ["DEVOLUCAO", "CARTA_CORRECAO"] : ["DEVOLUCAO"];
 			return {
 				acao: "CANCELAR",
 				disponivel: false,
-				motivoIndisponivel: `Prazo de cancelamento (${describeCancellationWindow(documento.tipo, prazos)} após a autorização) encerrado às ${formatDeadline(cancelDeadline)}.`,
+				motivoIndisponivel: `Prazo de cancelamento (${describeCancellationWindow(document.tipo, deadlines)} após a autorização) encerrado às ${formatDeadline(cancelDeadline)}.`,
 				prazoLimite: cancelDeadline,
 				alternativas,
 			};
@@ -147,7 +152,7 @@ export function resolveFiscalDocumentActions({
 				disponivel: false,
 				motivoIndisponivel: `${explanation} Não há o que cancelar.`,
 				prazoLimite: null,
-				alternativas: documento.numero ? ["REENVIAR", "INUTILIZAR"] : ["REENVIAR"],
+				alternativas: document.numero ? ["REENVIAR", "INUTILIZAR"] : ["REENVIAR"],
 			};
 		}
 		if (isClosed) {
@@ -163,7 +168,7 @@ export function resolveFiscalDocumentActions({
 	})();
 
 	const cartaCorrecao: TFiscalDocumentAction = (() => {
-		if (documento.tipo !== "NFE") {
+		if (document.tipo !== "NFE") {
 			return {
 				acao: "CARTA_CORRECAO",
 				disponivel: false,
@@ -181,12 +186,12 @@ export function resolveFiscalDocumentActions({
 				alternativas: [],
 			};
 		}
-		const emitidas = contexto.cartasCorrecaoEmitidas ?? 0;
-		if (emitidas >= prazos.cartaCorrecaoMaxEventos) {
+		const issued = context.correctionLettersIssued ?? 0;
+		if (issued >= deadlines.correctionLetterMaxEvents) {
 			return {
 				acao: "CARTA_CORRECAO",
 				disponivel: false,
-				motivoIndisponivel: `Limite de ${prazos.cartaCorrecaoMaxEventos} cartas de correção atingido.`,
+				motivoIndisponivel: `Limite de ${deadlines.correctionLetterMaxEvents} cartas de correção atingido.`,
 				prazoLimite: null,
 				alternativas: ["DEVOLUCAO"],
 			};
@@ -207,11 +212,11 @@ export function resolveFiscalDocumentActions({
 		if (isClosed) {
 			return { acao: "INUTILIZAR", disponivel: false, motivoIndisponivel: explanation, prazoLimite: null, alternativas: [] };
 		}
-		if (!documento.numero || !documento.serie) {
+		if (!document.numero || !document.serie) {
 			return {
 				acao: "INUTILIZAR",
 				disponivel: false,
-				motivoIndisponivel: "Nenhuma numeração foi reservada para este documento.",
+				motivoIndisponivel: "Nenhuma numeração foi reservada para este document.",
 				prazoLimite: null,
 				alternativas: [],
 			};
@@ -225,12 +230,12 @@ export function resolveFiscalDocumentActions({
 				alternativas: ["SINCRONIZAR"],
 			};
 		}
-		const deadline = resolveInutilizationDeadline({ dataInsercao: documento.dataInsercao, prazos });
-		if (!isManualProvider && deadline.getTime() < agora.getTime()) {
+		const deadline = resolveInutilizationDeadline({ dataInsercao: document.dataInsercao, deadlines });
+		if (!isManualProvider && deadline.getTime() < now.getTime()) {
 			return {
 				acao: "INUTILIZAR",
 				disponivel: false,
-				motivoIndisponivel: `Prazo de inutilização (dia ${prazos.inutilizacaoDiaLimiteMesSeguinte} do mês seguinte) encerrado em ${formatDeadline(deadline)}. Fale com o contador.`,
+				motivoIndisponivel: `Prazo de inutilização (dia ${deadlines.inutilizationDayOfNextMonth} do mês seguinte) encerrado em ${formatDeadline(deadline)}. Fale com o contador.`,
 				prazoLimite: deadline,
 				alternativas: ["REENVIAR"],
 			};
@@ -248,10 +253,10 @@ export function resolveFiscalDocumentActions({
 				alternativas: [],
 			};
 		}
-		if (!documento.vendaId) {
+		if (!document.vendaId) {
 			return { acao: "DEVOLUCAO", disponivel: false, motivoIndisponivel: "Documento sem venda vinculada.", prazoLimite: null, alternativas: [] };
 		}
-		if (!documento.chaveAcesso) {
+		if (!document.chaveAcesso) {
 			return {
 				acao: "DEVOLUCAO",
 				disponivel: false,
@@ -260,16 +265,16 @@ export function resolveFiscalDocumentActions({
 				alternativas: ["SINCRONIZAR"],
 			};
 		}
-		if (contexto.possuiDevolucaoAutorizada) {
+		if (context.hasAuthorizedReturn) {
 			return {
 				acao: "DEVOLUCAO",
 				disponivel: false,
-				motivoIndisponivel: "Já existe uma devolução autorizada para este documento.",
+				motivoIndisponivel: "Já existe uma devolução autorizada para este document.",
 				prazoLimite: null,
 				alternativas: [],
 			};
 		}
-		if (contexto.possuiPerfilDevolucao === false) {
+		if (context.hasReturnProfile === false) {
 			return {
 				acao: "DEVOLUCAO",
 				disponivel: false,
@@ -282,7 +287,7 @@ export function resolveFiscalDocumentActions({
 	})();
 
 	const reenviar: TFiscalDocumentAction = (() => {
-		if (documento.tipo === "NFSE") {
+		if (document.tipo === "NFSE") {
 			return {
 				acao: "REENVIAR",
 				disponivel: false,
@@ -291,7 +296,7 @@ export function resolveFiscalDocumentActions({
 				alternativas: [],
 			};
 		}
-		if (!documento.vendaId) {
+		if (!document.vendaId) {
 			return {
 				acao: "REENVIAR",
 				disponivel: false,
@@ -313,7 +318,7 @@ export function resolveFiscalDocumentActions({
 	})();
 
 	const sincronizar: TFiscalDocumentAction =
-		documento.provedorDocumentoId || status === "EM_PROCESSAMENTO" || status === "CANCELAMENTO_PENDENTE"
+		document.provedorDocumentoId || status === "EM_PROCESSAMENTO" || status === "CANCELAMENTO_PENDENTE"
 			? { acao: "SINCRONIZAR", disponivel: true, motivoIndisponivel: null, prazoLimite: null, alternativas: [] }
 			: {
 					acao: "SINCRONIZAR",
@@ -325,7 +330,7 @@ export function resolveFiscalDocumentActions({
 
 	const hasAssets = isAuthorized || status === "CANCELADO";
 	const baixarXml: TFiscalDocumentAction =
-		documento.xmlStoragePath || hasAssets
+		document.xmlStoragePath || hasAssets
 			? { acao: "BAIXAR_XML", disponivel: true, motivoIndisponivel: null, prazoLimite: null, alternativas: [] }
 			: {
 					acao: "BAIXAR_XML",
@@ -335,7 +340,7 @@ export function resolveFiscalDocumentActions({
 					alternativas: [],
 				};
 	const baixarPdf: TFiscalDocumentAction =
-		documento.pdfStoragePath || hasAssets
+		document.pdfStoragePath || hasAssets
 			? { acao: "BAIXAR_PDF", disponivel: true, motivoIndisponivel: null, prazoLimite: null, alternativas: [] }
 			: {
 					acao: "BAIXAR_PDF",
@@ -359,6 +364,6 @@ export function getFiscalDocumentAction(actions: TFiscalDocumentAction[], key: T
  */
 export function assertFiscalDocumentActionAvailable(actions: TFiscalDocumentAction[], key: TFiscalDocumentActionKey) {
 	const action = getFiscalDocumentAction(actions, key);
-	if (!action.disponivel) throw new FiscalReadinessError(action.motivoIndisponivel ?? "Ação indisponível para este documento.");
+	if (!action.disponivel) throw new FiscalReadinessError(action.motivoIndisponivel ?? "Ação indisponível para este document.");
 	return action;
 }

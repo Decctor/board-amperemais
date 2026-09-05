@@ -357,17 +357,17 @@ type SaleErpDetailDocument = {
  * não decora: a seção inteira é gateada por `fiscal: null` logo abaixo.
  */
 async function decorateSaleFiscalDocuments({
-	documentosFiscais,
-	organizacaoId,
+	documents,
+	organizationId,
 	userCanViewFiscal,
 }: {
-	documentosFiscais: SaleErpDetailDocument[];
-	organizacaoId: string;
+	documents: SaleErpDetailDocument[];
+	organizationId: string;
 	userCanViewFiscal: boolean;
 }): Promise<(SaleErpDetailDocument & TFiscalDocumentDecoration)[]> {
-	if (!userCanViewFiscal || documentosFiscais.length === 0) return [];
-	const organizacao = await loadFiscalOrganization(organizacaoId);
-	return decorateFiscalDocuments({ documents: documentosFiscais, organizacaoId, provedor: organizacao?.fiscalProvedor });
+	if (!userCanViewFiscal || documents.length === 0) return [];
+	const organization = await loadFiscalOrganization(organizationId);
+	return decorateFiscalDocuments({ documents, organizationId, provider: organization?.fiscalProvedor });
 }
 
 /**
@@ -792,7 +792,7 @@ async function getSales({ input, sessionUser }: { input: TGetSalesInput; session
 		const { documentosFiscais, ...saleWithoutFiscalDocuments } = sale;
 		const userCanViewFiscal = !!sessionUser.membership?.permissoes.fiscal.visualizar;
 		const documentosFiscaisDecorados = orgHasERPAccess
-			? await decorateSaleFiscalDocuments({ documentosFiscais, organizacaoId: userOrgId, userCanViewFiscal })
+			? await decorateSaleFiscalDocuments({ documents: documentosFiscais, organizationId: userOrgId, userCanViewFiscal })
 			: [];
 		return {
 			data: {

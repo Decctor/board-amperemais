@@ -21,7 +21,7 @@ export function useNow(intervalMs: number | null) {
 }
 
 export type TFiscalDeadlineState = {
-	prazoLimite: Date | null;
+	deadline: Date | null;
 	remainingMs: number | null;
 	// "12 min restantes" — null quando nao ha prazo ou ja passou.
 	label: string | null;
@@ -38,11 +38,11 @@ export function useFiscalDeadline(prazoLimite: Date | string | null | undefined,
 	const now = useNow(deadline ? intervalMs : null);
 	return useMemo(() => {
 		if (!deadline || Number.isNaN(deadline.getTime())) {
-			return { prazoLimite: null, remainingMs: null, label: null, expired: false, urgent: false };
+			return { deadline: null, remainingMs: null, label: null, expired: false, urgent: false };
 		}
 		const remainingMs = deadline.getTime() - now.getTime();
 		return {
-			prazoLimite: deadline,
+			deadline,
 			remainingMs,
 			label: formatRemainingTime(deadline, now),
 			expired: remainingMs <= 0,

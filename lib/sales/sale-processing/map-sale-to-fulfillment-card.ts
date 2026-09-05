@@ -97,7 +97,7 @@ export function mapSaleRowToFulfillmentCard(sale: SaleFulfillmentRow) {
 		resumoPagamentos: classification.resumo,
 		pagamentoObservacoes: paymentNotes === sale.observacoes ? null : paymentNotes,
 		fiscal,
-		fiscalDocumentoId: resolveFiscalStatusDocumentId(sale.documentosFiscais, fiscal),
+		documentoFiscalId: resolveFiscalStatusDocumentId(sale.documentosFiscais, fiscal),
 		editabilidade: resolveSaleEditability({
 			statusVenda: sale.statusVenda,
 			statusAtendimento: sale.statusAtendimento,

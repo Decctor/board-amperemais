@@ -40,21 +40,21 @@ function groupKey(problem: TFiscalProblem) {
  * costuma travar dez vendas, e o operador quer resolver o produto uma vez.
  */
 export async function getFiscalPendingSummary({
-	organizacaoId,
-	provedor,
-	agora = new Date(),
+	organizationId,
+	provider,
+	now = new Date(),
 }: {
-	organizacaoId: string;
-	provedor: string | null | undefined;
-	agora?: Date;
+	organizationId: string;
+	provider: string | null | undefined;
+	now?: Date;
 }) {
-	const lookbackStart = new Date(agora.getTime() - PRODUCTS_WITHOUT_PROFILE_LOOKBACK_DAYS * 86_400_000);
+	const lookbackStart = new Date(now.getTime() - PRODUCTS_WITHOUT_PROFILE_LOOKBACK_DAYS * 86_400_000);
 	// Janela mais larga entre os tipos: a NF-e tem 24h. Documentos mais antigos nao podem mais expirar.
-	const widestWindowStart = new Date(agora.getTime() - FISCAL_DEADLINES.cancelamentoNfeHoras * 3_600_000);
+	const widestWindowStart = new Date(now.getTime() - FISCAL_DEADLINES.nfeCancellationHours * 3_600_000);
 
 	const [failedDocuments, authorizedRecently, productsWithoutProfile, [salesWithoutDocument]] = await Promise.all([
 		db.query.fiscalOutboundDocuments.findMany({
-			where: and(eq(fiscalOutboundDocuments.organizacaoId, organizacaoId), inArray(fiscalOutboundDocuments.statusInterno, ["ERRO", "REJEITADO"])),
+			where: and(eq(fiscalOutboundDocuments.organizacaoId, organizationId), inArray(fiscalOutboundDocuments.statusInterno, ["ERRO", "REJEITADO"])),
 			columns: {
 				id: true,
 				tipo: true,
@@ -70,11 +70,11 @@ export async function getFiscalPendingSummary({
 			orderBy: desc(fiscalOutboundDocuments.dataInsercao),
 			limit: FAILED_DOCUMENTS_LIMIT,
 		}),
-		provedor === "MANUAL"
+		provider === "MANUAL"
 			? Promise.resolve([])
 			: db.query.fiscalOutboundDocuments.findMany({
 					where: and(
-						eq(fiscalOutboundDocuments.organizacaoId, organizacaoId),
+						eq(fiscalOutboundDocuments.organizacaoId, organizationId),
 						eq(fiscalOutboundDocuments.statusInterno, "AUTORIZADO"),
 						gte(fiscalOutboundDocuments.dataAutorizacao, widestWindowStart),
 					),
@@ -92,7 +92,7 @@ export async function getFiscalPendingSummary({
 			.innerJoin(products, eq(saleItems.produtoId, products.id))
 			.where(
 				and(
-					eq(sales.organizacaoId, organizacaoId),
+					eq(sales.organizacaoId, organizationId),
 					eq(sales.statusVenda, "CONFIRMADA"),
 					gte(sales.dataVenda, lookbackStart),
 					eq(products.ativo, true),
@@ -102,7 +102,7 @@ export async function getFiscalPendingSummary({
 							.from(productFiscalProfiles)
 							.where(
 								and(
-									eq(productFiscalProfiles.organizacaoId, organizacaoId),
+									eq(productFiscalProfiles.organizacaoId, organizationId),
 									eq(productFiscalProfiles.produtoId, products.id),
 									isNull(productFiscalProfiles.produtoVarianteId),
 									eq(productFiscalProfiles.ativo, true),
@@ -119,7 +119,7 @@ export async function getFiscalPendingSummary({
 			.from(sales)
 			.where(
 				and(
-					eq(sales.organizacaoId, organizacaoId),
+					eq(sales.organizacaoId, organizationId),
 					eq(sales.statusVenda, "CONFIRMADA"),
 					gte(sales.dataVenda, lookbackStart),
 					notExists(db.select({ id: fiscalOutboundDocuments.id }).from(fiscalOutboundDocuments).where(eq(fiscalOutboundDocuments.vendaId, sales.id))),
@@ -172,7 +172,7 @@ export async function getFiscalPendingSummary({
 	const prazosExpirando = authorizedRecently
 		.map((document) => {
 			const prazoLimite = resolveCancellationDeadline({ tipo: document.tipo, dataAutorizacao: document.dataAutorizacao });
-			return prazoLimite && prazoLimite.getTime() > agora.getTime()
+			return prazoLimite && prazoLimite.getTime() > now.getTime()
 				? {
 						documentoId: document.id,
 						tipo: document.tipo,
@@ -199,7 +199,7 @@ export async function getFiscalPendingSummary({
 			prazosExpirando: prazosExpirando.length,
 			produtosSemPerfil: productsWithoutProfile.length,
 			vendasSemDocumento: salesWithoutDocument?.qtde ?? 0,
-			// Total que a sidebar exibe: o que exige acao humana agora.
+			// Total que a sidebar exibe: o que exige acao humana now.
 			total: documentosComPendencia + prazosExpirando.length + productsWithoutProfile.length,
 		},
 		porAlvo,

@@ -11,14 +11,14 @@ export const SUPPORTED_AUTOMATIC_DOCUMENT_TYPES: TFiscalDocumentTypeEnum[] = ["N
  * pelo provedor (Spedy) — fora da janela, a saida e devolucao ou carta de correcao.
  */
 export const FISCAL_DEADLINES = {
-	cancelamentoNfceMinutos: 30,
-	cancelamentoNfeHoras: 24,
+	nfceCancellationMinutes: 30,
+	nfeCancellationHours: 24,
 	// Limite legal de eventos de carta de correcao por NF-e; a ultima substitui as anteriores.
-	cartaCorrecaoMaxEventos: 20,
+	correctionLetterMaxEvents: 20,
 	// Inutilizacao deve ser pedida ate o dia 10 do mes seguinte ao da numeracao reservada.
-	inutilizacaoDiaLimiteMesSeguinte: 10,
+	inutilizationDayOfNextMonth: 10,
 	// Documento parado em processamento alem disto merece atencao do operador.
-	processamentoAlertaMinutos: 15,
+	processingAlertMinutes: 15,
 } as const;
 
 export type TFiscalDeadlines = typeof FISCAL_DEADLINES;

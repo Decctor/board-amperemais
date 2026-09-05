@@ -51,13 +51,18 @@ Notas:
 ### 2.2 Configuração por organização (novo bloco em `fiscalConfiguracao`)
 
 ```ts
-prazos: {
-	cancelamentoNfceMinutos: 30,   // varia por UF; alguns estados permitem 24h
-	cancelamentoNfeHoras: 24,
-}
+// lib/fiscal/constants.ts — código, logo em inglês. Quando virar dado por organização
+// (fiscalConfiguracao.prazos), os campos passam a ser em português.
+export const FISCAL_DEADLINES = {
+	nfceCancellationMinutes: 30, // varia por UF; alguns estados permitem 24h
+	nfeCancellationHours: 24,
+	correctionLetterMaxEvents: 20,
+	inutilizationDayOfNextMonth: 10,
+	processingAlertMinutes: 15,
+};
 ```
 
-Padrões vivem em `lib/fiscal/constants.ts`; a organização sobrescreve na aba Configuração. A UI exibe o efetivo ("Cancelamento disponível por 30 min após a autorização — configurado para SP").
+Decisão de set/2026: padrão único em código, sem override por organização por enquanto. A matriz de ações já recebe `deadlines` como parâmetro, então o override é uma troca de fonte, não de lógica.
 
 ### 2.3 Máquina de estados e ações permitidas
 

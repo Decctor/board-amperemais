@@ -71,7 +71,7 @@ export function useFiscalDocumentActionRunner({
 		mutationFn: retryFiscalDocumentsMutation,
 		onSuccess: async (data) => {
 			const outcome = data.data.resultados.find((item) => item.documentoId === document.id) ?? data.data.resultados[0];
-			if (outcome && !outcome.ok) {
+			if (outcome && !outcome.sucesso) {
 				setRetryFailureMessage(outcome.mensagem);
 				toast.error(outcome.mensagem);
 			} else {
@@ -98,8 +98,8 @@ export function useFiscalDocumentActionRunner({
 	const run = useCallback(
 		(key: TFiscalDocumentActionKey) => {
 			const action = actions[key];
-			if (action && !action.disponivel) {
-				toast.error(action.motivo ?? "Ação indisponível para este documento.");
+			if (action && !action.available) {
+				toast.error(action.reason ?? "Ação indisponível para este documento.");
 				return;
 			}
 			switch (key) {
@@ -140,7 +140,7 @@ export function useFiscalDocumentActionRunner({
 			return (
 				<CancelFiscalDocument
 					document={{ id: document.id, tipo: document.tipo, numero: document.numero }}
-					prazoLimite={actions.CANCELAR?.prazoLimite ?? null}
+					prazoLimite={actions.CANCELAR?.deadline ?? null}
 					closeMenu={closeModal}
 					onSuccess={handleSuccess}
 				/>
@@ -153,7 +153,7 @@ export function useFiscalDocumentActionRunner({
 			return (
 				<InutilizeFiscalDocument
 					document={{ id: document.id, tipo: document.tipo, serie: document.serie, numero: document.numero }}
-					prazoLimite={actions.INUTILIZAR?.prazoLimite ?? null}
+					prazoLimite={actions.INUTILIZAR?.deadline ?? null}
 					closeMenu={closeModal}
 					onSuccess={handleSuccess}
 				/>

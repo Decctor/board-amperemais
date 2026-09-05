@@ -48,13 +48,13 @@ function Panel({ tone, title, children }: { tone: "danger" | "warning" | "info" 
  */
 export function FiscalDocumentNextSteps({ document, runner, permissions, onChanged }: FiscalDocumentNextStepsProps) {
 	const { actions } = runner;
-	const cancelDeadline = useFiscalDeadline(actions.CANCELAR?.prazoLimite ?? null);
+	const cancelDeadline = useFiscalDeadline(actions.CANCELAR?.deadline ?? null);
 	const status = document.statusInterno;
 	const problems = document.problemas ?? [];
 	const typeLabel = formatFiscalDocumentTypeLabel(document.tipo);
 
 	if (isFiscalDocumentFailed(status)) {
-		const canRetry = !!actions.REENVIAR?.disponivel;
+		const canRetry = !!actions.REENVIAR?.available;
 		return (
 			<Panel tone="danger" title="O que fazer agora">
 				{document.codigoRejeicao ? (
@@ -90,7 +90,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 						<Send className={cn("h-4 w-4", runner.pendingAction === "REENVIAR" && "animate-spin")} />
 						Reenviar
 					</Button>
-					{actions.INUTILIZAR?.disponivel ? (
+					{actions.INUTILIZAR?.available ? (
 						<Button
 							type="button"
 							size="sm"
@@ -103,7 +103,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 							Inutilizar numeração
 						</Button>
 					) : null}
-					{!canRetry && actions.REENVIAR?.motivo ? <span className="text-xs text-muted-foreground">{actions.REENVIAR.motivo}</span> : null}
+					{!canRetry && actions.REENVIAR?.reason ? <span className="text-xs text-muted-foreground">{actions.REENVIAR.reason}</span> : null}
 				</div>
 				{runner.retryFailureMessage ? (
 					<p className="flex items-start gap-1.5 rounded-md bg-rose-100/70 px-2 py-1.5 text-xs text-rose-800 dark:bg-rose-900/40 dark:text-rose-200">
@@ -117,7 +117,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 
 	if (status === "AUTORIZADO") {
 		const cancelar = actions.CANCELAR;
-		if (cancelar?.disponivel) {
+		if (cancelar?.available) {
 			return (
 				<Panel tone="neutral" title="Documento autorizado">
 					<div className="flex flex-wrap items-center justify-between gap-2">
@@ -140,7 +140,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 				</Panel>
 			);
 		}
-		if (cancelar && !cancelar.disponivel && !cancelar.permissionBlocked) {
+		if (cancelar && !cancelar.available && !cancelar.permissionBlocked) {
 			const devolucao = actions.DEVOLUCAO;
 			const carta = actions.CARTA_CORRECAO;
 			const copyKey = async () => {
@@ -150,7 +150,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 			};
 			return (
 				<Panel tone="warning" title="Cancelamento indisponível">
-					<p className="text-sm">{cancelar.motivo}</p>
+					<p className="text-sm">{cancelar.reason}</p>
 					<p className="text-xs text-muted-foreground">A nota continua válida na SEFAZ. Escolha o que corresponde ao que aconteceu:</p>
 					<div className="flex flex-col gap-2">
 						<div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-background/60 px-2.5 py-2">
@@ -159,10 +159,10 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 								<span className="text-xs text-muted-foreground">
 									Gere a NF-e de devolução referenciando esta nota. Ela estorna o efeito fiscal e, quando autorizada, libera o cancelamento da venda.
 								</span>
-								{devolucao && !devolucao.disponivel ? (
+								{devolucao && !devolucao.available ? (
 									<span className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-										{devolucao.motivo}{" "}
-										{devolucao.motivo?.includes("perfil") ? (
+										{devolucao.reason}{" "}
+										{devolucao.reason?.includes("perfil") ? (
 											<Link href={appRoutes.fiscal.configuration("operation-profiles")} className="underline">
 												Configurar perfil de devolução
 											</Link>
@@ -173,7 +173,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 							<Button
 								type="button"
 								size="sm"
-								disabled={!devolucao?.disponivel || runner.isPending}
+								disabled={!devolucao?.available || runner.isPending}
 								onClick={() => runner.run("DEVOLUCAO")}
 								className="gap-1.5"
 							>
@@ -186,13 +186,13 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 								<div className="flex min-w-0 flex-col">
 									<span className="text-sm font-semibold">Só um dado descritivo está errado</span>
 									<span className="text-xs text-muted-foreground">Carta de correção. Não altera valores, quantidades, datas nem partes.</span>
-									{carta && !carta.disponivel ? <span className="mt-1 text-xs text-amber-700 dark:text-amber-300">{carta.motivo}</span> : null}
+									{carta && !carta.available ? <span className="mt-1 text-xs text-amber-700 dark:text-amber-300">{carta.reason}</span> : null}
 								</div>
 								<Button
 									type="button"
 									size="sm"
 									variant="outline"
-									disabled={!carta?.disponivel || runner.isPending}
+									disabled={!carta?.available || runner.isPending}
 									onClick={() => runner.run("CARTA_CORRECAO")}
 									className="gap-1.5"
 								>
@@ -218,7 +218,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 									type="button"
 									size="sm"
 									variant="outline"
-									disabled={!actions.BAIXAR_XML?.disponivel}
+									disabled={!actions.BAIXAR_XML?.available}
 									onClick={() => runner.run("BAIXAR_XML")}
 									className="gap-1.5"
 								>
@@ -236,7 +236,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 
 	if (status === "EM_PROCESSAMENTO" || status === "PRONTO_PARA_ENVIO" || status === "RASCUNHO") {
 		const waitingMinutes = Math.floor((Date.now() - new Date(document.dataInsercao).getTime()) / 60_000);
-		const stuck = status === "EM_PROCESSAMENTO" && waitingMinutes >= FISCAL_DEADLINES.processamentoAlertaMinutos;
+		const stuck = status === "EM_PROCESSAMENTO" && waitingMinutes >= FISCAL_DEADLINES.processingAlertMinutes;
 		return (
 			<Panel tone={stuck ? "warning" : "info"} title={status === "EM_PROCESSAMENTO" ? "Aguardando retorno do provedor" : "Na fila de envio"}>
 				<div className="flex flex-wrap items-center justify-between gap-2">
@@ -246,7 +246,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 							: "O envio acontece automaticamente em até 2 minutos."}
 						{stuck ? " Está demorando mais que o normal — atualize o status e, se persistir, veja o histórico abaixo." : ""}
 					</p>
-					{actions.SINCRONIZAR?.disponivel ? (
+					{actions.SINCRONIZAR?.available ? (
 						<Button type="button" size="sm" variant="outline" disabled={runner.isPending} onClick={() => runner.run("SINCRONIZAR")} className="gap-1.5">
 							<RefreshCcw className={cn("h-4 w-4", runner.pendingAction === "SINCRONIZAR" && "animate-spin")} />
 							Atualizar status
@@ -271,7 +271,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 		);
 	}
 
-	if ((status === "CANCELADO" || status === "INUTILIZADO") && actions.REENVIAR?.disponivel) {
+	if ((status === "CANCELADO" || status === "INUTILIZADO") && actions.REENVIAR?.available) {
 		return (
 			<Panel tone="neutral" title={status === "CANCELADO" ? "Documento cancelado" : "Numeração inutilizada"}>
 				<div className="flex flex-wrap items-center justify-between gap-2">

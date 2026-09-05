@@ -18,7 +18,7 @@ const RetryFiscalDocumentsInputSchema = z.object({
 });
 export type TRetryFiscalDocumentsInput = z.infer<typeof RetryFiscalDocumentsInputSchema>;
 
-type RetryOutcome = { documentoId: string; ok: boolean; statusInterno: string | null; mensagem: string };
+type RetryOutcome = { documentoId: string; sucesso: boolean; statusInterno: string | null; mensagem: string };
 
 /**
  * Reenvio em lote: cada documento e re-preparado (prontidao + validacao) na hora, entao o
@@ -38,14 +38,14 @@ async function retryFiscalDocuments({
 	for (const documentId of new Set(input.documentIds)) {
 		const documento = await getFiscalDocumentById({ documentId, organizationId });
 		if (!documento) {
-			resultados.push({ documentoId: documentId, ok: false, statusInterno: null, mensagem: "Documento fiscal não encontrado." });
+			resultados.push({ documentoId: documentId, sucesso: false, statusInterno: null, mensagem: "Documento fiscal não encontrado." });
 			continue;
 		}
-		const reenviar = getFiscalDocumentAction(resolveFiscalDocumentActions({ documento }), "REENVIAR");
+		const reenviar = getFiscalDocumentAction(resolveFiscalDocumentActions({ document: documento }), "REENVIAR");
 		if (!reenviar.disponivel || !documento.vendaId || (documento.tipo !== "NFCE" && documento.tipo !== "NFE")) {
 			resultados.push({
 				documentoId: documento.id,
-				ok: false,
+				sucesso: false,
 				statusInterno: documento.statusInterno,
 				mensagem: reenviar.motivoIndisponivel ?? "Reenvio indisponível.",
 			});
@@ -63,15 +63,15 @@ async function retryFiscalDocuments({
 			});
 			resultados.push({
 				documentoId: result.documentoId,
-				ok: true,
+				sucesso: true,
 				statusInterno: result.statusInterno,
 				mensagem: "Documento reenfileirado para emissão.",
 			});
 		} catch (error) {
-			resultados.push({ documentoId: documento.id, ok: false, statusInterno: "ERRO", mensagem: getErrorMessage(error) });
+			resultados.push({ documentoId: documento.id, sucesso: false, statusInterno: "ERRO", mensagem: getErrorMessage(error) });
 		}
 	}
-	const enviados = resultados.filter((item) => item.ok).length;
+	const enviados = resultados.filter((item) => item.sucesso).length;
 	return {
 		data: { resultados, enviados, falhas: resultados.length - enviados },
 		message:

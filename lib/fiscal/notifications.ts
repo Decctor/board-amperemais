@@ -61,7 +61,11 @@ type NotifyFiscalEmissionFailureParams = {
 export async function notifyFiscalEmissionFailure({ organization, sale, errorMessage }: NotifyFiscalEmissionFailureParams) {
 	const recipient = process.env.BUG_REPORT_EMAIL;
 	if (!recipient) {
-		console.error("[FISCAL] BUG_REPORT_EMAIL is not set; skipping developer alert email.", { saleId: sale.id, organizacaoId: organization.id, errorMessage });
+		console.error("[FISCAL] BUG_REPORT_EMAIL is not set; skipping developer alert email.", {
+			saleId: sale.id,
+			organizacaoId: organization.id,
+			errorMessage,
+		});
 		return;
 	}
 
@@ -174,9 +178,9 @@ type NotifyFiscalPendingDigestParams = {
  * causa (nao por venda), com link direto para a aba Pendencias. Nunca lanca.
  */
 export async function notifyFiscalPendingDigest({ organization, summary }: NotifyFiscalPendingDigestParams) {
-	if (summary.resumo.total === 0) return { enviado: false, destinatarios: 0 };
+	if (summary.resumo.total === 0) return { sent: false, recipients: 0 };
 	const recipients = await listFiscalPendingDigestRecipients(organization);
-	if (recipients.length === 0) return { enviado: false, destinatarios: 0 };
+	if (recipients.length === 0) return { sent: false, recipients: 0 };
 
 	const pendingUrl = `${getAppBaseUrl()}${appRoutes.fiscal.pending()}`;
 	const causes = summary.porAlvo.slice(0, 10).map((group) => {
@@ -211,11 +215,11 @@ export async function notifyFiscalPendingDigest({ organization, summary }: Notif
 		});
 		if (error) {
 			console.error("[FISCAL] Falha ao enviar resumo de pendências:", error);
-			return { enviado: false, destinatarios: recipients.length };
+			return { sent: false, recipients: recipients.length };
 		}
-		return { enviado: true, destinatarios: recipients.length };
+		return { sent: true, recipients: recipients.length };
 	} catch (error) {
 		console.error("[FISCAL] Erro inesperado ao enviar resumo de pendências.", error);
-		return { enviado: false, destinatarios: recipients.length };
+		return { sent: false, recipients: recipients.length };
 	}
 }

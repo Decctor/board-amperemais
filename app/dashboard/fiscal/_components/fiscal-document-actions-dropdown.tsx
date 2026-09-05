@@ -59,28 +59,28 @@ type FiscalDocumentActionsDropdownProps = {
  * em uma linha apagada logo abaixo do rotulo — o operador entende sem abrir o documento.
  */
 export function FiscalDocumentActionsDropdown({ document, runner, openDetails }: FiscalDocumentActionsDropdownProps) {
-	const cancelDeadline = useFiscalDeadline(runner.actions.CANCELAR?.prazoLimite ?? null);
-	const inutilizeDeadline = useFiscalDeadline(runner.actions.INUTILIZAR?.prazoLimite ?? null, 60_000);
+	const cancelDeadline = useFiscalDeadline(runner.actions.CANCELAR?.deadline ?? null);
+	const inutilizeDeadline = useFiscalDeadline(runner.actions.INUTILIZAR?.deadline ?? null, 60_000);
 	const isClosed = isFiscalDocumentClosed(document.statusInterno);
 
 	const renderItem = (action: TResolvedFiscalAction) => {
-		const Icon = action.acao === "REENVIAR" && isClosed ? Zap : ACTION_ICONS[action.acao];
-		const label = action.acao === "REENVIAR" && isClosed ? "Emitir novamente" : action.label;
-		const deadline = action.acao === "CANCELAR" ? cancelDeadline : action.acao === "INUTILIZAR" ? inutilizeDeadline : null;
-		const countdown = action.disponivel && deadline?.label ? deadline.label : null;
-		const isDestructive = DESTRUCTIVE_ACTIONS.includes(action.acao);
-		const isRunning = runner.pendingAction === action.acao;
+		const Icon = action.key === "REENVIAR" && isClosed ? Zap : ACTION_ICONS[action.key];
+		const label = action.key === "REENVIAR" && isClosed ? "Emitir novamente" : action.label;
+		const deadline = action.key === "CANCELAR" ? cancelDeadline : action.key === "INUTILIZAR" ? inutilizeDeadline : null;
+		const countdown = action.available && deadline?.label ? deadline.label : null;
+		const isDestructive = DESTRUCTIVE_ACTIONS.includes(action.key);
+		const isRunning = runner.pendingAction === action.key;
 		return (
 			<DropdownMenuItem
-				key={action.acao}
-				disabled={!action.disponivel || runner.isPending}
-				onClick={() => runner.run(action.acao)}
+				key={action.key}
+				disabled={!action.available || runner.isPending}
+				onClick={() => runner.run(action.key)}
 				variant={isDestructive ? "destructive" : "default"}
-				className={cn("items-start", !action.disponivel && "opacity-100")}
+				className={cn("items-start", !action.available && "opacity-100")}
 			>
 				<Icon className={cn("mt-0.5", isRunning && "animate-spin")} />
 				<span className="flex min-w-0 flex-col gap-0.5">
-					<span className={cn("flex items-center gap-1.5", !action.disponivel && "text-muted-foreground")}>
+					<span className={cn("flex items-center gap-1.5", !action.available && "text-muted-foreground")}>
 						{label}
 						{countdown ? (
 							<span
@@ -93,8 +93,8 @@ export function FiscalDocumentActionsDropdown({ document, runner, openDetails }:
 							</span>
 						) : null}
 					</span>
-					{!action.disponivel && action.motivo ? (
-						<span className="whitespace-normal text-[11px] leading-snug text-muted-foreground">{action.motivo}</span>
+					{!action.available && action.reason ? (
+						<span className="whitespace-normal text-[11px] leading-snug text-muted-foreground">{action.reason}</span>
 					) : null}
 				</span>
 			</DropdownMenuItem>

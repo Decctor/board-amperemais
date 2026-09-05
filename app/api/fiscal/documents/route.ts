@@ -56,8 +56,8 @@ async function getFiscalDocuments({ input }: { input: TGetFiscalDocumentsInput }
 		// travou (com alvo). A UI nao recalcula nada disso.
 		const [decorated] = await decorateFiscalDocuments({
 			documents: [document],
-			organizacaoId: orgId,
-			provedor: organizacao?.fiscalProvedor,
+			organizationId: orgId,
+			provider: organizacao?.fiscalProvedor,
 		});
 		return {
 			data: {
@@ -82,8 +82,8 @@ async function getFiscalDocuments({ input }: { input: TGetFiscalDocumentsInput }
 	]);
 	const documents = await decorateFiscalDocuments({
 		documents: result.documents,
-		organizacaoId: orgId,
-		provedor: organizacao?.fiscalProvedor,
+		organizationId: orgId,
+		provider: organizacao?.fiscalProvedor,
 	});
 	return {
 		data: {

@@ -13,4 +13,3 @@ export function blocksNewManualFiscalEmission(status: string | null | undefined)
 	if (CLOSED_STATUSES.has(status as TFiscalDocumentLifecycleStatusEnum)) return false;
 	return true;
 }
-

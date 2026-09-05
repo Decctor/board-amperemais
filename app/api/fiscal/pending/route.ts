@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 async function getFiscalPending({ organizationId }: { organizationId: string }) {
 	const organizacao = await loadFiscalOrganization(organizationId);
-	const summary = await getFiscalPendingSummary({ organizacaoId: organizationId, provedor: organizacao?.fiscalProvedor });
+	const summary = await getFiscalPendingSummary({ organizationId, provider: organizacao?.fiscalProvedor });
 	return { data: summary, message: "Pendências fiscais encontradas com sucesso." };
 }
 export type TGetFiscalPendingOutput = Awaited<ReturnType<typeof getFiscalPending>>;

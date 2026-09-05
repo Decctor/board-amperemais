@@ -20,9 +20,9 @@ async function sendFiscalPendingDigestRoute(_request: NextRequest) {
 	const falhas: Array<{ organizacaoId: string; erro: string }> = [];
 	for (const organization of organizations) {
 		try {
-			const summary = await getFiscalPendingSummary({ organizacaoId: organization.id, provedor: organization.fiscalProvedor });
+			const summary = await getFiscalPendingSummary({ organizationId: organization.id, provider: organization.fiscalProvedor });
 			const result = await notifyFiscalPendingDigest({ organization, summary });
-			if (result.enviado) enviados += 1;
+			if (result.sent) enviados += 1;
 		} catch (error) {
 			falhas.push({ organizacaoId: organization.id, erro: getErrorMessage(error) });
 		}

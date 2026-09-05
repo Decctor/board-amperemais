@@ -76,7 +76,7 @@ export default function InutilizeFiscalDocument({ document, prazoLimite, closeMe
 					</div>
 				</div>
 
-				{deadline.prazoLimite ? (
+				{deadline.deadline ? (
 					<div
 						className={cn(
 							"flex items-start gap-2 rounded-lg border p-3 text-xs",
@@ -86,8 +86,8 @@ export default function InutilizeFiscalDocument({ document, prazoLimite, closeMe
 						<CalendarClock className="mt-0.5 h-4 w-4 shrink-0" />
 						<span>
 							{deadline.expired
-								? `Prazo de inutilização encerrado em ${formatDateAsLocale(deadline.prazoLimite, true)}. Fale com o contador.`
-								: `Prazo para inutilizar: até ${formatDateAsLocale(deadline.prazoLimite, true)} (${deadline.label}).`}
+								? `Prazo de inutilização encerrado em ${formatDateAsLocale(deadline.deadline, true)}. Fale com o contador.`
+								: `Prazo para inutilizar: até ${formatDateAsLocale(deadline.deadline, true)} (${deadline.label}).`}
 						</span>
 					</div>
 				) : null}

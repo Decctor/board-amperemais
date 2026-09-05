@@ -62,6 +62,7 @@ const STUDIO_SALE = {
 	resumoPagamentos: { totalEditaveis: 1, totalPendentes: 1, totalEfetivadas: 1 },
 	pagamentoObservacoes: "Troco para R$ 150,00.",
 	fiscal: "AUTORIZADO",
+	documentoFiscalId: "fiscal-studio-1",
 	editabilidade: {
 		nivel: "CABECALHO",
 		rascunho: false,

@@ -23,11 +23,11 @@ export type TFiscalDocumentDecoration = {
 	problemas: TFiscalProblem[];
 };
 
-async function hasActiveReturnProfile(organizacaoId: string) {
+async function hasActiveReturnProfile(organizationId: string) {
 	const profile = await db.query.fiscalOperationProfiles.findFirst({
 		where: (fields, operators) =>
 			operators.and(
-				operators.eq(fields.organizacaoId, organizacaoId),
+				operators.eq(fields.organizacaoId, organizationId),
 				operators.eq(fields.tipoDocumento, "NFE"),
 				operators.eq(fields.finalidade, "DEVOLUCAO"),
 				operators.eq(fields.ativo, true),
@@ -39,21 +39,21 @@ async function hasActiveReturnProfile(organizacaoId: string) {
 
 export async function decorateFiscalDocuments<T extends DecoratableDocument>({
 	documents,
-	organizacaoId,
-	provedor,
-	agora = new Date(),
+	organizationId,
+	provider,
+	now = new Date(),
 }: {
 	documents: T[];
-	organizacaoId: string;
-	provedor: string | null | undefined;
-	agora?: Date;
+	organizationId: string;
+	provider: string | null | undefined;
+	now?: Date;
 }): Promise<Array<T & TFiscalDocumentDecoration>> {
 	if (documents.length === 0) return [];
 
 	const authorizedNfeIds = documents.filter((doc) => doc.tipo === "NFE" && doc.statusInterno === "AUTORIZADO").map((doc) => doc.id);
 	const authorizedIds = documents.filter((doc) => doc.statusInterno === "AUTORIZADO").map((doc) => doc.id);
 
-	const [correctionRows, returnRows, possuiPerfilDevolucao] = await Promise.all([
+	const [correctionRows, returnRows, hasReturnProfile] = await Promise.all([
 		authorizedNfeIds.length > 0
 			? db
 					.select({ documentoFiscalId: fiscalDocumentEvents.documentoFiscalId, total: count() })
@@ -67,35 +67,35 @@ export async function decorateFiscalDocuments<T extends DecoratableDocument>({
 					.from(fiscalOutboundDocuments)
 					.where(
 						and(
-							eq(fiscalOutboundDocuments.organizacaoId, organizacaoId),
+							eq(fiscalOutboundDocuments.organizacaoId, organizationId),
 							inArray(fiscalOutboundDocuments.documentoOrigemId, authorizedIds),
 							eq(fiscalOutboundDocuments.statusInterno, "AUTORIZADO"),
 						),
 					)
 			: Promise.resolve([]),
-		authorizedIds.length > 0 ? hasActiveReturnProfile(organizacaoId) : Promise.resolve(null),
+		authorizedIds.length > 0 ? hasActiveReturnProfile(organizationId) : Promise.resolve(null),
 	]);
 
 	const correctionsById = new Map(correctionRows.map((row) => [row.documentoFiscalId, row.total]));
 	const returnedIds = new Set(returnRows.map((row) => row.documentoOrigemId).filter((id): id is string => !!id));
 
-	return documents.map((documento) => ({
-		...documento,
+	return documents.map((document) => ({
+		...document,
 		acoes: resolveFiscalDocumentActions({
-			documento,
-			agora,
-			contexto: {
-				provedor,
-				cartasCorrecaoEmitidas: correctionsById.get(documento.id) ?? 0,
-				possuiDevolucaoAutorizada: returnedIds.has(documento.id),
-				possuiPerfilDevolucao,
+			document,
+			now,
+			context: {
+				provider,
+				correctionLettersIssued: correctionsById.get(document.id) ?? 0,
+				hasAuthorizedReturn: returnedIds.has(document.id),
+				hasReturnProfile,
 			},
 		}),
-		problemas: resolveFiscalDocumentProblems(documento),
+		problemas: resolveFiscalDocumentProblems(document),
 	}));
 }
 
-export async function loadFiscalDocumentActions(documento: DecoratableDocument, provedor: string | null | undefined, agora = new Date()) {
-	const [decorated] = await decorateFiscalDocuments({ documents: [documento], organizacaoId: documento.organizacaoId, provedor, agora });
+export async function loadFiscalDocumentActions(document: DecoratableDocument, provider: string | null | undefined, now = new Date()) {
+	const [decorated] = await decorateFiscalDocuments({ documents: [document], organizationId: document.organizacaoId, provider, now });
 	return decorated.acoes;
 }

@@ -17,16 +17,16 @@ export type TFiscalPermissions = {
 export type TFiscalDocumentListItem = TGetFiscalDocumentsOutputDefault["documents"][number] | TGetFiscalDocumentsOutputById["document"];
 
 export type TResolvedFiscalAction = {
-	acao: TFiscalDocumentActionKey;
+	key: TFiscalDocumentActionKey;
 	label: string;
-	// disponivel na API e permitido para o usuario.
-	disponivel: boolean;
+	// Disponivel na API e permitido para o usuario.
+	available: boolean;
 	// Motivo pronto para exibir quando indisponivel; null quando disponivel.
-	motivo: string | null;
+	reason: string | null;
 	// O documento aceitaria, mas o usuario nao tem permissao.
 	permissionBlocked: boolean;
-	prazoLimite: Date | null;
-	alternativas: TFiscalDocumentActionKey[];
+	deadline: Date | null;
+	alternatives: TFiscalDocumentActionKey[];
 };
 
 export const FISCAL_ACTION_ORDER: TFiscalDocumentActionKey[] = [
@@ -79,20 +79,20 @@ export function hasPermissionForFiscalAction(key: TFiscalDocumentActionKey, perm
 export function resolveFiscalDocumentActionState(action: TFiscalDocumentAction, permissions: TFiscalPermissions): TResolvedFiscalAction {
 	const permitted = hasPermissionForFiscalAction(action.acao, permissions);
 	const permissionBlocked = action.disponivel && !permitted;
-	const disponivel = action.disponivel && permitted;
-	const motivo = disponivel
+	const available = action.disponivel && permitted;
+	const reason = available
 		? null
 		: permissionBlocked
 			? `Você não tem permissão para ${PERMISSION_VERB[action.acao]}. Peça a um administrador.`
 			: (action.motivoIndisponivel ?? "Ação indisponível para este documento.");
 	return {
-		acao: action.acao,
+		key: action.acao,
 		label: FISCAL_ACTION_LABELS[action.acao],
-		disponivel,
-		motivo,
+		available,
+		reason,
 		permissionBlocked,
-		prazoLimite: action.prazoLimite ? new Date(action.prazoLimite) : null,
-		alternativas: action.alternativas ?? [],
+		deadline: action.prazoLimite ? new Date(action.prazoLimite) : null,
+		alternatives: action.alternativas ?? [],
 	};
 }
 
