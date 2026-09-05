@@ -1,6 +1,6 @@
 import { appApiHandler } from "@/lib/app-api";
 import { supabaseClient } from "@/services/supabase";
-import { gateway, generateText, experimental_transcribe as transcribe } from "ai";
+import { gateway, generateText, transcribe } from "ai";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
@@ -103,7 +103,7 @@ async function processAudio(fileBuffer: Buffer, _mimeType: string): Promise<{ tr
 
 	try {
 		const transcriptionResponse = await transcribe({
-			model: gateway("openai/whisper-1") as any,
+			model: gateway.transcription("openai/whisper-1"),
 			audio: fileBuffer,
 		});
 
