@@ -3,6 +3,7 @@ import type { TCreateOrganizationInput } from "@/app/api/admin/organizations/rou
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
 import { getJSONFromExcelFile } from "@/lib/excel-utils";
+import { uploadFile } from "@/lib/files-storage";
 import { createOrganization } from "@/lib/mutations/admin";
 import { useOrganizationState } from "@/state-hooks/use-organization-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -24,16 +25,12 @@ export default function NewOrganization({ closeModal }: NewOrganizationProps) {
 
 	async function handleCreateOrganization() {
 		try {
-			// Process logo file
-			let logoFile: TCreateOrganizationInput["logoFile"] = null;
+			// Logo sobe direto do navegador para o storage (mesmo padrao das configuracoes da
+			// organizacao); a API recebe so a URL, em `organization.logoUrl`.
+			let logoUrl = state.organization.logoUrl ?? null;
 			if (state.logoHolder.file) {
-				const buffer = await state.logoHolder.file.arrayBuffer();
-				const base64 = Buffer.from(buffer).toString("base64");
-				logoFile = {
-					name: state.logoHolder.file.name,
-					base64: base64,
-					type: state.logoHolder.file.type,
-				};
+				const { url } = await uploadFile({ file: state.logoHolder.file, fileName: `${state.organization.nome}-logo`, prefix: "organizations" });
+				logoUrl = url;
 			}
 
 			// Process products Excel file
@@ -44,9 +41,8 @@ export default function NewOrganization({ closeModal }: NewOrganizationProps) {
 			}
 
 			const input: TCreateOrganizationInput = {
-				organization: state.organization,
+				organization: { ...state.organization, logoUrl },
 				mainUser: state.mainUser,
-				logoFile,
 				productsData,
 			};
 

@@ -1,11 +1,15 @@
+import { createOpenAI } from "@ai-sdk/openai";
 import { gateway, generateText, experimental_transcribe as transcribe } from "ai";
+
+// O AI Gateway nao expoe modelos de transcricao; o Whisper vai direto na OpenAI (OPENAI_API_KEY).
+const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function handleAIAudioProcessing(fileBuffer: Buffer, mimeType: string): Promise<{ transcription: string; summary: string }> {
 	console.log("[AI_MEDIA] Processing audio file");
 
 	try {
 		const transcriptionResponse = await transcribe({
-			model: gateway("openai/whisper-1"),
+			model: openai.transcription("whisper-1"),
 			audio: fileBuffer,
 		});
 
