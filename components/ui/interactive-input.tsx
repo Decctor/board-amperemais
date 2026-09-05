@@ -215,7 +215,7 @@ function InteractiveInputDateContent({
 	return (
 		<div className={cn("w-auto p-0", className)}>
 			<Calendar
-				initialFocus
+				autoFocus
 				mode="single"
 				locale={locale}
 				selected={value}

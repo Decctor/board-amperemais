@@ -23,7 +23,7 @@ export default async function SalesCampaignConditions({ params }: { params: Prom
 		return <ErrorComponent msg="O recurso especificado não é uma campanha de promoção de vendas." />;
 	}
 
-	const campaignItemsIds = campaign.valor.dados.itens.map((item) => item.produtoId);
+	const campaignItemsIds = campaign.valor.dados.itens.flatMap((item) => item.produtos.map((product) => product.id));
 	const campaignItems = await db.query.products.findMany({
 		where: (fields, { inArray }) => inArray(fields.id, campaignItemsIds),
 		columns: {

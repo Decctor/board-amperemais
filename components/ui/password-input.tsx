@@ -3,7 +3,9 @@
 import * as React from 'react'
 import { EyeOpenIcon, EyeCloseIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { Input, type InputProps } from '@/components/ui/input'
+import { Input } from '@/components/ui/input'
+
+type InputProps = React.ComponentProps<typeof Input>
 
 import { cn } from '@/lib/utils'
 

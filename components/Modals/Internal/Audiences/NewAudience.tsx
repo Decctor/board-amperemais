@@ -4,7 +4,11 @@ import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import { getErrorMessage } from "@/lib/errors";
 import { createAudience } from "@/lib/mutations/audiences";
 import type { TCreateAudienceInput } from "@/schemas/audiences";
-import { normalizeAudienceFiltersForSubmit, useInternalAudienceState, type TUseInternalAudienceState } from "@/state-hooks/use-internal-audience-state";
+import {
+	normalizeAudienceFiltersForSubmit,
+	useInternalAudienceState,
+	type TUseInternalAudienceState,
+} from "@/state-hooks/use-internal-audience-state";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import AudienceGeneralBlock from "./Blocks/General";
@@ -48,7 +52,7 @@ export function NewAudience({ closeModal, callbacks }: NewAudienceProps) {
 	const { mutate, isPending } = useMutation({
 		mutationKey: ["create-audience"],
 		mutationFn: handleCreateAudience,
-		onMutate: (variables) => callbacks?.onMutate?.(variables as TCreateAudienceInput),
+		onMutate: (variables) => callbacks?.onMutate?.(variables as unknown as TCreateAudienceInput),
 		onSuccess: (data) => {
 			callbacks?.onSuccess?.();
 			toast.success(data.message);

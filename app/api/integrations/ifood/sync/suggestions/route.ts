@@ -35,7 +35,7 @@ async function getCatalogSuggestions({ orgId, input }: { orgId: string; input: T
 		}),
 	]);
 
-	const candidates: TMatchCandidate[] = produtos.flatMap((product) =>
+	const candidates: TMatchCandidate[] = produtos.flatMap((product): TMatchCandidate[] =>
 		product.variantes.length
 			? product.variantes.map((variant) => ({
 					produtoId: product.id,

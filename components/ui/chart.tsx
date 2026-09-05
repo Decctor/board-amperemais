@@ -281,7 +281,10 @@ function ChartLegendContent({
 }: React.ComponentProps<"div"> & {
   hideIcon?: boolean
   nameKey?: string
-} & RechartsPrimitive.DefaultLegendContentProps) {
+  // Aceita tambem um payload montado pela tela (dados do grafico com `fill`), nao so o injetado
+  // pelo Recharts: a legenda le apenas value/type/dataKey/color, todos opcionais aqui.
+  payload?: ReadonlyArray<Partial<Omit<RechartsPrimitive.LegendPayload, "value">> & { value?: unknown } & Record<string, unknown>>
+} & Omit<RechartsPrimitive.DefaultLegendContentProps, "payload">) {
   const { config } = useChart()
 
   if (!payload?.length) {

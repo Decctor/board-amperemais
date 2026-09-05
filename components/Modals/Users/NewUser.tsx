@@ -28,7 +28,7 @@ type NewUserProps = {
 	};
 };
 function NewUser({ session, closeModal, callbacks }: NewUserProps) {
-	const { state, updateUser, updateAvatarHolder, updateUserPermissions, resetState } = useUserState();
+	const { state, updateUser, updateAvatarHolder, updateMembership, updateMembershipPermissions } = useUserState();
 
 	async function handleCreateUser(state: TUseUserState["state"]) {
 		let userAvatarUrl = state.user.avatarUrl;
@@ -38,7 +38,7 @@ function NewUser({ session, closeModal, callbacks }: NewUserProps) {
 			userAvatarUrl = url;
 		}
 
-		return await createUser({ user: { ...state.user, avatarUrl: userAvatarUrl } });
+		return await createUser({ user: { ...state.user, avatarUrl: userAvatarUrl, permissoes: state.membership.permissoes } });
 	}
 	const { mutate, isPending } = useMutation({
 		mutationKey: ["create-user"],
@@ -82,8 +82,8 @@ function NewUser({ session, closeModal, callbacks }: NewUserProps) {
 				updateAvatarHolder={updateAvatarHolder}
 			/>
 			<UsersCredentialsBlock infoHolder={state.user} updateInfoHolder={updateUser} />
-			<UsersSellerBlock infoHolder={state.user} updateInfoHolder={updateUser} />
-			<UsersPermissionsBlock infoHolder={state.user} updateUserPermissions={updateUserPermissions} />
+			<UsersSellerBlock membershipHolder={state.membership} updateMembership={updateMembership} />
+			<UsersPermissionsBlock permissionsHolder={state.membership.permissoes} updateUserPermissions={updateMembershipPermissions} />
 		</ResponsiveMenu>
 	);
 }

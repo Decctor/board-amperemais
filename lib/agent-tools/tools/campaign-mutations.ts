@@ -71,7 +71,11 @@ export const validateCampaignDraftTool = defineAgentTool({
 		`Valida uma configuração de campanha sem persistir nem ativar nada. ${actor.mode === "PLATAFORMA" ? "Informe `organizacaoId` (id ou slug)." : ""}`,
 	execute: async (input, actor) => {
 		const organizationId = await resolveOrganizationScope(actor, input.organizacaoId);
-		await validateCampaignConfiguration({ campaign: { ...input.campaign, ativo: false }, organizationId });
+		// Validacao pura: autor e data nao sao persistidos, so completam o formato da campanha.
+		await validateCampaignConfiguration({
+			campaign: { ...input.campaign, ativo: false, dataInsercao: new Date(), autorId: actor.responsibleUserId ?? actor.principalId },
+			organizationId,
+		});
 		return { valida: true, segmentacoes: input.segmentations.length };
 	},
 });

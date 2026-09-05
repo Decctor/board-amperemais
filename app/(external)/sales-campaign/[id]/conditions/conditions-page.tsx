@@ -104,7 +104,8 @@ function SalesCampaignConditionItem({
 			return coverImageUrl;
 		})
 		.filter((i) => !!i) as string[];
-	const conditionValue = item.anuncioValorPromocional ?? item.valorPromocional;
+	// Sem valor promocional, a condicao e o proprio valor base (desconto zero).
+	const conditionValue = item.anuncioValorPromocional ?? item.valorPromocional ?? item.valorBase;
 	const discountPercent = Math.round(((item.valorBase - conditionValue) / item.valorBase) * 100);
 
 	return (

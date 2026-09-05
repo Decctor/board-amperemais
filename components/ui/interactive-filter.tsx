@@ -687,7 +687,7 @@ function InteractiveFilterDateRangeContent({
 				</div>
 			) : null}
 			<Calendar
-				initialFocus
+				autoFocus
 				mode="range"
 				locale={locale}
 				defaultMonth={value.from}

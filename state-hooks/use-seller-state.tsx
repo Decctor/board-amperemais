@@ -6,6 +6,7 @@ const getInitialState = (): TSellerState => ({
 		ativo: true,
 		nome: "",
 		identificador: "",
+		senhaOperador: "",
 		telefone: "",
 		email: "",
 		avatarUrl: "",

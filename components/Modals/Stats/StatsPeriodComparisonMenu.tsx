@@ -476,7 +476,7 @@ function StatsPeriodComparisonMenuData() {
 									stackId="a"
 								/>
 
-								<ChartLegend content={<ChartLegendContent payload={{}} />} />
+								<ChartLegend content={<ChartLegendContent />} />
 							</ComposedChart>
 						</ChartContainer>
 					</div>

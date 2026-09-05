@@ -56,7 +56,7 @@ export async function uploadChatMedia({
 	const storagePath = generateStoragePath(organizacaoId, chatId, filename);
 
 	// Convert Buffer to Blob if needed
-	const fileBlob = file instanceof Buffer ? new Blob([file], { type: mimeType }) : file;
+	const fileBlob = Buffer.isBuffer(file) ? new Blob([new Uint8Array(file)], { type: mimeType }) : file;
 
 	const { data, error } = await supabaseClient.storage.from(SUPABASE_STORAGE_CHAT_MEDIA_BUCKET).upload(storagePath, fileBlob, {
 		contentType: mimeType,
@@ -71,7 +71,7 @@ export async function uploadChatMedia({
 		data: { publicUrl },
 	} = supabaseClient.storage.from(SUPABASE_STORAGE_CHAT_MEDIA_BUCKET).getPublicUrl(storagePath);
 
-	const fileSize = file instanceof Buffer ? file.length : file.size;
+	const fileSize = Buffer.isBuffer(file) ? file.length : file.size;
 
 	return {
 		storageId: data.path,
@@ -197,7 +197,7 @@ export async function uploadMediaToWhatsapp({
 	whatsappToken: string;
 }): Promise<{ mediaId: string }> {
 	const formData = new FormData();
-	formData.append("file", new Blob([fileBuffer], { type: mimeType }), filename);
+	formData.append("file", new Blob([new Uint8Array(fileBuffer)], { type: mimeType }), filename);
 	formData.append("messaging_product", "whatsapp");
 	formData.append("type", mimeType);
 

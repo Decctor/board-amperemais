@@ -42,6 +42,7 @@ const STUDIO_SALE = {
 			editavel: false,
 			motivoNaoEditavel: "Pagamento já recebido.",
 			grupoParcelasId: null,
+			lancamentoContabilId: "entry-studio-1",
 			contaFinanceiraId: "account-studio-1",
 		},
 		{
@@ -56,6 +57,7 @@ const STUDIO_SALE = {
 			editavel: true,
 			motivoNaoEditavel: null,
 			grupoParcelasId: null,
+			lancamentoContabilId: "entry-studio-1",
 			contaFinanceiraId: "account-studio-2",
 		},
 	],
