@@ -77,7 +77,7 @@ export function ValidityDurationMeasureCell({ measure, gridRow, gridCol, gridBou
 
 	return (
 		<SpreadsheetCellWrapper gridRow={gridRow} gridCol={gridCol}>
-			<Select
+			<Select<ValidityDurationMeasure | "__reset__">
 				items={[...VALIDITY_DURATION_OPTIONS.map((option) => ({ value: option.value, label: option.label })), { value: "__reset__", label: "Limpar" }]}
 				value={measure ?? null}
 				onValueChange={(nextMeasure) => {
@@ -86,7 +86,7 @@ export function ValidityDurationMeasureCell({ measure, gridRow, gridCol, gridBou
 						onReset();
 						return;
 					}
-					onMeasureChange(nextMeasure as ValidityDurationMeasure);
+					onMeasureChange(nextMeasure);
 				}}
 			>
 				<SelectTrigger

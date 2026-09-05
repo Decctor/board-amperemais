@@ -70,8 +70,8 @@ export default function ClientPortfoliosPage({ boundSellerId, canPickSeller }: C
 					</EmptyHeader>
 				</Empty>
 				<div className="w-full max-w-xs">
-					<Select
-						items={[...(sellersSimplified ?? []).map((seller) => ({ value: seller.id, label: seller.nome }))]}
+					<Select<string>
+						items={(sellersSimplified ?? []).map((seller) => ({ value: seller.id, label: seller.nome }))}
 						onValueChange={(value) => {
 							if (value === null) return;
 							setPickedSellerId(value);
@@ -105,7 +105,7 @@ export default function ClientPortfoliosPage({ boundSellerId, canPickSeller }: C
 				<div className="flex w-full items-center justify-end">
 					<div className="w-full max-w-60">
 						<Select
-							items={[...(sellersSimplified ?? []).map((seller) => ({ value: seller.id, label: seller.nome }))]}
+							items={(sellersSimplified ?? []).map((seller) => ({ value: seller.id, label: seller.nome }))}
 							value={effectiveSellerId}
 							onValueChange={(value) => {
 								if (value === null) return;

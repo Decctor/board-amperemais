@@ -98,19 +98,20 @@ export function AuthorizeConsent({
 								items={[
 									...organizations.map((organization) => ({ value: organization.id, label: organization.nome })),
 									...(platformScopeDescriptors
-										? {
-												value: PLATFORM_ACCESS_VALUE,
-												label: (
-													<>
-														{" "}
-														<span className="flex items-center gap-2">
-															<Globe className="h-4 w-4" />
-															Acesso geral (plataforma)
-														</span>{" "}
-													</>
-												),
-											}
-										: null),
+										? [
+												{
+													value: PLATFORM_ACCESS_VALUE,
+													label: (
+														<>
+															<span className="flex items-center gap-2">
+																<Globe className="h-4 w-4" />
+																Acesso geral (plataforma)
+															</span>
+														</>
+													),
+												},
+											]
+										: []),
 								]}
 								value={selectedTarget}
 								onValueChange={(value) => {
