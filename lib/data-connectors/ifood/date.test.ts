@@ -16,7 +16,7 @@ test("a data da venda permanece na criação ao confirmar e concluir o pedido", 
 		assert.equal(mapIfoodSale(order, currentEvents).occurredAt.toISOString(), "2026-09-06T00:49:50.679Z");
 	}
 	assert.equal(
-		mapIfoodSale({ ...order, confirmedAt: events[0].createdAt, concludedAt: events[1].createdAt }, events).occurredAt.toISOString(),
+		mapIfoodSale({ ...order, confirmedAt: events[0].createdAt ?? null, concludedAt: events[1].createdAt ?? null }, events).occurredAt.toISOString(),
 		"2026-09-06T00:49:50.679Z",
 	);
 });
