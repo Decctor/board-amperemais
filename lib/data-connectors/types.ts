@@ -199,3 +199,11 @@ export type TDataConnector<TConfig extends TDataSourceIntegrationConfig = TDataS
 	kind: TDataConnectorKind;
 	fetchImportBatch: (input: TDataConnectorFetchInput<TConfig>) => Promise<TCanonicalConnectorBatch>;
 };
+
+export type TListedSaleClassification = "ELEGIVEL" | "IGNORADO" | "DESCONHECIDO";
+export type TDataConnectorHistory<TConfig> = {
+ describe: () => { supportsHistory: boolean; listIncludesStatus: boolean; supportsStatusFilterOnList: boolean; maxWindowDays: number | null; defaultStepDays: number; rateLimit: { perSecond: number | null; perDay: number | null } };
+ listSales: (input: { config: TConfig; window: TCanonicalImportWindow; page: number }) => Promise<{ items: Array<{ sourceSaleId: string; statusText: string; occurredAt: Date | null }>; last: boolean; requests: number }>;
+ classifyListedSale: (item: { statusText: string }) => TListedSaleClassification;
+ buildBatchForSales: (input: { organizationId: string; integrationId: string; config: TConfig; window: TCanonicalImportWindow; sourceSaleIds: string[] }) => Promise<TCanonicalConnectorBatch & { requests: number }>;
+};

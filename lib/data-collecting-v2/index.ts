@@ -1,4 +1,4 @@
-import { fetchConnectorImportBatch, type TCanonicalImportWindow } from "@/lib/data-connectors";
+import { fetchConnectorImportBatch, type TCanonicalImportWindow, type TCanonicalImportBatch } from "@/lib/data-connectors";
 import { processSaleCupomAutoPrintIfEligible } from "@/lib/desktop-agent/auto-print";
 import { getActiveDataSourceIntegrations, type TDataSourceIntegration } from "@/lib/integrations/data-sources";
 import { resolveIfoodManagementContext } from "@/lib/integrations/ifood/context";
@@ -135,18 +135,26 @@ async function processIntegration({
 	effects: TDataCollectingV2EffectsOptions;
 	includeRawInResult?: boolean;
 }) {
+	const batch = await fetchConnectorImportBatch({ organizationId: integration.organizacaoId, integrationId: integration.id, config: integration.configuracao, window });
+	return persistCanonicalBatch({ integration, organizationConfiguration, batch, effects, includeRawInResult, mode: "CONTINUA" });
+}
+
+export async function persistCanonicalBatch({ integration, organizationConfiguration, batch, effects: requestedEffects, mode, includeRawInResult = false, onPersist }: {
+	integration: TDataSourceIntegration;
+	organizationConfiguration: (typeof organizations.$inferSelect)["configuracao"] | null;
+	batch: TCanonicalImportBatch;
+	effects: TDataCollectingV2EffectsOptions;
+	mode: "HISTORICO" | "CONTINUA";
+	includeRawInResult?: boolean;
+	onPersist?: (tx: import("@/services/drizzle").DBTransaction, summary: TDataCollectingV2RunSummary) => Promise<void>;
+}) {
+	const effects = mode === "HISTORICO" ? { processCashback: false, processCampaigns: false, processConversionAttribution: false } : requestedEffects;
 	const organizationId = integration.organizacaoId;
 	const erp: TSyncSalesErpOptions = {
-		policy: getChannelErpPolicy(organizationConfiguration),
+		policy: getChannelErpPolicy(mode === "HISTORICO" ? null : organizationConfiguration),
 		stockTrackingEnabled: organizationConfiguration?.preferencias?.rastreamentoEstoque ?? false,
 		organizationConfiguration,
 	};
-	const batch = await fetchConnectorImportBatch({
-		organizationId,
-		integrationId: integration.id,
-		config: integration.configuracao,
-		window,
-	});
 	const campaignsForOrganization = effects.processCampaigns ? await loadPurchaseEffectCampaigns(db, organizationId) : [];
 	let immediateProcessingDataList: ImmediateProcessingData[] = [];
 	let fiscalEmissionCandidateSaleIds: string[] = [];
@@ -178,7 +186,7 @@ async function processIntegration({
 
 		immediateProcessingDataList = effectsResult.immediateProcessingDataList;
 
-		return {
+		const result: TDataCollectingV2RunSummary = {
 			organizationId,
 			integrationId: integration.id,
 			source: batch.source,
@@ -199,8 +207,11 @@ async function processIntegration({
 			firstPurchaseInteractionsCount: effectsResult.firstPurchaseInteractionsCount,
 			cashbackAccumulationInteractionsCount: effectsResult.cashbackAccumulationInteractionsCount,
 		};
+		await onPersist?.(tx, result);
+		return result;
 	});
 
+	if (mode === "HISTORICO") return { summary, immediateProcessingDataList: [], raw: undefined };
 	await batch.postProcess?.();
 
 	// Aceite automático iFood (pós-commit): pedidos ainda não válidos e não cancelados = PLACED
