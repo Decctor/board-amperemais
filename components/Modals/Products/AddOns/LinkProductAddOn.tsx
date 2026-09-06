@@ -17,7 +17,7 @@ import { toast } from "sonner";
 
 function RuleField({ label, value, min, onChange }: { label: string; value: number; min: number; onChange: (value: number) => void }) {
 	return (
-		<label className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-background px-1.5">
+		<label className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-border bg-background px-1.5">
 			<span className="text-[0.62rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
 			<input
 				type="number"
@@ -45,7 +45,15 @@ type LinkProductAddOnProps = {
 
 export default function LinkProductAddOn({ productId, linkedAddOnIds, closeModal, callbacks }: LinkProductAddOnProps) {
 	const queryClient = useQueryClient();
-	const { data: addOns, isLoading, isError, isSuccess, error, filters, updateFilters } = useProductAddOns({
+	const {
+		data: addOns,
+		isLoading,
+		isError,
+		isSuccess,
+		error,
+		filters,
+		updateFilters,
+	} = useProductAddOns({
 		initialFilters: { activeOnly: true },
 	});
 
@@ -140,17 +148,15 @@ function LinkableAddOnRow({ addOn, attachIsPending, onAttach }: LinkableAddOnRow
 	}
 
 	return (
-		<div className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-2.5 py-2">
-			<div className="flex min-w-0 flex-1 items-start gap-2">
+		<div className="flex w-full flex-col gap-2 rounded-lg border border-border bg-background px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between">
+			<div className="flex w-full min-w-0 items-start gap-2 sm:flex-1">
 				<span className="mt-0.5 inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md border border-border bg-background">
 					<Layers className="h-3 w-3 text-muted-foreground" />
 				</span>
 				<div className="min-w-0 flex-1">
 					<p className="truncate text-sm font-semibold tracking-tight text-foreground">{addOn.nome}</p>
 					<div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-						{addOn.internoNome ? (
-							<span className="truncate text-xs font-medium tracking-tight text-muted-foreground">{addOn.internoNome}</span>
-						) : null}
+						{addOn.internoNome ? <span className="truncate text-xs font-medium tracking-tight text-muted-foreground">{addOn.internoNome}</span> : null}
 						<Chip.Root variant="outline" size="xs">
 							<Chip.Icon>
 								<ListChecks />
@@ -162,20 +168,23 @@ function LinkableAddOnRow({ addOn, attachIsPending, onAttach }: LinkableAddOnRow
 								<Package />
 							</Chip.Icon>
 							<Chip.Label>
-								{addOn.produtos.length === 0
-									? "Sem produtos"
-									: addOn.produtos.length === 1
-										? "1 produto"
-										: `${addOn.produtos.length} produtos`}
+								{addOn.produtos.length === 0 ? "Sem produtos" : addOn.produtos.length === 1 ? "1 produto" : `${addOn.produtos.length} produtos`}
 							</Chip.Label>
 						</Chip.Root>
 					</div>
 				</div>
 			</div>
-			<div className="flex shrink-0 items-center gap-1.5">
+			<div className="flex w-full items-center gap-1.5 sm:w-auto sm:shrink-0">
 				<RuleField label="Mín" value={minOpcoes} min={0} onChange={setMinOpcoes} />
 				<RuleField label="Máx" value={maxOpcoes} min={1} onChange={setMaxOpcoes} />
-				<Button type="button" variant="outline" size="sm" disabled={attachIsPending} onClick={handleAttach} className="flex items-center gap-1.5">
+				<Button
+					type="button"
+					variant="outline"
+					size="sm"
+					disabled={attachIsPending}
+					onClick={handleAttach}
+					className="flex flex-1 items-center gap-1.5 sm:flex-initial"
+				>
 					<LinkIcon className="h-3.5 w-3.5" />
 					VINCULAR
 				</Button>

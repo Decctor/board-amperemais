@@ -42,7 +42,6 @@ const MainLayout = async ({ children }: { children: ReactNode }) => {
 							corSecundariaForeground={user.membership.organizacao.corSecundariaForeground}
 						>
 							<AppHeader session={{ user: user.user, membership: user.membership }} />
-							<ActivationPanel organizationId={user.membership.organizacao.id} />
 							{children}
 							<SubscriptionPaywall />
 						</OrgColorsProvider>
