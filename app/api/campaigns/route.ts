@@ -594,6 +594,16 @@ export async function updateCampaign({ input, organizationId: userOrgId }: { inp
 
 		const updatedCampaignId = updatedCampaignResponse[0]?.id;
 		if (!updatedCampaignId) throw new createHttpError.InternalServerError("Oops, houve um erro desconhecido ao atualizar campanha.");
+		const preset = await trx.query.campaigns.findFirst({ where: and(eq(campaigns.id, updatedCampaignId), eq(campaigns.organizacaoId, userOrgId)), columns: { chavePreset: true } });
+		if (preset?.chavePreset && typeof input.campaign.ativo === "boolean") {
+			const journey = await getJourney({ executor: trx, organizationId: userOrgId, produto: "CRM" });
+			if (journey) {
+				const keys = new Set(journey.respostas.campanhasComEnvioHabilitado);
+				if (input.campaign.ativo) keys.add(preset.chavePreset); else keys.delete(preset.chavePreset);
+				await updateJourneyProgress({ executor: trx, organizationId: userOrgId, produto: "CRM", respostas: { campanhasComEnvioHabilitado: [...keys] } });
+			}
+			await reconcileOnboardingCampaigns({ executor: trx, organizationId: userOrgId });
+		}
 
 		console.log("[INFO] [UPDATE-CAMPAIGN] Campaign updated successfully, starting to process segmentations...");
 		await handleSimpleChildRowsProcessing({
@@ -630,3 +640,6 @@ const updateCampaignRoute = async (request: NextRequest) => {
 export const PUT = appApiHandler({
 	PUT: updateCampaignRoute,
 });
+import { updateJourneyProgress } from "@/lib/onboarding/progress";
+import { getJourney } from "@/lib/onboarding/progress";
+import { reconcileOnboardingCampaigns } from "@/lib/onboarding/reconcile";

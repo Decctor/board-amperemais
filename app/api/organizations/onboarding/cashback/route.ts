@@ -65,6 +65,7 @@ async function upsertOnboardingCashbackRoute(request: NextRequest) {
 	if (!session) throw new createHttpError.Unauthorized("Você não está autenticado.");
 	const input = UpsertOnboardingCashbackInputSchema.parse(await request.json());
 	const result = await upsertOnboardingCashback({ input, session });
+	if (session.membership) await reconcileOnboardingCampaigns({ executor: db, organizationId: session.membership.organizacao.id });
 	return NextResponse.json(result);
 }
 
@@ -72,3 +73,4 @@ export const POST = appApiHandler({ POST: upsertOnboardingCashbackRoute });
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+import { reconcileOnboardingCampaigns } from "@/lib/onboarding/reconcile";

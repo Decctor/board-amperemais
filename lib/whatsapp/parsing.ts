@@ -49,6 +49,7 @@ export function mapWhatsAppStatusToAppStatus(whatsappStatus: WhatsAppMessageStat
 }
 type ParsedStatusUpdate = {
 	whatsappMessageId: string;
+	whatsappPhoneNumberId?: string;
 	status: WhatsAppMessageStatus;
 	timestamp: number;
 	errorMessage?: string;
@@ -181,7 +182,10 @@ export function parseWebhookStatusUpdates(webhookPayload: unknown): ParsedStatus
 		if (!Array.isArray(statuses)) continue;
 		for (const rawStatus of statuses) {
 			const single = parseSingleStatus(rawStatus as Record<string, unknown>);
-			if (single) parsed.push(single);
+			if (single) {
+				const metadata = value.metadata as { phone_number_id?: string } | undefined;
+				parsed.push({ ...single, whatsappPhoneNumberId: metadata?.phone_number_id });
+			}
 		}
 	}
 	return parsed;

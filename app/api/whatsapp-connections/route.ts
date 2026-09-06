@@ -87,6 +87,7 @@ async function deleteWhatsappConnectionRoute(req: NextRequest) {
 		.parse(req.nextUrl.searchParams.get("id"));
 	if (!input) throw new createHttpError.BadRequest("ID da conexão do WhatsApp não informado.");
 	const result = await deleteWhatsappConnection({ input, session });
+	await reconcileOnboardingCampaigns({ executor: db, organizationId: session.membership!.organizacao.id });
 	return NextResponse.json(result, { status: 200 });
 }
 
@@ -160,3 +161,4 @@ export const DELETE = appApiHandler({
 export const PATCH = appApiHandler({
 	PATCH: updateConnectionPhoneAiServiceRoute,
 });
+import { reconcileOnboardingCampaigns } from "@/lib/onboarding/reconcile";

@@ -1,6 +1,7 @@
 import { appApiHandler } from "@/lib/app-api";
 import { assertCronAuthorized } from "@/lib/cron/assert-cron-authorized";
 import { db } from "@/services/drizzle";
+import { recomputeClientMetricsForOrganization } from "@/lib/clients/recompute-metrics";
 import { clients, products, saleItems, sales } from "@/services/drizzle/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
@@ -60,6 +61,7 @@ async function getEnrichClientsRoute(req: NextRequest) {
 						processingList,
 						batchSize: UPDATE_BATCH_SIZE,
 					});
+					await recomputeClientMetricsForOrganization({ organizationId: organization.id });
 
 					return {
 						organizationId: organization.id,

@@ -2,6 +2,9 @@ import { appApiHandler } from "@/lib/app-api";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { exchangeBlingAuthorizationCode } from "@/lib/data-connectors/bling/client";
 import { connectDataSourceIntegration } from "@/lib/integrations/data-sources";
+import { startHistoricalImport, changeImportJob } from "@/lib/integrations/import-jobs/service";
+import { integrationImportJobs } from "@/services/drizzle/schema";
+import { and, eq } from "drizzle-orm";
 import { canManageIntegrations } from "@/lib/integrations/mask";
 import { consumeOAuthRedirect } from "@/lib/integrations/oauth-redirect";
 import { db } from "@/services/drizzle";
@@ -89,7 +92,12 @@ async function completeBlingAuthorizationRoute(request: NextRequest) {
 	}
 
 	try {
-		await completeBlingAuthorization({ input, organizationId, autorId: session.user.id, reconnectIntegrationId });
+		const result = await completeBlingAuthorization({ input, organizationId, autorId: session.user.id, reconnectIntegrationId });
+		try {
+			const waiting = await db.query.integrationImportJobs.findFirst({ where: and(eq(integrationImportJobs.integracaoId, result.data.integrationId), eq(integrationImportJobs.organizacaoId, organizationId), eq(integrationImportJobs.estado, "AGUARDANDO_RECONEXAO")) });
+			if (waiting) await changeImportJob({ id: waiting.id, organizationId, action: "retry" });
+			else if (new URL(redirectPath, "https://local.invalid").pathname === "/onboarding") await startHistoricalImport({ integrationId: result.data.integrationId, organizationId, autorId: null, janelaDias: 90 });
+		} catch (error) { console.error("[BLING_CALLBACK] Conectado, mas não foi possível iniciar o histórico.", error); }
 		return NextResponse.redirect(new URL(redirectPath, process.env.NEXT_PUBLIC_APP_URL));
 	} catch (error) {
 		console.error("[BLING_CALLBACK] Não foi possível conectar ao Bling.", error);

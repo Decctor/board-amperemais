@@ -339,6 +339,7 @@ async function getWhatsappAuthCallbackRoute(req: NextRequest) {
 	}
 
 	const cookieStore = await cookies();
+	await reconcileOnboardingCampaigns({ executor: db, organizationId: userOrgId });
 	const redirectPath = consumeOAuthRedirect(cookieStore, WHATSAPP_OAUTH_REDIRECT_COOKIE_NAME, "/dashboard/settings?view=meta-oauth");
 	return NextResponse.redirect(new URL(redirectPath, process.env.NEXT_PUBLIC_APP_URL));
 }
@@ -349,3 +350,4 @@ export const dynamic = "force-dynamic";
 export const GET = appApiHandler({
 	GET: getWhatsappAuthCallbackRoute,
 });
+import { reconcileOnboardingCampaigns } from "@/lib/onboarding/reconcile";

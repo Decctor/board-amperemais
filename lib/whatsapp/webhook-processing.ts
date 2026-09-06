@@ -251,6 +251,7 @@ async function updateUniversalTemplatePhoneMetadata(
 				dataAtualizacao: new Date(),
 			})
 			.where(eq(messageTemplates.id, template.id));
+		if (update.status) await reconcileOnboardingCampaigns({ executor: db, organizationId: template.organizacaoId });
 	}
 }
 
@@ -349,6 +350,7 @@ async function handleStatusUpdates(body: TMetaWebhookBody): Promise<void> {
 }
 
 async function handleStatusUpdate(statusUpdate: ReturnType<typeof parseWebhookStatusUpdates>[number]): Promise<void> {
+	await observeWhatsappPayment(statusUpdate);
 	const { whatsappStatus } = mapWhatsAppStatusToAppStatus(statusUpdate.status);
 
 	const previousInteraction = await db.query.interactions.findFirst({
@@ -808,3 +810,5 @@ async function handleAIMediaProcessing(
 		throw error;
 	}
 }
+import { observeWhatsappPayment } from "@/lib/onboarding/whatsapp-payment";
+import { reconcileOnboardingCampaigns } from "@/lib/onboarding/reconcile";

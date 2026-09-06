@@ -8,6 +8,15 @@
 					"retryAfterSeconds": 30
 				}
 			]
+		},
+		"app/api/queues/integration-import-batch/route.ts": {
+			"experimentalTriggers": [
+				{
+					"retryAfterSeconds": 60,
+					"type": "queue/v2beta",
+					"topic": "integration-import-batches"
+				}
+			]
 		}
 	},
 	"crons": [
@@ -122,6 +131,10 @@
 		{
 			"path": "/api/cron/sweep-client-duplicates",
 			"schedule": "30 3 * * *"
+		},
+		{
+			"path": "/api/cron/import-jobs",
+			"schedule": "*/2 * * * *"
 		}
 	]
 }

@@ -207,6 +207,7 @@ async function handleConnectionUpdate(body: Extract<TGatewayWebhookBody, { event
 			});
 		}
 	}
+	await reconcileOnboardingCampaigns({ executor: db, organizationId: connection.organizacaoId });
 	console.log("[INTERNAL_WHATSAPP_WEBHOOK] Connection status updated:", {
 		sessionId,
 		status: data.status,
@@ -613,3 +614,4 @@ async function handleAIMediaProcessing(
 		throw error;
 	}
 }
+import { reconcileOnboardingCampaigns } from "@/lib/onboarding/reconcile";

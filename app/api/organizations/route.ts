@@ -63,7 +63,7 @@ export const CreateOrganizationInputSchema = z.object({
 		slug: OrganizationSlugCreateInputSchema,
 	}),
 	subscription: z
-		.enum(["ESSENCIAL-MONTHLY", "ESSENCIAL-YEARLY", "CRESCIMENTO-MONTHLY", "CRESCIMENTO-YEARLY", "ESCALA-MONTHLY", "ESCALA-YEARLY", "FREE-TRIAL"])
+		.enum(["ESSENCIAL-MONTHLY", "ESSENCIAL-YEARLY", "CRESCIMENTO-MONTHLY", "CRESCIMENTO-YEARLY", "ESCALA-MONTHLY", "ESCALA-YEARLY", "FREE-TRIAL", "FREE-TRIAL-ERP"])
 		.optional()
 		.nullable(),
 	indicadorCodigo: z.string({ invalid_type_error: "Tipo invalido para o codigo de indicacao." }).optional().nullable(),
@@ -379,14 +379,15 @@ async function createOrganization({
 		};
 	}
 
-	if (!subscription || subscription === "FREE-TRIAL") {
+	if (!subscription || subscription === "FREE-TRIAL" || subscription === "FREE-TRIAL-ERP") {
 		console.log("[INFO] [CREATE_ORGANIZATION] Free trial selected. Defining free trial period.");
 		// FREE-TRIAL logic
 		const periodoTesteInicio = new Date();
 		const periodoTesteFim = new Date();
 		periodoTesteFim.setDate(periodoTesteFim.getDate() + FREE_TRIAL_DURATION_DAYS);
 
-		const freeTrialConfig = AppSubscriptionPlans.CRESCIMENTO.capabilities;
+		const trialPlan = subscription === "FREE-TRIAL-ERP" ? "ESCALA" : "CRESCIMENTO";
+		const freeTrialConfig = AppSubscriptionPlans[trialPlan].capabilities;
 		await db.transaction(async (tx) => {
 			await tx
 				.update(organizations)
@@ -401,6 +402,7 @@ async function createOrganization({
 					},
 					periodoTesteInicio,
 					periodoTesteFim,
+					assinaturaPlano: trialPlan,
 				})
 				.where(eq(organizations.id, insertedOrgId));
 		});
