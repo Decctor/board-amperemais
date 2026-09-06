@@ -1755,3 +1755,47 @@ export const ClientDuplicateStatusEnum = z.enum(["PENDENTE", "DESCARTADO", "MESC
 	invalid_type_error: "Tipo não válido para o status do par de duplicidade.",
 });
 export type TClientDuplicateStatusEnum = z.infer<typeof ClientDuplicateStatusEnum>;
+
+export const OnboardingProductEnum = z.enum(["CRM", "ERP"], {
+	required_error: "Produto do onboarding não informado.",
+	invalid_type_error: "Tipo não válido para o produto do onboarding.",
+});
+export type TOnboardingProductEnum = z.infer<typeof OnboardingProductEnum>;
+
+export const OnboardingIntentOriginEnum = z.enum(["LINK", "PARCEIRO", "DEAL", "PERGUNTA", "SEGUNDO_PRODUTO"], {
+	required_error: "Origem da intenção do onboarding não informada.",
+	invalid_type_error: "Tipo não válido para a origem da intenção do onboarding.",
+});
+export type TOnboardingIntentOriginEnum = z.infer<typeof OnboardingIntentOriginEnum>;
+
+// Estado derivado de uma campanha semeada por preset. PREPARADA = existe e não envia; PRONTA =
+// dependências satisfeitas; HABILITADA = o usuário liberou; ATIVA = o motor de campanhas considera.
+export const OnboardingCampaignStateEnum = z.enum(["PREPARADA", "PRONTA", "HABILITADA", "ATIVA"], {
+	required_error: "Estado da campanha não informado.",
+	invalid_type_error: "Tipo não válido para o estado da campanha.",
+});
+export type TOnboardingCampaignStateEnum = z.infer<typeof OnboardingCampaignStateEnum>;
+
+export const OnboardingDependencyTypeEnum = z.enum(["CANAL", "TEMPLATE", "PAGAMENTO", "DADOS", "CASHBACK", "LIBERACAO"], {
+	required_error: "Tipo da dependência não informado.",
+	invalid_type_error: "Tipo não válido para a dependência.",
+});
+export type TOnboardingDependencyTypeEnum = z.infer<typeof OnboardingDependencyTypeEnum>;
+
+export const OnboardingDependencyStatusEnum = z.enum(["OK", "PENDENTE", "EM_ANALISE", "FALHOU", "NAO_APLICAVEL"], {
+	required_error: "Status da dependência não informado.",
+	invalid_type_error: "Tipo não válido para o status da dependência.",
+});
+export type TOnboardingDependencyStatusEnum = z.infer<typeof OnboardingDependencyStatusEnum>;
+
+// Estado de pagamento da conta WhatsApp Cloud API. A Meta não expõe isso de forma confiável:
+// nasce DESCONHECIDO, o usuário confirma no onboarding, a primeira entrega verifica e o erro
+// 131042 nos webhooks de status rebaixa para PENDENTE.
+export const WhatsappPaymentStatusEnum = z.enum(["DESCONHECIDO", "CONFIRMADO_PELO_USUARIO", "VERIFICADO", "PENDENTE"], {
+	required_error: "Status do pagamento do WhatsApp não informado.",
+	invalid_type_error: "Tipo não válido para o status do pagamento do WhatsApp.",
+});
+export type TWhatsappPaymentStatusEnum = z.infer<typeof WhatsappPaymentStatusEnum>;
+export const ImportJobStateEnum = z.enum(["AGUARDANDO", "EM_ANDAMENTO", "PAUSADO_LIMITE", "AGUARDANDO_RECONEXAO", "CONCLUIDO", "CONCLUIDO_COM_LACUNAS", "FALHOU", "CANCELADO"]);
+export type TImportJobStateEnum = z.infer<typeof ImportJobStateEnum>;
+export const ImportJobTypeEnum = z.enum(["HISTORICO"]);

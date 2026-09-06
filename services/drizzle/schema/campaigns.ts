@@ -21,6 +21,10 @@ export const campaigns = newTable("campaigns", {
 	ativo: boolean("ativo").notNull().default(true),
 	titulo: text("titulo").notNull(),
 	descricao: text("descricao"),
+	// Chave do preset que originou a campanha (onboarding hoje; biblioteca de campanhas no
+	// futuro). Identifica campanhas gerenciadas sem depender do título, que o usuário pode
+	// renomear. Null = campanha criada manualmente.
+	chavePreset: varchar("chave_preset", { length: 64 }),
 	gatilhoTipo: campaignTriggerTypeEnum("gatilho_tipo").notNull(),
 
 	// specific for "NOVA-COMPRA"

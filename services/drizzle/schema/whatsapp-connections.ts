@@ -38,7 +38,17 @@ export const whatsappConnectionsRelations = relations(whatsappConnections, ({ on
 export type TWhatsappConnection = typeof whatsappConnections.$inferSelect;
 export type TNewWhatsappConnection = typeof whatsappConnections.$inferInsert;
 
+export type TWhatsappConnectionPhonePaymentStatus = "DESCONHECIDO" | "CONFIRMADO_PELO_USUARIO" | "VERIFICADO" | "PENDENTE";
+
 export type TWhatsappConnectionPhoneMetadados = {
+	// Estado de pagamento da conta Cloud API (ver WhatsappPaymentStatusEnum em schemas/enums.ts).
+	// A Meta não expõe isso de forma confiável: o usuário confirma no onboarding, a primeira
+	// entrega verifica, e o erro 131042 em webhooks de status rebaixa para PENDENTE.
+	pagamento?: {
+		status: TWhatsappConnectionPhonePaymentStatus;
+		atualizadoEm: string;
+		ultimoErroCodigo?: string | null;
+	};
 	sincronizacaoSmbApp?: {
 		dataLimiteRequisicao?: string | null;
 		contacts?: {

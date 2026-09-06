@@ -1,4 +1,6 @@
 import { pgEnum } from "drizzle-orm/pg-core";
+export const importJobStateEnum = pgEnum("import_job_state", ["AGUARDANDO", "EM_ANDAMENTO", "PAUSADO_LIMITE", "AGUARDANDO_RECONEXAO", "CONCLUIDO", "CONCLUIDO_COM_LACUNAS", "FALHOU", "CANCELADO"]);
+export const importJobTypeEnum = pgEnum("import_job_type", ["HISTORICO"]);
 
 export const campaignTriggerTypeEnum = pgEnum("campaign_trigger_type", [
   "NOVA-COMPRA",
@@ -948,4 +950,21 @@ export const uploadStatusEnum = pgEnum("upload_status", [
   "RECEBIDO",
   "CONSUMIDO",
   "EXPIRADO",
+]);
+
+// ============================================================================
+// ONBOARDING (jornadas por produto)
+// ============================================================================
+
+// Produto cuja jornada de ativação a linha de organization_onboardings representa.
+export const onboardingProductEnum = pgEnum("onboarding_product", ["CRM", "ERP"]);
+
+// Como a jornada foi escolhida: link comercial (?produto=), parceiro de plataforma, formulário
+// de deal, pergunta na tela ou habilitação do segundo produto a partir do primeiro.
+export const onboardingIntentOriginEnum = pgEnum("onboarding_intent_origin", [
+  "LINK",
+  "PARCEIRO",
+  "DEAL",
+  "PERGUNTA",
+  "SEGUNDO_PRODUTO",
 ]);
