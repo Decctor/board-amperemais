@@ -1,78 +1,140 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { getOrganizationNicheByValue } from "@/config/onboarding";
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { getErrorMessage } from "@/lib/errors";
 import { uploadFile } from "@/lib/files-storage";
-import { useWhatsappConnections } from "@/lib/queries/whatsapp-connections";
 import {
 	completeOnboarding,
-	createOrganization,
+	confirmWhatsappPayment,
+	createOnboardingJourney,
+	enableOnboardingCampaigns,
 	seedOnboardingCampaigns,
-	updateOrganization,
+	updateOnboardingProgress,
 	upsertOnboardingCashback,
-} from "@/lib/mutations/organizations";
+} from "@/lib/mutations/onboarding";
+import { createOrganization, updateOrganization } from "@/lib/mutations/organizations";
+import {
+	getJourneyDefinition,
+	getStageIndex,
+	isOnboardingStageId,
+	resolveResumeStage,
+	type TCrmStageId,
+	type TOnboardingStageId,
+} from "@/lib/onboarding/journeys";
+import type { TOnboardingReadiness } from "@/lib/onboarding/readiness";
+import type { TResolvedOnboardingIntent } from "@/lib/onboarding/intent";
 import { isValidOrganizationSlug, slugifyOrganizationName } from "@/lib/organizations/slug";
 import { PLATFORM_PARTNER_COOKIE_NAME } from "@/lib/platform-partnerships/constants";
+import { ONBOARDING_READINESS_QUERY_KEY, useOnboardingReadiness } from "@/lib/queries/onboarding";
 import { isValidCNPJ } from "@/lib/validation";
-import type { TOrganizationEntity } from "@/services/drizzle/schema";
+import type { TOnboardingProductEnum } from "@/schemas/enums";
+import type { TOrganizationEntity, TOrganizationOnboardingEntity } from "@/services/drizzle/schema";
+import { useInternalOnboardingNavigationState } from "@/state-hooks/use-internal-onboarding-navigation-state";
 import { useOrganizationOnboardingState } from "@/state-hooks/use-organization-onboarding-state";
-import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { CampaignsConfigStage } from "./_components/CampaignsConfigStage";
-import { CashbackConfigStage } from "./_components/CashbackConfigStage";
-import { ConclusionStage } from "./_components/ConclusionStage";
-import { DataSourceStage } from "./_components/DataSourceStage";
-import { GeneralInfoStage } from "./_components/GeneralInfoStage";
-import { OnboardingLayout } from "./_components/OnboardingLayout";
-import { WhatsappConnectionStage } from "./_components/WhatsappConnectionStage";
-import { ONBOARDING_STAGE_COOKIE, ONBOARDING_STAGES, type TOnboardingStage } from "./_lib/stages";
+import { JourneyPicker } from "./_components/JourneyPicker";
+import { ErpStages } from "./_components/erp/ErpStages";
+import { useInternalOnboardingErpState } from "@/state-hooks/use-internal-onboarding-erp-state";
+import { ImportProgress } from "./_components/shared/ImportProgress";
+import { CampaignsStage } from "./_components/crm/CampaignsStage";
+import { CashbackStage } from "./_components/crm/CashbackStage";
+import { CompanyStage } from "./_components/crm/CompanyStage";
+import { DataSourceStage } from "./_components/crm/DataSourceStage";
+import { EntryStage } from "./_components/crm/EntryStage";
+import { WhatsappStage } from "./_components/crm/WhatsappStage";
+import { JourneyRail, type TJourneyRailStage } from "./_components/shell/JourneyRail";
+import { JourneyStory } from "./_components/shell/JourneyStory";
+import { OnboardingShell } from "./_components/shell/OnboardingShell";
+import { StageFooter } from "./_components/shell/StageFooter";
+import { StageHeader } from "./_components/shell/StageHeader";
 
-type ExistingOrganization =
-	| (Pick<
-			TOrganizationEntity,
-			| "id"
-			| "nome"
-			| "cnpj"
-			| "email"
-			| "telefone"
-			| "logoUrl"
-			| "atuacaoNicho"
-			| "atuacaoCanais"
-			| "tamanhoBaseClientes"
-			| "plataformasUtilizadas"
-			| "origemLead"
-			| "dadosViaPDI"
-	  > & {
-			/** Tipos das conexões de fonte de dados ativas em `integrations` (podem ser N). */
-			integracoesAtivas: string[];
-	  })
-	| null;
+type ExistingOrganization = Pick<
+	TOrganizationEntity,
+	| "id"
+	| "nome"
+	| "cnpj"
+	| "slug"
+	| "email"
+	| "telefone"
+	| "logoUrl"
+	| "atuacaoNicho"
+	| "atuacaoCanais"
+	| "tamanhoBaseClientes"
+	| "plataformasUtilizadas"
+	| "origemLead"
+	| "dadosViaPDI"
+> | null;
 
 type OnboardingPageProps = {
 	user: TAuthUserSession["user"];
-	initialStage: TOnboardingStage;
+	membership?: TAuthUserSession["membership"];
+	intent: TResolvedOnboardingIntent;
 	existingOrganization: ExistingOrganization;
+	journey: TOrganizationOnboardingEntity | null;
+	readiness: TOnboardingReadiness | null;
+	/** Etapa do fluxo antigo (cookie), para migrar uma retomada em curso. */
+	legacyStage: TCrmStageId | null;
 };
 
-const STAGE_EVENTS: Record<TOnboardingStage, string> = {
-	"organization-general-info": "onboarding_view_general_info",
-	"cashback-config": "onboarding_view_cashback",
-	"whatsapp-connection": "onboarding_view_whatsapp",
-	"campaigns-config": "onboarding_view_campaigns",
-	"data-source": "onboarding_view_data_source",
-	conclusion: "onboarding_view_conclusion",
-};
-
-function persistStageCookie(stage: TOnboardingStage) {
-	document.cookie = `${ONBOARDING_STAGE_COOKIE}=${stage}; path=/; max-age=${60 * 60 * 24}; samesite=lax`;
+function resolveInitialStage({
+	produto,
+	journey,
+	readiness,
+	legacyStage,
+	hasOrganization,
+}: {
+	produto: TOnboardingProductEnum;
+	journey: TOrganizationOnboardingEntity | null;
+	readiness: TOnboardingReadiness | null;
+	legacyStage: TCrmStageId | null;
+	hasOrganization: boolean;
+}): TOnboardingStageId {
+	if (!hasOrganization) return "empresa";
+	if (journey && isOnboardingStageId(produto, journey.etapaAtual) && journey.etapaAtual !== "empresa") return journey.etapaAtual;
+	if (produto === "CRM" && legacyStage && legacyStage !== "empresa") return legacyStage;
+	if (readiness) return resolveResumeStage({ produto, journey, readiness });
+	return getJourneyDefinition(produto).etapas[1]?.id ?? "empresa";
 }
 
-export function OnboardingPage({ user, initialStage, existingOrganization }: OnboardingPageProps) {
+export function OnboardingPage({
+	user,
+	membership = null,
+	intent,
+	existingOrganization,
+	journey: initialJourney,
+	readiness: initialReadiness,
+	legacyStage,
+}: OnboardingPageProps) {
+	const queryClient = useQueryClient();
+	const [produto, setProduto] = useState<TOnboardingProductEnum | null>(initialJourney?.produto ?? intent?.produto ?? null);
+	const [journey, setJourney] = useState<TOrganizationOnboardingEntity | null>(initialJourney);
+	const [orgCreatedThisSession, setOrgCreatedThisSession] = useState(false);
+	const [isAdvancing, setIsAdvancing] = useState(false);
+	const erp = useInternalOnboardingErpState(initialJourney?.respostas.erpCanalInicial ?? null);
+	const hasOrganization = !!existingOrganization || orgCreatedThisSession;
+
+	const { data: readiness, refetch: refetchReadiness } = useOnboardingReadiness({ enabled: hasOrganization, initialData: initialReadiness });
+	const invalidateReadiness = useCallback(() => queryClient.invalidateQueries({ queryKey: ONBOARDING_READINESS_QUERY_KEY }), [queryClient]);
+
+	const activeProduct: TOnboardingProductEnum = produto ?? "CRM";
+	const navigation = useInternalOnboardingNavigationState({
+		produto: activeProduct,
+		initialStage: resolveInitialStage({ produto: activeProduct, journey: initialJourney, readiness: initialReadiness, legacyStage, hasOrganization }),
+		initialDeferred: initialJourney?.etapasAdiadas ?? [],
+	});
+
+	const form = useOrganizationOnboardingState({
+		existingOrganization,
+		readiness: initialReadiness,
+		answers: initialJourney?.respostas ?? null,
+	});
 	const {
 		state,
 		updateOrganization: updateOrganizationState,
@@ -81,24 +143,10 @@ export function OnboardingPage({ user, initialStage, existingOrganization }: Onb
 		updateCashback,
 		applyCashbackPresetFromNiche,
 		toggleCampaign,
-		updateDataSource,
-		goToNextStage,
-		goToPreviousStage,
-	} = useOrganizationOnboardingState({ initialStage, existingOrganization });
+		setDataSourceMode,
+	} = form;
 
-	const [isAdvancing, setIsAdvancing] = useState(false);
-	const [orgCreatedThisSession, setOrgCreatedThisSession] = useState(false);
-	const hasOrganization = !!existingOrganization || orgCreatedThisSession;
-	const { data: whatsappConnections } = useWhatsappConnections();
-	const hasWhatsappConnection = (whatsappConnections ?? []).some((connection) => connection.telefones.length > 0);
-
-	// Persist the current stage so OAuth round-trips resume here.
-	useEffect(() => {
-		persistStageCookie(state.stage);
-		captureClientEvent({ event: STAGE_EVENTS[state.stage], properties: { stage: state.stage } });
-	}, [state.stage]);
-
-	// Pre-fill referral code from the platform partner cookie (preserves prior behavior).
+	// Código de indicação do cookie de parceiro (comportamento anterior preservado).
 	useEffect(() => {
 		const cookieCode = document.cookie
 			.split("; ")
@@ -109,8 +157,72 @@ export function OnboardingPage({ user, initialStage, existingOrganization }: Onb
 		updateOrganizationState({ origemLead: "INDICAÇÃO" });
 	}, [updateOnboarding, updateOrganizationState]);
 
-	async function handleCreateOrganizationStep() {
-		if (!state.termsAccepted) {
+	// Jornada ausente com organização existente (fluxo antigo em curso): cria uma vez, na etapa
+	// em que o usuário parou.
+	const ensuringJourney = useRef(false);
+	useEffect(() => {
+		if (!hasOrganization || journey || !produto || ensuringJourney.current) return;
+		ensuringJourney.current = true;
+		createOnboardingJourney({ produto, origemIntencao: intent?.origem ?? "PERGUNTA" })
+			.then(async (result) => {
+				setJourney(result.data.journey);
+				await invalidateReadiness();
+				if (result.data.journey.etapaAtual !== navigation.stage) {
+					const updated = await updateOnboardingProgress({ produto, etapaAtual: navigation.stage });
+					setJourney(updated.data.journey);
+				}
+			})
+			.catch((error) => toast.error(getErrorMessage(error)))
+			.finally(() => {
+				ensuringJourney.current = false;
+			});
+	}, [hasOrganization, journey, produto, intent, navigation.stage, invalidateReadiness]);
+
+	// Analytics por etapa.
+	useEffect(() => {
+		captureClientEvent({ event: "onboarding_stage_viewed", properties: { produto: activeProduct, etapa: navigation.stage } });
+	}, [activeProduct, navigation.stage]);
+
+	const persistProgress = useCallback(
+		async (input: {
+			etapaAtual?: TOnboardingStageId;
+			adiarEtapa?: TOnboardingStageId;
+			retomarEtapa?: TOnboardingStageId;
+			respostas?: Parameters<typeof updateOnboardingProgress>[0]["respostas"];
+		}) => {
+			if (!hasOrganization || !produto) return;
+			try {
+				const result = await updateOnboardingProgress({ produto, ...input });
+				setJourney(result.data.journey);
+			} catch (error) {
+				// Navegação não pode travar por falha de persistência; a retomada cai na prontidão.
+				console.error("[ONBOARDING] Falha ao salvar progresso:", error);
+			}
+		},
+		[hasOrganization, produto],
+	);
+
+	const definition = getJourneyDefinition(activeProduct);
+	const currentStage = definition.etapas.find((stage) => stage.id === navigation.stage) ?? definition.etapas[0];
+	const currentIndex = getStageIndex(activeProduct, navigation.stage);
+	const isPickingJourney = !produto;
+
+	const lastVisibleStage = useRef(isPickingJourney ? "picker" : navigation.stage);
+	useEffect(() => {
+		const visibleStage = isPickingJourney ? "picker" : navigation.stage;
+		if (lastVisibleStage.current === visibleStage) return;
+		lastVisibleStage.current = visibleStage;
+		const frame = requestAnimationFrame(() => {
+			const content = document.getElementById("onboarding-content");
+			content?.scrollIntoView({ block: "start" });
+			content?.querySelector("h1")?.focus({ preventScroll: true });
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [isPickingJourney, navigation.stage]);
+
+	// ------------------------------------------------------------------ handlers por etapa
+	async function handleCompanyStep() {
+		if (!hasOrganization && !state.termsAccepted) {
 			toast.error("Aceite os Termos de Uso e Política de Privacidade para continuar.");
 			return false;
 		}
@@ -123,7 +235,7 @@ export function OnboardingPage({ user, initialStage, existingOrganization }: Onb
 			return false;
 		}
 		if (!state.organization.atuacaoNicho) {
-			toast.error("Escolha o segmento de atuação da sua empresa.");
+			toast.error("Escolha o segmento da sua empresa.");
 			return false;
 		}
 
@@ -133,17 +245,57 @@ export function OnboardingPage({ user, initialStage, existingOrganization }: Onb
 			logoUrl = url;
 		}
 
-		// Slug fora do formato (ex.: nome com 2 letras) vai vazio — o servidor gera um válido do nome.
+		if (hasOrganization) {
+			await updateOrganization({
+				organization: {
+					nome: state.organization.nome,
+					cnpj: state.organization.cnpj,
+					email: state.organization.email,
+					telefone: state.organization.telefone,
+					atuacaoNicho: state.organization.atuacaoNicho,
+					logoUrl,
+				},
+			});
+			await invalidateReadiness();
+			return true;
+		}
+
 		const normalizedSlug = slugifyOrganizationName(state.organization.slug || "");
 		await createOrganization({
 			organization: { ...state.organization, slug: isValidOrganizationSlug(normalizedSlug) ? normalizedSlug : "", logoUrl },
-			subscription: "FREE-TRIAL",
+			subscription: activeProduct === "ERP" ? "FREE-TRIAL-ERP" : "FREE-TRIAL",
 			indicadorCodigo: state.indicadorCodigo,
 		});
 		setOrgCreatedThisSession(true);
-		captureClientEvent({ event: "onboarding_organization_created", properties: { niche: state.organization.atuacaoNicho } });
-		// Seed cashback config from the chosen niche before entering the cashback stage.
+		captureClientEvent({ event: "onboarding_organization_created", properties: { niche: state.organization.atuacaoNicho, produto: activeProduct } });
+
+		const created = await createOnboardingJourney({ produto: activeProduct, origemIntencao: intent?.origem ?? "PERGUNTA" });
+		setJourney(created.data.journey);
+		if (activeProduct === "ERP") {
+			await updateOnboardingProgress({ produto: "ERP", etapaAtual: "canal" });
+			window.location.href = "/onboarding?produto=ERP";
+			return false;
+		}
 		applyCashbackPresetFromNiche();
+		await refetchReadiness();
+		return true;
+	}
+
+	async function handleDataSourceStep() {
+		if (!state.dataSourceMode) {
+			toast.error("Escolha como as vendas vão entrar, ou deixe para depois.");
+			return false;
+		}
+		if (state.dataSourceMode === "POI") {
+			await updateOrganization({
+				organization: { dadosViaPDI: true, origemDadosPadrao: "RECEPTOR", poiConfiguracao: { vendas: { registroAtivo: true } } },
+			});
+		}
+		if (state.dataSourceMode === "INTEGRACAO" && (readiness?.fonteDados.integracoes.length ?? 0) === 0) {
+			toast.info("Nenhum sistema conectado ainda. Você pode conectar depois, em Configurações.");
+		}
+		await persistProgress({ respostas: { fonteDadosModo: state.dataSourceMode } });
+		await invalidateReadiness();
 		return true;
 	}
 
@@ -156,7 +308,6 @@ export function OnboardingPage({ user, initialStage, existingOrganization }: Onb
 				terminologia: state.cashback.terminologia,
 				modalidadeDescontosPermitida: state.cashback.modalidadeDescontosPermitida,
 				modalidadeRecompensasPermitida: state.cashback.modalidadeRecompensasPermitida,
-				// Superficies de resgate: mesmo default do schema (todas liberadas) — o onboarding nao pergunta.
 				resgatePermitirViaPos: true,
 				resgatePermitirViaPontoIntegracao: true,
 				resgatePermitirViaLojaDigital: true,
@@ -171,37 +322,18 @@ export function OnboardingPage({ user, initialStage, existingOrganization }: Onb
 				resgateLimiteValor: state.cashback.resgateLimiteValor,
 			},
 		});
-		return true;
-	}
-
-	function handleWhatsappStep() {
-		if (!hasWhatsappConnection) {
-			toast.error("Conecte um número de WhatsApp para continuar.");
-			return false;
-		}
+		await invalidateReadiness();
 		return true;
 	}
 
 	async function handleCampaignsStep() {
-		if (state.selectedCampaignKeys.length === 0) {
-			toast.error("Selecione ao menos uma campanha para continuar.");
-			return false;
-		}
-		await seedOnboardingCampaigns({ cashbackAtivo: state.cashback.ativo, selectedKeys: state.selectedCampaignKeys });
-		return true;
-	}
-
-	async function handleDataSourceStep() {
-		if (!state.dataSource.mode) {
-			toast.error("Escolha como os dados de vendas vão entrar no sistema.");
-			return false;
-		}
-		if (state.dataSource.mode === "POI") {
-			// Registro de vendas do POI é config explícita (D8) — a escolha do onboarding a grava.
-			await updateOrganization({
-				organization: { dadosViaPDI: true, origemDadosPadrao: "RECEPTOR", poiConfiguracao: { vendas: { registroAtivo: true } } },
-			});
-		}
+		const result = await seedOnboardingCampaigns({
+			cashbackAtivo: state.cashback.ativo,
+			selectedKeys: state.selectedCampaignKeys,
+			enableSendingKeys: state.enableSendingWhenReady ? state.selectedCampaignKeys : [],
+		});
+		toast.success(result.message);
+		await invalidateReadiness();
 		return true;
 	}
 
@@ -210,26 +342,55 @@ export function OnboardingPage({ user, initialStage, existingOrganization }: Onb
 		setIsAdvancing(true);
 		try {
 			let ok = true;
-			switch (state.stage) {
-				case "organization-general-info":
-					ok = await handleCreateOrganizationStep();
+			switch (navigation.stage) {
+				case "canal":
+					if (!erp.state.canal) {
+						toast.error("Escolha o canal inicial.");
+						return;
+					}
+					await persistProgress({ respostas: { erpCanalInicial: erp.state.canal, erpCanaisPretendidos: [erp.state.canal] } });
+					await invalidateReadiness();
 					break;
-				case "cashback-config":
+				case "produtos":
+					if (!readiness?.erp.produtosUtilizaveis) {
+						toast.error("Cadastre ao menos um produto com nome e preço para este canal.");
+						return;
+					}
+					break;
+				case "incentivo":
 					ok = await handleCashbackStep();
 					break;
-				case "whatsapp-connection":
-					ok = handleWhatsappStep();
+				case "simulacao":
+					if (erp.state.simulacaoEtapa < 2) {
+						toast.error("Percorra a prévia ou escolha fazer depois.");
+						return;
+					}
+					await persistProgress({ respostas: { erpSimulacaoConcluidaEm: new Date().toISOString() } });
+					await invalidateReadiness();
 					break;
-				case "campaigns-config":
-					ok = await handleCampaignsStep();
+				case "empresa":
+					ok = await handleCompanyStep();
 					break;
-				case "data-source":
+				case "fonte-dados":
 					ok = await handleDataSourceStep();
+					break;
+				case "cashback":
+					ok = await handleCashbackStep();
+					break;
+				case "campanhas":
+					ok = await handleCampaignsStep();
 					break;
 				default:
 					ok = true;
 			}
-			if (ok) goToNextStage();
+			if (!ok) return;
+			const wasDeferred = navigation.isDeferred(navigation.stage);
+			const nextStage = navigation.next();
+			captureClientEvent({ event: "onboarding_stage_completed", properties: { produto: activeProduct, etapa: navigation.stage } });
+			if (nextStage) {
+				if (wasDeferred) navigation.resume(navigation.stage);
+				await persistProgress({ etapaAtual: nextStage, retomarEtapa: wasDeferred ? navigation.stage : undefined });
+			}
 		} catch (error) {
 			toast.error(getErrorMessage(error));
 		} finally {
@@ -237,109 +398,226 @@ export function OnboardingPage({ user, initialStage, existingOrganization }: Onb
 		}
 	}
 
-	async function handleComplete() {
+	async function handleDefer() {
 		if (isAdvancing) return;
-		setIsAdvancing(true);
-		try {
-			const result = await completeOnboarding();
-			window.location.href = result.data.redirectTo;
-		} catch (error) {
-			toast.error(getErrorMessage(error));
-			setIsAdvancing(false);
-		}
+		const { deferred, next } = navigation.defer();
+		if (deferred === "campanhas") updateOnboarding({ selectedCampaignKeys: [] });
+		await persistProgress({
+			adiarEtapa: deferred,
+			etapaAtual: next ?? undefined,
+			respostas:
+				deferred === "fonte-dados"
+					? { fonteDadosModo: "DEPOIS" }
+					: deferred === "campanhas"
+						? { campanhasNenhumaPorEnquanto: true, campanhasSelecionadas: [] }
+						: undefined,
+		});
 	}
 
-	// Resume should not let the user step back before the org-creation stage once the org exists.
-	const minStageIndex = hasOrganization ? ONBOARDING_STAGES.indexOf("cashback-config") : 0;
-	const canGoBack = ONBOARDING_STAGES.indexOf(state.stage) > minStageIndex;
+	async function handleBack() {
+		const previous = navigation.back();
+		if (previous) await persistProgress({ etapaAtual: previous });
+	}
 
-	const stageInfo = getStageInfo(state.stage);
+	async function handleSelectStage(stageId: string) {
+		if (!isOnboardingStageId(activeProduct, stageId) || stageId === navigation.stage) return;
+		navigation.setStage(stageId);
+		await persistProgress({ etapaAtual: stageId });
+	}
 
+	const enableCampaignsMutation = useMutation({
+		mutationKey: ["enable-onboarding-campaigns"],
+		mutationFn: enableOnboardingCampaigns,
+		onSuccess: async (data) => {
+			toast.success(data.message);
+			await invalidateReadiness();
+		},
+		onError: (error) => toast.error(getErrorMessage(error)),
+	});
+
+	const confirmPaymentMutation = useMutation({
+		mutationKey: ["confirm-whatsapp-payment"],
+		mutationFn: confirmWhatsappPayment,
+		onSuccess: async (data) => {
+			toast.success(data.message);
+			await invalidateReadiness();
+		},
+		onError: (error) => toast.error(getErrorMessage(error)),
+	});
+
+	const completeMutation = useMutation({
+		mutationKey: ["complete-onboarding"],
+		mutationFn: completeOnboarding,
+		onSuccess: (data) => {
+			toast.success(data.message);
+			window.location.href = data.data.redirectTo;
+		},
+		onError: (error) => toast.error(getErrorMessage(error)),
+	});
+
+	// ------------------------------------------------------------------ trilho
+	const railStages: TJourneyRailStage[] = definition.etapas.map((stage, index) => {
+		const complete = readiness ? stage.isComplete(readiness, journey) : false;
+		const isCurrent = stage.id === navigation.stage;
+		const estado: TJourneyRailStage["estado"] = isCurrent ? "atual" : complete ? "concluida" : navigation.isDeferred(stage.id) ? "adiada" : "pendente";
+		const visited = journey?.etapasVisitadas.includes(stage.id) ?? false;
+		const navegavel = hasOrganization && !isPickingJourney && (index <= currentIndex || visited || complete);
+		return { id: stage.id, rotulo: stage.rotulo, estado, navegavel: navegavel && !isAdvancing && !completeMutation.isPending };
+	});
+
+	const minBackIndex = hasOrganization ? 1 : 0;
+	const canGoBack = currentIndex > minBackIndex;
+	const nicheLabel = state.organization.atuacaoNicho ? (getOrganizationNicheByValue(state.organization.atuacaoNicho)?.label ?? null) : null;
+
+	// ------------------------------------------------------------------ render
 	function renderStage() {
-		switch (state.stage) {
-			case "organization-general-info":
+		if (isPickingJourney) {
+			return (
+				<JourneyPicker
+					value={produto}
+					onChange={(value) => setProduto(value)}
+					erpAvailable={!hasOrganization || readiness?.erp.acesso === true || readiness?.erp.testeDisponivel === true}
+				/>
+			);
+		}
+		switch (navigation.stage) {
+			case "empresa":
 				return (
-					<GeneralInfoStage
+					<CompanyStage
 						state={state}
 						updateOrganization={updateOrganizationState}
 						updateOrganizationLogoHolder={updateOrganizationLogoHolder}
 						updateOnboarding={updateOnboarding}
+						isEditing={hasOrganization}
 					/>
 				);
-			case "cashback-config":
-				return <CashbackConfigStage state={state} updateCashback={updateCashback} />;
-			case "whatsapp-connection":
-				return <WhatsappConnectionStage />;
-			case "campaigns-config":
-				return <CampaignsConfigStage state={state} toggleCampaign={toggleCampaign} />;
-			case "data-source":
-				return <DataSourceStage state={state} updateDataSource={updateDataSource} />;
-			case "conclusion":
-				return <ConclusionStage state={state} onComplete={handleComplete} isCompleting={isAdvancing} />;
+			case "fonte-dados":
+				return <DataSourceStage mode={state.dataSourceMode} onChangeMode={setDataSourceMode} readiness={readiness ?? null} />;
+			case "cashback":
+			case "incentivo":
+				return <CashbackStage cashback={state.cashback} updateCashback={updateCashback} nicheLabel={nicheLabel} />;
+			case "campanhas":
+				return (
+					<CampaignsStage
+						cashbackAtivo={state.cashback.ativo}
+						selectedKeys={state.selectedCampaignKeys}
+						toggleCampaign={toggleCampaign}
+						enableSendingWhenReady={state.enableSendingWhenReady}
+						onToggleEnableSending={(value) => updateOnboarding({ enableSendingWhenReady: value })}
+						readiness={readiness ?? null}
+					/>
+				);
+			case "whatsapp":
+				return (
+					<WhatsappStage
+						whatsapp={readiness?.whatsapp ?? null}
+						onConnectionChanged={() => void invalidateReadiness()}
+						onConfirmPayment={(input) => confirmPaymentMutation.mutate(input)}
+						isConfirmingPayment={confirmPaymentMutation.isPending}
+					/>
+				);
+			case "entrada":
+				return readiness ? (
+					<EntryStage
+						readiness={readiness}
+						deferredStages={Array.from(navigation.deferred)}
+						onEnableCampaigns={(chaves) => enableCampaignsMutation.mutate({ chaves, habilitar: true })}
+						isEnabling={enableCampaignsMutation.isPending}
+						onComplete={() => completeMutation.mutate({ produto: activeProduct })}
+						isCompleting={completeMutation.isPending}
+					/>
+				) : null;
 			default:
-				return null;
+				return readiness ? (
+					<ErpStages
+						stage={navigation.stage}
+						readiness={readiness}
+						erp={erp}
+						user={user}
+						membership={membership}
+						onRefresh={() => void invalidateReadiness()}
+						onLaunch={() => completeMutation.mutate({ produto: "ERP" })}
+						isLaunching={completeMutation.isPending}
+					/>
+				) : null;
 		}
 	}
 
-	return (
-		<OnboardingLayout currentStage={state.stage}>
-			<div className="h-full flex w-full flex-col gap-6 min-h-0">
-				<div className="flex flex-col gap-0.5">
-					<h3 className="text-xs text-gray-500 tracking-tight">ETAPA {stageInfo.step} DE 6</h3>
-					<h1 className="font-bold text-xl md:text-2xl text-gray-900 tracking-tight">{stageInfo.title}</h1>
-					<p className="text-sm text-gray-500 tracking-tight">{stageInfo.description}</p>
-				</div>
-				<div
-					key={state.stage}
-					className="min-h-0 grow w-full flex flex-col gap-6 overflow-visible px-1 md:overflow-y-auto md:overscroll-y-contain scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30"
-				>
-					{renderStage()}
-				</div>
-				{state.stage !== "conclusion" && (
-					<>
-						<Separator />
-						<div className="w-full flex items-center justify-between">
-							<Button
-								variant="ghost"
-								size="lg"
-								onClick={goToPreviousStage}
-								disabled={!canGoBack || isAdvancing}
-								className="flex items-center gap-1.5 rounded-xl py-3 disabled:opacity-40"
-							>
-								<ArrowLeft className="h-4 w-4" />
-								VOLTAR
-							</Button>
-							<Button
-								onClick={handleNext}
-								disabled={isAdvancing}
-								size="lg"
-								className="flex items-center gap-1.5 bg-[#24549C] text-white hover:bg-[#1a3d7a] transition-all rounded-xl py-3"
-							>
-								{isAdvancing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-								CONTINUAR
-								{!isAdvancing && <ArrowRight className="h-4 w-4" />}
-							</Button>
-						</div>
-					</>
-				)}
-			</div>
-		</OnboardingLayout>
-	);
-}
+	const header = isPickingJourney
+		? {
+				eyebrow: "Começando",
+				titulo: "O que você quer melhorar primeiro?",
+				descricao: "Escolha por onde começar. O cadastro da empresa é o mesmo para os dois caminhos.",
+			}
+		: {
+				eyebrow: `Etapa ${currentIndex + 1} de ${definition.etapas.length} · ${currentStage.eyebrow}`,
+				titulo: currentStage.titulo,
+				descricao: currentStage.descricao,
+			};
 
-function getStageInfo(stage: TOnboardingStage): { step: number; title: string; description: string } {
-	switch (stage) {
-		case "organization-general-info":
-			return { step: 1, title: "SOBRE A EMPRESA", description: "Dados básicos e o segmento de atuação do seu negócio." };
-		case "cashback-config":
-			return { step: 2, title: "CASHBACK", description: "Configure o programa de fidelidade do jeito que faz sentido para você." };
-		case "whatsapp-connection":
-			return { step: 3, title: "WHATSAPP", description: "Conecte o número que vai enviar suas campanhas." };
-		case "campaigns-config":
-			return { step: 4, title: "CAMPANHAS", description: "Escolha as automações de venda que vão rodar sozinhas." };
-		case "data-source":
-			return { step: 5, title: "FONTE DE DADOS", description: "Defina de onde virão os dados de vendas." };
-		case "conclusion":
-			return { step: 6, title: "TUDO PRONTO", description: "Revise e comece a usar o RecompraCRM." };
-	}
+	return (
+		<OnboardingShell
+			visual={
+				<JourneyStory
+					stage={isPickingJourney ? "picker" : navigation.stage}
+					nome={state.organization.nome}
+					produto={activeProduct}
+					currentIndex={currentIndex}
+					total={definition.etapas.length}
+					officialWhatsapp={readiness?.whatsapp.tipoConexao !== "INTERNAL_GATEWAY"}
+				/>
+			}
+			rail={
+				isPickingJourney ? null : (
+					<JourneyRail
+						journeyLabel={definition.rotulo}
+						stages={railStages}
+						onSelect={(id) => void handleSelectStage(id)}
+						footer={readiness ? <ImportProgress integrations={readiness.fonteDados.integracoes} compact /> : null}
+					/>
+				)
+			}
+			actions={
+				<>
+					<span className="hidden max-w-40 truncate text-xs text-muted-foreground xl:inline">{user.email}</span>
+					<Button asChild variant="ghost" size="sm">
+						<Link href="/auth/logout" prefetch={false}>
+							Sair
+						</Link>
+					</Button>
+				</>
+			}
+		>
+			<StageHeader eyebrow={header.eyebrow} titulo={header.titulo} descricao={header.descricao} />
+			<div
+				key={isPickingJourney ? "picker" : navigation.stage}
+				className="flex min-h-0 grow flex-col gap-6 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-200"
+			>
+				{renderStage()}
+			</div>
+			{(navigation.stage !== "entrada" && navigation.stage !== "lancamento") || isPickingJourney ? (
+				<StageFooter
+					canGoBack={!isPickingJourney && canGoBack}
+					onBack={() => void handleBack()}
+					deferLabel={isPickingJourney ? null : currentStage.adiarRotulo}
+					onDefer={() => void handleDefer()}
+					continueLabel={
+						isPickingJourney
+							? "Começar"
+							: navigation.stage === "whatsapp" && readiness?.whatsapp.numero !== "CONECTADO"
+								? "Continuar sem conectar"
+								: "Continuar"
+					}
+					onContinue={() => {
+						if (isPickingJourney) {
+							if (!produto) toast.error("Escolha por onde começar.");
+							return;
+						}
+						void handleNext();
+					}}
+					isLoading={isAdvancing}
+				/>
+			) : null}
+		</OnboardingShell>
+	);
 }

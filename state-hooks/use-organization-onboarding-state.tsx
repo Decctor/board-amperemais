@@ -1,10 +1,16 @@
 import { getOrganizationNicheByValue } from "@/config/onboarding";
 import { OnboardingCampaignPresets, type TOnboardingCampaignPresetKey } from "@/config/onboarding-campaign-presets";
-import { ONBOARDING_STAGES, type TOnboardingStage } from "@/app/onboarding/_lib/stages";
+import type { TOnboardingReadiness } from "@/lib/onboarding/readiness";
 import { OrganizationSchema } from "@/schemas/organizations";
 import { useCallback, useMemo, useState } from "react";
 import { z } from "zod";
 
+/**
+ * Estado de FORMULÁRIO da jornada CRM: o que o usuário digita antes de cada etapa gravar. A
+ * navegação (etapa atual, adiamentos) vive em `useInternalOnboardingNavigationState`, e o que já
+ * está configurado vem da prontidão derivada (`useOnboardingReadiness`). Este hook não decide
+ * nada sobre prontidão.
+ */
 const CashbackConfigSchema = z.object({
 	ativo: z.boolean(),
 	titulo: z.string(),
@@ -23,15 +29,7 @@ const CashbackConfigSchema = z.object({
 });
 export type TOnboardingCashbackConfig = z.infer<typeof CashbackConfigSchema>;
 
-const DataSourceSchema = z.object({
-	mode: z.enum(["INTEGRATION", "POI"]).nullable(),
-	integrationKey: z.string().nullable(),
-	// Tipos das conexões de fonte de dados já ativas (retomada pós-OAuth) — podem ser N.
-	integracoesConectadas: z.array(z.string()),
-});
-
 const OrganizationOnboardingStateSchema = z.object({
-	stage: z.enum(ONBOARDING_STAGES),
 	organization: OrganizationSchema.omit({ dataInsercao: true, autorId: true, configuracao: true, dataOnboardingConclusao: true }),
 	organizationLogoHolder: z.object({
 		file: z.instanceof(File).optional().nullable(),
@@ -39,7 +37,9 @@ const OrganizationOnboardingStateSchema = z.object({
 	}),
 	cashback: CashbackConfigSchema,
 	selectedCampaignKeys: z.array(z.string()),
-	dataSource: DataSourceSchema,
+	// Liberar envios assim que as campanhas estiverem prontas (intenção, não ativação).
+	enableSendingWhenReady: z.boolean(),
+	dataSourceMode: z.enum(["INTEGRACAO", "POI", "DEPOIS"]).nullable(),
 	indicadorCodigo: z.string().optional().nullable(),
 	termsAccepted: z.boolean(),
 });
@@ -62,7 +62,7 @@ export const DEFAULT_ONBOARDING_CASHBACK_CONFIG: TOnboardingCashbackConfig = {
 	resgateLimiteValor: 30,
 };
 
-/** Builds a cashback config pre-filled from the niche preset (keeps the merchant's `ativo` choice). */
+/** Config de cashback pré-preenchida pelo preset do nicho (preserva a escolha `ativo`). */
 export function buildCashbackConfigFromNiche(
 	nicheValue: string | null | undefined,
 	organizationName: string,
@@ -77,22 +77,35 @@ export function buildCashbackConfigFromNiche(
 	};
 }
 
-type TExistingOrganization = Partial<TOrganizationOnboardingState["organization"]> & {
-	id?: string | null;
-	/** Tipos das conexões de fonte de dados ativas em `integrations` (retomada pós-OAuth). */
-	integracoesAtivas?: string[] | null;
-};
+/** Sobrepõe ao preset o que já está gravado, para a retomada mostrar o programa real. */
+function applyExistingCashback(config: TOnboardingCashbackConfig, readiness: TOnboardingReadiness | null | undefined): TOnboardingCashbackConfig {
+	const resumo = readiness?.cashback.resumo;
+	if (!resumo) return config;
+	return {
+		...config,
+		ativo: readiness?.cashback.estado === "ATIVO",
+		acumuloTipo: resumo.acumuloTipo,
+		acumuloValor: resumo.acumuloValor,
+		expiracaoRegraValidadeValor: resumo.validadeDias,
+		resgateLimiteTipo: resumo.limiteResgate?.tipo ?? null,
+		resgateLimiteValor: resumo.limiteResgate?.valor ?? null,
+	};
+}
+
+type TExistingOrganization = Partial<TOrganizationOnboardingState["organization"]> & { id?: string | null };
 
 type TUseOrganizationOnboardingStateProps = {
-	initialStage?: TOnboardingStage;
 	existingOrganization?: TExistingOrganization | null;
+	readiness?: TOnboardingReadiness | null;
+	/** Respostas já gravadas na jornada (retomada). */
+	answers?: { campanhasSelecionadas: string[]; campanhasComEnvioHabilitado: string[]; fonteDadosModo: "INTEGRACAO" | "POI" | "DEPOIS" | null } | null;
 };
 
-export function useOrganizationOnboardingState({ initialStage, existingOrganization }: TUseOrganizationOnboardingStateProps) {
+export function useOrganizationOnboardingState({ existingOrganization, readiness, answers }: TUseOrganizationOnboardingStateProps) {
 	const start: TOrganizationOnboardingState = useMemo(() => {
 		const org = existingOrganization;
+		const hasSavedCampaigns = (answers?.campanhasSelecionadas.length ?? 0) > 0 || (readiness?.campanhas.length ?? 0) > 0;
 		return {
-			stage: initialStage ?? "organization-general-info",
 			organization: {
 				nome: org?.nome ?? "",
 				cnpj: org?.cnpj ?? "",
@@ -136,13 +149,18 @@ export function useOrganizationOnboardingState({ initialStage, existingOrganizat
 				poiConfirmacaoValorObrigatoria: false,
 			},
 			organizationLogoHolder: { file: null, previewUrl: null },
-			cashback: buildCashbackConfigFromNiche(org?.atuacaoNicho, org?.nome ?? "", false),
-			selectedCampaignKeys: OnboardingCampaignPresets.filter((preset) => preset.defaultSelected).map((preset) => preset.key),
-			dataSource: { mode: null, integrationKey: null, integracoesConectadas: org?.integracoesAtivas ?? [] },
+			cashback: applyExistingCashback(buildCashbackConfigFromNiche(org?.atuacaoNicho, org?.nome ?? "", false), readiness),
+			selectedCampaignKeys: hasSavedCampaigns
+				? readiness && readiness.campanhas.length > 0
+					? readiness.campanhas.map((campaign) => campaign.chave)
+					: (answers?.campanhasSelecionadas ?? [])
+				: OnboardingCampaignPresets.filter((preset) => preset.defaultSelected).map((preset) => preset.key),
+			enableSendingWhenReady: (answers?.campanhasComEnvioHabilitado.length ?? 0) > 0,
+			dataSourceMode: answers?.fonteDadosModo ?? null,
 			indicadorCodigo: null,
 			termsAccepted: false,
 		};
-	}, [initialStage, existingOrganization]);
+	}, [existingOrganization, readiness, answers]);
 
 	const [state, setState] = useState<TOrganizationOnboardingState>(start);
 
@@ -178,29 +196,11 @@ export function useOrganizationOnboardingState({ initialStage, existingOrganizat
 		}));
 	}, []);
 
-	const updateDataSource = useCallback((dataSource: Partial<TOrganizationOnboardingState["dataSource"]>) => {
-		setState((prev) => ({ ...prev, dataSource: { ...prev.dataSource, ...dataSource } }));
+	const setDataSourceMode = useCallback((dataSourceMode: TOrganizationOnboardingState["dataSourceMode"]) => {
+		setState((prev) => ({ ...prev, dataSourceMode }));
 	}, []);
 
-	const setStage = useCallback((stage: TOnboardingStage) => {
-		setState((prev) => ({ ...prev, stage }));
-	}, []);
-
-	const goToNextStage = useCallback(() => {
-		setState((prev) => {
-			const index = ONBOARDING_STAGES.indexOf(prev.stage);
-			const next = ONBOARDING_STAGES[Math.min(index + 1, ONBOARDING_STAGES.length - 1)];
-			return { ...prev, stage: next };
-		});
-	}, []);
-
-	const goToPreviousStage = useCallback(() => {
-		setState((prev) => {
-			const index = ONBOARDING_STAGES.indexOf(prev.stage);
-			const previous = ONBOARDING_STAGES[Math.max(index - 1, 0)];
-			return { ...prev, stage: previous };
-		});
-	}, []);
+	const resetState = useCallback(() => setState(start), [start]);
 
 	return {
 		state,
@@ -210,10 +210,8 @@ export function useOrganizationOnboardingState({ initialStage, existingOrganizat
 		updateCashback,
 		applyCashbackPresetFromNiche,
 		toggleCampaign,
-		updateDataSource,
-		setStage,
-		goToNextStage,
-		goToPreviousStage,
+		setDataSourceMode,
+		resetState,
 	};
 }
 
