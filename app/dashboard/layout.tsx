@@ -1,6 +1,6 @@
 import AppHeader from "@/components/Layouts/HeaderApp";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
-import { OnboardingQualityBubble } from "@/components/Onboarding";
+import { ActivationPanel } from "@/components/Onboarding/ActivationPanel";
 import SubscriptionPaywall from "@/components/Paywall/SubscriptionPaywall";
 import { OrgColorsProvider } from "@/components/Providers/OrgColorsProvider";
 import { AppSidebar } from "@/components/Sidebar/AppSidebar";
@@ -42,8 +42,8 @@ const MainLayout = async ({ children }: { children: ReactNode }) => {
 							corSecundariaForeground={user.membership.organizacao.corSecundariaForeground}
 						>
 							<AppHeader session={{ user: user.user, membership: user.membership }} />
+							<ActivationPanel organizationId={user.membership.organizacao.id} />
 							{children}
-							<OnboardingQualityBubble />
 							<SubscriptionPaywall />
 						</OrgColorsProvider>
 					</div>

@@ -3,6 +3,8 @@ import { LoadingButton } from "@/components/loading-button";
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
 import TextInput from "@/components/Inputs/TextInput";
 import { Button } from "@/components/ui/button";
+import { ImportProgress } from "@/app/onboarding/_components/shared/ImportProgress";
+import { useOnboardingReadiness } from "@/lib/queries/onboarding";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import type { TAuthSessionIntegrationSummary, TAuthUserSession } from "@/lib/authentication/types";
@@ -120,6 +122,7 @@ type SettingsIntegrationProps = {
 };
 
 export default function SettingsIntegration({ membership }: SettingsIntegrationProps) {
+	const { data: onboardingReadiness } = useOnboardingReadiness();
 	const permissions = membership.permissoes.empresa;
 	const canEdit = permissions.editar;
 
@@ -236,6 +239,7 @@ export default function SettingsIntegration({ membership }: SettingsIntegrationP
 
 	return (
 		<div className="flex w-full flex-col gap-3">
+			{onboardingReadiness ? <ImportProgress integrations={onboardingReadiness.fonteDados.integracoes} /> : null}
 			{/* Header Section */}
 			<div className="flex flex-col lg:flex-row items-center justify-between border-b pb-4">
 				<div className="space-y-1">

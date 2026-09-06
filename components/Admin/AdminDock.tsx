@@ -27,6 +27,7 @@ type TAdminDockNavItem = {
 };
 
 const ADMIN_DOCK_NAV: TAdminDockNavItem[] = [
+	{ title: "Ativação", url: "/admin-dashboard/onboarding", icon: <ArrowRightLeft className="size-[18px]" strokeWidth={1.75} /> },
 	{
 		title: "Painel Admin",
 		url: "/admin-dashboard",
