@@ -291,8 +291,10 @@ function getOrderEventState(events: TIfoodEvent[]): TIfoodOrderEventState {
 	return state;
 }
 
-function pickOrderDate(order: TIfoodOrder, eventState: TIfoodOrderEventState) {
-	const rawDate = order.concludedAt || eventState.concludedAt || order.confirmedAt || eventState.confirmedAt || order.createdAt;
+function pickOrderDate(order: TIfoodOrder) {
+	// A data da venda representa a criação do pedido e não muda com os eventos de atendimento.
+	// Preserva o instante da fonte; a conversão para o fuso local pertence à apresentação.
+	const rawDate = order.createdAt;
 	const parsedDate = rawDate ? dayjs(rawDate) : null;
 	if (!parsedDate?.isValid()) throw new Error(`Data inválida recebida do iFood. orderId="${order.id}"`);
 	return parsedDate.toDate();
@@ -719,7 +721,7 @@ export function mapIfoodSale(order: TIfoodOrder, events: TIfoodEvent[] = []): TC
 		series: "N/A",
 		statusText,
 		type: "VENDA",
-		occurredAt: pickOrderDate(order, eventState),
+		occurredAt: pickOrderDate(order),
 		client: mapIfoodClient(order),
 		seller: null,
 		partner: null,
