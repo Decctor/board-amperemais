@@ -5,7 +5,7 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import ControlCoupon from "@/components/Modals/Coupons/ControlCoupon";
 import { Button } from "@/components/ui/button";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { appRoutes } from "@/lib/navigation/routes";
@@ -148,74 +148,90 @@ export default function CouponByIdPage({ couponId }: { couponId: string }) {
 			</div>
 
 			{/* Impacto comercial */}
-			<SectionWrapper title="IMPACTO COMERCIAL" icon={<TrendingUp className="h-4 w-4" />}>
-				{hasActivity ? (
-					<div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-						<StatCell
-							label="Resgates"
-							value={String(impacto.resgates)}
-							sub={taxaUso !== null ? `de ${coupon.limiteResgatesTotal} (${taxaUso}%)` : "utilizados"}
-							tone="primary"
-						/>
-						<StatCell label="Clientes únicos" value={String(impacto.clientesUnicos)} />
-						<StatCell label="Desconto concedido" value={formatToMoney(impacto.descontoConcedido)} sub="custo do benefício" />
-						<StatCell label="Receita influenciada" value={formatToMoney(impacto.receitaInfluenciada)} sub="vendas com o cupom" tone="brand" />
-					</div>
-				) : (
-					<div className="flex flex-col items-center justify-center gap-1.5 rounded-lg bg-muted/30 px-4 py-8 text-center">
-						<Coins className="h-6 w-6 text-muted-foreground" />
-						<p className="text-sm font-medium text-foreground">Ainda sem resgates</p>
-						<p className="max-w-sm text-xs text-muted-foreground">
-							Assim que este cupom for usado numa venda, o impacto comercial aparece aqui: resgates, desconto concedido e receita influenciada.
-						</p>
-					</div>
-				)}
-			</SectionWrapper>
+			<Section.Root>
+				<Section.Header>
+					<Section.Icon>
+						<TrendingUp className="h-4 w-4" />
+					</Section.Icon>
+					<Section.Title>IMPACTO COMERCIAL</Section.Title>
+				</Section.Header>
+				<Section.Body>
+					{hasActivity ? (
+						<div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+							<StatCell
+								label="Resgates"
+								value={String(impacto.resgates)}
+								sub={taxaUso !== null ? `de ${coupon.limiteResgatesTotal} (${taxaUso}%)` : "utilizados"}
+								tone="primary"
+							/>
+							<StatCell label="Clientes únicos" value={String(impacto.clientesUnicos)} />
+							<StatCell label="Desconto concedido" value={formatToMoney(impacto.descontoConcedido)} sub="custo do benefício" />
+							<StatCell label="Receita influenciada" value={formatToMoney(impacto.receitaInfluenciada)} sub="vendas com o cupom" tone="brand" />
+						</div>
+					) : (
+						<div className="flex flex-col items-center justify-center gap-1.5 rounded-lg bg-muted/30 px-4 py-8 text-center">
+							<Coins className="h-6 w-6 text-muted-foreground" />
+							<p className="text-sm font-medium text-foreground">Ainda sem resgates</p>
+							<p className="max-w-sm text-xs text-muted-foreground">
+								Assim que este cupom for usado numa venda, o impacto comercial aparece aqui: resgates, desconto concedido e receita influenciada.
+							</p>
+						</div>
+					)}
+				</Section.Body>
+			</Section.Root>
 
 			{/* Atividade de resgates */}
 			{hasActivity ? (
-				<SectionWrapper title="RESGATES RECENTES" icon={<Receipt className="h-4 w-4" />}>
-					<div className="flex w-full flex-col gap-1.5">
-						{resgatesRecentes.map((redemption) => {
-							const source = REDEMPTION_SOURCE[redemption.origemResgate] ?? { label: redemption.origemResgate, icon: Store };
-							const SourceIcon = source.icon;
-							const canceled = redemption.status === "CANCELADO";
-							return (
-								<div
-									key={redemption.id}
-									className={cn(
-										"flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2",
-										canceled && "opacity-55",
-									)}
-								>
-									<div className="flex min-w-0 flex-col">
-										<span className={cn("truncate text-sm font-semibold text-foreground", canceled && "line-through")}>
-											{redemption.cliente?.nome ?? "Cliente não identificado"}
-										</span>
-										<span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-											<SourceIcon className="h-3 w-3" />
-											{source.label}
-											{canceled ? " · cancelado" : ""}
-											{redemption.dataInsercao ? ` · ${formatDateAsLocale(redemption.dataInsercao)}` : ""}
-										</span>
-									</div>
-									<div className="flex items-center gap-4 text-right">
-										<div className="flex flex-col">
-											<span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Desconto</span>
-											<span className="text-sm font-bold tabular-nums text-foreground">{formatToMoney(redemption.valorDesconto)}</span>
-										</div>
-										<div className="flex flex-col">
-											<span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Venda</span>
-											<span className="text-sm font-medium tabular-nums text-muted-foreground">
-												{redemption.vendaValor != null ? formatToMoney(redemption.vendaValor) : "—"}
+				<Section.Root>
+					<Section.Header>
+						<Section.Icon>
+							<Receipt className="h-4 w-4" />
+						</Section.Icon>
+						<Section.Title>RESGATES RECENTES</Section.Title>
+					</Section.Header>
+					<Section.Body>
+						<div className="flex w-full flex-col gap-1.5">
+							{resgatesRecentes.map((redemption) => {
+								const source = REDEMPTION_SOURCE[redemption.origemResgate] ?? { label: redemption.origemResgate, icon: Store };
+								const SourceIcon = source.icon;
+								const canceled = redemption.status === "CANCELADO";
+								return (
+									<div
+										key={redemption.id}
+										className={cn(
+											"flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2",
+											canceled && "opacity-55",
+										)}
+									>
+										<div className="flex min-w-0 flex-col">
+											<span className={cn("truncate text-sm font-semibold text-foreground", canceled && "line-through")}>
+												{redemption.cliente?.nome ?? "Cliente não identificado"}
+											</span>
+											<span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+												<SourceIcon className="h-3 w-3" />
+												{source.label}
+												{canceled ? " · cancelado" : ""}
+												{redemption.dataInsercao ? ` · ${formatDateAsLocale(redemption.dataInsercao)}` : ""}
 											</span>
 										</div>
+										<div className="flex items-center gap-4 text-right">
+											<div className="flex flex-col">
+												<span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Desconto</span>
+												<span className="text-sm font-bold tabular-nums text-foreground">{formatToMoney(redemption.valorDesconto)}</span>
+											</div>
+											<div className="flex flex-col">
+												<span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Venda</span>
+												<span className="text-sm font-medium tabular-nums text-muted-foreground">
+													{redemption.vendaValor != null ? formatToMoney(redemption.vendaValor) : "—"}
+												</span>
+											</div>
+										</div>
 									</div>
-								</div>
-							);
-						})}
-					</div>
-				</SectionWrapper>
+								);
+							})}
+						</div>
+					</Section.Body>
+				</Section.Root>
 			) : null}
 
 			{editModalOpen ? (

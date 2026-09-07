@@ -6,7 +6,7 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import ControlFiscalTaxGroup from "@/components/Modals/FiscalTaxGroup/ControlFiscalTaxGroup";
 import NewFiscalTaxGroup from "@/components/Modals/FiscalTaxGroup/NewFiscalTaxGroup";
 import { Button } from "@/components/ui/button";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { getErrorMessage } from "@/lib/errors";
 import { useFiscalTaxGroups } from "@/lib/queries/fiscal";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,40 +22,48 @@ export function CompanyFiscalTaxGroups() {
 	const handleOnMutate = async () => await queryClient.cancelQueries({ queryKey: queryKey });
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey: queryKey });
 	return (
-		<SectionWrapper title="GRUPOS TRIBUTÁRIOS" icon={<Percent className="h-4 w-4" />}>
-			<span id="fiscal-section-tax-groups" />
-			{isLoading ? <LoadingComponent /> : null}
-			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
-			{isSuccess ? (
-				data.length > 0 ? (
-					<div className="flex flex-col gap-2 w-full">
-						{data.map((taxGroup) => (
-							<CompanyFiscalTaxGroup key={taxGroup.id} taxGroup={taxGroup} handleEditClick={() => setEditingTaxGroupId(taxGroup.id)} />
-						))}
-					</div>
-				) : (
-					<div className="flex items-center justify-center py-6">
-						<p className="text-sm text-muted-foreground">Nenhum grupo tributário encontrado.</p>
-					</div>
-				)
-			) : null}
-			<div className="w-full flex items-center justify-center">
-				<Button variant={"ghost"} size={"fit"} className="flex items-center gap-1 px-2 py-1 text-xs" onClick={() => setNewTaxGroupMenuIsOpen(true)}>
-					<Plus className="w-4 h-4 min-w-4 min-h-4" />
-					ADICIONAR
-				</Button>
-			</div>
-			{newTaxGroupMenuIsOpen ? (
-				<NewFiscalTaxGroup closeModal={() => setNewTaxGroupMenuIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
-			) : null}
-			{editingTaxGroupId ? (
-				<ControlFiscalTaxGroup
-					taxGroupId={editingTaxGroupId}
-					closeModal={() => setEditingTaxGroupId(null)}
-					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
-				/>
-			) : null}
-		</SectionWrapper>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<Percent className="h-4 w-4" />
+				</Section.Icon>
+				<Section.Title>GRUPOS TRIBUTÁRIOS</Section.Title>
+			</Section.Header>
+			<Section.Body>
+				<span id="fiscal-section-tax-groups" />
+				{isLoading ? <LoadingComponent /> : null}
+				{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+				{isSuccess ? (
+					data.length > 0 ? (
+						<div className="flex flex-col gap-2 w-full">
+							{data.map((taxGroup) => (
+								<CompanyFiscalTaxGroup key={taxGroup.id} taxGroup={taxGroup} handleEditClick={() => setEditingTaxGroupId(taxGroup.id)} />
+							))}
+						</div>
+					) : (
+						<div className="flex items-center justify-center py-6">
+							<p className="text-sm text-muted-foreground">Nenhum grupo tributário encontrado.</p>
+						</div>
+					)
+				) : null}
+				<div className="w-full flex items-center justify-center">
+					<Button variant={"ghost"} size={"fit"} className="flex items-center gap-1 px-2 py-1 text-xs" onClick={() => setNewTaxGroupMenuIsOpen(true)}>
+						<Plus className="w-4 h-4 min-w-4 min-h-4" />
+						ADICIONAR
+					</Button>
+				</div>
+				{newTaxGroupMenuIsOpen ? (
+					<NewFiscalTaxGroup closeModal={() => setNewTaxGroupMenuIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
+				) : null}
+				{editingTaxGroupId ? (
+					<ControlFiscalTaxGroup
+						taxGroupId={editingTaxGroupId}
+						closeModal={() => setEditingTaxGroupId(null)}
+						callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+					/>
+				) : null}
+			</Section.Body>
+		</Section.Root>
 	);
 }
 

@@ -4,7 +4,8 @@ import type { TGetProductsOutputById } from "@/app/api/products/route";
 import NumberInput from "@/components/Inputs/NumberInput";
 import { SALES_CHANNEL_LABELS, SalesChannelMark } from "@/components/SalesChannels/SalesChannelMark";
 import SectionApplyBar from "@/components/Utils/SectionApplyBar";
-import { SectionWrapper, SectionWrapperDataRow } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
+import { DataList } from "@/components/ui/data-list";
 import { formatDecimalPlaces } from "@/lib/formatting";
 import { type TProductChannelAvailabilityChoice, productChannelNodeKey } from "@/lib/products/product-registry-state";
 import { useProductChannelSettings } from "@/lib/queries/product-channel-settings";
@@ -42,111 +43,119 @@ export default function PricesAndChannelsSection({ product, orgHasERPAccess, cal
 		precoCusto != null && precoCusto > 0 && precoVenda != null ? `${formatDecimalPlaces(((precoVenda - precoCusto) / precoCusto) * 100, 0, 1)}%` : "—";
 
 	return (
-		<SectionWrapper icon={<BadgeDollarSign className="h-4 w-4 min-h-4 min-w-4" />} title="PREÇOS E CANAIS DE VENDA">
-			<div className="flex w-full flex-col gap-3">
-				<h2 className="text-xs leading-none tracking-tight">PREÇOS BASE</h2>
-				<div className="flex w-full items-center gap-2 lg:flex-row">
-					<div className="w-full lg:w-1/2">
-						<NumberInput
-							label="PREÇO DE CUSTO"
-							value={precoCusto}
-							placeholder="Preencha aqui o preço de custo do produto."
-							handleChange={(value) => editor.updateBasePrices({ precoCusto: value })}
-						/>
-					</div>
-					<div className="w-full lg:w-1/2">
-						<NumberInput
-							label="PREÇO DE VENDA"
-							value={precoVenda}
-							placeholder="Preencha aqui o preço de venda do produto."
-							handleChange={(value) => editor.updateBasePrices({ precoVenda: value })}
-						/>
-					</div>
-				</div>
-				<SectionWrapperDataRow icon={<Percent className="h-4 w-4" />} label="MARGEM DE LUCRO" value={marginLabel} />
-			</div>
-
-			{orgHasERPAccess ? (
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<BadgeDollarSign className="h-4 w-4 min-h-4 min-w-4" />
+				</Section.Icon>
+				<Section.Title>PREÇOS E CANAIS DE VENDA</Section.Title>
+			</Section.Header>
+			<Section.Body>
 				<div className="flex w-full flex-col gap-3">
-					<h2 className="text-xs leading-none tracking-tight">CANAIS DE VENDA</h2>
+					<h2 className="text-xs leading-none tracking-tight">PREÇOS BASE</h2>
+					<div className="flex w-full items-center gap-2 lg:flex-row">
+						<div className="w-full lg:w-1/2">
+							<NumberInput
+								label="PREÇO DE CUSTO"
+								value={precoCusto}
+								placeholder="Preencha aqui o preço de custo do produto."
+								handleChange={(value) => editor.updateBasePrices({ precoCusto: value })}
+							/>
+						</div>
+						<div className="w-full lg:w-1/2">
+							<NumberInput
+								label="PREÇO DE VENDA"
+								value={precoVenda}
+								placeholder="Preencha aqui o preço de venda do produto."
+								handleChange={(value) => editor.updateBasePrices({ precoVenda: value })}
+							/>
+						</div>
+					</div>
+					<DataList.Line icon={<Percent className="h-4 w-4" />} label="MARGEM DE LUCRO" value={marginLabel} />
+				</div>
 
-					{product.vendavel === false ? (
-						<p className="text-xs text-muted-foreground">
-							Produto marcado como <span className="font-semibold">não vendável</span> — ele não aparece em nenhum canal, independentemente das configurações
-							abaixo.
-						</p>
-					) : null}
+				{orgHasERPAccess ? (
+					<div className="flex w-full flex-col gap-3">
+						<h2 className="text-xs leading-none tracking-tight">CANAIS DE VENDA</h2>
 
-					{isLoading ? <p className="text-xs text-muted-foreground">Carregando canais...</p> : null}
-					{!isLoading && (isError || !data) ? (
-						<p className="text-xs text-muted-foreground">Não foi possível carregar os canais de venda. Os preços base seguem editáveis.</p>
-					) : null}
+						{product.vendavel === false ? (
+							<p className="text-xs text-muted-foreground">
+								Produto marcado como <span className="font-semibold">não vendável</span> — ele não aparece em nenhum canal, independentemente das
+								configurações abaixo.
+							</p>
+						) : null}
 
-					{data ? (
-						<div className="flex flex-col gap-2">
-							{data.channels.map((channel) => {
-								const inheritedVisible = channel.catalogoModo === "TODOS";
-								const channelNodeKey = productChannelNodeKey(channel.id, null);
-								return (
-									<div key={channel.id} className="flex flex-col gap-1.5 rounded-lg bg-primary/5 px-3 py-2">
-										<div className="flex items-center justify-between gap-2">
-											<div className="flex items-center gap-2">
-												<SalesChannelMark canal={channel.canal} />
-												<div className="flex flex-col gap-0.5">
-													<span className="text-xs font-semibold leading-none">{SALES_CHANNEL_LABELS[channel.canal] ?? channel.canal}</span>
-													<span className="text-[0.6rem] leading-none text-muted-foreground">padrão do canal: {inheritedVisible ? "visível" : "oculto"}</span>
+						{isLoading ? <p className="text-xs text-muted-foreground">Carregando canais...</p> : null}
+						{!isLoading && (isError || !data) ? (
+							<p className="text-xs text-muted-foreground">Não foi possível carregar os canais de venda. Os preços base seguem editáveis.</p>
+						) : null}
+
+						{data ? (
+							<div className="flex flex-col gap-2">
+								{data.channels.map((channel) => {
+									const inheritedVisible = channel.catalogoModo === "TODOS";
+									const channelNodeKey = productChannelNodeKey(channel.id, null);
+									return (
+										<div key={channel.id} className="flex flex-col gap-1.5 rounded-lg bg-primary/5 px-3 py-2">
+											<div className="flex items-center justify-between gap-2">
+												<div className="flex items-center gap-2">
+													<SalesChannelMark canal={channel.canal} />
+													<div className="flex flex-col gap-0.5">
+														<span className="text-xs font-semibold leading-none">{SALES_CHANNEL_LABELS[channel.canal] ?? channel.canal}</span>
+														<span className="text-[0.6rem] leading-none text-muted-foreground">padrão do canal: {inheritedVisible ? "visível" : "oculto"}</span>
+													</div>
+												</div>
+												<div className="flex items-center gap-2">
+													{activeVariants.length === 0 ? (
+														<ChannelPriceInput
+															value={editor.channelPrices.get(channelNodeKey) ?? null}
+															basePrice={precoVenda}
+															onChange={(value) => editor.updateChannelPrice(channelNodeKey, value)}
+														/>
+													) : null}
+													<AvailabilityCycleButton
+														choice={editor.choices.get(channelNodeKey) ?? null}
+														inheritedVisible={inheritedVisible}
+														onCycle={() => editor.cycleChannelChoice(channelNodeKey)}
+													/>
 												</div>
 											</div>
-											<div className="flex items-center gap-2">
-												{activeVariants.length === 0 ? (
-													<ChannelPriceInput
-														value={editor.channelPrices.get(channelNodeKey) ?? null}
-														basePrice={precoVenda}
-														onChange={(value) => editor.updateChannelPrice(channelNodeKey, value)}
-													/>
-												) : null}
-												<AvailabilityCycleButton
-													choice={editor.choices.get(channelNodeKey) ?? null}
-													inheritedVisible={inheritedVisible}
-													onCycle={() => editor.cycleChannelChoice(channelNodeKey)}
-												/>
-											</div>
-										</div>
-										{activeVariants.length > 0 ? (
-											<div className="flex flex-col gap-1 border-l border-border pl-3">
-												{activeVariants.map((variant) => {
-													const variantNodeKey = productChannelNodeKey(channel.id, variant.id);
-													return (
-														<div key={variant.id} className="flex items-center justify-between gap-2">
-															<span className="text-[0.65rem] text-muted-foreground">{variant.nome}</span>
-															<div className="flex items-center gap-2">
-																<ChannelPriceInput
-																	value={editor.channelPrices.get(variantNodeKey) ?? null}
-																	basePrice={variant.precoVenda}
-																	onChange={(value) => editor.updateChannelPrice(variantNodeKey, value)}
-																/>
-																<AvailabilityCycleButton
-																	choice={editor.choices.get(variantNodeKey) ?? null}
-																	inheritedVisible
-																	variantLevel
-																	onCycle={() => editor.cycleChannelChoice(variantNodeKey)}
-																/>
+											{activeVariants.length > 0 ? (
+												<div className="flex flex-col gap-1 border-l border-border pl-3">
+													{activeVariants.map((variant) => {
+														const variantNodeKey = productChannelNodeKey(channel.id, variant.id);
+														return (
+															<div key={variant.id} className="flex items-center justify-between gap-2">
+																<span className="text-[0.65rem] text-muted-foreground">{variant.nome}</span>
+																<div className="flex items-center gap-2">
+																	<ChannelPriceInput
+																		value={editor.channelPrices.get(variantNodeKey) ?? null}
+																		basePrice={variant.precoVenda}
+																		onChange={(value) => editor.updateChannelPrice(variantNodeKey, value)}
+																	/>
+																	<AvailabilityCycleButton
+																		choice={editor.choices.get(variantNodeKey) ?? null}
+																		inheritedVisible
+																		variantLevel
+																		onCycle={() => editor.cycleChannelChoice(variantNodeKey)}
+																	/>
+																</div>
 															</div>
-														</div>
-													);
-												})}
-											</div>
-										) : null}
-									</div>
-								);
-							})}
-						</div>
-					) : null}
-				</div>
-			) : null}
+														);
+													})}
+												</div>
+											) : null}
+										</div>
+									);
+								})}
+							</div>
+						) : null}
+					</div>
+				) : null}
 
-			<SectionApplyBar isDirty={editor.isDirty} isPending={editor.isPending} onApply={editor.apply} onDiscard={editor.discard} />
-		</SectionWrapper>
+				<SectionApplyBar isDirty={editor.isDirty} isPending={editor.isPending} onApply={editor.apply} onDiscard={editor.discard} />
+			</Section.Body>
+		</Section.Root>
 	);
 }
 

@@ -158,6 +158,23 @@
 	text-wrap: balance;
 }
 
+/* Tipografia nomeada do DESIGN.md §3. Existiam só como strings soltas — `text-[10px] uppercase
+   tracking-[0.08em]` aparecia 113 vezes, cada uma com um tamanho ligeiramente diferente do que a
+   spec pede. Aqui viram utilitário: rótulo/eyebrow é 12px, e metadado (timestamp, contador) é 11px. */
+@utility text-label {
+	font-size: 0.75rem;
+	line-height: 1;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+@utility text-micro {
+	font-size: 0.6875rem;
+	line-height: 1.2;
+	font-weight: 600;
+}
+
 @layer utilities {
 	:root {
 		--foreground-rgb: 0, 0, 0;
@@ -430,6 +447,20 @@
 	--color-card: var(--card);
 	--color-foreground: var(--foreground);
 	--color-background: var(--background);
+	/* `inline` importa aqui: sem ele o `var(--warning-surface)` é resolvido no `:root` e o tema
+	   escuro nunca chega às utilidades quando `.dark` não está no elemento raiz. */
+	--color-warning: var(--warning);
+	--color-warning-foreground: var(--warning-foreground);
+	--color-warning-surface: var(--warning-surface);
+	--color-warning-surface-foreground: var(--warning-surface-foreground);
+	--color-info: var(--info);
+	--color-info-foreground: var(--info-foreground);
+	--color-info-surface: var(--info-surface);
+	--color-info-surface-foreground: var(--info-surface-foreground);
+	--color-destructive-surface: var(--destructive-surface);
+	--color-destructive-surface-foreground: var(--destructive-surface-foreground);
+	--color-success-surface: var(--success-surface);
+	--color-success-surface-foreground: var(--success-surface-foreground);
 	--radius-sm: calc(var(--radius) * 0.6);
 	--radius-md: calc(var(--radius) * 0.8);
 	--radius-lg: var(--radius);
@@ -472,6 +503,25 @@
 	--sidebar-ring: oklch(0.723 0.014 214.4);
 	--background: oklch(1 0 0);
 	--foreground: oklch(0.148 0.004 228.8);
+
+	/* Tons semânticos (DESIGN.md §2). A regra de fechamento da paleta proíbe `rose-*`, `sky-*` e
+	   `amber-*` avulsos, mas até aqui só existia `--color-success`: quem precisava de aviso ou
+	   informação inventava a cor no callsite. Cada tom tem quatro papéis:
+	   `{tom}` é o preenchimento sólido, `{tom}-foreground` o texto sobre ele, `{tom}-surface` o
+	   fundo suave e `{tom}-surface-foreground` o texto sobre o fundo suave (o único que precisa
+	   passar em contraste AA — por isso, no claro, aviso é ouro escuro e não o ouro da marca). */
+	--warning: #ffb900;
+	--warning-foreground: #171717;
+	--warning-surface: #fff7e5;
+	--warning-surface-foreground: #7a5117;
+	--info: #24549c;
+	--info-foreground: #ffffff;
+	--info-surface: #eef3fb;
+	--info-surface-foreground: #1a3d7a;
+	--destructive-surface: #fdecec;
+	--destructive-surface-foreground: #b42318;
+	--success-surface: #eafaf0;
+	--success-surface-foreground: #15803d;
 }
 
 .dark {
@@ -506,6 +556,21 @@
 	--sidebar-accent-foreground: oklch(0.987 0.002 197.1);
 	--sidebar-border: oklch(1 0 0 / 10%);
 	--sidebar-ring: oklch(0.56 0.021 213.5);
+
+	/* O sólido não muda entre temas (é a cor da marca); o par suave inverte: fundo profundo e
+	   texto claro, porque ouro escuro sobre superfície escura some. */
+	--warning: #ffb900;
+	--warning-foreground: #171717;
+	--warning-surface: #2a1f06;
+	--warning-surface-foreground: #f5cf52;
+	--info: #24549c;
+	--info-foreground: #ffffff;
+	--info-surface: #10203a;
+	--info-surface-foreground: #9dbcea;
+	--destructive-surface: #2c1210;
+	--destructive-surface-foreground: #fca5a5;
+	--success-surface: #0d2417;
+	--success-surface-foreground: #4ade80;
 }
 
 /* Sonner: mantém posição estável no hover (pausa o timer, sem "subir") */

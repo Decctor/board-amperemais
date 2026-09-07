@@ -221,6 +221,29 @@ Two brand colors carry the identity. Don't try to make this a one-color minimal 
 - **Sucesso Forte** (`#15803d`): O passo escuro do verde. Existe para pares de estado em que
   "concluído" e "encerrado definitivamente" precisam se distinguir sem trocar de matiz —
   hoje `RESOLVIDO` vs. `ENCERRADO` no hub de atendimentos. Token: `--color-success-strong`.
+- **Aviso**: o ouro da marca no papel semântico — prazo correndo, ambiente de homologação, ação
+  que exige atenção mas não é erro. Tokens: `--color-warning` / `--color-warning-foreground`.
+- **Informação**: o azul da marca no papel semântico — "aguardando o provedor", "na fila".
+  Tokens: `--color-info` / `--color-info-foreground`.
+
+#### Os quatro papéis de um tom
+
+Um tom semântico não é uma cor, são quatro. Sem essa distinção, quem precisava de um fundo suave
+de aviso escrevia `bg-amber-50` no callsite — e a paleta vazava.
+
+| Papel                        | Token                            | Uso                                            |
+| ---------------------------- | -------------------------------- | ---------------------------------------------- |
+| Preenchimento sólido         | `--color-{tom}`                  | chip sólido, ponto de timeline, ícone de ênfase |
+| Texto sobre o sólido         | `--color-{tom}-foreground`       | rótulo dentro do chip sólido                   |
+| Superfície suave             | `--color-{tom}-surface`          | fundo de callout, chip suave                   |
+| Texto sobre a superfície     | `--color-{tom}-surface-foreground` | texto e ícone dentro do callout               |
+
+Só o quarto papel precisa passar em contraste AA — por isso, no tema claro, "aviso" escreve em
+ouro escuro (`#7a5117`, o `chart-gold-5`) e não no ouro da marca, que é ilegível sobre branco.
+O par suave inverte no tema escuro; o sólido não muda, porque é a cor da marca.
+
+Os quatro tons com par suave: `warning`, `info`, `destructive`, `success`. Um callout neutro usa
+`muted`/`border` e não abre tom novo.
 
 ### Estados de atendimento (hub de chats)
 
@@ -281,7 +304,15 @@ Raleway holds personality across weights and reads beautifully in Portuguese —
 
 **Sentence case for titles, UPPERCASE for labels.** Mixing the two in the same hierarchy level (e.g., shouty all-caps headings) is prohibited. The eyebrow is uppercase; the heading right below it is sentence case.
 
+**Label e Micro são utilitários, não strings.** Use `text-label` (12px/800/0.08em/uppercase) e
+`text-micro` (11px/600) de `styles/globals.css`. Escrever `text-[10px] uppercase tracking-[0.08em]`
+à mão foi como o sistema acabou com 113 eyebrows, quase nenhum no tamanho que a spec pede.
+
 **Single voice rule.** Don't introduce a second display font. Don't reach for a monospace for "data" tables — Raleway with `tabular-nums` handles tabular figures.
+
+_Exceção nomeada:_ código literal — payload JSON, XML, chave de API, trecho de terminal — é
+monoespaçado, porque ali o alinhamento por caractere é a informação. A exceção vive dentro do
+primitive `CodeBlock`; fora dele, mono é violação. Número em tabela não é código.
 
 ---
 

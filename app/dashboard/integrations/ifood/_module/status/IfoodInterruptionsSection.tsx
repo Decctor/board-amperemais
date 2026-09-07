@@ -2,7 +2,7 @@
 
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import { Button } from "@/components/ui/button";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { useIfoodInterruptions } from "@/lib/queries/ifood";
 import { useQueryClient } from "@tanstack/react-query";
 import { CirclePause, Store } from "lucide-react";
@@ -32,35 +32,40 @@ export function IfoodInterruptionsSection({ merchantId, canManage }: IfoodInterr
 	}
 
 	return (
-		<SectionWrapper
-			title="PAUSAS PROGRAMADAS"
-			icon={<CirclePause className="w-4 h-4 min-w-4 min-h-4" />}
-			actions={
-				canManage && merchantId ? (
-					<Button variant="ghost" size="xs" onClick={() => setNewInterruptionIsOpen(true)} className="flex items-center gap-1">
-						<CirclePause className="w-4 h-4 min-w-4 min-h-4" />
-						PAUSAR LOJA
-					</Button>
-				) : null
-			}
-		>
-			{!merchantId ? (
-				<IfoodSectionEmpty icon={Store} message="Selecione uma loja para gerenciar as pausas programadas." />
-			) : isLoading ? (
-				<IfoodSectionLoading rows={2} />
-			) : isError ? (
-				<ErrorComponent msg={error instanceof Error ? error.message : "Erro ao carregar as pausas programadas."} />
-			) : (
-				<InterruptionsList merchantId={merchantId} interruptions={interrupcoes ?? []} canManage={canManage} onChanged={invalidateInterruptions} />
-			)}
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<CirclePause className="w-4 h-4 min-w-4 min-h-4" />
+				</Section.Icon>
+				<Section.Title>PAUSAS PROGRAMADAS</Section.Title>
+				<Section.Actions>
+					{canManage && merchantId ? (
+						<Button variant="ghost" size="xs" onClick={() => setNewInterruptionIsOpen(true)} className="flex items-center gap-1">
+							<CirclePause className="w-4 h-4 min-w-4 min-h-4" />
+							PAUSAR LOJA
+						</Button>
+					) : null}
+				</Section.Actions>
+			</Section.Header>
+			<Section.Body>
+				{!merchantId ? (
+					<IfoodSectionEmpty icon={Store} message="Selecione uma loja para gerenciar as pausas programadas." />
+				) : isLoading ? (
+					<IfoodSectionLoading rows={2} />
+				) : isError ? (
+					<ErrorComponent msg={error instanceof Error ? error.message : "Erro ao carregar as pausas programadas."} />
+				) : (
+					<InterruptionsList merchantId={merchantId} interruptions={interrupcoes ?? []} canManage={canManage} onChanged={invalidateInterruptions} />
+				)}
 
-			{newInterruptionIsOpen && merchantId ? (
-				<NewIfoodInterruption
-					merchantId={merchantId}
-					closeModal={() => setNewInterruptionIsOpen(false)}
-					callbacks={{ onSuccess: invalidateInterruptions }}
-				/>
-			) : null}
-		</SectionWrapper>
+				{newInterruptionIsOpen && merchantId ? (
+					<NewIfoodInterruption
+						merchantId={merchantId}
+						closeModal={() => setNewInterruptionIsOpen(false)}
+						callbacks={{ onSuccess: invalidateInterruptions }}
+					/>
+				) : null}
+			</Section.Body>
+		</Section.Root>
 	);
 }

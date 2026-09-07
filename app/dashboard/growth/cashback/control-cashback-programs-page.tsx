@@ -39,7 +39,7 @@ import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { TCashbackProgramTerminologyEnum } from "@/schemas/enums";
 import NewCashbackProgramPrize from "@/components/Modals/CashbackPrograms/Prizes/NewCashbackProgramPrize";
 import ControlCashbackProgramPrize from "@/components/Modals/CashbackPrograms/Prizes/ControlCashbackProgramPrize";
@@ -209,149 +209,157 @@ function CashbackProgramControlView({ cashbackProgram, user, userOrg }: Cashback
 		<div className="w-full flex flex-col gap-3">
 			<div className="w-full flex items-stretch gap-3 flex-col lg:flex-row">
 				<div className="h-[500px] max-h-[500px] min-h-[500px] w-full lg:w-1/2">
-					<SectionWrapper
-						title="INFORMAÇÕES GERAIS"
-						icon={<LayoutGrid className="w-4 min-w-4 h-4 min-h-4" />}
-						actions={
-							<Button variant="ghost" size="xs" onClick={() => setEditCashbackProgramModalIsOpen(true)} className="flex items-center gap-1">
-								<Pencil className="w-4 h-4 min-w-4 min-h-4" />
-								EDITAR
-							</Button>
-						}
-						wrapperClassName="h-full"
-					>
-						<div className="w-full flex flex-col gap-2">
-							<h1 className="text-xs leading-none tracking-tight">INFORMAÇÕES GERAIS</h1>
-							<div className="w-full flex flex-col gap-1.5">
-								<div className="w-full flex items-center gap-1.5">
-									<TextIcon className="w-4 min-w-4 h-4 min-h-4" />
-									<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">TÍTULO DO PROGRAMA</h3>
-									<h3 className="text-sm font-semibold tracking-tight">{cashbackProgram.titulo}</h3>
-								</div>
-								<div className="w-full flex items-center gap-1.5">
-									<TextIcon className="w-4 min-w-4 h-4 min-h-4" />
-									<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">DESCRIÇÃO DO PROGRAMA</h3>
-									<h3 className="text-sm font-semibold tracking-tight">{cashbackProgram.descricao ?? "Nenhuma descrição definida..."}</h3>
-								</div>
-								<div className="w-full flex items-center gap-1.5">
-									{cashbackProgram.terminologia === "DINHEIRO" ? (
-										<Banknote className="w-4 min-w-4 h-4 min-h-4" />
-									) : (
-										<Stars className="w-4 min-w-4 h-4 min-h-4" />
-									)}
-									<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">TERMINOLOGIA DO PROGRAMA</h3>
-									<h3 className="text-sm font-semibold tracking-tight">{cashbackProgram.terminologia}</h3>
-								</div>
-							</div>
-						</div>
-						<div className="w-full flex flex-col gap-2">
-							<h1 className="text-xs leading-none tracking-tight">REGRAS DE ACÚMULO</h1>
-							<div className="w-full flex flex-col gap-1.5">
-								<div className="w-full flex items-center gap-1.5">
-									<TrendingUp className="w-4 min-w-4 h-4 min-h-4" />
-									<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">REGRA DE ACUMULAÇÃO (CLIENTE)</h3>
-									<h3 className="text-sm font-semibold tracking-tight">
-										{cashbackProgram.acumuloTipo === "PERCENTUAL"
-											? `${formatDecimalPlaces(cashbackProgram.acumuloValor)}% do valor da venda`
-											: `${formatCashbackValue(cashbackProgram.acumuloValor, cashbackProgram.terminologia)} fixo por venda`}
-									</h3>
-								</div>
-								<div className="w-full flex items-center gap-1.5">
-									<TrendingUp className="w-4 min-w-4 h-4 min-h-4" />
-									<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">REGRA DE ACUMULAÇÃO (PARCEIRO)</h3>
-									<h3 className="text-sm font-semibold tracking-tight">
-										{cashbackProgram.acumuloTipo === "PERCENTUAL"
-											? `${formatDecimalPlaces(cashbackProgram.acumuloValorParceiro)}% do valor da venda`
-											: `${formatCashbackValue(cashbackProgram.acumuloValorParceiro, cashbackProgram.terminologia)} fixo por venda`}
-									</h3>
-								</div>
-								<div className="w-full flex items-center gap-1.5">
-									<DollarSign className="w-4 min-w-4 h-4 min-h-4" />
-									<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">VALOR MÍNIMO P/ ACÚMULO</h3>
-									<h3 className="text-sm font-semibold tracking-tight">
-										{cashbackProgram.acumuloRegraValorMinimo > 0
-											? `Vendas acima de ${formatToMoney(cashbackProgram.acumuloRegraValorMinimo)}`
-											: "Sem valor mínimo"}
-									</h3>
-								</div>
-								<div className="w-full flex items-center gap-1.5">
-									<Calendar className="w-4 min-w-4 h-4 min-h-4" />
-									<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">
-										VALIDADE DO {getCashbackUnitLabel(cashbackProgram.terminologia, { uppercase: true, plural: false })}:{" "}
-										{cashbackProgram.expiracaoRegraValidadeValor > 0
-											? `${cashbackProgram.expiracaoRegraValidadeValor} dias após o acúmulo`
-											: "Sem validade (não expira)"}
-									</h3>
-								</div>
-							</div>
-						</div>
-						<div className="w-full flex flex-col gap-2">
-							<h1 className="text-xs leading-none tracking-tight">REGRAS DE RESGATE</h1>
-							<div className="w-full flex flex-col gap-1.5">
-								<div className="w-full flex items-center gap-1.5">
-									<Percent className="w-4 min-w-4 h-4 min-h-4" />
-									<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">PERMITE DESCONTOS (CLIENTE)</h3>
-									<h3 className="text-sm font-semibold tracking-tight">{cashbackProgram.modalidadeDescontosPermitida ? "Sim" : "Não"}</h3>
-								</div>
-								<div className="w-full flex items-center gap-1.5">
-									<Gift className="w-4 min-w-4 h-4 min-h-4" />
-									<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">PERMITE RECOMPENSAS (CLIENTE)</h3>
-									<h3 className="text-sm font-semibold tracking-tight">{cashbackProgram.modalidadeRecompensasPermitida ? "Sim" : "Não"}</h3>
-								</div>
-								{cashbackProgram.modalidadeDescontosPermitida ? (
+					<Section.Root className="h-full">
+						<Section.Header>
+							<Section.Icon>
+								<LayoutGrid className="w-4 min-w-4 h-4 min-h-4" />
+							</Section.Icon>
+							<Section.Title>INFORMAÇÕES GERAIS</Section.Title>
+							<Section.Actions>
+								<Button variant="ghost" size="xs" onClick={() => setEditCashbackProgramModalIsOpen(true)} className="flex items-center gap-1">
+									<Pencil className="w-4 h-4 min-w-4 min-h-4" />
+									EDITAR
+								</Button>
+							</Section.Actions>
+						</Section.Header>
+						<Section.Body>
+							<div className="w-full flex flex-col gap-2">
+								<h1 className="text-xs leading-none tracking-tight">INFORMAÇÕES GERAIS</h1>
+								<div className="w-full flex flex-col gap-1.5">
 									<div className="w-full flex items-center gap-1.5">
-										<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />
-										<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">LIMITE DE RESGATE (PARCEIRO)</h3>
+										<TextIcon className="w-4 min-w-4 h-4 min-h-4" />
+										<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">TÍTULO DO PROGRAMA</h3>
+										<h3 className="text-sm font-semibold tracking-tight">{cashbackProgram.titulo}</h3>
+									</div>
+									<div className="w-full flex items-center gap-1.5">
+										<TextIcon className="w-4 min-w-4 h-4 min-h-4" />
+										<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">DESCRIÇÃO DO PROGRAMA</h3>
+										<h3 className="text-sm font-semibold tracking-tight">{cashbackProgram.descricao ?? "Nenhuma descrição definida..."}</h3>
+									</div>
+									<div className="w-full flex items-center gap-1.5">
+										{cashbackProgram.terminologia === "DINHEIRO" ? (
+											<Banknote className="w-4 min-w-4 h-4 min-h-4" />
+										) : (
+											<Stars className="w-4 min-w-4 h-4 min-h-4" />
+										)}
+										<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">TERMINOLOGIA DO PROGRAMA</h3>
+										<h3 className="text-sm font-semibold tracking-tight">{cashbackProgram.terminologia}</h3>
+									</div>
+								</div>
+							</div>
+							<div className="w-full flex flex-col gap-2">
+								<h1 className="text-xs leading-none tracking-tight">REGRAS DE ACÚMULO</h1>
+								<div className="w-full flex flex-col gap-1.5">
+									<div className="w-full flex items-center gap-1.5">
+										<TrendingUp className="w-4 min-w-4 h-4 min-h-4" />
+										<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">REGRA DE ACUMULAÇÃO (CLIENTE)</h3>
 										<h3 className="text-sm font-semibold tracking-tight">
-											{cashbackProgram.resgateLimiteTipo === "PERCENTUAL"
-												? `${formatDecimalPlaces(cashbackProgram.resgateLimiteValor ?? 0)}% do valor da venda`
-												: `${formatCashbackValue(cashbackProgram.resgateLimiteValor ?? 0, cashbackProgram.terminologia)} fixo por venda`}
+											{cashbackProgram.acumuloTipo === "PERCENTUAL"
+												? `${formatDecimalPlaces(cashbackProgram.acumuloValor)}% do valor da venda`
+												: `${formatCashbackValue(cashbackProgram.acumuloValor, cashbackProgram.terminologia)} fixo por venda`}
 										</h3>
 									</div>
-								) : null}
+									<div className="w-full flex items-center gap-1.5">
+										<TrendingUp className="w-4 min-w-4 h-4 min-h-4" />
+										<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">REGRA DE ACUMULAÇÃO (PARCEIRO)</h3>
+										<h3 className="text-sm font-semibold tracking-tight">
+											{cashbackProgram.acumuloTipo === "PERCENTUAL"
+												? `${formatDecimalPlaces(cashbackProgram.acumuloValorParceiro)}% do valor da venda`
+												: `${formatCashbackValue(cashbackProgram.acumuloValorParceiro, cashbackProgram.terminologia)} fixo por venda`}
+										</h3>
+									</div>
+									<div className="w-full flex items-center gap-1.5">
+										<DollarSign className="w-4 min-w-4 h-4 min-h-4" />
+										<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">VALOR MÍNIMO P/ ACÚMULO</h3>
+										<h3 className="text-sm font-semibold tracking-tight">
+											{cashbackProgram.acumuloRegraValorMinimo > 0
+												? `Vendas acima de ${formatToMoney(cashbackProgram.acumuloRegraValorMinimo)}`
+												: "Sem valor mínimo"}
+										</h3>
+									</div>
+									<div className="w-full flex items-center gap-1.5">
+										<Calendar className="w-4 min-w-4 h-4 min-h-4" />
+										<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">
+											VALIDADE DO {getCashbackUnitLabel(cashbackProgram.terminologia, { uppercase: true, plural: false })}:{" "}
+											{cashbackProgram.expiracaoRegraValidadeValor > 0
+												? `${cashbackProgram.expiracaoRegraValidadeValor} dias após o acúmulo`
+												: "Sem validade (não expira)"}
+										</h3>
+									</div>
+								</div>
 							</div>
-						</div>
-					</SectionWrapper>
+							<div className="w-full flex flex-col gap-2">
+								<h1 className="text-xs leading-none tracking-tight">REGRAS DE RESGATE</h1>
+								<div className="w-full flex flex-col gap-1.5">
+									<div className="w-full flex items-center gap-1.5">
+										<Percent className="w-4 min-w-4 h-4 min-h-4" />
+										<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">PERMITE DESCONTOS (CLIENTE)</h3>
+										<h3 className="text-sm font-semibold tracking-tight">{cashbackProgram.modalidadeDescontosPermitida ? "Sim" : "Não"}</h3>
+									</div>
+									<div className="w-full flex items-center gap-1.5">
+										<Gift className="w-4 min-w-4 h-4 min-h-4" />
+										<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">PERMITE RECOMPENSAS (CLIENTE)</h3>
+										<h3 className="text-sm font-semibold tracking-tight">{cashbackProgram.modalidadeRecompensasPermitida ? "Sim" : "Não"}</h3>
+									</div>
+									{cashbackProgram.modalidadeDescontosPermitida ? (
+										<div className="w-full flex items-center gap-1.5">
+											<BadgeDollarSign className="w-4 min-w-4 h-4 min-h-4" />
+											<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">LIMITE DE RESGATE (PARCEIRO)</h3>
+											<h3 className="text-sm font-semibold tracking-tight">
+												{cashbackProgram.resgateLimiteTipo === "PERCENTUAL"
+													? `${formatDecimalPlaces(cashbackProgram.resgateLimiteValor ?? 0)}% do valor da venda`
+													: `${formatCashbackValue(cashbackProgram.resgateLimiteValor ?? 0, cashbackProgram.terminologia)} fixo por venda`}
+											</h3>
+										</div>
+									) : null}
+								</div>
+							</div>
+						</Section.Body>
+					</Section.Root>
 				</div>
 				<div className="h-[500px] max-h-[500px] min-h-[500px] w-full lg:w-1/2">
-					<SectionWrapper
-						title="RECOMPENSAS"
-						icon={<Gift className="w-4 min-w-4 h-4 min-h-4" />}
-						actions={
-							<div className="flex items-center gap-1">
-								<Button
-									variant="ghost"
-									size="xs"
-									disabled={prizesSummaryIsPending || activePrizesCount === 0}
-									onClick={() => generatePrizesSummary()}
-									className="flex items-center gap-1"
-								>
-									{prizesSummaryIsPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-									{prizesSummaryIsPending ? "GERANDO..." : "BAIXAR RESUMO"}
-								</Button>
-								<Button variant="ghost" size="xs" onClick={() => setNewCashbackProgramPrizeModalIsOpen(true)} className="flex items-center gap-1">
-									<Plus className="w-4 h-4 min-w-4 min-h-4" />
-									ADICIONAR
-								</Button>
+					<Section.Root className="h-full">
+						<Section.Header>
+							<Section.Icon>
+								<Gift className="w-4 min-w-4 h-4 min-h-4" />
+							</Section.Icon>
+							<Section.Title>RECOMPENSAS</Section.Title>
+							<Section.Actions>
+								<div className="flex items-center gap-1">
+									<Button
+										variant="ghost"
+										size="xs"
+										disabled={prizesSummaryIsPending || activePrizesCount === 0}
+										onClick={() => generatePrizesSummary()}
+										className="flex items-center gap-1"
+									>
+										{prizesSummaryIsPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+										{prizesSummaryIsPending ? "GERANDO..." : "BAIXAR RESUMO"}
+									</Button>
+									<Button variant="ghost" size="xs" onClick={() => setNewCashbackProgramPrizeModalIsOpen(true)} className="flex items-center gap-1">
+										<Plus className="w-4 h-4 min-w-4 min-h-4" />
+										ADICIONAR
+									</Button>
+								</div>
+							</Section.Actions>
+						</Section.Header>
+						<Section.Body>
+							<div className="flex min-h-0 w-full flex-1 flex-col gap-3 overflow-y-auto">
+								{cashbackProgram.recompensas.length > 0 ? (
+									cashbackProgram.recompensas.map((recompensa) => (
+										<CashbackProgramPrizeCard
+											key={recompensa.id}
+											prize={recompensa}
+											cashbackProgramTerminology={cashbackProgram.terminologia}
+											handleEditClick={() => setEditCashbackProgramPrizeId(recompensa.id)}
+										/>
+									))
+								) : (
+									<div className="w-full text-center text-sm font-medium tracking-tight text-foreground/80">Nenhuma recompensa encontrada.</div>
+								)}
 							</div>
-						}
-						wrapperClassName="h-full"
-					>
-						<div className="flex min-h-0 w-full flex-1 flex-col gap-3 overflow-y-auto">
-							{cashbackProgram.recompensas.length > 0 ? (
-								cashbackProgram.recompensas.map((recompensa) => (
-									<CashbackProgramPrizeCard
-										key={recompensa.id}
-										prize={recompensa}
-										cashbackProgramTerminology={cashbackProgram.terminologia}
-										handleEditClick={() => setEditCashbackProgramPrizeId(recompensa.id)}
-									/>
-								))
-							) : (
-								<div className="w-full text-center text-sm font-medium tracking-tight text-foreground/80">Nenhuma recompensa encontrada.</div>
-							)}
-						</div>
-					</SectionWrapper>
+						</Section.Body>
+					</Section.Root>
 				</div>
 			</div>
 			{editCashbackProgramModalIsOpen ? (

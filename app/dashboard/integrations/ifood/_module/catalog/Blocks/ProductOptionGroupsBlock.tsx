@@ -6,7 +6,7 @@ import EditableNumberCell from "@/components/Spreadsheet/EditableNumberCell";
 import EditableTextCell from "@/components/Spreadsheet/EditableTextCell";
 import MobileEditableField from "@/components/Spreadsheet/MobileEditableField";
 import { Button } from "@/components/ui/button";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { formatToMoney } from "@/lib/formatting";
 import { describeOptionGroupRequirement, findOptionGroupIssue, type TOptionGroupIssue } from "@/lib/integrations/ifood/option-groups";
 import { SPREADSHEET_TABLE_ATTR, type SpreadsheetGridBounds } from "@/lib/spreadsheet-navigation";
@@ -275,8 +275,14 @@ export function ProductOptionGroupsBlock({
 	if (embedded) return content;
 
 	return (
-		<SectionWrapper icon={<Layers className="h-4 w-4 min-h-4 min-w-4" />} title="COMPLEMENTOS">
-			{content}
-		</SectionWrapper>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<Layers className="h-4 w-4 min-h-4 min-w-4" />
+				</Section.Icon>
+				<Section.Title>COMPLEMENTOS</Section.Title>
+			</Section.Header>
+			<Section.Body>{content}</Section.Body>
+		</Section.Root>
 	);
 }

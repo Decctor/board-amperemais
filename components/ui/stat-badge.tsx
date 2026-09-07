@@ -2,22 +2,34 @@ import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-import { Chip } from "./chip";
+import { Chip, type chipVariants } from "./chip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
+import type { VariantProps } from "class-variance-authority";
 
 type StatBadgeProps = {
 	icon: React.ReactNode;
 	value: React.ReactNode;
 	tooltipContent?: React.ReactNode;
+	/** Tom do selo. Prefira uma variante a sobrescrever cor por `className`: a paleta é fechada. */
+	variant?: VariantProps<typeof chipVariants>["variant"];
 	className?: string;
 	valueClassName?: string;
 	tooltipClassName?: string;
 	tooltipContentClassName?: string;
 };
 
-export function StatBadge({ icon, value, tooltipContent, className, valueClassName, tooltipClassName, tooltipContentClassName }: StatBadgeProps) {
+export function StatBadge({
+	icon,
+	value,
+	tooltipContent,
+	variant = "secondary",
+	className,
+	valueClassName,
+	tooltipClassName,
+	tooltipContentClassName,
+}: StatBadgeProps) {
 	const content = (
-		<Chip.Root variant="secondary" size="md" shape="xl" className={className}>
+		<Chip.Root variant={variant} size="md" shape="xl" className={className}>
 			<Chip.Icon>{icon}</Chip.Icon>
 			<Chip.Label caps className={valueClassName}>
 				{value}

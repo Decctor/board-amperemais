@@ -1,8 +1,10 @@
 "use client";
 
 import type { TGetFiscalDocumentsOutputById } from "@/app/api/fiscal/documents/route";
+import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Metric } from "@/components/ui/metric";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getErrorMessage } from "@/lib/errors";
@@ -19,7 +21,8 @@ import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, Globe, RefreshCw } from "lucide-react";
 import { useMemo } from "react";
-import { formatFiscalDocumentTypeLabel, isFiscalDocumentFailed, type TFiscalPermissions } from "../helpers/fiscal-document-action-state";
+import { isFiscalDocumentFailed, type TFiscalPermissions } from "../helpers/fiscal-document-action-state";
+import { buildFiscalDocumentHeading } from "../helpers/fiscal-document-heading";
 import { useFiscalDocumentActionRunner, type TFiscalDocumentActionRunner } from "../helpers/use-fiscal-document-action-runner";
 import { FiscalDocumentEventsTimeline } from "./details/fiscal-document-events-timeline";
 import { FiscalDocumentExceptionalPresenceNotice } from "./details/fiscal-document-exceptional-presence-notice";
@@ -34,67 +37,30 @@ import { FiscalDocumentStatusBadge } from "./fiscal-document-status-badge";
 
 export type TFiscalDocumentDetails = TGetFiscalDocumentsOutputById["document"];
 
-function describeDocumentMoment(document: TFiscalDocumentDetails) {
-	const at = (label: string, date: Date | string | null | undefined) => {
-		const formatted = date ? formatDateAsLocale(date, true) : null;
-		return formatted ? `${label} em ${formatted}` : null;
-	};
-	switch (document.statusInterno) {
-		case "AUTORIZADO":
-			return at("Autorizada", document.dataAutorizacao) ?? at("Emitida", document.dataEmissao);
-		case "CANCELADO":
-		case "CANCELAMENTO_PENDENTE":
-			return at("Cancelada", document.dataCancelamento) ?? at("Autorizada", document.dataAutorizacao);
-		case "INUTILIZADO":
-			return at("Numeração inutilizada", document.dataCancelamento) ?? at("Criada", document.dataInsercao);
-		default:
-			return at("Criada", document.dataInsercao);
-	}
-}
-
-/**
- * Titulo e descricao da pagina: o documento se apresenta pelo numero, e a descricao diz serie,
- * ambiente e o momento que define o estado atual. Nada disso se repete no corpo.
- */
-export function buildFiscalDocumentHeading(document: TFiscalDocumentDetails) {
-	const typeLabel = formatFiscalDocumentTypeLabel(document.tipo);
-	const title = document.numero ? `${typeLabel} nº ${document.numero}` : `${typeLabel} sem número`;
-	const parts: string[] = [];
-	if (document.serie) parts.push(`Série ${document.serie}`);
-	parts.push(document.ambiente === "HOMOLOGACAO" ? "Homologação" : "Produção");
-	const moment = describeDocumentMoment(document);
-	if (moment) parts.push(moment);
-	return { title, description: parts.join(" · ") };
-}
+// Reexportado para a pagina, que monta o cabecalho a partir do mesmo documento.
+export { buildFiscalDocumentHeading };
 
 export function FiscalDocumentDetailsSkeleton() {
-	return (
-		<div className="flex flex-col gap-4" aria-label="Carregando documento fiscal">
-			<Skeleton className="h-32 rounded-2xl" />
-			<Skeleton className="h-20 rounded-2xl" />
-			<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-				<Skeleton className="h-72 rounded-2xl" />
-				<Skeleton className="h-72 rounded-2xl" />
-			</div>
-		</div>
-	);
+	return <LoadingComponent />;
 }
 
 export function FiscalDocumentDetailsError({ error, isFetching, retry }: { error: unknown; isFetching: boolean; retry: () => void }) {
 	return (
-		<div className="flex min-h-72 flex-col items-center justify-center gap-4 rounded-2xl border border-border bg-card px-6 text-center">
-			<div className="flex size-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
-				<RefreshCw className={cn("size-5", isFetching && "animate-spin")} />
-			</div>
-			<div className="space-y-1">
-				<p className="text-base font-extrabold">Não foi possível carregar o documento</p>
-				<p className="max-w-sm text-sm text-muted-foreground">{getErrorMessage(error)}</p>
-			</div>
-			<Button variant="outline" size="lg" onClick={retry} disabled={isFetching}>
-				<RefreshCw className={cn("size-4", isFetching && "animate-spin")} />
-				Tentar novamente
-			</Button>
-		</div>
+		<Empty className="min-h-72 rounded-xl border border-border bg-card">
+			<EmptyHeader>
+				<EmptyMedia variant="icon" className="bg-destructive/10 text-destructive">
+					<RefreshCw className={cn(isFetching && "animate-spin")} />
+				</EmptyMedia>
+				<EmptyTitle>Não foi possível carregar o documento</EmptyTitle>
+				<EmptyDescription>{getErrorMessage(error)}</EmptyDescription>
+			</EmptyHeader>
+			<EmptyContent>
+				<Button variant="outline" onClick={retry} disabled={isFetching}>
+					<RefreshCw className={cn("size-4", isFetching && "animate-spin")} />
+					Tentar novamente
+				</Button>
+			</EmptyContent>
+		</Empty>
 	);
 }
 
@@ -149,9 +115,11 @@ export function FiscalDocumentDetails({ document, events, permissions, exception
 						{payloadItems.length > 0 ? <FiscalDocumentPayloadItemsSection items={payloadItems} /> : null}
 						{hasProviderData ? <FiscalDocumentProviderPayloadSection payload={providerPayload} response={providerResponse} messages={messages} /> : null}
 						{mainIsEmpty ? (
-							<p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-								Venda, tributos e payload aparecem aqui depois da primeira tentativa de envio.
-							</p>
+							<Empty className="rounded-xl border border-dashed border-border py-10">
+								<EmptyHeader>
+									<EmptyDescription>Venda, tributos e payload aparecem aqui depois da primeira tentativa de envio.</EmptyDescription>
+								</EmptyHeader>
+							</Empty>
 						) : null}
 					</div>
 					<FiscalDocumentEventsTimeline events={events} className="lg:col-start-2 lg:row-start-2" />
@@ -177,8 +145,8 @@ function FiscalDocumentSummary({ document, runner, sale, taxTotals }: FiscalDocu
 	const showRejection = isFiscalDocumentFailed(document.statusInterno) && !!document.codigoRejeicao;
 
 	return (
-		<section className="overflow-hidden rounded-2xl bg-secondary/55">
-			<div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 px-4 py-4 sm:gap-5 sm:px-5">
+		<section className="overflow-hidden rounded-xl bg-secondary/55">
+			<div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 px-3 py-4 sm:gap-5">
 				<div className="flex min-w-0 flex-col gap-2">
 					<div className="flex flex-wrap items-center gap-1.5">
 						<FiscalDocumentStatusBadge document={document} />
@@ -187,7 +155,7 @@ function FiscalDocumentSummary({ document, runner, sale, taxTotals }: FiscalDocu
 								icon={<Globe className="h-4 min-h-4 w-4 min-w-4" />}
 								value="HOMOLOGAÇÃO"
 								tooltipContent="Documento emitido em ambiente de testes, sem valor fiscal."
-								className="bg-amber-500 text-white dark:bg-amber-600"
+								variant="warningSolid"
 								valueClassName="normal-case tracking-normal"
 							/>
 						) : null}
@@ -196,7 +164,7 @@ function FiscalDocumentSummary({ document, runner, sale, taxTotals }: FiscalDocu
 								icon={<AlertTriangle className="h-4 min-h-4 w-4 min-w-4" />}
 								value="PRESENCIAL EXCEPCIONAL"
 								tooltipContent="Venda com entrega declarada manualmente como operação presencial nesta tentativa."
-								className="bg-amber-600 text-white dark:bg-amber-700"
+								variant="warning"
 								valueClassName="normal-case tracking-normal"
 							/>
 						) : null}
@@ -210,13 +178,13 @@ function FiscalDocumentSummary({ document, runner, sale, taxTotals }: FiscalDocu
 					) : null}
 				</div>
 				{amount != null ? (
-					<div className="shrink-0 text-right">
-						<p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-muted-foreground">{amountLabel}</p>
-						<p className="mt-0.5 text-2xl font-extrabold tracking-tight tabular-nums">{formatToMoney(amount)}</p>
-					</div>
+					<Metric.Root align="end" className="shrink-0">
+						<Metric.Label>{amountLabel}</Metric.Label>
+						<Metric.Value size="lg">{formatToMoney(amount)}</Metric.Value>
+					</Metric.Root>
 				) : null}
 			</div>
-			<div className="border-t border-border/80 bg-card/70 px-4 py-3 sm:px-5">
+			<div className="border-t border-border/80 bg-card/70 px-3 py-3">
 				<FiscalDocumentActionBar document={document} runner={runner} />
 			</div>
 		</section>

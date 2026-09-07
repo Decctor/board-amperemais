@@ -3,7 +3,7 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import SectionApplyBar from "@/components/Utils/SectionApplyBar";
 import { Chip } from "@/components/ui/chip";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { getErrorMessage } from "@/lib/errors";
 import { IFOOD_DAYS_OF_WEEK, type TIfoodDayOfWeek } from "@/lib/integrations/ifood/merchant-types";
 import {
@@ -147,61 +147,66 @@ export function IfoodOpeningHoursSection({ merchantId, canManage }: IfoodOpening
 	const hasConflicts = conflictLabelByIndex.size > 0;
 
 	return (
-		<SectionWrapper
-			title="HORÁRIOS DE FUNCIONAMENTO"
-			icon={<Clock className="w-4 h-4 min-w-4 min-h-4" />}
-			actions={
-				merchantId && !isLoading && !isError ? (
-					<Chip.Root variant="muted" shape="pill" size="sm">
-						<Chip.Label weight="semibold">
-							{summary.openDays === 0
-								? "Nenhum dia aberto"
-								: `${summary.openDays} ${summary.openDays === 1 ? "dia" : "dias"} · ${formatDuration(summary.weeklyMinutes)} por semana`}
-						</Chip.Label>
-					</Chip.Root>
-				) : null
-			}
-		>
-			{!merchantId ? (
-				<IfoodSectionEmpty icon={Store} message="Selecione uma loja para configurar os horários de funcionamento." />
-			) : isLoading ? (
-				<IfoodSectionLoading rows={3} />
-			) : isError ? (
-				<ErrorComponent msg={error instanceof Error ? error.message : "Erro ao carregar os horários de funcionamento."} />
-			) : (
-				<>
-					<div className="flex w-full flex-col overflow-hidden rounded-md border border-border bg-background">
-						<div className="hidden min-h-9 w-full items-center border-b border-border bg-muted/60 px-3 py-1.5 text-[0.68rem] font-medium uppercase text-muted-foreground lg:flex">
-							<p className="w-[26%]">Dia</p>
-							<p className="flex-1">Períodos</p>
-						</div>
-						{IFOOD_DAYS_OF_WEEK.map((diaSemana) => (
-							<OpeningHoursDayRow
-								key={diaSemana}
-								diaSemana={diaSemana}
-								periods={periodsByDay.get(diaSemana) ?? []}
-								canManage={canManage}
-								conflictLabelByIndex={conflictLabelByIndex}
-								onAddPeriod={handleAddPeriod}
-								onUpdatePeriod={updateShift}
-								onRemovePeriod={removeShift}
-								onReplicate={(targets) => replicateDay({ source: diaSemana, targets })}
-							/>
-						))}
-					</div>
-
-					{canManage && merchantId ? (
-						<SectionApplyBar
-							isDirty={isDirty}
-							isPending={isPending}
-							disabled={hasConflicts}
-							disabledReason={hasConflicts ? "Corrija as sobreposições para aplicar." : null}
-							onApply={() => saveOpeningHours({ merchantId, turnos: state.turnos })}
-							onDiscard={handleDiscard}
-						/>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<Clock className="w-4 h-4 min-w-4 min-h-4" />
+				</Section.Icon>
+				<Section.Title>HORÁRIOS DE FUNCIONAMENTO</Section.Title>
+				<Section.Actions>
+					{merchantId && !isLoading && !isError ? (
+						<Chip.Root variant="muted" shape="pill" size="sm">
+							<Chip.Label weight="semibold">
+								{summary.openDays === 0
+									? "Nenhum dia aberto"
+									: `${summary.openDays} ${summary.openDays === 1 ? "dia" : "dias"} · ${formatDuration(summary.weeklyMinutes)} por semana`}
+							</Chip.Label>
+						</Chip.Root>
 					) : null}
-				</>
-			)}
-		</SectionWrapper>
+				</Section.Actions>
+			</Section.Header>
+			<Section.Body>
+				{!merchantId ? (
+					<IfoodSectionEmpty icon={Store} message="Selecione uma loja para configurar os horários de funcionamento." />
+				) : isLoading ? (
+					<IfoodSectionLoading rows={3} />
+				) : isError ? (
+					<ErrorComponent msg={error instanceof Error ? error.message : "Erro ao carregar os horários de funcionamento."} />
+				) : (
+					<>
+						<div className="flex w-full flex-col overflow-hidden rounded-md border border-border bg-background">
+							<div className="hidden min-h-9 w-full items-center border-b border-border bg-muted/60 px-3 py-1.5 text-[0.68rem] font-medium uppercase text-muted-foreground lg:flex">
+								<p className="w-[26%]">Dia</p>
+								<p className="flex-1">Períodos</p>
+							</div>
+							{IFOOD_DAYS_OF_WEEK.map((diaSemana) => (
+								<OpeningHoursDayRow
+									key={diaSemana}
+									diaSemana={diaSemana}
+									periods={periodsByDay.get(diaSemana) ?? []}
+									canManage={canManage}
+									conflictLabelByIndex={conflictLabelByIndex}
+									onAddPeriod={handleAddPeriod}
+									onUpdatePeriod={updateShift}
+									onRemovePeriod={removeShift}
+									onReplicate={(targets) => replicateDay({ source: diaSemana, targets })}
+								/>
+							))}
+						</div>
+
+						{canManage && merchantId ? (
+							<SectionApplyBar
+								isDirty={isDirty}
+								isPending={isPending}
+								disabled={hasConflicts}
+								disabledReason={hasConflicts ? "Corrija as sobreposições para aplicar." : null}
+								onApply={() => saveOpeningHours({ merchantId, turnos: state.turnos })}
+								onDiscard={handleDiscard}
+							/>
+						) : null}
+					</>
+				)}
+			</Section.Body>
+		</Section.Root>
 	);
 }

@@ -16,6 +16,12 @@ const chipVariants = cva("inline-flex w-fit shrink-0 items-center border border-
 			brand: "bg-brand text-brand-foreground",
 			destructive: "bg-destructive/12 text-destructive dark:bg-destructive/20 dark:text-destructive",
 			success: "bg-green-200 text-green-600 dark:bg-green-200/25 dark:text-green-600",
+			// Tons semânticos suaves dos tokens (DESIGN.md §2). `warning` substitui os
+			// `bg-amber-500 text-white` passados por className: ouro é cor de marca e um chip
+			// dourado sólido rouba a hierarquia do CTA primário na proporção 1:3.
+			warning: "bg-warning-surface text-warning-surface-foreground",
+			warningSolid: "bg-warning text-warning-foreground",
+			info: "bg-info-surface text-info-surface-foreground",
 			positiveSolid: "bg-chart-2 text-primary-foreground dark:bg-chart-2",
 			neutralSolid: "bg-muted-foreground/85 text-background dark:bg-muted-foreground/75",
 			neutralOnDark: "bg-foreground text-background",

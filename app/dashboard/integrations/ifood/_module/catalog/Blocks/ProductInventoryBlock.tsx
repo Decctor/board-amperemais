@@ -3,7 +3,7 @@
 import NumberInput from "@/components/Inputs/NumberInput";
 import { LoadingButton } from "@/components/loading-button";
 import { Button } from "@/components/ui/button";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { getErrorMessage } from "@/lib/errors";
 import { setIfoodInventory } from "@/lib/mutations/ifood";
 import { useIfoodInventory } from "@/lib/queries/ifood";
@@ -52,54 +52,62 @@ export function ProductInventoryBlock({ merchantId, produtoId, canManage }: Prod
 	if (!produtoId) return null;
 
 	return (
-		<SectionWrapper icon={<Boxes className="h-4 w-4 min-h-4 min-w-4" />} title="ESTOQUE">
-			<div className="flex w-full flex-col gap-3">
-				<p className="max-w-[70ch] text-xs text-muted-foreground">
-					{controlado
-						? "Quando o estoque chegar a zero, o iFood pausa este item automaticamente."
-						: "Sem controle de estoque, o item vende sem limite. Defina uma quantidade para que o iFood o pause sozinho ao acabar."}
-				</p>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<Boxes className="h-4 w-4 min-h-4 min-w-4" />
+				</Section.Icon>
+				<Section.Title>ESTOQUE</Section.Title>
+			</Section.Header>
+			<Section.Body>
+				<div className="flex w-full flex-col gap-3">
+					<p className="max-w-[70ch] text-xs text-muted-foreground">
+						{controlado
+							? "Quando o estoque chegar a zero, o iFood pausa este item automaticamente."
+							: "Sem controle de estoque, o item vende sem limite. Defina uma quantidade para que o iFood o pause sozinho ao acabar."}
+					</p>
 
-				{isLoading ? (
-					<p className="text-xs text-muted-foreground">Carregando estoque…</p>
-				) : (
-					<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end">
-						<div className="w-full sm:w-[200px]">
-							<NumberInput
-								label="QUANTIDADE DISPONÍVEL"
-								value={quantidade}
-								placeholder="Sem limite"
-								editable={canManage}
-								handleChange={(value) => setQuantidade(value)}
-							/>
-						</div>
-						{canManage ? (
-							<div className="flex items-center gap-2">
-								<LoadingButton
-									type="button"
-									size="sm"
-									loading={isPending}
-									disabled={!alterado || quantidade == null}
-									onClick={() => produtoId && quantidade != null && mutate({ merchantId, produtoId, quantidade })}
-								>
-									SALVAR ESTOQUE
-								</LoadingButton>
-								{controlado ? (
-									<Button
-										type="button"
-										variant="ghost"
-										size="sm"
-										disabled={isPending}
-										onClick={() => produtoId && mutate({ merchantId, produtoId, quantidade: null })}
-									>
-										REMOVER LIMITE
-									</Button>
-								) : null}
+					{isLoading ? (
+						<p className="text-xs text-muted-foreground">Carregando estoque…</p>
+					) : (
+						<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end">
+							<div className="w-full sm:w-[200px]">
+								<NumberInput
+									label="QUANTIDADE DISPONÍVEL"
+									value={quantidade}
+									placeholder="Sem limite"
+									editable={canManage}
+									handleChange={(value) => setQuantidade(value)}
+								/>
 							</div>
-						) : null}
-					</div>
-				)}
-			</div>
-		</SectionWrapper>
+							{canManage ? (
+								<div className="flex items-center gap-2">
+									<LoadingButton
+										type="button"
+										size="sm"
+										loading={isPending}
+										disabled={!alterado || quantidade == null}
+										onClick={() => produtoId && quantidade != null && mutate({ merchantId, produtoId, quantidade })}
+									>
+										SALVAR ESTOQUE
+									</LoadingButton>
+									{controlado ? (
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											disabled={isPending}
+											onClick={() => produtoId && mutate({ merchantId, produtoId, quantidade: null })}
+										>
+											REMOVER LIMITE
+										</Button>
+									) : null}
+								</div>
+							) : null}
+						</div>
+					)}
+				</div>
+			</Section.Body>
+		</Section.Root>
 	);
 }

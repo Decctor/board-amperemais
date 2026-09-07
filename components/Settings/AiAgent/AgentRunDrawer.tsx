@@ -1,8 +1,10 @@
 import ResponsiveMenu from "@/components/Utils/ResponsiveMenu";
+import { CodeBlock } from "@/components/ui/code-block";
+import { Timeline } from "@/components/ui/timeline";
 import { getErrorMessage } from "@/lib/errors";
 import { useAiAgentRunById } from "@/lib/queries/ai-agents";
 import { cn } from "@/lib/utils";
-import { formatDateAsLocale } from "@/lib/formatting";
+import { formatDateAsLocale, formatJsonForDisplay } from "@/lib/formatting";
 import { appRoutes } from "@/lib/navigation/routes";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
@@ -12,23 +14,28 @@ type AgentRunDrawerProps = {
 	closeModal: () => void;
 };
 
+// Tom do marcador na linha do tempo; o ícone herda a cor do texto do marcador.
 const TOOL_CALL_STATUS_STYLES = {
-	CONCLUIDO: { icon: CheckCircle2, className: "text-emerald-600" },
-	FALHA: { icon: XCircle, className: "text-destructive" },
-	EXECUTANDO: { icon: AlertTriangle, className: "text-amber-600" },
+	CONCLUIDO: { icon: CheckCircle2, tone: "success", className: "text-white" },
+	FALHA: { icon: XCircle, tone: "danger", className: "text-white" },
+	EXECUTANDO: { icon: AlertTriangle, tone: "warning", className: "text-warning-foreground" },
 } as const;
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
 	return <h3 className="text-xs font-medium uppercase tracking-tight text-muted-foreground">{children}</h3>;
 }
 
+/** Conveniência local sobre `CodeBlock`: pula o bloco quando não há payload e nomeia a cópia. */
 function JsonBlock({ label, value }: { label: string; value: unknown }) {
 	if (value === null || value === undefined) return null;
 	return (
-		<details className="w-full">
-			<summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">{label}</summary>
-			<pre className="mt-1 max-h-64 overflow-auto rounded-md bg-muted px-3 py-2 text-[11px] leading-relaxed">{JSON.stringify(value, null, 2)}</pre>
-		</details>
+		<CodeBlock.Root value={formatJsonForDisplay(value)} className="w-full overflow-hidden rounded-md border border-border">
+			<CodeBlock.Header className="px-3">
+				<CodeBlock.Trigger className="text-xs font-medium text-muted-foreground">{label}</CodeBlock.Trigger>
+				<CodeBlock.Copy label={`Copiar ${label.toLowerCase()}`} />
+			</CodeBlock.Header>
+			<CodeBlock.Content className="max-h-64 border-t border-border px-3 sm:px-3" />
+		</CodeBlock.Root>
 	);
 }
 
@@ -112,37 +119,42 @@ export default function AgentRunDrawer({ runId, closeModal }: AgentRunDrawerProp
 						{run.chamadasFerramentas.length === 0 ? (
 							<p className="text-sm text-muted-foreground">O agente respondeu sem consultar nada.</p>
 						) : (
-							run.chamadasFerramentas.map((toolCall) => {
-								const style = TOOL_CALL_STATUS_STYLES[toolCall.status] ?? TOOL_CALL_STATUS_STYLES.EXECUTANDO;
-								const Icon = style.icon;
-								return (
-									<div key={toolCall.id} className="flex w-full flex-col gap-2 rounded-lg border border-border px-3 py-2">
-										<div className="flex items-center gap-2">
-											<Icon className={cn("h-4 w-4 shrink-0", style.className)} />
-											<span className="font-mono text-xs font-bold">{toolCall.ferramentaNome}</span>
-										</div>
-										{toolCall.erro ? <p className="text-xs text-destructive">{toolCall.erro}</p> : null}
-										{toolCall.operacao ? (
-											<div className="flex flex-col gap-1 rounded-md bg-muted px-3 py-2 text-xs">
-												<span>
-													Operação: <strong>{toolCall.operacao.tipo}</strong> · {toolCall.operacao.status} · {toolCall.operacao.chamadas.length} tentativa(s)
-												</span>
-												{toolCall.operacao.recursoTipo === "VENDA" && toolCall.operacao.recursoId ? (
-													<Link
-										href={appRoutes.sales.details(toolCall.operacao.recursoId)}
-														className="font-medium text-primary underline-offset-4 hover:underline"
-													>
-														Abrir orçamento
-													</Link>
+							<Timeline.Root>
+								{run.chamadasFerramentas.map((toolCall) => {
+									const style = TOOL_CALL_STATUS_STYLES[toolCall.status] ?? TOOL_CALL_STATUS_STYLES.EXECUTANDO;
+									const Icon = style.icon;
+									return (
+										<Timeline.Item key={toolCall.id}>
+											<Timeline.Icon tone={style.tone} className={style.className}>
+												<Icon />
+											</Timeline.Icon>
+											<Timeline.Content className="gap-2">
+												<Timeline.Title className="font-mono">{toolCall.ferramentaNome}</Timeline.Title>
+												{toolCall.erro ? <Timeline.Description className="text-destructive">{toolCall.erro}</Timeline.Description> : null}
+												{toolCall.operacao ? (
+													<div className="flex flex-col gap-1 rounded-md bg-muted px-3 py-2 text-xs">
+														<span>
+															Operação: <strong>{toolCall.operacao.tipo}</strong> · {toolCall.operacao.status} · {toolCall.operacao.chamadas.length}{" "}
+															tentativa(s)
+														</span>
+														{toolCall.operacao.recursoTipo === "VENDA" && toolCall.operacao.recursoId ? (
+															<Link
+																href={appRoutes.sales.details(toolCall.operacao.recursoId)}
+																className="font-medium text-primary underline-offset-4 hover:underline"
+															>
+																Abrir orçamento
+															</Link>
+														) : null}
+														{toolCall.operacao.erro ? <span className="text-destructive">{toolCall.operacao.erro}</span> : null}
+													</div>
 												) : null}
-												{toolCall.operacao.erro ? <span className="text-destructive">{toolCall.operacao.erro}</span> : null}
-											</div>
-										) : null}
-										<JsonBlock label="Argumentos" value={toolCall.input} />
-										<JsonBlock label="Resultado" value={toolCall.output} />
-									</div>
-								);
-							})
+												<JsonBlock label="Argumentos" value={toolCall.input} />
+												<JsonBlock label="Resultado" value={toolCall.output} />
+											</Timeline.Content>
+										</Timeline.Item>
+									);
+								})}
+							</Timeline.Root>
 						)}
 					</div>
 

@@ -4,6 +4,7 @@ import { FiscalProblemCta } from "@/components/Fiscal/FiscalProblemCta";
 import { FISCAL_PROBLEM_CATEGORY_LABELS, FISCAL_PROBLEM_ORIGIN_LABELS } from "@/components/Fiscal/fiscal-problem-presentation";
 import { useFiscalDeadline } from "@/components/Modals/FiscalDocument/use-fiscal-deadline";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 import { Chip } from "@/components/ui/chip";
 import { FISCAL_DEADLINES } from "@/lib/fiscal/constants";
 import { appRoutes } from "@/lib/navigation/routes";
@@ -26,21 +27,6 @@ type FiscalDocumentNextStepsProps = {
 	onChanged?: () => void;
 };
 
-function Panel({ tone, title, children }: { tone: "danger" | "warning" | "info" | "neutral"; title: string; children: React.ReactNode }) {
-	const toneClass = {
-		danger: "border-rose-300/70 bg-rose-50/70 dark:border-rose-900/50 dark:bg-rose-950/30",
-		warning: "border-amber-300/70 bg-amber-50/70 dark:border-amber-900/50 dark:bg-amber-950/30",
-		info: "border-sky-300/70 bg-sky-50/60 dark:border-sky-900/50 dark:bg-sky-950/30",
-		neutral: "border-border bg-muted/20",
-	}[tone];
-	return (
-		<section className={cn("flex w-full flex-col gap-2.5 rounded-lg border p-3", toneClass)}>
-			<h4 className="text-xs font-bold uppercase tracking-tight">{title}</h4>
-			{children}
-		</section>
-	);
-}
-
 /**
  * "O QUE FAZER AGORA": a primeira coisa que o operador ve no documento. Decide o painel pelo
  * estado + matriz de acoes: problemas com CTA, decisao quando o cancelamento fechou, espera
@@ -56,11 +42,10 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 	if (isFiscalDocumentFailed(status)) {
 		const canRetry = !!actions.REENVIAR?.available;
 		return (
-			<Panel tone="danger" title="O que fazer agora">
-				{document.codigoRejeicao ? (
-					<p className="text-xs font-semibold text-rose-700 dark:text-rose-300">Rejeição SEFAZ {document.codigoRejeicao}</p>
-				) : null}
-				<div className="flex flex-col divide-y divide-rose-200/60 dark:divide-rose-900/40">
+			<Callout.Root tone="danger">
+				<Callout.Title>O que fazer agora</Callout.Title>
+				{document.codigoRejeicao ? <Callout.Note>Rejeição SEFAZ {document.codigoRejeicao}</Callout.Note> : null}
+				<div className="flex flex-col divide-y divide-destructive/20">
 					{problems.length === 0 ? (
 						<p className="py-1.5 text-sm">A emissão falhou sem detalhe registrado. Reenvie o documento ou veja o retorno completo abaixo.</p>
 					) : null}
@@ -71,7 +56,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 									<Chip.Root variant={problem.resolvidoAutomaticamente ? "muted" : "destructive"} size="xs">
 										<Chip.Label>{FISCAL_PROBLEM_CATEGORY_LABELS[problem.categoria]}</Chip.Label>
 									</Chip.Root>
-									<span className="text-[10px] font-semibold uppercase text-muted-foreground">{FISCAL_PROBLEM_ORIGIN_LABELS[problem.origem]}</span>
+									<span className="text-label text-muted-foreground">{FISCAL_PROBLEM_ORIGIN_LABELS[problem.origem]}</span>
 								</div>
 								<p className="text-sm font-medium">{problem.mensagem}</p>
 								<p className="flex items-start gap-1 text-xs text-muted-foreground">
@@ -85,7 +70,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 						</div>
 					))}
 				</div>
-				<div className="flex flex-wrap items-center gap-2 pt-1">
+				<Callout.Actions>
 					<Button type="button" size="sm" disabled={!canRetry || runner.isPending} onClick={() => runner.run("REENVIAR")} className="gap-1.5">
 						<Send className={cn("h-4 w-4", runner.pendingAction === "REENVIAR" && "animate-spin")} />
 						Reenviar
@@ -104,14 +89,14 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 						</Button>
 					) : null}
 					{!canRetry && actions.REENVIAR?.reason ? <span className="text-xs text-muted-foreground">{actions.REENVIAR.reason}</span> : null}
-				</div>
+				</Callout.Actions>
 				{runner.retryFailureMessage ? (
-					<p className="flex items-start gap-1.5 rounded-md bg-rose-100/70 px-2 py-1.5 text-xs text-rose-800 dark:bg-rose-900/40 dark:text-rose-200">
+					<Callout.Note className="rounded-md bg-destructive/10 px-2 py-1.5">
 						<AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
 						{runner.retryFailureMessage}
-					</p>
+					</Callout.Note>
 				) : null}
-			</Panel>
+			</Callout.Root>
 		);
 	}
 
@@ -119,7 +104,8 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 		const cancelar = actions.CANCELAR;
 		if (cancelar?.available) {
 			return (
-				<Panel tone="neutral" title="Documento autorizado">
+				<Callout.Root tone="neutral">
+					<Callout.Title>Documento autorizado</Callout.Title>
 					<div className="flex flex-wrap items-center justify-between gap-2">
 						<p className="flex items-center gap-1.5 text-sm">
 							<Clock className="h-4 w-4 text-muted-foreground" />
@@ -137,7 +123,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 							Cancelar
 						</Button>
 					</div>
-				</Panel>
+				</Callout.Root>
 			);
 		}
 		if (cancelar && !cancelar.available && !cancelar.permissionBlocked) {
@@ -149,7 +135,8 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 				toast.success("Chave de acesso copiada.");
 			};
 			return (
-				<Panel tone="warning" title="Cancelamento indisponível">
+				<Callout.Root tone="warning">
+					<Callout.Title>Cancelamento indisponível</Callout.Title>
 					<p className="text-sm">{cancelar.reason}</p>
 					<p className="text-xs text-muted-foreground">A nota continua válida na SEFAZ. Escolha o que corresponde ao que aconteceu:</p>
 					<div className="flex flex-col gap-2">
@@ -160,7 +147,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 									Gere a NF-e de devolução referenciando esta nota. Ela estorna o efeito fiscal e, quando autorizada, libera o cancelamento da venda.
 								</span>
 								{devolucao && !devolucao.available ? (
-									<span className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+									<span className="mt-1 text-xs text-[color:var(--tone-accent)]">
 										{devolucao.reason}{" "}
 										{devolucao.reason?.includes("perfil") ? (
 											<Link href={appRoutes.fiscal.configuration("operation-profiles")} className="underline">
@@ -186,7 +173,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 								<div className="flex min-w-0 flex-col">
 									<span className="text-sm font-semibold">Só um dado descritivo está errado</span>
 									<span className="text-xs text-muted-foreground">Carta de correção. Não altera valores, quantidades, datas nem partes.</span>
-									{carta && !carta.available ? <span className="mt-1 text-xs text-amber-700 dark:text-amber-300">{carta.reason}</span> : null}
+									{carta && !carta.available ? <span className="mt-1 text-xs text-[color:var(--tone-accent)]">{carta.reason}</span> : null}
 								</div>
 								<Button
 									type="button"
@@ -228,7 +215,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 							</div>
 						</div>
 					</div>
-				</Panel>
+				</Callout.Root>
 			);
 		}
 		return null;
@@ -238,7 +225,8 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 		const waitingMinutes = Math.floor((Date.now() - new Date(document.dataInsercao).getTime()) / 60_000);
 		const stuck = status === "EM_PROCESSAMENTO" && waitingMinutes >= FISCAL_DEADLINES.processingAlertMinutes;
 		return (
-			<Panel tone={stuck ? "warning" : "info"} title={status === "EM_PROCESSAMENTO" ? "Aguardando retorno do provedor" : "Na fila de envio"}>
+			<Callout.Root tone={stuck ? "warning" : "info"}>
+				<Callout.Title>{status === "EM_PROCESSAMENTO" ? "Aguardando retorno do provedor" : "Na fila de envio"}</Callout.Title>
 				<div className="flex flex-wrap items-center justify-between gap-2">
 					<p className="text-sm">
 						{status === "EM_PROCESSAMENTO"
@@ -253,13 +241,14 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 						</Button>
 					) : null}
 				</div>
-			</Panel>
+			</Callout.Root>
 		);
 	}
 
 	if (status === "CANCELAMENTO_PENDENTE") {
 		return (
-			<Panel tone="info" title="Cancelamento solicitado">
+			<Callout.Root tone="info">
+				<Callout.Title>Cancelamento solicitado</Callout.Title>
 				<div className="flex flex-wrap items-center justify-between gap-2">
 					<p className="text-sm">Aguardando confirmação da SEFAZ.</p>
 					<Button type="button" size="sm" variant="outline" disabled={runner.isPending} onClick={() => runner.run("SINCRONIZAR")} className="gap-1.5">
@@ -267,13 +256,14 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 						Atualizar status
 					</Button>
 				</div>
-			</Panel>
+			</Callout.Root>
 		);
 	}
 
 	if ((status === "CANCELADO" || status === "INUTILIZADO") && actions.REENVIAR?.available) {
 		return (
-			<Panel tone="neutral" title={status === "CANCELADO" ? "Documento cancelado" : "Numeração inutilizada"}>
+			<Callout.Root tone="neutral">
+				<Callout.Title>{status === "CANCELADO" ? "Documento cancelado" : "Numeração inutilizada"}</Callout.Title>
 				<div className="flex flex-wrap items-center justify-between gap-2">
 					<p className="text-sm">A venda continua sem nota válida. Se ela segue de pé, emita um novo documento.</p>
 					<Button type="button" size="sm" variant="outline" disabled={runner.isPending} onClick={() => runner.run("REENVIAR")} className="gap-1.5">
@@ -281,7 +271,7 @@ export function FiscalDocumentNextSteps({ document, runner, permissions, onChang
 						Emitir novamente
 					</Button>
 				</div>
-			</Panel>
+			</Callout.Root>
 		);
 	}
 

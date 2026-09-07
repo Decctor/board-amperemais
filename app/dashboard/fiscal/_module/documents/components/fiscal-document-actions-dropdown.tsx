@@ -86,7 +86,7 @@ export function FiscalDocumentActionsDropdown({ document, runner, openDetails }:
 						{countdown ? (
 							<span
 								className={cn(
-									"rounded px-1 py-px text-[10px] font-semibold tabular-nums",
+									"rounded px-1 py-px text-micro tabular-nums",
 									deadline?.urgent ? "bg-destructive text-destructive-foreground" : "bg-muted text-muted-foreground",
 								)}
 							>
@@ -95,7 +95,7 @@ export function FiscalDocumentActionsDropdown({ document, runner, openDetails }:
 						) : null}
 					</span>
 					{!action.available && action.reason ? (
-						<span className="whitespace-normal text-[11px] leading-snug text-muted-foreground">{action.reason}</span>
+						<span className="text-micro whitespace-normal leading-snug text-muted-foreground">{action.reason}</span>
 					) : null}
 				</span>
 			</DropdownMenuItem>

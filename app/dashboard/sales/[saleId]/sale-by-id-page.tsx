@@ -3,13 +3,14 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import { ClientDuplicatePill } from "@/components/Clients/duplicates/ClientDuplicatePill";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
+import { PageHeader } from "@/components/Layouts/PageHeader";
 import { CancelConfirmedSaleDialog } from "@/components/Modals/Sales/CancelConfirmedSaleDialog";
 import { LoadingButton } from "@/components/loading-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getAgeFromBirthdayDate } from "@/lib/dates";
 import { getErrorMessage } from "@/lib/errors";
@@ -30,7 +31,6 @@ import { cn } from "@/lib/utils";
 import type { TGetSalesOutputById } from "@/app/api/sales/route";
 import {
 	AlertTriangle,
-	ArrowLeft,
 	ArrowRight,
 	BadgeDollarSign,
 	BadgePercent,
@@ -127,25 +127,20 @@ export default function SaleByIdPage({
 		// `min-h-full` e não `h-full`: esta página tem mais conteúdo que a viewport, e declarar
 		// altura fixa faria as seções ou serem espremidas ou vazarem para fora de uma caixa que o
 		// scrollport do layout não mede. Com altura mínima, a página cresce e o scroll é do layout.
-		<div className="w-full min-h-full flex flex-col gap-4">
-			{/* Page Header */}
-			<div className="flex items-center justify-between">
-				<div className="w-full flex items-center gap-3">
-					<Button variant="ghost" size="fit" asChild className="rounded-full hover:bg-brand/10 flex items-center gap-1 px-2 py-2">
-						<Link href={appRoutes.sales.root()} className="flex items-center gap-1">
-							<ArrowLeft className="w-5 h-5" />
-							VOLTAR
-						</Link>
-					</Button>
-
-					<h1 className="text-lg font-bold tracking-tight">VENDA - {formatDateAsLocale(sale.dataVenda, true)}</h1>
-				</div>
-				<div className="flex items-center gap-1.5 shrink-0">
-					<SaleEditButton sale={sale} userCanEditSales={userCanEditSales} />
-					<SaleCancelButton sale={sale} userCanDeleteSales={userCanDeleteSales} />
-					<SaleDeleteButton sale={sale} userCanDeleteSales={userCanDeleteSales} />
-				</div>
-			</div>
+		<div className="w-full flex flex-col gap-6 py-3">
+			<PageHeader.Root>
+				<PageHeader.Bar>
+					<PageHeader.Back href={appRoutes.sales.root()} />
+					<PageHeader.Actions>
+						<SaleEditButton sale={sale} userCanEditSales={userCanEditSales} />
+						<SaleCancelButton sale={sale} userCanDeleteSales={userCanDeleteSales} />
+						<SaleDeleteButton sale={sale} userCanDeleteSales={userCanDeleteSales} />
+					</PageHeader.Actions>
+				</PageHeader.Bar>
+				<PageHeader.Heading>
+					<PageHeader.Title>Venda de {formatDateAsLocale(sale.dataVenda, true)}</PageHeader.Title>
+				</PageHeader.Heading>
+			</PageHeader.Root>
 
 			{/* Sale Overview Section */}
 			<div className="w-full flex flex-col lg:flex-row gap-4 lg:items-stretch">
@@ -195,183 +190,204 @@ function SaleOverviewSection({ sale }: { sale: TGetSalesOutputById }) {
 	const activeCouponRedemptions = sale.resgatesCupom.filter((redemption) => redemption.status === "UTILIZADO");
 	const totalCouponDiscount = activeCouponRedemptions.reduce((sum, redemption) => sum + redemption.valorDesconto, 0);
 	return (
-		<SectionWrapper title="VISÃO GERAL DA VENDA" icon={<Receipt className="w-4 h-4 min-w-4 min-h-4" />}>
-			<div className="w-full flex flex-col gap-2">
-				<h1 className="text-xs leading-none tracking-tight">INFORMAÇÕES GERAIS</h1>
-				<div className="w-full flex flex-col gap-1.5">
-					<div className="w-full flex items-center gap-1.5">
-						<Code className="w-4 h-4" />
-						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">IDENTIFICADOR EXTERNO</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{sale.idExterno}</h3>
-					</div>
-					<div className="w-full flex items-center gap-1.5">
-						<BadgeDollarSign className="w-4 h-4" />
-						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">VALOR</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{formatToMoney(sale.valorTotal)}</h3>
-					</div>
-					{activeCouponRedemptions.length > 0 ? (
-						<div className="w-fit max-w-full flex items-center gap-1.5 rounded-full border border-brand/35 bg-brand/15 px-2.5 py-1 text-xs font-bold text-foreground">
-							<Ticket className="w-3.5 h-3.5 text-brand" />
-							<span className="truncate">
-								{activeCouponRedemptions.length === 1 ? `CUPOM ${activeCouponRedemptions[0].cupomCodigo}` : `${activeCouponRedemptions.length} CUPONS`}
-							</span>
-							<span className="tabular-nums">-{formatToMoney(totalCouponDiscount)}</span>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<Receipt className="w-4 h-4 min-w-4 min-h-4" />
+				</Section.Icon>
+				<Section.Title>VISÃO GERAL DA VENDA</Section.Title>
+			</Section.Header>
+			<Section.Body>
+				<div className="w-full flex flex-col gap-2">
+					<h1 className="text-xs leading-none tracking-tight">INFORMAÇÕES GERAIS</h1>
+					<div className="w-full flex flex-col gap-1.5">
+						<div className="w-full flex items-center gap-1.5">
+							<Code className="w-4 h-4" />
+							<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">IDENTIFICADOR EXTERNO</h3>
+							<h3 className="text-sm font-semibold tracking-tight">{sale.idExterno}</h3>
 						</div>
-					) : null}
+						<div className="w-full flex items-center gap-1.5">
+							<BadgeDollarSign className="w-4 h-4" />
+							<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">VALOR</h3>
+							<h3 className="text-sm font-semibold tracking-tight">{formatToMoney(sale.valorTotal)}</h3>
+						</div>
+						{activeCouponRedemptions.length > 0 ? (
+							<div className="w-fit max-w-full flex items-center gap-1.5 rounded-full border border-brand/35 bg-brand/15 px-2.5 py-1 text-xs font-bold text-foreground">
+								<Ticket className="w-3.5 h-3.5 text-brand" />
+								<span className="truncate">
+									{activeCouponRedemptions.length === 1 ? `CUPOM ${activeCouponRedemptions[0].cupomCodigo}` : `${activeCouponRedemptions.length} CUPONS`}
+								</span>
+								<span className="tabular-nums">-{formatToMoney(totalCouponDiscount)}</span>
+							</div>
+						) : null}
 
-					<div className="w-full flex items-center gap-1.5">
-						<Calendar className="w-4 h-4" />
-						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">DATA DA VENDA</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{formatDateAsLocale(sale.dataVenda, true) || "DATA DA VENDA NÃO DEFINIDA"}</h3>
-					</div>
-					<div className="w-full flex items-center gap-1.5">
-						<Calendar className="w-4 h-4" />
-						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">CANAL</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{sale.canal || "CANAL NÃO DEFINIDO"}</h3>
-					</div>
-					<div className="w-full flex items-center gap-1.5">
-						<Truck className="w-4 h-4" />
-						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">MODALIDADE</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{sale.entregaModalidade || "MODALIDADE NÃO DEFINIDA"}</h3>
-					</div>
-					<div className="flex items-center gap-1.5">
-						<Tag className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">NATUREZA</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{sale.natureza}</h3>
-					</div>
-				</div>
-			</div>
-			<div className="w-full flex flex-col gap-2">
-				<h1 className="text-xs leading-none tracking-tight">PARTICIPANTES</h1>
-				<div className="w-full flex flex-col gap-1.5">
-					<div className="w-full flex items-center gap-1.5">
-						<Avatar className="w-5 h-5 min-w-5 min-h-5">
-							<AvatarImage src={sale.vendedor?.avatarUrl ?? undefined} alt={sellerName} />
-							<AvatarFallback className="text-xs uppercase">{formatNameAsInitials(sellerName)}</AvatarFallback>
-						</Avatar>
-						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">VENDEDOR</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{sellerName}</h3>
-					</div>
-					<div className="w-full flex items-center gap-1.5">
-						<Avatar className="w-5 h-5 min-w-5 min-h-5">
-							<AvatarImage src={sale.parceiro?.avatarUrl ?? undefined} alt={partnerName} />
-							<AvatarFallback className="text-xs uppercase">{formatNameAsInitials(partnerName)}</AvatarFallback>
-						</Avatar>
-						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">PARCEIRO</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{partnerName}</h3>
+						<div className="w-full flex items-center gap-1.5">
+							<Calendar className="w-4 h-4" />
+							<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">DATA DA VENDA</h3>
+							<h3 className="text-sm font-semibold tracking-tight">{formatDateAsLocale(sale.dataVenda, true) || "DATA DA VENDA NÃO DEFINIDA"}</h3>
+						</div>
+						<div className="w-full flex items-center gap-1.5">
+							<Calendar className="w-4 h-4" />
+							<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">CANAL</h3>
+							<h3 className="text-sm font-semibold tracking-tight">{sale.canal || "CANAL NÃO DEFINIDO"}</h3>
+						</div>
+						<div className="w-full flex items-center gap-1.5">
+							<Truck className="w-4 h-4" />
+							<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">MODALIDADE</h3>
+							<h3 className="text-sm font-semibold tracking-tight">{sale.entregaModalidade || "MODALIDADE NÃO DEFINIDA"}</h3>
+						</div>
+						<div className="flex items-center gap-1.5">
+							<Tag className="w-4 h-4 text-muted-foreground" />
+							<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">NATUREZA</h3>
+							<h3 className="text-sm font-semibold tracking-tight">{sale.natureza}</h3>
+						</div>
 					</div>
 				</div>
-			</div>
-		</SectionWrapper>
+				<div className="w-full flex flex-col gap-2">
+					<h1 className="text-xs leading-none tracking-tight">PARTICIPANTES</h1>
+					<div className="w-full flex flex-col gap-1.5">
+						<div className="w-full flex items-center gap-1.5">
+							<Avatar className="w-5 h-5 min-w-5 min-h-5">
+								<AvatarImage src={sale.vendedor?.avatarUrl ?? undefined} alt={sellerName} />
+								<AvatarFallback className="text-xs uppercase">{formatNameAsInitials(sellerName)}</AvatarFallback>
+							</Avatar>
+							<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">VENDEDOR</h3>
+							<h3 className="text-sm font-semibold tracking-tight">{sellerName}</h3>
+						</div>
+						<div className="w-full flex items-center gap-1.5">
+							<Avatar className="w-5 h-5 min-w-5 min-h-5">
+								<AvatarImage src={sale.parceiro?.avatarUrl ?? undefined} alt={partnerName} />
+								<AvatarFallback className="text-xs uppercase">{formatNameAsInitials(partnerName)}</AvatarFallback>
+							</Avatar>
+							<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">PARCEIRO</h3>
+							<h3 className="text-sm font-semibold tracking-tight">{partnerName}</h3>
+						</div>
+					</div>
+				</div>
+			</Section.Body>
+		</Section.Root>
 	);
 }
 
 function ClientSection({ client, canReconcile }: { client: TGetSalesOutputById["cliente"]; canReconcile: boolean }) {
 	if (!client)
 		return (
-			<SectionWrapper title="CLIENTE" icon={<CircleUser className="w-4 h-4 min-w-4 min-h-4" />}>
-				<div className="w-full flex flex-col items-center justify-center gap-3">
-					<span className="text-sm font-medium text-muted-foreground">CLIENTE NÃO ATRIBUÍDO</span>
-				</div>
-			</SectionWrapper>
+			<Section.Root>
+				<Section.Header>
+					<Section.Icon>
+						<CircleUser className="w-4 h-4 min-w-4 min-h-4" />
+					</Section.Icon>
+					<Section.Title>CLIENTE</Section.Title>
+				</Section.Header>
+				<Section.Body>
+					<div className="w-full flex flex-col items-center justify-center gap-3">
+						<span className="text-sm font-medium text-muted-foreground">CLIENTE NÃO ATRIBUÍDO</span>
+					</div>
+				</Section.Body>
+			</Section.Root>
 		);
 	return (
-		<SectionWrapper
-			title="CLIENTE"
-			icon={<CircleUser className="w-4 h-4 min-w-4 min-h-4" />}
-			actions={
-				<Button variant="ghost" size="xs" asChild>
-					<Link href={`${appRoutes.customers.root()}/${client.id}`}>
-						VER PERFIL
-						<ArrowRight className="w-3 h-3 ml-1" />
-					</Link>
-				</Button>
-			}
-		>
-			<div className="w-full flex flex-col gap-3">
-				{/* Name */}
-				<div className="flex items-center gap-1.5">
-					<CircleUser className="w-4 h-4 text-muted-foreground" />
-					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">NOME</h3>
-					<h3 className="text-sm font-semibold tracking-tight">{client.nome}</h3>
-					<ClientDuplicatePill entityType="client" entityId={client.id} canReconcile={canReconcile} />
-				</div>
-
-				{/* Phone */}
-				{client.telefone && (
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<CircleUser className="w-4 h-4 min-w-4 min-h-4" />
+				</Section.Icon>
+				<Section.Title>CLIENTE</Section.Title>
+				<Section.Actions>
+					<Button variant="ghost" size="xs" asChild>
+						<Link href={`${appRoutes.customers.root()}/${client.id}`}>
+							VER PERFIL
+							<ArrowRight className="w-3 h-3 ml-1" />
+						</Link>
+					</Button>
+				</Section.Actions>
+			</Section.Header>
+			<Section.Body>
+				<div className="w-full flex flex-col gap-3">
+					{/* Name */}
 					<div className="flex items-center gap-1.5">
-						<Phone className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">TELEFONE</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{formatToPhone(client.telefone)}</h3>
+						<CircleUser className="w-4 h-4 text-muted-foreground" />
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">NOME</h3>
+						<h3 className="text-sm font-semibold tracking-tight">{client.nome}</h3>
+						<ClientDuplicatePill entityType="client" entityId={client.id} canReconcile={canReconcile} />
 					</div>
-				)}
 
-				{/* Email */}
-				{client.email && (
-					<div className="flex items-center gap-1.5">
-						<Mail className="w-4 h-4 text-muted-foreground" />
-						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">EMAIL</h3>
-						<h3 className="text-sm font-semibold tracking-tight">{client.email}</h3>
-					</div>
-				)}
-
-				{/* Birth Date */}
-				<div className="flex items-center gap-1.5">
-					<Calendar className="w-4 h-4 text-muted-foreground" />
-					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">IDADE</h3>
-					<h3 className="text-sm font-semibold tracking-tight">
-						{client.dataNascimento
-							? `${getAgeFromBirthdayDate(client.dataNascimento)} ANOS (NASCIDO EM: ${formatDateBirthdayAsLocale(client.dataNascimento, true)})`
-							: "NÃO DEFINIDO"}
-					</h3>
-				</div>
-				<div className="flex items-center gap-1.5">
-					<Grid3X3 className="w-4 h-4 text-muted-foreground" />
-					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">SEGMENTAÇÃO RFM</h3>
-					<Badge variant="secondary" className="text-xs">
-						{client.analiseRFMTitulo}
-					</Badge>
-					{(client.analiseRFMNotasRecencia || client.analiseRFMNotasFrequencia || client.analiseRFMNotasMonetario) && (
-						<div className="flex items-center gap-3 text-xs text-muted-foreground">
-							{client.analiseRFMNotasRecencia !== null && (
-								<span>
-									R: <strong>{client.analiseRFMNotasRecencia}</strong>
-								</span>
-							)}
-							{client.analiseRFMNotasFrequencia !== null && (
-								<span>
-									F: <strong>{client.analiseRFMNotasFrequencia}</strong>
-								</span>
-							)}
-							{client.analiseRFMNotasMonetario !== null && (
-								<span>
-									M: <strong>{client.analiseRFMNotasMonetario}</strong>
-								</span>
-							)}
+					{/* Phone */}
+					{client.telefone && (
+						<div className="flex items-center gap-1.5">
+							<Phone className="w-4 h-4 text-muted-foreground" />
+							<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">TELEFONE</h3>
+							<h3 className="text-sm font-semibold tracking-tight">{formatToPhone(client.telefone)}</h3>
 						</div>
 					)}
-				</div>
 
-				{/* Location */}
-				<div className="flex items-center gap-1.5">
-					<MapPin className="w-4 h-4 text-muted-foreground" />
-					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">LOCALIZAÇÃO</h3>
-					<h3 className="text-sm font-semibold tracking-tight">
-						{[client.localizacaoCidade, client.localizacaoEstado].filter(Boolean).join(", ") || "NÃO DEFINIDO"}
-					</h3>
+					{/* Email */}
+					{client.email && (
+						<div className="flex items-center gap-1.5">
+							<Mail className="w-4 h-4 text-muted-foreground" />
+							<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">EMAIL</h3>
+							<h3 className="text-sm font-semibold tracking-tight">{client.email}</h3>
+						</div>
+					)}
+
+					{/* Birth Date */}
+					<div className="flex items-center gap-1.5">
+						<Calendar className="w-4 h-4 text-muted-foreground" />
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">IDADE</h3>
+						<h3 className="text-sm font-semibold tracking-tight">
+							{client.dataNascimento
+								? `${getAgeFromBirthdayDate(client.dataNascimento)} ANOS (NASCIDO EM: ${formatDateBirthdayAsLocale(client.dataNascimento, true)})`
+								: "NÃO DEFINIDO"}
+						</h3>
+					</div>
+					<div className="flex items-center gap-1.5">
+						<Grid3X3 className="w-4 h-4 text-muted-foreground" />
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">SEGMENTAÇÃO RFM</h3>
+						<Badge variant="secondary" className="text-xs">
+							{client.analiseRFMTitulo}
+						</Badge>
+						{(client.analiseRFMNotasRecencia || client.analiseRFMNotasFrequencia || client.analiseRFMNotasMonetario) && (
+							<div className="flex items-center gap-3 text-xs text-muted-foreground">
+								{client.analiseRFMNotasRecencia !== null && (
+									<span>
+										R: <strong>{client.analiseRFMNotasRecencia}</strong>
+									</span>
+								)}
+								{client.analiseRFMNotasFrequencia !== null && (
+									<span>
+										F: <strong>{client.analiseRFMNotasFrequencia}</strong>
+									</span>
+								)}
+								{client.analiseRFMNotasMonetario !== null && (
+									<span>
+										M: <strong>{client.analiseRFMNotasMonetario}</strong>
+									</span>
+								)}
+							</div>
+						)}
+					</div>
+
+					{/* Location */}
+					<div className="flex items-center gap-1.5">
+						<MapPin className="w-4 h-4 text-muted-foreground" />
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">LOCALIZAÇÃO</h3>
+						<h3 className="text-sm font-semibold tracking-tight">
+							{[client.localizacaoCidade, client.localizacaoEstado].filter(Boolean).join(", ") || "NÃO DEFINIDO"}
+						</h3>
+					</div>
+					<div className="flex items-center gap-1.5">
+						<BadgeDollarSign className="w-4 h-4 text-muted-foreground" />
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">VALOR TOTAL COMPRO</h3>
+						<h3 className="text-sm font-semibold tracking-tight">{formatToMoney(client.metadataValorTotalCompras || 0)}</h3>
+					</div>
+					<div className="flex items-center gap-1.5">
+						<ShoppingCart className="w-4 h-4 text-muted-foreground" />
+						<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">TOTAL DE COMPRAS</h3>
+						<h3 className="text-sm font-semibold tracking-tight">{client.metadataTotalCompras || 0}</h3>
+					</div>
 				</div>
-				<div className="flex items-center gap-1.5">
-					<BadgeDollarSign className="w-4 h-4 text-muted-foreground" />
-					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">VALOR TOTAL COMPRO</h3>
-					<h3 className="text-sm font-semibold tracking-tight">{formatToMoney(client.metadataValorTotalCompras || 0)}</h3>
-				</div>
-				<div className="flex items-center gap-1.5">
-					<ShoppingCart className="w-4 h-4 text-muted-foreground" />
-					<h3 className="text-sm font-semibold tracking-tighter text-foreground/80">TOTAL DE COMPRAS</h3>
-					<h3 className="text-sm font-semibold tracking-tight">{client.metadataTotalCompras || 0}</h3>
-				</div>
-			</div>
-		</SectionWrapper>
+			</Section.Body>
+		</Section.Root>
 	);
 }
 
@@ -384,79 +400,95 @@ function CampaignAttributionSection({
 }) {
 	if (!attribution)
 		return (
-			<SectionWrapper title="ATRIBUIÇÃO DE CAMPANHA" icon={<Megaphone className="w-4 h-4 min-w-4 min-h-4 text-violet-600 dark:text-violet-400" />}>
-				<div className="w-full flex flex-col items-center justify-center gap-3">
-					<span className="text-sm font-medium text-muted-foreground">CAMPANHA NÃO ATRIBUÍDA</span>
-				</div>
-			</SectionWrapper>
+			<Section.Root>
+				<Section.Header>
+					<Section.Icon>
+						<Megaphone className="w-4 h-4 min-w-4 min-h-4 text-violet-600 dark:text-violet-400" />
+					</Section.Icon>
+					<Section.Title>ATRIBUIÇÃO DE CAMPANHA</Section.Title>
+				</Section.Header>
+				<Section.Body>
+					<div className="w-full flex flex-col items-center justify-center gap-3">
+						<span className="text-sm font-medium text-muted-foreground">CAMPANHA NÃO ATRIBUÍDA</span>
+					</div>
+				</Section.Body>
+			</Section.Root>
 		);
 	return (
-		<SectionWrapper title="ATRIBUIÇÃO DE CAMPANHA" icon={<Megaphone className="w-4 h-4 min-w-4 min-h-4 text-violet-600 dark:text-violet-400" />}>
-			<div className="w-full flex flex-col gap-4">
-				{/* Timeline */}
-				<div className="flex items-center gap-3">
-					<div className="flex flex-col items-center gap-1">
-						<div className="w-2 h-2 rounded-full bg-blue-500" />
-						<div className="w-px h-8 bg-linear-to-b from-blue-500 to-green-500" />
-						<div className="w-2 h-2 rounded-full bg-green-500" />
-					</div>
-					<div className="flex flex-col gap-4 flex-1">
-						<div className="flex flex-col">
-							<span className="text-[0.65rem] text-muted-foreground uppercase">Interação Enviada</span>
-							<span className="text-sm font-medium">{formatDateAsLocale(attribution.dataInteracao, true)}</span>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<Megaphone className="w-4 h-4 min-w-4 min-h-4 text-violet-600 dark:text-violet-400" />
+				</Section.Icon>
+				<Section.Title>ATRIBUIÇÃO DE CAMPANHA</Section.Title>
+			</Section.Header>
+			<Section.Body>
+				<div className="w-full flex flex-col gap-4">
+					{/* Timeline */}
+					<div className="flex items-center gap-3">
+						<div className="flex flex-col items-center gap-1">
+							<div className="w-2 h-2 rounded-full bg-blue-500" />
+							<div className="w-px h-8 bg-linear-to-b from-blue-500 to-green-500" />
+							<div className="w-2 h-2 rounded-full bg-green-500" />
 						</div>
-						<div className="flex flex-col">
-							<span className="text-[0.65rem] text-muted-foreground uppercase">Converteu em</span>
-							<span className="text-sm font-medium">{formatDateAsLocale(saleDate, true)}</span>
+						<div className="flex flex-col gap-4 flex-1">
+							<div className="flex flex-col">
+								<span className="text-[0.65rem] text-muted-foreground uppercase">Interação Enviada</span>
+								<span className="text-sm font-medium">{formatDateAsLocale(attribution.dataInteracao, true)}</span>
+							</div>
+							<div className="flex flex-col">
+								<span className="text-[0.65rem] text-muted-foreground uppercase">Converteu em</span>
+								<span className="text-sm font-medium">{formatDateAsLocale(saleDate, true)}</span>
+							</div>
 						</div>
 					</div>
-				</div>
 
-				{/* Stats Grid */}
-				<div className="grid grid-cols-2 gap-2">
-					{/* Time to Conversion */}
-					<div className="flex flex-col items-center p-3 bg-secondary/50 rounded-lg">
-						<span className="text-[0.65rem] text-muted-foreground uppercase">Tempo para Conversão</span>
-						<span className="text-sm font-bold">{formatTimeToConversion(attribution.tempoParaConversaoMinutos)}</span>
-					</div>
-
-					{/* Conversion Type */}
-					{attribution.tipoConversao && (
+					{/* Stats Grid */}
+					<div className="grid grid-cols-2 gap-2">
+						{/* Time to Conversion */}
 						<div className="flex flex-col items-center p-3 bg-secondary/50 rounded-lg">
-							<span className="text-[0.65rem] text-muted-foreground uppercase">Tipo</span>
-							<span className="text-sm font-bold">{attribution.tipoConversao}</span>
+							<span className="text-[0.65rem] text-muted-foreground uppercase">Tempo para Conversão</span>
+							<span className="text-sm font-bold">{formatTimeToConversion(attribution.tempoParaConversaoMinutos)}</span>
 						</div>
-					)}
 
-					{/* Delta Frequency */}
-					{attribution.deltaFrequencia !== null && attribution.deltaFrequencia !== undefined && (
-						<div className="flex flex-col items-center p-3 bg-blue-500/10 rounded-lg">
-							<span className="text-[0.65rem] text-muted-foreground uppercase">Delta Frequência</span>
-							<span className="text-sm font-bold text-blue-600 dark:text-blue-400">
-								{attribution.deltaFrequencia > 0 ? "+" : ""}
-								{attribution.deltaFrequencia}
-							</span>
-						</div>
-					)}
+						{/* Conversion Type */}
+						{attribution.tipoConversao && (
+							<div className="flex flex-col items-center p-3 bg-secondary/50 rounded-lg">
+								<span className="text-[0.65rem] text-muted-foreground uppercase">Tipo</span>
+								<span className="text-sm font-bold">{attribution.tipoConversao}</span>
+							</div>
+						)}
 
-					{/* Delta Monetary */}
-					{attribution.deltaMonetarioAbsoluto !== null && attribution.deltaMonetarioAbsoluto !== undefined && (
-						<div className="flex flex-col items-center p-3 bg-green-500/10 rounded-lg">
-							<span className="text-[0.65rem] text-muted-foreground uppercase">Delta Monetário</span>
-							<span className="text-sm font-bold text-green-600 dark:text-green-400">{formatToMoney(attribution.deltaMonetarioAbsoluto)}</span>
+						{/* Delta Frequency */}
+						{attribution.deltaFrequencia !== null && attribution.deltaFrequencia !== undefined && (
+							<div className="flex flex-col items-center p-3 bg-blue-500/10 rounded-lg">
+								<span className="text-[0.65rem] text-muted-foreground uppercase">Delta Frequência</span>
+								<span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+									{attribution.deltaFrequencia > 0 ? "+" : ""}
+									{attribution.deltaFrequencia}
+								</span>
+							</div>
+						)}
+
+						{/* Delta Monetary */}
+						{attribution.deltaMonetarioAbsoluto !== null && attribution.deltaMonetarioAbsoluto !== undefined && (
+							<div className="flex flex-col items-center p-3 bg-green-500/10 rounded-lg">
+								<span className="text-[0.65rem] text-muted-foreground uppercase">Delta Monetário</span>
+								<span className="text-sm font-bold text-green-600 dark:text-green-400">{formatToMoney(attribution.deltaMonetarioAbsoluto)}</span>
+							</div>
+						)}
+					</div>
+
+					{/* Days Since Last Purchase */}
+					{attribution.diasDesdeUltimaCompra !== null && attribution.diasDesdeUltimaCompra !== undefined && (
+						<div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+							<Clock className="w-4 h-4" />
+							<span>{attribution.diasDesdeUltimaCompra} dias desde a última compra</span>
 						</div>
 					)}
 				</div>
-
-				{/* Days Since Last Purchase */}
-				{attribution.diasDesdeUltimaCompra !== null && attribution.diasDesdeUltimaCompra !== undefined && (
-					<div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-						<Clock className="w-4 h-4" />
-						<span>{attribution.diasDesdeUltimaCompra} dias desde a última compra</span>
-					</div>
-				)}
-			</div>
-		</SectionWrapper>
+			</Section.Body>
+		</Section.Root>
 	);
 }
 
@@ -473,57 +505,65 @@ function SaleBenefitsSection({
 	const hasBenefits = couponRedemptions.length > 0 || cashbackTransactions.length > 0;
 
 	return (
-		<SectionWrapper title="BENEFÍCIOS DA VENDA" icon={<BadgePercent className="w-4 h-4 min-w-4 min-h-4 text-brand" />}>
-			{!hasBenefits ? (
-				<div className="w-full flex flex-col items-center justify-center gap-1 rounded-lg bg-secondary/30 px-3 py-6 text-center">
-					<span className="text-sm font-semibold text-muted-foreground">NENHUM BENEFÍCIO APLICADO NESTA VENDA</span>
-					<span className="text-xs text-muted-foreground">Cupons e movimentações de cashback aparecerão aqui quando existirem.</span>
-				</div>
-			) : (
-				<div className="w-full grid grid-cols-1 xl:grid-cols-2 gap-3">
-					<div className="flex min-w-0 flex-col gap-2 rounded-lg bg-secondary/30 p-3">
-						<div className="flex items-center justify-between gap-3">
-							<div className="flex items-center gap-1.5">
-								<Ticket className="w-4 h-4 text-brand" />
-								<span className="text-xs font-bold uppercase tracking-tight">Cupons</span>
-							</div>
-							{activeCouponRedemptions.length > 0 ? <span className="text-xs font-bold tabular-nums">-{formatToMoney(totalCouponDiscount)}</span> : null}
-						</div>
-						{couponRedemptions.length === 0 ? (
-							<p className="text-xs text-muted-foreground">Nenhum cupom usado nesta venda.</p>
-						) : (
-							<div className="flex flex-col gap-2">
-								{couponRedemptions.map((redemption) => (
-									<CouponRedemptionBenefitCard key={redemption.id} redemption={redemption} />
-								))}
-							</div>
-						)}
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<BadgePercent className="w-4 h-4 min-w-4 min-h-4 text-brand" />
+				</Section.Icon>
+				<Section.Title>BENEFÍCIOS DA VENDA</Section.Title>
+			</Section.Header>
+			<Section.Body>
+				{!hasBenefits ? (
+					<div className="w-full flex flex-col items-center justify-center gap-1 rounded-lg bg-secondary/30 px-3 py-6 text-center">
+						<span className="text-sm font-semibold text-muted-foreground">NENHUM BENEFÍCIO APLICADO NESTA VENDA</span>
+						<span className="text-xs text-muted-foreground">Cupons e movimentações de cashback aparecerão aqui quando existirem.</span>
 					</div>
-					<div className="flex min-w-0 flex-col gap-2 rounded-lg bg-secondary/30 p-3">
-						<div className="flex items-center justify-between gap-3">
-							<div className="flex items-center gap-1.5">
-								<BadgePercent className="w-4 h-4 text-primary" />
-								<span className="text-xs font-bold uppercase tracking-tight">Cashback</span>
+				) : (
+					<div className="w-full grid grid-cols-1 xl:grid-cols-2 gap-3">
+						<div className="flex min-w-0 flex-col gap-2 rounded-lg bg-secondary/30 p-3">
+							<div className="flex items-center justify-between gap-3">
+								<div className="flex items-center gap-1.5">
+									<Ticket className="w-4 h-4 text-brand" />
+									<span className="text-xs font-bold uppercase tracking-tight">Cupons</span>
+								</div>
+								{activeCouponRedemptions.length > 0 ? <span className="text-xs font-bold tabular-nums">-{formatToMoney(totalCouponDiscount)}</span> : null}
 							</div>
-							{cashbackTransactions.length > 0 ? (
-								<span className="text-xs font-semibold text-muted-foreground">
-									{cashbackTransactions.length === 1 ? "1 movimentação" : `${cashbackTransactions.length} movimentações`}
-								</span>
-							) : null}
+							{couponRedemptions.length === 0 ? (
+								<p className="text-xs text-muted-foreground">Nenhum cupom usado nesta venda.</p>
+							) : (
+								<div className="flex flex-col gap-2">
+									{couponRedemptions.map((redemption) => (
+										<CouponRedemptionBenefitCard key={redemption.id} redemption={redemption} />
+									))}
+								</div>
+							)}
 						</div>
-						{cashbackTransactions.length === 0 ? (
-							<p className="text-xs text-muted-foreground">Nenhuma movimentação de cashback encontrada.</p>
-						) : (
-							<div className="flex flex-col gap-2">
-								{cashbackTransactions.map((transaction, index) => (
-									<CashbackTransactionBenefitCard key={index.toString()} transaction={transaction} />
-								))}
+						<div className="flex min-w-0 flex-col gap-2 rounded-lg bg-secondary/30 p-3">
+							<div className="flex items-center justify-between gap-3">
+								<div className="flex items-center gap-1.5">
+									<BadgePercent className="w-4 h-4 text-primary" />
+									<span className="text-xs font-bold uppercase tracking-tight">Cashback</span>
+								</div>
+								{cashbackTransactions.length > 0 ? (
+									<span className="text-xs font-semibold text-muted-foreground">
+										{cashbackTransactions.length === 1 ? "1 movimentação" : `${cashbackTransactions.length} movimentações`}
+									</span>
+								) : null}
 							</div>
-						)}
+							{cashbackTransactions.length === 0 ? (
+								<p className="text-xs text-muted-foreground">Nenhuma movimentação de cashback encontrada.</p>
+							) : (
+								<div className="flex flex-col gap-2">
+									{cashbackTransactions.map((transaction, index) => (
+										<CashbackTransactionBenefitCard key={index.toString()} transaction={transaction} />
+									))}
+								</div>
+							)}
+						</div>
 					</div>
-				</div>
-			)}
-		</SectionWrapper>
+				)}
+			</Section.Body>
+		</Section.Root>
 	);
 }
 
@@ -606,7 +646,7 @@ function CashbackTransactionBenefitCard({ transaction }: { transaction: TGetSale
 type SaleErpDetail = NonNullable<TGetSalesOutputById["erp"]>;
 
 /**
- * Selo de status no slot `actions` do SectionWrapper: a resposta ("recebeu?", "emitiu?") chega no
+ * Selo de status no slot `actions` da seção: a resposta ("recebeu?", "emitiu?") chega no
  * cabeçalho, antes de qualquer linha do corpo ser lida. É o que faz a leitura de relance funcionar.
  */
 function SectionStatusBadge({ label, className }: { label: string; className: string }) {
@@ -630,35 +670,42 @@ function SalePaymentsSection({
 	const integrationName = integracao?.apelido ?? integracao?.tipo ?? null;
 
 	return (
-		<SectionWrapper
-			title="PAGAMENTOS"
-			icon={<Wallet className="w-4 h-4 min-w-4 min-h-4" />}
-			actions={<SectionStatusBadge label={presentation.chipLabel} className={presentation.className} />}
-		>
-			{financeiro.pagamentos.length === 0 ? (
-				<div className="w-full flex flex-col items-center justify-center gap-1 rounded-lg bg-secondary/30 px-3 py-6 text-center">
-					<span className="text-sm font-semibold text-muted-foreground">NENHUM RECEBIMENTO REGISTRADO</span>
-					<span className="text-xs text-muted-foreground">
-						{processamentoOrigem === "EXTERNO"
-							? `Venda importada${integrationName ? ` de ${integrationName}` : ""}: o recebimento foi registrado fora da plataforma.`
-							: "Os recebimentos desta venda aparecerão aqui quando forem gerados."}
-					</span>
-				</div>
-			) : (
-				<div className="w-full flex flex-col gap-2">
-					{financeiro.pagamentos.map((payment) => (
-						<SalePaymentGroupRow key={payment.id} payment={payment} userCanViewFinances={userCanViewFinances} />
-					))}
-					<div className="w-full flex items-center justify-between gap-3 border-t border-border pt-2">
-						<span className="text-xs font-bold uppercase tracking-tight text-muted-foreground">Recebido</span>
-						<span className="text-sm font-bold tabular-nums">
-							{formatToMoney(financeiro.valorRecebido)}
-							<span className="ml-1 text-xs font-semibold text-muted-foreground">de {formatToMoney(saleTotal)}</span>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<Wallet className="w-4 h-4 min-w-4 min-h-4" />
+				</Section.Icon>
+				<Section.Title>PAGAMENTOS</Section.Title>
+				<Section.Actions>
+					<SectionStatusBadge label={presentation.chipLabel} className={presentation.className} />
+				</Section.Actions>
+			</Section.Header>
+			<Section.Body>
+				{financeiro.pagamentos.length === 0 ? (
+					<div className="w-full flex flex-col items-center justify-center gap-1 rounded-lg bg-secondary/30 px-3 py-6 text-center">
+						<span className="text-sm font-semibold text-muted-foreground">NENHUM RECEBIMENTO REGISTRADO</span>
+						<span className="text-xs text-muted-foreground">
+							{processamentoOrigem === "EXTERNO"
+								? `Venda importada${integrationName ? ` de ${integrationName}` : ""}: o recebimento foi registrado fora da plataforma.`
+								: "Os recebimentos desta venda aparecerão aqui quando forem gerados."}
 						</span>
 					</div>
-				</div>
-			)}
-		</SectionWrapper>
+				) : (
+					<div className="w-full flex flex-col gap-2">
+						{financeiro.pagamentos.map((payment) => (
+							<SalePaymentGroupRow key={payment.id} payment={payment} userCanViewFinances={userCanViewFinances} />
+						))}
+						<div className="w-full flex items-center justify-between gap-3 border-t border-border pt-2">
+							<span className="text-xs font-bold uppercase tracking-tight text-muted-foreground">Recebido</span>
+							<span className="text-sm font-bold tabular-nums">
+								{formatToMoney(financeiro.valorRecebido)}
+								<span className="ml-1 text-xs font-semibold text-muted-foreground">de {formatToMoney(saleTotal)}</span>
+							</span>
+						</div>
+					</div>
+				)}
+			</Section.Body>
+		</Section.Root>
 	);
 }
 
@@ -725,24 +772,31 @@ function SaleFiscalSection({ fiscal, canConfigureFiscal }: { fiscal: NonNullable
 	const presentation = SALE_FISCAL_STATUS_PRESENTATION[fiscal.status];
 
 	return (
-		<SectionWrapper
-			title="FISCAL"
-			icon={<ReceiptText className="w-4 h-4 min-w-4 min-h-4" />}
-			actions={<SectionStatusBadge label={presentation.chipLabel} className={presentation.className} />}
-		>
-			{fiscal.documentos.length === 0 ? (
-				<div className="w-full flex flex-col items-center justify-center gap-1 rounded-lg bg-secondary/30 px-3 py-6 text-center">
-					<span className="text-sm font-semibold text-muted-foreground">NENHUM DOCUMENTO FISCAL EMITIDO</span>
-					<span className="text-xs text-muted-foreground">As notas emitidas para esta venda aparecerão aqui.</span>
-				</div>
-			) : (
-				<div className="w-full flex flex-col gap-2">
-					{fiscal.documentos.map((document) => (
-						<SaleFiscalDocumentRow key={document.id} document={document} canConfigureFiscal={canConfigureFiscal} />
-					))}
-				</div>
-			)}
-		</SectionWrapper>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<ReceiptText className="w-4 h-4 min-w-4 min-h-4" />
+				</Section.Icon>
+				<Section.Title>FISCAL</Section.Title>
+				<Section.Actions>
+					<SectionStatusBadge label={presentation.chipLabel} className={presentation.className} />
+				</Section.Actions>
+			</Section.Header>
+			<Section.Body>
+				{fiscal.documentos.length === 0 ? (
+					<div className="w-full flex flex-col items-center justify-center gap-1 rounded-lg bg-secondary/30 px-3 py-6 text-center">
+						<span className="text-sm font-semibold text-muted-foreground">NENHUM DOCUMENTO FISCAL EMITIDO</span>
+						<span className="text-xs text-muted-foreground">As notas emitidas para esta venda aparecerão aqui.</span>
+					</div>
+				) : (
+					<div className="w-full flex flex-col gap-2">
+						{fiscal.documentos.map((document) => (
+							<SaleFiscalDocumentRow key={document.id} document={document} canConfigureFiscal={canConfigureFiscal} />
+						))}
+					</div>
+				)}
+			</Section.Body>
+		</Section.Root>
 	);
 }
 
@@ -860,13 +914,21 @@ function SaleFiscalDocumentRow({
 
 function SaleItemsSection({ items }: { items: TGetSalesOutputById["itens"] }) {
 	return (
-		<SectionWrapper title={`ITENS (${items.length})`} icon={<Package className="w-4 h-4 min-w-4 min-h-4" />}>
-			<div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-				{items.map((item) => (
-					<SaleItemCard key={item.id} item={item} />
-				))}
-			</div>
-		</SectionWrapper>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<Package className="w-4 h-4 min-w-4 min-h-4" />
+				</Section.Icon>
+				<Section.Title>{`ITENS (${items.length})`}</Section.Title>
+			</Section.Header>
+			<Section.Body>
+				<div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+					{items.map((item) => (
+						<SaleItemCard key={item.id} item={item} />
+					))}
+				</div>
+			</Section.Body>
+		</Section.Root>
 	);
 }
 

@@ -2,7 +2,7 @@
 
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import { Button } from "@/components/ui/button";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { postIfoodOrderAction } from "@/lib/mutations/ifood";
@@ -52,111 +52,116 @@ export function IfoodOrdersSection({ canManage }: IfoodOrdersSectionProps) {
 	const orders = ordersQuery.data ?? [];
 
 	return (
-		<SectionWrapper
-			title="PEDIDOS"
-			icon={<ShoppingBag className="w-4 h-4 min-w-4 min-h-4" />}
-			actions={
-				<Button variant="ghost" size="xs" onClick={() => ordersQuery.refetch()} disabled={ordersQuery.isRefetching} className="flex items-center gap-1">
-					<RefreshCw className={cn("w-4 h-4 min-w-4 min-h-4", ordersQuery.isRefetching && "animate-spin")} />
-					ATUALIZAR
-				</Button>
-			}
-		>
-			<p className="text-xs text-muted-foreground">
-				Pedidos dos últimos 7 dias. Novos pedidos devem ser confirmados no iFood em até <span className="font-semibold">8 minutos</span>.
-			</p>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<ShoppingBag className="w-4 h-4 min-w-4 min-h-4" />
+				</Section.Icon>
+				<Section.Title>PEDIDOS</Section.Title>
+				<Section.Actions>
+					<Button variant="ghost" size="xs" onClick={() => ordersQuery.refetch()} disabled={ordersQuery.isRefetching} className="flex items-center gap-1">
+						<RefreshCw className={cn("w-4 h-4 min-w-4 min-h-4", ordersQuery.isRefetching && "animate-spin")} />
+						ATUALIZAR
+					</Button>
+				</Section.Actions>
+			</Section.Header>
+			<Section.Body>
+				<p className="text-xs text-muted-foreground">
+					Pedidos dos últimos 7 dias. Novos pedidos devem ser confirmados no iFood em até <span className="font-semibold">8 minutos</span>.
+				</p>
 
-			{ordersQuery.isLoading ? (
-				<IfoodSectionLoading rows={3} />
-			) : ordersQuery.isError ? (
-				<ErrorComponent msg={getErrorMessage(ordersQuery.error)} />
-			) : orders.length === 0 ? (
-				<IfoodSectionEmpty
-					icon={ShoppingBag}
-					message="Nenhum pedido do iFood encontrado no período. Os pedidos aparecem aqui assim que são ingeridos pela integração."
-				/>
-			) : (
-				<div className="flex w-full flex-col gap-2">
-					{orders.map((order) => {
-						const statusConfig = getIfoodOrderStatusConfig(order.situacao);
-						const deliveryMeta = order.entregaModalidade ? DELIVERY_MODE_META[order.entregaModalidade] : null;
-						const isNewOrder = order.situacao?.toUpperCase() === "PLACED";
+				{ordersQuery.isLoading ? (
+					<IfoodSectionLoading rows={3} />
+				) : ordersQuery.isError ? (
+					<ErrorComponent msg={getErrorMessage(ordersQuery.error)} />
+				) : orders.length === 0 ? (
+					<IfoodSectionEmpty
+						icon={ShoppingBag}
+						message="Nenhum pedido do iFood encontrado no período. Os pedidos aparecem aqui assim que são ingeridos pela integração."
+					/>
+				) : (
+					<div className="flex w-full flex-col gap-2">
+						{orders.map((order) => {
+							const statusConfig = getIfoodOrderStatusConfig(order.situacao);
+							const deliveryMeta = order.entregaModalidade ? DELIVERY_MODE_META[order.entregaModalidade] : null;
+							const isNewOrder = order.situacao?.toUpperCase() === "PLACED";
 
-						return (
-							<div key={order.vendaId} className="flex w-full flex-col gap-2 rounded-lg border border-border bg-card px-3 py-2.5">
-								<div className="flex flex-col justify-between gap-2 md:flex-row md:items-center">
-									<div className="flex items-center gap-2 flex-wrap">
-										<h3 className="text-sm font-bold tracking-tight">#{order.displayId ?? order.orderId}</h3>
-										<span
-											className={cn(
-												"inline-flex items-center rounded-md border px-2 py-0.5 text-[0.65rem] font-semibold tracking-tight",
-												statusConfig.className,
-											)}
-										>
-											{statusConfig.label}
-										</span>
-										{deliveryMeta ? (
-											<span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-[0.65rem] text-muted-foreground">
-												<deliveryMeta.icon className="h-3 w-3" />
-												{deliveryMeta.label}
-											</span>
-										) : null}
-										{order.disputaAberta ? (
-											<span className="inline-flex animate-pulse items-center gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[0.65rem] font-semibold text-destructive">
-												<TriangleAlert className="h-3 w-3" />
-												DISPUTA DE CANCELAMENTO
-											</span>
-										) : null}
-									</div>
-									<div className="flex items-center gap-2">
-										{canManage && isNewOrder ? (
-											<Button
-												size="sm"
-												disabled={quickConfirmIsPending}
-												onClick={() => quickConfirm({ orderId: order.orderId, action: "confirm", cancellationCode: null })}
+							return (
+								<div key={order.vendaId} className="flex w-full flex-col gap-2 rounded-lg border border-border bg-card px-3 py-2.5">
+									<div className="flex flex-col justify-between gap-2 md:flex-row md:items-center">
+										<div className="flex items-center gap-2 flex-wrap">
+											<h3 className="text-sm font-bold tracking-tight">#{order.displayId ?? order.orderId}</h3>
+											<span
+												className={cn(
+													"inline-flex items-center rounded-md border px-2 py-0.5 text-[0.65rem] font-semibold tracking-tight",
+													statusConfig.className,
+												)}
 											>
-												<CircleCheck className="h-4 w-4" />
-												CONFIRMAR
+												{statusConfig.label}
+											</span>
+											{deliveryMeta ? (
+												<span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-[0.65rem] text-muted-foreground">
+													<deliveryMeta.icon className="h-3 w-3" />
+													{deliveryMeta.label}
+												</span>
+											) : null}
+											{order.disputaAberta ? (
+												<span className="inline-flex animate-pulse items-center gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[0.65rem] font-semibold text-destructive">
+													<TriangleAlert className="h-3 w-3" />
+													DISPUTA DE CANCELAMENTO
+												</span>
+											) : null}
+										</div>
+										<div className="flex items-center gap-2">
+											{canManage && isNewOrder ? (
+												<Button
+													size="sm"
+													disabled={quickConfirmIsPending}
+													onClick={() => quickConfirm({ orderId: order.orderId, action: "confirm", cancellationCode: null })}
+												>
+													<CircleCheck className="h-4 w-4" />
+													CONFIRMAR
+												</Button>
+											) : null}
+											<Button variant="outline" size="sm" onClick={() => setSelectedOrderId(order.orderId)}>
+												<Info className="h-4 w-4" />
+												DETALHES
 											</Button>
-										) : null}
-										<Button variant="outline" size="sm" onClick={() => setSelectedOrderId(order.orderId)}>
-											<Info className="h-4 w-4" />
-											DETALHES
-										</Button>
+										</div>
+									</div>
+									<div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+										<span className="inline-flex items-center gap-1">
+											<CircleUser className="h-3 w-3" />
+											{order.cliente?.nome ?? "NÃO IDENTIFICADO"}
+										</span>
+										<span>{order.dataVenda ? formatDateAsLocale(order.dataVenda, true) : "-"}</span>
+										<span>
+											{order.quantidadeItens} {order.quantidadeItens === 1 ? "item" : "itens"}
+										</span>
+										<span className="font-semibold text-foreground">{formatToMoney(order.valorTotal)}</span>
 									</div>
 								</div>
-								<div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
-									<span className="inline-flex items-center gap-1">
-										<CircleUser className="h-3 w-3" />
-										{order.cliente?.nome ?? "NÃO IDENTIFICADO"}
-									</span>
-									<span>{order.dataVenda ? formatDateAsLocale(order.dataVenda, true) : "-"}</span>
-									<span>
-										{order.quantidadeItens} {order.quantidadeItens === 1 ? "item" : "itens"}
-									</span>
-									<span className="font-semibold text-foreground">{formatToMoney(order.valorTotal)}</span>
-								</div>
-							</div>
-						);
-					})}
-				</div>
-			)}
+							);
+						})}
+					</div>
+				)}
 
-			{selectedOrderId ? (
-				<ControlIfoodOrder
-					orderId={selectedOrderId}
-					canManage={canManage}
-					fallbackStatus={orders.find((order) => order.orderId === selectedOrderId)?.situacao ?? null}
-					dispute={orders.find((order) => order.orderId === selectedOrderId)?.disputaAberta ?? null}
-					closeModal={() => setSelectedOrderId(null)}
-					callbacks={{
-						onSuccess: () => {
-							queryClient.invalidateQueries({ queryKey: ordersQuery.queryKey });
-							queryClient.invalidateQueries({ queryKey: ["ifood-order-details", selectedOrderId] });
-						},
-					}}
-				/>
-			) : null}
-		</SectionWrapper>
+				{selectedOrderId ? (
+					<ControlIfoodOrder
+						orderId={selectedOrderId}
+						canManage={canManage}
+						fallbackStatus={orders.find((order) => order.orderId === selectedOrderId)?.situacao ?? null}
+						dispute={orders.find((order) => order.orderId === selectedOrderId)?.disputaAberta ?? null}
+						closeModal={() => setSelectedOrderId(null)}
+						callbacks={{
+							onSuccess: () => {
+								queryClient.invalidateQueries({ queryKey: ordersQuery.queryKey });
+								queryClient.invalidateQueries({ queryKey: ["ifood-order-details", selectedOrderId] });
+							},
+						}}
+					/>
+				) : null}
+			</Section.Body>
+		</Section.Root>
 	);
 }

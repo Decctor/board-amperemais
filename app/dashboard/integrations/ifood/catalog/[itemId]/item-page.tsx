@@ -8,7 +8,7 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import SectionApplyBar from "@/components/Utils/SectionApplyBar";
 import { Button } from "@/components/ui/button";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { canManageIntegrations } from "@/lib/integrations/mask";
 import { useIfoodCatalogs, useIfoodCategories, useIfoodItemById } from "@/lib/queries/ifood";
@@ -106,66 +106,74 @@ function ItemEditor({ merchantId, item, canManage, queryKey }: ItemEditorProps) 
 			</div>
 
 			<div className="flex w-full flex-col gap-6 pb-2">
-				<SectionWrapper icon={<Package className="h-4 w-4 min-h-4 min-w-4" />} title="DADOS DO ITEM">
-					<div className="flex w-full flex-col gap-4">
-						<TextInput
-							label="NOME DO PRODUTO"
-							value={editor.state.produto.nome}
-							placeholder="Ex: X-Burguer Especial..."
-							editable={canManage}
-							handleChange={(value) => editor.updateProduto({ nome: value })}
-						/>
-						<TextareaInput
-							label="DESCRIÇÃO"
-							value={editor.state.produto.descricao ?? ""}
-							placeholder="Descreva o produto para os clientes..."
-							editable={canManage}
-							handleChange={(value) => editor.updateProduto({ descricao: value || null })}
-						/>
-						<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-							<SelectInput
-								label="CATEGORIA"
-								value={editor.state.produto.categoriaId}
-								resetOptionLabel="NÃO DEFINIDO"
-								editable={canManage}
-								options={categorias.map((categoria) => ({ id: categoria.id, value: categoria.id, label: categoria.nome ?? categoria.id }))}
-								handleChange={(value) => editor.updateProduto({ categoriaId: value })}
-								onReset={() => editor.updateProduto({ categoriaId: null })}
-							/>
-							<SelectInput
-								label="STATUS"
-								value={editor.state.produto.status}
-								resetOptionLabel="DISPONÍVEL"
-								editable={canManage}
-								options={[
-									{ id: "AVAILABLE", value: "AVAILABLE", label: "DISPONÍVEL" },
-									{ id: "UNAVAILABLE", value: "UNAVAILABLE", label: "INDISPONÍVEL" },
-								]}
-								handleChange={(value) => editor.updateProduto({ status: value === "UNAVAILABLE" ? "UNAVAILABLE" : "AVAILABLE" })}
-								onReset={() => editor.updateProduto({ status: "AVAILABLE" })}
-							/>
-							<NumberInput
-								label="PREÇO (R$)"
-								value={editor.state.produto.preco}
-								placeholder="Ex: 29,90..."
-								editable={canManage}
-								handleChange={(value) => editor.updateProduto({ preco: value })}
-							/>
+				<Section.Root>
+					<Section.Header>
+						<Section.Icon>
+							<Package className="h-4 w-4 min-h-4 min-w-4" />
+						</Section.Icon>
+						<Section.Title>DADOS DO ITEM</Section.Title>
+					</Section.Header>
+					<Section.Body>
+						<div className="flex w-full flex-col gap-4">
 							<TextInput
-								label="CÓDIGO EXTERNO (PDV)"
-								value={editor.state.produto.codigoExterno ?? ""}
-								placeholder="Código do produto no seu sistema..."
+								label="NOME DO PRODUTO"
+								value={editor.state.produto.nome}
+								placeholder="Ex: X-Burguer Especial..."
 								editable={canManage}
-								handleChange={(value) => editor.updateProduto({ codigoExterno: value || null })}
+								handleChange={(value) => editor.updateProduto({ nome: value })}
+							/>
+							<TextareaInput
+								label="DESCRIÇÃO"
+								value={editor.state.produto.descricao ?? ""}
+								placeholder="Descreva o produto para os clientes..."
+								editable={canManage}
+								handleChange={(value) => editor.updateProduto({ descricao: value || null })}
+							/>
+							<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+								<SelectInput
+									label="CATEGORIA"
+									value={editor.state.produto.categoriaId}
+									resetOptionLabel="NÃO DEFINIDO"
+									editable={canManage}
+									options={categorias.map((categoria) => ({ id: categoria.id, value: categoria.id, label: categoria.nome ?? categoria.id }))}
+									handleChange={(value) => editor.updateProduto({ categoriaId: value })}
+									onReset={() => editor.updateProduto({ categoriaId: null })}
+								/>
+								<SelectInput
+									label="STATUS"
+									value={editor.state.produto.status}
+									resetOptionLabel="DISPONÍVEL"
+									editable={canManage}
+									options={[
+										{ id: "AVAILABLE", value: "AVAILABLE", label: "DISPONÍVEL" },
+										{ id: "UNAVAILABLE", value: "UNAVAILABLE", label: "INDISPONÍVEL" },
+									]}
+									handleChange={(value) => editor.updateProduto({ status: value === "UNAVAILABLE" ? "UNAVAILABLE" : "AVAILABLE" })}
+									onReset={() => editor.updateProduto({ status: "AVAILABLE" })}
+								/>
+								<NumberInput
+									label="PREÇO (R$)"
+									value={editor.state.produto.preco}
+									placeholder="Ex: 29,90..."
+									editable={canManage}
+									handleChange={(value) => editor.updateProduto({ preco: value })}
+								/>
+								<TextInput
+									label="CÓDIGO EXTERNO (PDV)"
+									value={editor.state.produto.codigoExterno ?? ""}
+									placeholder="Código do produto no seu sistema..."
+									editable={canManage}
+									handleChange={(value) => editor.updateProduto({ codigoExterno: value || null })}
+								/>
+							</div>
+							<ProductImageBlock
+								merchantId={merchantId}
+								imagemPath={editor.state.produto.imagemPath}
+								onUploaded={(imagemPath) => editor.updateProduto({ imagemPath })}
 							/>
 						</div>
-						<ProductImageBlock
-							merchantId={merchantId}
-							imagemPath={editor.state.produto.imagemPath}
-							onUploaded={(imagemPath) => editor.updateProduto({ imagemPath })}
-						/>
-					</div>
-				</SectionWrapper>
+					</Section.Body>
+				</Section.Root>
 
 				<ProductInventoryBlock merchantId={merchantId} produtoId={item.produtoId} canManage={canManage} />
 

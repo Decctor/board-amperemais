@@ -3,7 +3,7 @@
 import EditableNumberCell from "@/components/Spreadsheet/EditableNumberCell";
 import EditableTextCell from "@/components/Spreadsheet/EditableTextCell";
 import MobileEditableField from "@/components/Spreadsheet/MobileEditableField";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { formatToMoney } from "@/lib/formatting";
 import { SPREADSHEET_TABLE_ATTR, type SpreadsheetGridBounds } from "@/lib/spreadsheet-navigation";
 import { cn } from "@/lib/utils";
@@ -181,8 +181,14 @@ export function ProductChannelsBlock({
 	if (embedded) return content;
 
 	return (
-		<SectionWrapper icon={<Store className="h-4 w-4 min-h-4 min-w-4" />} title="CANAIS DE VENDA">
-			{content}
-		</SectionWrapper>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<Store className="h-4 w-4 min-h-4 min-w-4" />
+				</Section.Icon>
+				<Section.Title>CANAIS DE VENDA</Section.Title>
+			</Section.Header>
+			<Section.Body>{content}</Section.Body>
+		</Section.Root>
 	);
 }

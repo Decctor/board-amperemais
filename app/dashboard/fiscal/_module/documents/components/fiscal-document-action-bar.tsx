@@ -1,10 +1,11 @@
 "use client";
 
 import { useFiscalDeadline } from "@/components/Modals/FiscalDocument/use-fiscal-deadline";
+import { BlockedActions } from "@/components/ui/blocked-actions";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import type { TFiscalDocumentActionKey } from "@/lib/fiscal/document-actions";
 import { cn } from "@/lib/utils";
-import { ArrowLeftRight, Ban, CircleX, FileIcon, FileText, Lock, PencilIcon, RefreshCcw, Send, Zap, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, CircleX, FileIcon, FileText, PencilIcon, RefreshCcw, Send, Zap, type LucideIcon } from "lucide-react";
 import {
 	FISCAL_ACTION_ORDER,
 	FISCAL_OPERATIONAL_ACTIONS,
@@ -97,7 +98,7 @@ export function FiscalDocumentActionBar({ document, runner }: FiscalDocumentActi
 							{deadline?.label ? (
 								<span
 									className={cn(
-										"ml-0.5 rounded px-1 py-px text-[10px] font-semibold tabular-nums",
+										"ml-0.5 rounded px-1 py-px text-micro tabular-nums",
 										deadline.urgent ? "bg-destructive-foreground/20 text-destructive-foreground" : "bg-muted text-muted-foreground",
 									)}
 								>
@@ -109,17 +110,13 @@ export function FiscalDocumentActionBar({ document, runner }: FiscalDocumentActi
 				})}
 			</div>
 			{unavailable.length > 0 ? (
-				<div className="flex flex-col gap-1 rounded-lg border border-dashed bg-muted/10 px-2.5 py-2">
+				<BlockedActions.Root>
 					{unavailable.map((action) => (
-						<div key={action.key} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-							<Button type="button" size="xs" variant="outline" disabled className="h-6 gap-1 px-2 text-[11px] opacity-60">
-								{action.permissionBlocked ? <Lock className="h-3 w-3" /> : <Ban className="h-3 w-3" />}
-								{labelFor(action)}
-							</Button>
-							<span className="text-[11px] leading-snug text-muted-foreground">{action.reason}</span>
-						</div>
+						<BlockedActions.Item key={action.key} reason={action.reason} blockedBy={action.permissionBlocked ? "permission" : "state"}>
+							{labelFor(action)}
+						</BlockedActions.Item>
 					))}
-				</div>
+				</BlockedActions.Root>
 			) : null}
 		</div>
 	);

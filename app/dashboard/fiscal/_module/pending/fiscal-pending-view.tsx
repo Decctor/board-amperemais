@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Chip } from "@/components/ui/chip";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Metric } from "@/components/ui/metric";
+import { Section } from "@/components/ui/section";
 import { getErrorMessage } from "@/lib/errors";
 import type { TFiscalProblem } from "@/lib/fiscal/problems";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
@@ -82,27 +83,19 @@ export function FiscalPendingView({ permissions, openDocument }: FiscalPendingVi
 
 function PendingSummaryStrip({ resumo }: { resumo: TPendingSummary["resumo"] }) {
 	const items = [
-		{ label: "Documentos travados", value: String(resumo.documentos), tone: resumo.documentos > 0 ? "danger" : "muted" },
-		{ label: "Valor travado", value: formatToMoney(resumo.valorTravado), tone: resumo.valorTravado > 0 ? "danger" : "muted" },
-		{ label: "Prazos correndo", value: String(resumo.prazosExpirando), tone: resumo.prazosExpirando > 0 ? "warning" : "muted" },
-		{ label: "Produtos sem perfil", value: String(resumo.produtosSemPerfil), tone: resumo.produtosSemPerfil > 0 ? "warning" : "muted" },
-		{ label: "Vendas sem nota (30d)", value: String(resumo.vendasSemDocumento), tone: "muted" },
+		{ label: "Documentos travados", value: String(resumo.documentos), tone: resumo.documentos > 0 ? "danger" : "neutral" },
+		{ label: "Valor travado", value: formatToMoney(resumo.valorTravado), tone: resumo.valorTravado > 0 ? "danger" : "neutral" },
+		{ label: "Prazos correndo", value: String(resumo.prazosExpirando), tone: resumo.prazosExpirando > 0 ? "warning" : "neutral" },
+		{ label: "Produtos sem perfil", value: String(resumo.produtosSemPerfil), tone: resumo.produtosSemPerfil > 0 ? "warning" : "neutral" },
+		{ label: "Vendas sem nota (30d)", value: String(resumo.vendasSemDocumento), tone: "neutral" },
 	] as const;
 	return (
 		<div className="grid grid-cols-2 gap-2 md:grid-cols-5">
 			{items.map((item) => (
-				<div
-					key={item.label}
-					className={cn(
-						"flex flex-col gap-0.5 rounded-lg border px-3 py-2",
-						item.tone === "danger" && "border-rose-300/60 bg-rose-50/60 dark:border-rose-900/50 dark:bg-rose-950/30",
-						item.tone === "warning" && "border-amber-300/60 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/30",
-						item.tone === "muted" && "border-border bg-card",
-					)}
-				>
-					<span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{item.label}</span>
-					<span className="text-lg font-bold tabular-nums">{item.value}</span>
-				</div>
+				<Metric.Root key={item.label} surface tone={item.tone} className={cn(item.tone === "neutral" && "bg-card")}>
+					<Metric.Label>{item.label}</Metric.Label>
+					<Metric.Value toned={item.tone !== "neutral"}>{item.value}</Metric.Value>
+				</Metric.Root>
 			))}
 		</div>
 	);
@@ -110,16 +103,24 @@ function PendingSummaryStrip({ resumo }: { resumo: TPendingSummary["resumo"] }) 
 
 function ExpiringDeadlinesSection({ items, openDocument }: { items: TPendingSummary["prazosExpirando"]; openDocument: (id: string) => void }) {
 	return (
-		<SectionWrapper title="PRAZOS EXPIRANDO" icon={<Clock className="h-4 min-h-4 w-4 min-w-4" />}>
-			<p className="-mt-3 text-xs text-muted-foreground">
-				Documentos autorizados ainda dentro da janela de cancelamento. Passado o prazo, a saída passa a ser a devolução.
-			</p>
-			<div className="flex flex-col divide-y divide-border rounded-lg border">
-				{items.map((item) => (
-					<ExpiringDeadlineRow key={item.documentoId} item={item} openDocument={openDocument} />
-				))}
-			</div>
-		</SectionWrapper>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<Clock className="h-4 min-h-4 w-4 min-w-4" />
+				</Section.Icon>
+				<Section.Title>PRAZOS EXPIRANDO</Section.Title>
+			</Section.Header>
+			<Section.Body>
+				<p className="-mt-3 text-xs text-muted-foreground">
+					Documentos autorizados ainda dentro da janela de cancelamento. Passado o prazo, a saída passa a ser a devolução.
+				</p>
+				<div className="flex flex-col divide-y divide-border rounded-lg border">
+					{items.map((item) => (
+						<ExpiringDeadlineRow key={item.documentoId} item={item} openDocument={openDocument} />
+					))}
+				</div>
+			</Section.Body>
+		</Section.Root>
 	);
 }
 
@@ -167,14 +168,22 @@ function BlockersSection({
 	onChanged: () => void;
 }) {
 	return (
-		<SectionWrapper title="BLOQUEIOS POR CAUSA" icon={<AlertTriangle className="h-4 min-h-4 w-4 min-w-4" />}>
-			<p className="-mt-3 text-xs text-muted-foreground">Cada card é uma causa. Resolva o alvo uma vez e reenvie todos os documentos que ela travou.</p>
-			<div className="flex flex-col gap-2">
-				{groups.map((group) => (
-					<BlockerCard key={group.chave} group={group} permissions={permissions} openDocument={openDocument} onChanged={onChanged} />
-				))}
-			</div>
-		</SectionWrapper>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<AlertTriangle className="h-4 min-h-4 w-4 min-w-4" />
+				</Section.Icon>
+				<Section.Title>BLOQUEIOS POR CAUSA</Section.Title>
+			</Section.Header>
+			<Section.Body>
+				<p className="-mt-3 text-xs text-muted-foreground">Cada card é uma causa. Resolva o alvo uma vez e reenvie todos os documentos que ela travou.</p>
+				<div className="flex flex-col gap-2">
+					{groups.map((group) => (
+						<BlockerCard key={group.chave} group={group} permissions={permissions} openDocument={openDocument} onChanged={onChanged} />
+					))}
+				</div>
+			</Section.Body>
+		</Section.Root>
 	);
 }
 
@@ -208,7 +217,7 @@ function BlockerCard({
 	});
 
 	return (
-		<div className="flex w-full flex-col gap-2 rounded-xl border border-rose-300/60 bg-card px-3 py-3 dark:border-rose-900/50">
+		<div className="flex w-full flex-col gap-2 rounded-xl border border-destructive/30 bg-card px-3 py-3">
 			{/* Botoes abaixo do texto no celular: ao lado, o texto virava uma coluna de uma palavra. */}
 			<div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 				<div className="flex w-full min-w-0 flex-col gap-1 sm:flex-1">
@@ -302,79 +311,84 @@ function ProductsWithoutProfileSection({
 	const allSelected = selected.size === products.length && products.length > 0;
 
 	return (
-		<SectionWrapper
-			title="PRODUTOS SEM PERFIL FISCAL"
-			icon={<Package className="h-4 min-h-4 w-4 min-w-4" />}
-			actions={
-				permissions.configurar ? (
-					<div className="flex flex-wrap items-center gap-1.5">
-						<Button
-							type="button"
-							size="sm"
-							variant="ghost"
-							className="h-7 text-[0.65rem] font-bold uppercase"
-							onClick={() => setSelected(allSelected ? new Set() : new Set(products.map((p) => p.produtoId)))}
-						>
-							{allSelected ? "Limpar seleção" : "Selecionar todos"}
-						</Button>
-						<Button
-							type="button"
-							size="sm"
-							variant="outline"
-							className="h-7 gap-1.5 text-[0.65rem] font-bold uppercase"
-							disabled={selected.size === 0}
-							onClick={() => setBulkOpen(true)}
-						>
-							<Layers className="h-3.5 w-3.5" />
-							Aplicar em lote ({selected.size})
-						</Button>
-					</div>
-				) : null
-			}
-		>
-			<p className="-mt-3 text-xs text-muted-foreground">
-				Vendidos nos últimos 30 dias sem perfil fiscal ativo. A próxima nota deles vai falhar — cadastre antes.
-			</p>
-			<div className="flex max-h-96 flex-col divide-y divide-border overflow-y-auto rounded-lg border">
-				{products.map((product) => (
-					<div key={product.produtoId} className="flex items-center justify-between gap-2 px-3 py-2">
-						<div className="flex min-w-0 items-center gap-2">
-							{permissions.configurar ? <Checkbox checked={selected.has(product.produtoId)} onCheckedChange={() => toggle(product.produtoId)} /> : null}
-							<div className="flex min-w-0 flex-col">
-								<span className="truncate text-sm font-semibold">{product.nome}</span>
-								<span className="text-xs text-muted-foreground tabular-nums">
-									{product.vendasRecentes} venda{product.vendasRecentes === 1 ? "" : "s"} nos últimos 30 dias
-								</span>
-							</div>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<Package className="h-4 min-h-4 w-4 min-w-4" />
+				</Section.Icon>
+				<Section.Title>PRODUTOS SEM PERFIL FISCAL</Section.Title>
+				<Section.Actions>
+					{permissions.configurar ? (
+						<div className="flex flex-wrap items-center gap-1.5">
+							<Button
+								type="button"
+								size="sm"
+								variant="ghost"
+								className="h-7 text-[0.65rem] font-bold uppercase"
+								onClick={() => setSelected(allSelected ? new Set() : new Set(products.map((p) => p.produtoId)))}
+							>
+								{allSelected ? "Limpar seleção" : "Selecionar todos"}
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="h-7 gap-1.5 text-[0.65rem] font-bold uppercase"
+								disabled={selected.size === 0}
+								onClick={() => setBulkOpen(true)}
+							>
+								<Layers className="h-3.5 w-3.5" />
+								Aplicar em lote ({selected.size})
+							</Button>
 						</div>
-						<Button
-							type="button"
-							size="sm"
-							variant="default"
-							className="h-7 gap-1.5 px-2.5 text-[0.65rem] font-bold uppercase tracking-tight"
-							disabled={!permissions.configurar}
-							onClick={() => setQuickMenuProductId(product.produtoId)}
-						>
-							<Wrench className="h-3.5 w-3.5" />
-							Cadastrar
-						</Button>
-					</div>
-				))}
-			</div>
-			{quickMenuProductId ? (
-				<ProductFiscalProfileQuickMenu productId={quickMenuProductId} closeMenu={() => setQuickMenuProductId(null)} onSaved={onChanged} />
-			) : null}
-			{bulkOpen ? (
-				<BulkFiscalProfileMenu
-					products={products.filter((product) => selected.has(product.produtoId))}
-					closeMenu={() => setBulkOpen(false)}
-					onSaved={() => {
-						setSelected(new Set());
-						onChanged();
-					}}
-				/>
-			) : null}
-		</SectionWrapper>
+					) : null}
+				</Section.Actions>
+			</Section.Header>
+			<Section.Body>
+				<p className="-mt-3 text-xs text-muted-foreground">
+					Vendidos nos últimos 30 dias sem perfil fiscal ativo. A próxima nota deles vai falhar — cadastre antes.
+				</p>
+				<div className="flex max-h-96 flex-col divide-y divide-border overflow-y-auto rounded-lg border">
+					{products.map((product) => (
+						<div key={product.produtoId} className="flex items-center justify-between gap-2 px-3 py-2">
+							<div className="flex min-w-0 items-center gap-2">
+								{permissions.configurar ? <Checkbox checked={selected.has(product.produtoId)} onCheckedChange={() => toggle(product.produtoId)} /> : null}
+								<div className="flex min-w-0 flex-col">
+									<span className="truncate text-sm font-semibold">{product.nome}</span>
+									<span className="text-xs text-muted-foreground tabular-nums">
+										{product.vendasRecentes} venda{product.vendasRecentes === 1 ? "" : "s"} nos últimos 30 dias
+									</span>
+								</div>
+							</div>
+							<Button
+								type="button"
+								size="sm"
+								variant="default"
+								className="h-7 gap-1.5 px-2.5 text-[0.65rem] font-bold uppercase tracking-tight"
+								disabled={!permissions.configurar}
+								onClick={() => setQuickMenuProductId(product.produtoId)}
+							>
+								<Wrench className="h-3.5 w-3.5" />
+								Cadastrar
+							</Button>
+						</div>
+					))}
+				</div>
+				{quickMenuProductId ? (
+					<ProductFiscalProfileQuickMenu productId={quickMenuProductId} closeMenu={() => setQuickMenuProductId(null)} onSaved={onChanged} />
+				) : null}
+				{bulkOpen ? (
+					<BulkFiscalProfileMenu
+						products={products.filter((product) => selected.has(product.produtoId))}
+						closeMenu={() => setBulkOpen(false)}
+						onSaved={() => {
+							setSelected(new Set());
+							onChanged();
+						}}
+					/>
+				) : null}
+			</Section.Body>
+		</Section.Root>
 	);
 }
 

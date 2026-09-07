@@ -5,12 +5,16 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { useOrgColors } from "@/components/Providers/OrgColorsProvider";
 import { WeeklyRevenueHeatmap } from "@/components/SalesStats/Blocks/WeeklyRevenueHeatmap";
-import { SellerResultsByMonthBlock, SellerResultsByMonthDayBlock, SellerResultsByWeekDayBlock } from "@/components/SellerStats/Blocks/PeriodHeatmapBlocks";
+import {
+	SellerResultsByMonthBlock,
+	SellerResultsByMonthDayBlock,
+	SellerResultsByWeekDayBlock,
+} from "@/components/SellerStats/Blocks/PeriodHeatmapBlocks";
 import { SellerTopClientsBlock, SellerTopProductGroupsBlock, SellerTopProductsBlock } from "@/components/SellerStats/Blocks/TopRankingBlocks";
 import { GoalTrackingCard } from "@/components/Stats/GoalTrackingBar";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import { Button } from "@/components/ui/button";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
 import { appRoutes } from "@/lib/navigation/routes";
@@ -123,14 +127,22 @@ export function Results({ sellerId }: ResultsProps) {
 						</div>
 					</div>
 
-					<SectionWrapper title="Painel completo" icon={<ChartColumn className="h-4 w-4 min-h-4 min-w-4" />}>
-						<div className="flex flex-col items-start gap-2">
-							<p className="text-sm text-muted-foreground">Perfil, edição e histórico completo ficam no seu painel detalhado de vendedor.</p>
-							<Button asChild variant="outline" size="sm">
-								<Link href={appRoutes.management.seller(sellerId)}>Ver painel completo</Link>
-							</Button>
-						</div>
-					</SectionWrapper>
+					<Section.Root>
+						<Section.Header>
+							<Section.Icon>
+								<ChartColumn className="h-4 w-4 min-h-4 min-w-4" />
+							</Section.Icon>
+							<Section.Title>Painel completo</Section.Title>
+						</Section.Header>
+						<Section.Body>
+							<div className="flex flex-col items-start gap-2">
+								<p className="text-sm text-muted-foreground">Perfil, edição e histórico completo ficam no seu painel detalhado de vendedor.</p>
+								<Button asChild variant="outline" size="sm">
+									<Link href={appRoutes.management.seller(sellerId)}>Ver painel completo</Link>
+								</Button>
+							</div>
+						</Section.Body>
+					</Section.Root>
 				</>
 			) : null}
 		</div>

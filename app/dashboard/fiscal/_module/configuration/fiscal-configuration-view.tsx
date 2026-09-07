@@ -4,7 +4,7 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { Switch } from "@/components/ui/switch";
 import { getErrorMessage } from "@/lib/errors";
 import { syncFiscalCompany, updateFiscalSettings } from "@/lib/mutations/fiscal";
@@ -105,25 +105,33 @@ export function FiscalConfigurationView({ canEdit }: FiscalConfigurationViewProp
 				</Button>
 			</div>
 
-			<SectionWrapper title="OPERACIONAL" icon={<BadgeCheck className="h-4 w-4" />}>
-				<FiscalEnvironmentSwitcher fiscalConfig={state.fiscalConfiguracao} updateFiscalConfig={updateFiscalConfig} disabled={!canEdit} />
-				<div className="flex items-center justify-between rounded-lg border p-4">
-					<div>
-						<Label>EMISSÃO AUTOMÁTICA</Label>
-						<p className="text-sm text-muted-foreground">Dispara emissão ao confirmar a venda.</p>
+			<Section.Root>
+				<Section.Header>
+					<Section.Icon>
+						<BadgeCheck className="h-4 w-4" />
+					</Section.Icon>
+					<Section.Title>OPERACIONAL</Section.Title>
+				</Section.Header>
+				<Section.Body>
+					<FiscalEnvironmentSwitcher fiscalConfig={state.fiscalConfiguracao} updateFiscalConfig={updateFiscalConfig} disabled={!canEdit} />
+					<div className="flex items-center justify-between rounded-lg border p-4">
+						<div>
+							<Label>EMISSÃO AUTOMÁTICA</Label>
+							<p className="text-sm text-muted-foreground">Dispara emissão ao confirmar a venda.</p>
+						</div>
+						<Switch
+							checked={state.fiscalEmissaoAutomatica}
+							disabled={!canEdit}
+							onCheckedChange={(checked) => updateSettings({ fiscalEmissaoAutomatica: checked })}
+						/>
 					</div>
-					<Switch
-						checked={state.fiscalEmissaoAutomatica}
-						disabled={!canEdit}
-						onCheckedChange={(checked) => updateSettings({ fiscalEmissaoAutomatica: checked })}
-					/>
-				</div>
-				{state.fiscalEmissaoAutomatica ? (
-					<AutoEmissionPaymentMethodExceptions fiscalConfig={state.fiscalConfiguracao} updateFiscalConfig={updateFiscalConfig} />
-				) : null}
-				<InboundDfeSettings fiscalConfig={state.fiscalConfiguracao} updateFiscalConfig={updateFiscalConfig} />
-				<ExceptionalPresenceClassificationSettings fiscalConfig={state.fiscalConfiguracao} updateFiscalConfig={updateFiscalConfig} disabled={!canEdit} />
-			</SectionWrapper>
+					{state.fiscalEmissaoAutomatica ? (
+						<AutoEmissionPaymentMethodExceptions fiscalConfig={state.fiscalConfiguracao} updateFiscalConfig={updateFiscalConfig} />
+					) : null}
+					<InboundDfeSettings fiscalConfig={state.fiscalConfiguracao} updateFiscalConfig={updateFiscalConfig} />
+					<ExceptionalPresenceClassificationSettings fiscalConfig={state.fiscalConfiguracao} updateFiscalConfig={updateFiscalConfig} disabled={!canEdit} />
+				</Section.Body>
+			</Section.Root>
 
 			<CompanyBasicInformation
 				fiscalConfig={state.fiscalConfiguracao}

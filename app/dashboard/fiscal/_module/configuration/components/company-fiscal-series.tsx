@@ -6,7 +6,7 @@ import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import ControlFiscalSeries from "@/components/Modals/FiscalSeries/ControlFiscalSeries";
 import NewFiscalSeries from "@/components/Modals/FiscalSeries/NewFiscalSeries";
 import { Button } from "@/components/ui/button";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getErrorMessage } from "@/lib/errors";
@@ -28,44 +28,52 @@ export function CompanyFiscalSeries() {
 	const handleOnSettled = async () => await queryClient.invalidateQueries({ queryKey });
 
 	return (
-		<SectionWrapper title="SÉRIES FISCAIS" icon={<BookText className="h-4 w-4" />}>
-			<span id="fiscal-section-series" />
-			<p className="text-xs text-muted-foreground tracking-tight">
-				As séries definem o contador de numeração dos documentos fiscais emitidos. Devem estar sincronizadas com a SEFAZ — alterações manuais do próximo
-				número podem causar rejeições.
-			</p>
-			{isLoading ? <LoadingComponent /> : null}
-			{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
-			{isSuccess ? (
-				data.length > 0 ? (
-					<div className="flex flex-col gap-2 w-full">
-						{data.map((series) => (
-							<CompanyFiscalSeriesCard key={series.id} series={series} handleEditClick={() => setEditingSeriesId(series.id)} />
-						))}
-					</div>
-				) : (
-					<div className="flex items-center justify-center py-6">
-						<p className="text-sm text-muted-foreground">Nenhuma série fiscal cadastrada.</p>
-					</div>
-				)
-			) : null}
-			<div className="w-full flex items-center justify-center">
-				<Button variant={"ghost"} size={"fit"} className="flex items-center gap-1 px-2 py-1 text-xs" onClick={() => setNewSeriesMenuIsOpen(true)}>
-					<Plus className="w-4 h-4 min-w-4 min-h-4" />
-					ADICIONAR
-				</Button>
-			</div>
-			{newSeriesMenuIsOpen ? (
-				<NewFiscalSeries closeModal={() => setNewSeriesMenuIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
-			) : null}
-			{editingSeriesId ? (
-				<ControlFiscalSeries
-					fiscalSeriesId={editingSeriesId}
-					closeModal={() => setEditingSeriesId(null)}
-					callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
-				/>
-			) : null}
-		</SectionWrapper>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<BookText className="h-4 w-4" />
+				</Section.Icon>
+				<Section.Title>SÉRIES FISCAIS</Section.Title>
+			</Section.Header>
+			<Section.Body>
+				<span id="fiscal-section-series" />
+				<p className="text-xs text-muted-foreground tracking-tight">
+					As séries definem o contador de numeração dos documentos fiscais emitidos. Devem estar sincronizadas com a SEFAZ — alterações manuais do próximo
+					número podem causar rejeições.
+				</p>
+				{isLoading ? <LoadingComponent /> : null}
+				{isError ? <ErrorComponent msg={getErrorMessage(error)} /> : null}
+				{isSuccess ? (
+					data.length > 0 ? (
+						<div className="flex flex-col gap-2 w-full">
+							{data.map((series) => (
+								<CompanyFiscalSeriesCard key={series.id} series={series} handleEditClick={() => setEditingSeriesId(series.id)} />
+							))}
+						</div>
+					) : (
+						<div className="flex items-center justify-center py-6">
+							<p className="text-sm text-muted-foreground">Nenhuma série fiscal cadastrada.</p>
+						</div>
+					)
+				) : null}
+				<div className="w-full flex items-center justify-center">
+					<Button variant={"ghost"} size={"fit"} className="flex items-center gap-1 px-2 py-1 text-xs" onClick={() => setNewSeriesMenuIsOpen(true)}>
+						<Plus className="w-4 h-4 min-w-4 min-h-4" />
+						ADICIONAR
+					</Button>
+				</div>
+				{newSeriesMenuIsOpen ? (
+					<NewFiscalSeries closeModal={() => setNewSeriesMenuIsOpen(false)} callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }} />
+				) : null}
+				{editingSeriesId ? (
+					<ControlFiscalSeries
+						fiscalSeriesId={editingSeriesId}
+						closeModal={() => setEditingSeriesId(null)}
+						callbacks={{ onMutate: handleOnMutate, onSettled: handleOnSettled }}
+					/>
+				) : null}
+			</Section.Body>
+		</Section.Root>
 	);
 }
 

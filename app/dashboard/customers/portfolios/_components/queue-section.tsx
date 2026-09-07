@@ -12,7 +12,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateAsLocale, formatToMoney } from "@/lib/formatting";
 import { createInteraction } from "@/lib/mutations/interactions";
@@ -315,38 +315,43 @@ type QueueSectionProps = {
 
 export function QueueSection({ fila, totalEmDebito, carteiraTotal, sellerId, onRegistered }: QueueSectionProps) {
 	return (
-		<SectionWrapper
-			title="Fila de abordagens"
-			icon={<ListChecks className="h-4 w-4 min-h-4 min-w-4" />}
-			actions={
-				totalEmDebito > fila.length ? (
-					<span className="text-[0.65rem] font-semibold text-muted-foreground">
-						{totalEmDebito} em débito de contato · mostrando os {fila.length} prioritários
-					</span>
-				) : null
-			}
-		>
-			{fila.length === 0 ? (
-				<Empty>
-					<EmptyHeader>
-						<EmptyMedia variant="icon">
-							<UserRound />
-						</EmptyMedia>
-						<EmptyTitle>Fila em dia!</EmptyTitle>
-						<EmptyDescription>
-							{carteiraTotal === 0
-								? "Sua carteira ainda está vazia — ela é montada automaticamente a partir das suas vendas recorrentes."
-								: "Nenhum cliente da sua carteira está em débito de comunicação hoje."}
-						</EmptyDescription>
-					</EmptyHeader>
-				</Empty>
-			) : (
-				<div className="flex flex-col gap-2.5">
-					{fila.map((item) => (
-						<QueueCard key={item.cliente.id} item={item} sellerId={sellerId} onRegistered={onRegistered} />
-					))}
-				</div>
-			)}
-		</SectionWrapper>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<ListChecks className="h-4 w-4 min-h-4 min-w-4" />
+				</Section.Icon>
+				<Section.Title>Fila de abordagens</Section.Title>
+				<Section.Actions>
+					{totalEmDebito > fila.length ? (
+						<span className="text-[0.65rem] font-semibold text-muted-foreground">
+							{totalEmDebito} em débito de contato · mostrando os {fila.length} prioritários
+						</span>
+					) : null}
+				</Section.Actions>
+			</Section.Header>
+			<Section.Body>
+				{fila.length === 0 ? (
+					<Empty>
+						<EmptyHeader>
+							<EmptyMedia variant="icon">
+								<UserRound />
+							</EmptyMedia>
+							<EmptyTitle>Fila em dia!</EmptyTitle>
+							<EmptyDescription>
+								{carteiraTotal === 0
+									? "Sua carteira ainda está vazia — ela é montada automaticamente a partir das suas vendas recorrentes."
+									: "Nenhum cliente da sua carteira está em débito de comunicação hoje."}
+							</EmptyDescription>
+						</EmptyHeader>
+					</Empty>
+				) : (
+					<div className="flex flex-col gap-2.5">
+						{fila.map((item) => (
+							<QueueCard key={item.cliente.id} item={item} sellerId={sellerId} onRegistered={onRegistered} />
+						))}
+					</div>
+				)}
+			</Section.Body>
+		</Section.Root>
 	);
 }

@@ -3,7 +3,7 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import NewCommunityCourseSection from "@/components/Modals/Internal/Courses/Sections/NewCommunityCourseSection";
 import { Button } from "@/components/ui/button";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { StatBadge } from "@/components/ui/stat-badge";
 import { getErrorMessage } from "@/lib/errors";
 import { reorderCommunityItems } from "@/lib/mutations/community-admin";
@@ -88,43 +88,48 @@ export default function CourseEditorPage({ courseId }: CourseEditorPageProps) {
 					</div>
 				</div>
 
-				<SectionWrapper
-					title="SEÇÕES E AULAS"
-					icon={<FolderIcon className="w-4 h-4" />}
-					actions={
-						<Button variant="ghost" size="xs" onClick={() => setNewSectionModalOpen(true)} className="flex items-center gap-1">
-							<Plus className="w-4 h-4 min-w-4 min-h-4" />
-							ADICIONAR
-						</Button>
-					}
-				>
-					{course.secoes && course.secoes.length > 0 ? (
-						<div className="flex flex-col gap-3">
-							{course.secoes.map((section, index) => (
-								<SectionBlock
-									key={section.id}
-									section={section}
-									index={index}
-									totalSections={course.secoes.length}
-									onMoveUp={() => moveSectionUp(index)}
-									onMoveDown={() => moveSectionDown(index)}
-									sectionCallbacks={{
-										onMutate: handleOnMutate,
-										onSettled: handleOnSettled,
-									}}
-									lessonsCallbacks={{
-										onMutate: handleOnMutate,
-										onSettled: handleOnSettled,
-									}}
-								/>
-							))}
-						</div>
-					) : (
-						<div className="border border-dashed border-border rounded-lg py-8 text-center text-muted-foreground text-sm">
-							Nenhuma seção criada ainda. Adicione a primeira seção abaixo.
-						</div>
-					)}
-				</SectionWrapper>
+				<Section.Root>
+					<Section.Header>
+						<Section.Icon>
+							<FolderIcon className="w-4 h-4" />
+						</Section.Icon>
+						<Section.Title>SEÇÕES E AULAS</Section.Title>
+						<Section.Actions>
+							<Button variant="ghost" size="xs" onClick={() => setNewSectionModalOpen(true)} className="flex items-center gap-1">
+								<Plus className="w-4 h-4 min-w-4 min-h-4" />
+								ADICIONAR
+							</Button>
+						</Section.Actions>
+					</Section.Header>
+					<Section.Body>
+						{course.secoes && course.secoes.length > 0 ? (
+							<div className="flex flex-col gap-3">
+								{course.secoes.map((section, index) => (
+									<SectionBlock
+										key={section.id}
+										section={section}
+										index={index}
+										totalSections={course.secoes.length}
+										onMoveUp={() => moveSectionUp(index)}
+										onMoveDown={() => moveSectionDown(index)}
+										sectionCallbacks={{
+											onMutate: handleOnMutate,
+											onSettled: handleOnSettled,
+										}}
+										lessonsCallbacks={{
+											onMutate: handleOnMutate,
+											onSettled: handleOnSettled,
+										}}
+									/>
+								))}
+							</div>
+						) : (
+							<div className="border border-dashed border-border rounded-lg py-8 text-center text-muted-foreground text-sm">
+								Nenhuma seção criada ainda. Adicione a primeira seção abaixo.
+							</div>
+						)}
+					</Section.Body>
+				</Section.Root>
 
 				{newSectionModalOpen ? (
 					<NewCommunityCourseSection

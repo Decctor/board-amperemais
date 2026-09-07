@@ -347,3 +347,16 @@ export function formatLocation({
 	if (addressStr) addressStr += ".";
 	return addressStr.toUpperCase();
 }
+
+/**
+ * Serializa um valor para exibição em `CodeBlock`. Valor que não serializa (referência circular
+ * de um retorno de provedor, por exemplo) cai para `String(value)` em vez de derrubar a tela —
+ * material de suporte precisa aparecer mesmo malformado.
+ */
+export function formatJsonForDisplay(value: unknown) {
+	try {
+		return JSON.stringify(value, null, 2);
+	} catch {
+		return String(value);
+	}
+}

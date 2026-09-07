@@ -133,12 +133,11 @@ function SelectProductWithVariants({
 
 	const renderContent = () => (
 		<Command shouldFilter={false} className={cn("flex w-full flex-col overflow-hidden", contentClassName)}>
-			<CommandInput placeholder="Filtre o produto desejado..." value={search} onValueChange={updateSearch} className="shrink-0" />
+			<CommandInput placeholder="Filtre o produto desejado..." value={search} onValueChange={updateSearch} />
 			<CommandList className="max-h-none overflow-visible p-0">
 				<CommandGroup>
-					<CommandItem value="reset-selection-option" onSelect={handleReset} className="cursor-pointer">
+					<CommandItem value="reset-selection-option" onSelect={handleReset} data-checked={!value} className="cursor-pointer">
 						{resetOptionLabel}
-						<Check className={cn("ml-auto h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
 					</CommandItem>
 				</CommandGroup>
 				<CommandSeparator />

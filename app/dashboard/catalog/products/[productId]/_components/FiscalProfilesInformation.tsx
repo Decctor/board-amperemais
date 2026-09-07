@@ -3,7 +3,7 @@ import FiscalProfileMenu from "@/components/Modals/Products/FiscalProfiles/Fisca
 import { ProductFiscalProfileCard, type TProductFiscalProfileCardData } from "@/components/Products/Shared/ProductFiscalProfileCard";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { SectionWrapper } from "@/components/ui/section-wrapper";
+import { Section } from "@/components/ui/section";
 import { getErrorMessage } from "@/lib/errors";
 import { createProductFiscalProfile, deleteProductFiscalProfile, updateProductFiscalProfile } from "@/lib/mutations/products";
 import { TUseProductFiscalProfileState } from "@/state-hooks/use-product-state";
@@ -134,63 +134,68 @@ export default function ProductFiscalProfilesInformation({
 	});
 
 	return (
-		<SectionWrapper
-			icon={<FileText className="h-4 min-h-4 w-4 min-w-4" />}
-			title="PERFIS FISCAIS"
-			actions={
-				userHasFiscalConfigurePermission ? (
-					<Button
-						variant="ghost"
-						size="xs"
-						onClick={() => setNewFiscalProfileMenuIsOpen(true)}
-						className="flex items-center gap-1"
-						disabled={isDeletingFiscalProfile}
-					>
-						<Plus className="h-4 min-h-4 w-4 min-w-4" />
-						ADICIONAR
-					</Button>
-				) : null
-			}
-		>
-			<div className="flex w-full flex-col gap-3">
-				{product.perfisFiscais.length > 0 ? (
-					product.perfisFiscais.map((fiscalProfile) => (
-						<ProductFiscalProfileCard
-							key={fiscalProfile.id}
-							fiscalProfile={mapApiFiscalProfileToCardData(fiscalProfile)}
-							userHasFiscalConfigurePermission={userHasFiscalConfigurePermission}
-							handleEditClick={() => setEditingFiscalProfileId(fiscalProfile.id)}
-							handleDeleteClick={() => deleteFiscalProfileMutation(fiscalProfile.id)}
-						/>
-					))
-				) : (
-					<Empty>
-						<EmptyHeader>
-							<EmptyMedia variant="icon">
-								<FileText className="h-4 w-4" />
-							</EmptyMedia>
-							<EmptyTitle>Nenhum perfil fiscal encontrado</EmptyTitle>
-							<EmptyDescription>Adicione um perfil fiscal para começar</EmptyDescription>
-						</EmptyHeader>
-					</Empty>
-				)}
-			</div>
-			{editingFiscalProfileId ? (
-				<FiscalProfileMenu
-					fiscalProfileId={editingFiscalProfileId}
-					closeMenu={() => setEditingFiscalProfileId(null)}
-					submitFiscalProfile={(state) => updateFiscalProfileMutation({ state, productFiscalProfileId: editingFiscalProfileId })}
-					submitFiscalProfileIsLoading={isUpdatingFiscalProfile}
-				/>
-			) : null}
-			{newFiscalProfileMenuIsOpen ? (
-				<FiscalProfileMenu
-					fiscalProfileId={undefined}
-					closeMenu={() => setNewFiscalProfileMenuIsOpen(false)}
-					submitFiscalProfile={(state) => createFiscalProfileMutation(state)}
-					submitFiscalProfileIsLoading={isCreatingFiscalProfile}
-				/>
-			) : null}
-		</SectionWrapper>
+		<Section.Root>
+			<Section.Header>
+				<Section.Icon>
+					<FileText className="h-4 min-h-4 w-4 min-w-4" />
+				</Section.Icon>
+				<Section.Title>PERFIS FISCAIS</Section.Title>
+				<Section.Actions>
+					{userHasFiscalConfigurePermission ? (
+						<Button
+							variant="ghost"
+							size="xs"
+							onClick={() => setNewFiscalProfileMenuIsOpen(true)}
+							className="flex items-center gap-1"
+							disabled={isDeletingFiscalProfile}
+						>
+							<Plus className="h-4 min-h-4 w-4 min-w-4" />
+							ADICIONAR
+						</Button>
+					) : null}
+				</Section.Actions>
+			</Section.Header>
+			<Section.Body>
+				<div className="flex w-full flex-col gap-3">
+					{product.perfisFiscais.length > 0 ? (
+						product.perfisFiscais.map((fiscalProfile) => (
+							<ProductFiscalProfileCard
+								key={fiscalProfile.id}
+								fiscalProfile={mapApiFiscalProfileToCardData(fiscalProfile)}
+								userHasFiscalConfigurePermission={userHasFiscalConfigurePermission}
+								handleEditClick={() => setEditingFiscalProfileId(fiscalProfile.id)}
+								handleDeleteClick={() => deleteFiscalProfileMutation(fiscalProfile.id)}
+							/>
+						))
+					) : (
+						<Empty>
+							<EmptyHeader>
+								<EmptyMedia variant="icon">
+									<FileText className="h-4 w-4" />
+								</EmptyMedia>
+								<EmptyTitle>Nenhum perfil fiscal encontrado</EmptyTitle>
+								<EmptyDescription>Adicione um perfil fiscal para começar</EmptyDescription>
+							</EmptyHeader>
+						</Empty>
+					)}
+				</div>
+				{editingFiscalProfileId ? (
+					<FiscalProfileMenu
+						fiscalProfileId={editingFiscalProfileId}
+						closeMenu={() => setEditingFiscalProfileId(null)}
+						submitFiscalProfile={(state) => updateFiscalProfileMutation({ state, productFiscalProfileId: editingFiscalProfileId })}
+						submitFiscalProfileIsLoading={isUpdatingFiscalProfile}
+					/>
+				) : null}
+				{newFiscalProfileMenuIsOpen ? (
+					<FiscalProfileMenu
+						fiscalProfileId={undefined}
+						closeMenu={() => setNewFiscalProfileMenuIsOpen(false)}
+						submitFiscalProfile={(state) => createFiscalProfileMutation(state)}
+						submitFiscalProfileIsLoading={isCreatingFiscalProfile}
+					/>
+				) : null}
+			</Section.Body>
+		</Section.Root>
 	);
 }

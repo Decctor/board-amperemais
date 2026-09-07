@@ -75,7 +75,7 @@ export function FiscalDocumentCard({ document, permissions, exceptionalPresenceE
 								icon={<Globe className="h-4 min-h-4 w-4 min-w-4" />}
 								value="HOMOLOGAÇÃO"
 								tooltipContent="Documento emitido em ambiente de testes, sem valor fiscal."
-								className="bg-amber-500 text-white dark:bg-amber-600"
+								variant="warningSolid"
 								valueClassName="normal-case tracking-normal"
 							/>
 						) : null}
@@ -84,7 +84,7 @@ export function FiscalDocumentCard({ document, permissions, exceptionalPresenceE
 								icon={<AlertTriangle className="h-4 min-h-4 w-4 min-w-4" />}
 								value="PRESENCIAL EXCEPCIONAL"
 								tooltipContent="Venda com entrega declarada manualmente como operação presencial nesta tentativa."
-								className="bg-amber-600 text-white dark:bg-amber-700"
+								variant="warning"
 								valueClassName="normal-case tracking-normal"
 							/>
 						) : null}
@@ -117,12 +117,12 @@ function FiscalDocumentCardProblems({
 	const problems = document.problemas ?? [];
 	const primary = pickPrimaryFiscalProblem(problems);
 	return (
-		<div className="flex w-full flex-col gap-2 rounded-md bg-rose-50 px-2 py-1.5 dark:bg-rose-950/40 sm:flex-row sm:items-center sm:justify-between">
+		<div className="flex w-full flex-col gap-2 rounded-md bg-destructive-surface px-2 py-1.5 sm:flex-row sm:items-center sm:justify-between">
 			<Link href={detailsHref} className="w-full min-w-0 text-left sm:flex-1">
 				{problems.length > 0 ? (
 					<FiscalProblemChips problems={problems} wrap />
 				) : (
-					<span className="text-[0.7rem] font-medium text-rose-700 dark:text-rose-300">Falha sem detalhe registrado. Abra o documento para reenviar.</span>
+					<span className="text-micro font-medium text-destructive-surface-foreground">Falha sem detalhe registrado. Abra o documento para reenviar.</span>
 				)}
 			</Link>
 			{primary && !primary.resolvidoAutomaticamente ? (
