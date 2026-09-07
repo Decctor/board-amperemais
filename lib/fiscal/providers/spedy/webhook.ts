@@ -7,8 +7,8 @@ import type { TFiscalDocument } from "@/services/drizzle/schema";
 import { sql } from "drizzle-orm";
 import { mapSpedyInboundInvoice } from "./inbound";
 import { buildSpedyIntegrationId } from "./mappers/utils";
-import { mapSpedyInvoiceResponse } from "./status";
-import type { TSpedyInboundInvoice, TSpedyInvoiceResponse, TSpedyInvoiceStatus } from "./types";
+import { mapSpedyEnvironment, mapSpedyInvoiceResponse } from "./status";
+import type { TSpedyEnvironmentType, TSpedyInboundInvoice, TSpedyInvoiceResponse, TSpedyInvoiceStatus } from "./types";
 
 // Envelope dos webhooks da Spedy: { id, event, data }. Para `inbound_invoice.event` o data
 // embrulha { invoice, event }; nos demais eventos o data e o proprio invoice (shape do GET).
@@ -112,23 +112,28 @@ async function findSpedyOutboundDocument({
 }
 
 // Webhook e por conta (recebe eventos de todas as companies): a organizacao vem do CNPJ da
-// empresa no payload. `allowDuplicateFederalTaxNumbers: false` na Spedy garante no maximo uma
-// company por CNPJ; aqui pegamos a primeira organizacao Spedy com o CNPJ fiscal.
+// empresa no payload. Organizacoes demo compartilham o CNPJ da real, entao o ambiente do
+// documento (production/development) desempata quando o CNPJ casa com mais de uma.
 export async function resolveSpedyWebhookOrganizationId(body: TSpedyWebhookBody): Promise<string | null> {
 	const invoice = extractRawSpedyWebhookInvoice(body) as
-		| { company?: { federalTaxNumber?: string | null } | null }
+		| { company?: { federalTaxNumber?: string | null } | null; environmentType?: TSpedyEnvironmentType | null }
 		| null;
 	const digits = (invoice?.company?.federalTaxNumber ?? "").replace(/\D/g, "");
 	if (!digits) return null;
-	const organization = await db.query.organizations.findFirst({
+	// '[^0-9]' em vez de '\D': dentro do template o escape e cozido pelo JS e o Postgres
+	// receberia 'D', comparando o CNPJ formatado com os digitos do payload sem nunca casar.
+	const candidates = await db.query.organizations.findMany({
 		where: (fields, operators) =>
 			operators.and(
 				operators.eq(fields.fiscalProvedor, "SPEDY"),
-				sql`regexp_replace(coalesce(${fields.fiscalConfiguracao}->>'cpfCnpj', ''), '\D', '', 'g') = ${digits}`,
+				sql`regexp_replace(coalesce(${fields.fiscalConfiguracao}->>'cpfCnpj', ''), '[^0-9]', '', 'g') = ${digits}`,
 			),
-		columns: { id: true },
+		columns: { id: true, fiscalConfiguracao: true },
 	});
-	return organization?.id ?? null;
+	if (candidates.length <= 1) return candidates[0]?.id ?? null;
+	const ambiente = mapSpedyEnvironment(invoice?.environmentType);
+	const byEnvironment = candidates.find((organization) => (organization.fiscalConfiguracao?.ambiente ?? "HOMOLOGACAO") === ambiente);
+	return (byEnvironment ?? candidates[0]).id;
 }
 
 async function processSpedyInboundWebhook(body: TSpedyWebhookBody, organizationId: string) {

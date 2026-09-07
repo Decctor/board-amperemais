@@ -8,7 +8,7 @@ import { SPEDY_BASE_URL } from "@/lib/fiscal/providers/spedy/client";
  * exatamente um evento, entao criamos um por evento. Idempotente: eventos ja registrados para a
  * mesma URL sao pulados.
  *
- * Uso: npx tsx ./scripts/register-spedy-webhooks.ts --host=https://app.recompracrm.com.br [--apply]
+ * Uso: npx tsx ./scripts/register-spedy-webhooks.ts --host=https://www.recompracrm.com.br [--apply]
  * Requer SPEDY_OWNER_API_KEY e SPEDY_WEBHOOK_SECRET no ambiente.
  */
 

@@ -63,7 +63,8 @@ export async function linkPartnerToClient({
 	const normalizedCpfCnpj = normalizeDocument(partner.cpfCnpj);
 	if (normalizedCpfCnpj) {
 		const matchedByDocument = await tx.query.clients.findFirst({
-			where: and(eq(clients.organizacaoId, orgId), sql`regexp_replace(coalesce(${clients.cpfCnpj}, ''), '\D', '', 'g') = ${normalizedCpfCnpj}`),
+			// '[^0-9]' em vez de '\D': o escape seria cozido pelo JS e o Postgres receberia 'D'.
+			where: and(eq(clients.organizacaoId, orgId), sql`regexp_replace(coalesce(${clients.cpfCnpj}, ''), '[^0-9]', '', 'g') = ${normalizedCpfCnpj}`),
 			columns: { id: true },
 		});
 

@@ -59,6 +59,7 @@ import {
 	TrendingUp,
 	Truck,
 	Wallet,
+	SquareArrowOutUpRight,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -887,7 +888,14 @@ function SaleItemCard({ item }: { item: TGetSalesOutputById["itens"][number] }) 
 			<div className="p-3 flex flex-col gap-2">
 				{/* Product Info */}
 				<div className="flex flex-col gap-0.5">
-					<h3 className="text-sm font-bold tracking-tight line-clamp-2">{item.produto?.nome || "Produto"}</h3>
+					<div className="w-full flex items-center justify-between gap-3">
+						<h3 className="text-sm font-bold tracking-tight line-clamp-2">{item.produto?.nome || "Produto"}</h3>
+						<Button asChild variant="ghost" size="icon" className="w-7 h-7" title="Ver produto">
+							<Link href={`/dashboard/catalog/products/${item.produto.id}?tab=cadastro`} aria-label="Acessar página do produto">
+								<SquareArrowOutUpRight className="w-4 h-4 min-w-4 min-h-4 text-muted-foreground" />
+							</Link>
+						</Button>
+					</div>
 					<div className="flex items-center flex-wrap gap-1.5">
 						{item.produto.unidade ? (
 							<TooltipProvider>
