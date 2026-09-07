@@ -4,7 +4,9 @@ Referência visual: [visorfinance.app](https://visorfinance.app). Direção de a
 ilustrações do onboarding (`docs/onboarding/asset-generation-prompts.md`). Geração de imagens pelo
 Vercel AI Gateway com o AI SDK (`generateImage`).
 
-Status: **plano para aprovação**. Nada abaixo foi implementado ainda.
+Status: **aprovado em 2026-09-07**. Decisões da seção 10 fechadas: título A, hero split, seção Problema
+antes de "Como funciona", linha estática de cidades no lugar do marquee, modelo `openai/gpt-image-2`,
+copy principal com WhatsApp oficial (gateway interno citado como alternativa não indicada).
 
 ## 1. Objetivo
 
@@ -146,7 +148,8 @@ Eyebrow: "Oficial e seguro". Título: **"Mensagem oficial. Dados protegidos. Gen
 
 Bullets:
 - **WhatsApp oficial.** Envio pela API oficial da Meta, com o número da própria loja. Nada de chip
-  avulso nem número desconhecido.
+  avulso nem número desconhecido. (Existe um gateway interno como alternativa, mas não é o caminho
+  indicado e a landing não o promove.)
 - **LGPD.** Os dados dos seus clientes são seus. Consentimento registrado e exclusão sob demanda.
 - **Suporte humano.** Time comercial e de suporte no WhatsApp, em horário comercial. Pagamento via Stripe.
 
