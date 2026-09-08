@@ -1,7 +1,6 @@
 import { ArrowRight, CheckCircle2, MessageCircle } from "lucide-react";
 import { Reveal } from "./_primitives/Reveal";
 import { Stamp } from "./_primitives/Stamp";
-import { TickerNumber } from "./_primitives/TickerNumber";
 import { TrackedAnchor, TrackedLink } from "./TrackedLink";
 
 // Tudo que já vem na plataforma (ambos os caminhos incluem isto).
@@ -43,9 +42,7 @@ export function LedgerPricing() {
 				{/* Section header */}
 				<Reveal className="mb-12 lg:mb-16 text-center">
 					<div className="flex items-center justify-center gap-3 mb-6">
-						<span className="ledger-fade inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#24549c] text-white text-[11px] font-extrabold ledger-tabular">
-							06
-						</span>
+						<span className="ledger-fade inline-block h-1.5 w-1.5 rounded-full bg-[#ffb900]" aria-hidden />
 						<span
 							className="ledger-fade text-[11px] font-extrabold tracking-[0.16em] uppercase text-[#24549c]"
 							style={{ "--i": 1 } as React.CSSProperties}
@@ -85,7 +82,7 @@ export function LedgerPricing() {
 							<div className="flex items-baseline gap-1 mb-1">
 								<span className="text-[20px] font-extrabold text-[#171717]/55 ledger-tabular">R$</span>
 								<span className="text-[56px] lg:text-[64px] font-extrabold text-[#171717] leading-none tracking-[-0.04em] ledger-tabular">
-									<TickerNumber value={399} durationMs={1400} />
+									399
 								</span>
 								<span className="text-[20px] lg:text-[24px] font-extrabold text-[#171717]/80 ledger-tabular align-baseline ml-0.5">,90</span>
 							</div>
@@ -116,6 +113,12 @@ export function LedgerPricing() {
 
 						{/* Caminho 2 — Plataforma + Gestor de Crescimento (hero, recomendado) */}
 						<div className="relative">
+							{/* Selo fora do card com overflow-hidden, para não ser cortado; recuado da borda para caber no mobile */}
+							<div className="absolute -top-3 right-5 z-[25] lg:right-6">
+								<Stamp variant="amber" size="md" rotate={6}>
+									Recomendado
+								</Stamp>
+							</div>
 							<div
 								className="ledger-fade relative flex flex-col h-full rounded-3xl bg-gradient-to-br from-[#24549c] to-[#1a3d7a] text-white p-7 lg:p-8 shadow-[0_28px_60px_-20px_rgba(36,84,156,0.45),0_8px_16px_rgba(36,84,156,0.18)] overflow-hidden"
 								style={{ "--i": 4 } as React.CSSProperties}
@@ -127,20 +130,13 @@ export function LedgerPricing() {
 									aria-hidden
 								/>
 
-								{/* Floating stamp */}
-								<div className="absolute -top-3 -right-2 z-[25]">
-									<Stamp variant="amber" size="md" rotate={6}>
-										Recomendado
-									</Stamp>
-								</div>
-
 								<p className="relative text-[11px] font-extrabold tracking-[0.18em] uppercase text-white/65 mb-1.5">Plataforma + Gestor de Crescimento</p>
 								<p className="relative text-[15px] font-bold text-white mb-6">A gente opera por você.</p>
 
 								<div className="relative flex items-baseline gap-1 mb-1">
 									<span className="text-[20px] lg:text-[24px] font-extrabold text-white/70 ledger-tabular">R$</span>
 									<span className="text-[56px] lg:text-[72px] font-extrabold text-[#ffb900] leading-none tracking-[-0.04em] ledger-tabular">
-										<TickerNumber value={899} durationMs={1400} />
+										899
 									</span>
 									<span className="text-[20px] lg:text-[26px] font-extrabold text-[#ffb900]/85 ledger-tabular align-baseline ml-0.5">,90</span>
 								</div>

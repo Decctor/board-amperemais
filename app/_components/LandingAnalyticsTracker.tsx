@@ -4,7 +4,7 @@ import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { useEffect } from "react";
 
 const LANDING_SCROLL_DEPTH_MILESTONES = [25, 50, 75, 90] as const;
-const LANDING_SECTION_IDS = ["como-funciona", "movimento", "inventario", "saldo", "parcerias", "contato"] as const;
+const LANDING_SECTION_IDS = ["problema", "como-funciona", "movimento", "inventario", "integracoes", "confianca", "saldo", "faq", "contato"] as const;
 const PARTNER_INDICATOR_STORAGE_KEY = "recompra_partner_indicator";
 
 type TIdleWindow = Window &

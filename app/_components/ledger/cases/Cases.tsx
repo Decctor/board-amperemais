@@ -25,9 +25,7 @@ export function LedgerCases() {
 				{/* Section header */}
 				<Reveal className="mb-12 lg:mb-16">
 					<div className="flex items-center gap-3 mb-6">
-						<span className="ledger-fade inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#24549c] text-white text-[11px] font-extrabold ledger-tabular">
-							03
-						</span>
+						<span className="ledger-fade inline-block h-1.5 w-1.5 rounded-full bg-[#ffb900]" aria-hidden />
 						<span
 							className="ledger-fade text-[11px] font-extrabold tracking-[0.16em] uppercase text-[#24549c]"
 							style={{ "--i": 1 } as React.CSSProperties}
@@ -42,7 +40,7 @@ export function LedgerCases() {
 							Sem achismo.
 						</span>
 						<span className="block ledger-write" style={{ "--i": 3 } as React.CSSProperties} data-stagger>
-							Sem promessa vazia.
+							Com nome, cidade e número.
 						</span>
 					</h2>
 					<p className="ledger-fade mt-5 text-[17px] text-[#171717]/65 max-w-[52ch]" style={{ "--i": 6 } as React.CSSProperties} data-stagger>
@@ -55,28 +53,29 @@ export function LedgerCases() {
 					<CaseShowcase />
 				</Reveal>
 
-				{/* City marquee */}
-				<div className="mt-12 lg:mt-16 -mx-5 lg:-mx-8 relative overflow-hidden">
-					<div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
-					<div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
-					<div className="flex items-center gap-2 mb-3 px-5 lg:px-8">
-						<span className="ledger-pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-[#24549c]" />
-						<p className="text-[11px] font-extrabold tracking-[0.16em] uppercase text-[#737373]">Lojas em operação · Triângulo Mineiro e Alto Paranaíba</p>
-					</div>
-					<div className="overflow-hidden">
-						<div className="ledger-marquee-track flex whitespace-nowrap will-change-transform">
-							{[...CITIES, ...CITIES].map((city, i) => (
-								<span
-									key={`${city}-${i}`}
-									className="inline-flex items-center text-[24px] lg:text-[32px] font-extrabold tracking-[-0.01em] text-[#171717]/85 mx-6 lg:mx-10"
-								>
-									{city}
-									<span className="ml-6 lg:ml-10 text-[#ffb900] text-[18px]">✦</span>
-								</span>
-							))}
+				{/* Cidades em operação */}
+				<Reveal className="mt-12 lg:mt-16">
+					<div className="ledger-fade rounded-3xl border border-[#e5e5e5] bg-[#f7f9fc] px-6 py-6 lg:px-8" style={{ "--i": 1 } as React.CSSProperties} data-stagger>
+						<div className="mb-3 flex items-center gap-2">
+							<span className="ledger-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-[#24549c]" />
+							<p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#737373]">
+								Lojas em operação · {CITIES.length} cidades do Triângulo Mineiro e Alto Paranaíba
+							</p>
 						</div>
+						<ul className="flex flex-wrap items-center gap-x-3 gap-y-2">
+							{CITIES.map((city, index) => (
+								<li key={city} className="inline-flex items-center gap-3 text-[13px] font-extrabold tracking-[0.04em] text-[#171717]/70 sm:text-[14px]">
+									{city}
+									{index < CITIES.length - 1 ? (
+										<span className="text-[11px] text-[#ffb900]" aria-hidden>
+											✦
+										</span>
+									) : null}
+								</li>
+							))}
+						</ul>
 					</div>
-				</div>
+				</Reveal>
 			</div>
 		</section>
 	);

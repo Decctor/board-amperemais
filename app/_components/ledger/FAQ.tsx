@@ -8,7 +8,7 @@ export const LANDING_FAQS: FAQItem[] = [
 	{
 		question: "O que é o RecompraCRM?",
 		answer:
-			"O RecompraCRM é um sistema de fidelização com cashback automático para lojas físicas. Ele reúne programa de cashback, campanhas automáticas no WhatsApp, Ponto de Interação no balcão e análise RFM de clientes, tudo em uma plataforma feita para fazer o cliente voltar a comprar e aumentar a previsibilidade de vendas do varejo.",
+			"O RecompraCRM é um CRM de recompra para o varejo. Ele registra cada venda, identifica quem está deixando de comprar e envia a mensagem certa pelo WhatsApp oficial da própria loja. Reúne programa de cashback, campanhas automáticas, Ponto de Interação no balcão e análise RFM em uma plataforma feita para fazer o cliente voltar.",
 	},
 	{
 		question: "Quanto custa o RecompraCRM?",
@@ -28,7 +28,7 @@ export const LANDING_FAQS: FAQItem[] = [
 	{
 		question: "Como o RecompraCRM faz meus clientes voltarem?",
 		answer:
-			"Cada compra gera cashback com validade, criando um motivo concreto para o cliente retornar antes de o crédito expirar. O sistema ainda dispara campanhas automáticas no WhatsApp em momentos-chave — aniversário, cliente sumido, cashback expirando — e identifica quem está em risco de abandono pela análise RFM.",
+			"Cada compra gera cashback com validade, um motivo concreto para o cliente retornar antes de o crédito expirar. O sistema ainda dispara campanhas automáticas pelo WhatsApp da loja em momentos-chave, como aniversário, cliente sumido e cashback expirando, e identifica quem está em risco de abandono pela análise RFM.",
 	},
 	{
 		question: "O RecompraCRM tem período de teste grátis?",
@@ -43,9 +43,7 @@ export function LedgerFAQ() {
 			<div className="relative mx-auto max-w-3xl px-5 lg:px-8">
 				<Reveal className="mb-12 lg:mb-16 text-center">
 					<div className="flex items-center justify-center gap-3 mb-6">
-						<span className="ledger-fade inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#24549c] text-white text-[11px] font-extrabold ledger-tabular">
-							08
-						</span>
+						<span className="ledger-fade inline-block h-1.5 w-1.5 rounded-full bg-[#ffb900]" aria-hidden />
 						<span className="ledger-fade text-[11px] font-extrabold tracking-[0.16em] uppercase text-[#24549c]" data-stagger>
 							Dúvidas
 						</span>
