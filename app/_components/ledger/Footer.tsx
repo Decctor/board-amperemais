@@ -3,6 +3,7 @@
 import { captureClientEvent } from "@/lib/analytics/posthog-client";
 import { ArrowRight, Lock, MessageCircle, Shield } from "lucide-react";
 import Link from "next/link";
+import { LandingArt } from "./_primitives/LandingArt";
 import { Reveal } from "./_primitives/Reveal";
 
 const FOOTER_GROUPS = [
@@ -61,6 +62,16 @@ export function LedgerClosingCTA() {
 
 			<div className="relative mx-auto max-w-5xl px-5 lg:px-8 text-center">
 				<Reveal>
+					<div className="ledger-fade mx-auto mb-6 w-[200px] sm:w-[240px] lg:w-[280px]" style={{ "--i": 0 } as React.CSSProperties} data-stagger>
+						<LandingArt src="/images/onboarding/storefront.png" sizes="(max-width: 1023px) 240px, 280px" glow={false}>
+							<span
+								className="absolute left-[29%] top-[14%] w-[34%] -rotate-[4deg] overflow-hidden text-ellipsis whitespace-nowrap text-center text-[9px] font-extrabold uppercase tracking-[0.12em] text-[#24549c] sm:text-[11px] lg:text-[13px]"
+								aria-hidden
+							>
+								Sua loja
+							</span>
+						</LandingArt>
+					</div>
 					<div className="inline-flex items-center justify-center gap-3 mb-7 rounded-full bg-white/12 border border-white/20 px-4 py-1.5">
 						<span className="ledger-pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-[#ffb900]" />
 						<span className="text-[11px] font-extrabold tracking-[0.14em] uppercase text-white/90">Pronto para reter seus clientes?</span>

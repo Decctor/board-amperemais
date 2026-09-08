@@ -4,9 +4,10 @@ Referência visual: [visorfinance.app](https://visorfinance.app). Direção de a
 ilustrações do onboarding (`docs/onboarding/asset-generation-prompts.md`). Geração de imagens pelo
 Vercel AI Gateway com o AI SDK (`generateImage`).
 
-Status: **aprovado em 2026-09-07**. Decisões da seção 10 fechadas: título A, hero split, seção Problema
-antes de "Como funciona", linha estática de cidades no lugar do marquee, modelo `openai/gpt-image-2`,
-copy principal com WhatsApp oficial (gateway interno citado como alternativa não indicada).
+Status: **implementado em 2026-09-08** no branch `claude/landing-page-redesign-z68kqd`. Decisões da seção 10
+fechadas: título A, hero split, seção Problema antes de "Como funciona", linha estática de cidades no
+lugar do marquee, modelo `openai/gpt-image-2`, copy principal com WhatsApp oficial (gateway interno
+citado como alternativa não indicada). Assets e prompts finais: `docs/landing/asset-generation-prompts.md`.
 
 ## 1. Objetivo
 

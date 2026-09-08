@@ -55,3 +55,6 @@ bun.lockb
 tmp/
 # Artefatos de geração de imagem (testes locais) — nunca versionados.
 output/
+
+# generated image studies (landing assets)
+.generated/

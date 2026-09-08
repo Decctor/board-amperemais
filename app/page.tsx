@@ -9,11 +9,15 @@ import { LedgerHero } from "./_components/ledger/Hero";
 import { LedgerHowItWorks } from "./_components/ledger/HowItWorks";
 import { LedgerIntegrations } from "./_components/ledger/Integrations";
 import { LedgerNavbar } from "./_components/ledger/Navbar";
-import { LedgerPartnershipProgram } from "./_components/ledger/PartnershipProgram";
 import { LedgerPricing } from "./_components/ledger/Pricing";
+import { LedgerProblem } from "./_components/ledger/Problem";
+import { LedgerTrust } from "./_components/ledger/Trust";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+	title: "RecompraCRM — Faça seus clientes voltarem no automático",
+	description:
+		"CRM de recompra para o varejo: cashback no balcão, campanhas automáticas no WhatsApp oficial da loja e alerta de clientes em risco. 15 dias grátis, sem cartão.",
 	alternates: { canonical: "/" },
 };
 
@@ -28,12 +32,13 @@ export default function LandingPage() {
 			<LedgerNavbar />
 			<main>
 				<LedgerHero />
+				<LedgerProblem />
 				<LedgerHowItWorks />
 				<LedgerCases />
 				<LedgerFeatures />
 				<LedgerIntegrations />
+				<LedgerTrust />
 				<LedgerPricing />
-				{/* <LedgerPartnershipProgram /> */}
 				<LedgerFAQ />
 				<LedgerClosingCTA />
 			</main>
