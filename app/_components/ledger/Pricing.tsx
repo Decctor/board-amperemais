@@ -113,6 +113,12 @@ export function LedgerPricing() {
 
 						{/* Caminho 2 — Plataforma + Gestor de Crescimento (hero, recomendado) */}
 						<div className="relative">
+							{/* Selo fora do card com overflow-hidden, para não ser cortado; recuado da borda para caber no mobile */}
+							<div className="absolute -top-3 right-5 z-[25] lg:right-6">
+								<Stamp variant="amber" size="md" rotate={6}>
+									Recomendado
+								</Stamp>
+							</div>
 							<div
 								className="ledger-fade relative flex flex-col h-full rounded-3xl bg-gradient-to-br from-[#24549c] to-[#1a3d7a] text-white p-7 lg:p-8 shadow-[0_28px_60px_-20px_rgba(36,84,156,0.45),0_8px_16px_rgba(36,84,156,0.18)] overflow-hidden"
 								style={{ "--i": 4 } as React.CSSProperties}
@@ -123,13 +129,6 @@ export function LedgerPricing() {
 									className="ledger-ambient absolute -top-16 -right-16 w-[200px] h-[200px] rounded-full bg-[#ffb900]/15 blur-3xl pointer-events-none"
 									aria-hidden
 								/>
-
-								{/* Floating stamp */}
-								<div className="absolute -top-3 -right-2 z-[25]">
-									<Stamp variant="amber" size="md" rotate={6}>
-										Recomendado
-									</Stamp>
-								</div>
 
 								<p className="relative text-[11px] font-extrabold tracking-[0.18em] uppercase text-white/65 mb-1.5">Plataforma + Gestor de Crescimento</p>
 								<p className="relative text-[15px] font-bold text-white mb-6">A gente opera por você.</p>
