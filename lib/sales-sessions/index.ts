@@ -1,4 +1,5 @@
 export { resolveActiveSalesSession } from "./resolve-active-sales-session";
+export { validateSalesSessionSeller } from "./validate-sales-session-seller";
 export { computeSessionExpectedByMethod } from "./compute-session-expected-by-method";
 export type { TSessionExpectedByMethod } from "./compute-session-expected-by-method";
 export { closeSalesSession } from "./close-sales-session";

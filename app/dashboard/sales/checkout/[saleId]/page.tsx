@@ -35,6 +35,7 @@ export default async function Checkout({ params }: { params: Promise<{ saleId: s
 
 	return (
 		<CheckoutPage
+			organizationId={organizationId}
 			saleId={saleId}
 			organizationCashbackProgram={organizationCashbackProgram ?? null}
 			organizationConfiguration={organizationConfiguration}

@@ -11,7 +11,7 @@ import type { TPaymentMethodEnum } from "@/schemas/enums";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 const PAYMENT_METHOD_OPTIONS: { id: TPaymentMethodEnum; value: TPaymentMethodEnum; label: string }[] = [
@@ -52,6 +52,9 @@ export function CloseTab({ tabId, consumoParcial, closeModal, callbacks }: Close
 	const [sessaoVendaId, setSessaoVendaId] = useState<string | null>(null);
 
 	const { data: openSessions } = useQuery({ queryKey: ["open-sales-sessions"], queryFn: fetchOpenSalesSessions });
+	useEffect(() => {
+		if (openSessions?.length === 1) setSessaoVendaId((current) => current ?? openSessions[0].id);
+	}, [openSessions]);
 	const { data: financialAccounts } = usePOSFinancialAccounts();
 	const accountOptions = (financialAccounts?.contas ?? []).map((conta) => ({ id: conta.id, value: conta.id, label: conta.nome }));
 	const methodsWithEditableAccount = financialAccounts?.metodosComContaEditavel ?? [];
@@ -168,7 +171,7 @@ export function CloseTab({ tabId, consumoParcial, closeModal, callbacks }: Close
 						options={(openSessions ?? []).map((session) => ({
 							id: session.id,
 							value: session.id,
-							label: session.responsavelVendedor?.nome ? `CAIXA — ${session.responsavelVendedor.nome}` : `CAIXA ${session.id.slice(0, 6)}`,
+							label: `${session.politica === "VENDEDOR_UNICO" ? "VENDEDOR ÚNICO" : "MÚLTIPLOS VENDEDORES"}${session.vendedorPadrao?.nome ? ` — ${session.vendedorPadrao.nome}` : ""}`,
 						}))}
 						resetOptionLabel="NENHUMA"
 						handleChange={(value) => setSessaoVendaId(value)}

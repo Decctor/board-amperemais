@@ -3,7 +3,7 @@ import { requireERPSession } from "@/lib/authentication/erp-session";
 import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema } from "@/lib/payments";
-import { resolveActiveSalesSession } from "@/lib/sales-sessions";
+import { resolveActiveSalesSession, validateSalesSessionSeller } from "@/lib/sales-sessions";
 import { closeTab } from "@/lib/tabs";
 import { db } from "@/services/drizzle";
 import createHttpError from "http-errors";
@@ -36,6 +36,12 @@ async function closeTabService({ input, session }: { input: TCloseTabRouteInput;
 	if (input.sessaoVendaId) {
 		const activeSession = await resolveActiveSalesSession({ orgId, sessaoVendaId: input.sessaoVendaId });
 		if (!activeSession) throw new createHttpError.BadRequest("Sessao de venda invalida ou nao esta aberta.");
+		const draftSale = await db.query.sales.findFirst({
+			where: (fields, { and, eq }) => and(eq(fields.tabId, input.tabId), eq(fields.organizacaoId, orgId), eq(fields.statusVenda, "ORCAMENTO")),
+			columns: { vendedorId: true },
+		});
+		if (!draftSale) throw new createHttpError.BadRequest("Conta sem venda em aberto.");
+		validateSalesSessionSeller({ session: activeSession, vendedorId: draftSale.vendedorId });
 		sessaoVendaId = activeSession.id;
 	}
 

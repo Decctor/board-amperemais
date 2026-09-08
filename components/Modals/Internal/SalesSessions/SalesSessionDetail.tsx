@@ -5,10 +5,14 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatToMoney } from "@/lib/formatting";
 import { reviewSalesSession } from "@/lib/mutations/sales-sessions";
 import { useSalesSessionById } from "@/lib/queries/sales-sessions";
+import { summarizeSessionSalesBySeller } from "@/lib/sales-sessions/summarize-session-sales-by-seller";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { toast } from "sonner";
+import { SalePaymentMethodsOptions } from "@/utils/select-options";
+
+const paymentLabels = new Map(SalePaymentMethodsOptions.map((option) => [option.value, option.label]));
 
 type SalesSessionDetailProps = {
 	sessionId: string;
@@ -34,6 +38,7 @@ export default function SalesSessionDetail({ sessionId, closeModal, canReview = 
 
 	const isOpen = session?.status === "ABERTA";
 	const canReviewThisSession = canReview && session?.status === "FECHADA";
+	const vendasPorVendedor = summarizeSessionSalesBySeller(session?.vendas ?? []);
 	const linhas = isOpen
 		? (session?.resumoEsperado ?? []).map((linha) => ({
 				metodo: linha.metodo,
@@ -66,19 +71,21 @@ export default function SalesSessionDetail({ sessionId, closeModal, canReview = 
 			) : (
 				<div className="flex w-full flex-col gap-4">
 					<div className="flex flex-col gap-1 rounded-lg bg-muted/50 p-3">
-						<SessionMetaRow label="RESPONSÁVEL" value={session.responsavelVendedor?.nome ?? "—"} />
+						<SessionMetaRow label="POLÍTICA" value={session.politica === "VENDEDOR_UNICO" ? "Vendedor único" : "Vendedores múltiplos"} />
+						<SessionMetaRow label="VENDEDOR PADRÃO" value={session.vendedorPadrao?.nome ?? "—"} />
 						<SessionMetaRow label="ABERTURA" value={dayjs(session.dataAbertura).format("DD/MM/YYYY HH:mm")} />
 						<SessionMetaRow label="FECHAMENTO" value={session.dataFechamento ? dayjs(session.dataFechamento).format("DD/MM/YYYY HH:mm") : "—"} />
 						<SessionMetaRow label="FUNDO DE TROCO" value={formatToMoney(session.saldoInicial)} />
 						{session.status === "CONFERIDA" ? <SessionMetaRow label="CONFERIDA POR" value={session.conferidaPorUsuario?.nome ?? "—"} /> : null}
 					</div>
+					{vendasPorVendedor.length > 0 ? <div className="flex flex-col gap-2"><span className="font-bold text-[11px] uppercase tracking-[0.08em] text-muted-foreground">VENDAS POR VENDEDOR</span>{vendasPorVendedor.map((item) => <div key={item.vendedorId ?? "sem-vendedor"} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"><span>{item.vendedorNome} <span className="text-xs text-muted-foreground">({item.quantidadeVendas})</span></span><span className="font-semibold tabular-nums">{formatToMoney(item.valorTotal)}</span></div>)}</div> : null}
 
 					<div className="flex flex-col gap-2">
 						<span className="font-bold text-[11px] uppercase tracking-[0.08em] text-muted-foreground">CONFERENCIA POR METODO</span>
 						{linhas.length === 0 ? <span className="text-xs text-muted-foreground">Nenhum movimento neste turno.</span> : null}
 						{linhas.map((linha) => (
 							<div key={linha.metodo} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-								<span className="font-semibold text-sm">{linha.metodo}</span>
+								<span className="font-semibold text-sm">{paymentLabels.get(linha.metodo) ?? linha.metodo.replaceAll("_", " ")}</span>
 								<div className="flex items-center gap-4 text-xs tabular-nums">
 									<span className="text-muted-foreground">Esperado {formatToMoney(linha.valorEsperado)}</span>
 									{linha.valorInformado !== null ? <span>Contado {formatToMoney(linha.valorInformado)}</span> : null}

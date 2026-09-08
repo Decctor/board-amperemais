@@ -3,6 +3,7 @@ import { type TCouponCartItem, evaluateCouponAgainstCart } from "@/lib/coupons/e
 import { cancelCouponRedemption } from "@/lib/coupons/redemption";
 import { ACCOUNTING_ENTRY_BALANCE_TOLERANCE, getAccountingEntryBalanceError } from "@/lib/finances/accounting-entry-balance";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
+import { validateSalesSessionSeller } from "@/lib/sales-sessions";
 import { getSaleChangeTotal } from "@/lib/sales/sale-change";
 import { resolveSaleEditability } from "@/lib/sales/sale-editability";
 import { consumeSaleDiscountApproval } from "@/lib/sales/sale-discount-authorization";
@@ -12,7 +13,7 @@ import { POS_REWARD_SALE_ITEM_ORIGIN } from "@/lib/sales/sale-reward-redemption"
 import { readShopDeliveryFee } from "@/lib/shop/config";
 import type { TDeliveryModeEnum } from "@/schemas/enums";
 import type { DBTransaction } from "@/services/drizzle";
-import { accountingEntries, couponRedemptions, financialTransactions, saleItemModifiers, saleItems, sales } from "@/services/drizzle/schema";
+import { accountingEntries, couponRedemptions, financialTransactions, saleItemModifiers, saleItems, sales, salesSessions } from "@/services/drizzle/schema";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import { and, eq, isNull, ne, notInArray, or } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -171,6 +172,16 @@ export async function processConfirmedSaleEditInTransaction({ tx, input }: { tx:
 
 	// Re-checagem autoritativa da política DENTRO da transação: a editabilidade vista pelo cliente
 	// pode ter mudado (nota emitida, entrega concluída, cancelamento) entre o GET e o PUT.
+	if (input.sessaoVendaId) {
+		const [lockedSession] = await tx
+			.select({ status: salesSessions.status, politica: salesSessions.politica, vendedorPadraoId: salesSessions.vendedorPadraoId })
+			.from(salesSessions)
+			.where(and(eq(salesSessions.id, input.sessaoVendaId), eq(salesSessions.organizacaoId, organizationId)))
+			.for("update");
+		if (!lockedSession || lockedSession.status !== "ABERTA") throw new createHttpError.Conflict("A sessao de venda foi fechada. Selecione outro caixa e tente novamente.");
+		validateSalesSessionSeller({ session: lockedSession, vendedorId: input.vendedorId });
+	}
+
 	const saleTransactions = sale.lancamentosContabeis.flatMap((entry) => entry.transacoesFinanceiras);
 	const editability = resolveSaleEditability({
 		statusVenda: sale.statusVenda,

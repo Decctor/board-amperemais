@@ -33,7 +33,7 @@ export default function RegisterMovement({ sessionId, closeModal, callbacks }: R
 		onSuccess: (data) => {
 			toast.success(data.message);
 			queryClient.invalidateQueries({ queryKey: ["sales-session-by-id", sessionId] });
-			queryClient.invalidateQueries({ queryKey: ["active-sales-session"] });
+			queryClient.invalidateQueries({ queryKey: ["open-sales-sessions"] });
 			callbacks?.onSuccess?.();
 			closeModal();
 		},

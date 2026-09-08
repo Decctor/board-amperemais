@@ -42,6 +42,7 @@ export default async function NewSale() {
 	}
 	return (
 		<NewSalePage
+			organizationId={organizationId}
 			organizationCashbackProgram={organizationCashbackProgram ?? null}
 			organizationConfiguration={organizationConfiguration}
 			organizationFinancialAccounts={organizationFinancialAccounts}

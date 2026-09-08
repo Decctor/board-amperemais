@@ -19,7 +19,6 @@ const GetSalesSessionsInputSchema = z.object({
 		.nullable()
 		.transform((v) => (v ? Number(v) : 1)),
 	status: z.enum(["ABERTA", "FECHADA", "CONFERIDA", "CANCELADA"]).optional().nullable(),
-	responsavelVendedorId: z.string({ invalid_type_error: "Tipo invalido para o ID do vendedor responsavel." }).optional().nullable(),
 });
 export type TGetSalesSessionsInput = z.infer<typeof GetSalesSessionsInputSchema>;
 
@@ -31,10 +30,10 @@ async function getSalesSessions({ input, session }: { input: TGetSalesSessionsIn
 		const found = await db.query.salesSessions.findFirst({
 			where: and(eq(salesSessions.id, input.id), eq(salesSessions.organizacaoId, orgId)),
 			with: {
-				responsavelVendedor: { columns: { id: true, nome: true } },
+				vendedorPadrao: { columns: { id: true, nome: true } },
 				conferidaPorUsuario: { columns: { id: true, nome: true } },
 				conferencias: true,
-				vendas: { columns: { id: true, valorTotal: true, dataVenda: true }, with: { cliente: { columns: { id: true, nome: true } } } },
+				vendas: { columns: { id: true, valorTotal: true, dataVenda: true, vendedorId: true, vendedorNome: true }, with: { cliente: { columns: { id: true, nome: true } } } },
 			},
 		});
 		if (!found) throw new createHttpError.NotFound("Sessão de venda não encontrada.");
@@ -74,7 +73,6 @@ async function getSalesSessions({ input, session }: { input: TGetSalesSessionsIn
 
 	const conditions = [eq(salesSessions.organizacaoId, orgId)];
 	if (input.status) conditions.push(eq(salesSessions.status, input.status));
-	if (input.responsavelVendedorId) conditions.push(eq(salesSessions.responsavelVendedorId, input.responsavelVendedorId));
 
 	const page = input.page && input.page > 0 ? input.page : 1;
 	const skip = PAGE_SIZE * (page - 1);
@@ -82,7 +80,7 @@ async function getSalesSessions({ input, session }: { input: TGetSalesSessionsIn
 	const [sessionsResult, totalResult] = await Promise.all([
 		db.query.salesSessions.findMany({
 			where: and(...conditions),
-			with: { responsavelVendedor: { columns: { id: true, nome: true } } },
+			with: { vendedorPadrao: { columns: { id: true, nome: true } } },
 			orderBy: desc(salesSessions.dataAbertura),
 			offset: skip,
 			limit: PAGE_SIZE,
@@ -121,7 +119,6 @@ async function getSalesSessionsRoute(request: NextRequest) {
 		id: searchParams.get("id") ?? undefined,
 		page: searchParams.get("page") ?? undefined,
 		status: searchParams.get("status") ?? undefined,
-		responsavelVendedorId: searchParams.get("responsavelVendedorId") ?? undefined,
 	});
 	const result = await getSalesSessions({ input, session });
 	return NextResponse.json(result);

@@ -4,6 +4,7 @@ import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import { ConfirmSaleChange } from "@/components/Modals/Sales/ConfirmSaleChange";
 import { DiscountApproval } from "@/components/Modals/Sales/DiscountApproval";
 import { Button } from "@/components/ui/button";
+import CashSessionBar from "@/components/CashSessions/CashSessionBar";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { TGetPOSProductsOutput } from "@/app/api/pos/products/route";
 import type { TAutoEmissionExceptions } from "@/lib/fiscal/auto-emission-policy";
@@ -69,6 +70,7 @@ function mapItemsToApi(saleState: TUseSaleState) {
 }
 
 type CheckoutPageProps = {
+	organizationId: string;
 	saleId: string;
 	organizationCashbackProgram: TCashbackProgramEntity | null;
 	organizationConfiguration: TOrganizationConfiguration;
@@ -80,6 +82,7 @@ type CheckoutPageProps = {
 };
 
 export default function CheckoutPage({
+	organizationId,
 	saleId,
 	organizationCashbackProgram,
 	organizationConfiguration,
@@ -175,7 +178,7 @@ export default function CheckoutPage({
 	const sessoesConfig = organizationConfiguration.preferencias.sessoesVenda;
 	const cashEnabled = !!sessoesConfig?.habilitado;
 	const cashObrigatorio = !!sessoesConfig?.obrigatorio;
-	const { session: activeSession } = useActiveSalesSession({ vendedorId: saleState.state.vendedorId, enabled: cashEnabled });
+	const { session: activeSession, sessions: openSessions, activeSessionId, setActiveSessionId, isLoading: cashLoading } = useActiveSalesSession({ organizationId, enabled: cashEnabled });
 	const cashBlockingConfirm = cashEnabled && cashObrigatorio && !activeSession;
 
 	// Teto de desconto: feedback imediato aqui, enforcement autoritativo na rota.
@@ -398,6 +401,7 @@ export default function CheckoutPage({
 		<CheckoutPanel
 			organizationCashbackProgram={organizationCashbackProgram}
 			saleState={saleState}
+			sellerEditable={activeSession?.politica !== "VENDEDOR_UNICO"}
 			organizationAutoFiscalEmission={organizationAutoFiscalEmission}
 			organizationAutoFiscalCapable={organizationAutoFiscalCapable}
 			autoEmissionExceptions={autoEmissionExceptions}
@@ -429,6 +433,7 @@ export default function CheckoutPage({
 					{isCatalogOpen ? "OCULTAR CATÁLOGO" : "ADICIONAR ITENS"}
 				</Button>
 			</div>
+			{cashEnabled ? <CashSessionBar session={activeSession} sessions={openSessions} activeSessionId={activeSessionId} onSessionChange={setActiveSessionId} isLoading={cashLoading} exigirFundoTroco={!!sessoesConfig?.exigirFundoTroco} conferenciaCega={!!sessoesConfig?.conferenciaCega} /> : null}
 
 			<div className="flex min-h-0 flex-1 gap-3">
 				{isCatalogOpen ? (

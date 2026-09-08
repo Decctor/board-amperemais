@@ -6,8 +6,9 @@ import type { TBenefitRedemptionSurface } from "@/schemas/enums";
 import { processCouponRedemption } from "@/lib/coupons/redemption";
 import { processSaleCupomAutoPrintIfEligible } from "@/lib/desktop-agent/auto-print";
 import { type TPaymentSplit, getPaymentProvider } from "@/lib/payments";
+import { validateSalesSessionSeller } from "@/lib/sales-sessions";
 import { db, type DBTransaction } from "@/services/drizzle";
-import { cashbackProgramBalances, cashbackProgramTransactions, cashbackPrograms, couponRedemptions, sales } from "@/services/drizzle/schema";
+import { cashbackProgramBalances, cashbackProgramTransactions, cashbackPrograms, couponRedemptions, sales, salesSessions } from "@/services/drizzle/schema";
 import type { TOrganizationEntity } from "@/services/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
@@ -83,6 +84,16 @@ export async function processSaleConfirmationInTransaction({ tx, input }: { tx: 
 
 	if (sale.statusVenda !== "ORCAMENTO") {
 		throw new createHttpError.BadRequest(`Venda nao pode ser confirmada no status atual: ${sale.statusVenda}`);
+	}
+
+	if (input.sessaoVendaId) {
+		const [lockedSession] = await tx
+			.select({ id: salesSessions.id, status: salesSessions.status, politica: salesSessions.politica, vendedorPadraoId: salesSessions.vendedorPadraoId })
+			.from(salesSessions)
+			.where(and(eq(salesSessions.id, input.sessaoVendaId), eq(salesSessions.organizacaoId, input.organization.id)))
+			.for("update");
+		if (!lockedSession || lockedSession.status !== "ABERTA") throw new createHttpError.Conflict("A sessao de venda foi fechada. Selecione outro caixa e tente novamente.");
+		validateSalesSessionSeller({ session: lockedSession, vendedorId: sale.vendedorId });
 	}
 
 	// Status operacional inicial conforme a modalidade de entrega.

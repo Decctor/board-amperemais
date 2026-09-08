@@ -177,7 +177,6 @@ export const DEFAULT_ORGANIZATION_CONFIGURATION_PREFERENCES: TOrganizationConfig
 	sessoesVenda: {
 		habilitado: false,
 		obrigatorio: false,
-		escopo: "OPERADOR",
 		exigirFundoTroco: false,
 		conferenciaCega: false,
 		bloquearFechamentoComPendenciaFiscal: false,

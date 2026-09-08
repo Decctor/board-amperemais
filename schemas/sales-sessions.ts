@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PaymentMethodEnum, SalesSessionMovementTypeEnum, SalesSessionStatusEnum } from "./enums";
+import { PaymentMethodEnum, SalesSessionMovementTypeEnum, SalesSessionPolicyEnum, SalesSessionStatusEnum } from "./enums";
 
 // ============================================================================
 // SALES SESSIONS (Sessões de Venda)
@@ -11,11 +11,8 @@ export const SalesSessionSchema = z.object({
 		invalid_type_error: "Tipo nao valido para o ID da organizacao.",
 	}),
 	contaFinanceiraId: z.string({ invalid_type_error: "Tipo nao valido para o ID da conta financeira." }).optional().nullable(),
-	responsavelVendedorId: z.string({ invalid_type_error: "Tipo nao valido para o ID do vendedor responsavel." }).optional().nullable(),
-	escopoChave: z.string({
-		required_error: "Chave de escopo da sessao nao informada.",
-		invalid_type_error: "Tipo nao valido para a chave de escopo da sessao.",
-	}),
+	politica: SalesSessionPolicyEnum.default("VENDEDOR_UNICO"),
+	vendedorPadraoId: z.string({ invalid_type_error: "Tipo nao valido para o ID do vendedor padrao." }).optional().nullable(),
 	abertaPorUsuarioId: z.string({ invalid_type_error: "Tipo nao valido para o ID do usuario que abriu a sessao." }).optional().nullable(),
 	fechadaPorUsuarioId: z.string({ invalid_type_error: "Tipo nao valido para o ID do usuario que fechou a sessao." }).optional().nullable(),
 	conferidaPorUsuarioId: z.string({ invalid_type_error: "Tipo nao valido para o ID do usuario que conferiu a sessao." }).optional().nullable(),
@@ -80,12 +77,14 @@ export type TSalesSessionReconciliation = z.infer<typeof SalesSessionReconciliat
 // Abertura de sessão.
 export const OpenSalesSessionInputSchema = z.object({
 	contaFinanceiraId: z.string({ invalid_type_error: "Tipo nao valido para o ID da conta financeira." }).optional().nullable(),
-	responsavelVendedorId: z.string({
-		required_error: "Vendedor responsavel nao informado.",
-		invalid_type_error: "Tipo nao valido para o ID do vendedor responsavel.",
-	}),
+	politica: SalesSessionPolicyEnum,
+	vendedorPadraoId: z.string({ invalid_type_error: "Tipo nao valido para o ID do vendedor padrao." }).optional().nullable(),
 	saldoInicial: z.number({ invalid_type_error: "Tipo nao valido para o saldo inicial." }).min(0, { message: "Saldo inicial nao pode ser negativo." }).default(0),
 	observacoesAbertura: z.string({ invalid_type_error: "Tipo nao valido para as observacoes de abertura." }).optional().nullable(),
+}).superRefine((input, ctx) => {
+	if (input.politica === "VENDEDOR_UNICO" && !input.vendedorPadraoId) {
+		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["vendedorPadraoId"], message: "Vendedor padrao nao informado." });
+	}
 });
 export type TOpenSalesSessionInput = z.infer<typeof OpenSalesSessionInputSchema>;
 

@@ -16,7 +16,6 @@ type TModulesDraft = Pick<TPreferences, "carteirasClientes" | "rastreamentoEstoq
 const EMPTY_SESSOES_VENDA = {
 	habilitado: false,
 	obrigatorio: false,
-	escopo: "OPERADOR",
 	exigirFundoTroco: false,
 	conferenciaCega: false,
 	bloquearFechamentoComPendenciaFiscal: false,
@@ -126,7 +125,7 @@ export default function SettingsModules({ membership }: SettingsModulesProps) {
 
 					<ModuleCard
 						title="SESSÕES DE VENDA"
-						description="Abertura, movimentação e fechamento de caixa no balcão. O escopo atual é por vendedor responsável."
+						description="Abertura, movimentação e fechamento de caixa no balcão. Cada caixa define sua política de vendedores ao abrir."
 						checked={sessoesVenda.habilitado}
 						onCheckedChange={(checked) => updateSessoesVenda({ habilitado: checked })}
 						editable={canEdit}

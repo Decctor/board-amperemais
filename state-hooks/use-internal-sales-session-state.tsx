@@ -8,7 +8,8 @@ type TSalesSessionOpenState = {
 const getInitialState = (initialState?: Partial<TOpenSalesSessionInput>): TSalesSessionOpenState => ({
 	openInput: {
 		contaFinanceiraId: initialState?.contaFinanceiraId ?? null,
-		responsavelVendedorId: initialState?.responsavelVendedorId ?? "",
+		politica: initialState?.politica ?? "VENDEDORES_MULTIPLOS",
+		vendedorPadraoId: initialState?.vendedorPadraoId ?? null,
 		saldoInicial: initialState?.saldoInicial ?? 0,
 		observacoesAbertura: initialState?.observacoesAbertura ?? null,
 	},

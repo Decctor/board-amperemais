@@ -44,6 +44,7 @@ export default async function EditSale({ params }: { params: Promise<{ saleId: s
 
 	return (
 		<EditSalePage
+			organizationId={organizationId}
 			saleId={saleId}
 			organizationCashbackProgram={organizationCashbackProgram ?? null}
 			organizationConfiguration={organizationConfiguration}

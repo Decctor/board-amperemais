@@ -1,5 +1,12 @@
 # Sessões de Venda e Fechamento de Caixa — Plano de Implementação
 
+> Atualização de 2026-09: o modelo de responsável/`escopoChave` descrito no plano original abaixo
+> foi substituído. A sessão agora possui `politica` (`VENDEDOR_UNICO` ou
+> `VENDEDORES_MULTIPLOS`) e `vendedorPadraoId` opcional. A venda escolhe a sessão explicitamente e
+> `sales.vendedorId` é a única fonte de atribuição do vendedor. Não há política padrão por
+> organização nem tabela de participantes. As referências antigas a escopo por responsável neste
+> documento são mantidas apenas como histórico da primeira implementação.
+
 > Status: planejamento aprovado, pronto para implementação.
 > Conceito antes chamado de "caixas / cash sessions". Renomeado para **sessões de venda**
 > (`sales_sessions`) para não acoplar o conceito exclusivamente a "caixa de balcão" —

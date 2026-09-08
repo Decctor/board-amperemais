@@ -968,3 +968,4 @@ export const onboardingIntentOriginEnum = pgEnum("onboarding_intent_origin", [
   "PERGUNTA",
   "SEGUNDO_PRODUTO",
 ]);
+export const salesSessionPolicyEnum = pgEnum("sales_session_policy", ["VENDEDOR_UNICO", "VENDEDORES_MULTIPLOS"]);

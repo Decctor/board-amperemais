@@ -5,7 +5,7 @@ import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, resolvePaymentFinancialAccounts } from "@/lib/payments";
 import { toSalesChannelType } from "@/lib/products/sales-channels";
 import { computeSaleItemsPricingDrift } from "@/lib/sales/sale-pricing-validation";
-import { resolveActiveSalesSession } from "@/lib/sales-sessions";
+import { resolveActiveSalesSession, validateSalesSessionSeller } from "@/lib/sales-sessions";
 import { authorizeSaleDiscount, computeSaleAggregatedDiscount, consumeSaleDiscountApproval } from "@/lib/sales/sale-discount-authorization";
 import {
 	type TProcessSaleConfirmationInput,
@@ -129,6 +129,7 @@ async function confirmSale({ input, session }: { input: TConfirmSaleInput; sessi
 	if (input.sessaoVendaId) {
 		const activeSession = await resolveActiveSalesSession({ orgId, sessaoVendaId: input.sessaoVendaId });
 		if (!activeSession) throw new createHttpError.BadRequest("Sessao de venda invalida ou nao esta aberta.");
+		validateSalesSessionSeller({ session: activeSession, vendedorId: saleDraft.vendedorId });
 		sessaoVendaId = activeSession.id;
 	}
 

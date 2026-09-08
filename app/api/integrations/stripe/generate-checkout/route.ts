@@ -126,7 +126,6 @@ async function generateCheckoutRoute(request: NextRequest) {
 					sessoesVenda: {
 						habilitado: false,
 						obrigatorio: false,
-						escopo: "OPERADOR",
 						exigirFundoTroco: false,
 						conferenciaCega: false,
 						bloquearFechamentoComPendenciaFiscal: false,

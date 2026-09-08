@@ -3,6 +3,7 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import LoadingComponent from "@/components/Layouts/LoadingComponent";
 import { Button } from "@/components/ui/button";
+import CashSessionBar from "@/components/CashSessions/CashSessionBar";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { DiscountApproval } from "@/components/Modals/Sales/DiscountApproval";
 import { getErrorMessage } from "@/lib/errors";
@@ -78,6 +79,7 @@ function mapItemsToApi(saleState: TUseSaleState, deletedItemIds: string[]) {
 }
 
 type EditSalePageProps = {
+	organizationId: string;
 	saleId: string;
 	organizationCashbackProgram: TCashbackProgramEntity | null;
 	organizationConfiguration: TOrganizationConfiguration;
@@ -89,6 +91,7 @@ type EditSalePageProps = {
 };
 
 export default function EditSalePage({
+	organizationId,
 	saleId,
 	organizationCashbackProgram,
 	organizationConfiguration,
@@ -133,8 +136,8 @@ export default function EditSalePage({
 	// splits IMEDIATA regenerados caem nele.
 	const sessoesConfig = organizationConfiguration.preferencias.sessoesVenda;
 	const cashEnabled = !!sessoesConfig?.habilitado;
-	const { session: activeSession } = useActiveSalesSession({
-		vendedorId: saleState.state.vendedorId,
+	const { session: activeSession, sessions: openSessions, activeSessionId, setActiveSessionId, isLoading: cashLoading } = useActiveSalesSession({
+		organizationId,
 		enabled: cashEnabled,
 	});
 
@@ -361,6 +364,7 @@ export default function EditSalePage({
 					</div>
 				</div>
 			</div>
+			{cashEnabled ? <CashSessionBar session={activeSession} sessions={openSessions} activeSessionId={activeSessionId} onSessionChange={setActiveSessionId} isLoading={cashLoading} exigirFundoTroco={!!sessoesConfig?.exigirFundoTroco} conferenciaCega={!!sessoesConfig?.conferenciaCega} /> : null}
 			<div className="flex flex-1 min-h-0 gap-3">
 				<div className="flex min-w-0 flex-1 flex-col gap-4 rounded-xl bg-background">
 					<div className="shrink-0 flex flex-col gap-3">
@@ -403,6 +407,7 @@ export default function EditSalePage({
 						<CheckoutPanel
 							organizationCashbackProgram={organizationCashbackProgram}
 							saleState={saleState}
+							sellerEditable={activeSession?.politica !== "VENDEDOR_UNICO"}
 							organizationAutoFiscalEmission={organizationAutoFiscalEmission}
 							organizationAutoFiscalCapable={organizationAutoFiscalCapable}
 							autoEmissionExceptions={autoEmissionExceptions}
@@ -438,6 +443,7 @@ export default function EditSalePage({
 									<CheckoutPanel
 										organizationCashbackProgram={organizationCashbackProgram}
 										saleState={saleState}
+										sellerEditable={activeSession?.politica !== "VENDEDOR_UNICO"}
 										organizationAutoFiscalEmission={organizationAutoFiscalEmission}
 										organizationAutoFiscalCapable={organizationAutoFiscalCapable}
 										autoEmissionExceptions={autoEmissionExceptions}

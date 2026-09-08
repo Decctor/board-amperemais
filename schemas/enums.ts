@@ -1074,8 +1074,8 @@ export const SalesSessionStatusEnum = z.enum([
 export type TSalesSessionStatusEnum = z.infer<typeof SalesSessionStatusEnum>;
 
 // Escopo da sessão de venda: como resolver "qual sessão?". Nesta versão só OPERADOR (responsável).
-export const SalesSessionScopeEnum = z.enum(["OPERADOR"]);
-export type TSalesSessionScopeEnum = z.infer<typeof SalesSessionScopeEnum>;
+export const SalesSessionPolicyEnum = z.enum(["VENDEDOR_UNICO", "VENDEDORES_MULTIPLOS"]);
+export type TSalesSessionPolicyEnum = z.infer<typeof SalesSessionPolicyEnum>;
 
 // Movimento manual de caixa dentro de uma sessão.
 export const SalesSessionMovementTypeEnum = z.enum(["SANGRIA", "SUPRIMENTO"]);

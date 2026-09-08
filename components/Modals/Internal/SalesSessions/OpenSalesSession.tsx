@@ -13,24 +13,14 @@ import { toast } from "sonner";
 type OpenSalesSessionProps = {
 	closeModal: () => void;
 	exigirFundoTroco?: boolean;
-	initialResponsavelVendedorId?: string | null;
-	callbacks?: {
-		onMutate?: () => void;
-		onSuccess?: () => void;
-		onError?: () => void;
-		onSettled?: () => void;
-	};
+	callbacks?: { onMutate?: () => void; onSuccess?: () => void; onError?: () => void; onSettled?: () => void };
 };
 
-export default function OpenSalesSession({ closeModal, exigirFundoTroco, initialResponsavelVendedorId, callbacks }: OpenSalesSessionProps) {
+export default function OpenSalesSession({ closeModal, exigirFundoTroco, callbacks }: OpenSalesSessionProps) {
 	const queryClient = useQueryClient();
-	const { state, updateOpenInput } = useInternalSalesSessionState({
-		initialState: initialResponsavelVendedorId ? { responsavelVendedorId: initialResponsavelVendedorId } : undefined,
-	});
-
+	const { state, updateOpenInput } = useInternalSalesSessionState();
 	const { data: sellers } = useSellersSimplified();
 	const { data: accountsData } = useFinancesAccounts({ initialFilters: { stats: false } });
-
 	const sellerOptions = (sellers ?? []).map((seller) => ({ id: seller.id, value: seller.id, label: seller.nome }));
 	const accountOptions = (accountsData?.accounts ?? [])
 		.filter((account) => account.tipo === "CAIXA")
@@ -41,8 +31,8 @@ export default function OpenSalesSession({ closeModal, exigirFundoTroco, initial
 		mutationFn: openSalesSession,
 		onMutate: () => callbacks?.onMutate?.(),
 		onSuccess: (data) => {
-			queryClient.invalidateQueries({ queryKey: ["sales-sessions"] });
-			queryClient.invalidateQueries({ queryKey: ["active-sales-session"] });
+			void queryClient.invalidateQueries({ queryKey: ["sales-sessions"] });
+			void queryClient.invalidateQueries({ queryKey: ["open-sales-sessions"] });
 			callbacks?.onSuccess?.();
 			toast.success(data.message);
 			closeModal();
@@ -55,7 +45,7 @@ export default function OpenSalesSession({ closeModal, exigirFundoTroco, initial
 	});
 
 	function handleSubmit() {
-		if (!state.openInput.responsavelVendedorId) return toast.error("Selecione o vendedor responsavel pela sessao.");
+		if (state.openInput.politica === "VENDEDOR_UNICO" && !state.openInput.vendedorPadraoId) return toast.error("Selecione o vendedor desta sessão.");
 		if (exigirFundoTroco && state.openInput.saldoInicial <= 0) return toast.error("Informe o fundo de troco para abrir o caixa.");
 		mutate(state.openInput);
 	}
@@ -63,7 +53,7 @@ export default function OpenSalesSession({ closeModal, exigirFundoTroco, initial
 	return (
 		<ResponsiveMenu
 			menuTitle="ABRIR CAIXA"
-			menuDescription="Abra uma sessao de venda informando o responsavel e o fundo de troco."
+			menuDescription="Defina como os vendedores poderão usar esta sessão."
 			menuActionButtonText="ABRIR CAIXA"
 			menuCancelButtonText="CANCELAR"
 			actionFunction={handleSubmit}
@@ -75,14 +65,29 @@ export default function OpenSalesSession({ closeModal, exigirFundoTroco, initial
 		>
 			<div className="flex w-full flex-col gap-3">
 				<SelectInput
-					label="RESPONSÁVEL"
-					value={state.openInput.responsavelVendedorId || null}
-					options={sellerOptions}
-					handleChange={(value) => updateOpenInput({ responsavelVendedorId: value })}
-					resetOptionLabel="Selecione o responsável"
-					onReset={() => updateOpenInput({ responsavelVendedorId: "" })}
+					label="POLÍTICA DE VENDEDORES"
+					value={state.openInput.politica}
+					options={[
+						{ id: "VENDEDORES_MULTIPLOS", value: "VENDEDORES_MULTIPLOS", label: "VENDEDORES MÚLTIPLOS" },
+						{ id: "VENDEDOR_UNICO", value: "VENDEDOR_UNICO", label: "VENDEDOR ÚNICO" },
+					]}
+					handleChange={(value) => updateOpenInput({ politica: value as typeof state.openInput.politica })}
+					resetOptionLabel="Selecione a política"
+					onReset={() => updateOpenInput({ politica: "VENDEDORES_MULTIPLOS" })}
 					required
 				/>
+				<SelectInput
+					label={state.openInput.politica === "VENDEDOR_UNICO" ? "VENDEDOR" : "VENDEDOR PADRÃO"}
+					value={state.openInput.vendedorPadraoId ?? null}
+					options={sellerOptions}
+					handleChange={(value) => updateOpenInput({ vendedorPadraoId: value })}
+					resetOptionLabel={state.openInput.politica === "VENDEDOR_UNICO" ? "Selecione o vendedor" : "Nenhum"}
+					onReset={() => updateOpenInput({ vendedorPadraoId: null })}
+					required={state.openInput.politica === "VENDEDOR_UNICO"}
+				/>
+				{state.openInput.politica === "VENDEDORES_MULTIPLOS" ? (
+					<p className="text-xs text-muted-foreground">O vendedor padrão apenas preenche vendas novas e pode ser alterado em cada venda.</p>
+				) : null}
 				<SelectInput
 					label="CONTA CAIXA"
 					value={state.openInput.contaFinanceiraId ?? null}

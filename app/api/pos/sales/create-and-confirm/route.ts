@@ -9,7 +9,7 @@ import {
 	buildRewardSaleItemValues,
 	buildSaleRewardDraftSnapshot,
 } from "@/lib/sales/sale-reward-redemption";
-import { resolveActiveSalesSession } from "@/lib/sales-sessions";
+import { resolveActiveSalesSession, validateSalesSessionSeller } from "@/lib/sales-sessions";
 import { authorizeSaleDiscount, computeSaleAggregatedDiscount, consumeSaleDiscountApproval } from "@/lib/sales/sale-discount-authorization";
 import { resolveSaleFiscalEmissionOverride } from "@/lib/sales/sale-fiscal-emission-override";
 import { validateSaleItemsPricing } from "@/lib/sales/sale-pricing-validation";
@@ -152,6 +152,7 @@ async function createAndConfirmSale({ input, session }: { input: TCreateAndConfi
 	if (input.sessaoVendaId) {
 		const activeSession = await resolveActiveSalesSession({ orgId, sessaoVendaId: input.sessaoVendaId });
 		if (!activeSession) throw new createHttpError.BadRequest("Sessão de venda inválida ou não está aberta.");
+		validateSalesSessionSeller({ session: activeSession, vendedorId: input.vendedorId });
 		sessaoVendaId = activeSession.id;
 	}
 

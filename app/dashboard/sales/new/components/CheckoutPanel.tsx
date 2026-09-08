@@ -57,6 +57,7 @@ type CheckoutPanelProps = {
 	hideDraftAction?: boolean;
 	// Conteúdo acima das ações — hoje o aviso de preços defasados do checkout.
 	beforeActions?: React.ReactNode;
+	sellerEditable?: boolean;
 };
 
 export default function CheckoutPanel({
@@ -77,6 +78,7 @@ export default function CheckoutPanel({
 	finalizeBlockedReason,
 	hideDraftAction,
 	beforeActions,
+	sellerEditable = true,
 }: CheckoutPanelProps) {
 	const [isVinculationMenuOpen, setIsVinculationMenuOpen] = useState(false);
 	const [isNewLocationOpen, setIsNewLocationOpen] = useState(false);
@@ -126,6 +128,7 @@ export default function CheckoutPanel({
 
 				<SelectInput
 					label="VENDEDOR"
+					editable={sellerEditable}
 					value={saleState.state.vendedorId}
 					options={sellerOptions}
 					handleChange={(value) => {

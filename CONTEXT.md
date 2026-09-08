@@ -2,6 +2,14 @@
 
 ## Food-service
 
+### Sessão de venda (`salesSession`)
+
+Recorte operacional de caixa escolhido explicitamente pela venda. A sessão define `politica` como
+`VENDEDOR_UNICO` ou `VENDEDORES_MULTIPLOS` e pode ter `vendedorPadraoId` para preencher vendas
+novas. A atribuição comercial permanece exclusivamente em `sales.vendedorId`; o vendedor padrão
+nunca substitui essa atribuição no servidor. Não existe política durável por organização nem uma
+tabela de participantes da sessão.
+
 ### Ponto de atendimento (`servicePoint`)
 
 Ancora operacional duravel em que um atendimento acontece, como mesa, balcao ou quiosque. Pode existir sem uma conta aberta e possui identidade/QR estavel. Nao e sinonimo de `poiTransactionRequest`: POI e um fluxo publico de solicitacoes de fidelidade/transacao.

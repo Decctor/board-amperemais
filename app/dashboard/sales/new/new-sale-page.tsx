@@ -71,6 +71,7 @@ function getSaleSuccessSnapshot(saleState: TUseSaleState) {
 }
 
 type NewSalePageProps = {
+	organizationId: string;
 	organizationCashbackProgram: TCashbackProgramEntity | null;
 	organizationConfiguration: TOrganizationConfiguration;
 	organizationFinancialAccounts: TSaleFinancialAccountOption[];
@@ -84,6 +85,7 @@ type NewSalePageProps = {
 	quotePermissions: TQuotePermissions;
 };
 export default function NewSalePage({
+	organizationId,
 	organizationCashbackProgram,
 	organizationConfiguration,
 	organizationFinancialAccounts,
@@ -111,10 +113,15 @@ export default function NewSalePage({
 	const sessoesConfig = organizationConfiguration.preferencias.sessoesVenda;
 	const cashEnabled = !!sessoesConfig?.habilitado;
 	const cashObrigatorio = !!sessoesConfig?.obrigatorio;
-	const { session: activeSession, isLoading: cashLoading } = useActiveSalesSession({
-		vendedorId: saleState.state.vendedorId,
+	const { session: activeSession, sessions: openSessions, activeSessionId, setActiveSessionId, isLoading: cashLoading } = useActiveSalesSession({
+		organizationId,
 		enabled: cashEnabled,
 	});
+	useEffect(() => {
+		if (activeSession?.vendedorPadrao && (activeSession.politica === "VENDEDOR_UNICO" || !saleState.state.vendedorId)) {
+			saleState.setVendedor(activeSession.vendedorPadrao.id, activeSession.vendedorPadrao.nome);
+		}
+	}, [activeSession?.id, activeSession?.vendedorPadrao, saleState.state.vendedorId, saleState.setVendedor]);
 
 	const linkedClient = saleState.state.cliente;
 	const linkedClientId = linkedClient?.id ?? null;
@@ -413,7 +420,7 @@ export default function NewSalePage({
 				success={saleState.state.success}
 				onStartNewSale={() => {
 					saleState.clearSuccess();
-					saleState.resetState(getDefaultSaleState());
+					saleState.resetState(getDefaultSaleState({ vendedorId: activeSession?.vendedorPadrao?.id ?? null, vendedorNome: activeSession?.vendedorPadrao?.nome ?? null }));
 				}}
 			/>
 		);
@@ -424,8 +431,9 @@ export default function NewSalePage({
 		return (
 			<div className="w-full h-[calc(100vh-8rem)] flex flex-col p-4">
 				<CashSessionGate
-					vendedorId={saleState.state.vendedorId || null}
-					onVendedorChange={saleState.setVendedor}
+					sessions={openSessions}
+					activeSessionId={activeSessionId}
+					onSessionChange={setActiveSessionId}
 					exigirFundoTroco={!!sessoesConfig?.exigirFundoTroco}
 				/>
 			</div>
@@ -437,9 +445,10 @@ export default function NewSalePage({
 			{cashEnabled ? (
 				<CashSessionBar
 					session={activeSession}
+					sessions={openSessions}
+					activeSessionId={activeSessionId}
+					onSessionChange={setActiveSessionId}
 					isLoading={cashLoading}
-					vendedorId={saleState.state.vendedorId || null}
-					onVendedorChange={saleState.setVendedor}
 					exigirFundoTroco={!!sessoesConfig?.exigirFundoTroco}
 					conferenciaCega={!!sessoesConfig?.conferenciaCega}
 				/>
@@ -503,6 +512,7 @@ export default function NewSalePage({
 						<CheckoutPanel
 							organizationCashbackProgram={organizationCashbackProgram}
 							saleState={saleState}
+							sellerEditable={activeSession?.politica !== "VENDEDOR_UNICO"}
 							organizationAutoFiscalEmission={organizationAutoFiscalEmission}
 							organizationAutoFiscalCapable={organizationAutoFiscalCapable}
 							autoEmissionExceptions={autoEmissionExceptions}
@@ -539,6 +549,7 @@ export default function NewSalePage({
 								<CheckoutPanel
 									organizationCashbackProgram={organizationCashbackProgram}
 									saleState={saleState}
+									sellerEditable={activeSession?.politica !== "VENDEDOR_UNICO"}
 									organizationAutoFiscalEmission={organizationAutoFiscalEmission}
 									organizationAutoFiscalCapable={organizationAutoFiscalCapable}
 									autoEmissionExceptions={autoEmissionExceptions}

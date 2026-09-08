@@ -3,7 +3,7 @@ import { getCurrentSessionUncached } from "@/lib/authentication/session";
 import { validateActiveSeller } from "@/lib/sellers/validate-active-seller";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { CheckoutPaymentSplitSchema, resolvePaymentFinancialAccounts } from "@/lib/payments";
-import { resolveActiveSalesSession } from "@/lib/sales-sessions";
+import { resolveActiveSalesSession, validateSalesSessionSeller } from "@/lib/sales-sessions";
 import { resolveSaleEditability } from "@/lib/sales/sale-editability";
 import { authorizeSaleDiscount, computeSaleAggregatedDiscount } from "@/lib/sales/sale-discount-authorization";
 import { resolveSaleFiscalEmissionOverride } from "@/lib/sales/sale-fiscal-emission-override";
@@ -236,6 +236,7 @@ async function editConfirmedSale({ input, session }: { input: TEditConfirmedSale
 	if (input.sessaoVendaId) {
 		const activeSession = await resolveActiveSalesSession({ orgId, sessaoVendaId: input.sessaoVendaId });
 		if (!activeSession) throw new createHttpError.BadRequest("Sessão de venda inválida ou não está aberta.");
+		validateSalesSessionSeller({ session: activeSession, vendedorId: input.vendedorId });
 		sessaoVendaId = activeSession.id;
 	}
 

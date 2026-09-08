@@ -1,7 +1,7 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { doublePrecision, index, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { newTable } from "./common";
-import { paymentMethodEnum, salesSessionStatusEnum } from "./enums";
+import { paymentMethodEnum, salesSessionPolicyEnum, salesSessionStatusEnum } from "./enums";
 import { financialAccounts, financialTransactions } from "./financial";
 import { organizations } from "./organizations";
 import { sales } from "./sales";
@@ -24,10 +24,9 @@ export const salesSessions = newTable(
 			.notNull(),
 		// Conta CAIXA física do turno (nullable p/ progressive disclosure).
 		contaFinanceiraId: varchar("conta_financeira_id", { length: 255 }).references(() => financialAccounts.id, { onDelete: "set null" }),
-		// O "responsável" pelo turno — base do escopo nesta versão.
-		responsavelVendedorId: varchar("responsavel_vendedor_id", { length: 255 }).references(() => sellers.id, { onDelete: "set null" }),
-		// Chave de escopo p/ unicidade da sessão aberta (= responsavelVendedorId nesta versão; terminal no futuro).
-		escopoChave: text("escopo_chave").notNull(),
+		// A politica governa apenas quais vendedores podem atribuir vendas a esta sessao.
+		politica: salesSessionPolicyEnum("politica").notNull().default("VENDEDOR_UNICO"),
+		vendedorPadraoId: varchar("vendedor_padrao_id", { length: 255 }).references(() => sellers.id, { onDelete: "set null" }),
 		// Auditoria de operadores (usuários autenticados).
 		abertaPorUsuarioId: varchar("aberta_por_usuario_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
 		fechadaPorUsuarioId: varchar("fechada_por_usuario_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
@@ -47,7 +46,10 @@ export const salesSessions = newTable(
 	(table) => ({
 		organizacaoIdIdx: index("idx_sales_sessions_organizacao_id").on(table.organizacaoId),
 		statusIdx: index("idx_sales_sessions_status").on(table.organizacaoId, table.status),
-		responsavelIdx: index("idx_sales_sessions_responsavel").on(table.responsavelVendedorId),
+		vendedorPadraoIdx: index("idx_sales_sessions_vendedor_padrao").on(table.vendedorPadraoId),
+		vendedorUnicoAbertaUq: uniqueIndex("uq_sales_sessions_vendedor_unico_aberta")
+			.on(table.organizacaoId, table.vendedorPadraoId)
+			.where(sql`${table.status} = 'ABERTA' and ${table.politica} = 'VENDEDOR_UNICO'`),
 	}),
 );
 
@@ -60,8 +62,8 @@ export const salesSessionsRelations = relations(salesSessions, ({ one, many }) =
 		fields: [salesSessions.contaFinanceiraId],
 		references: [financialAccounts.id],
 	}),
-	responsavelVendedor: one(sellers, {
-		fields: [salesSessions.responsavelVendedorId],
+	vendedorPadrao: one(sellers, {
+		fields: [salesSessions.vendedorPadraoId],
 		references: [sellers.id],
 	}),
 	abertaPorUsuario: one(users, {
@@ -114,6 +116,7 @@ export const salesSessionReconciliations = newTable(
 	},
 	(table) => ({
 		sessaoIdx: index("idx_sales_session_reconciliations_sessao").on(table.sessaoVendaId),
+		sessaoMetodoUq: uniqueIndex("uq_sales_session_reconciliations_sessao_metodo").on(table.sessaoVendaId, table.metodo),
 	}),
 );
 

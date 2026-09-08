@@ -4,7 +4,6 @@ import {
 	DiscountLimitTypeEnum,
 	OrganizationIntegrationTypeEnum,
 	PoiRegistrationFlowEnum,
-	SalesSessionScopeEnum,
 } from "./enums";
 import { OrganizationFiscalConfigSchema } from "./fiscal";
 import { DataSourceIntegrationConfigSchema } from "./integrations";
@@ -318,7 +317,6 @@ export const OrganizationConfigurationSchema = z.object({
 			.object({
 				habilitado: z.boolean({ invalid_type_error: "Tipo não válido para a habilitação de sessões de venda." }),
 				obrigatorio: z.boolean({ invalid_type_error: "Tipo não válido para a obrigatoriedade de sessões de venda." }),
-				escopo: SalesSessionScopeEnum,
 				exigirFundoTroco: z.boolean({ invalid_type_error: "Tipo não válido para a exigência de fundo de troco." }),
 				conferenciaCega: z.boolean({ invalid_type_error: "Tipo não válido para a conferência cega." }),
 				bloquearFechamentoComPendenciaFiscal: z.boolean({
@@ -328,7 +326,6 @@ export const OrganizationConfigurationSchema = z.object({
 			.default({
 				habilitado: false,
 				obrigatorio: false,
-				escopo: "OPERADOR",
 				exigirFundoTroco: false,
 				conferenciaCega: false,
 				bloquearFechamentoComPendenciaFiscal: false,

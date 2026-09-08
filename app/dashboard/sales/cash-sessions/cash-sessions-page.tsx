@@ -59,11 +59,7 @@ export default function CashSessionsPage({ sessoesConfig, canReviewSessions }: C
 
 	return (
 		<div className="flex w-full flex-col gap-6 p-1">
-			<div className="flex flex-wrap items-center justify-between gap-3">
-				<div className="flex flex-col">
-					<h1 className="font-black text-2xl tracking-tight">Caixa</h1>
-					<p className="text-sm text-muted-foreground">Abra, movimente e feche as sessoes de venda do balcao.</p>
-				</div>
+			<div className="flex items-center justify-end">
 				<Button onClick={() => setModal({ type: "open" })} className="gap-1.5">
 					<Wallet className="h-4 w-4" />
 					ABRIR CAIXA
@@ -84,7 +80,7 @@ export default function CashSessionsPage({ sessoesConfig, canReviewSessions }: C
 						{openList.map((session) => (
 							<div key={session.id} className="flex flex-col gap-3 rounded-2xl border border-primary/25 bg-primary/[0.05] p-4">
 								<div className="flex items-center justify-between">
-									<span className="font-bold text-sm">{session.responsavelVendedor?.nome ?? "Sem responsavel"}</span>
+									<span className="font-bold text-sm">{session.vendedorPadrao?.nome ?? "Sem vendedor padrao"}</span>
 									<StatusBadge status={session.status} />
 								</div>
 								<div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
@@ -144,7 +140,7 @@ export default function CashSessionsPage({ sessoesConfig, canReviewSessions }: C
 								className="flex items-center justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-muted/50"
 							>
 								<div className="flex min-w-0 flex-col">
-									<span className="truncate font-semibold text-sm">{session.responsavelVendedor?.nome ?? "Sem responsavel"}</span>
+									<span className="truncate font-semibold text-sm">{session.vendedorPadrao?.nome ?? "Sem vendedor padrao"}</span>
 									<span className="text-[11px] text-muted-foreground">
 										{dayjs(session.dataAbertura).format("DD/MM HH:mm")}
 										{session.dataFechamento ? ` → ${dayjs(session.dataFechamento).format("DD/MM HH:mm")}` : ""}
@@ -199,7 +195,9 @@ export default function CashSessionsPage({ sessoesConfig, canReviewSessions }: C
 			{modal?.type === "close" ? (
 				<CloseSalesSession sessionId={modal.sessionId} closeModal={() => setModal(null)} conferenciaCega={sessoesConfig.conferenciaCega} />
 			) : null}
-			{modal?.type === "detail" ? <SalesSessionDetail sessionId={modal.sessionId} closeModal={() => setModal(null)} canReview={canReviewSessions} /> : null}
+			{modal?.type === "detail" ? (
+				<SalesSessionDetail sessionId={modal.sessionId} closeModal={() => setModal(null)} canReview={canReviewSessions} />
+			) : null}
 		</div>
 	);
 }
