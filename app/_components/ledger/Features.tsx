@@ -34,7 +34,7 @@ const ENTRIES: FeatureEntry[] = [
 		stampVariant: "soft-amber",
 		art: "/images/landing/campaign-triggers.png",
 		overlay: (
-			<ArtChip className="top-[8%] right-[2%]" tone="amber" icon={<Zap />} delayMs={600}>
+			<ArtChip className="top-[8%] right-[2%]" tone="amber" icon={<Zap />}>
 				Aniversário · Inatividade · RFM
 			</ArtChip>
 		),
@@ -54,7 +54,7 @@ const ENTRIES: FeatureEntry[] = [
 		stampVariant: "success",
 		art: "/images/onboarding/whatsapp-gateway.png",
 		overlay: (
-			<div className="ledger-float absolute bottom-[9%] left-[2%] z-10 max-w-[64%] rounded-2xl rounded-bl-md bg-white p-3 shadow-[0_14px_32px_-14px_rgba(36,84,156,0.45),0_2px_6px_rgba(0,0,0,0.06)]" style={{ animationDelay: "700ms" }}>
+			<div className="absolute bottom-[9%] left-[2%] z-10 max-w-[64%] rounded-2xl rounded-bl-md bg-white p-3 shadow-[0_14px_32px_-14px_rgba(36,84,156,0.45),0_2px_6px_rgba(0,0,0,0.06)]">
 				<p className="text-[12px] leading-snug text-[#171717] sm:text-[13px]">
 					Oi, <strong>Maria</strong>! Seu saldo de <strong className="rounded bg-[#ffb900]/35 px-1 text-[#24549c]">R$ 28,50</strong> vence em 5 dias.
 				</p>
@@ -78,10 +78,10 @@ const ENTRIES: FeatureEntry[] = [
 		art: "/images/landing/at-risk-lens.png",
 		overlay: (
 			<>
-				<ArtChip className="top-[10%] left-[0%]" tone="white" icon={<AlertTriangle className="text-[#e6a700]" />} delayMs={500}>
+				<ArtChip className="top-[10%] left-[0%]" tone="white" icon={<AlertTriangle className="text-[#e6a700]" />}>
 					Em risco · 47 dias sem comprar
 				</ArtChip>
-				<ArtChip className="right-[2%] bottom-[10%]" tone="blue" icon={<CheckCircle2 />} delayMs={1300}>
+				<ArtChip className="right-[2%] bottom-[10%]" tone="blue" icon={<CheckCircle2 />}>
 					Oferta enviada
 				</ArtChip>
 			</>
@@ -103,10 +103,10 @@ const ENTRIES: FeatureEntry[] = [
 		art: "/images/onboarding/cashback-reward.png",
 		overlay: (
 			<>
-				<ArtChip className="top-[6%] left-[2%]" tone="amber" icon={<Coins />} delayMs={400}>
+				<ArtChip className="top-[6%] left-[2%]" tone="amber" icon={<Coins />}>
 					Saldo · R$ 28,50
 				</ArtChip>
-				<ArtChip className="right-[0%] bottom-[8%]" tone="blue" icon={<Store />} delayMs={1200}>
+				<ArtChip className="right-[0%] bottom-[8%]" tone="blue" icon={<Store />}>
 					Resgate no balcão · sem app
 				</ArtChip>
 			</>

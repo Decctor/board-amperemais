@@ -267,7 +267,7 @@ Nenhuma imagem gerada é commitada sem passar pela validação de alpha e pela r
 Diretório: `app/_components/ledger/` (mantemos o "ledger" como sistema visual).
 
 1. **`_primitives/LandingArt.tsx`** — `next/image` com `aspect` (`square` | `wide`), `sizes`
-   responsivos, `priority` opcional (hero), `float` sutil (desligado com `prefers-reduced-motion`) e
+   responsivos, `priority` opcional (hero), sem animação (as ilustrações ficam estáticas) e
    slot `overlay` para chips HTML posicionados por `className`. Mobile: 160–220 px acima do texto,
    como no onboarding.
 2. **`Hero.tsx`** — grid `lg:grid-cols-[1.05fr_0.95fr]`; copy à esquerda, `LandingArt` à direita com
@@ -289,7 +289,7 @@ Diretório: `app/_components/ledger/` (mantemos o "ledger" como sistema visual).
     `SimpleFeatures`, `SimpleHero`, `SimpleHowItWorks`, `SimplePricing`, `SiteHeader`, `SocialProof`.
     `BrandHeader` e `Footer` ficam: são usados pelos layouts de `(brand-marketing)`.
 12. **CSS** — em `ledger.css`, remover keyframes órfãos (`flow-pulse`, `step-progress`, `marquee`
-    se o marquee sair) e adicionar `ledger-float` com fallback para movimento reduzido.
+    se o marquee sair). Nenhuma animação nova: as ilustrações e chips ficam estáticos.
 
 ## 9. Fases e critérios de aceite
 

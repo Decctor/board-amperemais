@@ -94,13 +94,13 @@ export function LedgerHero() {
 					{/* Art */}
 					<div className="ledger-fade mx-auto w-full max-w-[460px] lg:max-w-none" style={{ "--i": 4 } as React.CSSProperties} data-stagger>
 						<LandingArt src="/images/landing/hero-return-loop.png" aspect="wide" sizes="(max-width: 1023px) 92vw, 46vw" priority>
-							<ArtChip className="left-[1%] top-[8%]" tone="white" icon={<CheckCircle2 className="text-[#16a34a]" />} delayMs={400}>
+							<ArtChip className="left-[1%] top-[8%]" tone="white" icon={<CheckCircle2 className="text-[#16a34a]" />}>
 								Maria voltou · 3ª compra
 							</ArtChip>
-							<ArtChip className="right-[0%] top-[36%] hidden sm:inline-flex" tone="blue" icon={<Cake />} delayMs={1100}>
+							<ArtChip className="right-[0%] top-[36%] hidden sm:inline-flex" tone="blue" icon={<Cake />}>
 								Aniversário · 12 mensagens enviadas
 							</ArtChip>
-							<ArtChip className="bottom-[6%] left-[24%]" tone="amber" icon={<Coins />} delayMs={1800}>
+							<ArtChip className="bottom-[6%] left-[24%]" tone="amber" icon={<Coins />}>
 								Cashback disponível · R$ 28,50
 							</ArtChip>
 						</LandingArt>
