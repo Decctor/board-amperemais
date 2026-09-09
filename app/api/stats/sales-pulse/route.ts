@@ -67,7 +67,9 @@ async function getSalesPulse({ input, session }: { input: TGetSalesPulseInput; s
 			})
 			.from(sales)
 			.where(and(...conditions))
-			.groupBy(dayOffset);
+			// Posicional de propósito: repetir a expressão no GROUP BY faria o driver bindar o parâmetro
+			// duas vezes ($1 e $6) e o Postgres deixaria de reconhecê-la como a mesma do SELECT.
+			.groupBy(sql`1`);
 
 		for (const row of rows) buckets.set(Number(row.offset), { faturamento: Number(row.faturamento), qtdeVendas: Number(row.qtdeVendas) });
 	}
