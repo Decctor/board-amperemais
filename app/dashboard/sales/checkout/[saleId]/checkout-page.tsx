@@ -96,7 +96,7 @@ export default function CheckoutPage({
 	const isMobile = useIsMobile();
 	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 	const [searchValue, setSearchValue] = useState("");
-	const [viewMode, setViewMode] = useState<ProductViewMode>("grid");
+	const [viewMode, setViewMode] = useState<ProductViewMode>("list");
 	const [builderProduct, setBuilderProduct] = useState<TGetPOSProductsOutput["data"]["products"][number] | null>(null);
 	const [isCheckoutSheetOpen, setIsCheckoutSheetOpen] = useState(false);
 	const [isCatalogOpen, setIsCatalogOpen] = useState(false);
@@ -178,7 +178,13 @@ export default function CheckoutPage({
 	const sessoesConfig = organizationConfiguration.preferencias.sessoesVenda;
 	const cashEnabled = !!sessoesConfig?.habilitado;
 	const cashObrigatorio = !!sessoesConfig?.obrigatorio;
-	const { session: activeSession, sessions: openSessions, activeSessionId, setActiveSessionId, isLoading: cashLoading } = useActiveSalesSession({ organizationId, enabled: cashEnabled });
+	const {
+		session: activeSession,
+		sessions: openSessions,
+		activeSessionId,
+		setActiveSessionId,
+		isLoading: cashLoading,
+	} = useActiveSalesSession({ organizationId, enabled: cashEnabled });
 	const cashBlockingConfirm = cashEnabled && cashObrigatorio && !activeSession;
 
 	// Teto de desconto: feedback imediato aqui, enforcement autoritativo na rota.
@@ -433,14 +439,26 @@ export default function CheckoutPage({
 					{isCatalogOpen ? "OCULTAR CATÁLOGO" : "ADICIONAR ITENS"}
 				</Button>
 			</div>
-			{cashEnabled ? <CashSessionBar session={activeSession} sessions={openSessions} activeSessionId={activeSessionId} onSessionChange={setActiveSessionId} isLoading={cashLoading} exigirFundoTroco={!!sessoesConfig?.exigirFundoTroco} conferenciaCega={!!sessoesConfig?.conferenciaCega} /> : null}
+			{cashEnabled ? (
+				<CashSessionBar
+					session={activeSession}
+					sessions={openSessions}
+					activeSessionId={activeSessionId}
+					onSessionChange={setActiveSessionId}
+					isLoading={cashLoading}
+					exigirFundoTroco={!!sessoesConfig?.exigirFundoTroco}
+					conferenciaCega={!!sessoesConfig?.conferenciaCega}
+				/>
+			) : null}
 
 			<div className="flex min-h-0 flex-1 gap-3">
 				{isCatalogOpen ? (
 					<div className="flex min-w-0 flex-1 flex-col gap-4 rounded-xl bg-background">
 						<div className="flex shrink-0 flex-col gap-3">
-							<div className="flex items-center gap-2">
-								<div className="flex-1">
+							{/* Em telas estreitas a busca ocupa a linha inteira e os controles quebram para a linha
+							    de baixo: dividir a mesma linha espremia o campo a poucos caracteres visíveis. */}
+							<div className="flex flex-wrap items-center gap-2">
+								<div className="w-full sm:w-auto sm:flex-1">
 									<SearchBlock searchValue={searchValue} onSearchChange={handleSearchChange} isLoading={productsLoading} />
 								</div>
 								<ViewModeToggle value={viewMode} onChange={setViewMode} />
@@ -462,6 +480,7 @@ export default function CheckoutPage({
 								isError={productsError}
 								error={productsErrorData}
 								viewMode={viewMode}
+								orgTracksStock={organizationConfiguration.preferencias.rastreamentoEstoque}
 								onProductClick={handleProductClick}
 							/>
 							{productsData ? (

@@ -106,7 +106,7 @@ export default function EditSalePage({
 	const isMobile = useIsMobile();
 	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 	const [searchValue, setSearchValue] = useState("");
-	const [viewMode, setViewMode] = useState<ProductViewMode>("grid");
+	const [viewMode, setViewMode] = useState<ProductViewMode>("list");
 	const [builderProduct, setBuilderProduct] = useState<TGetPOSProductsOutput["data"]["products"][number] | null>(null);
 	const [isCheckoutSheetOpen, setIsCheckoutSheetOpen] = useState(false);
 	const saleState = useSaleState({ organizationConfig: organizationConfiguration, contasFinanceiras: organizationFinancialAccounts });
@@ -136,7 +136,13 @@ export default function EditSalePage({
 	// splits IMEDIATA regenerados caem nele.
 	const sessoesConfig = organizationConfiguration.preferencias.sessoesVenda;
 	const cashEnabled = !!sessoesConfig?.habilitado;
-	const { session: activeSession, sessions: openSessions, activeSessionId, setActiveSessionId, isLoading: cashLoading } = useActiveSalesSession({
+	const {
+		session: activeSession,
+		sessions: openSessions,
+		activeSessionId,
+		setActiveSessionId,
+		isLoading: cashLoading,
+	} = useActiveSalesSession({
 		organizationId,
 		enabled: cashEnabled,
 	});
@@ -364,12 +370,24 @@ export default function EditSalePage({
 					</div>
 				</div>
 			</div>
-			{cashEnabled ? <CashSessionBar session={activeSession} sessions={openSessions} activeSessionId={activeSessionId} onSessionChange={setActiveSessionId} isLoading={cashLoading} exigirFundoTroco={!!sessoesConfig?.exigirFundoTroco} conferenciaCega={!!sessoesConfig?.conferenciaCega} /> : null}
+			{cashEnabled ? (
+				<CashSessionBar
+					session={activeSession}
+					sessions={openSessions}
+					activeSessionId={activeSessionId}
+					onSessionChange={setActiveSessionId}
+					isLoading={cashLoading}
+					exigirFundoTroco={!!sessoesConfig?.exigirFundoTroco}
+					conferenciaCega={!!sessoesConfig?.conferenciaCega}
+				/>
+			) : null}
 			<div className="flex flex-1 min-h-0 gap-3">
 				<div className="flex min-w-0 flex-1 flex-col gap-4 rounded-xl bg-background">
 					<div className="shrink-0 flex flex-col gap-3">
-						<div className="flex items-center gap-2">
-							<div className="flex-1">
+						{/* Em telas estreitas a busca ocupa a linha inteira e os controles quebram para a linha
+						    de baixo: dividir a mesma linha espremia o campo a poucos caracteres visíveis. */}
+						<div className="flex flex-wrap items-center gap-2">
+							<div className="w-full sm:w-auto sm:flex-1">
 								<SearchBlock searchValue={searchValue} onSearchChange={handleSearchChange} isLoading={productsLoading} />
 							</div>
 							<ProductOrderingSelect value={filters.ordering} onChange={handleOrderingChange} disabled={productsLoading} />
@@ -387,6 +405,7 @@ export default function EditSalePage({
 							isError={productsError}
 							error={productsErrorData}
 							viewMode={viewMode}
+							orgTracksStock={organizationConfiguration.preferencias.rastreamentoEstoque}
 							onProductClick={handleProductClick}
 						/>
 
