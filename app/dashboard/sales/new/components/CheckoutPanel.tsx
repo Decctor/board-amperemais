@@ -11,13 +11,14 @@ import type { TUseSaleState } from "@/state-hooks/use-sale-state";
 import { PencilLine, ShoppingCart } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import ActionsSection from "./checkout/ActionsSection";
 import ClientSection from "./checkout/ClientSection";
 import DeliverySection from "./checkout/DeliverySection";
+import DraftActionSection from "./checkout/DraftActionSection";
 import FiscalEmissionSection from "./checkout/FiscalEmissionSection";
 import ItemsSection from "./checkout/ItemsSection";
 import PaymentsSection from "./checkout/PaymentsSection";
 import SummarySection from "./checkout/SummarySection";
+import TotalDock from "./checkout/TotalDock";
 
 const ClientVinculationMenu = dynamic(() => import("@/components/Clients/ClientVinculationMenu"));
 const NewClientLocation = dynamic(() => import("@/components/Modals/Clients/Locations/NewClientLocation").then((module) => module.NewClientLocation));
@@ -113,7 +114,11 @@ export default function CheckoutPanel({
 
 	return (
 		<>
-			<div className="flex flex-col h-full gap-3">
+			{/* min-h-full (e não h-full) + shrink-0: o dock do total é `sticky`, e seu bloco contêiner
+			    precisa crescer com o conteúdo. Travado em 100% — por altura fixa no desktop ou por
+			    flex-shrink dentro do Sheet do mobile — o contêiner para na altura do scrollport e o dock
+			    deixa de grudar depois do primeiro scroll. */}
+			<div className="flex min-h-full shrink-0 flex-col gap-3">
 				<div className="flex items-center gap-2">
 					<div className="p-2 bg-primary/10 rounded-lg">
 						{edit ? <PencilLine className="w-5 h-5 text-foreground" /> : <ShoppingCart className="w-5 h-5 text-foreground" />}
@@ -169,12 +174,14 @@ export default function CheckoutPanel({
 					canConfigureFiscal={canConfigureFiscal}
 				/>
 				{beforeActions}
-				<ActionsSection
+				{edit || hideDraftAction ? null : (
+					<DraftActionSection saleState={saleState} onCreateDraft={onCreateDraft} isCreatingDraft={isCreatingDraft} isFinalizingSale={isFinalizingSale} />
+				)}
+				<TotalDock
 					saleState={saleState}
-					onCreateDraft={onCreateDraft}
 					onFinalizeSale={onFinalizeSale}
-					isCreatingDraft={isCreatingDraft}
 					isFinalizingSale={isFinalizingSale}
+					isCreatingDraft={isCreatingDraft}
 					editMode={!!edit}
 					finalizeBlockedReason={finalizeBlockedReason}
 					hideDraftAction={hideDraftAction}

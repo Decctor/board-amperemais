@@ -3,7 +3,7 @@ import type { TGetClientContextOutput } from "@/app/api/clients/context/route";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatToMoney, formatToPhone } from "@/lib/formatting";
+import { formatCashbackValue, formatToMoney, formatToPhone } from "@/lib/formatting";
 import { useClientCashbackBalance } from "@/lib/queries/cashback-programs";
 import { useClientContext } from "@/lib/queries/clients/context";
 import { usePOSCrossSellProducts } from "@/lib/queries/pos";
@@ -12,6 +12,7 @@ import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import dayjs from "dayjs";
 import { Coins, MapPin, Package, PencilLine, Plus, ReceiptText, Sparkles, TriangleAlert } from "lucide-react";
 import Image from "next/image";
+import { useMemo } from "react";
 
 export type TCrossSellProduct = TGetCrossSellOutput["data"]["products"][number];
 
@@ -69,7 +70,8 @@ export default function ClientContextContent({
 	const localizacao = [cliente?.localizacaoCidade, cliente?.localizacaoEstado].filter(Boolean).join(" / ");
 	const cashbackProgramAtivo = !!organizationCashbackProgram?.ativo;
 	const cashbackDisponivel = cashbackBalance?.saldoValorDisponivel ?? 0;
-
+	const terminology = organizationCashbackProgram?.terminologia ?? "DINHEIRO";
+	const formattedCashbackDisponivel = useMemo(() => formatCashbackValue(cashbackDisponivel, terminology), [cashbackDisponivel, terminology]);
 	return (
 		<div className="flex h-full w-full flex-col">
 			{/* Identity header */}
@@ -105,7 +107,7 @@ export default function ClientContextContent({
 						<span className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-foreground/80">
 							<Coins className="h-3.5 w-3.5 text-brand" /> Cashback
 						</span>
-						<span className="text-sm font-extrabold tabular-nums text-foreground">{formatToMoney(cashbackDisponivel)}</span>
+						<span className="text-sm font-extrabold tabular-nums text-foreground">{formattedCashbackDisponivel}</span>
 					</div>
 				) : null}
 			</div>

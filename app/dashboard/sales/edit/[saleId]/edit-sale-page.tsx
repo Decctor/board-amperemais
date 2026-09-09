@@ -25,7 +25,7 @@ import type { TCashbackProgramEntity } from "@/services/drizzle/schema";
 import { type TSaleFinancialAccountOption, type TUseSaleState, useSaleState } from "@/state-hooks/use-sale-state";
 import { isAxiosError } from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, PencilLine, ShoppingCart } from "lucide-react";
+import { ArrowLeft, PencilLine } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCallback, useMemo, useRef, useEffect, useState } from "react";
@@ -445,8 +445,16 @@ export default function EditSalePage({
 						<Sheet open={isCheckoutSheetOpen} onOpenChange={setIsCheckoutSheetOpen}>
 							<SheetTrigger
 								render={
-									<Button className="rounded-full shadow-lg px-4">
-										<ShoppingCart className="w-4 h-4 mr-2" /> EDIÇÃO ({saleState.itemCount})
+									// No mobile o painel fica fechado por padrão: sem o valor aqui, o total não está
+									// apenas fora do scroll, está invisível o tempo inteiro.
+									<Button
+										className="h-12 rounded-full px-5 shadow-lg"
+										aria-label={`Abrir edição da venda: ${saleState.itemCount} ${saleState.itemCount === 1 ? "item" : "itens"}, total ${formatToMoney(saleState.valorFinal)}`}
+									>
+										<PencilLine className="mr-2 h-4 w-4" />
+										<span className="font-extrabold tabular-nums">{saleState.itemCount}</span>
+										<span aria-hidden className="mx-2.5 h-4 w-px bg-current opacity-30" />
+										<span className="text-base font-extrabold tabular-nums">{formatToMoney(saleState.valorFinal)}</span>
 									</Button>
 								}
 							/>

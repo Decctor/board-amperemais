@@ -251,7 +251,7 @@ function CatalogStage({
 }: CatalogStageProps) {
 	// Canal COMANDA: o pedido da mesa exibe e cobra o preço do canal, venha do QR ou do operador.
 	const { data: productsResult, filters, updateFilters, isLoading } = usePOSProducts({ initialFilters: { channel: "COMANDA" } });
-	const { data: groupsResult } = usePOSGroups();
+	const { data: groupsResult } = usePOSGroups({ channel: "COMANDA" });
 	const { data: topProductsResult } = usePOSTopProducts({ channel: "COMANDA" });
 
 	const groups = groupsResult?.groups ?? [];

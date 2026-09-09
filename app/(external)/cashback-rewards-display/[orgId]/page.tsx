@@ -1,11 +1,12 @@
 import ErrorComponent from "@/components/Layouts/ErrorComponent";
 import { OrgColorsProvider } from "@/components/Providers/OrgColorsProvider";
+import { REWARDS_PAPER_ORIENTATIONS, REWARDS_PAPER_SIZES } from "@/lib/cashback/rewards-display-layout";
 import { derivePoiTheme, getPoiThemeStyle } from "@/lib/point-of-interaction/theme";
 import { db } from "@/services/drizzle";
 import CashbackRewardsDisplayPage, { type TCashbackRewardsPaperOrientation, type TCashbackRewardsPaperSize } from "./cashback-rewards-display-page";
 
-const PAPER_SIZES = new Set<TCashbackRewardsPaperSize>(["A4", "A5", "A6"]);
-const PAPER_ORIENTATIONS = new Set<TCashbackRewardsPaperOrientation>(["portrait", "landscape"]);
+const PAPER_SIZES = new Set<TCashbackRewardsPaperSize>(REWARDS_PAPER_SIZES);
+const PAPER_ORIENTATIONS = new Set<TCashbackRewardsPaperOrientation>(REWARDS_PAPER_ORIENTATIONS);
 
 function readSearchParam(value: string | string[] | undefined) {
 	return Array.isArray(value) ? value[0] : value;

@@ -8,6 +8,7 @@ import ControlClient from "@/components/Modals/Clients/ControlClient";
 import { ConfirmSaleChange } from "@/components/Modals/Sales/ConfirmSaleChange";
 import { DiscountApproval } from "@/components/Modals/Sales/DiscountApproval";
 import { getErrorMessage } from "@/lib/errors";
+import { formatToMoney } from "@/lib/formatting";
 import type { TQuotePermissions } from "@/components/Chats/Quotes/config";
 import type { TAutoEmissionExceptions } from "@/lib/fiscal/auto-emission-policy";
 import { createAndConfirmSale, createSaleDraft, updateSaleDraft } from "@/lib/mutations/pos";
@@ -543,8 +544,16 @@ export default function NewSalePage({
 					<Sheet open={isCheckoutSheetOpen} onOpenChange={setIsCheckoutSheetOpen}>
 						<SheetTrigger
 							render={
-								<Button className="rounded-full px-4 shadow-lg">
-									<ShoppingCart className="mr-2 h-4 w-4" /> CHECKOUT ({saleState.itemCount})
+								// No mobile o painel fica fechado por padrão: sem o valor aqui, o total do carrinho
+								// não está apenas fora do scroll, está invisível o tempo inteiro.
+								<Button
+									className="h-12 rounded-full px-5 shadow-lg"
+									aria-label={`Abrir checkout: ${saleState.itemCount} ${saleState.itemCount === 1 ? "item" : "itens"}, total ${formatToMoney(saleState.valorFinal)}`}
+								>
+									<ShoppingCart className="mr-2 h-4 w-4" />
+									<span className="font-extrabold tabular-nums">{saleState.itemCount}</span>
+									<span aria-hidden className="mx-2.5 h-4 w-px bg-current opacity-30" />
+									<span className="text-base font-extrabold tabular-nums">{formatToMoney(saleState.valorFinal)}</span>
 								</Button>
 							}
 						/>

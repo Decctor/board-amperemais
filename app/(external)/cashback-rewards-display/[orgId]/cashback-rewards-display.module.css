@@ -1,230 +1,485 @@
-.workspace {
-	min-height: 100vh;
-	background: var(--poi-tint);
-	color: oklch(0.23 0.018 255);
-	padding: 104px 24px 48px;
-}
+/*
+ * A folha impressa. Toda medida sai do arranjo calculado em `lib/cashback/rewards-display-layout`
+ * e chega aqui como custom property em milímetros — por isso não existe nenhuma regra
+ * `[data-size="A6"]` neste arquivo. A pirâmide de sobrescritas por tamanho de papel que existia
+ * antes era o sintoma de um layout decorado; com o arranjo computado, o CSS só precisa saber
+ * compor duas células.
+ *
+ * As cores vêm da identidade da organização (`--poi-*`), não da RecompraCRM: quem assina o pôster
+ * é a loja. A marca da plataforma aparece uma vez, no rodapé.
+ */
 
-.toolbar {
-	position: fixed;
-	top: 16px;
-	left: 50%;
-	z-index: 50;
-	display: flex;
-	width: min(920px, calc(100vw - 32px));
-	transform: translateX(-50%);
-	align-items: center;
-	justify-content: space-between;
-	gap: 20px;
-	border: 1px solid oklch(0.9 0.008 255);
-	border-radius: 22px;
-	background: oklch(0.99 0.004 255 / 0.97);
-	box-shadow: 0 12px 30px -14px oklch(0.35 0.06 255 / 0.3);
-	padding: 12px 14px 12px 18px;
-}
+.sheet {
+	--sheet-paper: oklch(0.995 0.002 255);
+	--sheet-ink: oklch(0.22 0.015 255);
+	--sheet-muted: oklch(0.52 0.02 255);
+	--sheet-rule: color-mix(in oklab, var(--poi-primary) 22%, transparent);
+	--sheet-zebra: color-mix(in oklab, var(--poi-primary) 5%, transparent);
 
-.toolbarHeading { display: flex; min-width: 220px; flex-direction: column; }
-.toolbarHeading strong { font-size: 14px; line-height: 1.3; }
-.toolbarHeading small { color: oklch(0.5 0.025 255); font-size: 11px; }
-.controls { display: flex; align-items: center; gap: 10px; }
-
-.segmented {
-	display: flex;
-	gap: 3px;
-	border-radius: 14px;
-	background: oklch(0.95 0.009 255);
-	padding: 3px;
-}
-
-.segmented button {
-	display: grid;
-	min-width: 38px;
-	height: 34px;
-	place-items: center;
-	border-radius: 11px;
-	color: oklch(0.48 0.025 255);
-	font-size: 12px;
-	font-weight: 800;
-	transition: background-color 180ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.segmented button:hover { color: oklch(0.28 0.025 255); }
-.segmented button:focus-visible { outline: 3px solid color-mix(in oklab, var(--poi-primary) 20%, transparent); outline-offset: 2px; }
-.segmented button[data-active="true"] { background: oklch(0.99 0.004 255); color: var(--poi-primary); box-shadow: 0 1px 3px oklch(0.3 0.03 255 / 0.14); }
-.segmented svg { width: 16px; height: 16px; }
-
-.pageStack { display: flex; flex-direction: column; align-items: center; gap: 36px; }
-
-.paper {
 	display: flex;
 	flex-direction: column;
+	width: var(--sheet-w);
+	height: var(--sheet-h);
 	overflow: hidden;
-	border-radius: 4px;
-	background: oklch(0.995 0.003 255);
-	box-shadow: 0 22px 60px -20px oklch(0.28 0.055 255 / 0.34);
+	background: var(--sheet-paper);
+	color: var(--sheet-ink);
+	font-variant-numeric: tabular-nums;
 	print-color-adjust: exact;
 	-webkit-print-color-adjust: exact;
 }
 
-.header {
+/* ---------------------------------------------------------------- tarja ---- */
+
+.masthead {
 	display: flex;
-	min-height: 27mm;
+	height: var(--band-masthead);
+	flex: none;
 	align-items: center;
-	justify-content: space-between;
-	gap: 6mm;
+	gap: calc(var(--inset) * 0.7);
 	background: var(--poi-primary);
 	color: var(--poi-primary-foreground);
-	padding: 5mm 8mm;
+	padding-inline: var(--inset);
 }
 
-.identity { display: flex; min-width: 0; align-items: center; gap: 4mm; }
-.identity > img, .identity > svg { width: 18mm; height: 18mm; flex: none; border-radius: 3mm; background: oklch(0.99 0.004 255); object-fit: contain; padding: 1.5mm; color: var(--poi-primary); }
-.identity div { min-width: 0; }
-.identity span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 3.2mm; font-weight: 700; opacity: 0.82; }
-.identity h1 { margin-top: 0.7mm; font-size: 7.2mm; font-weight: 800; letter-spacing: -0.025em; line-height: 0.98; }
-.identity p { margin-top: 1mm; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 2.8mm; font-weight: 600; opacity: 0.78; }
-.count { display: flex; flex: none; flex-direction: column; align-items: flex-end; }
-.count strong { font-size: 8mm; font-weight: 800; line-height: 0.9; font-variant-numeric: tabular-nums; }
-.count span { margin-top: 1mm; font-size: 2.6mm; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
-
-.ruleBar {
-	display: flex;
-	min-height: 14mm;
-	align-items: center;
-	justify-content: space-between;
-	gap: 5mm;
-	background: color-mix(in oklab, var(--poi-accent) 22%, oklch(0.98 0.006 255));
-	padding: 2.5mm 8mm;
-}
-
-.ruleBar div { display: flex; min-width: 0; flex-direction: column; }
-.ruleBar span { color: color-mix(in oklab, var(--poi-primary) 78%, oklch(0.25 0.02 255)); font-size: 2.3mm; font-weight: 800; letter-spacing: 0.08em; }
-.ruleBar strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 3.1mm; font-weight: 700; }
-.ruleBar p { flex: none; font-size: 2.6mm; font-weight: 600; }
-
-.rewards {
+.mark {
 	display: grid;
-	min-height: 0;
-	flex: 1;
-	gap: 2.6mm;
-	padding: 5mm 8mm;
+	width: calc(var(--band-masthead) * 0.62);
+	height: calc(var(--band-masthead) * 0.62);
+	flex: none;
+	place-items: center;
+	overflow: hidden;
+	border-radius: calc(var(--band-masthead) * 0.14);
+	background: var(--sheet-paper);
+	color: var(--poi-primary);
+	padding: calc(var(--band-masthead) * 0.06);
 }
 
-.reward {
+.mark img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+.markInitials {
+	font-size: calc(var(--band-masthead) * 0.26);
+	font-weight: 800;
+	line-height: 1;
+	letter-spacing: -0.02em;
+}
+
+.identity {
 	display: flex;
 	min-width: 0;
-	min-height: 0;
-	break-inside: avoid;
-	overflow: hidden;
-	border: 0.35mm solid oklch(0.89 0.01 255);
-	border-radius: 3.5mm;
-	background: oklch(0.995 0.003 255);
+	flex: 1;
+	flex-direction: column;
+	gap: calc(var(--band-masthead) * 0.045);
 }
 
-.rewardImage { display: grid; flex: none; place-items: center; overflow: hidden; background: oklch(0.96 0.009 255); color: oklch(0.68 0.025 255); }
-.rewardImage img { width: 100%; height: 100%; object-fit: contain; }
-.rewardImage svg { width: 30%; height: 30%; }
-.rewardCopy { display: flex; min-width: 0; flex: 1; flex-direction: column; }
-.rewardCopy h2 { display: -webkit-box; overflow: hidden; font-weight: 800; letter-spacing: -0.015em; line-height: 1.08; -webkit-box-orient: vertical; }
-.rewardCopy p { display: -webkit-box; overflow: hidden; color: oklch(0.48 0.02 255); line-height: 1.25; -webkit-box-orient: vertical; }
-.rewardValue { margin-top: auto; color: var(--poi-primary); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
-.rewardCopy small { overflow: hidden; color: oklch(0.49 0.025 255); text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.eyebrow {
+	overflow: hidden;
+	color: color-mix(in oklab, var(--poi-primary-foreground) 76%, transparent);
+	font-size: max(calc(var(--band-masthead) * 0.115), 1.9mm);
+	font-weight: 800;
+	letter-spacing: 0.1em;
+	line-height: 1;
+	text-overflow: ellipsis;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
 
-.paper[data-layout="showcase"] .reward { flex-direction: column; padding: 2.5mm; }
-.paper[data-layout="showcase"] .rewardImage { width: 100%; height: 52%; border-radius: 2.5mm; }
-.paper[data-layout="showcase"] .rewardCopy { padding-top: 2mm; }
-.paper[data-layout="showcase"] .rewardCopy h2 { font-size: 4.1mm; -webkit-line-clamp: 2; }
-.paper[data-layout="showcase"] .rewardCopy p { margin-top: 1mm; font-size: 2.6mm; -webkit-line-clamp: 2; }
-.paper[data-layout="showcase"] .rewardValue { font-size: 4.3mm; }
-.paper[data-layout="showcase"] .rewardCopy small { margin-top: 1mm; font-size: 2.35mm; }
+/* Duas linhas, não reticências: "Programa de Cashback Supermercado Ipiranga" é o nome que a loja
+   escolheu e cortar no meio é pior que ocupar a segunda linha. A tarja tem folga para as duas em
+   todos os tamanhos porque a altura dela sai de `sqrt(área)` da folha. */
+.programTitle {
+	display: -webkit-box;
+	overflow: hidden;
+	font-size: max(calc(var(--band-masthead) * 0.3), 3mm);
+	font-weight: 800;
+	letter-spacing: -0.025em;
+	line-height: 1.05;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+}
 
-.paper[data-layout="compact"] .reward { flex-direction: column; padding: 1.8mm; }
-.paper[data-layout="compact"] .rewardImage { width: 100%; height: 48%; border-radius: 2mm; }
-.paper[data-layout="compact"] .rewardCopy { padding-top: 1.3mm; }
-.paper[data-layout="compact"] .rewardCopy h2 { font-size: 3mm; -webkit-line-clamp: 2; }
-.paper[data-layout="compact"] .rewardCopy p { display: none; }
-.paper[data-layout="compact"] .rewardValue { font-size: 3.3mm; }
-.paper[data-layout="compact"] .rewardCopy small { margin-top: 0.7mm; font-size: 2mm; }
+.programNote {
+	overflow: hidden;
+	color: color-mix(in oklab, var(--poi-primary-foreground) 78%, transparent);
+	font-size: max(calc(var(--band-masthead) * 0.115), 1.8mm);
+	font-weight: 500;
+	line-height: 1.2;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
 
-.paper[data-layout="dense"] .reward { align-items: center; gap: 2mm; padding: 1.5mm; border-radius: 2.6mm; }
-.paper[data-layout="dense"] .rewardImage { width: 13mm; height: 100%; max-height: 13mm; border-radius: 1.8mm; }
-.paper[data-layout="dense"] .rewardCopy { height: 100%; justify-content: center; }
-.paper[data-layout="dense"] .rewardCopy h2 { font-size: 2.7mm; -webkit-line-clamp: 1; }
-.paper[data-layout="dense"] .rewardCopy p { display: none; }
-.paper[data-layout="dense"] .rewardValue { margin-top: 0.8mm; font-size: 2.9mm; }
-.paper[data-layout="dense"] .rewardCopy small { margin-top: 0.6mm; font-size: 1.85mm; }
+/* O único momento de cor secundária da folha: um bloco sólido sobre a tarja primária. Raio baixo
+   de propósito — com o raio de botão da interface, o bloco impresso pede clique. */
+.callout {
+	display: flex;
+	max-width: 32%;
+	flex: none;
+	align-items: center;
+	border-radius: calc(var(--band-masthead) * 0.05);
+	background: var(--poi-accent);
+	color: var(--poi-accent-foreground);
+	padding: calc(var(--band-masthead) * 0.1) calc(var(--band-masthead) * 0.14);
+	text-align: right;
+}
+
+.calloutText {
+	font-size: max(calc(var(--band-masthead) * 0.15), 2.1mm);
+	font-weight: 800;
+	letter-spacing: -0.01em;
+	line-height: 1.15;
+	text-wrap: balance;
+}
+
+/* ------------------------------------------------------ faixa de regras ---- */
+
+.ruleBand {
+	display: flex;
+	height: var(--band-rule);
+	flex: none;
+	align-items: center;
+	gap: calc(var(--inset) * 0.8);
+	background: color-mix(in oklab, var(--poi-accent) 16%, var(--sheet-paper));
+	padding-inline: var(--inset);
+}
+
+.rule {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+	gap: calc(var(--band-rule) * 0.06);
+}
+
+.rule:first-child {
+	flex: 1;
+}
+
+.rule + .rule {
+	flex: none;
+	border-left: 0.2mm solid color-mix(in oklab, var(--poi-primary) 24%, transparent);
+	padding-left: calc(var(--inset) * 0.8);
+	text-align: right;
+}
+
+.ruleLabel {
+	color: color-mix(in oklab, var(--poi-primary) 82%, var(--sheet-ink));
+	font-size: max(calc(var(--band-rule) * 0.2), 1.8mm);
+	font-weight: 800;
+	letter-spacing: 0.09em;
+	line-height: 1;
+	text-transform: uppercase;
+}
+
+.ruleValue {
+	overflow: hidden;
+	font-size: max(calc(var(--band-rule) * 0.3), 2.2mm);
+	font-weight: 700;
+	line-height: 1.15;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- a grade ---- */
+
+/*
+ * O espaçamento aqui tem que fechar exatamente com o que o algoritmo reservou — ele calculou o
+ * corpo do texto a partir de `contentHeight - gutter * (linhas - 1)`, então qualquer folga extra
+ * entre linhas devolve um texto dimensionado para uma célula que não existe.
+ */
+.grid {
+	display: flex;
+	min-height: 0;
+	flex: 1;
+	flex-direction: column;
+	padding-block: var(--gutter);
+}
+
+.row {
+	display: flex;
+	min-height: 0;
+	flex: 1;
+	gap: var(--gutter);
+}
+
+.cell {
+	display: flex;
+	width: var(--cell-w);
+	min-width: 0;
+	height: 100%;
+	break-inside: avoid;
+	overflow: hidden;
+}
+
+/*
+ * Vitrine: foto, título, preço. Sem moldura, sem sombra, sem raio — o que separa uma recompensa da
+ * outra é o fio da linha de cima, como numa página de catálogo. Cartões flutuantes aqui virariam
+ * a grade de cartões idênticos que todo material impresso automático tem.
+ */
+.sheet[data-composition="showcase"] .grid {
+	/* Metade da calha vira respiro acima do fio e metade abaixo: o fio fica centrado na calha e a
+	   soma continua sendo exatamente uma calha entre linhas. */
+	gap: calc(var(--gutter) / 2);
+	padding-inline: var(--inset);
+}
+
+.sheet[data-composition="showcase"] .row {
+	/* Linha incompleta fica centrada: uma célula sozinha encostada à esquerda denuncia a grade. */
+	justify-content: center;
+}
+
+.sheet[data-composition="showcase"] .row + .row {
+	border-top: 0.2mm solid var(--sheet-rule);
+	padding-top: calc(var(--gutter) / 2);
+}
+
+/* Ancorada no topo, não centrada: com a pilha de texto de altura fixa, começar todas as células
+   no mesmo ponto é o que alinha as fotos e os preços de uma fileira inteira. */
+.sheet[data-composition="showcase"] .cell {
+	flex-direction: column;
+	justify-content: flex-start;
+	gap: var(--cell-gap);
+	padding: var(--cell-pad-y) var(--cell-pad-x);
+}
+
+/* Cardápio: linhas largas. Aqui a zebra substitui o fio — em linha larga, a faixa de fundo é o que
+   carrega o olho da esquerda até o preço, e o fio sozinho não dá conta. As faixas correm de borda
+   a borda da folha, então a calha lateral migra da grade para a linha. */
+.sheet[data-composition="menu"] .row {
+	padding-inline: var(--inset);
+}
+
+.sheet[data-composition="menu"] .row:nth-child(even) {
+	background: var(--sheet-zebra);
+}
+
+.sheet[data-composition="menu"] .cell {
+	align-items: center;
+	gap: var(--cell-gap);
+	padding: var(--cell-pad-y) var(--cell-pad-x);
+}
+
+.media {
+	display: grid;
+	width: var(--media-w);
+	height: var(--media-h);
+	flex: none;
+	place-items: center;
+	overflow: hidden;
+	background: color-mix(in oklab, var(--poi-primary) 6%, var(--sheet-paper));
+	border-radius: calc(var(--media-h) * 0.06);
+}
+
+/*
+ * `cover` e não `contain`: a caixa da foto é dimensionada pelo algoritmo, e com `contain` toda foto
+ * cuja proporção não batesse com a da caixa deixava faixas do fundo tingido aparecendo em volta —
+ * numa grade, essas faixas viram o elemento mais visível da folha. O preço é cortar as bordas da
+ * foto, o que é aceitável em foto de produto (o assunto fica no centro) e não em foto de banner.
+ */
+.media img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+/* Sem foto, a inicial do prêmio no tom da marca — melhor que um ícone de imagem quebrada, que é o
+   que o lojista vê como "faltou cadastrar alguma coisa". */
+.mediaInitial {
+	color: color-mix(in oklab, var(--poi-primary) 45%, transparent);
+	font-size: calc(var(--media-h) * 0.5);
+	font-weight: 800;
+	line-height: 1;
+}
+
+/*
+ * `min-height` das linhas que o algoritmo reservou, e não a altura do texto que veio. Sem isso,
+ * "Café Coado" (uma linha) e "Pão de Queijo Recheado" (duas) produziam células de alturas
+ * diferentes na mesma fileira, e a caixa da foto de cada uma parava numa altura diferente — a
+ * grade oscilava conforme o olho corria a fileira.
+ */
+.cellTitle {
+	display: -webkit-box;
+	min-height: calc(var(--t-title) * 1.12 * var(--title-lines));
+	overflow: hidden;
+	font-size: var(--t-title);
+	font-weight: 800;
+	letter-spacing: -0.015em;
+	line-height: 1.12;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: var(--title-lines);
+}
+
+.cellDescription {
+	display: -webkit-box;
+	min-height: calc(var(--t-desc) * 1.25 * 2);
+	overflow: hidden;
+	color: var(--sheet-muted);
+	font-size: var(--t-desc);
+	font-weight: 500;
+	line-height: 1.25;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+}
+
+.cellMeta {
+	overflow: hidden;
+	color: var(--sheet-muted);
+	font-size: var(--t-meta);
+	font-weight: 600;
+	line-height: 1.2;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* -------------------------------------------------------------- o preço ---- */
+
+/*
+ * `align-items: flex-start` e não `baseline`: é o gesto de etiqueta de gôndola, com o `R$` e os
+ * centavos alinhados ao topo do número, em corpo menor. O número é o herói da folha.
+ */
+.price {
+	display: flex;
+	flex: none;
+	align-items: flex-start;
+	gap: calc(var(--t-value) * 0.08);
+	color: var(--poi-primary);
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.priceAmount {
+	font-size: var(--t-value);
+	line-height: 0.88;
+}
+
+.pricePrefix,
+.priceCents,
+.priceSuffix {
+	font-size: var(--t-cents);
+	line-height: 1;
+	padding-top: calc(var(--t-value) * 0.04);
+}
+
+.priceSuffix {
+	font-weight: 700;
+	letter-spacing: 0;
+	opacity: 0.72;
+}
+
+/* O condutor pontilhado do cardápio, ligando o título ao preço. Item flex vazio com altura
+   definida: no alinhamento por linha de base o navegador usa a borda inferior dele, então o
+   pontilhado assenta exatamente na base do título. */
+.leader {
+	align-self: baseline;
+	height: calc(var(--t-title) * 0.9);
+	min-width: var(--leader);
+	flex: 1 1 auto;
+	border-bottom: 0.25mm dotted color-mix(in oklab, var(--poi-primary) 40%, transparent);
+}
+
+.menuBody {
+	display: flex;
+	min-width: 0;
+	flex: 1;
+	align-items: baseline;
+	gap: var(--cell-gap);
+}
+
+/*
+ * Ordem de sacrifício na linha do cardápio: o preço nunca cede (é o herói e é o que o algoritmo
+ * dimensionou), o condutor cede até o mínimo, e o título é o último a encolher — cortando com
+ * reticências, que é o único dos três que sobrevive a ser cortado.
+ */
+.menuText {
+	display: flex;
+	min-width: 0;
+	/* Cresce até o texto inteiro (`max-content`) e não além: a sobra depois disso é do condutor,
+	   que é quem deve esticar. Sem o teto, o título tomaria a linha toda e o pontilhado sumiria. */
+	max-width: max-content;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: calc(var(--t-title) * 0.16);
+}
+
+/* ------------------------------------------------------------- rodapé ---- */
 
 .footer {
 	display: flex;
-	min-height: 10mm;
+	height: var(--band-footer);
+	flex: none;
 	align-items: center;
 	justify-content: space-between;
-	gap: 5mm;
-	border-top: 0.25mm solid oklch(0.9 0.008 255);
-	padding: 2mm 8mm;
+	gap: var(--inset);
+	border-top: 0.2mm solid var(--sheet-rule);
+	padding-inline: var(--inset);
 }
 
-.footer > p { color: oklch(0.5 0.02 255); font-size: 2.15mm; font-weight: 500; }
-.footer > div { display: flex; flex: none; align-items: center; gap: 2mm; }
-.footer span { color: oklch(0.48 0.025 255); font-size: 2.3mm; font-weight: 800; }
-.footer small { color: oklch(0.56 0.02 255); font-size: 1.9mm; font-weight: 600; }
-.footer img { width: 24mm; height: 5mm; object-fit: contain; }
+.finePrint {
+	overflow: hidden;
+	color: var(--sheet-muted);
+	font-size: max(calc(var(--band-footer) * 0.24), 1.6mm);
+	font-weight: 500;
+	line-height: 1.2;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
 
-.paper[data-size="A5"] .header { min-height: 24mm; padding: 4mm 6mm; }
-.paper[data-size="A5"] .identity > img, .paper[data-size="A5"] .identity > svg { width: 15mm; height: 15mm; }
-.paper[data-size="A5"] .identity h1 { font-size: 5.6mm; }
-.paper[data-size="A5"] .identity span { font-size: 2.8mm; }
-.paper[data-size="A5"] .count strong { font-size: 6.5mm; }
-.paper[data-size="A5"] .ruleBar { min-height: 12mm; padding-inline: 6mm; }
-.paper[data-size="A5"] .rewards { gap: 2mm; padding: 4mm 6mm; }
-.paper[data-size="A5"] .footer { min-height: 9mm; padding-inline: 6mm; }
+.footerMark {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: calc(var(--band-footer) * 0.28);
+}
 
-.paper[data-size="A6"] .header { min-height: 19mm; gap: 3mm; padding: 3mm 4mm; }
-.paper[data-size="A6"] .identity { gap: 2.5mm; }
-.paper[data-size="A6"] .identity > img, .paper[data-size="A6"] .identity > svg { width: 12mm; height: 12mm; border-radius: 2mm; }
-.paper[data-size="A6"] .identity h1 { font-size: 4mm; }
-.paper[data-size="A6"] .identity span { font-size: 2.3mm; }
-.paper[data-size="A6"] .identity p, .paper[data-size="A6"] .count span { font-size: 1.9mm; }
-.paper[data-size="A6"] .count strong { font-size: 5.2mm; }
-.paper[data-size="A6"] .ruleBar { min-height: 10mm; gap: 2mm; padding: 1.8mm 4mm; }
-.paper[data-size="A6"] .ruleBar span { font-size: 1.7mm; }
-.paper[data-size="A6"] .ruleBar strong { font-size: 2.25mm; }
-.paper[data-size="A6"] .ruleBar p { display: none; }
-.paper[data-size="A6"] .rewards { gap: 1.4mm; padding: 3mm 4mm; }
-.paper[data-size="A6"] .footer { min-height: 7mm; padding: 1.2mm 4mm; }
-.paper[data-size="A6"] .footer > p { font-size: 1.55mm; }
-.paper[data-size="A6"] .footer small { display: none; }
-.paper[data-size="A6"] .footer img { width: 17mm; height: 3.5mm; }
-.paper[data-size="A6"][data-layout="showcase"] .reward { padding: 1.5mm; border-radius: 2.5mm; }
-.paper[data-size="A6"][data-layout="showcase"] .rewardCopy { padding-top: 1mm; }
-.paper[data-size="A6"][data-layout="showcase"] .rewardCopy h2 { font-size: 2.6mm; }
-.paper[data-size="A6"][data-layout="showcase"] .rewardCopy p { display: none; }
-.paper[data-size="A6"][data-layout="showcase"] .rewardValue { font-size: 2.8mm; }
-.paper[data-size="A6"][data-layout="showcase"] .rewardCopy small { font-size: 1.65mm; }
-.paper[data-size="A6"][data-layout="compact"] .reward { padding: 1.2mm; border-radius: 2mm; }
-.paper[data-size="A6"][data-layout="compact"] .rewardCopy { padding-top: 0.8mm; }
-.paper[data-size="A6"][data-layout="compact"] .rewardCopy h2 { font-size: 2.15mm; }
-.paper[data-size="A6"][data-layout="compact"] .rewardValue { font-size: 2.35mm; }
-.paper[data-size="A6"][data-layout="compact"] .rewardCopy small { font-size: 1.4mm; }
-.paper[data-size="A6"][data-layout="dense"] .reward { gap: 1.2mm; padding: 0.8mm 1mm; border-radius: 1.8mm; }
-.paper[data-size="A6"][data-layout="dense"] .rewardImage { width: 9mm; max-height: 9mm; }
-.paper[data-size="A6"][data-layout="dense"] .rewardCopy h2 { font-size: 2mm; }
-.paper[data-size="A6"][data-layout="dense"] .rewardValue { font-size: 2.1mm; }
-.paper[data-size="A6"][data-layout="dense"] .rewardCopy small { display: none; }
+.pageNumber {
+	color: var(--sheet-ink);
+	font-size: max(calc(var(--band-footer) * 0.26), 1.7mm);
+	font-weight: 800;
+}
 
-@media (max-width: 760px) {
-	.workspace { overflow-x: auto; padding: 132px 12px 32px; }
-	.toolbar { top: 8px; align-items: stretch; flex-direction: column; gap: 8px; padding: 10px; }
-	.toolbarHeading { display: none; }
-	.controls { justify-content: center; flex-wrap: wrap; }
-	.pageStack { width: max-content; min-width: 100%; align-items: center; }
-	.paper { transform-origin: top center; }
+.footerMark img {
+	width: calc(var(--band-footer) * 2.2);
+	height: calc(var(--band-footer) * 0.45);
+	object-fit: contain;
+	object-position: right center;
+}
+
+/* --------------------------------------------------- pré-visualização ---- */
+
+/* Na tela a folha é escalada para caber na largura disponível; na impressão volta a 1:1. */
+.sheetFrame {
+	width: calc(var(--sheet-w) * var(--preview-scale));
+	height: calc(var(--sheet-h) * var(--preview-scale));
+	flex: none;
+	box-shadow:
+		0 22px 60px -22px oklch(0.28 0.055 255 / 0.35),
+		0 2px 6px oklch(0.28 0.055 255 / 0.1);
+}
+
+.sheetFrame .sheet {
+	transform: scale(var(--preview-scale));
+	transform-origin: top left;
 }
 
 @media print {
-	.workspace { min-height: 0; background: transparent; padding: 0; }
-	.toolbar { display: none; }
-	.pageStack { display: block; }
-	.paper { break-after: page; border-radius: 0; box-shadow: none; }
-	.paper:last-child { break-after: auto; }
+	.sheetFrame {
+		width: auto;
+		height: auto;
+		box-shadow: none;
+	}
+
+	.sheetFrame .sheet {
+		transform: none;
+	}
+
+	.sheet {
+		break-after: page;
+	}
+
+	.sheet:last-child {
+		break-after: auto;
+	}
 }
