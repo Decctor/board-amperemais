@@ -5,6 +5,7 @@ import CampaignsFunnel from "@/app/dashboard/growth/campaigns/_module/shared/sta
 import CampaignsGraphs from "@/app/dashboard/growth/campaigns/_module/shared/stats/CampaignsGraphs";
 import CampaignsRanking from "@/app/dashboard/growth/campaigns/_module/shared/stats/CampaignsRanking";
 import { CampaignStatsConversionsBlock } from "@/app/dashboard/growth/campaigns/_module/shared/stats/CampaignStatsConversionsBlock";
+import { CampaignTriggerDistributionBlock } from "@/app/dashboard/growth/campaigns/_module/shared/stats/CampaignTriggerDistributionBlock";
 import DateIntervalInput from "@/components/Inputs/DateIntervalInput";
 import StatUnitCard from "@/components/Stats/StatUnitCard";
 import { formatDecimalPlaces, formatToMoney } from "@/lib/formatting";
@@ -30,7 +31,7 @@ export function CampaignsStatsView() {
 		startDate: initialStartDate.subtract(1, "month").toDate(),
 		endDate: initialEndDate.subtract(1, "month").toDate(),
 	});
-	const { data: analytics } = useCampaignStatsOverall({
+	const { data: analytics, isLoading: analyticsLoading } = useCampaignStatsOverall({
 		startDate: filters.startDate ?? undefined,
 		endDate: filters.endDate ?? undefined,
 	});
@@ -210,6 +211,8 @@ export function CampaignsStatsView() {
 			<div className="w-full h-[400px]">
 				<CampaignsFunnel startDate={filters.startDate ?? null} endDate={filters.endDate ?? null} />
 			</div>
+			{/* Receita agrupada por tipo de gatilho — antes vivia só na aba de campanhas do dashboard. */}
+			<CampaignTriggerDistributionBlock overall={analytics} isLoading={analyticsLoading} />
 			<div className="w-full h-[550px]">
 				<CampaignsBySegmentation startDate={filters.startDate ?? null} endDate={filters.endDate ?? null} />
 			</div>

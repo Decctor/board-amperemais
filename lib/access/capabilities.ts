@@ -63,8 +63,10 @@ export function canAccessDashboardCapability(capability: TDashboardCapability, c
 			return true;
 		case "sales":
 			return permissions.vendas.visualizar;
+		// Resultados de vendas existem para qualquer organização com permissão de resultados; os blocos
+		// operacionais (recebimentos, fiscal) são condicionais ao ERP dentro da página.
 		case "salesResults":
-			return erp && permissions.resultados.visualizar;
+			return permissions.resultados.visualizar;
 		case "newSale":
 			return erp && permissions.vendas.visualizar;
 		case "cashSessions":

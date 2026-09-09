@@ -1,37 +1,34 @@
-import PlanRestrictionComponent from "@/components/Layouts/PlanRestrictionComponent";
 import { requireDashboardCapability } from "@/lib/access/guards";
-import { getCurrentSession } from "@/lib/authentication/session";
+import { resolveResultsScopeSellerIds } from "@/lib/permissions/results-scope";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import SalesResultsPage from "./results-page";
 
 export const metadata: Metadata = {
 	title: "Resultados de vendas",
-	description: "Vendas, recebimentos por método, resultado por vendedor e saúde fiscal do período.",
+	description: "Análise comercial das vendas e, com ERP, recebimentos por método, resultado por vendedor e saúde fiscal do período.",
 };
 
 export default async function SalesResults() {
-	const sessionUser = await getCurrentSession();
+	const { sessionUser, unauthorized } = await requireDashboardCapability("salesResults");
+	if (unauthorized) return unauthorized;
 	if (!sessionUser) redirect("/auth/signin");
 	if (!sessionUser.membership) redirect("/onboarding");
 
-	if (!sessionUser.membership.organizacao.configuracao.recursos.erp.acesso) {
-		return (
-			<PlanRestrictionComponent
-				title="Resultados de vendas"
-				message="Os resultados de vendas consolidam recebimentos e emissão fiscal, disponíveis apenas para organizações com o módulo de ERP."
-			/>
-		);
-	}
+	const membership = sessionUser.membership;
+	// `resultados.escopo` guarda ids de usuários; os filtros de vendedor trabalham com ids de vendedor.
+	const scopeSellersIds = await resolveResultsScopeSellerIds({
+		organizacaoId: membership.organizacao.id,
+		resultsScope: membership.permissoes.resultados.escopo,
+	});
 
-	const { unauthorized } = await requireDashboardCapability("salesResults");
-	if (unauthorized) return unauthorized;
-
-	const { permissoes } = sessionUser.membership;
 	return (
 		<SalesResultsPage
-			hasResultsScope={Boolean(permissoes.resultados.escopo && permissoes.resultados.escopo.length > 0)}
-			canViewSensitive={permissoes.resultados.visualizarSensiveis}
+			user={sessionUser.user}
+			userOrg={membership.organizacao}
+			membership={membership}
+			scopeSellersIds={scopeSellersIds}
+			hasErpAccess={membership.organizacao.configuracao.recursos.erp.acesso}
 		/>
 	);
 }

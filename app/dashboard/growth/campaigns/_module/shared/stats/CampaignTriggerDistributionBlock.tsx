@@ -22,8 +22,8 @@ const TRIGGER_LABELS: Record<string, string> = {
 	"QUANTIDADE-TOTAL-COMPRAS": "Marco de compras",
 	"VALOR-TOTAL-COMPRAS": "Marco de valor",
 	"USO-UNICO": "Uso único",
-	"RECORRENTE": "Recorrente",
-	"ANIVERSARIO_CLIENTE": "Aniversário",
+	RECORRENTE: "Recorrente",
+	ANIVERSARIO_CLIENTE: "Aniversário",
 	"PIOR-DIA-VENDAS": "Pior dia de vendas",
 };
 
@@ -92,10 +92,7 @@ export function CampaignTriggerDistributionBlock({ overall, isLoading }: Campaig
 									</div>
 								</div>
 								<div className="w-full h-2 rounded-full bg-muted/30 overflow-hidden">
-									<div
-										className="h-full rounded-full transition-all duration-500"
-										style={{ width: `${widthPct}%`, backgroundColor: color }}
-									/>
+									<div className="h-full rounded-full transition-all duration-500" style={{ width: `${widthPct}%`, backgroundColor: color }} />
 								</div>
 							</div>
 						);
