@@ -3,6 +3,7 @@
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import WhatsappConnectionsPills from "@/components/WhatsappConnections/ConnectionsPills";
 import type { TAuthUserSession } from "@/lib/authentication/types";
+import { cn } from "@/lib/utils";
 import { LayoutDashboard } from "lucide-react";
 import { useMemo } from "react";
 import { resolveDashboardWidgets, type TDashboardWidget, type TDashboardWidgetProps } from "./_hub/registry";
@@ -82,9 +83,12 @@ function WidgetSection({ title, widgets, widgetProps }: WidgetSectionProps) {
 	return (
 		<section className="flex w-full flex-col gap-2">
 			<h2 className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">{title}</h2>
-			<div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-				{widgets.map(({ id, Component }) => (
-					<Component key={id} {...widgetProps} />
+			{/* Linhas de altura fixa + fluxo denso: um widget "lista" ocupa duas linhas e os compactos preenchem ao redor. */}
+			<div className="grid w-full auto-rows-[minmax(9.5rem,auto)] grid-flow-dense grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+				{widgets.map(({ id, size, Component }) => (
+					<div key={id} className={cn("flex min-w-0", size === "lista" && "md:row-span-2")}>
+						<Component {...widgetProps} />
+					</div>
 				))}
 			</div>
 		</section>

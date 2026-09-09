@@ -27,6 +27,9 @@ import { SellerRoutineWidget } from "./widgets/seller-routine-widget";
  */
 export type TDashboardWidgetKind = "pendencia" | "pulso";
 
+/** compacto: um número + duas linhas, o card inteiro é link. lista: itens nomeados, ocupa duas linhas da grade. */
+export type TDashboardWidgetSize = "compacto" | "lista";
+
 export type TDashboardWidgetProps = {
 	/** Ids de vendedor do escopo de resultados do membro; `null` = organização inteira. */
 	scopeSellersIds: string[] | null;
@@ -39,6 +42,7 @@ export type TDashboardWidget = {
 	id: string;
 	kind: TDashboardWidgetKind;
 	capability: TDashboardCapability;
+	size?: TDashboardWidgetSize;
 	/** Widgets da rotina do vendedor só fazem sentido para membros com vendedor vinculado. */
 	requiresSeller?: boolean;
 	Component: ComponentType<TDashboardWidgetProps>;
