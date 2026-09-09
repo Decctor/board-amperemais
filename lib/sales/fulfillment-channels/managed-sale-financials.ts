@@ -4,6 +4,7 @@ import { ensureFirstPartyFinancialAccount, type TFirstPartyAccountKey } from "@/
 import { resolveAccountingDefaultAccountIds } from "@/lib/finances/resolve-accounting-default-accounts";
 import { normalizeFinancialTransactionValue } from "@/lib/finances/financial-transaction-value";
 import { getOrganizationPaymentMethodsConfig } from "@/lib/payments/defaults";
+import { buildSaleEntryTitle } from "@/lib/sales/entry-titles";
 import type { TOrganizationConfiguration } from "@/schemas/organizations";
 import type { DBTransaction } from "@/services/drizzle";
 import { accountingEntries, financialTransactions } from "@/services/drizzle/schema";
@@ -62,7 +63,14 @@ export async function processManagedSaleFinancials(
 		organizationConfiguration: TOrganizationConfiguration | null;
 	},
 ): Promise<{ processed: boolean; reason?: string }> {
-	const saleLabel = `VENDA ${sale.model} #${sale.displayId ?? sale.sourceSaleId}`;
+	// displayId nulo cai no desambiguador de data-hora do helper — nunca no UUID do pedido.
+	const saleLabel = buildSaleEntryTitle({
+		channelLabel: sale.model,
+		saleNumber: sale.displayId ?? null,
+		clientName: sale.client?.name,
+		totalValue: sale.totalValue,
+		occurredAt: sale.occurredAt,
+	});
 	const existingEntry = await tx.query.accountingEntries.findFirst({
 		where: and(
 			eq(accountingEntries.organizacaoId, organizationId),

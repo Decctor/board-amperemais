@@ -14,7 +14,6 @@ import { useSalesSessionById } from "@/lib/queries/sales-sessions";
 import { summarizeSessionSalesBySeller } from "@/lib/sales-sessions/summarize-session-sales-by-seller";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import dayjs from "dayjs";
 import { AlertTriangle, ChevronDown } from "lucide-react";
 
 import { toast } from "sonner";
@@ -117,10 +116,22 @@ export default function CloseSalesSession({ sessionId, closeModal, conferenciaCe
 					<div className="flex flex-col gap-1 rounded-xl bg-muted/50 p-3">
 						<SessionMetaRow label="POLÍTICA" value={session.politica === "VENDEDOR_UNICO" ? "Vendedor único" : "Vendedores múltiplos"} />
 						<SessionMetaRow label="VENDEDOR PADRÃO" value={session.vendedorPadrao?.nome ?? "—"} />
-						<SessionMetaRow label="ABERTURA" value={dayjs(session.dataAbertura).format("DD/MM/YYYY HH:mm")} />
+						<SessionMetaRow label="ABERTURA" value={formatDateAsLocale(session.dataAbertura, true) as string} />
 						<SessionMetaRow label="VENDAS DO TURNO" value={`${vendas.length} · ${formatToMoney(totalVendas)}`} />
 					</div>
-					{vendasPorVendedor.length > 0 ? <div className="flex flex-col gap-2"><SectionLabel>VENDAS POR VENDEDOR</SectionLabel>{vendasPorVendedor.map((item) => <div key={item.vendedorId ?? "sem-vendedor"} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"><span>{item.vendedorNome} <span className="text-xs text-muted-foreground">({item.quantidadeVendas})</span></span><span className="font-semibold tabular-nums">{formatToMoney(item.valorTotal)}</span></div>)}</div> : null}
+					{vendasPorVendedor.length > 0 ? (
+						<div className="flex flex-col gap-2">
+							<SectionLabel>VENDAS POR VENDEDOR</SectionLabel>
+							{vendasPorVendedor.map((item) => (
+								<div key={item.vendedorId ?? "sem-vendedor"} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+									<span>
+										{item.vendedorNome} <span className="text-xs text-muted-foreground">({item.quantidadeVendas})</span>
+									</span>
+									<span className="font-semibold tabular-nums">{formatToMoney(item.valorTotal)}</span>
+								</div>
+							))}
+						</div>
+					) : null}
 					{confirmarDiferenca && temDiferencaGaveta ? (
 						<div className="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning-surface p-3">
 							<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-surface-foreground" aria-hidden />
@@ -134,7 +145,7 @@ export default function CloseSalesSession({ sessionId, closeModal, conferenciaCe
 							</p>
 						</div>
 					) : null}
-					<div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+					<div className="w-full flex flex-col gap-3">
 						{gavetaLinhas.length > 0 ? (
 							<section className="flex flex-col gap-2">
 								<SectionLabel>CONTAGEM FÍSICA DA GAVETA</SectionLabel>
