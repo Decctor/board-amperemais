@@ -57,17 +57,18 @@ type HubWidgetHeaderProps = {
 
 function HubWidgetHeader({ icon, title, hint, href, hrefLabel = "Ver todos" }: HubWidgetHeaderProps) {
 	return (
+		// O título nunca cede: quem encolhe (e trunca) em tela estreita é o complemento à direita.
 		<div className="flex w-full items-center justify-between gap-2">
-			<div className="flex min-w-0 items-center gap-2">
-				<span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary [&>svg]:size-4">{icon}</span>
-				<h2 className="truncate text-xs font-bold uppercase tracking-wide text-foreground">{title}</h2>
+			<div className="flex shrink-0 items-center gap-2 text-muted-foreground [&>svg]:size-4">
+				{icon}
+				<h3 className="text-label text-foreground">{title}</h3>
 			</div>
-			<div className="flex shrink-0 items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
-				{hint ? <span>{hint}</span> : null}
+			<div className="text-micro flex min-w-0 items-center justify-end gap-2 text-muted-foreground">
+				{hint ? <span className="truncate">{hint}</span> : null}
 				{href ? (
 					<Link
 						href={href}
-						className="flex items-center gap-0.5 rounded-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="flex shrink-0 items-center gap-0.5 rounded-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						{hrefLabel}
 						<ArrowUpRight className="size-3.5" aria-hidden />
@@ -104,7 +105,7 @@ type HubWidgetTone = "default" | "destructive" | "success";
 const toneClassName: Record<HubWidgetTone, string> = {
 	default: "",
 	destructive: "text-destructive",
-	success: "text-emerald-600 dark:text-emerald-400",
+	success: "text-success",
 };
 
 type HubWidgetDetailProps = {
@@ -147,7 +148,7 @@ function HubWidgetItem({ primary, secondary, trailing, tone = "default", href, l
 			{leading ? <span className="flex size-6 shrink-0 items-center justify-center">{leading}</span> : null}
 			<span className="flex min-w-0 flex-1 flex-col">
 				<span className="truncate text-sm font-semibold leading-tight text-foreground">{primary}</span>
-				{secondary ? <span className="truncate text-[0.7rem] text-muted-foreground">{secondary}</span> : null}
+				{secondary ? <span className="text-micro truncate text-muted-foreground">{secondary}</span> : null}
 			</span>
 			{trailing !== undefined && trailing !== null ? (
 				<span className={cn("shrink-0 text-xs font-semibold tabular-nums", toneClassName[tone])}>{trailing}</span>
@@ -175,7 +176,7 @@ function HubWidgetItem({ primary, secondary, trailing, tone = "default", href, l
 function HubWidgetEmpty({ message }: { message: string }) {
 	return (
 		<div className="flex items-center gap-2 text-sm text-muted-foreground">
-			<CircleCheck className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+			<CircleCheck className="size-4 shrink-0 text-success" aria-hidden />
 			<span>{message}</span>
 		</div>
 	);

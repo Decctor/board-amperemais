@@ -64,7 +64,7 @@ export function FinanceDueWidget(_props: TDashboardWidgetProps) {
 					<HubWidget.Details>
 						{overdueTotal > 0 ? (
 							<HubWidget.Detail
-								label="Atrasados (receber · pagar)"
+								label="Em atraso, a receber e a pagar"
 								value={`${formatToMoney(overdue?.inflow ?? 0)} · ${formatToMoney(overdue?.outflow ?? 0)}`}
 								tone="destructive"
 							/>

@@ -49,12 +49,12 @@ const cardClassName = "bg-card border-border flex h-full w-full flex-col gap-3 r
 function HeroHeader({ icon, title, hint, href }: { icon: React.ReactNode; title: string; hint?: string; href: string }) {
 	return (
 		<div className="flex w-full items-center justify-between gap-2">
-			<div className="flex min-w-0 items-center gap-2">
-				<span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary [&>svg]:size-4">{icon}</span>
-				<h2 className="truncate text-xs font-bold uppercase tracking-wide text-foreground">{title}</h2>
+			<div className="flex shrink-0 items-center gap-2 text-muted-foreground [&>svg]:size-4">
+				{icon}
+				<h2 className="text-label text-foreground">{title}</h2>
 			</div>
-			<div className="flex shrink-0 items-center gap-2 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
-				{hint ? <span>{hint}</span> : null}
+			<div className="text-micro flex min-w-0 items-center justify-end gap-2 text-muted-foreground">
+				{hint ? <span className="truncate">{hint}</span> : null}
 				<Link
 					href={href}
 					className="flex items-center gap-0.5 rounded-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -86,12 +86,12 @@ function HeroError({ error }: { error: unknown }) {
 // ---------------------------------------------------------------------------------------------
 
 function DeltaBadge({ current, previous, label }: { current: number; previous: number; label: string }) {
-	if (previous <= 0) return <span className="text-xs text-muted-foreground">sem base de comparação {label}</span>;
+	if (previous <= 0) return <span className="text-xs text-muted-foreground">sem vendas {label}</span>;
 	const delta = ((current - previous) / previous) * 100;
 	const up = delta >= 0;
 	const Icon = up ? TrendingUp : TrendingDown;
 	return (
-		<span className={cn("flex items-center gap-1 text-xs font-semibold", up ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
+		<span className={cn("flex items-center gap-1 text-xs font-semibold", up ? "text-success" : "text-destructive")}>
 			<Icon className="size-3.5" aria-hidden />
 			{up ? "+" : ""}
 			{formatDecimalPlaces(delta, 0, 0)}%<span className="font-normal text-muted-foreground"> {label}</span>
@@ -116,26 +116,18 @@ function SalesPulseCard() {
 				<HeroError error={error} />
 			) : (
 				<div className={cn("flex flex-col gap-3 transition-opacity", isFetching && "opacity-70")}>
-					<div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
-						<div className="flex flex-col gap-1">
-							{/* Número-herói: um por página, no mesmo sans do resto, figuras proporcionais. */}
-							<span className="text-4xl font-black leading-none tracking-tight md:text-5xl">{formatToMoney(data.hoje.faturamento)}</span>
-							<DeltaBadge current={data.hoje.faturamento} previous={data.mesmoDiaSemanaAnterior.faturamento} label="vs. mesmo dia da semana passada" />
+					{/* Um número, sua variação e a linha do tempo. Sem a grade de indicadores de apoio: a
+					    leitura completa do dia vive em Vendas > Resultados. */}
+					<div className="flex flex-col gap-1">
+						<span className="text-3xl font-extrabold leading-none tracking-[-0.015em] md:text-4xl">{formatToMoney(data.hoje.faturamento)}</span>
+						<div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+							<DeltaBadge current={data.hoje.faturamento} previous={data.mesmoDiaSemanaAnterior.faturamento} label="que na semana passada" />
+							<span aria-hidden>·</span>
+							<span>
+								{formatDecimalPlaces(data.hoje.qtdeVendas)} {data.hoje.qtdeVendas === 1 ? "venda" : "vendas"}, ticket médio de{" "}
+								{formatToMoney(data.hoje.ticketMedio)}
+							</span>
 						</div>
-						<dl className="flex items-center gap-5 text-xs">
-							<div className="flex flex-col">
-								<dt className="text-muted-foreground">Vendas</dt>
-								<dd className="text-sm font-semibold tabular-nums">{formatDecimalPlaces(data.hoje.qtdeVendas)}</dd>
-							</div>
-							<div className="flex flex-col">
-								<dt className="text-muted-foreground">Ticket médio</dt>
-								<dd className="text-sm font-semibold tabular-nums">{formatToMoney(data.hoje.ticketMedio)}</dd>
-							</div>
-							<div className="flex flex-col">
-								<dt className="text-muted-foreground">Semana passada</dt>
-								<dd className="text-sm font-semibold tabular-nums">{formatToMoney(data.mesmoDiaSemanaAnterior.faturamento)}</dd>
-							</div>
-						</dl>
 					</div>
 					<ChartContainer config={chartConfig} className="h-24 w-full">
 						<AreaChart data={data.serie} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
@@ -173,7 +165,7 @@ function SalesPulseCard() {
 // ---------------------------------------------------------------------------------------------
 
 const PACING = {
-	ADIANTADO: { label: "Adiantada", className: "text-emerald-600 dark:text-emerald-400" },
+	ADIANTADO: { label: "Adiantada", className: "text-success" },
 	NO_RITMO: { label: "No ritmo", className: "text-foreground" },
 	ATRASADO: { label: "Atrasada", className: "text-destructive" },
 } as const;
@@ -206,7 +198,7 @@ function GoalPacingCard() {
 				<div className={cn("flex flex-col gap-3 transition-opacity", isFetching && "opacity-70")}>
 					<div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
 						<div className="flex flex-col gap-1">
-							<span className={cn("text-3xl font-black leading-none tracking-tight", goal.percentualValor >= 100 && "text-[#e6a700]")}>
+							<span className={cn("text-3xl font-black leading-none tracking-tight", goal.percentualValor >= 100 && "text-warning-surface-foreground")}>
 								{formatDecimalPlaces(goal.percentualValor, 0, 0)}%
 							</span>
 							<span className="text-xs text-muted-foreground">
@@ -227,7 +219,7 @@ function GoalPacingCard() {
 							</div>
 							{goal.ritmo.ritmoNecessarioDiario !== null ? (
 								<div className="flex flex-col">
-									<dt className="text-muted-foreground">Precisa por dia</dt>
+									<dt className="text-muted-foreground">Falta por dia</dt>
 									<dd className="text-sm font-semibold tabular-nums">{formatToMoney(goal.ritmo.ritmoNecessarioDiario)}</dd>
 								</div>
 							) : null}
@@ -277,7 +269,7 @@ function GoalPacingCard() {
 						</ComposedChart>
 					</ChartContainer>
 					{/* Duas séries: a legenda é obrigatória; a cor identifica a marca, nunca o texto. */}
-					<div className="flex items-center gap-4 text-[0.68rem] text-muted-foreground">
+					<div className="text-micro flex items-center gap-4 text-muted-foreground">
 						<span className="flex items-center gap-1.5">
 							<span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: colors.primary }} />
 							Realizado

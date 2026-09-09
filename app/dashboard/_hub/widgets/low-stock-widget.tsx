@@ -26,7 +26,7 @@ export function LowStockWidget(_props: TDashboardWidgetProps) {
 			) : isError ? (
 				<HubWidget.Error error={error} />
 			) : total === 0 ? (
-				<HubWidget.Empty message="Nenhum produto precisando de reposição." />
+				<HubWidget.Empty message="Nenhum produto para repor." />
 			) : (
 				<>
 					<HubWidget.List>

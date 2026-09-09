@@ -36,8 +36,8 @@ export function ChatsWidget(_props: TDashboardWidgetProps) {
 					<HubWidget.Value label={abertos === 1 ? "conversa aberta" : "conversas abertas"}>{formatDecimalPlaces(abertos)}</HubWidget.Value>
 					<HubWidget.Details>
 						{backlog && backlog.naFila > 0 ? <HubWidget.Detail label="Na fila, sem atendente" value={backlog.naFila} /> : null}
-						{semResposta > 0 ? <HubWidget.Detail label="Sem primeira resposta (7 dias)" value={semResposta} tone="destructive" /> : null}
-						{expirando > 0 ? <HubWidget.Detail label="Janela de 24h expirando" value={expirando} tone="destructive" /> : null}
+						{semResposta > 0 ? <HubWidget.Detail label="Ainda sem primeira resposta" value={semResposta} tone="destructive" /> : null}
+						{expirando > 0 ? <HubWidget.Detail label="Janela de 24h acabando" value={expirando} tone="destructive" /> : null}
 					</HubWidget.Details>
 				</>
 			)}

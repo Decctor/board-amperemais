@@ -16,7 +16,7 @@ function segmentLabel(segmento: string | null) {
 	return label ? label.text.charAt(0) + label.text.slice(1).toLowerCase() : segmento;
 }
 
-/** Clientes que acabaram de cair num segmento de risco: o melhor momento de agir é agora, não no próximo cron. */
+/** Clientes que acabaram de cair num segmento de risco: o melhor momento de agir é agora. */
 export function SegmentDropsWidget(_props: TDashboardWidgetProps) {
 	const { data, isPending, isError, error } = useRecentSegmentChanges({ days: WINDOW_DAYS });
 	const total = data?.total ?? 0;
@@ -25,7 +25,7 @@ export function SegmentDropsWidget(_props: TDashboardWidgetProps) {
 		<HubWidget attention={total > 0}>
 			<HubWidget.Header
 				icon={<TrendingDown />}
-				title="Esfriando"
+				title="Clientes esfriando"
 				hint={total > 0 ? `${total} na semana` : `${WINDOW_DAYS} dias`}
 				href={appRoutes.customers.segments()}
 				hrefLabel="Matriz RFM"
@@ -35,7 +35,7 @@ export function SegmentDropsWidget(_props: TDashboardWidgetProps) {
 			) : isError ? (
 				<HubWidget.Error error={error} />
 			) : !data || data.clientes.length === 0 ? (
-				<HubWidget.Empty message="Nenhum cliente caiu para um segmento de risco esta semana." />
+				<HubWidget.Empty message="Nenhum cliente esfriou nesta semana." />
 			) : (
 				<>
 					<HubWidget.List>
@@ -44,7 +44,7 @@ export function SegmentDropsWidget(_props: TDashboardWidgetProps) {
 								key={client.id}
 								href={appRoutes.customers.details(client.id)}
 								primary={client.nome}
-								secondary={`Agora em ${segmentLabel(client.segmento)}`}
+								secondary={segmentLabel(client.segmento)}
 								trailing={formatToMoney(client.valorTotalCompras ?? 0)}
 							/>
 						))}

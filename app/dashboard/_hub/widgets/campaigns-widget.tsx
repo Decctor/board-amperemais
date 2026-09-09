@@ -63,7 +63,7 @@ export function CampaignsWidget(_props: TDashboardWidgetProps) {
 									key={campaign.id}
 									href={appRoutes.growth.campaign(campaign.id)}
 									primary={campaign.titulo}
-									secondary={`${formatDecimalPlaces(campaign.interacoes)} msg · ${formatDecimalPlaces(campaign.conversoes)} conv. · ${formatDecimalPlaces(campaign.taxaConversao)}%`}
+									secondary={`${formatDecimalPlaces(campaign.interacoes)} enviadas · ${formatDecimalPlaces(campaign.conversoes)} conversões`}
 									trailing={formatToMoney(campaign.receitaTotal)}
 									tone={campaign.receitaTotal > 0 ? "success" : "default"}
 								/>
@@ -72,22 +72,16 @@ export function CampaignsWidget(_props: TDashboardWidgetProps) {
 					) : null}
 					<HubWidget.Details>
 						<HubWidget.Detail
-							label="Enviadas · lidas · conversões"
+							label="Enviadas, lidas e convertidas"
 							value={`${formatDecimalPlaces(enviados)} · ${formatDecimalPlaces(funnel.data?.lidos ?? 0)} · ${formatDecimalPlaces(funnel.data?.convertidos ?? 0)}`}
 						/>
-						{totais && totais.receita > 0 ? (
-							<HubWidget.Detail
-								label="Receita atribuída (incremental)"
-								value={`${formatToMoney(totais.receita)} (${formatToMoney(totais.receitaIncremental)})`}
-								tone="success"
-							/>
-						) : null}
-						{falhas > 0 ? <HubWidget.Detail label="Envios com falha hoje" value={formatDecimalPlaces(falhas)} tone="destructive" /> : null}
-						{bloqueadas > 0 ? <HubWidget.Detail label="Bloqueadas por limite hoje" value={formatDecimalPlaces(bloqueadas)} tone="destructive" /> : null}
+						{totais && totais.receita > 0 ? <HubWidget.Detail label="Receita gerada" value={formatToMoney(totais.receita)} tone="success" /> : null}
+						{falhas > 0 ? <HubWidget.Detail label="Falhas de envio hoje" value={formatDecimalPlaces(falhas)} tone="destructive" /> : null}
+						{bloqueadas > 0 ? <HubWidget.Detail label="Bloqueadas pelo limite hoje" value={formatDecimalPlaces(bloqueadas)} tone="destructive" /> : null}
 						{quota?.limite ? (
 							<div className="flex flex-col gap-1 pt-1">
 								<div className="flex items-center justify-between text-xs">
-									<span className="text-muted-foreground">Quota semanal</span>
+									<span className="text-muted-foreground">Mensagens da semana</span>
 									<span className="font-semibold tabular-nums">
 										{formatDecimalPlaces(quota.usados)} / {formatDecimalPlaces(quota.limite)}
 									</span>

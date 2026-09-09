@@ -62,17 +62,17 @@ export function DashboardPage({ user, userOrg, membership, scopeSellersIds }: Da
 						<EmptyMedia variant="icon">
 							<LayoutDashboard className="text-muted-foreground" strokeWidth={1.5} aria-hidden />
 						</EmptyMedia>
-						<EmptyTitle className="text-sm font-semibold tracking-tight">Nada para acompanhar por aqui</EmptyTitle>
+						<EmptyTitle className="text-sm font-semibold tracking-tight">Nada para acompanhar aqui</EmptyTitle>
 						<EmptyDescription className="max-w-[320px] text-xs leading-relaxed">
-							Seu perfil ainda não tem acesso a módulos com pendências ou indicadores. Use o menu lateral para navegar.
+							Seu acesso ainda não inclui nenhuma área com pendências ou números. Use o menu lateral para navegar.
 						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (
 				<>
 					<HeroStrip showSales={showSalesHero} showGoal={showGoalHero} />
-					<WidgetSection title="Precisa de atenção" widgets={pendencias} widgetProps={widgetProps} />
-					<WidgetSection title="Pulso do dia" widgets={pulso} widgetProps={widgetProps} />
+					<WidgetSection title="Pendências" widgets={pendencias} widgetProps={widgetProps} />
+					<WidgetSection title="Resumo do dia" widgets={pulso} widgetProps={widgetProps} />
 				</>
 			)}
 		</div>
@@ -89,7 +89,7 @@ function WidgetSection({ title, widgets, widgetProps }: WidgetSectionProps) {
 	if (widgets.length === 0) return null;
 	return (
 		<section className="flex w-full flex-col gap-2">
-			<h2 className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">{title}</h2>
+			<h2 className="text-label text-muted-foreground">{title}</h2>
 			{/* Linhas de altura fixa + fluxo denso: um widget "lista" ocupa duas linhas e os compactos preenchem ao redor. */}
 			<div className="grid w-full auto-rows-[minmax(9.5rem,auto)] grid-flow-dense grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
 				{widgets.map(({ id, size, Component }) => (

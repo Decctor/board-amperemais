@@ -33,7 +33,7 @@ export function BirthdaysWidget(_props: TDashboardWidgetProps) {
 			) : isError ? (
 				<HubWidget.Error error={error} />
 			) : !data || data.clientes.length === 0 ? (
-				<HubWidget.Empty message={`Nenhum aniversário nos próximos ${WINDOW_DAYS} dias.`} />
+				<HubWidget.Empty message="Nenhum aniversário nesta semana." />
 			) : (
 				<HubWidget.List>
 					{data.clientes.map((client) => {
@@ -47,7 +47,7 @@ export function BirthdaysWidget(_props: TDashboardWidgetProps) {
 								trailing={
 									<span className="flex items-center gap-1.5">
 										{inDaysLabel(client.emDias)}
-										{link ? <MessageCircle className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-label="Tem WhatsApp" /> : null}
+										{link ? <MessageCircle role="img" aria-label="Tem WhatsApp" className="size-3.5 text-success" /> : null}
 									</span>
 								}
 								tone={client.emDias === 0 ? "success" : "default"}

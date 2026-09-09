@@ -44,9 +44,9 @@ export function FiscalPendingWidget(_props: TDashboardWidgetProps) {
 					</HubWidget.List>
 					<HubWidget.Details>
 						{resumo.prazosExpirando > 0 ? (
-							<HubWidget.Detail label="Prazos de cancelamento expirando" value={resumo.prazosExpirando} tone="destructive" />
+							<HubWidget.Detail label="Prazos de cancelamento acabando" value={resumo.prazosExpirando} tone="destructive" />
 						) : null}
-						{resumo.produtosSemPerfil > 0 ? <HubWidget.Detail label="Produtos vendidos sem perfil fiscal" value={resumo.produtosSemPerfil} /> : null}
+						{resumo.produtosSemPerfil > 0 ? <HubWidget.Detail label="Produtos sem perfil fiscal" value={resumo.produtosSemPerfil} /> : null}
 					</HubWidget.Details>
 				</>
 			)}

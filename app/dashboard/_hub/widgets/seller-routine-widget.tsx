@@ -12,7 +12,7 @@ const LIST_LIMIT = 5;
 
 /**
  * Rotina do vendedor vinculado ao membro: retornos marcados para hoje (os atrasados vêm junto) e,
- * no espaço que sobrar, os clientes da carteira com maior débito de comunicação — a fila do hub.
+ * no espaço que sobrar, os clientes da carteira que estão há mais tempo sem contato.
  */
 export function SellerRoutineWidget({ sellerId }: TDashboardWidgetProps) {
 	const dayKey = useDayKey();
@@ -39,7 +39,7 @@ export function SellerRoutineWidget({ sellerId }: TDashboardWidgetProps) {
 			) : isError ? (
 				<HubWidget.Error error={agenda.error ?? queue.error} />
 			) : followUps.length === 0 && fila.length === 0 ? (
-				<HubWidget.Empty message="Nenhum retorno marcado e ninguém em débito de contato." />
+				<HubWidget.Empty message="Tudo em dia com a sua carteira." />
 			) : (
 				<>
 					<HubWidget.List>
@@ -58,18 +58,16 @@ export function SellerRoutineWidget({ sellerId }: TDashboardWidgetProps) {
 								key={entry.cliente.id}
 								href={appRoutes.customers.details(entry.cliente.id)}
 								primary={entry.cliente.nome}
-								secondary={entry.motivos[0]?.texto ?? entry.cliente.segmento ?? "Em débito de contato"}
-								trailing={entry.diasSemContato !== null ? `${entry.diasSemContato} d sem contato` : undefined}
+								secondary={entry.motivos[0]?.texto ?? entry.cliente.segmento ?? "Sem contato recente"}
+								trailing={entry.diasSemContato !== null ? `${entry.diasSemContato} dias` : undefined}
 							/>
 						))}
 					</HubWidget.List>
 					<HubWidget.Details>
-						{queue.data && queue.data.totalEmDebito > 0 ? (
-							<HubWidget.Detail label="Clientes em débito de contato" value={queue.data.totalEmDebito} />
-						) : null}
+						{queue.data && queue.data.totalEmDebito > 0 ? <HubWidget.Detail label="Clientes esperando contato" value={queue.data.totalEmDebito} /> : null}
 						{stats.data ? (
 							<HubWidget.Detail
-								label="Abordagens registradas hoje"
+								label="Contatos registrados hoje"
 								value={stats.data.abordagensHoje}
 								tone={stats.data.abordagensHoje > 0 ? "success" : "default"}
 							/>

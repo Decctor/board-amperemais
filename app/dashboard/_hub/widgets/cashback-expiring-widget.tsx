@@ -28,7 +28,7 @@ export function CashbackExpiringWidget(_props: TDashboardWidgetProps) {
 			) : isError ? (
 				<HubWidget.Error error={error} />
 			) : !data || data.clientes.length === 0 ? (
-				<HubWidget.Empty message={`Nenhum saldo expira nos próximos ${WINDOW_DAYS} dias.`} />
+				<HubWidget.Empty message="Nenhum saldo expira neste mês." />
 			) : (
 				<>
 					<HubWidget.List>
@@ -43,7 +43,7 @@ export function CashbackExpiringWidget(_props: TDashboardWidgetProps) {
 						))}
 					</HubWidget.List>
 					<HubWidget.Details>
-						<HubWidget.Detail label={`Clientes com saldo expirando em ${WINDOW_DAYS} dias`} value={total.clientes} />
+						<HubWidget.Detail label="Clientes com saldo a expirar" value={total.clientes} />
 					</HubWidget.Details>
 				</>
 			)}
