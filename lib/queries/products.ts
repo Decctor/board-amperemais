@@ -29,6 +29,7 @@ async function fetchProducts(input: TGetProductsDefaultInput) {
 		if (input.statsTotalMin) searchParams.set("statsTotalMin", input.statsTotalMin.toString());
 		if (input.statsTotalMax) searchParams.set("statsTotalMax", input.statsTotalMax.toString());
 		if (input.stockStatus && input.stockStatus.length > 0) searchParams.set("stockStatus", input.stockStatus.join(","));
+		if (input.trackedOnly) searchParams.set("trackedOnly", "true");
 		if (input.priceMin) searchParams.set("priceMin", input.priceMin.toString());
 		if (input.priceMax) searchParams.set("priceMax", input.priceMax.toString());
 		if (input.orderByField) searchParams.set("orderByField", input.orderByField);
@@ -84,6 +85,7 @@ export function useProducts({ initialFilters }: UseProductsParams) {
 		statsTotalMin: initialFilters?.statsTotalMin || null,
 		statsTotalMax: initialFilters?.statsTotalMax || null,
 		stockStatus: initialFilters?.stockStatus || [],
+		trackedOnly: initialFilters?.trackedOnly ?? false,
 		priceMin: initialFilters?.priceMin || null,
 		priceMax: initialFilters?.priceMax || null,
 		abcClasses: initialFilters?.abcClasses || [],
@@ -118,6 +120,7 @@ async function fetchProductsStock(input: TGetProductsDefaultInput): Promise<TGet
 		if (input.statsPeriodAfter) searchParams.set("statsPeriodAfter", input.statsPeriodAfter.toISOString());
 		if (input.statsPeriodBefore) searchParams.set("statsPeriodBefore", input.statsPeriodBefore.toISOString());
 		if (input.stockStatus && input.stockStatus.length > 0) searchParams.set("stockStatus", input.stockStatus.join(","));
+		if (input.trackedOnly) searchParams.set("trackedOnly", "true");
 		if (input.priceMin) searchParams.set("priceMin", input.priceMin.toString());
 		if (input.priceMax) searchParams.set("priceMax", input.priceMax.toString());
 		if (input.orderByField) searchParams.set("orderByField", input.orderByField);
@@ -148,6 +151,7 @@ export function useProductsStock({ initialFilters }: UseProductsStockParams = {}
 		statsTotalMin: null,
 		statsTotalMax: null,
 		stockStatus: initialFilters?.stockStatus || [],
+		trackedOnly: initialFilters?.trackedOnly ?? false,
 		priceMin: initialFilters?.priceMin || null,
 		priceMax: initialFilters?.priceMax || null,
 		abcClasses: [],

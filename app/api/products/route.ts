@@ -110,6 +110,12 @@ const GetProductsDefaultInputSchema = z.object({
 		.optional()
 		.nullable()
 		.transform((val) => (val ? val.split(",") : [])),
+	// Só produtos com rastreamento de estoque ativo: sem isso, quantidade nula vira "sem estoque".
+	trackedOnly: z
+		.string({ invalid_type_error: "Tipo não válido para o filtro de rastreamento." })
+		.optional()
+		.nullable()
+		.transform((val) => val === "true"),
 	abcClasses: z
 		.string({
 			invalid_type_error: "Tipo nao valido para curva ABC.",
@@ -270,6 +276,7 @@ function buildProductFilterConditions(input: TGetProductsDefaultInput, userOrgId
 	if (input.groups.length > 0) {
 		conditions.push(inArray(products.grupo, input.groups));
 	}
+	if (input.trackedOnly) conditions.push(eq(products.rastreamentoEstoqueAtivo, true));
 	if (input.stockStatus && input.stockStatus.length > 0) {
 		const stockConditions = [];
 		for (const status of input.stockStatus) {
@@ -728,7 +735,9 @@ async function getProducts({ input, session }: GetProductsParams) {
 	});
 
 	// Aplica ordenação e paginação
-	const productsWithABCQuery = db.select({ ...pickProductFields(productStatsSubquery), curvaABC: curvaABCSql.as("curva_abc") }).from(productStatsSubquery);
+	const productsWithABCQuery = db
+		.select({ ...pickProductFields(productStatsSubquery), curvaABC: curvaABCSql.as("curva_abc") })
+		.from(productStatsSubquery);
 
 	if (input.abcClasses && input.abcClasses.length > 0) {
 		productsWithABCQuery.where(
@@ -847,6 +856,7 @@ const getProductsHandler: PagesRouteHandler<TGetProductsOutput> = async (req, re
 		statsTotalMin: req.query.statsTotalMin as string | undefined,
 		statsTotalMax: req.query.statsTotalMax as string | undefined,
 		stockStatus: req.query.stockStatus as string | undefined,
+		trackedOnly: req.query.trackedOnly as string | undefined,
 		abcClasses: req.query.abcClasses as string | undefined,
 		priceMin: req.query.priceMin as string | undefined,
 		priceMax: req.query.priceMax as string | undefined,

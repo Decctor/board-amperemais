@@ -48,6 +48,8 @@ export type TDashboardWidget = {
 	size?: TDashboardWidgetSize;
 	/** Widgets da rotina do vendedor só fazem sentido para membros com vendedor vinculado. */
 	requiresSeller?: boolean;
+	/** Condição extra além da capability (ex.: preferência da organização que liga o módulo). */
+	isVisible?: (context: TDashboardWidgetContext) => boolean;
 	Component: ComponentType<TDashboardWidgetProps>;
 };
 
@@ -59,18 +61,28 @@ export const DashboardWidgetRegistry: readonly TDashboardWidget[] = [
 	{ id: "approvals", kind: "pendencia", capability: "approvals", size: "lista", Component: ApprovalsWidget },
 	{ id: "finance-due", kind: "pendencia", capability: "finance", size: "lista", Component: FinanceDueWidget },
 	{ id: "fiscal-pending", kind: "pendencia", capability: "fiscal", size: "lista", Component: FiscalPendingWidget },
-	{ id: "low-stock", kind: "pendencia", capability: "inventory", size: "lista", Component: LowStockWidget },
+	{
+		id: "low-stock",
+		kind: "pendencia",
+		capability: "inventory",
+		size: "lista",
+		// Sem rastreamento de estoque, quantidade não significa nada — o widget só geraria alarme falso.
+		isVisible: ({ organization }) => organization.configuracao.preferencias.rastreamentoEstoque === true,
+		Component: LowStockWidget,
+	},
 	{ id: "chats", kind: "pendencia", capability: "whatsapp", Component: ChatsWidget },
 	{ id: "segment-drops", kind: "pendencia", capability: "segments", size: "lista", Component: SegmentDropsWidget },
 	// Pulso — relacionamento primeiro (é a alma do produto), depois a operação.
 	{ id: "birthdays", kind: "pulso", capability: "customers", size: "lista", Component: BirthdaysWidget },
 	{ id: "cashback-expiring", kind: "pulso", capability: "cashback", size: "lista", Component: CashbackExpiringWidget },
-	{ id: "campaigns", kind: "pulso", capability: "campaigns", Component: CampaignsWidget },
+	{ id: "campaigns", kind: "pulso", capability: "campaigns", size: "lista", Component: CampaignsWidget },
 	{ id: "open-tabs", kind: "pulso", capability: "serviceAccounts", Component: OpenTabsWidget },
 ];
 
 export type TDashboardWidgetContext = TCapabilityContext & { sellerId: string | null };
 
 export function resolveDashboardWidgets(context: TDashboardWidgetContext): TDashboardWidget[] {
-	return filterNavigationItems([...DashboardWidgetRegistry], context).filter((widget) => !widget.requiresSeller || context.sellerId !== null);
+	return filterNavigationItems([...DashboardWidgetRegistry], context).filter(
+		(widget) => (!widget.requiresSeller || context.sellerId !== null) && (widget.isVisible?.(context) ?? true),
+	);
 }

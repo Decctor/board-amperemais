@@ -12,7 +12,7 @@ const LIST_LIMIT = 5;
 export function LowStockWidget(_props: TDashboardWidgetProps) {
 	// Sem estoque primeiro, depois os mais baixos: a ordem já é a ordem de reposição.
 	const { data, isPending, isError, error } = useProductsStock({
-		initialFilters: { stockStatus: ["out", "low"], orderByField: "quantidade", orderByDirection: "asc" },
+		initialFilters: { stockStatus: ["out", "low"], trackedOnly: true, orderByField: "quantidade", orderByDirection: "asc" },
 	});
 	const products = data?.products ?? [];
 	const total = data?.productsMatched ?? 0;

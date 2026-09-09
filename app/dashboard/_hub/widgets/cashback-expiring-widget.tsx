@@ -19,9 +19,9 @@ export function CashbackExpiringWidget(_props: TDashboardWidgetProps) {
 			<HubWidget.Header
 				icon={<BadgePercent />}
 				title="Cashback expirando"
-				hint={total.valor > 0 ? `${formatToMoney(total.valor)} · ${total.clientes} cliente${total.clientes === 1 ? "" : "s"}` : `${WINDOW_DAYS} dias`}
+				hint={total.valor > 0 ? formatToMoney(total.valor) : `${WINDOW_DAYS} dias`}
 				href={`${appRoutes.growth.newCampaign()}?category=EVENT&stage=trigger`}
-				hrefLabel="Criar campanha"
+				hrefLabel="Campanha"
 			/>
 			{isPending ? (
 				<HubWidget.Loading rows={4} />
@@ -30,17 +30,22 @@ export function CashbackExpiringWidget(_props: TDashboardWidgetProps) {
 			) : !data || data.clientes.length === 0 ? (
 				<HubWidget.Empty message={`Nenhum saldo expira nos próximos ${WINDOW_DAYS} dias.`} />
 			) : (
-				<HubWidget.List>
-					{data.clientes.map((client) => (
-						<HubWidget.Item
-							key={client.clienteId}
-							href={appRoutes.customers.details(client.clienteId)}
-							primary={client.nome}
-							secondary={`expira em ${formatDateAsLocale(client.expiraEm)}`}
-							trailing={formatToMoney(client.valor)}
-						/>
-					))}
-				</HubWidget.List>
+				<>
+					<HubWidget.List>
+						{data.clientes.map((client) => (
+							<HubWidget.Item
+								key={client.clienteId}
+								href={appRoutes.customers.details(client.clienteId)}
+								primary={client.nome}
+								secondary={`expira em ${formatDateAsLocale(client.expiraEm)}`}
+								trailing={formatToMoney(client.valor)}
+							/>
+						))}
+					</HubWidget.List>
+					<HubWidget.Details>
+						<HubWidget.Detail label={`Clientes com saldo expirando em ${WINDOW_DAYS} dias`} value={total.clientes} />
+					</HubWidget.Details>
+				</>
 			)}
 		</HubWidget>
 	);
