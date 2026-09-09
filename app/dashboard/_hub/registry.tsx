@@ -5,14 +5,16 @@ import { type TCapabilityContext } from "@/lib/access/capabilities";
 import { filterNavigationItems } from "@/lib/access/navigation";
 import type { ComponentType } from "react";
 import { ApprovalsWidget } from "./widgets/approvals-widget";
-import { CampaignsWeekWidget } from "./widgets/campaigns-week-widget";
+import { BirthdaysWidget } from "./widgets/birthdays-widget";
+import { CampaignsWidget } from "./widgets/campaigns-widget";
+import { CashbackExpiringWidget } from "./widgets/cashback-expiring-widget";
+import { ChatsWidget } from "./widgets/chats-widget";
 import { FinanceDueWidget } from "./widgets/finance-due-widget";
 import { FiscalPendingWidget } from "./widgets/fiscal-pending-widget";
-import { GoalWidget } from "./widgets/goal-widget";
 import { LowStockWidget } from "./widgets/low-stock-widget";
 import { OpenOrdersWidget } from "./widgets/open-orders-widget";
 import { OpenTabsWidget } from "./widgets/open-tabs-widget";
-import { SalesTodayWidget } from "./widgets/sales-today-widget";
+import { SegmentDropsWidget } from "./widgets/segment-drops-widget";
 import { SellerRoutineWidget } from "./widgets/seller-routine-widget";
 
 /**
@@ -21,9 +23,10 @@ import { SellerRoutineWidget } from "./widgets/seller-routine-widget";
  * só para quem enxerga o módulo correspondente.
  *
  * Dois tipos, de propósito:
- * - `pendencia`: algo que exige ação agora (contagem + contexto + link).
- * - `pulso`: um número de hoje/mês com link para a visão geral do módulo. Sem filtros — a análise
- *   profunda vive em cada módulo.
+ * - `pendencia`: algo que exige ação agora (nomes + contexto + link para agir).
+ * - `pulso`: um número de hoje/semana com link para a visão geral do módulo. Sem filtros — a análise
+ *   profunda vive em cada módulo. Vendas de hoje e a meta ativa têm a faixa de destaque própria
+ *   (`hero-strip.tsx`) e não entram aqui.
  */
 export type TDashboardWidgetKind = "pendencia" | "pulso";
 
@@ -49,18 +52,21 @@ export type TDashboardWidget = {
 };
 
 export const DashboardWidgetRegistry: readonly TDashboardWidget[] = [
-	// Pendências — ordem por urgência: dinheiro parado, documentos travados, pedidos esperando.
-	{ id: "approvals", kind: "pendencia", capability: "approvals", Component: ApprovalsWidget },
-	{ id: "open-orders", kind: "pendencia", capability: "orders", Component: OpenOrdersWidget },
-	{ id: "fiscal-pending", kind: "pendencia", capability: "fiscal", Component: FiscalPendingWidget },
-	{ id: "finance-due", kind: "pendencia", capability: "finance", Component: FinanceDueWidget },
-	{ id: "low-stock", kind: "pendencia", capability: "inventory", Component: LowStockWidget },
-	// Pulso — o vendedor primeiro (é quem abre o app todo dia), depois a organização.
-	{ id: "seller-routine", kind: "pulso", capability: "portfolios", requiresSeller: true, Component: SellerRoutineWidget },
-	{ id: "sales-today", kind: "pulso", capability: "salesResults", Component: SalesTodayWidget },
-	{ id: "goal", kind: "pulso", capability: "goals", Component: GoalWidget },
+	// Pendências — ordem por urgência: quem tem prazo em minutos primeiro, depois dinheiro parado,
+	// documentos travados, reposição e, por fim, o relacionamento que está esfriando.
+	{ id: "seller-routine", kind: "pendencia", capability: "portfolios", size: "lista", requiresSeller: true, Component: SellerRoutineWidget },
+	{ id: "open-orders", kind: "pendencia", capability: "orders", size: "lista", Component: OpenOrdersWidget },
+	{ id: "approvals", kind: "pendencia", capability: "approvals", size: "lista", Component: ApprovalsWidget },
+	{ id: "finance-due", kind: "pendencia", capability: "finance", size: "lista", Component: FinanceDueWidget },
+	{ id: "fiscal-pending", kind: "pendencia", capability: "fiscal", size: "lista", Component: FiscalPendingWidget },
+	{ id: "low-stock", kind: "pendencia", capability: "inventory", size: "lista", Component: LowStockWidget },
+	{ id: "chats", kind: "pendencia", capability: "whatsapp", Component: ChatsWidget },
+	{ id: "segment-drops", kind: "pendencia", capability: "segments", size: "lista", Component: SegmentDropsWidget },
+	// Pulso — relacionamento primeiro (é a alma do produto), depois a operação.
+	{ id: "birthdays", kind: "pulso", capability: "customers", size: "lista", Component: BirthdaysWidget },
+	{ id: "cashback-expiring", kind: "pulso", capability: "cashback", size: "lista", Component: CashbackExpiringWidget },
+	{ id: "campaigns", kind: "pulso", capability: "campaigns", Component: CampaignsWidget },
 	{ id: "open-tabs", kind: "pulso", capability: "serviceAccounts", Component: OpenTabsWidget },
-	{ id: "campaigns-week", kind: "pulso", capability: "campaigns", Component: CampaignsWeekWidget },
 ];
 
 export type TDashboardWidgetContext = TCapabilityContext & { sellerId: string | null };

@@ -2,10 +2,12 @@
 
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import WhatsappConnectionsPills from "@/components/WhatsappConnections/ConnectionsPills";
+import { canAccessDashboardCapability } from "@/lib/access/capabilities";
 import type { TAuthUserSession } from "@/lib/authentication/types";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard } from "lucide-react";
 import { useMemo } from "react";
+import { HeroStrip } from "./_hub/hero-strip";
 import { resolveDashboardWidgets, type TDashboardWidget, type TDashboardWidgetProps } from "./_hub/registry";
 
 type DashboardPageProps = {
@@ -23,10 +25,14 @@ const todayLabel = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "num
  * A análise profunda vive em cada módulo (Vendas > Resultados, Financeiro > Visão geral, Campanhas).
  */
 export function DashboardPage({ user, userOrg, membership, scopeSellersIds }: DashboardPageProps) {
+	const capabilityContext = useMemo(() => ({ organization: userOrg, permissions: membership.permissoes }), [userOrg, membership.permissoes]);
 	const widgets = useMemo(
-		() => resolveDashboardWidgets({ organization: userOrg, permissions: membership.permissoes, sellerId: membership.usuarioVendedorId ?? null }),
-		[userOrg, membership.permissoes, membership.usuarioVendedorId],
+		() => resolveDashboardWidgets({ ...capabilityContext, sellerId: membership.usuarioVendedorId ?? null }),
+		[capabilityContext, membership.usuarioVendedorId],
 	);
+	const showSalesHero = canAccessDashboardCapability("salesResults", capabilityContext);
+	const showGoalHero = canAccessDashboardCapability("goals", capabilityContext);
+	const hasContent = widgets.length > 0 || showSalesHero || showGoalHero;
 	const pendencias = widgets.filter((widget) => widget.kind === "pendencia");
 	const pulso = widgets.filter((widget) => widget.kind === "pulso");
 
@@ -50,7 +56,7 @@ export function DashboardPage({ user, userOrg, membership, scopeSellersIds }: Da
 				</div>
 			</div>
 
-			{widgets.length === 0 ? (
+			{!hasContent ? (
 				<Empty className="justify-center bg-muted/25 py-12">
 					<EmptyHeader>
 						<EmptyMedia variant="icon">
@@ -64,6 +70,7 @@ export function DashboardPage({ user, userOrg, membership, scopeSellersIds }: Da
 				</Empty>
 			) : (
 				<>
+					<HeroStrip showSales={showSalesHero} showGoal={showGoalHero} />
 					<WidgetSection title="Precisa de atenção" widgets={pendencias} widgetProps={widgetProps} />
 					<WidgetSection title="Pulso do dia" widgets={pulso} widgetProps={widgetProps} />
 				</>

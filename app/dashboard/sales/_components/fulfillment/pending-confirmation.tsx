@@ -19,7 +19,7 @@ import { toast } from "sonner";
 
 type TPendingConfirmationOrder = TGetSalesFulfillmentOutputDefault["pendingConfirmation"][number];
 
-const IFOOD_CONFIRMATION_SLA_MINUTES = 8;
+export const IFOOD_CONFIRMATION_SLA_MINUTES = 8;
 
 const DELIVERY_MODE_META: Record<string, { label: string; icon: typeof Truck }> = {
 	ENTREGA: { label: "Entrega", icon: Truck },
