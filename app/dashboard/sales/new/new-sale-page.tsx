@@ -477,9 +477,15 @@ export default function NewSalePage({
 							    a fila zera, sem ocupar espaço fixo da grade de produtos. */}
 							<OpenQuotesPill canViewQuotes={canViewSales} permissions={quotePermissions} cartItemCount={saleState.itemCount} />
 						</div>
-						{groupsLoading ? null : (
-							<CategoriesBar groups={groupsData?.groups ?? []} selectedGroup={selectedGroup} onGroupSelect={handleGroupSelect} isLoading={productsLoading} />
-						)}
+						{/* A barra se encarrega do próprio skeleton: montá-la só depois do load a inseria na
+						    árvore com a grade já pintada e empurrava tudo para baixo. */}
+						<CategoriesBar
+							groups={groupsData?.groups ?? []}
+							selectedGroup={selectedGroup}
+							onGroupSelect={handleGroupSelect}
+							isLoadingGroups={groupsLoading}
+							isFilteringProducts={productsLoading}
+						/>
 					</div>
 
 					<div className="flex-1 min-h-0 flex flex-col gap-4 overflow-y-auto scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 pr-1 pb-20 lg:pb-0">

@@ -463,14 +463,15 @@ export default function CheckoutPage({
 								</div>
 								<ViewModeToggle value={viewMode} onChange={setViewMode} />
 							</div>
-							{groupsLoading ? null : (
-								<CategoriesBar
-									groups={groupsData?.groups ?? []}
-									selectedGroup={selectedGroup}
-									onGroupSelect={handleGroupSelect}
-									isLoading={productsLoading}
-								/>
-							)}
+							{/* A barra se encarrega do próprio skeleton: montá-la só depois do load a inseria na
+							    árvore com a grade já pintada e empurrava tudo para baixo. */}
+							<CategoriesBar
+								groups={groupsData?.groups ?? []}
+								selectedGroup={selectedGroup}
+								onGroupSelect={handleGroupSelect}
+								isLoadingGroups={groupsLoading}
+								isFilteringProducts={productsLoading}
+							/>
 						</div>
 
 						<div className="scrollbar-thin scrollbar-track-primary/10 scrollbar-thumb-primary/30 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1 pb-20 lg:pb-0">

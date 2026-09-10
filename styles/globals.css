@@ -193,23 +193,27 @@
 	body {
 		font-family: var(--font-raleway), system-ui, sans-serif;
 	}
-	/* Scrollbar utilities replacing tailwind-scrollbar plugin */
-	.scrollbar-thin {
-		scrollbar-width: thin;
-	}
+	/* Scrollbar utilities replacing tailwind-scrollbar plugin
+	 *
+	 * As props padrão (`scrollbar-width`, `scrollbar-color`) e as pseudo-classes `::-webkit-scrollbar-*`
+	 * NÃO convivem no mesmo elemento: Chrome/Edge 121+ ignoram todas as pseudo-classes webkit quando
+	 * qualquer uma das duas props padrão está presente. Enquanto as duas moravam juntas aqui, o
+	 * `display: none` do `-button` abaixo era código morto e o navegador caía no scrollbar nativo do
+	 * sistema — no Windows, com as setinhas nas pontas. Era por isso que estilizar não surtia efeito.
+	 *
+	 * Então: webkit para Chrome/Edge/Safari (polegar arredondado, sem setas), props padrão só para
+	 * quem não tem o caminho webkit, isolado no `@supports` no fim do bloco. */
 	.scrollbar-thin::-webkit-scrollbar {
 		width: 8px;
 		height: 8px;
-	}
-	.scrollbar-thinner {
-		scrollbar-width: thin;
 	}
 	.scrollbar-thinner::-webkit-scrollbar {
 		width: 4px;
 		height: 4px;
 	}
 	/* Hide scrollbar arrow buttons */
-	.scrollbar-thin::-webkit-scrollbar-button {
+	.scrollbar-thin::-webkit-scrollbar-button,
+	.scrollbar-thinner::-webkit-scrollbar-button {
 		display: none;
 		width: 0;
 		height: 0;
@@ -231,15 +235,19 @@
 	/* Keep thumb transparent on hover */
 	.scrollbar-thumb-primary\/5::-webkit-scrollbar-thumb:hover {
 		background-color: hsl(var(--primary) / 0.1);
-		scrollbar-color: hsl(var(--primary) / 0.05) transparent;
-
 	}
-	/* Firefox scrollbar support */
-	.scrollbar-thin.scrollbar-thumb-primary\/5.scrollbar-track-transparent {
-		scrollbar-color: hsl(var(--primary) / 0.05) transparent;
-	}
-	.scrollbar-thin.scrollbar-thumb-primary\/30.scrollbar-track-transparent {
-		scrollbar-color: hsl(var(--primary) / 0.3) transparent;
+	/* Navegador sem `::-webkit-scrollbar` (Firefox): o caminho padrão é o único que existe. */
+	@supports not selector(::-webkit-scrollbar) {
+		.scrollbar-thin,
+		.scrollbar-thinner {
+			scrollbar-width: thin;
+		}
+		.scrollbar-thumb-primary\/5 {
+			scrollbar-color: hsl(var(--primary) / 0.05) transparent;
+		}
+		.scrollbar-thumb-primary\/30 {
+			scrollbar-color: hsl(var(--primary) / 0.3) transparent;
+		}
 	}
 
 	/* Shop marquee */
@@ -273,10 +281,13 @@
 		}
 	}
 
-	/* Trilha transparente, polegar fino em tom neutro — ideal para kanban e painéis densos */
-	.scrollbar-subtle {
-		scrollbar-width: thin;
-		scrollbar-color: hsl(var(--muted-foreground) / 0.28) transparent;
+	/* Trilha transparente, polegar fino em tom neutro — ideal para kanban e painéis densos.
+	 * Mesma separação webkit/padrão explicada no topo do bloco de scrollbars. */
+	@supports not selector(::-webkit-scrollbar) {
+		.scrollbar-subtle {
+			scrollbar-width: thin;
+			scrollbar-color: hsl(var(--muted-foreground) / 0.28) transparent;
+		}
 	}
 	.scrollbar-subtle::-webkit-scrollbar {
 		width: 5px;
