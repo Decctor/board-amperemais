@@ -253,7 +253,7 @@ function AddOnSearchField({ value, onChange, onClear }: AddOnSearchFieldProps) {
 				<Search />
 			</InputGroupAddon>
 			{value ? (
-				<InputGroupAddon align="inline-end">
+				<InputGroupAddon align="inline-end" className="has-[>button]:mr-0">
 					<InputGroupButton size="icon-xs" aria-label="Limpar busca" onClick={onClear}>
 						<X />
 					</InputGroupButton>
