@@ -51,7 +51,7 @@ function ProductListRow({ product, orgTracksStock, onSelect }: ProductListRowPro
 			{/* Identidade do produto */}
 			<div className="relative h-14 w-14 min-h-14 min-w-14 overflow-hidden rounded-lg bg-secondary/40">
 				{product.imagemCapaUrl ? (
-					<Image src={product.imagemCapaUrl} alt={product.nome} fill className="object-cover" />
+					<Image src={product.imagemCapaUrl} alt={product.nome} fill sizes="56px" className="object-cover" />
 				) : (
 					<div className="flex h-full w-full items-center justify-center">
 						<Package className="h-5 w-5 text-muted-foreground/40" />

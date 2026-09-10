@@ -9,9 +9,10 @@ type ProductBuilderModalProps = {
 	product: TGetPOSProductsOutput["data"]["products"][number];
 	onAddToCart: (item: TCartItem) => void;
 	onClose: () => void;
+	showImage?: boolean;
 };
 
-export default function ProductBuilderModal({ product, onAddToCart, onClose }: ProductBuilderModalProps) {
+export default function ProductBuilderModal({ product, onAddToCart, onClose, showImage = false }: ProductBuilderModalProps) {
 	const builder = useProductBuilder({ product });
 
 	const handleAddToCart = () => {
@@ -38,7 +39,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 			stateError={null}
 			menuActionButtonClassName={cn(!builder.canConfirm && "opacity-50")}
 		>
-			<ProductBuilderForm product={product} builder={builder} />
+			<ProductBuilderForm product={product} builder={builder} showImage={showImage} />
 		</ResponsiveMenu>
 	);
 }

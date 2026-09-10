@@ -79,7 +79,7 @@ function CartItemRow({ item, onUpdateQuantity, onUpdateObservacoes, onRemove }: 
 			<div className="flex items-start gap-2.5">
 				<div className="relative h-11 w-11 min-h-11 min-w-11 overflow-hidden rounded-lg bg-secondary/40">
 					{item.imagemUrl ? (
-						<Image src={item.imagemUrl} alt={item.nome} fill className="object-cover" />
+						<Image src={item.imagemUrl} alt={item.nome} fill sizes="44px" className="object-cover" />
 					) : (
 						<div className="flex h-full w-full items-center justify-center">
 							<Package className="h-4 w-4 text-muted-foreground/40" />
