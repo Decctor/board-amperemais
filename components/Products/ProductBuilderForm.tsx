@@ -364,7 +364,7 @@ export function ProductBuilderForm({ product, builder, showFooter = true, showIm
 
 			{/* Adicionais */}
 			{hasAddOns && showSearch ? (
-				<div className="sticky top-0 z-10 flex w-full min-w-0 flex-col gap-1.5 bg-popover py-1">
+				<div className="sticky top-0 z-10 flex w-full min-w-0 flex-col gap-1.5 bg-popover py-1 before:absolute before:inset-x-0 before:-top-2 before:h-2 before:bg-popover">
 					<AddOnSearchField value={addOnQuery} onChange={setAddOnQuery} onClear={() => setAddOnQuery("")} />
 					{selectedModifiers.length > 0 ? (
 						<p className="text-micro px-1 text-muted-foreground">
