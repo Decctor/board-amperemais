@@ -44,7 +44,13 @@ function ProductCard({ product, orgTracksStock, onSelect }: ProductCardProps) {
 			{/* Imagem — 4:3 reduz altura sem sacrificar a leitura rápida do produto. */}
 			<div className="relative aspect-[4/3] w-full overflow-hidden bg-secondary/40">
 				{product.imagemCapaUrl ? (
-					<Image src={product.imagemCapaUrl} alt={product.nome} fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
+					<Image
+						src={product.imagemCapaUrl}
+						alt={product.nome}
+						fill
+						sizes="(min-width: 1280px) 16vw, (min-width: 768px) 25vw, 50vw"
+						className="object-cover transition-transform duration-300 group-hover:scale-105"
+					/>
 				) : (
 					<div className="flex h-full w-full items-center justify-center">
 						<Package className="h-10 w-10 text-muted-foreground/40" />

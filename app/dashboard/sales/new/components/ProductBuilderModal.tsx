@@ -28,6 +28,7 @@ export default function ProductBuilderModal({ product, onAddToCart, onClose }: P
 		<ResponsiveMenu
 			menuTitle={product.nome}
 			menuDescription="Configure o produto para adicionar ao carrinho."
+			drawerVariant="lg"
 			menuActionButtonText="ADICIONAR AO CARRINHO"
 			menuCancelButtonText="CANCELAR"
 			actionFunction={handleAddToCart}
